@@ -10,7 +10,7 @@ const userSchema = new Schema<TUser, IUserModel>(
     name: {
       type: String,
       required: true,
-      default: null
+      default: null,
     },
     role: {
       type: String,
@@ -20,6 +20,7 @@ const userSchema = new Schema<TUser, IUserModel>(
     email: {
       type: String,
       required: true,
+      unique: true,
       //validate email
       match: [
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
@@ -45,7 +46,7 @@ const userSchema = new Schema<TUser, IUserModel>(
     },
     profilePhoto: {
       type: String,
-      default: null
+      default: null,
     },
   },
   {
