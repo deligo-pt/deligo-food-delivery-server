@@ -4,11 +4,15 @@ import { USER_ROLE, USER_STATUS } from './user.constant';
 
 export type TUser = {
   _id?: string;
-  name?: string;
+  id: string;
+  name: string;
   role: keyof typeof USER_ROLE;
   email: string;
   password: string;
   status: keyof typeof USER_STATUS;
+  isEmailVerified: boolean;
+  otp?: string;
+  isOtpExpired?: Date;
   passwordChangedAt?: Date;
   mobileNumber?: string;
   profilePhoto?: string;
