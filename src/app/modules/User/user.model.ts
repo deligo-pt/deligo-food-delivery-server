@@ -7,6 +7,11 @@ import { IUserModel, TUser } from './user.interface';
 
 const userSchema = new Schema<TUser, IUserModel>(
   {
+    id: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     name: {
       type: String,
       required: true,
@@ -20,7 +25,6 @@ const userSchema = new Schema<TUser, IUserModel>(
     email: {
       type: String,
       required: true,
-      unique: true,
       //validate email
       match: [
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
@@ -36,6 +40,16 @@ const userSchema = new Schema<TUser, IUserModel>(
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.ACTIVE,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otp: {
+      type: String,
+    },
+    isOtpExpired: {
+      type: Date,
     },
     passwordChangedAt: {
       type: Date,
@@ -59,11 +73,12 @@ userSchema.pre('save', async function (next) {
   // eslint-disable-next-line @typescript-eslint/no-this-alias
   const user = this; // doc
   // hashing password and save into DB
-
-  user.password = await bcryptjs.hash(
-    user.password,
-    Number(config.bcrypt_salt_rounds)
-  );
+  if (user.password && user.isModified('password')) {
+    user.password = await bcryptjs.hash(
+      user.password,
+      Number(config.bcrypt_salt_rounds)
+    );
+  }
 
   next();
 });

@@ -58,7 +58,7 @@ const registerAgent = async (payload: TRegisterAgent) => {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is already exist!');
   }
 
-  payload.role = USER_ROLE.AGENTMANAGER;
+  payload.role = USER_ROLE.AGENT;
 
   //create new user
   const newUser = await User.create(payload);

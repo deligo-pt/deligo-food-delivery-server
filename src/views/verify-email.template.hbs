@@ -1,0 +1,35 @@
+{{! Email Verification Template }}
+
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <style>
+      body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin:
+      0; padding: 0; } .container { width: 100%; max-width: 600px; margin: 0
+      auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); } .header { background-color:
+      #2652e2; color: #ffffff; padding: 20px; text-align: center; } .content {
+      padding: 20px; text-align: center; } .expired-note { color: #ff0000;
+      font-size: 12px; margin-top: 10px; } .footer { background-color: #f1f1f1;
+      color: #555555; text-align: center; padding: 10px; font-size: 14px; }
+
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+      <div class='header'>
+        <h1>Welcome to DeliGo</h1>
+      </div>
+      <div class='content'>
+        <p>Your OTP Verification Code:</p>
+        <h1>{{otp}}</h1>
+        <p class='expired-note'>This code will expire in 5 minutes.</p>
+      </div>
+      <div class='footer'>
+        <p>&copy; {{currentYear}} DeliGo. All rights reserved.</p>
+      </div>
+
+    </div>
+  </body>
+</html>

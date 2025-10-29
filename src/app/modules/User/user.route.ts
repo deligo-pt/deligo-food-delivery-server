@@ -9,11 +9,26 @@ const router = express.Router();
 
 export const UserRoutes = router;
 
+// Customer Registration Route
 router.post(
-  '/create-user',
+  '/create-customer',
   // auth(USER_ROLE.ADMIN),
   validateRequest(UserValidation.createUserValidationSchema),
-  UserControllers.userRegister
+  UserControllers.customerRegister
 );
+// Verify OTP Route
+router.post(
+  '/verify-otp',
+  validateRequest(UserValidation.verifyOtpValidationSchema),
+  UserControllers.verifyOtp
+);
+
+// Resend OTP Route
+router.post(
+  '/resend-otp',
+  validateRequest(UserValidation.resendOtpValidationSchema),
+  UserControllers.resendOtp
+);
+
 router.get('/', UserControllers.getAllUsers);
 router.get('/:id', UserControllers.getSingleUser);

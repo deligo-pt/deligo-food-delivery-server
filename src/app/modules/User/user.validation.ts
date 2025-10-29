@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { USER_ROLE, USER_STATUS } from './user.constant';
 
+// Create User Validation Schema
 const createUserValidationSchema = z.object({
   body: z.object({
     name: z.string({
@@ -22,6 +23,27 @@ const createUserValidationSchema = z.object({
   }),
 });
 
+// Verify OTP Validation Schema
+const verifyOtpValidationSchema = z.object({
+  body: z.object({
+    email: z.string({
+      required_error: 'Email is required',
+    }),
+    otp: z.string({
+      required_error: 'OTP is required',
+    }),
+  }),
+});
+
+// Resend OTP Validation Schema
+const resendOtpValidationSchema = z.object({
+  body: z.object({
+    email: z.string({
+      required_error: 'Email is required',
+    }),
+  }),
+});
+
 const updateUserValidationSchema = z.object({
   body: z.object({
     name: z.string().optional(),
@@ -35,5 +57,7 @@ const updateUserValidationSchema = z.object({
 
 export const UserValidation = {
   createUserValidationSchema,
+  verifyOtpValidationSchema,
+  resendOtpValidationSchema,
   updateUserValidationSchema,
 };
