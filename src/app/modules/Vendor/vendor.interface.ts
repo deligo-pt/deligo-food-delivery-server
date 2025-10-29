@@ -1,10 +1,9 @@
 /* eslint-disable no-unused-vars */
-import { Model } from 'mongoose';
 
 export type TVendor = {
   // 1. Personal Details
   _id?: string;
-  userId: string;
+  vendorId: string;
   // 2. Business Details
   businessDetails?: {
     businessName: string;
@@ -26,8 +25,8 @@ export type TVendor = {
   bankDetails?: {
     bankName: string;
     accountHolderName: string;
-    iban?: string;
-    swiftCode?: string;
+    iban: string;
+    swiftCode: string;
   };
   // 4. Documents & Verification
   documents?: {
@@ -37,18 +36,6 @@ export type TVendor = {
     storePhoto?: string;
     menuUpload?: string;
   };
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 };
-
-export interface IVendorModel extends Model<TVendor> {
-  isVendorExistsByEmail(id: string): Promise<TVendor>;
-  isPasswordMatched(
-    plainTextPassword: string,
-    hashedPassword: string
-  ): Promise<boolean>;
-  isJWTIssuedBeforePasswordChanged(
-    passwordChangedTimestamp: Date,
-    jwtIssuedTimestamp: number
-  ): boolean;
-}

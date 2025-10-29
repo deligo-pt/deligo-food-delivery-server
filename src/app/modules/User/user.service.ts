@@ -21,7 +21,7 @@ const createUser = async (payload: TUser, url: string) => {
   }
 
   // Generate unique ID
-  const id = uuidv4();
+  const id = uuidv4().split('-')[0];
   payload.id = id;
 
   if (userType === '/create-customer' && payload?.role !== USER_ROLE.USER) {

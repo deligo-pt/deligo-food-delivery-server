@@ -1,34 +1,14 @@
 import express from 'express';
-import { UserControllers } from './vendor.controller';
-// import auth from '../../middlewares/auth';
-// import { USER_ROLE } from './user.constant';
-import validateRequest from '../../middlewares/validateRequest';
-import { UserValidation } from './vendor.validation';
+import { USER_ROLE } from '../User/user.constant';
+import auth from '../../middlewares/auth';
+import { VendorControllers } from './vendor.controller';
 
 const router = express.Router();
 
-export const UserRoutes = router;
+// Vendor update Route
+router.patch('/:id', auth(USER_ROLE.VENDOR), VendorControllers.vendorUpdate);
 
-// Customer Registration Route
-router.post(
-  '/create-customer',
-  // auth(USER_ROLE.ADMIN),
-  validateRequest(UserValidation.createUserValidationSchema),
-  UserControllers.customerRegister
-);
-// Verify OTP Route
-router.post(
-  '/verify-otp',
-  validateRequest(UserValidation.verifyOtpValidationSchema),
-  UserControllers.verifyOtp
-);
+// vendor delete Route
+router.delete('/:id', auth(USER_ROLE.VENDOR), VendorControllers.vendorDelete);
 
-// Resend OTP Route
-router.post(
-  '/resend-otp',
-  validateRequest(UserValidation.resendOtpValidationSchema),
-  UserControllers.resendOtp
-);
-
-router.get('/', UserControllers.getAllUsers);
-router.get('/:id', UserControllers.getSingleUser);
+export const VendorRoutes = router;

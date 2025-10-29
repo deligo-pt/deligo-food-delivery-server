@@ -1,18 +1,43 @@
 /* eslint-disable no-useless-escape */
-import bcryptjs from 'bcryptjs';
 import { Schema, model } from 'mongoose';
-import { IVendorModel, TVendor } from './vendor.interface';
+import { TVendor } from './vendor.interface';
 
-const vendorSchema = new Schema<TVendor, IVendorModel>(
+const vendorSchema = new Schema<TVendor>(
   {
-    userId: {
+    vendorId: {
       type: String,
       required: true,
       unique: true,
+      ref: 'User',
     },
     businessDetails: {
-      type: String,
-      required: true,
+      businessName: { type: String, required: true },
+      businessType: { type: String, required: true },
+      businessLicenseNumber: { type: String, required: true },
+      NIF: { type: String, required: true },
+      city: { type: String, required: true },
+      postalCode: { type: String, required: true },
+      location: {
+        address: { type: String, required: true },
+        latitude: { type: Number },
+        longitude: { type: Number },
+      },
+      openingHours: { type: String, required: true },
+      closingHours: { type: String, required: true },
+      closingDays: { type: [String], required: true },
+    },
+    bankDetails: {
+      bankName: { type: String, required: true },
+      accountHolderName: { type: String, required: true },
+      iban: { type: String, required: true },
+      swiftCode: { type: String, required: true },
+    },
+    documents: {
+      businessLicenseDoc: { type: String, required: true },
+      taxDoc: { type: String, required: true },
+      idProof: { type: String, required: true },
+      storePhoto: { type: String, required: true },
+      menuUpload: { type: String, required: true },
     },
   },
   {
@@ -21,24 +46,4 @@ const vendorSchema = new Schema<TVendor, IVendorModel>(
   }
 );
 
-vendorSchema.statics.isVendorExistsByEmail = async function (userId: string) {
-  return await Vendor.findOne({ userId }).select('+password');
-};
-
-vendorSchema.statics.isPasswordMatched = async function (
-  plainTextPassword,
-  hashedPassword
-) {
-  return await bcryptjs.compare(plainTextPassword, hashedPassword);
-};
-
-vendorSchema.statics.isJWTIssuedBeforePasswordChanged = function (
-  passwordChangedTimestamp: number,
-  jwtIssuedTimestamp: number
-) {
-  const passwordChangedTime =
-    new Date(passwordChangedTimestamp).getTime() / 1000;
-  return passwordChangedTime > jwtIssuedTimestamp;
-};
-
-export const Vendor = model<TVendor, IVendorModel>('Vendor', vendorSchema);
+export const Vendor = model<TVendor>('Vendor', vendorSchema);

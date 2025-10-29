@@ -1,37 +1,23 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { UserServices } from './vendor.service';
+import { VendorServices } from './vendor.service';
 
-// Customer Registration Controller
-const customerRegister = catchAsync(async (req, res) => {
-  const result = await UserServices.createCustomer(req.body);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.user,
-  });
-});
-
-// Verify OTP Controller
-const verifyOtp = catchAsync(async (req, res) => {
-  const { email, otp } = req.body;
-  const result = await UserServices.verifyOtp(email, otp);
+// Vendor Update Controller
+const vendorUpdate = catchAsync(async (req, res) => {
+  const result = await VendorServices.vendorUpdate(req.params.id, req.body);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: { accessToken: result?.accessToken },
+    message: 'Vendor updated successfully',
+    data: result,
   });
 });
 
-// Resend OTP Controller
-const resendOtp = catchAsync(async (req, res) => {
-  const { email } = req.body;
-  const result = await UserServices.resendOtp(email);
+// vendor delete controller
+const vendorDelete = catchAsync(async (req, res) => {
+  const result = await VendorServices.vendorDelete(req.params.id);
 
   sendResponse(res, {
     success: true,
@@ -41,32 +27,7 @@ const resendOtp = catchAsync(async (req, res) => {
   });
 });
 
-const getAllUsers = catchAsync(async (req, res) => {
-  const users = await UserServices.getAllUsersFromDB(req.query);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Users Retrieved Successfully',
-    data: users,
-  });
-});
-
-const getSingleUser = catchAsync(async (req, res) => {
-  const user = await UserServices.getSingleUserFromDB(req.params.id);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'User Retrieved Successfully',
-    data: user,
-  });
-});
-
-export const UserControllers = {
-  customerRegister,
-  verifyOtp,
-  resendOtp,
-  getSingleUser,
-  getAllUsers,
+export const VendorControllers = {
+  vendorUpdate,
+  vendorDelete,
 };

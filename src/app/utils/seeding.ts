@@ -3,9 +3,11 @@ import config from '../config';
 import { USER_ROLE, USER_STATUS } from '../modules/User/user.constant';
 import { User } from '../modules/User/user.model';
 
+import { v4 as uuidv4 } from 'uuid';
+
 export const seed = async () => {
   try {
-    //atfirst check if the admin exist of not
+    // at first check if the admin exist or not
     const admin = await User.findOne({
       role: USER_ROLE.ADMIN,
       email: config.admin_email,
@@ -14,7 +16,10 @@ export const seed = async () => {
     if (!admin) {
       console.log('Seeding started...');
 
+      const id = uuidv4();
+
       await User.create({
+        id,
         name: 'Admin',
         role: USER_ROLE.ADMIN,
         email: config.admin_email,
