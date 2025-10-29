@@ -3,14 +3,42 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { UserServices } from './user.service';
 
+// User Registration Controller
 const userRegister = catchAsync(async (req, res) => {
-  const user = await UserServices.createUser(req.body);
+  const url = req.originalUrl;
+  const result = await UserServices.createUser(req.body, url);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'User Created Successfully',
-    data: user,
+    message: result?.message,
+    data: result?.user,
+  });
+});
+
+// Verify OTP Controller
+const verifyOtp = catchAsync(async (req, res) => {
+  const { email, otp } = req.body;
+  const result = await UserServices.verifyOtp(email, otp);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: { accessToken: result?.accessToken },
+  });
+});
+
+// Resend OTP Controller
+const resendOtp = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  const result = await UserServices.resendOtp(email);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
   });
 });
 
@@ -37,7 +65,9 @@ const getSingleUser = catchAsync(async (req, res) => {
 });
 
 export const UserControllers = {
-  getSingleUser,
   userRegister,
+  verifyOtp,
+  resendOtp,
+  getSingleUser,
   getAllUsers,
 };
