@@ -3,14 +3,15 @@ import config from '../../config';
 import AppError from '../../errors/AppError';
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken } from '../../utils/verifyJWT';
-import { UserSearchableFields } from './user.constant';
+import { USER_ROLE, UserSearchableFields } from './user.constant';
 import { TUser } from './user.interface';
 import { User } from './user.model';
 import httpStatus from 'http-status';
 import { v4 as uuidv4 } from 'uuid';
 
-// Register a new customer
-const createCustomer = async (payload: TUser) => {
+// Register a new user (customer, vendor, agent, delivery partner)
+const createUser = async (payload: TUser, url: string) => {
+  const userType = url.split('/users')[1];
   const isUserExistsByEmail = await User.isUserExistsByEmail(payload.email);
   if (isUserExistsByEmail) {
     throw new AppError(
@@ -18,9 +19,41 @@ const createCustomer = async (payload: TUser) => {
       'User with this email already exists'
     );
   }
+
   // Generate unique ID
-  const id = uuidv4().split('-')[0];
+  const id = uuidv4();
   payload.id = id;
+
+  if (userType === '/create-customer' && payload?.role !== USER_ROLE.USER) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Role must be USER for customer registration'
+    );
+  }
+
+  if (userType === '/create-vendor' && payload?.role !== USER_ROLE.VENDOR) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Role must be VENDOR for vendor registration'
+    );
+  }
+
+  if (userType === '/create-agent' && payload?.role !== USER_ROLE.AGENT) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Role must be AGENT for agent registration'
+    );
+  }
+
+  if (
+    userType === '/create-delivery-partner' &&
+    payload?.role !== USER_ROLE.DELIVERYPARTNER
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Role must be DELIVERYPARTNER for delivery partner registration'
+    );
+  }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
@@ -145,7 +178,7 @@ const getSingleUserFromDB = async (id: string) => {
 };
 
 export const UserServices = {
-  createCustomer,
+  createUser,
   verifyOtp,
   resendOtp,
   getAllUsersFromDB,

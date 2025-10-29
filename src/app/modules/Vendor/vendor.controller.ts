@@ -1,12 +1,11 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { UserServices } from './user.service';
+import { UserServices } from './vendor.service';
 
-// User Registration Controller
-const userRegister = catchAsync(async (req, res) => {
-  const url = req.originalUrl;
-  const result = await UserServices.createUser(req.body, url);
+// Customer Registration Controller
+const customerRegister = catchAsync(async (req, res) => {
+  const result = await UserServices.createCustomer(req.body);
 
   sendResponse(res, {
     success: true,
@@ -65,7 +64,7 @@ const getSingleUser = catchAsync(async (req, res) => {
 });
 
 export const UserControllers = {
-  userRegister,
+  customerRegister,
   verifyOtp,
   resendOtp,
   getSingleUser,

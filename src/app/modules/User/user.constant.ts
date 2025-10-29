@@ -1,6 +1,6 @@
 export const USER_ROLE = {
   ADMIN: 'ADMIN',
-  CUSTOMER: 'CUSTOMER',
+  USER: 'USER',
   AGENT: 'AGENT',
   VENDOR: 'VENDOR',
   DELIVERYPARTNER: 'DELIVERYPARTNER',
@@ -18,3 +18,10 @@ export const UserSearchableFields = [
   'role',
   'status',
 ];
+
+export const UrlPath = {
+  CUSTOMER: '/create-customer',
+  AGENT: '/create-agent',
+  VENDOR: '/create-vendor',
+  DELIVERY_PARTNER: '/create-delivery-partner',
+} as const;

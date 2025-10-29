@@ -1,20 +1,21 @@
 import express from 'express';
-import { UserControllers } from './user.controller';
+import { UserControllers } from './vendor.controller';
+// import auth from '../../middlewares/auth';
+// import { USER_ROLE } from './user.constant';
 import validateRequest from '../../middlewares/validateRequest';
-import { UserValidation } from './user.validation';
-import { UrlPath } from './user.constant';
+import { UserValidation } from './vendor.validation';
 
 const router = express.Router();
 
 export const UserRoutes = router;
 
-// User Registration Route
+// Customer Registration Route
 router.post(
-  [UrlPath.CUSTOMER, UrlPath.AGENT, UrlPath.VENDOR, UrlPath.DELIVERY_PARTNER],
+  '/create-customer',
+  // auth(USER_ROLE.ADMIN),
   validateRequest(UserValidation.createUserValidationSchema),
-  UserControllers.userRegister
+  UserControllers.customerRegister
 );
-
 // Verify OTP Route
 router.post(
   '/verify-otp',
