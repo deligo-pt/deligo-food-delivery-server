@@ -3,19 +3,33 @@ import { Model } from 'mongoose';
 import { USER_ROLE, USER_STATUS } from './user.constant';
 
 export type TUser = {
-  _id?: string;
+  __id: string;
   id: string;
-  name: string;
   role: keyof typeof USER_ROLE;
   email: string;
   password: string;
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
+  isDeleted: boolean;
+
+  // OTP Details
   otp?: string;
   isOtpExpired?: Date;
-  passwordChangedAt?: Date;
+
+  // Personal Details
+  name?: string;
   mobileNumber?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
+  };
   profilePhoto?: string;
+
+  passwordChangedAt?: Date;
+  // timestamps
   createdAt?: Date;
   updatedAt?: Date;
 };

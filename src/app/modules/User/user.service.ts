@@ -1,86 +1,127 @@
+import mongoose from 'mongoose';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import config from '../../config';
 import AppError from '../../errors/AppError';
 import { EmailHelper } from '../../utils/emailSender';
+import generateOtp from '../../utils/generateOtp';
+import generateUserId, { USER_TYPE_MAP } from '../../utils/generateUserId';
 import { createToken } from '../../utils/verifyJWT';
-import { USER_ROLE, UserSearchableFields } from './user.constant';
+import { UserSearchableFields } from './user.constant';
 import { TUser } from './user.interface';
 import { User } from './user.model';
 import httpStatus from 'http-status';
-import { v4 as uuidv4 } from 'uuid';
+import { Vendor } from '../Vendor/vendor.model';
+import { AuthUser } from '../../constant/user.const';
 
 // Register a new user (customer, vendor, agent, delivery partner)
 const createUser = async (payload: TUser, url: string) => {
-  const userType = url.split('/users')[1];
-  const isUserExistsByEmail = await User.isUserExistsByEmail(payload.email);
-  if (isUserExistsByEmail) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'User with this email already exists'
-    );
+  const userType = url.split('/users')[1] as keyof typeof USER_TYPE_MAP;
+  const userTypeData = USER_TYPE_MAP[userType];
+
+  if (!userTypeData) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
-
-  // Generate unique ID
-  const id = uuidv4().split('-')[0];
-  payload.id = id;
-
-  if (userType === '/create-customer' && payload?.role !== USER_ROLE.USER) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Role must be USER for customer registration'
-    );
-  }
-
-  if (userType === '/create-vendor' && payload?.role !== USER_ROLE.VENDOR) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Role must be VENDOR for vendor registration'
-    );
-  }
-
-  if (userType === '/create-agent' && payload?.role !== USER_ROLE.AGENT) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Role must be AGENT for agent registration'
-    );
-  }
-
-  if (
-    userType === '/create-delivery-partner' &&
-    payload?.role !== USER_ROLE.DELIVERYPARTNER
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Role must be DELIVERYPARTNER for delivery partner registration'
-    );
-  }
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
-
-  const newUser = await User.create({
-    ...payload,
-    otp,
-    isOtpExpired: otpExpires,
+  const existingUser = await User.isUserExistsByEmail(payload.email);
+  const existingVendor = await Vendor.findOne({
+    vendorId: existingUser?.id,
   });
 
-  // Prepare email template content
-  const emailHtml = await EmailHelper.createEmailContent(
-    { otp, userEmail: payload.email, currentYear: new Date().getFullYear() },
-    'verify-email'
-  );
+  let newUser;
+  let secondaryUser;
+  const session = await mongoose.startSession();
 
-  // Send verification email
-  await EmailHelper.sendEmail(
-    payload.email,
-    emailHtml,
-    'Verify your email for DeliGo'
-  );
+  try {
+    session.startTransaction();
+    if (existingUser && !existingUser.isEmailVerified) {
+      if (userType === '/create-vendor') {
+        await Vendor.deleteOne(
+          { vendorId: existingVendor?.vendorId },
+          { session }
+        );
+      }
+      await User.deleteOne({ id: existingUser?.id }, { session });
+    }
+    if (existingUser && existingUser.isEmailVerified) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'User with this email already exists. Please Login!'
+      );
+    }
+    // Assign user ID and role
+    const userId = generateUserId(userType);
+    payload.id = userId;
+    payload.role = userTypeData.role as TUser['role'];
 
+    // Generate OTP
+    const { otp, otpExpires } = generateOtp();
+
+    // Create user in DB
+    newUser = await User.create(
+      [
+        {
+          ...payload,
+          otp,
+          isOtpExpired: otpExpires,
+        },
+      ],
+      { session }
+    );
+
+    if (userType === '/create-vendor') {
+      secondaryUser = await Vendor.create([{ vendorId: userId }], { session });
+    }
+    // Prepare & send verification email
+    const emailHtml = await EmailHelper.createEmailContent(
+      {
+        otp,
+        userEmail: payload.email,
+        currentYear: new Date().getFullYear(),
+      },
+      'verify-email'
+    );
+
+    await EmailHelper.sendEmail(
+      payload.email,
+      emailHtml,
+      'Verify your email for DeliGo'
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+  // Return response
   return {
     message: 'User created successfully. Please verify your email.',
-    user: newUser,
+    data: { newUser, secondaryUser },
   };
+};
+
+const updateUser = async (
+  payload: Partial<TUser>,
+  id: string,
+  user: AuthUser
+) => {
+  const existingUser = await User.findOne({ id });
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+  }
+  if (!existingUser?.isEmailVerified) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
+  }
+  if (user?.id !== existingUser?.id) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized for update'
+    );
+  }
+  const updateUser = await User.findOneAndUpdate({ id }, payload, {
+    new: true,
+  });
+  return updateUser;
 };
 
 // Verify OTP
@@ -110,10 +151,8 @@ const verifyOtp = async (email: string, otp: string) => {
 
   // Generate JWT token after successful verification
   const jwtPayload = {
-    _id: user._id,
-    name: user.name ?? '',
+    id: user.id,
     email: user.email,
-    mobileNumber: user.mobileNumber,
     role: user.role,
     status: user.status,
   };
@@ -179,6 +218,7 @@ const getSingleUserFromDB = async (id: string) => {
 
 export const UserServices = {
   createUser,
+  updateUser,
   verifyOtp,
   resendOtp,
   getAllUsersFromDB,

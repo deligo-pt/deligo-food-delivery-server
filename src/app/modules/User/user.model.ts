@@ -12,11 +12,6 @@ const userSchema = new Schema<TUser, IUserModel>(
       required: true,
       unique: true,
     },
-    name: {
-      type: String,
-      required: true,
-      default: null,
-    },
     role: {
       type: String,
       enum: Object.keys(USER_ROLE),
@@ -51,16 +46,44 @@ const userSchema = new Schema<TUser, IUserModel>(
     isOtpExpired: {
       type: Date,
     },
-    passwordChangedAt: {
-      type: Date,
+
+    // Personal Details
+    name: {
+      type: String,
+      default: null,
     },
     mobileNumber: {
       type: String,
-      required: true,
+      default: null,
+    },
+    address: {
+      street: {
+        type: String,
+        default: null,
+      },
+      city: {
+        type: String,
+        default: null,
+      },
+      state: {
+        type: String,
+        default: null,
+      },
+      country: {
+        type: String,
+        default: null,
+      },
+      zipCode: {
+        type: String,
+        default: null,
+      },
     },
     profilePhoto: {
       type: String,
       default: null,
+    },
+    passwordChangedAt: {
+      type: Date,
     },
   },
   {
