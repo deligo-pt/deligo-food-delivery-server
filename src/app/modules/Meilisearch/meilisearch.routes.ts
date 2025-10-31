@@ -1,7 +1,7 @@
-import express from 'express';
-import { MeiliSearchController } from './meilisearch.controller';
-const router = express.Router();
+// import express from 'express';
+// import { MeiliSearchController } from './meilisearch.controller';
+// const router = express.Router();
 
-router.get('/', MeiliSearchController.getItemsFromMeili);
+// router.get('/', MeiliSearchController.getItemsFromMeili);
 
-export const MeilisearchRoutes = router;
+// export const MeilisearchRoutes = router;

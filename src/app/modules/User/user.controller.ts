@@ -2,6 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { UserServices } from './user.service';
+import { AuthUser } from '../../constant/user.const';
 
 // User Registration Controller
 const userRegister = catchAsync(async (req, res) => {
@@ -12,7 +13,20 @@ const userRegister = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: result?.user,
+    data: result?.data,
+  });
+});
+
+// User Update Controller
+
+const updateUser = catchAsync(async (req, res) => {
+  const user = req.user as AuthUser;
+  const result = await UserServices.updateUser(req.body, req.params.id, user);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'User update successfully',
+    data: result,
   });
 });
 
@@ -66,6 +80,7 @@ const getSingleUser = catchAsync(async (req, res) => {
 
 export const UserControllers = {
   userRegister,
+  updateUser,
   verifyOtp,
   resendOtp,
   getSingleUser,
