@@ -102,6 +102,53 @@ const submitVendorForApproval = async (id: string, user: AuthUser) => {
   };
 };
 
+// approved or reject vendor service
+const approveOrRejectVendor = async (
+  id: string,
+  payload: { status: 'APPROVED' | 'REJECTED' }
+) => {
+  const existingVendor = await Vendor.findOne({ vendorId: id });
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  const existingUser = await User.findOne({
+    id: existingVendor.vendorId,
+    role: 'VENDOR',
+  });
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Associated user not found');
+  }
+
+  existingVendor.status = payload.status;
+  await existingVendor.save();
+
+  // Prepare email content
+  const emailData = {
+    vendorName: existingVendor.businessDetails?.businessName,
+    vendorId: existingVendor.vendorId,
+    currentYear: new Date().getFullYear(),
+    isApproved: payload.status === 'APPROVED',
+  };
+
+  const emailHtml = await EmailHelper.createEmailContent(
+    emailData,
+    'vendor-approval-notification'
+  );
+
+  const emailSubject =
+    payload.status === 'APPROVED'
+      ? 'Your Vendor Application has been Approved'
+      : 'Your Vendor Application has been Rejected';
+
+  // Send email
+  await EmailHelper.sendEmail(existingUser.email, emailHtml, emailSubject);
+
+  return {
+    message: `Vendor ${payload.status.toLowerCase()} successfully`,
+  };
+};
+
 // vendor delete service
 const vendorDelete = async (id: string) => {
   //   isUserExistsById
@@ -168,6 +215,7 @@ export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
   submitVendorForApproval,
+  approveOrRejectVendor,
   vendorDelete,
   getAllVendors,
   getSingleVendorFromDB,

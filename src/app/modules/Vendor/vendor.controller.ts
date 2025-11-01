@@ -54,6 +54,20 @@ const submitVendorForApproval = catchAsync(async (req, res) => {
   });
 });
 
+// approve or reject vendor controller
+const approveOrRejectVendor = catchAsync(async (req, res) => {
+  const result = await VendorServices.approveOrRejectVendor(
+    req.params.id,
+    req.body
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 // vendor delete controller
 const vendorDelete = catchAsync(async (req, res) => {
   const result = await VendorServices.vendorDelete(req.params.id);
@@ -93,6 +107,7 @@ const getSingleVendor = catchAsync(async (req, res) => {
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
+  approveOrRejectVendor,
   submitVendorForApproval,
   vendorDelete,
   getAllVendors,

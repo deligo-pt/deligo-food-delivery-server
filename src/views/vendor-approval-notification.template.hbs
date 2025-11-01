@@ -1,0 +1,58 @@
+{{! vendor-approval-notification }}
+
+
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <style>
+      body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin:
+      0; padding: 0; } .container { width: 100%; max-width: 600px; margin: 0
+      auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); } .header { background-color:
+      #DC3173; color: #ffffff; padding: 20px; text-align: center; } .content {
+      padding: 20px; } .vendor-name { font-weight: bold; font-style: italic; }
+      .author { font-style: italic; font-weight: bold; } .footer {
+      background-color: #f1f1f1; color: #555555; text-align: center; padding:
+      10px; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+      <div class='header'>
+        <h1>DeliGo Vendor Application Update</h1>
+      </div>
+      <div class='content'>
+        <p>Dear <span class='vendor-name'>{{vendorName}}</span>,</p>
+        <p>
+          We are pleased to inform you that your application to become a vendor
+          with DeliGo has been
+          <strong>{{approvalStatus}}</strong>.
+        </p>
+        {{#if isApproved}}
+          <p>
+            Congratulations! Your business has met all the necessary criteria,
+            and we are excited to have you on board. Our team will be reaching
+            out to you shortly with further details on the next steps.
+          </p>
+        {{else}}
+          <p>
+            We regret to inform you that your application did not meet our
+            criteria at this time. Please feel free to reach out to our support
+            team for more information or to discuss potential next steps.
+          </p>
+        {{/if}}
+        <p>Thank you for your interest in partnering with DeliGo!</p>
+        <div>
+          <p>Sincerely,</p>
+          <p class='author'>The DeliGo Team</p>
+        </div>
+      </div>
+      <div class='footer'>
+        &copy;
+        {{currentYear}}
+        DeliGo. All rights reserved.
+      </div>
+    </div>
+  </body>
+</html>

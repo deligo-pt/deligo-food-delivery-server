@@ -1,6 +1,7 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
+import { BusinessTypes } from './vendor.constant';
 
 const vendorSchema = new Schema<TVendor>(
   {
@@ -19,9 +20,18 @@ const vendorSchema = new Schema<TVendor>(
       type: Boolean,
       default: false,
     },
+    rating: { type: Number, min: 0, max: 5, default: 0 },
+    //  Business Details
     businessDetails: {
       businessName: { type: String, default: '' },
-      businessType: { type: String, default: '' },
+      businessType: {
+        type: String,
+        enum: {
+          values: BusinessTypes,
+          message: 'Invalid business type',
+          default: '',
+        },
+      },
       businessLicenseNumber: { type: String, default: '' },
       NIF: { type: String, default: '' },
       noOfBranch: { type: Number, default: null },
@@ -29,6 +39,7 @@ const vendorSchema = new Schema<TVendor>(
       closingHours: { type: String, default: '' },
       closingDays: { type: [String], default: [] },
     },
+    // Business Location
     businessLocation: {
       streetAddress: { type: String, default: '' },
       streetNumber: { type: String, default: '' },
@@ -37,12 +48,14 @@ const vendorSchema = new Schema<TVendor>(
       latitude: { type: Number, default: null },
       longitude: { type: Number, default: null },
     },
+    // Bank & Payment Information
     bankDetails: {
       bankName: { type: String, default: '' },
       accountHolderName: { type: String, default: '' },
       iban: { type: String, default: '' },
       swiftCode: { type: String, default: '' },
     },
+    // Documents & Verification
     documents: {
       businessLicenseDoc: { type: String, default: '' },
       taxDoc: { type: String, default: '' },

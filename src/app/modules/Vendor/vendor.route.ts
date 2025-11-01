@@ -30,6 +30,14 @@ router.patch(
   VendorControllers.submitVendorForApproval
 );
 
+// approve or reject vendor Route
+router.patch(
+  '/:id/approveOrReject',
+  auth('SUPER_ADMIN', 'ADMIN'),
+  validateRequest(VendorValidation.approveOrRejectVendorValidationSchema),
+  VendorControllers.approveOrRejectVendor
+);
+
 // vendor delete Route
 router.delete(
   '/:id',
