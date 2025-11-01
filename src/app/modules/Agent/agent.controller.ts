@@ -62,9 +62,35 @@ const agentDelete = catchAsync(async (req, res) => {
   });
 });
 
+// get all agents
+const getAllAgents = catchAsync(async (req, res) => {
+  const users = await AgentServices.getAllAgentsFromDb(req.query);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Agents Retrieved Successfully',
+    data: users,
+  });
+});
+
+// get single agent
+const getSingleAgent = catchAsync(async (req, res) => {
+  const user = await AgentServices.getSingleAgentFromDB(req.params.id);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Agent Retrieved Successfully',
+    data: user,
+  });
+});
+
 export const AgentControllers = {
   agentUpdate,
   agentDocImageUpload,
   submitAgentForApproval,
   agentDelete,
+  getAllAgents,
+  getSingleAgent,
 };

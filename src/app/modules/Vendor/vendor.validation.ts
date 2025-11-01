@@ -1,12 +1,13 @@
 import { z } from 'zod';
-
+import { BusinessTypes } from './vendor.constant';
+//
 const vendorUpdateValidationSchema = z.object({
   body: z.object({
     //  Business Details
     businessDetails: z
       .object({
         businessName: z.string().optional(),
-        businessType: z.string().optional(),
+        businessType: z.enum(BusinessTypes).optional(),
         businessLicenseNumber: z.string().optional(),
         NIF: z.string().optional(),
         noOfBranch: z.number().optional(),
@@ -63,7 +64,14 @@ const vendorDocImageValidationSchema = z.object({
   }),
 });
 
+const approveOrRejectVendorValidationSchema = z.object({
+  body: z.object({
+    status: z.enum(['APPROVED', 'REJECTED']),
+  }),
+});
+
 export const VendorValidation = {
   vendorUpdateValidationSchema,
   vendorDocImageValidationSchema,
+  approveOrRejectVendorValidationSchema,
 };

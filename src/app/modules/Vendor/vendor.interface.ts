@@ -1,12 +1,15 @@
+import { TBusinessTypes } from './vendor.constant';
+
 export type TVendor = {
   _id?: string;
   vendorId: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   isDeleted: boolean;
+  rating?: number;
   //  Business Details
   businessDetails?: {
     businessName: string;
-    businessType: string; // Restaurant | Grocery | Pharmacy etc.
+    businessType: TBusinessTypes; // Restaurant | Grocery | Pharmacy etc.
     businessLicenseNumber?: string;
     NIF?: string; // Tax Identification Number
     noOfBranch: number;
