@@ -4,10 +4,6 @@ import { USER_ROLE, USER_STATUS } from './user.constant';
 // Create User Validation Schema
 const createUserValidationSchema = z.object({
   body: z.object({
-    name: z.string({
-      required_error: 'Name is required',
-    }),
-    role: z.nativeEnum(USER_ROLE),
     email: z
       .string({
         required_error: 'Email is required',
@@ -20,6 +16,31 @@ const createUserValidationSchema = z.object({
     }),
     status: z.nativeEnum(USER_STATUS).default(USER_STATUS.ACTIVE),
     mobileNumber: z.string().optional(),
+  }),
+});
+
+// Update user personal data validation schema
+const updateUserPersonalDataValidationSchema = z.object({
+  body: z.object({
+    name: z.string().optional(),
+    mobileNumber: z.string().optional(),
+    profilePhoto: z.string().optional(),
+    address: z
+      .object({
+        street: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        country: z.string().optional(),
+        zipcode: z.string().optional(),
+      })
+      .optional(),
+  }),
+});
+
+// Activate or Block User Validation Schema
+const activateOrBlockUserValidationSchema = z.object({
+  body: z.object({
+    status: z.nativeEnum(USER_STATUS),
   }),
 });
 
@@ -57,6 +78,8 @@ const updateUserValidationSchema = z.object({
 
 export const UserValidation = {
   createUserValidationSchema,
+  updateUserPersonalDataValidationSchema,
+  activateOrBlockUserValidationSchema,
   verifyOtpValidationSchema,
   resendOtpValidationSchema,
   updateUserValidationSchema,

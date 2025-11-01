@@ -1,9 +1,10 @@
 import express from 'express';
 import { AuthRoutes } from '../modules/Auth/auth.route';
-import { UserRoutes } from '../modules/User/user.route';
-import { MeilisearchRoutes } from '../modules/Meilisearch/meilisearch.routes';
+// import { MeilisearchRoutes } from '../modules/Meilisearch/meilisearch.routes';
 import { ProfileRoutes } from '../modules/Profile/profile.route';
 import { VendorRoutes } from '../modules/Vendor/vendor.route';
+import { UserRoutes } from '../modules/User/user.route';
+import { AgentRoutes } from '../modules/Agent/agent.route';
 
 const router = express.Router();
 
@@ -12,10 +13,10 @@ const moduleRoutes = [
     path: '/auth',
     route: AuthRoutes,
   },
-  {
-    path: '/search-items',
-    route: MeilisearchRoutes,
-  },
+  // {
+  //   path: '/search-items',
+  //   route: MeilisearchRoutes,
+  // },
   {
     path: '/users',
     route: UserRoutes,
@@ -23,6 +24,10 @@ const moduleRoutes = [
   {
     path: '/vendors',
     route: VendorRoutes,
+  },
+  {
+    path: '/agents',
+    route: AgentRoutes,
   },
   {
     path: '/profile',

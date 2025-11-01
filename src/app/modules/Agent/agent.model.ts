@@ -1,10 +1,10 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
-import { TVendor } from './vendor.interface';
+import { TAgent } from './agent.interface';
 
-const vendorSchema = new Schema<TVendor>(
+const agentSchema = new Schema<TAgent>(
   {
-    vendorId: {
+    agentId: {
       type: String,
       required: true,
       unique: true,
@@ -19,17 +19,11 @@ const vendorSchema = new Schema<TVendor>(
       type: Boolean,
       default: false,
     },
-    businessDetails: {
-      businessName: { type: String, default: '' },
-      businessType: { type: String, default: '' },
-      businessLicenseNumber: { type: String, default: '' },
-      NIF: { type: String, default: '' },
-      noOfBranch: { type: Number, default: null },
-      openingHours: { type: String, default: '' },
-      closingHours: { type: String, default: '' },
-      closingDays: { type: [String], default: [] },
+    companyDetails: {
+      companyName: { type: String, default: '' },
+      companyLicenseNumber: { type: String, default: '' },
     },
-    businessLocation: {
+    companyLocation: {
       streetAddress: { type: String, default: '' },
       streetNumber: { type: String, default: '' },
       city: { type: String, default: '' },
@@ -44,11 +38,12 @@ const vendorSchema = new Schema<TVendor>(
       swiftCode: { type: String, default: '' },
     },
     documents: {
-      businessLicenseDoc: { type: String, default: '' },
-      taxDoc: { type: String, default: '' },
       idProof: { type: String, default: '' },
-      storePhoto: { type: String, default: '' },
-      menuUpload: { type: String, default: '' },
+      companyLicense: { type: String, default: '' },
+      profilePhoto: { type: String, default: '' },
+    },
+    operationalData: {
+      noOfDrivers: { type: Number, default: null },
     },
   },
   {
@@ -57,4 +52,4 @@ const vendorSchema = new Schema<TVendor>(
   }
 );
 
-export const Vendor = model<TVendor>('Vendor', vendorSchema);
+export const Agent = model<TAgent>('Agent', agentSchema);

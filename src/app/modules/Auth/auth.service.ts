@@ -4,9 +4,9 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import config from '../../config';
 import AppError from '../../errors/AppError';
 import { createToken } from '../../utils/verifyJWT';
+import { TLoginUser, TRegisterAgent, TRegisterUser } from './auth.interface';
 import { USER_ROLE } from '../User/user.constant';
 import { User } from '../User/user.model';
-import { TLoginUser, TRegisterAgent, TRegisterUser } from './auth.interface';
 
 const registerUser = async (payload: TRegisterUser) => {
   // checking if the user is exist
@@ -16,7 +16,7 @@ const registerUser = async (payload: TRegisterUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is already exist!');
   }
 
-  payload.role = USER_ROLE.USER;
+  payload.role = USER_ROLE.CUSTOMER;
 
   //create new user
   const newUser = await User.create(payload);
@@ -24,10 +24,10 @@ const registerUser = async (payload: TRegisterUser) => {
   //create token and sent to the  client
 
   const jwtPayload = {
-    _id: newUser._id,
+    id: newUser.id,
     name: newUser.name ?? '',
     email: newUser.email,
-    mobileNumber: newUser.mobileNumber,
+    mobileNumber: newUser.mobileNumber ?? '',
     role: newUser.role,
     status: newUser.status,
   };
@@ -66,7 +66,7 @@ const registerAgent = async (payload: TRegisterAgent) => {
   //create token and sent to the  client
 
   const jwtPayload = {
-    _id: newUser._id,
+    id: newUser.id,
     name: newUser.name ?? '',
     email: newUser.email,
     mobileNumber: newUser.mobileNumber,
@@ -108,6 +108,10 @@ const loginUser = async (payload: TLoginUser) => {
     throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
   }
 
+  if (!user?.isEmailVerified) {
+    throw new AppError(httpStatus.FORBIDDEN, 'This user is not verified!');
+  }
+
   //checking if the password is correct
 
   if (!(await User.isPasswordMatched(payload?.password, user?.password)))
@@ -116,7 +120,7 @@ const loginUser = async (payload: TLoginUser) => {
   //create token and sent to the  client
 
   const jwtPayload = {
-    _id: user._id,
+    id: user.id,
     name: user.name ?? '',
     email: user.email,
     mobileNumber: user.mobileNumber,
@@ -213,11 +217,11 @@ const refreshToken = async (token: string) => {
     user.passwordChangedAt &&
     User.isJWTIssuedBeforePasswordChanged(user.passwordChangedAt, iat as number)
   ) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized !');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
   }
 
   const jwtPayload = {
-    _id: user._id,
+    id: user.id,
     name: user.name ?? '',
     email: user.email,
     mobileNumber: user.mobileNumber,

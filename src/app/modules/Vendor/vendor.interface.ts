@@ -1,34 +1,36 @@
-/* eslint-disable no-unused-vars */
-
 export type TVendor = {
-  // 1. Personal Details
   _id?: string;
   vendorId: string;
-  // 2. Business Details
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  isDeleted: boolean;
+  //  Business Details
   businessDetails?: {
     businessName: string;
     businessType: string; // Restaurant | Grocery | Pharmacy etc.
     businessLicenseNumber?: string;
     NIF?: string; // Tax Identification Number
-    city: string;
-    postalCode: string;
-    location: {
-      address?: string;
-      latitude?: number;
-      longitude?: number;
-    };
+    noOfBranch: number;
     openingHours?: string; // Ex: "09:00 AM"
     closingHours?: string; // Ex: "11:00 PM"
     closingDays?: string[]; // ["Friday", "Public Holidays"]
   };
-  // 3. Bank & Payment Information
+  // Business Location
+  businessLocation?: {
+    streetAddress: string;
+    streetNumber: string;
+    city: string;
+    postalCode: string;
+    latitude?: number;
+    longitude?: number;
+  };
+  // Bank & Payment Information
   bankDetails?: {
     bankName: string;
     accountHolderName: string;
     iban: string;
     swiftCode: string;
   };
-  // 4. Documents & Verification
+  // Documents & Verification
   documents?: {
     businessLicenseDoc?: string;
     taxDoc?: string;
@@ -38,4 +40,13 @@ export type TVendor = {
   };
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type TVendorImageDocuments = {
+  docImageTitle:
+    | 'businessLicenseDoc'
+    | 'taxDoc'
+    | 'idProof'
+    | 'storePhoto'
+    | 'menuUpload';
 };

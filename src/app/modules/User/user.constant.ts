@@ -1,12 +1,14 @@
 export const USER_ROLE = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
   ADMIN: 'ADMIN',
-  USER: 'USER',
+  CUSTOMER: 'CUSTOMER',
   AGENT: 'AGENT',
   VENDOR: 'VENDOR',
-  DELIVERYPARTNER: 'DELIVERYPARTNER',
+  DELIVERY_PARTNER: 'DELIVERY_PARTNER',
 } as const;
 
 export const USER_STATUS = {
+  PENDING: 'PENDING',
   ACTIVE: 'ACTIVE',
   BLOCKED: 'BLOCKED',
 } as const;
@@ -24,4 +26,5 @@ export const UrlPath = {
   AGENT: '/create-agent',
   VENDOR: '/create-vendor',
   DELIVERY_PARTNER: '/create-delivery-partner',
+  ADMIN: '/create-admin',
 } as const;
