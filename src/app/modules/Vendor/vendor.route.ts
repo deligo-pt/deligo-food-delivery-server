@@ -37,4 +37,11 @@ router.delete(
   VendorControllers.vendorDelete
 );
 
+router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);
+router.get(
+  '/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  VendorControllers.getSingleVendor
+);
+
 export const VendorRoutes = router;

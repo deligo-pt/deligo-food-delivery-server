@@ -66,9 +66,35 @@ const vendorDelete = catchAsync(async (req, res) => {
   });
 });
 
+// get all vendors
+const getAllVendors = catchAsync(async (req, res) => {
+  const users = await VendorServices.getAllVendors(req.query);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendors Retrieved Successfully',
+    data: users,
+  });
+});
+
+// get single vendor
+const getSingleVendor = catchAsync(async (req, res) => {
+  const user = await VendorServices.getSingleVendorFromDB(req.params.id);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor Retrieved Successfully',
+    data: user,
+  });
+});
+
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
   submitVendorForApproval,
   vendorDelete,
+  getAllVendors,
+  getSingleVendor,
 };

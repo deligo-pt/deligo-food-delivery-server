@@ -6,12 +6,13 @@ import { EmailHelper } from '../../utils/emailSender';
 import generateOtp from '../../utils/generateOtp';
 import generateUserId, { USER_TYPE_MAP } from '../../utils/generateUserId';
 import { createToken } from '../../utils/verifyJWT';
-import { UserSearchableFields } from './user.constant';
+import { USER_STATUS, UserSearchableFields } from './user.constant';
 import { TUser } from './user.interface';
 import { User } from './user.model';
 import httpStatus from 'http-status';
 import { Vendor } from '../Vendor/vendor.model';
 import { AuthUser } from '../../constant/user.const';
+import { Agent } from '../Agent/agent.model';
 
 // Register a new user (customer, vendor, agent, delivery partner)
 const createUser = async (payload: TUser, url: string) => {
@@ -24,6 +25,9 @@ const createUser = async (payload: TUser, url: string) => {
   const existingUser = await User.isUserExistsByEmail(payload.email);
   const existingVendor = await Vendor.findOne({
     vendorId: existingUser?.id,
+  });
+  const existingAgent = await Agent.findOne({
+    agentId: existingUser?.id,
   });
 
   let newUser;
@@ -38,6 +42,8 @@ const createUser = async (payload: TUser, url: string) => {
           { vendorId: existingVendor?.vendorId },
           { session }
         );
+      } else if (userType === '/create-agent') {
+        await Agent.deleteOne({ agentId: existingAgent?.agentId }, { session });
       }
       await User.deleteOne({ id: existingUser?.id }, { session });
     }
@@ -55,6 +61,12 @@ const createUser = async (payload: TUser, url: string) => {
     // Generate OTP
     const { otp, otpExpires } = generateOtp();
 
+    if (userType === '/create-customer') {
+      payload.status = 'ACTIVE';
+    } else {
+      payload.status = 'PENDING';
+    }
+
     // Create user in DB
     newUser = await User.create(
       [
@@ -69,6 +81,8 @@ const createUser = async (payload: TUser, url: string) => {
 
     if (userType === '/create-vendor') {
       secondaryUser = await Vendor.create([{ vendorId: userId }], { session });
+    } else if (userType === '/create-agent') {
+      secondaryUser = await Agent.create([{ agentId: userId }], { session });
     }
     // Prepare & send verification email
     const emailHtml = await EmailHelper.createEmailContent(
@@ -122,6 +136,29 @@ const updateUser = async (
     new: true,
   });
   return updateUser;
+};
+
+// Active or Block User Service
+const activateOrBlockUser = async (
+  id: string,
+  payload: { status: keyof typeof USER_STATUS },
+  user: AuthUser
+) => {
+  const existingUser = await User.findOne({ id });
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  if (id === user.id) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You cannot change your own status'
+    );
+  }
+
+  existingUser.status = payload.status;
+  await existingUser.save();
+  return existingUser;
 };
 
 // Verify OTP
@@ -178,8 +215,7 @@ const resendOtp = async (email: string) => {
   if (user?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'User is already verified');
   }
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+  const { otp, otpExpires } = generateOtp();
   user.otp = otp;
   user.isOtpExpired = otpExpires;
   await user.save();
@@ -197,6 +233,7 @@ const resendOtp = async (email: string) => {
   };
 };
 
+//get all users
 const getAllUsersFromDB = async (query: Record<string, unknown>) => {
   const users = new QueryBuilder(User.find(), query)
     .fields()
@@ -210,15 +247,24 @@ const getAllUsersFromDB = async (query: Record<string, unknown>) => {
   return result;
 };
 
-const getSingleUserFromDB = async (id: string) => {
-  const user = await User.findById(id);
+// get single user
+const getSingleUserFromDB = async (id: string, user: AuthUser) => {
+  const existingUser = await User.findOne({ id });
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+  }
 
-  return user;
+  if (user?.role === 'ADMIN' && existingUser?.role === 'SUPER_ADMIN') {
+    throw new AppError(httpStatus.FORBIDDEN, 'Admin not access Super Admin');
+  }
+
+  return existingUser;
 };
 
 export const UserServices = {
   createUser,
   updateUser,
+  activateOrBlockUser,
   verifyOtp,
   resendOtp,
   getAllUsersFromDB,

@@ -27,6 +27,7 @@ export const seed = async () => {
         profilePhoto: config.super_admin_profile_photo,
         mobileNumber: config.super_admin_mobile_number,
         status: USER_STATUS.ACTIVE,
+        isEmailVerified: true,
       });
       console.log('Super Admin created successfully...');
       console.log('Seeding completed...');

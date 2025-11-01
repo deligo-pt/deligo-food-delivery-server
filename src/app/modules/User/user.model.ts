@@ -34,7 +34,6 @@ const userSchema = new Schema<TUser, IUserModel>(
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
-      default: USER_STATUS.ACTIVE,
     },
     isEmailVerified: {
       type: Boolean,
@@ -50,37 +49,37 @@ const userSchema = new Schema<TUser, IUserModel>(
     // Personal Details
     name: {
       type: String,
-      default: null,
+      default: '',
     },
     mobileNumber: {
       type: String,
-      default: null,
+      default: '',
     },
     address: {
       street: {
         type: String,
-        default: null,
+        default: '',
       },
       city: {
         type: String,
-        default: null,
+        default: '',
       },
       state: {
         type: String,
-        default: null,
+        default: '',
       },
       country: {
         type: String,
-        default: null,
+        default: '',
       },
       zipCode: {
         type: String,
-        default: null,
+        default: '',
       },
     },
     profilePhoto: {
       type: String,
-      default: null,
+      default: '',
     },
     passwordChangedAt: {
       type: Date,

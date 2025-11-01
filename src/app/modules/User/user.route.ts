@@ -31,6 +31,14 @@ router.patch(
   UserControllers.updateUser
 );
 
+// Active or Block User Route
+router.patch(
+  '/:id/activate-block-user',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(UserValidation.activateOrBlockUserValidationSchema),
+  UserControllers.activateOrBlockUser
+);
+
 // Verify OTP Route
 router.post(
   '/verify-otp',
@@ -45,5 +53,5 @@ router.post(
   UserControllers.resendOtp
 );
 
-router.get('/', UserControllers.getAllUsers);
-router.get('/:id', UserControllers.getSingleUser);
+router.get('/', auth('ADMIN', 'SUPER_ADMIN'), UserControllers.getAllUsers);
+router.get('/:id', auth('ADMIN', 'SUPER_ADMIN'), UserControllers.getSingleUser);

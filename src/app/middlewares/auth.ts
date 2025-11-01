@@ -28,14 +28,19 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
     const user = await User.isUserExistsByEmail(email);
 
     if (!user) {
-      throw new AppError(httpStatus.NOT_FOUND, 'This user is not found !');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
     // checking if the user is already deleted
 
     const status = user?.status;
 
     if (status === 'BLOCKED') {
-      throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked !');
+      throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+    } else if (status === 'PENDING' && user?.role === 'ADMIN') {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'This admin is not active yet !'
+      );
     }
 
     if (
@@ -45,11 +50,11 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
         iat as number
       )
     ) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized !');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     if (requiredRoles && !requiredRoles.includes(role)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     req.user = decoded as JwtPayload;
