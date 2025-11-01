@@ -37,6 +37,13 @@ const updateUserPersonalDataValidationSchema = z.object({
   }),
 });
 
+// Activate or Block User Validation Schema
+const activateOrBlockUserValidationSchema = z.object({
+  body: z.object({
+    status: z.nativeEnum(USER_STATUS),
+  }),
+});
+
 // Verify OTP Validation Schema
 const verifyOtpValidationSchema = z.object({
   body: z.object({
@@ -72,6 +79,7 @@ const updateUserValidationSchema = z.object({
 export const UserValidation = {
   createUserValidationSchema,
   updateUserPersonalDataValidationSchema,
+  activateOrBlockUserValidationSchema,
   verifyOtpValidationSchema,
   resendOtpValidationSchema,
   updateUserValidationSchema,

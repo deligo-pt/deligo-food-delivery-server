@@ -7,6 +7,8 @@ import mongoose from 'mongoose';
 import { User } from '../User/user.model';
 import { AuthUser } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
+import { QueryBuilder } from '../../builder/QueryBuilder';
+import { VendorSearchableFields } from './vendor.constant';
 
 // Vendor Update Service
 const vendorUpdate = async (
@@ -139,9 +141,34 @@ const vendorDelete = async (id: string) => {
   };
 };
 
+// get all vendors
+const getAllVendors = async (query: Record<string, unknown>) => {
+  const vendors = new QueryBuilder(Vendor.find(), query)
+    .fields()
+    .paginate()
+    .sort()
+    .filter()
+    .search(VendorSearchableFields);
+
+  const result = await vendors.modelQuery;
+  return result;
+};
+
+// get single vendor
+const getSingleVendorFromDB = async (id: string) => {
+  const existingVendor = await Vendor.findOne({ vendorId: id });
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
+  }
+
+  return existingVendor;
+};
+
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
   submitVendorForApproval,
   vendorDelete,
+  getAllVendors,
+  getSingleVendorFromDB,
 };

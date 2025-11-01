@@ -217,7 +217,7 @@ const refreshToken = async (token: string) => {
     user.passwordChangedAt &&
     User.isJWTIssuedBeforePasswordChanged(user.passwordChangedAt, iat as number)
   ) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized !');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
   }
 
   const jwtPayload = {
