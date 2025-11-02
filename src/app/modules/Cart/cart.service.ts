@@ -53,6 +53,17 @@ const addToCart = async (payload: TCart, user: AuthUser) => {
   return cart;
 };
 
+// view cart Service
+const viewCart = async (user: AuthUser) => {
+  const customerId = user.id;
+  const cart = await Cart.findOne({ customerId });
+  if (!cart) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+  }
+  return cart;
+};
+
 export const CartServices = {
   addToCart,
+  viewCart,
 };
