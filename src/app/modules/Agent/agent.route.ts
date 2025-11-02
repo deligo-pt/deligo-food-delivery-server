@@ -37,4 +37,11 @@ router.delete(
   AgentControllers.agentDelete
 );
 
+router.get('/', auth('ADMIN', 'SUPER_ADMIN'), AgentControllers.getAllAgents);
+router.get(
+  '/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AgentControllers.getSingleAgent
+);
+
 export const AgentRoutes = router;

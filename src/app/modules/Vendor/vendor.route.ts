@@ -4,6 +4,7 @@ import { VendorControllers } from './vendor.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { VendorValidation } from './vendor.validation';
 import { multerUpload } from '../../config/multer.config';
+import { parseBody } from '../../middlewares/bodyParser';
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.patch(
   '/:id/docImage',
   auth('VENDOR', 'SUPER_ADMIN'),
   multerUpload.single('file'),
+  parseBody,
   VendorControllers.vendorDocImageUpload
 );
 
@@ -28,6 +30,14 @@ router.patch(
   '/:id/submitForApproval',
   auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
   VendorControllers.submitVendorForApproval
+);
+
+// approve or reject vendor Route
+router.patch(
+  '/:id/approveOrReject',
+  auth('SUPER_ADMIN', 'ADMIN'),
+  validateRequest(VendorValidation.approveOrRejectVendorValidationSchema),
+  VendorControllers.approveOrRejectVendor
 );
 
 // vendor delete Route

@@ -23,10 +23,9 @@ const vendorUpdate = catchAsync(async (req, res) => {
 //  vendor doc image upload controller
 const vendorDocImageUpload = catchAsync(async (req, res) => {
   const file = req.file;
-  const data = JSON.parse(req.body.data);
   const result = await VendorServices.vendorDocImageUpload(
     file?.path,
-    data,
+    req.body,
     req.user as AuthUser,
     req.params.id
   );
@@ -51,6 +50,20 @@ const submitVendorForApproval = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     message: result?.message,
     data: result?.existingVendor,
+  });
+});
+
+// approve or reject vendor controller
+const approveOrRejectVendor = catchAsync(async (req, res) => {
+  const result = await VendorServices.approveOrRejectVendor(
+    req.params.id,
+    req.body
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
   });
 });
 
@@ -93,6 +106,7 @@ const getSingleVendor = catchAsync(async (req, res) => {
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
+  approveOrRejectVendor,
   submitVendorForApproval,
   vendorDelete,
   getAllVendors,
