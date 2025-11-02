@@ -11,6 +11,7 @@ const cartSchema = new Schema<TCart>(
       },
     ],
     totalPrice: { type: Number, required: true },
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,
