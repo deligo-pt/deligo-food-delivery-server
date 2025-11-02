@@ -14,4 +14,7 @@ router.post(
   CartControllers.addToCart
 );
 
+// view cart
+router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
+
 export const CartRoutes = router;
