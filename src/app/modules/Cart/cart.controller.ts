@@ -28,7 +28,20 @@ const viewCart = catchAsync(async (req, res) => {
   });
 });
 
+// view all cart Controller
+const viewAllCarts = catchAsync(async (req, res) => {
+  const result = await CartServices.viewAllCarts(req.query);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Carts retrieved successfully',
+    data: result,
+  });
+});
+
 export const CartControllers = {
   addToCart,
   viewCart,
+  viewAllCarts,
 };
