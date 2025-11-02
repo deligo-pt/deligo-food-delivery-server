@@ -10,12 +10,17 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
 
 // Product Create Service
-const createProduct = async (payload: TProduct, user: AuthUser) => {
+const createProduct = async (
+  payload: TProduct,
+  user: AuthUser,
+  images: string[]
+) => {
   //  ------------ Vendor Details Adjustment ------------
   const existingVendor = await Vendor.findOne({ vendorId: user.id });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
+  console.log({ images });
   if (existingVendor?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -60,10 +65,79 @@ const createProduct = async (payload: TProduct, user: AuthUser) => {
   const finalPrice = payload.price - discountAmount;
   payload.finalPrice = parseFloat(finalPrice.toFixed(2));
 
-  // ------------ Vendor Details Adjustment ------------
+  // ------------ Image URLs Adjustment ------------
+  payload.images = images;
 
   const newProduct = await Product.create(payload);
+  console.log({ newProduct });
   return newProduct;
+};
+
+// update Product Service
+const updateProduct = async (
+  productId: string,
+  payload: Partial<TProduct>,
+  user: AuthUser,
+  images: string[]
+) => {
+  const existingProduct = await Product.findOne({ productId });
+  if (!existingProduct) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
+  if (user.role === 'VENDOR') {
+    const existingProduct = await Product.findOne({
+      productId,
+      'vendor.vendorId': user.id,
+    });
+    if (!existingProduct) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Product not found or you are not authorized to update this product'
+      );
+    }
+  }
+
+  // ------------Generating Product Final Price if price or discount is updated ------------
+  if (payload.price || payload.discount) {
+    const newPrice = payload.price || existingProduct.price;
+    const discountAmount =
+      (newPrice *
+        (payload.discount ? payload.discount : existingProduct.discount || 0)) /
+      100;
+    const finalPrice = newPrice - discountAmount;
+    payload.finalPrice = parseFloat(finalPrice.toFixed(2));
+  }
+
+  // ----------- Image URLs Adjustment ------------
+  if (images.length > 0) {
+    payload.images = images;
+  }
+
+  const product = await Product.findOneAndUpdate({ productId }, payload, {
+    new: true,
+  });
+  return product;
+};
+
+// product image delete service
+const deleteProductImages = async (productId: string, images: string[]) => {
+  const product = await Product.findOne({ productId });
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
+  // -------------check if images to be deleted exist in product images-------------
+  const invalidImages = images.filter((img) => !product.images.includes(img));
+  if (invalidImages.length > 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid images');
+  }
+
+  // Remove images from product
+  product.images = product.images.filter((img) => !images.includes(img));
+  await product.save();
+
+  return product;
 };
 
 // get all products by vendor service
@@ -127,4 +201,6 @@ export const ProductServices = {
   getAllProductsByVendor,
   getSingleProduct,
   getSingleProductByVendor,
+  updateProduct,
+  deleteProductImages,
 };

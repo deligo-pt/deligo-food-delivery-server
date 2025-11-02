@@ -6,15 +6,65 @@ import { AuthUser } from '../../constant/user.const';
 
 // Product create Controller
 const productCreate = catchAsync(async (req, res) => {
+  const images = req.files;
+  const fileUrls = images
+    ? Array.isArray(images)
+      ? images.map((file) => file.path)
+      : Object.values(images)
+          .flat()
+          .map((file) => file.path)
+    : [];
   const result = await ProductServices.createProduct(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
+    fileUrls
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Product created successfully',
+    data: result,
+  });
+});
+
+// update product controller
+const updateProduct = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const images = req.files;
+  const fileUrls = images
+    ? Array.isArray(images)
+      ? images.map((file) => file.path)
+      : Object.values(images)
+          .flat()
+          .map((file) => file.path)
+    : [];
+  const result = await ProductServices.updateProduct(
+    productId,
+    req.body,
+    req.user as AuthUser,
+    fileUrls
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product updated successfully',
+    data: result,
+  });
+});
+
+//product image delete controller
+const deleteProductImages = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const images = req.body.images;
+
+  const result = await ProductServices.deleteProductImages(productId, images);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product images deleted successfully',
     data: result,
   });
 });
@@ -79,4 +129,6 @@ export const ProductControllers = {
   getSingleProduct,
   getAllProductsByVendor,
   getSingleProductByVendor,
+  updateProduct,
+  deleteProductImages,
 };

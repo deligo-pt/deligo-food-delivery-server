@@ -1,8 +1,8 @@
 import express from 'express';
 import auth from '../../middlewares/auth';
 import { ProductControllers } from './product.controller';
-import validateRequest from '../../middlewares/validateRequest';
-import { ProductValidation } from './product.validation';
+import { multerUpload } from '../../config/multer.config';
+import { parseBody } from '../../middlewares/bodyParser';
 
 const router = express.Router();
 
@@ -10,8 +10,27 @@ const router = express.Router();
 router.post(
   '/create-product',
   auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
-  validateRequest(ProductValidation.createProductValidationSchema),
+  multerUpload.array('files'),
+  parseBody,
+  // validateRequest(ProductValidation.createProductValidationSchema),
   ProductControllers.productCreate
+);
+
+// Product update
+router.patch(
+  '/:productId',
+  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  multerUpload.array('files'),
+  parseBody,
+  // validateRequest(ProductValidation.updateProductValidationSchema),
+  ProductControllers.updateProduct
+);
+
+// Product delete images
+router.delete(
+  '/:productId/images',
+  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.deleteProductImages
 );
 
 // Get all products by vendor

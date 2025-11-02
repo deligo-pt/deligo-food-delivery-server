@@ -121,6 +121,10 @@ const approveOrRejectVendor = async (
   }
 
   existingVendor.status = payload.status;
+  if (payload.status === 'APPROVED') {
+    existingUser.status = 'ACTIVE';
+    await existingUser.save();
+  }
   await existingVendor.save();
 
   // Prepare email content

@@ -23,10 +23,9 @@ const vendorUpdate = catchAsync(async (req, res) => {
 //  vendor doc image upload controller
 const vendorDocImageUpload = catchAsync(async (req, res) => {
   const file = req.file;
-  const data = JSON.parse(req.body.data);
   const result = await VendorServices.vendorDocImageUpload(
     file?.path,
-    data,
+    req.body,
     req.user as AuthUser,
     req.params.id
   );
