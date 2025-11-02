@@ -14,7 +14,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
 
     // checking if the token is missing
     if (!token) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!1');
     }
 
     const decoded = verifyToken(
@@ -28,7 +28,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
     const user = await User.isUserExistsByEmail(email);
 
     if (!user) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!2');
     }
     // checking if the user is already deleted
 
@@ -50,11 +50,11 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
         iat as number
       )
     ) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!3');
     }
 
     if (requiredRoles && !requiredRoles.includes(role)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!4');
     }
 
     req.user = decoded as JwtPayload;

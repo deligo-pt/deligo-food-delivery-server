@@ -48,9 +48,17 @@ router.get(
 );
 
 // Get all products
-router.get('/', ProductControllers.getAllProducts);
+router.get(
+  '/',
+  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.getAllProducts
+);
 
 // Get single product
-router.get('/:productId', ProductControllers.getSingleProduct);
+router.get(
+  '/:productId',
+  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.getSingleProduct
+);
 
 export const ProductRoutes = router;

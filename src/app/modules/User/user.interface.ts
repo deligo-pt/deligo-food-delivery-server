@@ -26,6 +26,12 @@ export type TUser = {
     country?: string;
     zipCode?: string;
   };
+
+  deliveryAddresses?: {
+    address?: string;
+    isActive?: boolean;
+  }[];
+
   profilePhoto?: string;
 
   passwordChangedAt?: Date;

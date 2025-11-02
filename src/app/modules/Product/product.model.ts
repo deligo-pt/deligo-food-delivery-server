@@ -9,6 +9,8 @@ const productSchema = new Schema<TProduct>(
     name: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     description: { type: String },
+    isDeleted: { type: Boolean, default: false },
+    isApproved: { type: Boolean, default: true },
 
     // Categorization
     category: { type: String, required: true },

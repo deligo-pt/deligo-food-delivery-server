@@ -5,6 +5,7 @@ export type TCart = {
     quantity: number;
   }[];
   totalPrice: number;
+  isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
