@@ -7,6 +7,8 @@ export type TProduct = {
   name: string; // Product display name
   slug: string; // URL-friendly name for SEO
   description: string; // Detailed product information
+  isDeleted: boolean; // Soft delete flag
+  isApproved: boolean; // Approval status for listing
 
   // Categorization
   category: string; // Main category (e.g., "Food", "Grocery", "Electronics")

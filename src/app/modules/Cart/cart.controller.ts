@@ -16,6 +16,32 @@ const addToCart = catchAsync(async (req, res) => {
   });
 });
 
+// view cart Controller
+const viewCart = catchAsync(async (req, res) => {
+  const result = await CartServices.viewCart(req.user as AuthUser);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Cart retrieved successfully',
+    data: result,
+  });
+});
+
+// view all cart Controller
+const viewAllCarts = catchAsync(async (req, res) => {
+  const result = await CartServices.viewAllCarts(req.query);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Carts retrieved successfully',
+    data: result,
+  });
+});
+
 export const CartControllers = {
   addToCart,
+  viewCart,
+  viewAllCarts,
 };

@@ -78,6 +78,18 @@ const userSchema = new Schema<TUser, IUserModel>(
         default: '',
       },
     },
+    deliveryAddresses: [
+      {
+        address: {
+          type: String,
+          default: '',
+        },
+        isActive: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
     profilePhoto: {
       type: String,
       default: '',
