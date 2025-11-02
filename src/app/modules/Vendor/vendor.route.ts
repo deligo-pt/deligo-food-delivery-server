@@ -4,6 +4,7 @@ import { VendorControllers } from './vendor.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { VendorValidation } from './vendor.validation';
 import { multerUpload } from '../../config/multer.config';
+import { parseBody } from '../../middlewares/bodyParser';
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.patch(
   '/:id/docImage',
   auth('VENDOR', 'SUPER_ADMIN'),
   multerUpload.single('file'),
+  parseBody,
   VendorControllers.vendorDocImageUpload
 );
 

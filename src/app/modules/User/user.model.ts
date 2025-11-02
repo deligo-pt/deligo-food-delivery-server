@@ -34,6 +34,7 @@ const userSchema = new Schema<TUser, IUserModel>(
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
+      default: USER_STATUS.ACTIVE,
     },
     isEmailVerified: {
       type: Boolean,

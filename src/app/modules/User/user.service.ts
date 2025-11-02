@@ -61,9 +61,7 @@ const createUser = async (payload: TUser, url: string) => {
     // Generate OTP
     const { otp, otpExpires } = generateOtp();
 
-    if (userType === '/create-customer') {
-      payload.status = 'ACTIVE';
-    } else {
+    if (userType === '/create-admin') {
       payload.status = 'PENDING';
     }
 
