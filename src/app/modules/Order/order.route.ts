@@ -7,4 +7,11 @@ const router = express.Router();
 // Order add
 router.post('/checkout', auth('CUSTOMER'), OrderControllers.createOrder);
 
+// Get orders by vendor
+router.get(
+  '/vendor/orders',
+  auth('VENDOR'),
+  OrderControllers.getOrdersByVendor
+);
+
 export const OrderRoutes = router;

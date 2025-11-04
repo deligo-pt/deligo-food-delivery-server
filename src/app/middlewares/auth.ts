@@ -5,8 +5,8 @@ import config from '../config';
 import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
-import { USER_ROLE } from '../modules/User/user.constant';
-import { User } from '../modules/User/user.model';
+import { USER_ROLE } from '../constant/user.const';
+import { findUserByEmail } from '../utils/findUserByEmail';
 
 const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -24,8 +24,21 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
 
     const { role, email, iat } = decoded;
 
-    // checking if the user is exist
-    const user = await User.isUserExistsByEmail(email);
+    // let user;
+    // let foundModel;
+
+    // for (const Model of ALL_USER_MODELS) {
+    //   const foundUser = await Model.isUserExistsByEmail(email);
+    //   if (foundUser) {
+    //     user = foundUser;
+    //     foundModel = Model;
+    //     break;
+    //   }
+    // }
+
+    const result = await findUserByEmail(email);
+    const user = result?.user;
+    const foundModel = result?.model;
 
     if (!user) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!2');
@@ -34,7 +47,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
 
     const status = user?.status;
 
-    if (status === 'BLOCKED') {
+    if (status === 'REJECTED') {
       throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
     } else if (status === 'PENDING' && user?.role === 'ADMIN') {
       throw new AppError(
@@ -45,7 +58,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
 
     if (
       user.passwordChangedAt &&
-      User.isJWTIssuedBeforePasswordChanged(
+      foundModel?.isJWTIssuedBeforePasswordChanged(
         user.passwordChangedAt,
         iat as number
       )

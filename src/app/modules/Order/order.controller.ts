@@ -19,6 +19,19 @@ const createOrder = catchAsync(async (req, res) => {
   });
 });
 
+// order by vendor controller
+const getOrdersByVendor = catchAsync(async (req, res) => {
+  const result = await OrderServices.getOrdersByVendor(req.user?.id as string);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Orders retrieved successfully',
+    data: result,
+  });
+});
+
 export const OrderControllers = {
   createOrder,
+  getOrdersByVendor,
 };

@@ -1,5 +1,5 @@
 export type TUserProfileUpdate = {
-    name: string;
-    mobileNumber: string;
-    profilePhoto?: string | null;
+  name: string;
+  contactNumber: string;
+  profilePhoto?: string | null;
 };
