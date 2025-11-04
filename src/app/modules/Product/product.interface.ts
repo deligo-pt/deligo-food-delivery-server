@@ -19,6 +19,7 @@ export type TProduct = {
   // Pricing
   price: number; // Original price
   discount?: number; // Discount percentage or amount
+  // tax: number; // Tax percentage (if applicable)
   finalPrice: number; // Price after discount
   currency: string; // Currency type (e.g., "BDT", "USD")
 

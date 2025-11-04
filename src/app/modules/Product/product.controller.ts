@@ -101,7 +101,10 @@ const getSingleProductByVendor = catchAsync(async (req, res) => {
 
 // get all products controller
 const getAllProducts = catchAsync(async (req, res) => {
-  const result = await ProductServices.getAllProducts(req.query);
+  const result = await ProductServices.getAllProducts(
+    req.query,
+    req.user as AuthUser
+  );
 
   sendResponse(res, {
     success: true,

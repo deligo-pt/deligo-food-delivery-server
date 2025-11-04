@@ -2,25 +2,73 @@
 import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
 import { BusinessTypes } from './vendor.constant';
+import { IUserModel } from '../../interfaces/user.interface';
+import { USER_STATUS } from '../../constant/user.const';
+import { passwordPlugin } from '../../plugins/passwordPlugin';
 
-const vendorSchema = new Schema<TVendor>(
+const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
     vendorId: {
       type: String,
       required: true,
       unique: true,
-      ref: 'User',
+    },
+    role: {
+      type: String,
+      enum: ['VENDOR'],
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    password: {
+      type: String,
+      required: true,
     },
     status: {
       type: String,
-      enum: ['PENDING', 'APPROVED', 'REJECTED'],
+      enum: Object.keys(USER_STATUS),
       default: 'PENDING',
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
     },
     isDeleted: {
       type: Boolean,
       default: false,
     },
-    rating: { type: Number, min: 0, max: 5, default: 0 },
+    // Rating & Activity
+    rating: {
+      average: { type: Number, default: 0 },
+      totalReviews: { type: Number, default: 0 },
+    },
+    totalOrders: { type: Number, default: 0 },
+    lastLoginAt: { type: Date, default: null },
+
+    // OTP Details
+    otp: { type: String, default: '' },
+    isOtpExpired: { type: Date, default: null },
+
+    // Personal Details
+    name: {
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
+    },
+    contactNumber: { type: String, default: '' },
+    profilePhoto: { type: String, default: '' },
+    address: {
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      country: { type: String, default: '' },
+    },
+    passwordChangedAt: { type: Date, default: null },
+
     //  Business Details
     businessDetails: {
       businessName: { type: String, default: '' },
@@ -47,6 +95,7 @@ const vendorSchema = new Schema<TVendor>(
       postalCode: { type: String, default: '' },
       latitude: { type: Number, default: null },
       longitude: { type: Number, default: null },
+      geoAccuracy: { type: Number, default: null }, // meters
     },
     // Bank & Payment Information
     bankDetails: {
@@ -63,6 +112,20 @@ const vendorSchema = new Schema<TVendor>(
       storePhoto: { type: String, default: '' },
       menuUpload: { type: String, default: '' },
     },
+
+    // Security & Access Control
+    twoFactorEnabled: { type: Boolean, default: false },
+    loginDevices: [
+      {
+        deviceId: { type: String, default: '' },
+        lastLogin: { type: Date, default: null },
+      },
+    ],
+
+    // Admin & Audit Fields
+    approvedBy: { type: String, default: '' },
+    rejectedBy: { type: String, default: '' },
+    remarks: { type: String, default: '' },
   },
   {
     timestamps: true,
@@ -70,4 +133,9 @@ const vendorSchema = new Schema<TVendor>(
   }
 );
 
-export const Vendor = model<TVendor>('Vendor', vendorSchema);
+vendorSchema.plugin(passwordPlugin);
+
+export const Vendor = model<TVendor, IUserModel<TVendor>>(
+  'Vendor',
+  vendorSchema
+);

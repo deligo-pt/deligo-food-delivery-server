@@ -1,16 +1,20 @@
-import express from 'express';
+import { UrlPath } from '../../constant/user.const';
 import auth from '../../middlewares/auth';
-import validateRequest, {
-  validateRequestCookies,
-} from '../../middlewares/validateRequest';
+import validateRequest from '../../middlewares/validateRequest';
 import { AuthControllers } from './auth.controller';
 import { AuthValidation } from './auth.validation';
-import { USER_ROLE } from '../User/user.constant';
+import { Router } from 'express';
 
-const router = express.Router();
+const router = Router();
 
 router.post(
-  '/register',
+  [UrlPath.CUSTOMER, UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
+  validateRequest(AuthValidation.registerValidationSchema),
+  AuthControllers.registerUser
+);
+router.post(
+  [UrlPath.DELIVERY_PARTNER],
+  auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.registerValidationSchema),
   AuthControllers.registerUser
 );
@@ -20,17 +24,54 @@ router.post(
   AuthControllers.loginUser
 );
 
+// Logout User Route
 router.post(
-  '/change-password',
-  auth(USER_ROLE.CUSTOMER, USER_ROLE.ADMIN),
-  validateRequest(AuthValidation.changePasswordValidationSchema),
-  AuthControllers.changePassword
+  '/logout',
+  auth(
+    'ADMIN',
+    'CUSTOMER',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'FLEET_MANAGER',
+    'SUPER_ADMIN'
+  ),
+  AuthControllers.logoutUser
 );
 
+// router.post(
+//   '/change-password',
+//   auth(USER_ROLE.CUSTOMER, USER_ROLE.ADMIN),
+//   validateRequest(AuthValidation.changePasswordValidationSchema),
+//   AuthControllers.changePassword
+// );
+
+// router.post(
+//   '/refresh-token',
+//   validateRequestCookies(AuthValidation.refreshTokenValidationSchema),
+//   AuthControllers.refreshToken
+// );
+
+// Active or Block User Route
+
+router.patch(
+  '/:email/approved-rejected-user',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(AuthValidation.activateOrBlockUserValidationSchema),
+  AuthControllers.approvedOrRejectedUser
+);
+
+// Verify OTP Route
 router.post(
-  '/refresh-token',
-  validateRequestCookies(AuthValidation.refreshTokenValidationSchema),
-  AuthControllers.refreshToken
+  '/verify-otp',
+  validateRequest(AuthValidation.verifyOtpValidationSchema),
+  AuthControllers.verifyOtp
+);
+
+// Resend OTP Route
+router.post(
+  '/resend-otp',
+  validateRequest(AuthValidation.resendOtpValidationSchema),
+  AuthControllers.resendOtp
 );
 
 export const AuthRoutes = router;

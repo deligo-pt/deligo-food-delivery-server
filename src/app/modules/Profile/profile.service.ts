@@ -3,13 +3,13 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TUserProfileUpdate } from './profile.interface';
-import { USER_STATUS } from '../User/user.constant';
-import { User } from '../User/user.model';
+import { Customer } from '../Customer/customer.model';
+import { USER_STATUS } from '../../constant/user.const';
 
 const getMyProfile = async (user: JwtPayload) => {
-  const profile = await User.findOne({
+  const profile = await Customer.findOne({
     email: user.email,
-    status: USER_STATUS.ACTIVE,
+    status: USER_STATUS.APPROVED,
   });
 
   if (!profile) {
@@ -26,13 +26,13 @@ const updateMyProfile = async (
 ) => {
   const filter = {
     email: user.email,
-    status: USER_STATUS.ACTIVE,
+    status: USER_STATUS.APPROVED,
   };
 
-  const profile = await User.findOne(filter);
+  const profile = await Customer.findOne(filter);
 
   if (!profile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User profile does not exixts!');
+    throw new AppError(httpStatus.NOT_FOUND, 'User profile does not exist!');
   }
 
   if (profilePhoto) {
@@ -41,7 +41,7 @@ const updateMyProfile = async (
     delete data.profilePhoto;
   }
 
-  return await User.findOneAndUpdate(filter, data, { new: true });
+  return await Customer.findOneAndUpdate(filter, data, { new: true });
 };
 
 export const ProfileServices = {

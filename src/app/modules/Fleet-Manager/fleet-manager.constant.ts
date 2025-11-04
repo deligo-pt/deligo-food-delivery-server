@@ -1,4 +1,4 @@
-export const AgentSearchableFields = [
+export const FleetManagerSearchableFields = [
   'status',
   'companyLocation.city',
   'companyDetails.companyName',

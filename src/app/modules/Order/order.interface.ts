@@ -11,7 +11,8 @@ export type TOrder = {
     | 'pending'
     | 'accepted'
     | 'assigned'
-    | 'picked'
+    | 'pickedUp'
+    | 'onTheWay'
     | 'delivered'
     | 'canceled';
   deliveryAddress: string;

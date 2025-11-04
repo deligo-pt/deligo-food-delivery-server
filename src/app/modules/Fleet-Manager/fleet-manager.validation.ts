@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const agentUpdateValidationSchema = z.object({
+const fleetManagerUpdateValidationSchema = z.object({
   body: z.object({
     //  Company Details
     companyDetails: z
@@ -48,7 +48,7 @@ const agentUpdateValidationSchema = z.object({
   }),
 });
 
-const agentDocImageValidationSchema = z.object({
+const fleetManagerDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z
       .enum(['idProof', 'companyLicense', 'profilePhoto'])
@@ -56,7 +56,7 @@ const agentDocImageValidationSchema = z.object({
   }),
 });
 
-export const AgentValidation = {
-  agentUpdateValidationSchema,
-  agentDocImageValidationSchema,
+export const FleetManagerValidation = {
+  fleetManagerUpdateValidationSchema,
+  fleetManagerDocImageValidationSchema,
 };

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { BusinessTypes } from './vendor.constant';
-//
+
 const vendorUpdateValidationSchema = z.object({
   body: z.object({
     //  Business Details
