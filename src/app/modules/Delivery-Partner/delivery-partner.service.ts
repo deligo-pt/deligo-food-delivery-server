@@ -12,7 +12,7 @@ const updateDeliveryPartner = async (
   user: AuthUser
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
-    deliveryPartnerId,
+    userId: deliveryPartnerId,
   });
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
@@ -20,14 +20,14 @@ const updateDeliveryPartner = async (
   if (!existingDeliveryPartner?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
   }
-  if (user?.id !== existingDeliveryPartner?.deliveryPartnerId) {
+  if (user?.id !== existingDeliveryPartner?.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
     );
   }
   const updateDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
-    { deliveryPartnerId },
+    { userId: deliveryPartnerId },
     payload,
     {
       new: true,
@@ -53,7 +53,7 @@ const getAllDeliveryPartnersFromDB = async (query: Record<string, unknown>) => {
 // get single delivery partner
 const getSingleDeliveryPartnerFromDB = async (deliveryPartnerId: string) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
-    deliveryPartnerId,
+    userId: deliveryPartnerId,
   });
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');

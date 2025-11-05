@@ -2,7 +2,7 @@ import { USER_STATUS } from '../../constant/user.const';
 
 export type TAdmin = {
   _id: string;
-  adminId: string;
+  userId: string;
   role: 'ADMIN' | 'SUPER_ADMIN';
   email: string;
   password: string;

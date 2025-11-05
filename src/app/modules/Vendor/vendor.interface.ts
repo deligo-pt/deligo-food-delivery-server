@@ -3,7 +3,7 @@ import { TBusinessTypes } from './vendor.constant';
 
 export type TVendor = {
   _id?: string;
-  vendorId: string;
+  userId: string;
   role: 'VENDOR';
   email: string;
   password: string;

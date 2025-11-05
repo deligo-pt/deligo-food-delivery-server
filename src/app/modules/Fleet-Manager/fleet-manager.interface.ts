@@ -2,7 +2,7 @@ import { USER_STATUS } from '../../constant/user.const';
 
 export type TFleetManager = {
   _id?: string;
-  fleetManagerId: string;
+  userId: string;
   role: 'FLEET_MANAGER';
   email: string;
   password: string;

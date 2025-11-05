@@ -54,7 +54,7 @@ router.post(
 // Active or Block User Route
 
 router.patch(
-  '/:email/approved-rejected-user',
+  '/:userId/approved-rejected-user',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.approvedOrRejectedUserValidationSchema),
   AuthControllers.approvedOrRejectedUser

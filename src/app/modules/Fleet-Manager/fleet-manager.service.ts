@@ -2,7 +2,6 @@
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import mongoose from 'mongoose';
-import { User } from '../Customer/customer.model';
 import { AuthUser } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
 import { QueryBuilder } from '../../builder/QueryBuilder';

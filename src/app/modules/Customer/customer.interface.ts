@@ -2,7 +2,7 @@ import { USER_STATUS } from '../../constant/user.const';
 
 export type TCustomer = {
   _id?: string;
-  customerId: string;
+  userId: string;
   role: 'CUSTOMER';
   email: string;
   password?: string;
