@@ -5,6 +5,7 @@ import { AuthUser } from '../../constant/user.const';
 import { TCustomer } from './customer.interface';
 import { Customer } from './customer.model';
 import { CustomerSearchableFields } from './customer.constant';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // update customer service
 const updateCustomer = async (
@@ -50,9 +51,27 @@ const getAllCustomersFromDB = async (query: Record<string, unknown>) => {
 };
 
 // get single customer
-const getSingleCustomerFromDB = async (id: string, user: AuthUser) => {
-  console.log(user);
-  const existingCustomer = await Customer.findOne({ userId: id });
+const getSingleCustomerFromDB = async (
+  customerId: string,
+  currentUser: AuthUser
+) => {
+  const result = await findUserByEmailOrId({
+    email: currentUser?.email,
+    isDeleted: false,
+  });
+  const existingUser = result?.user;
+  if (!existingUser) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `You are not a valid ${currentUser.role}`
+    );
+  }
+  let existingCustomer;
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    existingCustomer = await Customer.isUserExistsByUserId(customerId, false);
+  } else {
+    existingCustomer = await Customer.isUserExistsByUserId(customerId);
+  }
   if (!existingCustomer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
   }

@@ -24,7 +24,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
 
     const { role, email, iat } = decoded;
 
-    const result = await findUserByEmailOrId({ email });
+    const result = await findUserByEmailOrId({ email, isDeleted: false });
     const user = result?.user;
     const foundModel = result?.model;
 

@@ -3,22 +3,33 @@ import AppError from '../errors/AppError';
 import { ALL_USER_MODELS } from '../modules/Auth/auth.constant';
 
 export const findUserByEmailOrId = async ({
-  id,
+  userId,
   email,
+  isDeleted,
 }: {
-  id?: string;
+  userId?: string;
   email?: string;
+  isDeleted?: boolean;
 }) => {
-  if (!email && !id) {
+  console.log({ userId });
+  if (!email && !userId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Email or ID must be provided');
   }
 
   for (const Model of ALL_USER_MODELS) {
     let foundUser = null;
     if (email) {
-      foundUser = await Model.isUserExistsByEmail(email);
-    } else if (id) {
-      foundUser = await Model.findOne({ userId: id });
+      if (isDeleted) {
+        foundUser = await Model.isUserExistsByEmail(email, isDeleted);
+      } else {
+        foundUser = await Model.isUserExistsByEmail(email);
+      }
+    } else if (userId) {
+      if (isDeleted) {
+        foundUser = await Model.isUserExistsByUserId(userId, isDeleted);
+      } else {
+        foundUser = await Model.isUserExistsByUserId(userId);
+      }
     }
     if (foundUser) {
       return { user: foundUser, model: Model };

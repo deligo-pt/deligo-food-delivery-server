@@ -41,7 +41,10 @@ const registerUser = async <
       'SUPER_ADMIN',
       'FLEET_MANAGER',
     ];
-    const allowedUser = await findUserByEmailOrId({ id: currentUser?.id });
+    const allowedUser = await findUserByEmailOrId({
+      userId: currentUser?.id,
+      isDeleted: false,
+    });
     // console.log({ currentUser, allowedUser });
     if (!allowedUser) {
       throw new AppError(
@@ -156,7 +159,10 @@ const registerUser = async <
 
 const loginUser = async (payload: TLoginUser) => {
   // checking if the user is exist
-  const result = await findUserByEmailOrId({ email: payload?.email });
+  const result = await findUserByEmailOrId({
+    email: payload?.email,
+    isDeleted: false,
+  });
   const user = result?.user;
   const userModel = result?.model;
 
@@ -247,7 +253,7 @@ const loginUser = async (payload: TLoginUser) => {
 };
 
 const logoutUser = async (email: string) => {
-  const result = await findUserByEmailOrId({ email });
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
 
   if (!user) {
@@ -363,7 +369,7 @@ const logoutUser = async (email: string) => {
 
 // submit approval request service
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({ id: userId });
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -422,7 +428,7 @@ const approvedOrRejectedUser = async (
   payload: TApprovedRejectsPayload,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({ id: userId });
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -501,7 +507,7 @@ const approvedOrRejectedUser = async (
 
 // Verify OTP
 const verifyOtp = async (email: string, otp: string) => {
-  const result = await findUserByEmailOrId({ email });
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
 
   if (!user) {
@@ -555,7 +561,7 @@ const verifyOtp = async (email: string, otp: string) => {
 
 // Resend OTP
 const resendOtp = async (email: string) => {
-  const result = await findUserByEmailOrId({ email });
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');

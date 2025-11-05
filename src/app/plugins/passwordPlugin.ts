@@ -28,8 +28,27 @@ export const passwordPlugin = <T extends { email: string }>(
   });
 
   // Static: Check if user exists by email
-  schema.statics.isUserExistsByEmail = async function (email: string) {
-    return await this.findOne({ email }).select('+password');
+  schema.statics.isUserExistsByEmail = async function (
+    email: string,
+    isDeleted?: boolean
+  ) {
+    const query: any = { email };
+    if (typeof isDeleted === 'boolean') {
+      query.isDeleted = isDeleted;
+    }
+    return await this.findOne(query).select('+password');
+  };
+
+  // Static: Check if user exists by userId
+  schema.statics.isUserExistsByUserId = async function (
+    userId: string,
+    isDeleted?: boolean
+  ) {
+    const query: any = { userId };
+    if (typeof isDeleted === 'boolean') {
+      query.isDeleted = isDeleted;
+    }
+    return await this.findOne(query).select('+password');
   };
 
   // Static: Compare password

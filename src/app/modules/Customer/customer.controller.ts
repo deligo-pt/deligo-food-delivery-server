@@ -35,7 +35,7 @@ const getAllCustomers = catchAsync(async (req, res) => {
 // get single customer
 const getSingleCustomer = catchAsync(async (req, res) => {
   const customer = await CustomerServices.getSingleCustomerFromDB(
-    req.params.id,
+    req.params.customerId,
     req.user as AuthUser
   );
 
