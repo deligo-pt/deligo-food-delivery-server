@@ -1,5 +1,4 @@
-{{! vendor-approval-notification }}
-
+{{! user-approval-notification }}
 
 <html lang='en'>
   <head>
@@ -11,35 +10,38 @@
       auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); } .header { background-color:
       #DC3173; color: #ffffff; padding: 20px; text-align: center; } .content {
-      padding: 20px; } .vendor-name { font-weight: bold; font-style: italic; }
+      padding: 20px; } .user-name { font-weight: bold; font-style: italic; }
       .author { font-style: italic; font-weight: bold; } .footer {
       background-color: #f1f1f1; color: #555555; text-align: center; padding:
-      10px; font-size: 14px; }
+      10px; font-size: 14px; } .remarks { margin-top: 15px; margin-bottom: 15px;
+      text-align: center; color: #DC3173; font-style: italic; }
     </style>
   </head>
   <body>
     <div class='container'>
       <div class='header'>
-        <h1>DeliGo Vendor Application Update</h1>
+        <h1>DeliGo {{userRole}} Application Update</h1>
       </div>
       <div class='content'>
-        <p>Dear <span class='vendor-name'>{{vendorName}}</span>,</p>
+        <p>Dear <span class='user-name'>{{userName}}</span>,</p>
         <p>
           We are pleased to inform you that your application to become a vendor
           with DeliGo has been
-          <strong>{{approvalStatus}}</strong>.
+          <strong>{{#if isApproved}}approved{{else}}rejected{{/if}}</strong>.
         </p>
         {{#if isApproved}}
           <p>
-            Congratulations! Your business has met all the necessary criteria,
-            and we are excited to have you on board. Our team will be reaching
-            out to you shortly with further details on the next steps.
+            <div class='remarks'>Remarks: {{remarks}}</div>
           </p>
         {{else}}
           <p>
             We regret to inform you that your application did not meet our
-            criteria at this time. Please feel free to reach out to our support
-            team for more information or to discuss potential next steps.
+            criteria at this time.
+            {{#if remarks}}
+              <div class='remarks'>Remarks: {{remarks}}</div>
+            {{/if}}
+            Please feel free to reach out to our support team for more
+            information or to discuss potential next steps.
           </p>
         {{/if}}
         <p>Thank you for your interest in partnering with DeliGo!</p>

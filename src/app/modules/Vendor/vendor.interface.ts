@@ -1,22 +1,58 @@
+import { USER_STATUS } from '../../constant/user.const';
 import { TBusinessTypes } from './vendor.constant';
 
 export type TVendor = {
   _id?: string;
   vendorId: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  role: 'VENDOR';
+  email: string;
+  password: string;
+  status: keyof typeof USER_STATUS;
+  isEmailVerified: boolean;
   isDeleted: boolean;
-  rating?: number;
-  //  Business Details
+
+  // Rating & Activity
+  rating?: {
+    average: number;
+    totalReviews: number;
+  };
+  totalOrders?: number;
+  lastLoginAt?: Date | string;
+
+  // OTP Details
+  otp?: string;
+  isOtpExpired?: Date | string;
+
+  // Personal Details
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  contactNumber?: string;
+  profilePhoto?: string;
+
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
+
+  passwordChangedAt?: Date | string;
+
+  // Business Details
   businessDetails?: {
     businessName: string;
-    businessType: TBusinessTypes; // Restaurant | Grocery | Pharmacy etc.
+    businessType: TBusinessTypes;
     businessLicenseNumber?: string;
-    NIF?: string; // Tax Identification Number
+    NIF?: string;
     noOfBranch: number;
-    openingHours?: string; // Ex: "09:00 AM"
-    closingHours?: string; // Ex: "11:00 PM"
+    openingHours?: string; // e.g. "09:00 AM"
+    closingHours?: string; // e.g. "11:00 PM"
     closingDays?: string[]; // ["Friday", "Public Holidays"]
   };
+
   // Business Location
   businessLocation?: {
     streetAddress: string;
@@ -25,7 +61,9 @@ export type TVendor = {
     postalCode: string;
     latitude?: number;
     longitude?: number;
+    geoAccuracy?: number; // meters
   };
+
   // Bank & Payment Information
   bankDetails?: {
     bankName: string;
@@ -33,6 +71,7 @@ export type TVendor = {
     iban: string;
     swiftCode: string;
   };
+
   // Documents & Verification
   documents?: {
     businessLicenseDoc?: string;
@@ -41,8 +80,18 @@ export type TVendor = {
     storePhoto?: string;
     menuUpload?: string;
   };
-  createdAt: Date;
-  updatedAt: Date;
+
+  // Security & Access Control
+  twoFactorEnabled?: boolean;
+  loginDevices?: { deviceId: string; lastLogin: Date | string }[];
+
+  // Admin & Audit Fields
+  approvedBy?: string;
+  rejectedBy?: string;
+  remarks?: string;
+
+  createdAt: Date | string;
+  updatedAt: Date | string;
 };
 
 export type TVendorImageDocuments = {

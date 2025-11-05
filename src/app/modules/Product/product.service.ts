@@ -20,7 +20,6 @@ const createProduct = async (
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
-  console.log({ images });
   if (existingVendor?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -69,7 +68,6 @@ const createProduct = async (
   payload.images = images;
 
   const newProduct = await Product.create(payload);
-  console.log({ newProduct });
   return newProduct;
 };
 
@@ -175,7 +173,13 @@ const getSingleProductByVendor = async (
 };
 
 // get all products service
-const getAllProducts = async (query: Record<string, unknown>) => {
+const getAllProducts = async (
+  query: Record<string, unknown>,
+  user: AuthUser
+) => {
+  if (user.role === 'CUSTOMER') {
+    query.isApproved = true;
+  }
   const products = new QueryBuilder(Product.find(), query)
     .fields()
     .paginate()

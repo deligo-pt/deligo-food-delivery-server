@@ -3,7 +3,7 @@ import { AuthUser } from '../../constant/user.const';
 import AppError from '../../errors/AppError';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
-import { User } from '../User/user.model';
+import { User } from '../Customer/customer.model';
 import { TOrderData } from './order.interface';
 import { Order } from './order.model';
 
@@ -62,7 +62,7 @@ const createOrder = async (user: AuthUser, orderData: TOrderData) => {
     !customer.address?.country ||
     !customer.address?.zipCode ||
     !customer.name ||
-    !customer.mobileNumber
+    !customer.contactNumber
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -80,7 +80,6 @@ const createOrder = async (user: AuthUser, orderData: TOrderData) => {
     shippingAddress = `${customer.address?.street}, ${customer.address?.city}, ${customer.address?.state}, ${customer.address?.country} - ${customer.address?.zipCode}`;
   }
 
-  // ------i want to create selected items order only------
   const vendorId = products[0].vendor?.vendorId;
   const orderItems = selectedItems.map((item) => ({
     productId: item.productId,
@@ -92,36 +91,52 @@ const createOrder = async (user: AuthUser, orderData: TOrderData) => {
     return acc + (product ? product.finalPrice * item.quantity : 0);
   }, 0);
 
+  // -------------if payment success then create order. Payment gateway will be add here -------------
+
+  const isPaymentSuccess = true; // Simulate payment success
+
+  let order;
   // ------create order-------
-  const order = await Order.create({
-    customerId,
-    vendorId,
-    items: orderItems,
-    totalPrice,
-    deliveryAddress: shippingAddress,
-  });
+  if (isPaymentSuccess) {
+    order = await Order.create({
+      customerId,
+      vendorId,
+      items: orderItems,
+      totalPrice,
+      paymentStatus: 'completed',
+      orderStatus: 'pending',
+      deliveryAddress: shippingAddress,
+    });
 
-  // -----reduce stock quantity of selected products------
-  for (const item of selectedItems) {
-    const product = products.find((p) => p.productId === item.productId);
-    if (product) {
-      product.stock.quantity -= item.quantity;
-      await product.save();
+    // -----reduce stock quantity of selected products------
+    for (const item of selectedItems) {
+      const product = products.find((p) => p.productId === item.productId);
+      if (product) {
+        product.stock.quantity -= item.quantity;
+        await product.save();
+      }
     }
-  }
 
-  // ------clear selected items from cart------
-  isInCart.items = isInCart.items.filter(
-    (item) =>
-      !orderData.items.some(
-        (orderItem) => orderItem.productId === item.productId
-      )
-  );
-  await isInCart.save();
+    // ------clear selected items from cart------
+    isInCart.items = isInCart.items.filter(
+      (item) =>
+        !orderData.items.some(
+          (orderItem) => orderItem.productId === item.productId
+        )
+    );
+    await isInCart.save();
+  }
 
   return order;
 };
 
+//  order by vendor service
+const getOrdersByVendor = async (vendorId: string) => {
+  const orders = await Order.find({ vendorId });
+  return orders;
+};
+
 export const OrderServices = {
   createOrder,
+  getOrdersByVendor,
 };

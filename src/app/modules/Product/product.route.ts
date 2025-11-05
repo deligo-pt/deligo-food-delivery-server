@@ -3,6 +3,8 @@ import auth from '../../middlewares/auth';
 import { ProductControllers } from './product.controller';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
+import { ProductValidation } from './product.validation';
+import validateRequest from '../../middlewares/validateRequest';
 
 const router = express.Router();
 

@@ -1,13 +1,15 @@
 import express from 'express';
 import { AuthRoutes } from '../modules/Auth/auth.route';
-// import { MeilisearchRoutes } from '../modules/Meilisearch/meilisearch.routes';
 import { ProfileRoutes } from '../modules/Profile/profile.route';
 import { VendorRoutes } from '../modules/Vendor/vendor.route';
-import { UserRoutes } from '../modules/User/user.route';
-import { AgentRoutes } from '../modules/Agent/agent.route';
+import { CustomerRoutes } from '../modules/Customer/customer.route';
 import { ProductRoutes } from '../modules/Product/product.route';
 import { CartRoutes } from '../modules/Cart/cart.route';
 import { OrderRoutes } from '../modules/Order/order.route';
+import { PaymentRoutes } from '../modules/Payment/payment.route';
+import { FleetManagerRoutes } from '../modules/Fleet-Manager/fleet-manager.route';
+import { AdminRoutes } from '../modules/Admin/admin.route';
+import { DeliveryPartnerRoutes } from '../modules/Delivery-Partner/delivery-partner.route';
 
 const router = express.Router();
 
@@ -16,21 +18,25 @@ const moduleRoutes = [
     path: '/auth',
     route: AuthRoutes,
   },
-  // {
-  //   path: '/search-items',
-  //   route: MeilisearchRoutes,
-  // },
   {
-    path: '/users',
-    route: UserRoutes,
+    path: '/customers',
+    route: CustomerRoutes,
   },
   {
     path: '/vendors',
     route: VendorRoutes,
   },
   {
-    path: '/agents',
-    route: AgentRoutes,
+    path: '/fleet-managers',
+    route: FleetManagerRoutes,
+  },
+  {
+    path: '/admins',
+    route: AdminRoutes,
+  },
+  {
+    path: '/delivery-partners',
+    route: DeliveryPartnerRoutes,
   },
   {
     path: '/products',
@@ -43,6 +49,10 @@ const moduleRoutes = [
   {
     path: '/orders',
     route: OrderRoutes,
+  },
+  {
+    path: '/payment',
+    route: PaymentRoutes,
   },
   {
     path: '/profile',

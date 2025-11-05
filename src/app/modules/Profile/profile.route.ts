@@ -1,11 +1,11 @@
-import express from 'express';
 import auth from '../../middlewares/auth';
 import { ProfileController } from './profile.controller';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
-import { USER_ROLE } from '../User/user.constant';
+import { USER_ROLE } from '../../constant/user.const';
+import { Router } from 'express';
 
-const router = express.Router();
+const router = Router();
 
 router.get(
   '/',
