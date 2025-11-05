@@ -80,4 +80,18 @@ router.post(
   AuthControllers.resendOtp
 );
 
+// soft Delete User Route
+router.delete(
+  '/:userId/soft-delete',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AuthControllers.softDeleteUser
+);
+
+// permanent Delete User Route
+router.delete(
+  '/:userId/permanent-delete',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AuthControllers.permanentDeleteUser
+);
+
 export const AuthRoutes = router;

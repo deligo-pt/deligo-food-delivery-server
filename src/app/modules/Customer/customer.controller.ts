@@ -7,15 +7,17 @@ import { CustomerServices } from './customer.service';
 // Customer Update Controller
 const updateCustomer = catchAsync(async (req, res) => {
   const user = req.user as AuthUser;
+  const profilePhoto = req.file?.path;
   const result = await CustomerServices.updateCustomer(
     req.body,
-    req.params.id,
-    user
+    req.params.customerId,
+    user,
+    profilePhoto
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'User update successfully',
+    message: 'Customer updated successfully',
     data: result,
   });
 });
@@ -46,6 +48,8 @@ const getSingleCustomer = catchAsync(async (req, res) => {
     data: customer,
   });
 });
+
+// soft delete customer controller
 
 export const CustomerControllers = {
   updateCustomer,

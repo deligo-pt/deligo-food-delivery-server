@@ -9,7 +9,7 @@ import {
   TApprovedRejectsPayload,
   USER_MODEL_MAP,
 } from './auth.constant';
-import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.const';
+import { AuthUser, USER_ROLE } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
 import config from '../../config';
 import { createToken } from '../../utils/verifyJWT';
@@ -161,7 +161,7 @@ const loginUser = async (payload: TLoginUser) => {
   // checking if the user is exist
   const result = await findUserByEmailOrId({
     email: payload?.email,
-    isDeleted: false,
+    // isDeleted: false,
   });
   const user = result?.user;
   const userModel = result?.model;
@@ -347,14 +347,14 @@ const logoutUser = async (email: string) => {
 //     throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
 //   }
 
-//   const jwtPayload = {
-//     id: user.id,
-//     name: user.name ?? '',
-//     email: user.email,
-//     contactNumber: user.contactNumber,
-//     role: user.role,
-//     status: user.status,
-//   };
+//     const jwtPayload = {
+//   id: user?.userId,
+//   name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
+//   email: user?.email,
+//   contactNumber: user?.contactNumber,
+//   role: user?.role,
+//   status: user?.status,
+// };
 
 //   const accessToken = createToken(
 //     jwtPayload,
@@ -534,10 +534,12 @@ const verifyOtp = async (email: string, otp: string) => {
 
   // Generate JWT token after successful verification
   const jwtPayload = {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    status: user.status as keyof typeof USER_STATUS,
+    id: user?.userId,
+    name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
+    email: user?.email,
+    contactNumber: user?.contactNumber,
+    role: user?.role,
+    status: user?.status,
   };
 
   const accessToken = createToken(
@@ -587,6 +589,64 @@ const resendOtp = async (email: string) => {
   };
 };
 
+// soft delete user service
+const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
+  await findUserByEmailOrId({
+    email: currentUser?.email,
+    isDeleted: false,
+  });
+
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
+  const existingUser = result?.user;
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+  }
+
+  if (existingUser.role === USER_ROLE.SUPER_ADMIN) {
+    throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
+  }
+
+  existingUser.isDeleted = true;
+  await existingUser.save();
+
+  return {
+    message: `${existingUser?.role} deleted successfully`,
+  };
+};
+
+// permanent delete user service
+const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
+  await findUserByEmailOrId({
+    email: currentUser?.email,
+    isDeleted: false,
+  });
+  const result = await findUserByEmailOrId({ userId });
+  const existingUser = result?.user;
+  const model = result?.model;
+  if (!existingUser) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'User already permanently deleted!'
+    );
+  }
+
+  if (!existingUser.isDeleted) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'User should be soft deleted first!'
+    );
+  }
+
+  if (existingUser.role === USER_ROLE.SUPER_ADMIN) {
+    throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
+  }
+  await model?.deleteOne({ userId: existingUser.userId });
+
+  return {
+    message: `${existingUser?.role} permanently deleted successfully`,
+  };
+};
+
 export const AuthServices = {
   registerUser,
   loginUser,
@@ -597,4 +657,6 @@ export const AuthServices = {
   verifyOtp,
   approvedOrRejectedUser,
   submitForApproval,
+  softDeleteUser,
+  permanentDeleteUser,
 };

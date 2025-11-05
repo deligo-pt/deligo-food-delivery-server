@@ -151,6 +151,36 @@ const resendOtp = catchAsync(async (req, res) => {
   });
 });
 
+// soft delete user controller
+const softDeleteUser = catchAsync(async (req, res) => {
+  const result = await AuthServices.softDeleteUser(
+    req.params.userId,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// permanent delete user controller
+const permanentDeleteUser = catchAsync(async (req, res) => {
+  const result = await AuthServices.permanentDeleteUser(
+    req.params.userId,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 export const AuthControllers = {
   registerUser,
   loginUser,
@@ -161,4 +191,6 @@ export const AuthControllers = {
   verifyOtp,
   approvedOrRejectedUser,
   submitForApproval,
+  softDeleteUser,
+  permanentDeleteUser,
 };
