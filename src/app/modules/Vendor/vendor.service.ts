@@ -3,9 +3,7 @@ import AppError from '../../errors/AppError';
 import { TVendor, TVendorImageDocuments } from './vendor.interface';
 import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
-import mongoose from 'mongoose';
 import { AuthUser } from '../../constant/user.const';
-import { EmailHelper } from '../../utils/emailSender';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 
@@ -16,19 +14,19 @@ const vendorUpdate = async (
   user: AuthUser
 ) => {
   //   istVendorExistsById
-  const existingVendor = await Vendor.findOne({ vendorId: id });
+  const existingVendor = await Vendor.findOne({ userId: id });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  if (user?.id !== existingVendor?.vendorId) {
+  if (user?.id !== existingVendor?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update!'
     );
   }
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { vendorId: existingVendor.vendorId },
+    { userId: existingVendor.userId },
     payload,
     { new: true }
   );
@@ -42,12 +40,12 @@ const vendorDocImageUpload = async (
   user: AuthUser,
   id: string
 ) => {
-  const existingVendor = await Vendor.findOne({ vendorId: id });
+  const existingVendor = await Vendor.findOne({ userId: id });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  if (user?.id !== existingVendor?.vendorId) {
+  if (user?.id !== existingVendor?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to upload document image!'
@@ -68,126 +66,35 @@ const vendorDocImageUpload = async (
   };
 };
 
-// submit vendor for approval service
-const submitVendorForApproval = async (id: string, user: AuthUser) => {
+/// vendor soft delete service
+const vendorSoftDelete = async (id: string) => {
   //   istVendorExistsById
-  const existingVendor = await Vendor.findOne({ vendorId: id });
-  if (!existingVendor) {
+  const isVendorExistsById = await Vendor.findOne({ userId: id });
+
+  if (!isVendorExistsById) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  existingVendor.status = 'SUBMITTED';
-  await existingVendor.save();
-
-  // Prepare & send email to admin for vendor approval
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      vendorName: existingVendor.businessDetails?.businessName,
-      vendorId: existingVendor.vendorId,
-      currentYear: new Date().getFullYear(),
-    },
-    'vendor-submission-notification'
-  );
-
-  await EmailHelper.sendEmail(
-    user?.email,
-    emailHtml,
-    'New Vendor Submission for Approval'
-  );
-
-  return {
-    message: 'Vendor submitted for approval',
-    existingVendor,
-  };
-};
-
-// approved or reject vendor service
-const approveOrRejectVendor = async (
-  id: string,
-  payload: { status: 'APPROVED' | 'REJECTED' }
-) => {
-  const existingVendor = await Vendor.findOne({ vendorId: id });
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  const existingUser = await User.findOne({
-    id: existingVendor.vendorId,
-    role: 'VENDOR',
-  });
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Associated user not found');
-  }
-
-  existingVendor.status = payload.status;
-  if (payload.status === 'APPROVED') {
-    existingUser.status = 'ACTIVE';
-    await existingUser.save();
-  }
-  await existingVendor.save();
-
-  // Prepare email content
-  const emailData = {
-    vendorName: existingVendor.businessDetails?.businessName,
-    vendorId: existingVendor.vendorId,
-    currentYear: new Date().getFullYear(),
-    isApproved: payload.status === 'APPROVED',
-  };
-
-  const emailHtml = await EmailHelper.createEmailContent(
-    emailData,
-    'vendor-approval-notification'
-  );
-
-  const emailSubject =
-    payload.status === 'APPROVED'
-      ? 'Your Vendor Application has been Approved'
-      : 'Your Vendor Application has been Rejected';
-
-  // Send email
-  await EmailHelper.sendEmail(existingUser.email, emailHtml, emailSubject);
-
-  return {
-    message: `Vendor ${payload.status.toLowerCase()} successfully`,
-  };
-};
-
-// vendor delete service
-const vendorDelete = async (id: string) => {
-  //   isUserExistsById
-  const isUserExistsById = await User.findOne({ id, role: 'VENDOR' });
-  if (!isUserExistsById) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-  //   istVendorExistsById
-  const isVendorExistsById = await Vendor.findOne({ vendorId: id });
-
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
-    // delete user
-    await User.deleteOne(
-      { id: isUserExistsById?.id, role: 'VENDOR' },
-      { session }
-    );
-    // delete vendor
-    if (isVendorExistsById) {
-      await Vendor.deleteOne(
-        { vendorId: isVendorExistsById?.vendorId },
-        { session }
-      );
-    }
-
-    await session.commitTransaction();
-    session.endSession();
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
-  }
+  isVendorExistsById.isDeleted = true;
+  await isVendorExistsById.save();
 
   return {
     message: 'Vendor deleted successfully',
+  };
+};
+
+// Vendor Permanent Delete Service Here
+const vendorPermanentDelete = async (id: string) => {
+  const isVendorExistsById = await Vendor.findOne({ userId: id });
+
+  if (!isVendorExistsById) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  await Vendor.findOneAndDelete({ userId: id });
+
+  return {
+    message: 'Vendor permanently deleted successfully',
   };
 };
 
@@ -206,7 +113,7 @@ const getAllVendors = async (query: Record<string, unknown>) => {
 
 // get single vendor
 const getSingleVendorFromDB = async (id: string) => {
-  const existingVendor = await Vendor.findOne({ vendorId: id });
+  const existingVendor = await Vendor.findOne({ userId: id });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
   }
@@ -217,9 +124,8 @@ const getSingleVendorFromDB = async (id: string) => {
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
-  submitVendorForApproval,
-  approveOrRejectVendor,
-  vendorDelete,
+  vendorSoftDelete,
+  vendorPermanentDelete,
   getAllVendors,
   getSingleVendorFromDB,
 };

@@ -6,7 +6,7 @@ import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
 import { USER_ROLE } from '../constant/user.const';
-import { findUserByEmail } from '../utils/findUserByEmail';
+import { findUserByEmailOrId } from '../utils/findUserByEmailOrId';
 
 const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -24,19 +24,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
 
     const { role, email, iat } = decoded;
 
-    // let user;
-    // let foundModel;
-
-    // for (const Model of ALL_USER_MODELS) {
-    //   const foundUser = await Model.isUserExistsByEmail(email);
-    //   if (foundUser) {
-    //     user = foundUser;
-    //     foundModel = Model;
-    //     break;
-    //   }
-    // }
-
-    const result = await findUserByEmail(email);
+    const result = await findUserByEmailOrId({ email, isDeleted: false });
     const user = result?.user;
     const foundModel = result?.model;
 

@@ -39,24 +39,25 @@ const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
   });
 });
 
-// submit fleet manager for approval controller
-const submitFleetManagerForApproval = catchAsync(async (req, res) => {
-  const result = await FleetManagerServices.submitFleetManagerForApproval(
-    req.params.id,
-    req.user as AuthUser
+// fleet manager soft delete controller
+const fleetManagerSoftDelete = catchAsync(async (req, res) => {
+  const result = await FleetManagerServices.fleetManagerSoftDelete(
+    req.params.userId
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: result?.existingFleetManager,
+    data: null,
   });
 });
 
-// fleet manager delete controller
-const fleetManagerDelete = catchAsync(async (req, res) => {
-  const result = await FleetManagerServices.fleetManagerDelete(req.params.id);
+// fleet manager permanent delete controller
+const fleetManagerPermanentDelete = catchAsync(async (req, res) => {
+  const result = await FleetManagerServices.fleetManagerPermanentDelete(
+    req.params.userId
+  );
 
   sendResponse(res, {
     success: true,
@@ -95,8 +96,8 @@ const getSingleFleetManager = catchAsync(async (req, res) => {
 export const FleetManagerControllers = {
   fleetManagerUpdate,
   fleetManagerDocImageUpload,
-  submitFleetManagerForApproval,
-  fleetManagerDelete,
+  fleetManagerSoftDelete,
   getAllFleetManagers,
   getSingleFleetManager,
+  fleetManagerPermanentDelete,
 };

@@ -8,7 +8,7 @@ const router = Router();
 
 // User Update Route
 router.patch(
-  '/:adminId',
+  '/:userId',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AdminValidation.updateAdminDataValidationSchema),
   AdminControllers.updateAdmin

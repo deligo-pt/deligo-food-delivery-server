@@ -9,22 +9,26 @@ const updateAdmin = async (
   adminId: string,
   user: AuthUser
 ) => {
-  const existingAdmin = await Admin.findOne({ adminId });
+  const existingAdmin = await Admin.findOne({ userId: adminId });
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
   }
   if (!existingAdmin?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
   }
-  if (user?.id !== existingAdmin?.adminId) {
+  if (user?.id !== existingAdmin?.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
     );
   }
-  const updateAdmin = await Admin.findOneAndUpdate({ adminId }, payload, {
-    new: true,
-  });
+  const updateAdmin = await Admin.findOneAndUpdate(
+    { userId: adminId },
+    payload,
+    {
+      new: true,
+    }
+  );
   return updateAdmin;
 };
 

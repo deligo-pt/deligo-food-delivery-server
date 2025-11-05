@@ -17,13 +17,13 @@ export const ALL_USER_MODELS = [
 ] as IUserModel<any>[];
 
 export const USER_MODEL_MAP = {
-  '/create-vendor': { Model: Vendor, idField: 'vendorId' },
-  '/create-fleet-manager': { Model: FleetManager, idField: 'fleetManagerId' },
-  '/create-customer': { Model: Customer, idField: 'customerId' },
-  '/create-admin': { Model: Admin, idField: 'adminId' },
+  '/create-vendor': { Model: Vendor, idField: 'userId' },
+  '/create-fleet-manager': { Model: FleetManager, idField: 'userId' },
+  '/create-customer': { Model: Customer, idField: 'userId' },
+  '/create-admin': { Model: Admin, idField: 'userId' },
   '/create-delivery-partner': {
     Model: DeliveryPartner,
-    idField: 'deliveryPartnerId',
+    idField: 'userId',
   },
 } as const;
 

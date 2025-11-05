@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import mongoose from 'mongoose';
-import { User } from '../Customer/customer.model';
 import { AuthUser } from '../../constant/user.const';
-import { EmailHelper } from '../../utils/emailSender';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { FleetManagerSearchableFields } from './fleet-manager.constant';
 import {
@@ -20,19 +17,19 @@ const fleetManagerUpdate = async (
   user: AuthUser
 ) => {
   //   istFleetManagerExistsById
-  const existingFleetManager = await FleetManager.findOne({ agentId: id });
+  const existingFleetManager = await FleetManager.findOne({ userId: id });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (user?.id !== existingFleetManager?.agentId) {
+  if (user?.id !== existingFleetManager?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update!'
     );
   }
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
-    { agentId: existingFleetManager.agentId },
+    { userId: existingFleetManager.userId },
     payload,
     { new: true }
   );
@@ -46,12 +43,12 @@ const fleetManagerDocImageUpload = async (
   user: AuthUser,
   id: string
 ) => {
-  const existingFleetManager = await FleetManager.findOne({ agentId: id });
+  const existingFleetManager = await FleetManager.findOne({ userId: id });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (user?.id !== existingFleetManager?.agentId) {
+  if (user?.id !== existingFleetManager?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to upload document image!'
@@ -72,75 +69,37 @@ const fleetManagerDocImageUpload = async (
   };
 };
 
-// submit fleet manager for approval service
-const submitFleetManagerForApproval = async (id: string, user: AuthUser) => {
+// fleet manager soft delete service
+const fleetManagerSoftDelete = async (id: string) => {
   //   istFleetManagerExistsById
-  const existingFleetManager = await FleetManager.findOne({ agentId: id });
-  if (!existingFleetManager) {
+  const isFleetManagerExistsById = await FleetManager.findOne({ userId: id });
+
+  if (!isFleetManagerExistsById) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  existingFleetManager.status = 'PENDING';
-  await existingFleetManager.save();
-
-  // Prepare & send email to admin for fleet manager approval
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      vendorName: existingFleetManager.companyDetails?.companyName,
-      vendorId: existingFleetManager.agentId,
-      currentYear: new Date().getFullYear(),
-    },
-    'agent-submission-notification'
-  );
-
-  await EmailHelper.sendEmail(
-    user?.email,
-    emailHtml,
-    'New Vendor Submission for Approval'
-  );
-
-  return {
-    message: 'Agent submitted for approval',
-    existingFleetManager,
-  };
-};
-
-// fleet manager delete service
-const fleetManagerDelete = async (id: string) => {
-  //   isUserExistsById
-  const isUserExistsById = await User.findOne({ id, role: 'FLEET_MANAGER' });
-  if (!isUserExistsById) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-  //   istFleetManagerExistsById
-  const isFleetManagerExistsById = await FleetManager.findOne({ agentId: id });
-
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
-    // delete user
-    await User.deleteOne(
-      { id: isUserExistsById?.id, role: 'VENDOR' },
-      { session }
-    );
-    // delete fleet manager
-    if (isFleetManagerExistsById) {
-      await FleetManager.deleteOne(
-        { agentId: isFleetManagerExistsById?.agentId },
-        { session }
-      );
-    }
-
-    await session.commitTransaction();
-    session.endSession();
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
-  }
+  isFleetManagerExistsById.isDeleted = true;
+  await isFleetManagerExistsById.save();
 
   return {
     message: 'Fleet Manager deleted successfully',
+  };
+};
+
+// fleet manager permanent delete service
+const fleetManagerPermanentDelete = async (userId: string) => {
+  const isFleetManagerExistsById = await FleetManager.findOne({
+    userId,
+  });
+
+  if (!isFleetManagerExistsById) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
+  }
+
+  await FleetManager.findOneAndDelete({ userId });
+
+  return {
+    message: 'Fleet Manager permanently deleted successfully',
   };
 };
 
@@ -159,7 +118,7 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 
 // get single fleet manager
 const getSingleFleetManagerFromDB = async (id: string) => {
-  const existingFleetManager = await FleetManager.findOne({ agentId: id });
+  const existingFleetManager = await FleetManager.findOne({ userId: id });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
   }
@@ -170,8 +129,8 @@ const getSingleFleetManagerFromDB = async (id: string) => {
 export const FleetManagerServices = {
   fleetManagerUpdate,
   fleetManagerDocImageUpload,
-  submitFleetManagerForApproval,
-  fleetManagerDelete,
+  fleetManagerSoftDelete,
+  fleetManagerPermanentDelete,
   getAllFleetManagersFromDb,
   getSingleFleetManagerFromDB,
 };

@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { AuthServices } from './auth.service';
 import { catchAsync } from '../../utils/catchAsync';
-import { AuthUser, USER_ROLE } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.const';
 import config from '../../config';
 
 const registerUser = catchAsync(async (req, res) => {
@@ -10,7 +10,7 @@ const registerUser = catchAsync(async (req, res) => {
   const result = await AuthServices.registerUser(
     req.body,
     url,
-    req.user?.role as keyof typeof USER_ROLE
+    req.user as AuthUser
   );
 
   sendResponse(res, {
@@ -87,13 +87,28 @@ const logoutUser = catchAsync(async (req, res) => {
 //   });
 // });
 
+//  Submit Approval Request Controller
+const submitForApproval = catchAsync(async (req, res) => {
+  const result = await AuthServices.submitForApproval(
+    req.params.userId,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 // Active or Block User Controller
 const approvedOrRejectedUser = catchAsync(async (req, res) => {
-  const user = req.user as AuthUser;
+  const currentUser = req.user as AuthUser;
   const result = await AuthServices.approvedOrRejectedUser(
-    req.params.email,
+    req.params.userId,
     req.body,
-    user
+    currentUser
   );
   sendResponse(res, {
     success: true,
@@ -145,4 +160,5 @@ export const AuthControllers = {
   resendOtp,
   verifyOtp,
   approvedOrRejectedUser,
+  submitForApproval,
 };

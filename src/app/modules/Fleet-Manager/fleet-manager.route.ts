@@ -23,18 +23,18 @@ router.patch(
   FleetManagerControllers.fleetManagerDocImageUpload
 );
 
-// submit fleet manager for approval Route
+/// fleet manager soft delete Route
 router.patch(
-  '/:id/submitForApproval',
+  '/:userId/soft-delete',
   auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN'),
-  FleetManagerControllers.submitFleetManagerForApproval
+  FleetManagerControllers.fleetManagerSoftDelete
 );
 
-// fleet manager delete Route
+// fleet manager permanent delete Route
 router.delete(
-  '/:id',
-  auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN'),
-  FleetManagerControllers.fleetManagerDelete
+  '/:userId/permanent-delete',
+  auth('SUPER_ADMIN'),
+  FleetManagerControllers.fleetManagerPermanentDelete
 );
 
 router.get(

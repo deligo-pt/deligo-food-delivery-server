@@ -13,8 +13,8 @@ import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
 import config from '../../config';
 import { createToken } from '../../utils/verifyJWT';
-import { findUserByEmail } from '../../utils/findUserByEmail';
 import { TLoginUser } from './auth.interface';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Register User
 const registerUser = async <
@@ -26,7 +26,7 @@ const registerUser = async <
 >(
   payload: T,
   url: string,
-  currentUserRole?: keyof typeof USER_ROLE
+  currentUser: AuthUser
 ) => {
   const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
   const userTypeData = USER_TYPE_MAP[userType];
@@ -34,7 +34,6 @@ const registerUser = async <
   if (!userTypeData || !modelData) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
-
   // Restrict Delivery Partner registration
   if (userType === '/create-delivery-partner') {
     const allowedRoles: (keyof typeof USER_ROLE)[] = [
@@ -42,8 +41,18 @@ const registerUser = async <
       'SUPER_ADMIN',
       'FLEET_MANAGER',
     ];
-
-    if (currentUserRole && !allowedRoles.includes(currentUserRole)) {
+    const allowedUser = await findUserByEmailOrId({
+      userId: currentUser?.id,
+      isDeleted: false,
+    });
+    // console.log({ currentUser, allowedUser });
+    if (!allowedUser) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to register a Delivery Partner'
+      );
+    }
+    if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to register a Delivery Partner'
@@ -150,7 +159,10 @@ const registerUser = async <
 
 const loginUser = async (payload: TLoginUser) => {
   // checking if the user is exist
-  const result = await findUserByEmail(payload?.email);
+  const result = await findUserByEmailOrId({
+    email: payload?.email,
+    isDeleted: false,
+  });
   const user = result?.user;
   const userModel = result?.model;
 
@@ -178,6 +190,7 @@ const loginUser = async (payload: TLoginUser) => {
 
     user.otp = otp;
     user.isOtpExpired = otpExpires;
+    user.isEmailVerified = false;
     await user.save();
     // Prepare & send verification email
     const emailHtml = await EmailHelper.createEmailContent(
@@ -213,14 +226,7 @@ const loginUser = async (payload: TLoginUser) => {
   //create token and sent to the  client
 
   const jwtPayload = {
-    id:
-      user?.customerId ||
-      user?.vendorId ||
-      user?.deliveryPartnerId ||
-      user?.adminId ||
-      user?.fleetManagerId ||
-      user?.superAdminId ||
-      '',
+    id: user?.userId,
     name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
     email: user?.email,
     contactNumber: user?.contactNumber,
@@ -247,7 +253,7 @@ const loginUser = async (payload: TLoginUser) => {
 };
 
 const logoutUser = async (email: string) => {
-  const result = await findUserByEmail(email);
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
 
   if (!user) {
@@ -361,20 +367,74 @@ const logoutUser = async (email: string) => {
 //   };
 // };
 
-// Active or Block User Service
-
-const approvedOrRejectedUser = async (
-  email: string,
-  payload: TApprovedRejectsPayload,
-  user: AuthUser
-) => {
-  const result = await findUserByEmail(email);
+// submit approval request service
+const submitForApproval = async (userId: string, currentUser: AuthUser) => {
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (email === user.email) {
+  if (existingUser?.status === 'SUBMITTED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You have already submitted the approval request. Please wait for admin approval.'
+    );
+  }
+  if (existingUser?.status === 'APPROVED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Your account is already approved.'
+    );
+  }
+
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    if (existingUser.userId !== currentUser.id) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to submit approval request for this user'
+      );
+    }
+  }
+
+  existingUser.status = 'SUBMITTED';
+  await existingUser.save();
+
+  // Prepare & send email to admin for user approval
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      userName: existingUser.name?.firstName || 'User',
+      userId: existingUser.userId,
+      currentYear: new Date().getFullYear(),
+      userRole: existingUser.role,
+    },
+    'user-approval-submission-notification'
+  );
+
+  await EmailHelper.sendEmail(
+    existingUser?.email,
+    emailHtml,
+    `New ${existingUser?.role} Submission for Approval`
+  );
+
+  return {
+    message: `${existingUser?.role} submitted for approval successfully`,
+  };
+};
+
+// Active or Block User Service
+const approvedOrRejectedUser = async (
+  userId: string,
+  payload: TApprovedRejectsPayload,
+  currentUser: AuthUser
+) => {
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
+  const existingUser = result?.user;
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  if (userId === currentUser.id) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You cannot change your own status'
@@ -400,12 +460,12 @@ const approvedOrRejectedUser = async (
 
   existingUser.status = payload.status;
   if (payload.status === 'APPROVED') {
-    existingUser.approvedBy = user.id;
+    existingUser.approvedBy = currentUser.id;
     existingUser.remarks =
       payload.remarks ||
       'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board. Our team will reach out shortly with the next steps to help you get started and make the most of your role on our platform.';
   } else if (payload.status === 'REJECTED') {
-    existingUser.rejectedBy = user.id;
+    existingUser.rejectedBy = currentUser.id;
     if (!payload.remarks) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -447,7 +507,7 @@ const approvedOrRejectedUser = async (
 
 // Verify OTP
 const verifyOtp = async (email: string, otp: string) => {
-  const result = await findUserByEmail(email);
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
 
   if (!user) {
@@ -501,7 +561,7 @@ const verifyOtp = async (email: string, otp: string) => {
 
 // Resend OTP
 const resendOtp = async (email: string) => {
-  const result = await findUserByEmail(email);
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -536,4 +596,5 @@ export const AuthServices = {
   resendOtp,
   verifyOtp,
   approvedOrRejectedUser,
+  submitForApproval,
 };
