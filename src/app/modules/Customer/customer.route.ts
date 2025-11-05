@@ -20,8 +20,8 @@ router.get(
   CustomerControllers.getAllCustomers
 );
 router.get(
-  '/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  '/:customerId',
+  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'VENDOR'),
   CustomerControllers.getSingleCustomer
 );
 
