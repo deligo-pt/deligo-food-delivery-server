@@ -11,6 +11,7 @@ export const USER_ROLE = {
 // User Status constant
 export const USER_STATUS = {
   PENDING: 'PENDING',
+  SUBMITTED: 'SUBMITTED',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
 } as const;

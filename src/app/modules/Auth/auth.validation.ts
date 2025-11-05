@@ -44,10 +44,13 @@ const refreshTokenValidationSchema = z.object({
   }),
 });
 
-// Activate or Block User Validation Schema
-const activateOrBlockUserValidationSchema = z.object({
+// Approve or Reject User Validation Schema
+const approvedOrRejectedUserValidationSchema = z.object({
   body: z.object({
     status: z.nativeEnum(USER_STATUS),
+    approvedBy: z.string().optional(),
+    rejectedBy: z.string().optional(),
+    remarks: z.string().optional(),
   }),
 });
 
@@ -77,7 +80,7 @@ export const AuthValidation = {
   loginValidationSchema,
   changePasswordValidationSchema,
   refreshTokenValidationSchema,
-  activateOrBlockUserValidationSchema,
+  approvedOrRejectedUserValidationSchema,
   verifyOtpValidationSchema,
   resendOtpValidationSchema,
 };

@@ -380,11 +380,69 @@ const approvedOrRejectedUser = async (
       'You cannot change your own status'
     );
   }
-  console.log(existingUser);
 
-  // existingUser.status = payload.status;
-  // await existingUser.save();
-  return existingUser;
+  if (
+    existingUser.role !== 'CUSTOMER' &&
+    existingUser?.status !== 'SUBMITTED'
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `User not submitted the approval request yet`
+    );
+  }
+
+  if (existingUser.status === payload.status) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `User is already ${payload.status.toLowerCase()}`
+    );
+  }
+
+  existingUser.status = payload.status;
+  if (payload.status === 'APPROVED') {
+    existingUser.approvedBy = user.id;
+    existingUser.remarks =
+      payload.remarks ||
+      'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board. Our team will reach out shortly with the next steps to help you get started and make the most of your role on our platform.';
+  } else if (payload.status === 'REJECTED') {
+    existingUser.rejectedBy = user.id;
+    if (!payload.remarks) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Remarks are required for rejection'
+      );
+    }
+    existingUser.remarks = payload.remarks;
+  }
+  await existingUser.save();
+
+  // Prepare email content
+  const emailData = {
+    userName: existingUser.name?.firstName || 'User',
+    userRole: existingUser.role,
+    currentYear: new Date().getFullYear(),
+    remarks: existingUser.remarks || '',
+    isApproved: payload.status === 'APPROVED',
+  };
+
+  const emailHtml = await EmailHelper.createEmailContent(
+    emailData,
+    'user-approval-notification'
+  );
+
+  const emailSubject =
+    payload.status === 'APPROVED'
+      ? `Your ${existingUser?.role} Application has been Approved`
+      : `Your ${existingUser?.role} Application has been Rejected`;
+
+  // Send email
+  await EmailHelper.sendEmail(existingUser.email, emailHtml, emailSubject);
+
+  return {
+    message: `${
+      existingUser?.role
+    } ${payload.status.toLowerCase()} successfully`,
+  };
 };
 
 // Verify OTP

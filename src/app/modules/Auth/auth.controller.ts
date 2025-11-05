@@ -98,8 +98,8 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'User status updated successfully',
-    data: result,
+    message: result?.message,
+    data: null,
   });
 });
 

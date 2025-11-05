@@ -4,7 +4,6 @@ import { TVendor, TVendorImageDocuments } from './vendor.interface';
 import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
 import mongoose from 'mongoose';
-import { User } from '../Customer/customer.model';
 import { AuthUser } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
 import { QueryBuilder } from '../../builder/QueryBuilder';
@@ -77,7 +76,7 @@ const submitVendorForApproval = async (id: string, user: AuthUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  existingVendor.status = 'PENDING';
+  existingVendor.status = 'SUBMITTED';
   await existingVendor.save();
 
   // Prepare & send email to admin for vendor approval
