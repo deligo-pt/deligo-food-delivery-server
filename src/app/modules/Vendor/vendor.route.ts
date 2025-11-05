@@ -25,26 +25,18 @@ router.patch(
   VendorControllers.vendorDocImageUpload
 );
 
-// submit vendor for approval Route
+// vendor soft delete Route
 router.patch(
-  '/:id/submitForApproval',
+  '/:userId/soft-delete',
   auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
-  VendorControllers.submitVendorForApproval
+  VendorControllers.vendorSoftDelete
 );
 
-// approve or reject vendor Route
-router.patch(
-  '/:id/approveOrReject',
-  auth('SUPER_ADMIN', 'ADMIN'),
-  validateRequest(VendorValidation.approveOrRejectVendorValidationSchema),
-  VendorControllers.approveOrRejectVendor
-);
-
-// vendor delete Route
+// vendor permanent delete Route
 router.delete(
-  '/:id',
-  auth('VENDOR', 'SUPER_ADMIN'),
-  VendorControllers.vendorDelete
+  '/:userId/permanent-delete',
+  auth('SUPER_ADMIN'),
+  VendorControllers.vendorPermanentDelete
 );
 
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);

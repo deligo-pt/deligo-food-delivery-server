@@ -38,27 +38,10 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
   });
 });
 
-// submit vendor for approval controller
-const submitVendorForApproval = catchAsync(async (req, res) => {
-  const result = await VendorServices.submitVendorForApproval(
-    req.params.id,
-    req.user as AuthUser
-  );
+// vendor soft delete controller
+const vendorSoftDelete = catchAsync(async (req, res) => {
+  const result = await VendorServices.vendorSoftDelete(req.params.userId);
 
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.existingVendor,
-  });
-});
-
-// approve or reject vendor controller
-const approveOrRejectVendor = catchAsync(async (req, res) => {
-  const result = await VendorServices.approveOrRejectVendor(
-    req.params.id,
-    req.body
-  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -67,9 +50,9 @@ const approveOrRejectVendor = catchAsync(async (req, res) => {
   });
 });
 
-// vendor delete controller
-const vendorDelete = catchAsync(async (req, res) => {
-  const result = await VendorServices.vendorDelete(req.params.id);
+// vendor permanent delete controller
+const vendorPermanentDelete = catchAsync(async (req, res) => {
+  const result = await VendorServices.vendorPermanentDelete(req.params.userId);
 
   sendResponse(res, {
     success: true,
@@ -106,9 +89,8 @@ const getSingleVendor = catchAsync(async (req, res) => {
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
-  approveOrRejectVendor,
-  submitVendorForApproval,
-  vendorDelete,
+  vendorSoftDelete,
+  vendorPermanentDelete,
   getAllVendors,
   getSingleVendor,
 };

@@ -361,12 +361,66 @@ const logoutUser = async (email: string) => {
 //   };
 // };
 
-// Active or Block User Service
+// submit approval request service
+const submitForApproval = async (userId: string, currentUser: AuthUser) => {
+  const result = await findUserByEmailOrId({ id: userId });
+  const existingUser = result?.user;
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
 
+  if (existingUser?.status === 'SUBMITTED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You have already submitted the approval request. Please wait for admin approval.'
+    );
+  }
+  if (existingUser?.status === 'APPROVED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Your account is already approved.'
+    );
+  }
+
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    if (existingUser.userId !== currentUser.id) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to submit approval request for this user'
+      );
+    }
+  }
+
+  existingUser.status = 'SUBMITTED';
+  await existingUser.save();
+
+  // Prepare & send email to admin for user approval
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      userName: existingUser.name?.firstName || 'User',
+      userId: existingUser.userId,
+      currentYear: new Date().getFullYear(),
+      userRole: existingUser.role,
+    },
+    'user-approval-submission-notification'
+  );
+
+  await EmailHelper.sendEmail(
+    existingUser?.email,
+    emailHtml,
+    `New ${existingUser?.role} Submission for Approval`
+  );
+
+  return {
+    message: `${existingUser?.role} submitted for approval successfully`,
+  };
+};
+
+// Active or Block User Service
 const approvedOrRejectedUser = async (
   userId: string,
   payload: TApprovedRejectsPayload,
-  user: AuthUser
+  currentUser: AuthUser
 ) => {
   const result = await findUserByEmailOrId({ id: userId });
   const existingUser = result?.user;
@@ -374,7 +428,7 @@ const approvedOrRejectedUser = async (
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (userId === user.id) {
+  if (userId === currentUser.id) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You cannot change your own status'
@@ -400,12 +454,12 @@ const approvedOrRejectedUser = async (
 
   existingUser.status = payload.status;
   if (payload.status === 'APPROVED') {
-    existingUser.approvedBy = user.id;
+    existingUser.approvedBy = currentUser.id;
     existingUser.remarks =
       payload.remarks ||
       'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board. Our team will reach out shortly with the next steps to help you get started and make the most of your role on our platform.';
   } else if (payload.status === 'REJECTED') {
-    existingUser.rejectedBy = user.id;
+    existingUser.rejectedBy = currentUser.id;
     if (!payload.remarks) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -536,4 +590,5 @@ export const AuthServices = {
   resendOtp,
   verifyOtp,
   approvedOrRejectedUser,
+  submitForApproval,
 };

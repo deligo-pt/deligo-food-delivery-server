@@ -3,9 +3,7 @@ import AppError from '../../errors/AppError';
 import { TVendor, TVendorImageDocuments } from './vendor.interface';
 import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
-import mongoose from 'mongoose';
 import { AuthUser } from '../../constant/user.const';
-import { EmailHelper } from '../../utils/emailSender';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 
@@ -68,75 +66,35 @@ const vendorDocImageUpload = async (
   };
 };
 
-// submit vendor for approval service
-const submitVendorForApproval = async (id: string, user: AuthUser) => {
-  //   istVendorExistsById
-  const existingVendor = await Vendor.findOne({ vendorId: id });
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  existingVendor.status = 'SUBMITTED';
-  await existingVendor.save();
-
-  // Prepare & send email to admin for vendor approval
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      vendorName: existingVendor.businessDetails?.businessName,
-      vendorId: existingVendor.vendorId,
-      currentYear: new Date().getFullYear(),
-    },
-    'vendor-submission-notification'
-  );
-
-  await EmailHelper.sendEmail(
-    user?.email,
-    emailHtml,
-    'New Vendor Submission for Approval'
-  );
-
-  return {
-    message: 'Vendor submitted for approval',
-    existingVendor,
-  };
-};
-
-/// vendor delete service
-const vendorDelete = async (id: string) => {
-  //   isUserExistsById
-  const isUserExistsById = await User.findOne({ id, role: 'VENDOR' });
-  if (!isUserExistsById) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
+/// vendor soft delete service
+const vendorSoftDelete = async (id: string) => {
   //   istVendorExistsById
   const isVendorExistsById = await Vendor.findOne({ userId: id });
 
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
-    // delete user
-    await User.deleteOne(
-      { id: isUserExistsById?.id, role: 'VENDOR' },
-      { session }
-    );
-    // delete vendor
-    if (isVendorExistsById) {
-      await Vendor.deleteOne(
-        { userId: isVendorExistsById?.userId },
-        { session }
-      );
-    }
-
-    await session.commitTransaction();
-    session.endSession();
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
+  if (!isVendorExistsById) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
+
+  isVendorExistsById.isDeleted = true;
+  await isVendorExistsById.save();
 
   return {
     message: 'Vendor deleted successfully',
+  };
+};
+
+// Vendor Permanent Delete Service Here
+const vendorPermanentDelete = async (id: string) => {
+  const isVendorExistsById = await Vendor.findOne({ userId: id });
+
+  if (!isVendorExistsById) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  await Vendor.findOneAndDelete({ userId: id });
+
+  return {
+    message: 'Vendor permanently deleted successfully',
   };
 };
 
@@ -166,8 +124,8 @@ const getSingleVendorFromDB = async (id: string) => {
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
-  submitVendorForApproval,
-  vendorDelete,
+  vendorSoftDelete,
+  vendorPermanentDelete,
   getAllVendors,
   getSingleVendorFromDB,
 };
