@@ -11,20 +11,35 @@ import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
-  user: AuthUser
+  currentUser: AuthUser,
+  profilePhoto: string | undefined
 ) => {
-  const existingCustomer = await Customer.findOne({ userId: customerId });
+  await findUserByEmailOrId({
+    email: currentUser?.email,
+    isDeleted: false,
+  });
+
+  const existingCustomer = await Customer.isUserExistsByUserId(
+    customerId,
+    false
+  );
   if (!existingCustomer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
   }
   if (!existingCustomer?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
   }
-  if (user?.id !== existingCustomer?.userId) {
+  if (
+    currentUser?.role === 'CUSTOMER' &&
+    currentUser?.id !== existingCustomer?.userId
+  ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
     );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
   }
   const updateCustomer = await Customer.findOneAndUpdate(
     { userId: customerId },
@@ -55,17 +70,11 @@ const getSingleCustomerFromDB = async (
   customerId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
+  await findUserByEmailOrId({
     email: currentUser?.email,
-    isDeleted: false,
+    isDeleted: true,
   });
-  const existingUser = result?.user;
-  if (!existingUser) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `You are not a valid ${currentUser.role}`
-    );
-  }
+
   let existingCustomer;
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     existingCustomer = await Customer.isUserExistsByUserId(customerId, false);
@@ -79,8 +88,58 @@ const getSingleCustomerFromDB = async (
   return existingCustomer;
 };
 
+// soft delete customer service
+const softDeleteCustomer = async (
+  customerId: string,
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({
+    email: currentUser?.email,
+    isDeleted: false,
+  });
+
+  const existingCustomer = await Customer.findOne(
+    { userId: customerId },
+    { isDeleted: false }
+  );
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
+  }
+  existingCustomer.isDeleted = true;
+  await existingCustomer.save();
+
+  return {
+    message: 'Customer deleted successfully',
+  };
+};
+
+// permanent delete customer service
+const permanentDeleteCustomer = async (
+  customerId: string,
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({
+    email: currentUser?.email,
+    isDeleted: false,
+  });
+
+  const existingCustomer = await Customer.isUserExistsByUserId(
+    customerId,
+    true
+  );
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
+  }
+  await Customer.deleteOne({ userId: customerId });
+
+  return {
+    message: 'Customer permanently deleted successfully',
+  };
+};
+
 export const CustomerServices = {
   updateCustomer,
   getAllCustomersFromDB,
   getSingleCustomerFromDB,
+  softDeleteCustomer,
 };
