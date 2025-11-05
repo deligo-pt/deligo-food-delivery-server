@@ -10,7 +10,7 @@ const deliveryPartnerSchema = new Schema<
   IUserModel<TDeliveryPartner>
 >(
   {
-    deliveryPartnerId: {
+    userId: {
       type: String,
       required: true,
       unique: true,

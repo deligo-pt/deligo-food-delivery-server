@@ -7,7 +7,7 @@ import { USER_STATUS } from '../../constant/user.const';
 
 const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {
-    customerId: {
+    userId: {
       type: String,
       required: true,
       unique: true,

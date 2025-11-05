@@ -12,21 +12,21 @@ const updateCustomer = async (
   customerId: string,
   user: AuthUser
 ) => {
-  const existingCustomer = await Customer.findOne({ customerId });
+  const existingCustomer = await Customer.findOne({ userId: customerId });
   if (!existingCustomer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
   }
   if (!existingCustomer?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
   }
-  if (user?.id !== existingCustomer?.customerId) {
+  if (user?.id !== existingCustomer?.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
     );
   }
   const updateCustomer = await Customer.findOneAndUpdate(
-    { customerId },
+    { userId: customerId },
     payload,
     {
       new: true,
@@ -52,7 +52,7 @@ const getAllCustomersFromDB = async (query: Record<string, unknown>) => {
 // get single customer
 const getSingleCustomerFromDB = async (id: string, user: AuthUser) => {
   console.log(user);
-  const existingCustomer = await Customer.findOne({ customerId: id });
+  const existingCustomer = await Customer.findOne({ userId: id });
   if (!existingCustomer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
   }

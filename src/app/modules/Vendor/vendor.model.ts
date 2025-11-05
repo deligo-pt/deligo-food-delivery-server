@@ -8,7 +8,7 @@ import { passwordPlugin } from '../../plugins/passwordPlugin';
 
 const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
-    vendorId: {
+    userId: {
       type: String,
       required: true,
       unique: true,

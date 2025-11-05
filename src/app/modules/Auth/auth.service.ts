@@ -13,8 +13,8 @@ import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
 import config from '../../config';
 import { createToken } from '../../utils/verifyJWT';
-import { findUserByEmail } from '../../utils/findUserByEmail';
 import { TLoginUser } from './auth.interface';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Register User
 const registerUser = async <
@@ -26,7 +26,7 @@ const registerUser = async <
 >(
   payload: T,
   url: string,
-  currentUserRole?: keyof typeof USER_ROLE
+  currentUser: AuthUser
 ) => {
   const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
   const userTypeData = USER_TYPE_MAP[userType];
@@ -34,7 +34,6 @@ const registerUser = async <
   if (!userTypeData || !modelData) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
-
   // Restrict Delivery Partner registration
   if (userType === '/create-delivery-partner') {
     const allowedRoles: (keyof typeof USER_ROLE)[] = [
@@ -42,8 +41,15 @@ const registerUser = async <
       'SUPER_ADMIN',
       'FLEET_MANAGER',
     ];
-
-    if (currentUserRole && !allowedRoles.includes(currentUserRole)) {
+    const allowedUser = await findUserByEmailOrId({ id: currentUser?.id });
+    // console.log({ currentUser, allowedUser });
+    if (!allowedUser) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to register a Delivery Partner'
+      );
+    }
+    if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to register a Delivery Partner'
@@ -150,7 +156,7 @@ const registerUser = async <
 
 const loginUser = async (payload: TLoginUser) => {
   // checking if the user is exist
-  const result = await findUserByEmail(payload?.email);
+  const result = await findUserByEmailOrId({ email: payload?.email });
   const user = result?.user;
   const userModel = result?.model;
 
@@ -178,6 +184,7 @@ const loginUser = async (payload: TLoginUser) => {
 
     user.otp = otp;
     user.isOtpExpired = otpExpires;
+    user.isEmailVerified = false;
     await user.save();
     // Prepare & send verification email
     const emailHtml = await EmailHelper.createEmailContent(
@@ -213,14 +220,7 @@ const loginUser = async (payload: TLoginUser) => {
   //create token and sent to the  client
 
   const jwtPayload = {
-    id:
-      user?.customerId ||
-      user?.vendorId ||
-      user?.deliveryPartnerId ||
-      user?.adminId ||
-      user?.fleetManagerId ||
-      user?.superAdminId ||
-      '',
+    id: user?.userId,
     name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
     email: user?.email,
     contactNumber: user?.contactNumber,
@@ -247,7 +247,7 @@ const loginUser = async (payload: TLoginUser) => {
 };
 
 const logoutUser = async (email: string) => {
-  const result = await findUserByEmail(email);
+  const result = await findUserByEmailOrId({ email });
   const user = result?.user;
 
   if (!user) {
@@ -364,17 +364,17 @@ const logoutUser = async (email: string) => {
 // Active or Block User Service
 
 const approvedOrRejectedUser = async (
-  email: string,
+  userId: string,
   payload: TApprovedRejectsPayload,
   user: AuthUser
 ) => {
-  const result = await findUserByEmail(email);
+  const result = await findUserByEmailOrId({ id: userId });
   const existingUser = result?.user;
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (email === user.email) {
+  if (userId === user.id) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You cannot change your own status'
@@ -447,7 +447,7 @@ const approvedOrRejectedUser = async (
 
 // Verify OTP
 const verifyOtp = async (email: string, otp: string) => {
-  const result = await findUserByEmail(email);
+  const result = await findUserByEmailOrId({ email });
   const user = result?.user;
 
   if (!user) {
@@ -501,7 +501,7 @@ const verifyOtp = async (email: string, otp: string) => {
 
 // Resend OTP
 const resendOtp = async (email: string) => {
-  const result = await findUserByEmail(email);
+  const result = await findUserByEmailOrId({ email });
   const user = result?.user;
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');

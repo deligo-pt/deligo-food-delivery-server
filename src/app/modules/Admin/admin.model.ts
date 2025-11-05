@@ -8,7 +8,7 @@ import { passwordPlugin } from '../../plugins/passwordPlugin';
 
 const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
   {
-    adminId: {
+    userId: {
       type: String,
       required: true,
       unique: true,
