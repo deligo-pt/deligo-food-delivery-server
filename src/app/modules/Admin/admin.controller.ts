@@ -9,7 +9,7 @@ const updateAdmin = catchAsync(async (req, res) => {
   const user = req.user as AuthUser;
   const result = await AdminServices.updateAdmin(
     req.body,
-    req.params.adminId,
+    req.params.userId,
     user
   );
   sendResponse(res, {
