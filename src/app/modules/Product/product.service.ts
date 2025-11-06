@@ -8,6 +8,7 @@ import { TProduct } from './product.interface';
 import { Product } from './product.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Product Create Service
 const createProduct = async (
@@ -63,49 +64,82 @@ const createProduct = async (
 const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
-  user: AuthUser,
+  currentUser: AuthUser,
   images: string[]
 ) => {
-  const existingProduct = await Product.findOne({ productId });
-  if (!existingProduct) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  }
-
-  if (user.role === 'VENDOR') {
-    const existingProduct = await Product.findOne({
-      productId,
-      'vendor.vendorId': user.id,
-    });
-    if (!existingProduct) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'Product not found or you are not authorized to update this product'
-      );
-    }
-  }
-
-  // ------------Generating Product Final Price if price or discount is updated ------------
-  if (payload.pricing?.price || payload.pricing?.discount) {
-    const newPrice = payload.pricing?.price || existingProduct.pricing?.price;
-    const discountAmount =
-      (newPrice *
-        (payload.pricing?.discount
-          ? payload.pricing?.discount
-          : existingProduct.pricing?.discount || 0)) /
-      100;
-    const finalPrice = newPrice - discountAmount;
-    payload.pricing.finalPrice = parseFloat(finalPrice.toFixed(2));
-  }
-
-  // ----------- Image URLs Adjustment ------------
-  if (images.length > 0) {
-    payload.images = images;
-  }
-
-  const product = await Product.findOneAndUpdate({ productId }, payload, {
-    new: true,
+  const existingProduct = await Product.findOne({
+    productId,
+    ...(currentUser.role === 'VENDOR' && { 'vendor.vendorId': currentUser.id }),
   });
-  return product;
+
+  if (!existingProduct) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Product not found or you are not authorized to update this product'
+    );
+  }
+
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  if (!result?.user) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to update this product'
+    );
+  }
+
+  const nestedFields = [
+    'pricing',
+    'stock',
+    'deliveryInfo',
+    'meta',
+    'attributes',
+  ] as const;
+
+  const mergeInto = (target: any, src: any) => {
+    const t = (target?.toObject?.() || target) ?? {};
+    Object.entries(src).forEach(([k, v]) => {
+      if (v !== undefined) (t as any)[k] = v;
+    });
+    return t;
+  };
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined) continue;
+    if (key === 'images' && Array.isArray(value)) {
+      existingProduct.images = [...(existingProduct.images || []), ...value];
+      continue;
+    }
+    if (key === 'tags' && Array.isArray(value)) {
+      existingProduct.tags = value as string[];
+      continue;
+    }
+    if (
+      (nestedFields as readonly string[]).includes(key) &&
+      !Array.isArray(value) &&
+      typeof value === 'object'
+    ) {
+      (existingProduct as any)[key] = mergeInto(
+        (existingProduct as any)[key],
+        value
+      );
+      if (key === 'attributes') existingProduct.markModified('attributes');
+      if (key === 'pricing') existingProduct.markModified('pricing');
+      if (key === 'stock') existingProduct.markModified('stock');
+      if (key === 'deliveryInfo') existingProduct.markModified('deliveryInfo');
+      if (key === 'meta') existingProduct.markModified('meta');
+      continue;
+    }
+    (existingProduct as any)[key] = value;
+  }
+
+  if (images && images.length > 0) {
+    existingProduct.images = [...(existingProduct.images || []), ...images];
+  }
+  await existingProduct.save({ validateModifiedOnly: true });
+  return existingProduct;
 };
 
 // product image delete service

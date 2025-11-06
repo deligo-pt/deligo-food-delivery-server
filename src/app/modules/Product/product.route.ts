@@ -24,7 +24,7 @@ router.patch(
   auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   multerUpload.array('files'),
   parseBody,
-  // validateRequest(ProductValidation.updateProductValidationSchema),
+  validateRequest(ProductValidation.updateProductValidationSchema),
   ProductControllers.updateProduct
 );
 
