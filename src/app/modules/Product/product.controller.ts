@@ -117,7 +117,10 @@ const getAllProducts = catchAsync(async (req, res) => {
 // get single product controller
 const getSingleProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
-  const result = await ProductServices.getSingleProduct(productId);
+  const result = await ProductServices.getSingleProduct(
+    productId,
+    req.user as AuthUser
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
