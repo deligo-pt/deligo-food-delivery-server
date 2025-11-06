@@ -69,40 +69,6 @@ const fleetManagerDocImageUpload = async (
   };
 };
 
-// fleet manager soft delete service
-const fleetManagerSoftDelete = async (id: string) => {
-  //   istFleetManagerExistsById
-  const isFleetManagerExistsById = await FleetManager.findOne({ userId: id });
-
-  if (!isFleetManagerExistsById) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
-  }
-
-  isFleetManagerExistsById.isDeleted = true;
-  await isFleetManagerExistsById.save();
-
-  return {
-    message: 'Fleet Manager deleted successfully',
-  };
-};
-
-// fleet manager permanent delete service
-const fleetManagerPermanentDelete = async (userId: string) => {
-  const isFleetManagerExistsById = await FleetManager.findOne({
-    userId,
-  });
-
-  if (!isFleetManagerExistsById) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
-  }
-
-  await FleetManager.findOneAndDelete({ userId });
-
-  return {
-    message: 'Fleet Manager permanently deleted successfully',
-  };
-};
-
 // get all fleet managers
 const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
   const fleetManagers = new QueryBuilder(FleetManager.find(), query)
@@ -129,8 +95,6 @@ const getSingleFleetManagerFromDB = async (id: string) => {
 export const FleetManagerServices = {
   fleetManagerUpdate,
   fleetManagerDocImageUpload,
-  fleetManagerSoftDelete,
-  fleetManagerPermanentDelete,
   getAllFleetManagersFromDb,
   getSingleFleetManagerFromDB,
 };

@@ -24,22 +24,9 @@ router.patch(
   parseBody,
   VendorControllers.vendorDocImageUpload
 );
-
-// vendor soft delete Route
-router.patch(
-  '/:userId/soft-delete',
-  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
-  VendorControllers.vendorSoftDelete
-);
-
-// vendor permanent delete Route
-router.delete(
-  '/:userId/permanent-delete',
-  auth('SUPER_ADMIN'),
-  VendorControllers.vendorPermanentDelete
-);
-
+// get all vendors
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);
+// get single vendor
 router.get(
   '/:id',
   auth('ADMIN', 'SUPER_ADMIN'),

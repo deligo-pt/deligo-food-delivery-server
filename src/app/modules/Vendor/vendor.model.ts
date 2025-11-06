@@ -1,7 +1,6 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
-import { BusinessTypes } from './vendor.constant';
 import { IUserModel } from '../../interfaces/user.interface';
 import { USER_STATUS } from '../../constant/user.const';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
@@ -74,11 +73,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       businessName: { type: String, default: '' },
       businessType: {
         type: String,
-        enum: {
-          values: BusinessTypes,
-          message: 'Invalid business type',
-          default: '',
-        },
+        default: '',
       },
       businessLicenseNumber: { type: String, default: '' },
       NIF: { type: String, default: '' },

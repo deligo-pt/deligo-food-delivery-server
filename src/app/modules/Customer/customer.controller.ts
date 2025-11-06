@@ -49,8 +49,6 @@ const getSingleCustomer = catchAsync(async (req, res) => {
   });
 });
 
-// soft delete customer controller
-
 export const CustomerControllers = {
   updateCustomer,
   getAllCustomers,

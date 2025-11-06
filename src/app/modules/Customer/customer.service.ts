@@ -88,58 +88,8 @@ const getSingleCustomerFromDB = async (
   return existingCustomer;
 };
 
-// soft delete customer service
-const softDeleteCustomer = async (
-  customerId: string,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({
-    email: currentUser?.email,
-    isDeleted: false,
-  });
-
-  const existingCustomer = await Customer.findOne(
-    { userId: customerId },
-    { isDeleted: false }
-  );
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
-  }
-  existingCustomer.isDeleted = true;
-  await existingCustomer.save();
-
-  return {
-    message: 'Customer deleted successfully',
-  };
-};
-
-// permanent delete customer service
-const permanentDeleteCustomer = async (
-  customerId: string,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({
-    email: currentUser?.email,
-    isDeleted: false,
-  });
-
-  const existingCustomer = await Customer.isUserExistsByUserId(
-    customerId,
-    true
-  );
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
-  }
-  await Customer.deleteOne({ userId: customerId });
-
-  return {
-    message: 'Customer permanently deleted successfully',
-  };
-};
-
 export const CustomerServices = {
   updateCustomer,
   getAllCustomersFromDB,
   getSingleCustomerFromDB,
-  softDeleteCustomer,
 };
