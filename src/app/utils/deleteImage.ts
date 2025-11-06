@@ -4,9 +4,26 @@ import { TImageFiles } from '../interfaces/image.interface';
 export const deleteImageFromCloudinary = (files: TImageFiles) => {
   const publicIds: string[] = [];
 
-  for (const file of Object.values(files)) {
-    for (const image of file) {
-      publicIds.push(image.filename);
+  // If files is an array (as in req.files)
+  if (Array.isArray(files)) {
+    for (const file of files) {
+      if (file.filename) publicIds.push(file.filename);
+    }
+  } else {
+    // If files is an object (as in req.files from multer.fields)
+    for (const file of Object.values(files)) {
+      if (Array.isArray(file)) {
+        for (const image of file) {
+          if (image.filename) publicIds.push(image.filename);
+        }
+      } else if (
+        file &&
+        typeof file === 'object' &&
+        'filename' in file &&
+        typeof (file as { filename?: string }).filename === 'string'
+      ) {
+        publicIds.push((file as { filename: string }).filename);
+      }
     }
   }
 

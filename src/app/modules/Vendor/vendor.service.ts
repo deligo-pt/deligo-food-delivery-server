@@ -66,38 +66,6 @@ const vendorDocImageUpload = async (
   };
 };
 
-/// vendor soft delete service
-const vendorSoftDelete = async (id: string) => {
-  //   istVendorExistsById
-  const isVendorExistsById = await Vendor.findOne({ userId: id });
-
-  if (!isVendorExistsById) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  isVendorExistsById.isDeleted = true;
-  await isVendorExistsById.save();
-
-  return {
-    message: 'Vendor deleted successfully',
-  };
-};
-
-// Vendor Permanent Delete Service Here
-const vendorPermanentDelete = async (id: string) => {
-  const isVendorExistsById = await Vendor.findOne({ userId: id });
-
-  if (!isVendorExistsById) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  await Vendor.findOneAndDelete({ userId: id });
-
-  return {
-    message: 'Vendor permanently deleted successfully',
-  };
-};
-
 // get all vendors
 const getAllVendors = async (query: Record<string, unknown>) => {
   const vendors = new QueryBuilder(Vendor.find(), query)
@@ -124,8 +92,6 @@ const getSingleVendorFromDB = async (id: string) => {
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
-  vendorSoftDelete,
-  vendorPermanentDelete,
   getAllVendors,
   getSingleVendorFromDB,
 };

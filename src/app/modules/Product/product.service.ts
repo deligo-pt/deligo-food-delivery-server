@@ -16,7 +16,7 @@ const createProduct = async (
   images: string[]
 ) => {
   //  ------------ Vendor Details Adjustment ------------
-  const existingVendor = await Vendor.findOne({ vendorId: user.id });
+  const existingVendor = await Vendor.findOne({ userId: user.id });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
@@ -27,10 +27,10 @@ const createProduct = async (
     );
   }
   payload.vendor = {
-    vendorId: existingVendor?.vendorId,
+    vendorId: existingVendor?.userId,
     vendorName: existingVendor?.businessDetails?.businessName || '',
-    vendorType: existingVendor?.businessDetails?.businessType || 'store',
-    rating: existingVendor?.rating || 0,
+    vendorType: existingVendor?.businessDetails?.businessType || '',
+    rating: existingVendor?.rating?.average || 0,
   };
 
   //  ------------ Generating productId ------------
@@ -43,31 +43,19 @@ const createProduct = async (
   }
   payload.productId = newProductId;
   //  ------------ Generating slug ------------
-  const newSlug =
-    payload.name
-      .toLowerCase()
-      .replace(/ /g, '-')
-      .replace(/[^\w-]+/g, '') +
-    `-${String(newProductId.split('-')[1]).padStart(4, '0')}`;
+  const newSlug = payload.name
+    .toLowerCase()
+    .replace(/ /g, '-')
+    .replace(/[^\w-]+/g, '');
   payload.slug = newSlug;
   //  ------------ Generating SKU ------------
-  const newSKU = `SKU-${payload.productType.toUpperCase()}-${String(
-    newProductId
-  )
+  const newSKU = `SKU-${payload?.category?.toUpperCase()}-${String(newProductId)
     .split('-')
     .pop()
     ?.padStart(4, '0')}`;
   payload.sku = newSKU;
 
-  // ------------Generating Product Final Price ------------
-  const discountAmount = (payload.price * (payload.discount || 0)) / 100;
-  const finalPrice = payload.price - discountAmount;
-  payload.finalPrice = parseFloat(finalPrice.toFixed(2));
-
-  // ------------ Image URLs Adjustment ------------
-  payload.images = images;
-
-  const newProduct = await Product.create(payload);
+  const newProduct = await Product.create({ ...payload, images });
   return newProduct;
 };
 
@@ -97,14 +85,16 @@ const updateProduct = async (
   }
 
   // ------------Generating Product Final Price if price or discount is updated ------------
-  if (payload.price || payload.discount) {
-    const newPrice = payload.price || existingProduct.price;
+  if (payload.pricing?.price || payload.pricing?.discount) {
+    const newPrice = payload.pricing?.price || existingProduct.pricing?.price;
     const discountAmount =
       (newPrice *
-        (payload.discount ? payload.discount : existingProduct.discount || 0)) /
+        (payload.pricing?.discount
+          ? payload.pricing?.discount
+          : existingProduct.pricing?.discount || 0)) /
       100;
     const finalPrice = newPrice - discountAmount;
-    payload.finalPrice = parseFloat(finalPrice.toFixed(2));
+    payload.pricing.finalPrice = parseFloat(finalPrice.toFixed(2));
   }
 
   // ----------- Image URLs Adjustment ------------

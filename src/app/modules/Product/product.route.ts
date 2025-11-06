@@ -3,8 +3,8 @@ import auth from '../../middlewares/auth';
 import { ProductControllers } from './product.controller';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
-import { ProductValidation } from './product.validation';
 import validateRequest from '../../middlewares/validateRequest';
+import { ProductValidation } from './product.validation';
 
 const router = express.Router();
 
@@ -12,9 +12,9 @@ const router = express.Router();
 router.post(
   '/create-product',
   auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
-  multerUpload.array('files'),
+  multerUpload.array('files', 5),
   parseBody,
-  // validateRequest(ProductValidation.createProductValidationSchema),
+  validateRequest(ProductValidation.createProductValidationSchema),
   ProductControllers.productCreate
 );
 
