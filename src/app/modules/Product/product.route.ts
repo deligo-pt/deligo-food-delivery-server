@@ -59,8 +59,21 @@ router.get(
 // Get single product
 router.get(
   '/:productId',
-  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
+  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
   ProductControllers.getSingleProduct
 );
 
+// Soft delete product
+router.delete(
+  '/soft-delete/:productId',
+  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.softDeleteProduct
+);
+
+// Permanent delete product
+router.delete(
+  '/permanent-delete/:productId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.permanentDeleteProduct
+);
 export const ProductRoutes = router;

@@ -82,14 +82,14 @@ router.post(
 
 // soft Delete User Route
 router.delete(
-  '/:userId/soft-delete',
+  '/soft-delete/:userId',
   auth('ADMIN', 'SUPER_ADMIN'),
   AuthControllers.softDeleteUser
 );
 
 // permanent Delete User Route
 router.delete(
-  '/:userId/permanent-delete',
+  '/permanent-delete/:userId',
   auth('ADMIN', 'SUPER_ADMIN'),
   AuthControllers.permanentDeleteUser
 );

@@ -59,7 +59,11 @@ const deleteProductImages = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const images = req.body.images;
 
-  const result = await ProductServices.deleteProductImages(productId, images);
+  const result = await ProductServices.deleteProductImages(
+    productId,
+    images,
+    req.user as AuthUser
+  );
 
   sendResponse(res, {
     success: true,
@@ -129,6 +133,36 @@ const getSingleProduct = catchAsync(async (req, res) => {
   });
 });
 
+// soft delete product controller
+const softDeleteProduct = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.softDeleteProduct(
+    productId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// product permanent delete controller
+const permanentDeleteProduct = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.permanentDeleteProduct(
+    productId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 export const ProductControllers = {
   productCreate,
   getAllProducts,
@@ -137,4 +171,6 @@ export const ProductControllers = {
   getSingleProductByVendor,
   updateProduct,
   deleteProductImages,
+  softDeleteProduct,
+  permanentDeleteProduct,
 };

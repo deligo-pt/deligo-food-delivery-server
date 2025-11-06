@@ -33,9 +33,10 @@ export const findUserByEmailOrId = async ({
       return { user: foundUser, model: Model };
     }
   }
-  // throw new AppError(
-  //   httpStatus.NOT_FOUND,
-  //   'You are not a valid user for this action!444'
-  // );
-  return null;
+  throw new AppError(
+    httpStatus.NOT_FOUND,
+    email
+      ? `No user found with email "${email}".`
+      : `No user found with ID "${userId}".`
+  );
 };
