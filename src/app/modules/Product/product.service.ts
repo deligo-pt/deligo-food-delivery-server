@@ -143,7 +143,16 @@ const updateProduct = async (
 };
 
 // product image delete service
-const deleteProductImages = async (productId: string, images: string[]) => {
+const deleteProductImages = async (
+  productId: string,
+  images: string[],
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
   const product = await Product.findOne({ productId });
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
@@ -235,7 +244,11 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
     isDeleted: false,
   });
   let product;
-  if (currentUser.role === 'CUSTOMER') {
+  if (
+    currentUser.role === 'CUSTOMER' ||
+    currentUser.role === 'DELIVERY_PARTNER' ||
+    currentUser.role === 'FLEET_MANAGER'
+  ) {
     product = await Product.findOne({
       productId,
       isApproved: true,
@@ -251,6 +264,63 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
   return product;
 };
 
+// product soft delete service
+const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const product = await Product.findOne({ productId });
+  if (currentUser.role === 'VENDOR') {
+    if (currentUser.id !== product?.vendor.vendorId) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'You are not authorized to delete this product'
+      );
+    }
+  }
+
+  if (product?.isDeleted) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Product is already deleted');
+  }
+
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+  product.isDeleted = true;
+  await product.save();
+  return {
+    message: `${product.name} has been deleted successfully`,
+  };
+};
+
+//  product permanent delete service (admin only)
+const permanentDeleteProduct = async (
+  productId: string,
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const product = await Product.findOne({ productId });
+
+  if (product?.isDeleted === false) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Product must be soft deleted before permanent deletion'
+    );
+  }
+
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+  await product.deleteOne();
+  return {
+    message: `${product.name} has been permanently deleted successfully`,
+  };
+};
+
 export const ProductServices = {
   createProduct,
   getAllProducts,
@@ -259,4 +329,6 @@ export const ProductServices = {
   getSingleProductByVendor,
   updateProduct,
   deleteProductImages,
+  softDeleteProduct,
+  permanentDeleteProduct,
 };
