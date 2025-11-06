@@ -167,8 +167,15 @@ const getAllProductsByVendor = async (
   vendorId: string,
   query: Record<string, unknown>
 ) => {
+  const existingVendor = await Vendor.findOne({
+    userId: vendorId,
+    isDeleted: false,
+  });
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
   const products = new QueryBuilder(
-    Product.find({ 'vendor.vendorId': vendorId }),
+    Product.find({ 'vendor.vendorId': vendorId, isDeleted: false }),
     query
   )
     .fields()
@@ -188,6 +195,7 @@ const getSingleProductByVendor = async (
   const product = await Product.findOne({
     productId,
     'vendor.vendorId': vendorId,
+    isDeleted: false,
   });
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
@@ -199,10 +207,16 @@ const getSingleProductByVendor = async (
 // get all products service
 const getAllProducts = async (
   query: Record<string, unknown>,
-  user: AuthUser
+  currentUser: AuthUser
 ) => {
-  if (user.role === 'CUSTOMER') {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (currentUser.role === 'CUSTOMER') {
     query.isApproved = true;
+    query.isDeleted = false;
   }
   const products = new QueryBuilder(Product.find(), query)
     .fields()
@@ -215,8 +229,22 @@ const getAllProducts = async (
 };
 
 // get single product service
-const getSingleProduct = async (productId: string) => {
-  const product = await Product.findOne({ productId });
+const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  let product;
+  if (currentUser.role === 'CUSTOMER') {
+    product = await Product.findOne({
+      productId,
+      isApproved: true,
+      isDeleted: false,
+    });
+  } else {
+    product = await Product.findOne({ productId });
+  }
+
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
