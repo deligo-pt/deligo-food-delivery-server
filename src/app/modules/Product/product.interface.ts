@@ -11,7 +11,6 @@ export type TProduct = {
   category: string;
   subCategory?: string;
   brand?: string;
-  productType?: string;
 
   pricing: {
     price: number;

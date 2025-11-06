@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { model, Schema } from 'mongoose';
 import { TProduct } from './product.interface';
 
@@ -76,6 +77,26 @@ productSchema.pre('save', function (next) {
   const discountedPrice = price - (price * discount) / 100;
   const taxedPrice = discountedPrice + (discountedPrice * tax) / 100;
   this.pricing.finalPrice = parseFloat(taxedPrice.toFixed(2));
+  next();
+});
+
+productSchema.pre('findOneAndUpdate', function (next) {
+  const update = this.getUpdate() as any;
+  const pricing = update?.pricing;
+  if (
+    pricing?.price !== undefined ||
+    pricing?.discount !== undefined ||
+    pricing?.tax !== undefined
+  ) {
+    const price = pricing.price ?? 0;
+    const discount = pricing.discount ?? 0;
+    const tax = pricing.tax ?? 0;
+
+    const discounted = price - (price * discount) / 100;
+    const taxed = discounted + (discounted * tax) / 100;
+
+    update['pricing.finalPrice'] = parseFloat(taxed.toFixed(2));
+  }
   next();
 });
 
