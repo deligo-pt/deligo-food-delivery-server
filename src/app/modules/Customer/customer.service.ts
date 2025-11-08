@@ -38,12 +38,18 @@ const updateCustomer = async (
       'You are not authorized for update'
     );
   }
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
   if (profilePhoto) {
     payload.profilePhoto = profilePhoto;
   }
   const updateCustomer = await Customer.findOneAndUpdate(
     { userId: customerId },
-    payload,
+    { ...payload },
     {
       new: true,
     }

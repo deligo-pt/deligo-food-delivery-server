@@ -37,12 +37,13 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
 
     if (status === 'REJECTED') {
       throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
-    } else if (status === 'PENDING' && user?.role === 'ADMIN') {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'This admin is not active yet !'
-      );
     }
+    // else if (status === 'PENDING' && user?.role === 'ADMIN') {
+    //   throw new AppError(
+    //     httpStatus.FORBIDDEN,
+    //     'This admin is not active yet !'
+    //   );
+    // }
 
     if (
       user.passwordChangedAt &&

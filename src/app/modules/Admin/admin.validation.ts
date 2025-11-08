@@ -2,18 +2,27 @@ import { z } from 'zod';
 import { USER_STATUS } from '../../constant/user.const';
 
 // Update admin data validation schema
-const updateAdminDataValidationSchema = z.object({
+
+export const updateAdminDataValidationSchema = z.object({
   body: z.object({
-    name: z.string().optional(),
+    // Personal Details
+    name: z
+      .object({
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+      })
+      .optional(),
     contactNumber: z.string().optional(),
     profilePhoto: z.string().optional(),
+
+    // Address
     address: z
       .object({
         street: z.string().optional(),
         city: z.string().optional(),
         state: z.string().optional(),
         country: z.string().optional(),
-        zipcode: z.string().optional(),
+        zipCode: z.string().optional(),
       })
       .optional(),
   }),

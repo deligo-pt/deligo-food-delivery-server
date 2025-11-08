@@ -7,7 +7,8 @@ import { Admin } from './admin.model';
 const updateAdmin = async (
   payload: Partial<TAdmin>,
   adminId: string,
-  user: AuthUser
+  currentUser: AuthUser,
+  profilePhoto: string | undefined
 ) => {
   const existingAdmin = await Admin.findOne({ userId: adminId });
   if (!existingAdmin) {
@@ -16,15 +17,26 @@ const updateAdmin = async (
   if (!existingAdmin?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
   }
-  if (user?.id !== existingAdmin?.userId) {
+  if (currentUser?.id !== existingAdmin?.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
     );
   }
+
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
+  }
+
   const updateAdmin = await Admin.findOneAndUpdate(
     { userId: adminId },
-    payload,
+    { ...payload },
     {
       new: true,
     }
