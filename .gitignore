@@ -2,6 +2,5 @@ node_modules/
 dist
 .env
 .vercel
-app/config/deligo-firebase-fcm.json
 
 src/app/config/deligo-firebase-fcm.json
