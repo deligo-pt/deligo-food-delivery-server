@@ -4,3 +4,4 @@ dist
 .vercel
 
 src/app/config/deligo-firebase-fcm.json
+src/app/config/deligo-firebase-fcm.json
