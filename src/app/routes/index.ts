@@ -44,7 +44,7 @@ const moduleRoutes = [
     route: ProductRoutes,
   },
   {
-    path: '/cart',
+    path: '/carts',
     route: CartRoutes,
   },
   {
