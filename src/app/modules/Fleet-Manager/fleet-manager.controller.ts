@@ -39,34 +39,6 @@ const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
   });
 });
 
-// fleet manager soft delete controller
-const fleetManagerSoftDelete = catchAsync(async (req, res) => {
-  const result = await FleetManagerServices.fleetManagerSoftDelete(
-    req.params.userId
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
-  });
-});
-
-// fleet manager permanent delete controller
-const fleetManagerPermanentDelete = catchAsync(async (req, res) => {
-  const result = await FleetManagerServices.fleetManagerPermanentDelete(
-    req.params.userId
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
-  });
-});
-
 // get all fleet managers
 const getAllFleetManagers = catchAsync(async (req, res) => {
   const users = await FleetManagerServices.getAllFleetManagersFromDb(req.query);
@@ -96,8 +68,6 @@ const getSingleFleetManager = catchAsync(async (req, res) => {
 export const FleetManagerControllers = {
   fleetManagerUpdate,
   fleetManagerDocImageUpload,
-  fleetManagerSoftDelete,
   getAllFleetManagers,
   getSingleFleetManager,
-  fleetManagerPermanentDelete,
 };

@@ -1,5 +1,4 @@
 import { USER_STATUS } from '../../constant/user.const';
-import { TBusinessTypes } from './vendor.constant';
 
 export type TVendor = {
   _id?: string;
@@ -44,7 +43,7 @@ export type TVendor = {
   // Business Details
   businessDetails?: {
     businessName: string;
-    businessType: TBusinessTypes;
+    businessType: string;
     businessLicenseNumber?: string;
     NIF?: string;
     noOfBranch: number;

@@ -11,11 +11,9 @@ export const findUserByEmailOrId = async ({
   email?: string;
   isDeleted?: boolean;
 }) => {
-  console.log({ userId });
   if (!email && !userId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Email or ID must be provided');
   }
-
   for (const Model of ALL_USER_MODELS) {
     let foundUser = null;
     if (email) {
@@ -35,5 +33,10 @@ export const findUserByEmailOrId = async ({
       return { user: foundUser, model: Model };
     }
   }
-  return null;
+  throw new AppError(
+    httpStatus.NOT_FOUND,
+    email
+      ? `No user found with email "${email}".`
+      : `No user found with ID "${userId}".`
+  );
 };

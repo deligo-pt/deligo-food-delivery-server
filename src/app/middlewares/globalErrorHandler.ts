@@ -14,6 +14,7 @@ import { deleteImageFromCloudinary } from '../utils/deleteImage';
 
 const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
   //setting default values
+  // console.log({ err });
   let statusCode = 500;
   let message = 'Something went wrong!';
   let errorSources: TErrorSources = [
@@ -22,9 +23,13 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
       message: 'Something went wrong',
     },
   ];
-
+  // console.log(req);
   if (req.files && Object.keys(req.files).length > 0) {
-    await deleteImageFromCloudinary(req.files as TImageFiles);
+    try {
+      await deleteImageFromCloudinary(req.files as TImageFiles);
+    } catch (deleteError) {
+      console.error('Failed to delete images:', deleteError);
+    }
   }
 
   if (err instanceof ZodError) {

@@ -3,22 +3,28 @@ import validateRequest from '../../middlewares/validateRequest';
 import auth from '../../middlewares/auth';
 import { CustomerControllers } from './customer.controller';
 import { CustomerValidation } from './customer.validation';
+import { multerUpload } from '../../config/multer.config';
+import { parseBody } from '../../middlewares/bodyParser';
 
 const router = Router();
 
 // User Update Route
 router.patch(
-  '/:id',
+  '/:customerId',
   auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
+  multerUpload.single('file'),
+  parseBody,
   validateRequest(CustomerValidation.updateCustomerDataValidationSchema),
   CustomerControllers.updateCustomer
 );
 
+// Get all customers
 router.get(
   '/',
   auth('ADMIN', 'SUPER_ADMIN'),
   CustomerControllers.getAllCustomers
 );
+// Get single customer
 router.get(
   '/:customerId',
   auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'VENDOR'),

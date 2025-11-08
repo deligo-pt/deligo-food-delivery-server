@@ -59,7 +59,11 @@ const deleteProductImages = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const images = req.body.images;
 
-  const result = await ProductServices.deleteProductImages(productId, images);
+  const result = await ProductServices.deleteProductImages(
+    productId,
+    images,
+    req.user as AuthUser
+  );
 
   sendResponse(res, {
     success: true,
@@ -117,12 +121,45 @@ const getAllProducts = catchAsync(async (req, res) => {
 // get single product controller
 const getSingleProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
-  const result = await ProductServices.getSingleProduct(productId);
+  const result = await ProductServices.getSingleProduct(
+    productId,
+    req.user as AuthUser
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Product retrieved successfully',
     data: result,
+  });
+});
+
+// soft delete product controller
+const softDeleteProduct = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.softDeleteProduct(
+    productId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// product permanent delete controller
+const permanentDeleteProduct = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.permanentDeleteProduct(
+    productId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
   });
 });
 
@@ -134,4 +171,6 @@ export const ProductControllers = {
   getSingleProductByVendor,
   updateProduct,
   deleteProductImages,
+  softDeleteProduct,
+  permanentDeleteProduct,
 };

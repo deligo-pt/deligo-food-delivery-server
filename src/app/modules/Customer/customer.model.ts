@@ -20,11 +20,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     email: {
       type: String,
       required: true,
-      //validate email
-      match: [
-        /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
-        'Please fill a valid email address',
-      ],
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
     password: {
       type: String,

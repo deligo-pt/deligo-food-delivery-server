@@ -38,30 +38,6 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
   });
 });
 
-// vendor soft delete controller
-const vendorSoftDelete = catchAsync(async (req, res) => {
-  const result = await VendorServices.vendorSoftDelete(req.params.userId);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
-  });
-});
-
-// vendor permanent delete controller
-const vendorPermanentDelete = catchAsync(async (req, res) => {
-  const result = await VendorServices.vendorPermanentDelete(req.params.userId);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
-  });
-});
-
 // get all vendors
 const getAllVendors = catchAsync(async (req, res) => {
   const users = await VendorServices.getAllVendors(req.query);
@@ -89,8 +65,6 @@ const getSingleVendor = catchAsync(async (req, res) => {
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
-  vendorSoftDelete,
-  vendorPermanentDelete,
   getAllVendors,
   getSingleVendor,
 };

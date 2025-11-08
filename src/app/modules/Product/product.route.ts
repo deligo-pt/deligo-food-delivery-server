@@ -3,8 +3,8 @@ import auth from '../../middlewares/auth';
 import { ProductControllers } from './product.controller';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
-import { ProductValidation } from './product.validation';
 import validateRequest from '../../middlewares/validateRequest';
+import { ProductValidation } from './product.validation';
 
 const router = express.Router();
 
@@ -12,9 +12,9 @@ const router = express.Router();
 router.post(
   '/create-product',
   auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
-  multerUpload.array('files'),
+  multerUpload.array('files', 5),
   parseBody,
-  // validateRequest(ProductValidation.createProductValidationSchema),
+  validateRequest(ProductValidation.createProductValidationSchema),
   ProductControllers.productCreate
 );
 
@@ -24,7 +24,7 @@ router.patch(
   auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   multerUpload.array('files'),
   parseBody,
-  // validateRequest(ProductValidation.updateProductValidationSchema),
+  validateRequest(ProductValidation.updateProductValidationSchema),
   ProductControllers.updateProduct
 );
 
@@ -59,8 +59,21 @@ router.get(
 // Get single product
 router.get(
   '/:productId',
-  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
+  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
   ProductControllers.getSingleProduct
 );
 
+// Soft delete product
+router.delete(
+  '/soft-delete/:productId',
+  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.softDeleteProduct
+);
+
+// Permanent delete product
+router.delete(
+  '/permanent-delete/:productId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.permanentDeleteProduct
+);
 export const ProductRoutes = router;
