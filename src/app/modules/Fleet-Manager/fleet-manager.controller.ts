@@ -6,11 +6,14 @@ import { FleetManagerServices } from './fleet-manager.service';
 
 // Fleet Manager Update Controller
 const fleetManagerUpdate = catchAsync(async (req, res) => {
-  const user = req.user as AuthUser;
+  const currentUser = req.user as AuthUser;
+  const file = req?.file;
+
   const result = await FleetManagerServices.fleetManagerUpdate(
     req.params.id,
     req.body,
-    user
+    currentUser,
+    file?.path
   );
 
   sendResponse(res, {

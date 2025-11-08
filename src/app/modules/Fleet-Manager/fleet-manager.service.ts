@@ -14,7 +14,8 @@ import { FleetManager } from './fleet-manager.model';
 const fleetManagerUpdate = async (
   id: string,
   payload: Partial<TFleetManager>,
-  user: AuthUser
+  currentUser: AuthUser,
+  profilePhoto: string | undefined
 ) => {
   //   istFleetManagerExistsById
   const existingFleetManager = await FleetManager.findOne({ userId: id });
@@ -22,15 +23,26 @@ const fleetManagerUpdate = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (user?.id !== existingFleetManager?.userId) {
+  if (currentUser?.id !== existingFleetManager?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update!'
     );
   }
+
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
+  }
+
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
     { userId: existingFleetManager.userId },
-    payload,
+    { ...payload },
     { new: true }
   );
   return updatedFleetManager;

@@ -161,7 +161,7 @@ const loginUser = async (payload: TLoginUser) => {
   // checking if the user is exist
   const result = await findUserByEmailOrId({
     email: payload?.email,
-    // isDeleted: false,
+    isDeleted: false,
   });
   const user = result?.user;
   const userModel = result?.model;
@@ -249,6 +249,7 @@ const loginUser = async (payload: TLoginUser) => {
   return {
     accessToken,
     refreshToken,
+    message: `${user?.role} logged in successfully!`,
   };
 };
 
