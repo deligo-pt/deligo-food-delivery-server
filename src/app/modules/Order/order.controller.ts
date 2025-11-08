@@ -21,7 +21,25 @@ const createOrder = catchAsync(async (req, res) => {
 
 // order by vendor controller
 const getOrdersByVendor = catchAsync(async (req, res) => {
-  const result = await OrderServices.getOrdersByVendor(req.user?.id as string);
+  const result = await OrderServices.getOrdersByVendor(
+    req.user?.id as string,
+    req.query
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Orders retrieved successfully',
+    data: result,
+  });
+});
+
+// get all orders
+const getAllOrders = catchAsync(async (req, res) => {
+  const result = await OrderServices.getAllOrders(
+    req.query,
+    req.user as AuthUser
+  );
 
   sendResponse(res, {
     success: true,
@@ -34,4 +52,5 @@ const getOrdersByVendor = catchAsync(async (req, res) => {
 export const OrderControllers = {
   createOrder,
   getOrdersByVendor,
+  getAllOrders,
 };

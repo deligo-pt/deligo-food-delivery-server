@@ -11,7 +11,8 @@ import { VendorSearchableFields } from './vendor.constant';
 const vendorUpdate = async (
   id: string,
   payload: Partial<TVendor>,
-  user: AuthUser
+  currentUser: AuthUser,
+  profilePhoto: string | undefined
 ) => {
   //   istVendorExistsById
   const existingVendor = await Vendor.findOne({ userId: id });
@@ -19,15 +20,25 @@ const vendorUpdate = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  if (user?.id !== existingVendor?.userId) {
+  if (currentUser?.id !== existingVendor?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update!'
     );
   }
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
+  }
+
   const updatedVendor = await Vendor.findOneAndUpdate(
     { userId: existingVendor.userId },
-    payload,
+    { ...payload },
     { new: true }
   );
   return updatedVendor;

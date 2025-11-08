@@ -41,6 +41,13 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       type: Boolean,
       default: false,
     },
+
+    // fcm tokens for push notifications
+    fcmTokens: {
+      type: [String],
+      default: [],
+    },
+
     // OTP Details
     otp: {
       type: String,

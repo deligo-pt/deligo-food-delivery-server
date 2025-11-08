@@ -10,6 +10,9 @@ export type TFleetManager = {
   isEmailVerified: boolean;
   isDeleted: boolean;
 
+  // fcm token for push notifications
+  fcmToken?: string[];
+
   // OTP Details
   otp?: string;
   isOtpExpired?: Date | string;

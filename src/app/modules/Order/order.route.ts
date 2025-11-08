@@ -14,4 +14,7 @@ router.get(
   OrderControllers.getOrdersByVendor
 );
 
+// Get all orders (admin)
+router.get('/', auth('ADMIN', 'SUPER_ADMIN'), OrderControllers.getAllOrders);
+
 export const OrderRoutes = router;

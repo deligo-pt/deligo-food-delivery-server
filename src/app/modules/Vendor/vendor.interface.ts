@@ -18,6 +18,9 @@ export type TVendor = {
   totalOrders?: number;
   lastLoginAt?: Date | string;
 
+  // fcm tokens
+  fcmTokens?: string[];
+
   // OTP Details
   otp?: string;
   isOtpExpired?: Date | string;
