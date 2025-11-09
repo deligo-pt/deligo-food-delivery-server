@@ -8,13 +8,16 @@ const router = express.Router();
 router.post('/checkout', auth('CUSTOMER'), OrderControllers.createOrder);
 
 // Get orders by vendor
-router.get(
-  '/vendor/orders',
-  auth('VENDOR'),
-  OrderControllers.getOrdersByVendor
-);
+router.get('/vendor', auth('VENDOR'), OrderControllers.getOrdersByVendor);
 
 // Get all orders (admin)
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), OrderControllers.getAllOrders);
+
+// Get single order
+router.get(
+  '/:orderId',
+  auth('CUSTOMER', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER'),
+  OrderControllers.getSingleOrder
+);
 
 export const OrderRoutes = router;

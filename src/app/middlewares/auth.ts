@@ -25,12 +25,10 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
     const { role, email, iat } = decoded;
 
     const result = await findUserByEmailOrId({ email, isDeleted: false });
-    const user = result?.user;
+
     const foundModel = result?.model;
 
-    if (!user) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!2');
-    }
+    const user = result?.user;
     // checking if the user is already deleted
 
     const status = user?.status;

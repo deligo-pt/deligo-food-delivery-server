@@ -17,13 +17,13 @@ export const findUserByEmailOrId = async ({
   for (const Model of ALL_USER_MODELS) {
     let foundUser = null;
     if (email) {
-      if (isDeleted) {
+      if (typeof isDeleted === 'boolean') {
         foundUser = await Model.isUserExistsByEmail(email, isDeleted);
       } else {
         foundUser = await Model.isUserExistsByEmail(email);
       }
     } else if (userId) {
-      if (isDeleted) {
+      if (typeof isDeleted === 'boolean') {
         foundUser = await Model.isUserExistsByUserId(userId, isDeleted);
       } else {
         foundUser = await Model.isUserExistsByUserId(userId);

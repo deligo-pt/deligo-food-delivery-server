@@ -45,11 +45,10 @@ const registerUser = async <
       userId: currentUser?.id,
       isDeleted: false,
     });
-    // console.log({ currentUser, allowedUser });
-    if (!allowedUser) {
+    if (allowedUser.user.status !== 'APPROVED') {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to register a Delivery Partner'
+        `You are not approved to register a Delivery Partner. Your account is ${allowedUser.user.status}`
       );
     }
     if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
@@ -166,10 +165,6 @@ const loginUser = async (payload: TLoginUser) => {
   const user = result?.user;
   const userModel = result?.model;
 
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-  }
-
   // checking if the user is blocked
 
   const userStatus = user?.status;
@@ -256,10 +251,6 @@ const loginUser = async (payload: TLoginUser) => {
 const logoutUser = async (email: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-  }
 
   if (user?.role === 'CUSTOMER') {
     user.isEmailVerified = false;
@@ -372,9 +363,6 @@ const logoutUser = async (email: string) => {
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
 
   if (existingUser?.status === 'SUBMITTED') {
     throw new AppError(
@@ -431,9 +419,6 @@ const approvedOrRejectedUser = async (
 ) => {
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
 
   if (userId === currentUser.id) {
     throw new AppError(
@@ -511,10 +496,6 @@ const verifyOtp = async (email: string, otp: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
 
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
   if (user?.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -566,9 +547,6 @@ const verifyOtp = async (email: string, otp: string) => {
 const resendOtp = async (email: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
   if (user?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'User is already verified');
   }
@@ -592,10 +570,17 @@ const resendOtp = async (email: string) => {
 
 // soft delete user service
 const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     email: currentUser?.email,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete a user. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
@@ -617,10 +602,18 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 
 // permanent delete user service
 const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     email: currentUser?.email,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete a user. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+
   const result = await findUserByEmailOrId({ userId });
   const existingUser = result?.user;
   const model = result?.model;

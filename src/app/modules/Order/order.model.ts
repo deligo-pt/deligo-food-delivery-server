@@ -56,26 +56,26 @@ const orderSchema = new Schema<TOrder>(
     discount: { type: Number, default: 0 },
     finalAmount: { type: Number, required: true },
 
-    paymentMethod: { type: String, enum: ['card', 'mobile'], required: true },
+    paymentMethod: { type: String, enum: ['CARD', 'MOBILE'], required: true },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'completed', 'failed', 'refunded'],
-      default: 'pending',
+      enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'],
+      default: 'PENDING',
     },
 
     orderStatus: {
       type: String,
       enum: [
-        'pending',
-        'accepted',
-        'rejected',
-        'assigned',
-        'pickedUp',
-        'onTheWay',
-        'delivered',
-        'canceled',
+        'PENDING',
+        'ACCEPTED',
+        'REJECTED',
+        'ASSIGNED',
+        'PICKED_UP',
+        'ON_THE_WAY',
+        'DELIVERED',
+        'CANCELED',
       ],
-      default: 'pending',
+      default: 'PENDING',
     },
 
     remarks: { type: String, default: '' },
@@ -100,11 +100,6 @@ const orderSchema = new Schema<TOrder>(
 
 // --- Pre-save hook: auto-generate orderId & recalculate finalAmount ---
 orderSchema.pre('save', function (next) {
-  // if (!this.orderId) {
-  //   const timestamp = Date.now().toString().slice(-6);
-  //   this.orderId = `ORD-${timestamp}`;
-  // }
-
   const total = this.totalPrice || 0;
   const discount = this.discount || 0;
 

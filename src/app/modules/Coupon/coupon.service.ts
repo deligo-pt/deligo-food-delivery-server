@@ -4,13 +4,20 @@ import { TCoupon } from './coupon.interface';
 import { Coupon } from './coupon.model';
 import { AuthUser } from '../../constant/user.const';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { QueryBuilder } from '../../builder/QueryBuilder';
 
 // create coupon service
 const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to create a coupon. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   const existingCoupon = await Coupon.findOne({ code: payload.code });
   if (existingCoupon) {
@@ -26,10 +33,16 @@ const updateCoupon = async (
   payload: Partial<TCoupon>,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update a coupon. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   const existingCoupon = await Coupon.findById(id);
   if (!existingCoupon) {
@@ -61,22 +74,45 @@ const updateCoupon = async (
 };
 
 // get all coupons service
-const getAllCoupons = async (currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+const getAllCoupons = async (
+  currentUser: AuthUser,
+  query: Record<string, unknown>
+) => {
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view coupons. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
-  const coupons = await Coupon.find();
-  return coupons;
+  const coupons = new QueryBuilder(Coupon.find(), query)
+    .filter()
+    .sort()
+    .paginate()
+    .fields()
+    .search(['code', 'description']);
+  const result = await coupons.modelQuery;
+
+  return result;
 };
 
 // coupon delete service
 const deleteCoupon = async (id: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete a coupon. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   const existingCoupon = await Coupon.findById(id);
   if (!existingCoupon) {

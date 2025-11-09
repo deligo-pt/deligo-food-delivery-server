@@ -26,19 +26,19 @@ export type TOrder = {
   totalPrice: number;
   discount?: number;
   finalAmount: number;
-  paymentMethod: 'card' | 'mobile';
-  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
+  paymentMethod: 'CARD' | 'MOBILE';
+  paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
   // Order Lifecycle
   orderStatus:
-    | 'pending' // created by customer, waiting for vendor
-    | 'accepted' // vendor accepted
-    | 'rejected' // vendor rejected
-    | 'assigned' // delivery partner assigned
-    | 'pickedUp' // delivery partner collected product
-    | 'onTheWay' // delivery partner en route
-    | 'delivered' // completed successfully
-    | 'canceled'; // canceled (vendor/customer/admin)
+    | 'PENDING' // created by customer, waiting for vendor
+    | 'ACCEPTED' // vendor accepted
+    | 'REJECTED' // vendor rejected
+    | 'ASSIGNED' // delivery partner assigned
+    | 'PICKED_UP' // delivery partner collected product
+    | 'ON_THE_WAY' // delivery partner en route
+    | 'DELIVERED' // completed successfully
+    | 'CANCELED'; // canceled (vendor/customer/admin)
 
   remarks?: string;
   // OTP Verification

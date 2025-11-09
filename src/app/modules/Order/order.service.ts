@@ -8,6 +8,7 @@ import { Order } from './order.model';
 import { Customer } from '../Customer/customer.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { OrderSearchableFields } from './order.constant';
 
 // Order Service
 
@@ -163,7 +164,7 @@ const getOrdersByVendor = async (
     .sort()
     .fields()
     .paginate()
-    .search(['orderId', 'customerId', 'vendorId']);
+    .search(OrderSearchableFields);
   const result = await orders.modelQuery;
   return result;
 };
@@ -173,31 +174,51 @@ const getAllOrders = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+
+  const existingUser = existingCurrentUser.user;
+  if (existingUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view orders. Your account is ${existingUser.status}`
+    );
+  }
+
   const orders = new QueryBuilder(Order.find(), query)
     .filter()
     .sort()
     .fields()
     .paginate()
-    .search(['orderId', 'customerId', 'vendorId']);
+    .search(OrderSearchableFields);
   const result = await orders.modelQuery;
   return result;
 };
 
-// get single order service
-const getOrderById = async (
-  orderId: string,
-  userId: string,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({
+// get single order for customer service
+const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const order = await Order.findOne({ orderId, customerId: userId });
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view the order. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+
+  let order;
+  const userId = currentUser.id;
+  if (existingCurrentUser?.user?.role === 'CUSTOMER') {
+    order = await Order.findOne({ orderId, customerId: userId });
+  } else if (existingCurrentUser?.user?.role === 'VENDOR') {
+    order = await Order.findOne({ orderId, vendorId: userId });
+  } else {
+    order = await Order.findOne({ orderId });
+  }
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
   }
@@ -208,5 +229,5 @@ export const OrderServices = {
   createOrder,
   getOrdersByVendor,
   getAllOrders,
-  getOrderById,
+  getSingleOrder,
 };

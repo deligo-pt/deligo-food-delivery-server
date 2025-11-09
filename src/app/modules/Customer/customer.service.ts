@@ -14,10 +14,17 @@ const updateCustomer = async (
   currentUser: AuthUser,
   profilePhoto: string | undefined
 ) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     email: currentUser?.email,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update a customer. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   const existingCustomer = await Customer.isUserExistsByUserId(
     customerId,
@@ -58,7 +65,21 @@ const updateCustomer = async (
 };
 
 //get all customers
-const getAllCustomersFromDB = async (query: Record<string, unknown>) => {
+const getAllCustomersFromDB = async (
+  query: Record<string, unknown>,
+  currentUser: AuthUser
+) => {
+  const existingCurrentUser = await findUserByEmailOrId({
+    email: currentUser?.email,
+    isDeleted: false,
+  });
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view customers. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+
   const customers = new QueryBuilder(Customer.find(), query)
     .fields()
     .paginate()
@@ -76,10 +97,17 @@ const getSingleCustomerFromDB = async (
   customerId: string,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     email: currentUser?.email,
-    isDeleted: true,
+    isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view a customer. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   let existingCustomer;
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {

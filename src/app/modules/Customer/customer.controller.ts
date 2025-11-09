@@ -24,7 +24,10 @@ const updateCustomer = catchAsync(async (req, res) => {
 
 // get all customers
 const getAllCustomers = catchAsync(async (req, res) => {
-  const customers = await CustomerServices.getAllCustomersFromDB(req.query);
+  const customers = await CustomerServices.getAllCustomersFromDB(
+    req.query,
+    req.user as AuthUser
+  );
 
   sendResponse(res, {
     success: true,

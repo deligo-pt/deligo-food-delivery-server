@@ -13,26 +13,29 @@ import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 // Product Create Service
 const createProduct = async (
   payload: TProduct,
-  user: AuthUser,
+  currentUser: AuthUser,
   images: string[]
 ) => {
   //  ------------ Vendor Details Adjustment ------------
-  const existingVendor = await Vendor.findOne({ userId: user.id });
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-  if (existingVendor?.status !== 'APPROVED') {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const existingUser = result?.user;
+  if (existingUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Vendor is not approved to add products'
     );
   }
-  payload.vendor = {
-    vendorId: existingVendor?.userId,
-    vendorName: existingVendor?.businessDetails?.businessName || '',
-    vendorType: existingVendor?.businessDetails?.businessType || '',
-    rating: existingVendor?.rating?.average || 0,
-  };
+  if (currentUser.role === 'VENDOR') {
+    payload.vendor = {
+      vendorId: existingUser?.userId,
+      vendorName: existingUser?.businessDetails?.businessName || '',
+      vendorType: existingUser?.businessDetails?.businessType || '',
+      rating: existingUser?.rating?.average || 0,
+    };
+  }
 
   //  ------------ Generating productId ------------
   const lastProduct = await Product.findOne().sort({ productId: -1 });
@@ -83,7 +86,14 @@ const updateProduct = async (
     userId: currentUser.id,
     isDeleted: false,
   });
-  if (!result?.user) {
+  const existingUser = result.user;
+  if (existingUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete product images. Your account is ${existingUser.status}`
+    );
+  }
+  if (!existingUser) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'You are not authorized to update this product'
@@ -148,10 +158,18 @@ const deleteProductImages = async (
   images: string[],
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+
+  const existingUser = result.user;
+  if (existingUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete product images. Your account is ${existingUser.status}`
+    );
+  }
 
   const product = await Product.findOne({ productId });
   if (!product) {
@@ -218,10 +236,17 @@ const getAllProducts = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view products. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   if (currentUser.role === 'CUSTOMER') {
     query.isApproved = true;
@@ -239,10 +264,18 @@ const getAllProducts = async (
 
 // get single product service
 const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view products. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+
   let product;
   if (
     currentUser.role === 'CUSTOMER' ||
@@ -266,10 +299,17 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
 
 // product soft delete service
 const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete a product. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+
   const product = await Product.findOne({ productId });
   if (currentUser.role === 'VENDOR') {
     if (currentUser.id !== product?.vendor.vendorId) {
@@ -299,10 +339,17 @@ const permanentDeleteProduct = async (
   productId: string,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to permanently delete a product. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+
   const product = await Product.findOne({ productId });
 
   if (product?.isDeleted === false) {
