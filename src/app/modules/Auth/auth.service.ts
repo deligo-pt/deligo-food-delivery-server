@@ -156,6 +156,7 @@ const registerUser = async <
   return user;
 };
 
+// Login User
 const loginUser = async (payload: TLoginUser) => {
   // checking if the user is exist
   const result = await findUserByEmailOrId({
@@ -247,7 +248,30 @@ const loginUser = async (payload: TLoginUser) => {
     message: `${user?.role} logged in successfully!`,
   };
 };
+//
+const saveFcmToken = async (userId: string, token: string) => {
+  if (!token) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
+  }
 
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
+  const user = result?.user;
+  const Model = result?.model;
+
+  if (!user || !Model) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  // Add new token if not exists
+  const tokens = new Set([...(user.fcmTokens || []), token]);
+  user.fcmTokens = Array.from(tokens);
+
+  await Model.findOneAndUpdate({ userId }, { fcmTokens: user.fcmTokens });
+
+  return { userId, tokens: user.fcmTokens };
+};
+
+// Logout User
 const logoutUser = async (email: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
@@ -649,6 +673,7 @@ const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
 export const AuthServices = {
   registerUser,
   loginUser,
+  saveFcmToken,
   logoutUser,
   // changePassword,
   // refreshToken,

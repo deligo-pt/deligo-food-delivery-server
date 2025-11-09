@@ -11,7 +11,7 @@ export type TFleetManager = {
   isDeleted: boolean;
 
   // fcm token for push notifications
-  fcmToken?: string[];
+  fcmTokens?: string[];
 
   // OTP Details
   otp?: string;

@@ -5,6 +5,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import { AuthUser } from '../../constant/user.const';
 import config from '../../config';
 
+//register User Controller
 const registerUser = catchAsync(async (req, res) => {
   const url = req.originalUrl;
   const result = await AuthServices.registerUser(
@@ -21,6 +22,7 @@ const registerUser = catchAsync(async (req, res) => {
   });
 });
 
+// Login User Controller
 const loginUser = catchAsync(async (req, res) => {
   const result = await AuthServices.loginUser(req.body);
 
@@ -51,6 +53,20 @@ const loginUser = catchAsync(async (req, res) => {
   });
 });
 
+// Save FCM Token Controller
+const saveFcmToken = catchAsync(async (req, res) => {
+  const { token } = req.body;
+  const result = await AuthServices.saveFcmToken(req.user.id, token);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'FCM token saved successfully',
+    data: result,
+  });
+});
+
+// Logout User Controller
 const logoutUser = catchAsync(async (req, res) => {
   res.clearCookie('refreshToken');
   const result = await AuthServices.logoutUser(req.user.email);
@@ -184,6 +200,7 @@ const permanentDeleteUser = catchAsync(async (req, res) => {
 export const AuthControllers = {
   registerUser,
   loginUser,
+  saveFcmToken,
   logoutUser,
   // changePassword,
   // refreshToken,

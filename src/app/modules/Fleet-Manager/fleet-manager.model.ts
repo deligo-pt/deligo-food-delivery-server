@@ -42,7 +42,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     },
 
     // fcm token for push notifications
-    fcmToken: { type: [String], default: [] },
+    fcmTokens: { type: [String], default: [] },
 
     // OTP Details
     otp: { type: String, default: '' },
