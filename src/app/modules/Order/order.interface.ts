@@ -1,9 +1,3 @@
-export type TOrderData = {
-  items: {
-    productId: string;
-  }[];
-};
-
 export type TOrder = {
   _id?: string;
 
@@ -57,10 +51,13 @@ export type TOrder = {
   };
   pickupAddress?: {
     // vendor’s location
-    street: string;
+    streetAddress: string;
+    streetNumber: string;
     city: string;
+    postalCode: string;
     latitude?: number;
     longitude?: number;
+    geoAccuracy?: number; // meters
   };
 
   // Delivery Details

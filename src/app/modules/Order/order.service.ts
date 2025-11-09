@@ -3,16 +3,18 @@ import { AuthUser } from '../../constant/user.const';
 import AppError from '../../errors/AppError';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
-import { TOrderData } from './order.interface';
 import { Order } from './order.model';
 import { Customer } from '../Customer/customer.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { OrderSearchableFields } from './order.constant';
+import { Vendor } from '../Vendor/vendor.model';
+import { TOrder } from './order.interface';
+import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 
 // Order Service
 
-const createOrder = async (currentUser: AuthUser, orderData: TOrderData) => {
+const createOrder = async (currentUser: AuthUser, payload: TOrder) => {
   const customerId = currentUser.id;
 
   // -------- Check if cart exists --------
@@ -27,7 +29,7 @@ const createOrder = async (currentUser: AuthUser, orderData: TOrderData) => {
 
   // -------- Match selected products with cart --------
   const selectedItems = cart.items.filter((item) =>
-    orderData.items.some((orderItem) => orderItem.productId === item.productId)
+    payload.items.some((orderItem) => orderItem.productId === item.productId)
   );
 
   if (selectedItems.length === 0) {
@@ -125,9 +127,9 @@ const createOrder = async (currentUser: AuthUser, orderData: TOrderData) => {
       totalPrice,
       discount,
       finalAmount,
-      paymentMethod: 'card', // set dynamically later
-      paymentStatus: 'completed',
-      orderStatus: 'pending',
+      paymentMethod: 'CARD', // set dynamically later
+      paymentStatus: 'COMPLETED',
+      orderStatus: 'PENDING',
       deliveryAddress: {
         street: customer.address?.street || '',
         city: customer.address?.city || '',
@@ -146,7 +148,7 @@ const createOrder = async (currentUser: AuthUser, orderData: TOrderData) => {
     // -------- Remove ordered items from cart --------
     cart.items = cart.items.filter(
       (item) =>
-        !orderData.items.some((ordered) => ordered.productId === item.productId)
+        !payload.items.some((ordered) => ordered.productId === item.productId)
     );
     await cart.save();
   }
@@ -185,6 +187,9 @@ const getAllOrders = async (
       httpStatus.FORBIDDEN,
       `You are not approved to view orders. Your account is ${existingUser.status}`
     );
+  }
+  if (existingCurrentUser.user.role === 'DELIVERY_PARTNER') {
+    query.orderStatus = 'ACCEPTED';
   }
 
   const orders = new QueryBuilder(Order.find(), query)
@@ -225,9 +230,123 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   return order;
 };
 
+// accept or reject order by vendor service
+const acceptOrRejectOrderByVendor = async (
+  currentUser: AuthUser,
+  orderId: string,
+  action: { type: 'ACCEPTED' | 'REJECTED' }
+) => {
+  const existingVendor = await Vendor.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+    status: 'APPROVED',
+  });
+  if (!existingVendor) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to accept or reject orders. Please ensure your vendor profile is approved.'
+    );
+  }
+
+  const order = await Order.findOne({ orderId, isDeleted: false });
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+  }
+
+  // only paid and pending orders can be accepted or rejected
+  if (!order.isPaid) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Only paid orders can be accepted or rejected.'
+    );
+  }
+
+  if (action.type === order.orderStatus) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Order is already ${action.type}.`
+    );
+  }
+  if (order.orderStatus !== 'PENDING') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Only pending orders can be accepted or rejected.'
+    );
+  }
+
+  if (action.type === 'ACCEPTED') {
+    order.pickupAddress = {
+      streetAddress: existingVendor.businessLocation?.streetNumber || '',
+      streetNumber: existingVendor.businessLocation?.streetNumber || '',
+      city: existingVendor.businessLocation?.city || '',
+      postalCode: existingVendor?.businessLocation?.postalCode || '',
+      latitude: existingVendor.businessLocation?.latitude,
+      longitude: existingVendor.businessLocation?.longitude,
+      geoAccuracy: existingVendor.businessLocation?.geoAccuracy,
+    };
+    await order.save();
+  }
+
+  const result = await Order.findOneAndUpdate(
+    { orderId },
+    { orderStatus: action.type },
+    { new: true }
+  );
+
+  return result;
+};
+
+// assigned delivery partner service
+const assignDeliveryPartner = async (
+  currentUser: AuthUser,
+  orderId: string
+) => {
+  const existingDeliveryPartner = await DeliveryPartner.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+    status: 'APPROVED',
+  });
+  if (!existingDeliveryPartner) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to view orders. Please ensure your delivery partner profile is approved.'
+    );
+  }
+
+  const order = await Order.findOne({ orderId, isDeleted: false });
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+  }
+
+  if (order.orderStatus === 'ASSIGNED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Order is already assigned to a delivery partner.'
+    );
+  }
+
+  if (order.orderStatus !== 'ACCEPTED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Only accepted orders can be assigned to delivery partners.'
+    );
+  }
+  const result = await Order.findOneAndUpdate(
+    { orderId },
+    {
+      deliveryPartnerId: existingDeliveryPartner.userId,
+      orderStatus: 'ASSIGNED',
+    },
+    { new: true }
+  );
+  return result;
+};
+
 export const OrderServices = {
   createOrder,
   getOrdersByVendor,
   getAllOrders,
   getSingleOrder,
+  acceptOrRejectOrderByVendor,
+  assignDeliveryPartner,
 };

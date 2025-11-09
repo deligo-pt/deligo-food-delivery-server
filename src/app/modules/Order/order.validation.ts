@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const createOrderValidationSchema = z.object({
+const createOrderValidationSchema = z.object({
   body: z.object({
     // Items
     items: z
@@ -75,6 +75,16 @@ export const createOrderValidationSchema = z.object({
   }),
 });
 
+// accept or reject order validation schema
+const acceptOrRejectOrderValidationSchema = z.object({
+  body: z.object({
+    type: z.enum(['ACCEPTED', 'REJECTED'], {
+      required_error: 'Action type is required',
+    }),
+  }),
+});
+
 export const OrderValidation = {
   createOrderValidationSchema,
+  acceptOrRejectOrderValidationSchema,
 };

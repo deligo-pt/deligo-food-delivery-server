@@ -363,6 +363,7 @@ const logoutUser = async (email: string) => {
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
+  const model = result?.model;
 
   if (existingUser?.status === 'SUBMITTED') {
     throw new AppError(
@@ -387,7 +388,11 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   }
 
   existingUser.status = 'SUBMITTED';
-  await existingUser.save();
+  await model.updateOne(
+    { userId: existingUser.userId },
+    { status: 'SUBMITTED' },
+    { new: true }
+  );
 
   // Prepare & send email to admin for user approval
   const emailHtml = await EmailHelper.createEmailContent(

@@ -27,10 +27,13 @@ const addressSchema = new Schema(
 
 const pickupAddressSchema = new Schema(
   {
-    street: { type: String, required: true },
-    city: { type: String, required: true },
-    latitude: { type: Number },
-    longitude: { type: Number },
+    streetAddress: { type: String, default: '' },
+    streetNumber: { type: String, default: '' },
+    city: { type: String, default: '' },
+    postalCode: { type: String, default: '' },
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+    geoAccuracy: { type: Number, default: null },
   },
   { _id: false }
 );

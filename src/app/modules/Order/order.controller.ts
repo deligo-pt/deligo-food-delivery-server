@@ -64,9 +64,42 @@ const getSingleOrder = catchAsync(async (req, res) => {
   });
 });
 
+// accept or reject order by vendor controller
+const acceptOrRejectOrderByVendor = catchAsync(async (req, res) => {
+  const result = await OrderServices.acceptOrRejectOrderByVendor(
+    req.user as AuthUser,
+    req.params.orderId,
+    req.body
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: `Order ${req.body.type.toLowerCase()} successfully`,
+    data: result,
+  });
+});
+
+// assign delivery partner to order controller
+const assignDeliveryPartner = catchAsync(async (req, res) => {
+  const result = await OrderServices.assignDeliveryPartner(
+    req.user as AuthUser,
+    req.params.orderId
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery partner assigned successfully',
+    data: result,
+  });
+});
+
 export const OrderControllers = {
   createOrder,
   getOrdersByVendor,
   getAllOrders,
   getSingleOrder,
+  acceptOrRejectOrderByVendor,
+  assignDeliveryPartner,
 };
