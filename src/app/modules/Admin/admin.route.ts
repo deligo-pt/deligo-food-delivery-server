@@ -18,4 +18,7 @@ router.patch(
   AdminControllers.updateAdmin
 );
 
+// get all admin route
+router.get('/', auth('ADMIN', 'SUPER_ADMIN'), AdminControllers.getAllAdmins);
+
 export const AdminRoutes = router;

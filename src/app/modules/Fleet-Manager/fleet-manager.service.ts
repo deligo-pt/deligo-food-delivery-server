@@ -99,8 +99,23 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 };
 
 // get single fleet manager
-const getSingleFleetManagerFromDB = async (id: string) => {
-  const existingFleetManager = await FleetManager.findOne({ userId: id });
+const getSingleFleetManagerFromDB = async (
+  fleetManagerId: string,
+  currentUser: AuthUser
+) => {
+  if (
+    currentUser?.role === 'FLEET_MANAGER' &&
+    currentUser?.id !== fleetManagerId
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You are not authorize to access this fleet manager!'
+    );
+  }
+
+  const existingFleetManager = await FleetManager.findOne({
+    userId: fleetManagerId,
+  });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
   }

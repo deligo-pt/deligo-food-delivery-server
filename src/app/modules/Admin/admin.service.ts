@@ -3,7 +3,9 @@ import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.const';
 import { TAdmin } from './admin.interface';
 import { Admin } from './admin.model';
-
+import { QueryBuilder } from '../../builder/QueryBuilder';
+import { AdminSearchableFields } from './admin.constant';
+// update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
   adminId: string,
@@ -44,6 +46,25 @@ const updateAdmin = async (
   return updateAdmin;
 };
 
+// get all admin service
+const getAllAdmins = async (query: Record<string, unknown>) => {
+  const admins = new QueryBuilder(Admin.find(), query)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .search(AdminSearchableFields);
+
+  const meta = await admins.countTotal();
+  const data = await admins.modelQuery;
+
+  return {
+    meta,
+    data,
+  };
+};
+
 export const AdminServices = {
   updateAdmin,
+  getAllAdmins,
 };
