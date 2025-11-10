@@ -6,11 +6,13 @@ import { AuthUser } from '../../constant/user.const';
 
 // Vendor Update Controller
 const vendorUpdate = catchAsync(async (req, res) => {
-  const user = req.user as AuthUser;
+  const currentUser = req.user as AuthUser;
+  const file = req.file;
   const result = await VendorServices.vendorUpdate(
     req.params.id,
-    req.body,
-    user
+    req?.body,
+    currentUser,
+    file?.path
   );
 
   sendResponse(res, {
@@ -40,13 +42,14 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
 
 // get all vendors
 const getAllVendors = catchAsync(async (req, res) => {
-  const users = await VendorServices.getAllVendors(req.query);
+  const result = await VendorServices.getAllVendors(req.query);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Vendors Retrieved Successfully',
-    data: users,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

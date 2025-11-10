@@ -6,11 +6,13 @@ import { AdminServices } from './admin.service';
 
 //  Admin update  Controller
 const updateAdmin = catchAsync(async (req, res) => {
-  const user = req.user as AuthUser;
+  const currentUser = req.user as AuthUser;
+  const file = req?.file;
   const result = await AdminServices.updateAdmin(
     req.body,
     req.params.userId,
-    user
+    currentUser,
+    file?.path
   );
   sendResponse(res, {
     success: true,

@@ -14,6 +14,9 @@ export type TCustomer = {
   otp?: string;
   isOtpExpired?: Date;
 
+  // fcm tokens for push notifications
+  fcmTokens?: string[];
+
   // Personal Details
   name?: {
     firstName?: string;

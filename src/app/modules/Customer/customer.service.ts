@@ -14,10 +14,17 @@ const updateCustomer = async (
   currentUser: AuthUser,
   profilePhoto: string | undefined
 ) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     email: currentUser?.email,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update a customer. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   const existingCustomer = await Customer.isUserExistsByUserId(
     customerId,
@@ -38,12 +45,18 @@ const updateCustomer = async (
       'You are not authorized for update'
     );
   }
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
   if (profilePhoto) {
     payload.profilePhoto = profilePhoto;
   }
   const updateCustomer = await Customer.findOneAndUpdate(
     { userId: customerId },
-    payload,
+    { ...payload },
     {
       new: true,
     }
@@ -52,7 +65,21 @@ const updateCustomer = async (
 };
 
 //get all customers
-const getAllCustomersFromDB = async (query: Record<string, unknown>) => {
+const getAllCustomersFromDB = async (
+  query: Record<string, unknown>,
+  currentUser: AuthUser
+) => {
+  const existingCurrentUser = await findUserByEmailOrId({
+    email: currentUser?.email,
+    isDeleted: false,
+  });
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view customers. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+
   const customers = new QueryBuilder(Customer.find(), query)
     .fields()
     .paginate()
@@ -60,9 +87,14 @@ const getAllCustomersFromDB = async (query: Record<string, unknown>) => {
     .filter()
     .search(CustomerSearchableFields);
 
-  const result = await customers.modelQuery;
+  const meta = await customers.countTotal();
 
-  return result;
+  const data = await customers.modelQuery;
+
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single customer
@@ -70,10 +102,17 @@ const getSingleCustomerFromDB = async (
   customerId: string,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     email: currentUser?.email,
-    isDeleted: true,
+    isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view a customer. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   let existingCustomer;
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {

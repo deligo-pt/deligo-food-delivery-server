@@ -48,6 +48,9 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     totalOrders: { type: Number, default: 0 },
     lastLoginAt: { type: Date, default: null },
 
+    // fcm tokens
+    fcmTokens: { type: [String], default: [] },
+
     // OTP Details
     otp: { type: String, default: '' },
     isOtpExpired: { type: Date, default: null },

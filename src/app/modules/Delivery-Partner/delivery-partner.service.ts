@@ -9,7 +9,8 @@ import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerId: string,
-  user: AuthUser
+  currentUser: AuthUser,
+  profilePhoto: string | undefined
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
@@ -20,15 +21,26 @@ const updateDeliveryPartner = async (
   if (!existingDeliveryPartner?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
   }
-  if (user?.id !== existingDeliveryPartner?.userId) {
+  if (currentUser?.id !== existingDeliveryPartner?.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
     );
   }
+
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
+  }
+
   const updateDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
     { userId: deliveryPartnerId },
-    payload,
+    { ...payload },
     {
       new: true,
     }
@@ -45,9 +57,14 @@ const getAllDeliveryPartnersFromDB = async (query: Record<string, unknown>) => {
     .filter()
     .search(DeliveryPartnerSearchableFields);
 
-  const result = await deliveryPartners.modelQuery;
+  const meta = await deliveryPartners.countTotal();
 
-  return result;
+  const data = await deliveryPartners.modelQuery;
+
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single delivery partner

@@ -104,8 +104,9 @@ const viewAllCarts = async (query: Record<string, unknown>) => {
     .paginate()
     .search(['customerId']);
 
-  const result = await carts.modelQuery;
-  return result;
+  const meta = await carts.countTotal();
+  const data = await carts.modelQuery;
+  return { meta, data };
 };
 
 export const CartServices = {

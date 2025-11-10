@@ -1,8 +1,8 @@
-export const ProductSearchableFields = [
-  'name',
-  'description',
-  'category',
-  'tags',
-  'brand',
-  'vendor.vendorName',
+export const OrderSearchableFields = [
+  'orderId',
+  'customerId',
+  'vendorId',
+  'deliveryAddress.street',
+  'deliveryAddress.city',
+  'deliveryAddress.country',
 ];

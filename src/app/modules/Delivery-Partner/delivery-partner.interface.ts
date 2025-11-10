@@ -10,6 +10,9 @@ export type TDeliveryPartner = {
   isEmailVerified: boolean;
   isDeleted: boolean;
 
+  // fcm tokens for push notifications
+  fcmTokens?: string[];
+
   // OTP Details
   otp?: string;
   isOtpExpired?: Date;

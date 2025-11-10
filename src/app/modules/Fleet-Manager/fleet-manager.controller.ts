@@ -6,11 +6,14 @@ import { FleetManagerServices } from './fleet-manager.service';
 
 // Fleet Manager Update Controller
 const fleetManagerUpdate = catchAsync(async (req, res) => {
-  const user = req.user as AuthUser;
+  const currentUser = req.user as AuthUser;
+  const file = req?.file;
+
   const result = await FleetManagerServices.fleetManagerUpdate(
     req.params.id,
     req.body,
-    user
+    currentUser,
+    file?.path
   );
 
   sendResponse(res, {
@@ -41,13 +44,16 @@ const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
 
 // get all fleet managers
 const getAllFleetManagers = catchAsync(async (req, res) => {
-  const users = await FleetManagerServices.getAllFleetManagersFromDb(req.query);
+  const result = await FleetManagerServices.getAllFleetManagersFromDb(
+    req.query
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Fleet Managers Retrieved Successfully',
-    data: users,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

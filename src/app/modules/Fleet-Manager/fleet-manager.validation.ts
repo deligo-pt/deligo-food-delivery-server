@@ -1,8 +1,29 @@
 import { z } from 'zod';
 
-const fleetManagerUpdateValidationSchema = z.object({
+export const fleetManagerUpdateValidationSchema = z.object({
   body: z.object({
-    //  Company Details
+    // Personal Details
+    name: z
+      .object({
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+      })
+      .optional(),
+    contactNumber: z.string().optional(),
+    profilePhoto: z.string().optional(),
+
+    // Address
+    address: z
+      .object({
+        street: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        postalCode: z.string().optional(),
+        country: z.string().optional(),
+      })
+      .optional(),
+
+    // Company Details
     companyDetails: z
       .object({
         companyName: z.string().optional(),
@@ -19,8 +40,10 @@ const fleetManagerUpdateValidationSchema = z.object({
         postalCode: z.string().optional(),
         latitude: z.number().optional(),
         longitude: z.number().optional(),
+        geoAccuracy: z.number().optional(),
       })
       .optional(),
+
     // Bank & Payment Information
     bankDetails: z
       .object({
@@ -30,19 +53,19 @@ const fleetManagerUpdateValidationSchema = z.object({
         swiftCode: z.string().optional(),
       })
       .optional(),
-    // Documents & Verification
-    documents: z
-      .object({
-        idProof: z.string().optional(),
-        companyLicense: z.string().optional(),
-        profilePhoto: z.string().optional(),
-      })
-      .optional(),
 
     // Operation Data
     operationalData: z
       .object({
         noOfDrivers: z.number().optional(),
+        activeVehicles: z.number().optional(),
+        totalDeliveries: z.number().optional(),
+        rating: z
+          .object({
+            average: z.number().optional(),
+            totalReviews: z.number().optional(),
+          })
+          .optional(),
       })
       .optional(),
   }),

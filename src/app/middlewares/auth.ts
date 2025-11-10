@@ -25,24 +25,23 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
     const { role, email, iat } = decoded;
 
     const result = await findUserByEmailOrId({ email, isDeleted: false });
-    const user = result?.user;
+
     const foundModel = result?.model;
 
-    if (!user) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!2');
-    }
+    const user = result?.user;
     // checking if the user is already deleted
 
     const status = user?.status;
 
     if (status === 'REJECTED') {
       throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
-    } else if (status === 'PENDING' && user?.role === 'ADMIN') {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'This admin is not active yet !'
-      );
     }
+    // else if (status === 'PENDING' && user?.role === 'ADMIN') {
+    //   throw new AppError(
+    //     httpStatus.FORBIDDEN,
+    //     'This admin is not active yet !'
+    //   );
+    // }
 
     if (
       user.passwordChangedAt &&

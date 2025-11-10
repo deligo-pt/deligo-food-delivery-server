@@ -6,22 +6,38 @@ import { AuthValidation } from './auth.validation';
 import { Router } from 'express';
 
 const router = Router();
-
+// Register User Route
 router.post(
   [UrlPath.CUSTOMER, UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
   validateRequest(AuthValidation.registerValidationSchema),
   AuthControllers.registerUser
 );
+// Register Delivery Partner Route
 router.post(
   [UrlPath.DELIVERY_PARTNER],
   auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.registerValidationSchema),
   AuthControllers.registerUser
 );
+// Login User Route
 router.post(
   '/login',
   validateRequest(AuthValidation.loginValidationSchema),
   AuthControllers.loginUser
+);
+
+// Save FCM Token Route
+router.post(
+  '/save-fcm-token',
+  auth(
+    'ADMIN',
+    'CUSTOMER',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'FLEET_MANAGER',
+    'SUPER_ADMIN'
+  ),
+  AuthControllers.saveFcmToken
 );
 
 // Logout User Route

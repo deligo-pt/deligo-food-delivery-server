@@ -45,11 +45,10 @@ const registerUser = async <
       userId: currentUser?.id,
       isDeleted: false,
     });
-    // console.log({ currentUser, allowedUser });
-    if (!allowedUser) {
+    if (allowedUser.user.status !== 'APPROVED') {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to register a Delivery Partner'
+        `You are not approved to register a Delivery Partner. Your account is ${allowedUser.user.status}`
       );
     }
     if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
@@ -157,18 +156,15 @@ const registerUser = async <
   return user;
 };
 
+// Login User
 const loginUser = async (payload: TLoginUser) => {
   // checking if the user is exist
   const result = await findUserByEmailOrId({
     email: payload?.email,
-    // isDeleted: false,
+    isDeleted: false,
   });
   const user = result?.user;
   const userModel = result?.model;
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-  }
 
   // checking if the user is blocked
 
@@ -249,16 +245,36 @@ const loginUser = async (payload: TLoginUser) => {
   return {
     accessToken,
     refreshToken,
+    message: `${user?.role} logged in successfully!`,
   };
 };
+//save FCM Token
+const saveFcmToken = async (userId: string, token: string) => {
+  if (!token) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
+  }
 
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
+  const user = result?.user;
+  const Model = result?.model;
+
+  if (!user || !Model) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  // Add new token if not exists
+  const tokens = new Set([...(user.fcmTokens || []), token]);
+  user.fcmTokens = Array.from(tokens);
+
+  await Model.findOneAndUpdate({ userId }, { fcmTokens: user.fcmTokens });
+
+  return { userId, tokens: user.fcmTokens };
+};
+
+// Logout User
 const logoutUser = async (email: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-  }
 
   if (user?.role === 'CUSTOMER') {
     user.isEmailVerified = false;
@@ -371,9 +387,7 @@ const logoutUser = async (email: string) => {
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
+  const model = result?.model;
 
   if (existingUser?.status === 'SUBMITTED') {
     throw new AppError(
@@ -398,7 +412,11 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   }
 
   existingUser.status = 'SUBMITTED';
-  await existingUser.save();
+  await model.updateOne(
+    { userId: existingUser.userId },
+    { status: 'SUBMITTED' },
+    { new: true }
+  );
 
   // Prepare & send email to admin for user approval
   const emailHtml = await EmailHelper.createEmailContent(
@@ -430,9 +448,6 @@ const approvedOrRejectedUser = async (
 ) => {
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
 
   if (userId === currentUser.id) {
     throw new AppError(
@@ -510,10 +525,6 @@ const verifyOtp = async (email: string, otp: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
 
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
   if (user?.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -565,9 +576,6 @@ const verifyOtp = async (email: string, otp: string) => {
 const resendOtp = async (email: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
   if (user?.isEmailVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'User is already verified');
   }
@@ -591,10 +599,17 @@ const resendOtp = async (email: string) => {
 
 // soft delete user service
 const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     email: currentUser?.email,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete a user. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
 
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
@@ -616,10 +631,18 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 
 // permanent delete user service
 const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
+  const existingCurrentUser = await findUserByEmailOrId({
     email: currentUser?.email,
     isDeleted: false,
   });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete a user. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+
   const result = await findUserByEmailOrId({ userId });
   const existingUser = result?.user;
   const model = result?.model;
@@ -650,6 +673,7 @@ const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
 export const AuthServices = {
   registerUser,
   loginUser,
+  saveFcmToken,
   logoutUser,
   // changePassword,
   // refreshToken,
