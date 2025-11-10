@@ -53,7 +53,24 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
   };
 };
 
+// get single admin service
+const getSingleAdmin = async (adminId: string, currentUser: AuthUser) => {
+  if (currentUser.role === 'ADMIN' && currentUser.id !== adminId) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You are not authorize to access this admin!'
+    );
+  }
+  const existingAdmin = await Admin.findOne({ userId: adminId, role: 'ADMIN' });
+  if (!existingAdmin) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
+  }
+
+  return existingAdmin;
+};
+
 export const AdminServices = {
   updateAdmin,
   getAllAdmins,
+  getSingleAdmin,
 };
