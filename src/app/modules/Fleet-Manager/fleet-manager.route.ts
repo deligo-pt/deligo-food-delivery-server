@@ -10,19 +10,19 @@ const router = Router();
 
 // Agent update Route
 router.patch(
-  '/:id',
+  '/:fleetManagerId',
   auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN'),
-  multerUpload.single('file'),
-  parseBody,
   validateRequest(FleetManagerValidation.fleetManagerUpdateValidationSchema),
   FleetManagerControllers.fleetManagerUpdate
 );
 
 // fleet manager doc image upload route
 router.patch(
-  '/:id/docImage',
+  '/:fleetManagerId/docImage',
   auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN'),
   multerUpload.single('file'),
+  parseBody,
+  validateRequest(FleetManagerValidation.fleetManagerDocImageValidationSchema),
   FleetManagerControllers.fleetManagerDocImageUpload
 );
 

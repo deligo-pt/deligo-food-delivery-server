@@ -12,13 +12,14 @@ import { FleetManager } from './fleet-manager.model';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
-  id: string,
+  fleetManagerId: string,
   payload: Partial<TFleetManager>,
-  currentUser: AuthUser,
-  profilePhoto: string | undefined
+  currentUser: AuthUser
 ) => {
   //   istFleetManagerExistsById
-  const existingFleetManager = await FleetManager.findOne({ userId: id });
+  const existingFleetManager = await FleetManager.findOne({
+    userId: fleetManagerId,
+  });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
@@ -30,19 +31,9 @@ const fleetManagerUpdate = async (
     );
   }
 
-  if (payload.profilePhoto) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Profile photo should be in file!'
-    );
-  }
-  if (profilePhoto) {
-    payload.profilePhoto = profilePhoto;
-  }
-
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
     { userId: existingFleetManager.userId },
-    { ...payload },
+    payload,
     { new: true }
   );
   return updatedFleetManager;
@@ -52,15 +43,17 @@ const fleetManagerUpdate = async (
 const fleetManagerDocImageUpload = async (
   file: string | undefined,
   data: TFleetManagerImageDocuments,
-  user: AuthUser,
-  id: string
+  currentUser: AuthUser,
+  fleetManagerId: string
 ) => {
-  const existingFleetManager = await FleetManager.findOne({ userId: id });
+  const existingFleetManager = await FleetManager.findOne({
+    userId: fleetManagerId,
+  });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (user?.id !== existingFleetManager?.userId) {
+  if (currentUser?.id !== existingFleetManager?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to upload document image!'

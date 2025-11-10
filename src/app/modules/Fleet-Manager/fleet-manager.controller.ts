@@ -7,13 +7,11 @@ import { FleetManagerServices } from './fleet-manager.service';
 // Fleet Manager Update Controller
 const fleetManagerUpdate = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
-  const file = req?.file;
 
   const result = await FleetManagerServices.fleetManagerUpdate(
-    req.params.id,
+    req.params.fleetManagerId,
     req.body,
-    currentUser,
-    file?.path
+    currentUser
   );
 
   sendResponse(res, {
@@ -26,12 +24,11 @@ const fleetManagerUpdate = catchAsync(async (req, res) => {
 //  fleet manager doc image upload controller
 const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
   const file = req.file;
-  const data = JSON.parse(req.body.data);
   const result = await FleetManagerServices.fleetManagerDocImageUpload(
     file?.path,
-    data,
+    req.body,
     req.user as AuthUser,
-    req.params.id
+    req.params.fleetManagerId
   );
 
   sendResponse(res, {
