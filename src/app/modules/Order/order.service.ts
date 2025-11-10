@@ -11,6 +11,7 @@ import { OrderSearchableFields } from './order.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { TOrder } from './order.interface';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
+// import { getUserFcmToken } from '../../utils/getUserFcmToken';
 
 // Order Service
 
@@ -151,6 +152,18 @@ const createOrder = async (currentUser: AuthUser, payload: TOrder) => {
         !payload.items.some((ordered) => ordered.productId === item.productId)
     );
     await cart.save();
+  }
+
+  if (!order) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Order creation failed due to payment issues'
+    );
+  }
+
+  if (order) {
+    // const customerToken = await getUserFcmToken(customerId);
+    // const vendorToken = await getUserFcmToken(vendorId);
   }
 
   return order;

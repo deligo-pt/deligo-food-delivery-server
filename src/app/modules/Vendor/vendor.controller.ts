@@ -10,7 +10,7 @@ const vendorUpdate = catchAsync(async (req, res) => {
   const file = req.file;
   const result = await VendorServices.vendorUpdate(
     req.params.id,
-    req.body,
+    req?.body,
     currentUser,
     file?.path
   );
