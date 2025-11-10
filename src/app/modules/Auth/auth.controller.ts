@@ -72,8 +72,8 @@ const logoutUser = catchAsync(async (req, res) => {
   const result = await AuthServices.logoutUser(req.user.email);
 
   sendResponse(res, {
-    statusCode: httpStatus.OK,
     success: true,
+    statusCode: httpStatus.OK,
     message: result?.message,
     data: null,
   });
