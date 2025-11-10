@@ -210,8 +210,12 @@ const getAllProductsByVendor = async (
     .sort()
     .filter()
     .search(ProductSearchableFields);
-  const result = await products.modelQuery;
-  return result;
+  const meta = await products.countTotal();
+  const data = await products.modelQuery;
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single product by vendor service
@@ -258,8 +262,12 @@ const getAllProducts = async (
     .sort()
     .filter()
     .search(ProductSearchableFields);
-  const result = await products.modelQuery;
-  return result;
+  const meta = await products.countTotal();
+  const data = await products.modelQuery;
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single product service

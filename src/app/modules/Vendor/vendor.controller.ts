@@ -42,13 +42,14 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
 
 // get all vendors
 const getAllVendors = catchAsync(async (req, res) => {
-  const users = await VendorServices.getAllVendors(req.query);
+  const result = await VendorServices.getAllVendors(req.query);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Vendors Retrieved Successfully',
-    data: users,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

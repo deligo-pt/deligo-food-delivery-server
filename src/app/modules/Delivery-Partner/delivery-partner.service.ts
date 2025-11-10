@@ -57,9 +57,14 @@ const getAllDeliveryPartnersFromDB = async (query: Record<string, unknown>) => {
     .filter()
     .search(DeliveryPartnerSearchableFields);
 
-  const result = await deliveryPartners.modelQuery;
+  const meta = await deliveryPartners.countTotal();
 
-  return result;
+  const data = await deliveryPartners.modelQuery;
+
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single delivery partner

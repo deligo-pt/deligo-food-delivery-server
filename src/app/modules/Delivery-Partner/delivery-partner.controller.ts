@@ -24,29 +24,30 @@ const updateDeliveryPartner = catchAsync(async (req, res) => {
 
 // get all delivery partners
 const getAllDeliveryPartners = catchAsync(async (req, res) => {
-  const deliveryPartners =
-    await DeliveryPartnerServices.getAllDeliveryPartnersFromDB(req.query);
+  const result = await DeliveryPartnerServices.getAllDeliveryPartnersFromDB(
+    req.query
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Delivery Partners Retrieved Successfully',
-    data: deliveryPartners,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
 // get single delivery partner
 const getSingleDeliveryPartner = catchAsync(async (req, res) => {
-  const deliveryPartner =
-    await DeliveryPartnerServices.getSingleDeliveryPartnerFromDB(
-      req.params.deliveryPartnerId
-    );
+  const result = await DeliveryPartnerServices.getSingleDeliveryPartnerFromDB(
+    req.params.deliveryPartnerId
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Delivery Partner Retrieved Successfully',
-    data: deliveryPartner,
+    data: result,
   });
 });
 

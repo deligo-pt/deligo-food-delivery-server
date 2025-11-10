@@ -248,7 +248,7 @@ const loginUser = async (payload: TLoginUser) => {
     message: `${user?.role} logged in successfully!`,
   };
 };
-//
+//save FCM Token
 const saveFcmToken = async (userId: string, token: string) => {
   if (!token) {
     throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');

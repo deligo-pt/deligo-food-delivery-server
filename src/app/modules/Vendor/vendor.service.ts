@@ -85,9 +85,12 @@ const getAllVendors = async (query: Record<string, unknown>) => {
     .sort()
     .filter()
     .search(VendorSearchableFields);
-
-  const result = await vendors.modelQuery;
-  return result;
+  const meta = await vendors.countTotal();
+  const data = await vendors.modelQuery;
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single vendor

@@ -44,13 +44,16 @@ const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
 
 // get all fleet managers
 const getAllFleetManagers = catchAsync(async (req, res) => {
-  const users = await FleetManagerServices.getAllFleetManagersFromDb(req.query);
+  const result = await FleetManagerServices.getAllFleetManagersFromDb(
+    req.query
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Fleet Managers Retrieved Successfully',
-    data: users,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

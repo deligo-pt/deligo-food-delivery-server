@@ -87,9 +87,14 @@ const getAllCustomersFromDB = async (
     .filter()
     .search(CustomerSearchableFields);
 
-  const result = await customers.modelQuery;
+  const meta = await customers.countTotal();
 
-  return result;
+  const data = await customers.modelQuery;
+
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single customer

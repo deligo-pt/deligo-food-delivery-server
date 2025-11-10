@@ -24,7 +24,7 @@ const updateCustomer = catchAsync(async (req, res) => {
 
 // get all customers
 const getAllCustomers = catchAsync(async (req, res) => {
-  const customers = await CustomerServices.getAllCustomersFromDB(
+  const result = await CustomerServices.getAllCustomersFromDB(
     req.query,
     req.user as AuthUser
   );
@@ -33,7 +33,8 @@ const getAllCustomers = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Customers Retrieved Successfully',
-    data: customers,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

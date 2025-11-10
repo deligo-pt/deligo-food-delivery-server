@@ -167,8 +167,12 @@ const getOrdersByVendor = async (
     .fields()
     .paginate()
     .search(OrderSearchableFields);
-  const result = await orders.modelQuery;
-  return result;
+  const meta = await orders.countTotal();
+  const data = await orders.modelQuery;
+  return {
+    meta,
+    data,
+  };
 };
 
 // get all order service
@@ -198,8 +202,13 @@ const getAllOrders = async (
     .fields()
     .paginate()
     .search(OrderSearchableFields);
-  const result = await orders.modelQuery;
-  return result;
+
+  const meta = await orders.countTotal();
+  const data = await orders.modelQuery;
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single order for customer service

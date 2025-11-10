@@ -36,12 +36,16 @@ const updateCoupon = catchAsync(async (req, res) => {
 
 // get all coupons controller
 const getAllCoupons = catchAsync(async (req, res) => {
-  const result = await CouponServices.getAllCoupons(req.user as AuthUser);
+  const result = await CouponServices.getAllCoupons(
+    req.user as AuthUser,
+    req.query
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Coupons retrieved successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

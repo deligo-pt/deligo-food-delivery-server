@@ -36,7 +36,8 @@ const viewAllCarts = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Carts retrieved successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

@@ -89,9 +89,13 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
     .sort()
     .filter()
     .search(FleetManagerSearchableFields);
+  const meta = await fleetManagers.countTotal();
 
-  const result = await fleetManagers.modelQuery;
-  return result;
+  const data = await fleetManagers.modelQuery;
+  return {
+    meta,
+    data,
+  };
 };
 
 // get single fleet manager

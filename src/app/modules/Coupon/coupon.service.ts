@@ -95,9 +95,10 @@ const getAllCoupons = async (
     .paginate()
     .fields()
     .search(['code', 'description']);
-  const result = await coupons.modelQuery;
+  const meta = await coupons.countTotal();
+  const data = await coupons.modelQuery;
 
-  return result;
+  return { meta, data };
 };
 
 // coupon delete service
