@@ -31,7 +31,7 @@ router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);
 // get single vendor
 router.get(
   '/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
   VendorControllers.getSingleVendor
 );
 

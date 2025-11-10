@@ -94,7 +94,13 @@ const getAllVendors = async (query: Record<string, unknown>) => {
 };
 
 // get single vendor
-const getSingleVendorFromDB = async (id: string) => {
+const getSingleVendorFromDB = async (id: string, currentUser: AuthUser) => {
+  if (currentUser.role === 'VENDOR' && currentUser.id !== id) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You are not authorize to access this vendor!'
+    );
+  }
   const existingVendor = await Vendor.findOne({ userId: id });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');

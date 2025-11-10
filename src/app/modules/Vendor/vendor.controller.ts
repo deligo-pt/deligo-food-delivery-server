@@ -55,13 +55,16 @@ const getAllVendors = catchAsync(async (req, res) => {
 
 // get single vendor
 const getSingleVendor = catchAsync(async (req, res) => {
-  const user = await VendorServices.getSingleVendorFromDB(req.params.id);
+  const result = await VendorServices.getSingleVendorFromDB(
+    req.params.id,
+    req.user as AuthUser
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Vendor Retrieved Successfully',
-    data: user,
+    data: result,
   });
 });
 
