@@ -12,7 +12,6 @@ export const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
     contactNumber: z.string().optional(),
-    profilePhoto: z.string().optional(),
 
     // Address
     address: z

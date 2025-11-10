@@ -9,8 +9,7 @@ import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerId: string,
-  currentUser: AuthUser,
-  profilePhoto: string | undefined
+  currentUser: AuthUser
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
@@ -28,19 +27,9 @@ const updateDeliveryPartner = async (
     );
   }
 
-  if (payload.profilePhoto) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Profile photo should be in file!'
-    );
-  }
-  if (profilePhoto) {
-    payload.profilePhoto = profilePhoto;
-  }
-
   const updateDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
     { userId: deliveryPartnerId },
-    { ...payload },
+    payload,
     {
       new: true,
     }
