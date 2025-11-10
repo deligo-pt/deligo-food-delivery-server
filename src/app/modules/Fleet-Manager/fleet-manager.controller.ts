@@ -59,15 +59,16 @@ const getAllFleetManagers = catchAsync(async (req, res) => {
 
 // get single fleet manager
 const getSingleFleetManager = catchAsync(async (req, res) => {
-  const user = await FleetManagerServices.getSingleFleetManagerFromDB(
-    req.params.id
+  const result = await FleetManagerServices.getSingleFleetManagerFromDB(
+    req.params.fleetManagerId,
+    req.user as AuthUser
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Fleet Manager Retrieved Successfully',
-    data: user,
+    data: result,
   });
 });
 

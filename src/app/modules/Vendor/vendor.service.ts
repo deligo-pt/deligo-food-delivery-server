@@ -11,8 +11,7 @@ import { VendorSearchableFields } from './vendor.constant';
 const vendorUpdate = async (
   id: string,
   payload: Partial<TVendor>,
-  currentUser: AuthUser,
-  profilePhoto: string | undefined
+  currentUser: AuthUser
 ) => {
   //   istVendorExistsById
   const existingVendor = await Vendor.findOne({ userId: id });
@@ -26,19 +25,10 @@ const vendorUpdate = async (
       'You are not authorize to update!'
     );
   }
-  if (payload.profilePhoto) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Profile photo should be in file!'
-    );
-  }
-  if (profilePhoto) {
-    payload.profilePhoto = profilePhoto;
-  }
 
   const updatedVendor = await Vendor.findOneAndUpdate(
     { userId: existingVendor.userId },
-    { ...payload },
+    payload,
     { new: true }
   );
   return updatedVendor;
@@ -94,14 +84,17 @@ const getAllVendors = async (query: Record<string, unknown>) => {
 };
 
 // get single vendor
-const getSingleVendorFromDB = async (id: string, currentUser: AuthUser) => {
-  if (currentUser.role === 'VENDOR' && currentUser.id !== id) {
+const getSingleVendorFromDB = async (
+  vendorId: string,
+  currentUser: AuthUser
+) => {
+  if (currentUser.role === 'VENDOR' && currentUser.id !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this vendor!'
     );
   }
-  const existingVendor = await Vendor.findOne({ userId: id });
+  const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
   }

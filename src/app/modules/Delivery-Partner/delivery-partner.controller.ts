@@ -40,7 +40,8 @@ const getAllDeliveryPartners = catchAsync(async (req, res) => {
 // get single delivery partner
 const getSingleDeliveryPartner = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.getSingleDeliveryPartnerFromDB(
-    req.params.deliveryPartnerId
+    req.params.deliveryPartnerId,
+    req.user as AuthUser
   );
 
   sendResponse(res, {

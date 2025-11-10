@@ -68,7 +68,20 @@ const getAllDeliveryPartnersFromDB = async (query: Record<string, unknown>) => {
 };
 
 // get single delivery partner
-const getSingleDeliveryPartnerFromDB = async (deliveryPartnerId: string) => {
+const getSingleDeliveryPartnerFromDB = async (
+  deliveryPartnerId: string,
+  currentUser: AuthUser
+) => {
+  if (
+    currentUser?.role === 'DELIVERY_PARTNER' &&
+    currentUser?.id !== deliveryPartnerId
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to access this delivery partner'
+    );
+  }
+
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
   });

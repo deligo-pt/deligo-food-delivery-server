@@ -22,6 +22,19 @@ const updateAdmin = catchAsync(async (req, res) => {
   });
 });
 
+// Get all Admin Controller
+const getAllAdmins = catchAsync(async (req, res) => {
+  const result = await AdminServices.getAllAdmins(req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admins retrieved successfully',
+    meta: result.meta,
+    data: result.data,
+  });
+});
+
 export const AdminControllers = {
   updateAdmin,
+  getAllAdmins,
 };

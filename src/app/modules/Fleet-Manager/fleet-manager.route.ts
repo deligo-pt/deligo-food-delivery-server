@@ -32,8 +32,8 @@ router.get(
   FleetManagerControllers.getAllFleetManagers
 );
 router.get(
-  '/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  '/:fleetManagerId',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
   FleetManagerControllers.getSingleFleetManager
 );
 

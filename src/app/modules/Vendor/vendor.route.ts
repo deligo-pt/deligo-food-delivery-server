@@ -12,8 +12,6 @@ const router = express.Router();
 router.patch(
   '/:id',
   auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
-  multerUpload.single('file'),
-  parseBody,
   validateRequest(VendorValidation.vendorUpdateValidationSchema),
   VendorControllers.vendorUpdate
 );
@@ -30,7 +28,7 @@ router.patch(
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);
 // get single vendor
 router.get(
-  '/:id',
+  '/:vendorId',
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
   VendorControllers.getSingleVendor
 );
