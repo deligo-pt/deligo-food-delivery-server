@@ -29,19 +29,14 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
     const foundModel = result?.model;
 
     const user = result?.user;
-    // checking if the user is already deleted
-
     const status = user?.status;
 
     if (status === 'REJECTED') {
-      throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'Your account is blocked. Please contact support.'
+      );
     }
-    // else if (status === 'PENDING' && user?.role === 'ADMIN') {
-    //   throw new AppError(
-    //     httpStatus.FORBIDDEN,
-    //     'This admin is not active yet !'
-    //   );
-    // }
 
     if (
       user.passwordChangedAt &&

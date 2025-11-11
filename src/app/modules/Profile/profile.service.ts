@@ -4,19 +4,30 @@ import httpStatus from 'http-status';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TUserProfileUpdate } from './profile.interface';
 import { Customer } from '../Customer/customer.model';
-import { USER_STATUS } from '../../constant/user.const';
+import { AuthUser, USER_STATUS } from '../../constant/user.const';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
-const getMyProfile = async (user: JwtPayload) => {
-  const profile = await Customer.findOne({
-    email: user.email,
-    status: USER_STATUS.APPROVED,
+const getMyProfile = async (currentUser: AuthUser) => {
+  const result = await findUserByEmailOrId({
+    email: currentUser.email,
+    userId: currentUser.id,
+    isDeleted: false,
   });
 
-  if (!profile) {
+  const user = result?.user;
+
+  if (user?.status !== USER_STATUS.APPROVED) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `Your account is ${user?.status.toLowerCase()}. Please contact support.`
+    );
+  }
+
+  if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User does not exist!');
   }
 
-  return profile;
+  return user;
 };
 
 const updateMyProfile = async (
