@@ -15,6 +15,9 @@ const deliveryPartnerSchema = new Schema<
       required: true,
       unique: true,
     },
+    registeredBy: {
+      type: String,
+    },
     role: {
       type: String,
       enum: ['DELIVERY_PARTNER'],

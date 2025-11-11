@@ -10,7 +10,6 @@ export const fleetManagerUpdateValidationSchema = z.object({
       })
       .optional(),
     contactNumber: z.string().optional(),
-    profilePhoto: z.string().optional(),
 
     // Address
     address: z
@@ -73,9 +72,7 @@ export const fleetManagerUpdateValidationSchema = z.object({
 
 const fleetManagerDocImageValidationSchema = z.object({
   body: z.object({
-    docImageTitle: z
-      .enum(['idProof', 'companyLicense', 'profilePhoto'])
-      .optional(),
+    docImageTitle: z.enum(['idProof', 'companyLicense']).optional(),
   }),
 });
 

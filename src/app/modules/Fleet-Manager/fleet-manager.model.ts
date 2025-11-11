@@ -89,7 +89,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     documents: {
       idProof: { type: String, default: '' },
       companyLicense: { type: String, default: '' },
-      profilePhoto: { type: String, default: '' },
     },
     // Operation Data
     operationalData: {

@@ -1,23 +1,34 @@
 import auth from '../../middlewares/auth';
 import { ProfileController } from './profile.controller';
 import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
-import { USER_ROLE } from '../../constant/user.const';
 import { Router } from 'express';
 
 const router = Router();
 
 router.get(
   '/',
-  auth(USER_ROLE.ADMIN, USER_ROLE.CUSTOMER),
+  auth(
+    'ADMIN',
+    'CUSTOMER',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUPER_ADMIN'
+  ),
   ProfileController.getMyProfile
 );
 
 router.patch(
   '/',
-  auth(USER_ROLE.ADMIN, USER_ROLE.CUSTOMER),
-  multerUpload.single('profilePhoto'),
-  parseBody,
+  auth(
+    'ADMIN',
+    'CUSTOMER',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUPER_ADMIN'
+  ),
+  multerUpload.single('file'),
   ProfileController.updateMyProfile
 );
 

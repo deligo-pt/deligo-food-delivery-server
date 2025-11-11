@@ -3,6 +3,7 @@ import { USER_STATUS } from '../../constant/user.const';
 export type TDeliveryPartner = {
   _id?: string;
   userId: string;
+  registeredBy?: string;
   role: 'DELIVERY_PARTNER';
   email: string;
   password: string;
