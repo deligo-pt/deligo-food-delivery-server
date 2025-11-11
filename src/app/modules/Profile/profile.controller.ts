@@ -18,10 +18,10 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateMyProfile = catchAsync(async (req, res) => {
+  const file = req.file as TImageFile;
   const result = await ProfileServices.updateMyProfile(
-    req.user,
-    req.body,
-    req.file as TImageFile
+    req.user as AuthUser,
+    file?.path
   );
 
   sendResponse(res, {

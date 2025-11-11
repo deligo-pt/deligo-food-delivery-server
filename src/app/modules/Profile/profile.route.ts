@@ -1,7 +1,6 @@
 import auth from '../../middlewares/auth';
 import { ProfileController } from './profile.controller';
 import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
 import { Router } from 'express';
 
 const router = Router();
@@ -30,7 +29,6 @@ router.patch(
     'SUPER_ADMIN'
   ),
   multerUpload.single('file'),
-  parseBody,
   ProfileController.updateMyProfile
 );
 

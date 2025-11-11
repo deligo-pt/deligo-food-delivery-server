@@ -61,7 +61,6 @@ export type TFleetManager = {
   documents?: {
     idProof?: string;
     companyLicense?: string;
-    profilePhoto?: string;
   };
 
   // Operation Data

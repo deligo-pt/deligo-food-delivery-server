@@ -72,9 +72,7 @@ export const fleetManagerUpdateValidationSchema = z.object({
 
 const fleetManagerDocImageValidationSchema = z.object({
   body: z.object({
-    docImageTitle: z
-      .enum(['idProof', 'companyLicense', 'profilePhoto'])
-      .optional(),
+    docImageTitle: z.enum(['idProof', 'companyLicense']).optional(),
   }),
 });
 
