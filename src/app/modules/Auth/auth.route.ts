@@ -74,7 +74,7 @@ router.patch(
   AuthControllers.submitForApproval
 );
 
-// Active or Block User Route
+// Approved or Rejected User Route
 router.patch(
   '/:userId/approved-rejected-user',
   auth('ADMIN', 'SUPER_ADMIN'),

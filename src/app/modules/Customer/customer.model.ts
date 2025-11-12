@@ -160,6 +160,10 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       type: String,
       default: '',
     },
+    blockedBy: {
+      type: String,
+      default: '',
+    },
     remarks: {
       type: String,
       default: '',

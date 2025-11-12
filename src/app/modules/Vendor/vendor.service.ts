@@ -6,6 +6,7 @@ import { Vendor } from './vendor.model';
 import { AuthUser } from '../../constant/user.const';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
+import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 // Vendor Update Service
 const vendorUpdate = async (
@@ -51,6 +52,21 @@ const vendorDocImageUpload = async (
       httpStatus.BAD_REQUEST,
       'You are not authorize to upload document image!'
     );
+  }
+
+  // delete previous image if exists
+  const docTitle = data?.docImageTitle;
+
+  if (docTitle && existingVendor?.documents?.[docTitle]) {
+    try {
+      const oldImage = existingVendor?.documents?.[docTitle];
+      await deleteSingleImageFromCloudinary(oldImage);
+    } catch (error) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Failed to delete previous document image!'
+      );
+    }
   }
 
   if (data.docImageTitle && file) {

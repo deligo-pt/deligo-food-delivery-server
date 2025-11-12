@@ -41,3 +41,19 @@ export const deleteImageFromCloudinary = (files: TImageFiles) => {
     );
   });
 };
+
+export const deleteSingleImageFromCloudinary = async (imageUrl: string) => {
+  const publicId = imageUrl.split('/').pop()?.split('.')[0];
+  if (!publicId) return;
+
+  return new Promise((resolve, reject) => {
+    cloudinaryUpload.api.delete_resources(
+      [publicId],
+      { resource_type: 'image' },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+  });
+};

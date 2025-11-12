@@ -75,14 +75,7 @@ const vendorDocImageValidationSchema = z.object({
   }),
 });
 
-const approveOrRejectVendorValidationSchema = z.object({
-  body: z.object({
-    status: z.enum(['APPROVED', 'REJECTED']),
-  }),
-});
-
 export const VendorValidation = {
   vendorUpdateValidationSchema,
   vendorDocImageValidationSchema,
-  approveOrRejectVendorValidationSchema,
 };
