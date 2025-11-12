@@ -9,7 +9,7 @@ import {
   TApprovedRejectsPayload,
   USER_MODEL_MAP,
 } from './auth.constant';
-import { AuthUser, USER_ROLE } from '../../constant/user.const';
+import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
 import config from '../../config';
 import { createToken } from '../../utils/verifyJWT';
@@ -170,7 +170,7 @@ const loginUser = async (payload: TLoginUser) => {
 
   const userStatus = user?.status;
 
-  if (userStatus === 'REJECTED') {
+  if (userStatus === USER_STATUS.BLOCKED) {
     throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
   }
 
@@ -304,7 +304,7 @@ const logoutUser = async (email: string) => {
 
 //   const userStatus = user?.status;
 
-//   if (userStatus === 'REJECTED') {
+//   if (userStatus === USER_STATUS.BLOCKED) {
 //     throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
 //   }
 
@@ -352,7 +352,7 @@ const logoutUser = async (email: string) => {
 //   // checking if the user is blocked
 //   const userStatus = user?.status;
 
-//   if (userStatus === 'REJECTED') {
+//   if (userStatus === USER_STATUS.BLOCKED) {
 //     throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
 //   }
 
@@ -462,7 +462,7 @@ const approvedOrRejectedUser = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `User not submitted the approval request yet`
+      `${existingUser?.role} not submitted the approval request yet`
     );
   }
 
@@ -485,6 +485,15 @@ const approvedOrRejectedUser = async (
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'Remarks are required for rejection'
+      );
+    }
+    existingUser.remarks = payload.remarks;
+  } else if (payload.status === 'BLOCKED') {
+    existingUser.blockedBy = currentUser.id;
+    if (!payload.remarks) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Remarks are required for blocking'
       );
     }
     existingUser.remarks = payload.remarks;
@@ -518,18 +527,6 @@ const approvedOrRejectedUser = async (
       existingUser?.role
     } ${payload.status.toLowerCase()} successfully`,
   };
-};
-
-// document image upload service
-const docImageUpload = async (
-  userId: string,
-  docImageTitle: string,
-  docImageUrl: string,
-  currentUser: AuthUser
-) => {
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const existingUser = result?.user;
-  const model = result?.model;
 };
 
 // Verify OTP

@@ -44,6 +44,9 @@ export type TAdmin = {
   // Admin & Audit Fields
   approvedBy?: string;
   rejectedBy?: string;
+  blockedBy?: string;
+  submittedForApprovalAt?: Date;
+  approvedOrRejectedAt?: Date;
   remarks?: string;
 
   // timestamps

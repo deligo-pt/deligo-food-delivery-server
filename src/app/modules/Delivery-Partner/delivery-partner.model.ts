@@ -209,6 +209,18 @@ const deliveryPartnerSchema = new Schema<
       type: String,
       default: '',
     },
+    blockedBy: {
+      type: String,
+      default: '',
+    },
+    submittedForApprovalAt: {
+      type: Date,
+      default: null,
+    },
+    approvedOrRejectedAt: {
+      type: Date,
+      default: null,
+    },
     remarks: {
       type: String,
       default: '',

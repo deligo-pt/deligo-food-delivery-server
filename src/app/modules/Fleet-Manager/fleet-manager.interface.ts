@@ -81,6 +81,9 @@ export type TFleetManager = {
   // Admin & Audit Fields
   approvedBy?: string;
   rejectedBy?: string;
+  blockedBy?: string;
+  submittedForApprovalAt?: Date | string;
+  approvedOrRejectedAt?: Date | string;
   remarks?: string;
 
   createdAt: Date;

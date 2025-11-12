@@ -74,19 +74,12 @@ router.patch(
   AuthControllers.submitForApproval
 );
 
-// Active or Block User Route
+// Approved or Rejected User Route
 router.patch(
   '/:userId/approved-rejected-user',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.approvedOrRejectedUserValidationSchema),
   AuthControllers.approvedOrRejectedUser
-);
-
-// document image upload route
-router.patch(
-  '/:userId/docImage',
-  auth('VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN', 'SUPER_ADMIN'),
-  AuthControllers.docImageUpload
 );
 
 // Verify OTP Route

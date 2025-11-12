@@ -57,6 +57,7 @@ export type TCustomer = {
   // Admin & Audit Fields
   approvedBy?: string;
   rejectedBy?: string;
+  blockedBy?: string;
   remarks?: string;
 
   // paymentDetails
