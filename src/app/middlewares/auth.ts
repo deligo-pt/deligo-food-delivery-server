@@ -5,7 +5,7 @@ import config from '../config';
 import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
-import { USER_ROLE } from '../constant/user.const';
+import { USER_ROLE, USER_STATUS } from '../constant/user.const';
 import { findUserByEmailOrId } from '../utils/findUserByEmailOrId';
 
 const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
@@ -31,7 +31,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
     const user = result?.user;
     const status = user?.status;
 
-    if (status === 'REJECTED') {
+    if (status === USER_STATUS.BLOCKED) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'Your account is blocked. Please contact support.'

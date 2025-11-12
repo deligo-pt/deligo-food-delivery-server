@@ -520,6 +520,18 @@ const approvedOrRejectedUser = async (
   };
 };
 
+// document image upload service
+const docImageUpload = async (
+  userId: string,
+  docImageTitle: string,
+  docImageUrl: string,
+  currentUser: AuthUser
+) => {
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
+  const existingUser = result?.user;
+  const model = result?.model;
+};
+
 // Verify OTP
 const verifyOtp = async (email: string, otp: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });

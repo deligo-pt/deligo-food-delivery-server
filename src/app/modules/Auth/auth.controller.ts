@@ -134,6 +134,8 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
   });
 });
 
+//
+
 // Verify OTP Controller
 const verifyOtp = catchAsync(async (req, res) => {
   const { email, otp } = req.body;

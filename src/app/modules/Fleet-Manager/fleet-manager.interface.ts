@@ -88,5 +88,5 @@ export type TFleetManager = {
 };
 
 export type TFleetManagerImageDocuments = {
-  docImageTitle: 'idProof' | 'companyLicense' | 'profilePhoto';
+  docImageTitle: 'idProof' | 'companyLicense';
 };

@@ -82,6 +82,13 @@ router.patch(
   AuthControllers.approvedOrRejectedUser
 );
 
+// document image upload route
+router.patch(
+  '/:userId/docImage',
+  auth('VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN', 'SUPER_ADMIN'),
+  AuthControllers.docImageUpload
+);
+
 // Verify OTP Route
 router.post(
   '/verify-otp',
