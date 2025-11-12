@@ -2,6 +2,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { AuthUser, USER_STATUS } from '../../constant/user.const';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 const getMyProfile = async (currentUser: AuthUser) => {
   const result = await findUserByEmailOrId({
@@ -50,6 +51,18 @@ const updateMyProfile = async (
 
   if (!profilePhoto) {
     throw new AppError(httpStatus.BAD_REQUEST, 'No profile photo provided!');
+  }
+
+  if (user?.profilePhoto) {
+    try {
+      const oldProfilePhoto = user?.profilePhoto;
+      await deleteSingleImageFromCloudinary(oldProfilePhoto);
+    } catch (error) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Failed to delete existing profile photo from cloudinary.'
+      );
+    }
   }
 
   if (profilePhoto) {
