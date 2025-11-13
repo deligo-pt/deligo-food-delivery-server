@@ -1,35 +1,97 @@
 import { Router } from 'express';
-import { CouponControllers } from './category.controller';
-import auth from '../../middlewares/auth';
+import { CategoryController } from './category.controller';
 import validateRequest from '../../middlewares/validateRequest';
-import { CouponValidation } from './category.validation';
+import { CategoryValidation } from './category.validation';
+import auth from '../../middlewares/auth';
 
 const router = Router();
 
-// create coupon
+// Create Business Category Routes
 router.post(
-  '/create-coupon',
+  '/businessCategory',
   auth('ADMIN', 'SUPER_ADMIN'),
-  validateRequest(CouponValidation.createCouponValidationSchema),
-  CouponControllers.createCoupon
+  validateRequest(CategoryValidation.createBusinessCategoryValidationSchema),
+  CategoryController.createBusinessCategory
 );
 
-// update coupon
+// Get All Business Categories
+router.get(
+  '/businessCategory',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'VENDOR'),
+  CategoryController.getAllBusinessCategories
+);
+
+// Get Single Business Category
+router.get(
+  '/businessCategory/:id',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'VENDOR'),
+  CategoryController.getSingleBusinessCategory
+);
+
+// Update Business Category
 router.patch(
-  '/:id',
+  '/businessCategory/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  validateRequest(CouponValidation.updateCouponValidationSchema),
-  CouponControllers.updateCoupon
+  validateRequest(CategoryValidation.updateBusinessCategoryValidationSchema),
+  CategoryController.updateBusinessCategory
 );
 
-// get all coupons
-router.get('/', auth('ADMIN', 'SUPER_ADMIN'), CouponControllers.getAllCoupons);
-
-// delete coupon
+// soft Delete Business Category
 router.delete(
-  '/:id',
+  '/businessCategory/soft-delete/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  CouponControllers.deleteCoupon
+  CategoryController.softDeleteBusinessCategory
 );
 
-export const CouponRoutes = router;
+// Permanent Delete Business Category
+router.delete(
+  '/businessCategory/permanent-delete/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  CategoryController.permanentDeleteBusinessCategory
+);
+
+//Create Product Category Routes
+router.post(
+  '/productCategory',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(CategoryValidation.createProductCategoryValidationSchema),
+  CategoryController.createProductCategory
+);
+
+// Get All Product Categories
+router.get(
+  '/productCategory',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+  CategoryController.getAllProductCategories
+);
+
+// Get Single Product Category
+router.get(
+  '/productCategory/:id',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+  CategoryController.getSingleProductCategory
+);
+
+// Update Product Category
+router.patch(
+  '/productCategory/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(CategoryValidation.updateProductCategoryValidationSchema),
+  CategoryController.updateProductCategory
+);
+
+// Soft Delete Product Category
+router.delete(
+  '/productCategory/soft-delete/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  CategoryController.softDeleteProductCategory
+);
+
+// Permanent Delete Product Category
+router.delete(
+  '/productCategory/permanent-delete/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  CategoryController.permanentDeleteProductCategory
+);
+
+export const CategoryRoutes = router;

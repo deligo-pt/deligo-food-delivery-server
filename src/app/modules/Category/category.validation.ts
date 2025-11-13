@@ -1,43 +1,62 @@
 import { z } from 'zod';
 
-const createCouponValidationSchema = z.object({
+// Create Business Category Validation
+const createBusinessCategoryValidationSchema = z.object({
   body: z.object({
-    code: z
-      .string({ required_error: 'Coupon code is required' })
-      .min(3, 'Coupon code must be at least 3 characters')
-      .toUpperCase(),
-    discountType: z.enum(['PERCENT', 'FLAT'], {
-      required_error: 'Discount type is required',
-    }),
-    discountValue: z
-      .number({ required_error: 'Discount value is required' })
-      .positive('Discount value must be greater than 0'),
-    minPurchase: z.number().min(0).optional(),
-    maxDiscount: z.number().min(0).optional(),
-    usageLimit: z.number().min(1).default(1).optional(),
-    validFrom: z.coerce.date().optional(),
-    expiresAt: z.coerce.date().optional(),
-    applicableCategories: z.array(z.string()).optional(),
+    name: z
+      .string({ required_error: 'Business category name is required' })
+      .min(2, 'Business category name must be at least 2 characters'),
+    slug: z.string().optional(),
+    description: z.string().optional(),
+    icon: z.string().optional(),
+    image: z.string().optional(),
     isActive: z.boolean().default(true).optional(),
   }),
 });
 
-export const updateCouponValidationSchema = z.object({
+// Update Business Category Validation
+const updateBusinessCategoryValidationSchema = z.object({
   body: z.object({
-    code: z.string().optional(),
-    discountType: z.enum(['PERCENT', 'FLAT']).optional(),
-    discountValue: z.number().positive().optional(),
-    minPurchase: z.number().min(0).optional(),
-    maxDiscount: z.number().min(0).optional(),
-    usageLimit: z.number().min(1).optional(),
-    validFrom: z.coerce.date().optional(),
-    expiresAt: z.coerce.date().optional(),
-    applicableCategories: z.array(z.string()).optional(),
+    name: z.string().optional(),
+    slug: z.string().optional(),
+    description: z.string().optional(),
+    icon: z.string().optional(),
+    image: z.string().optional(),
     isActive: z.boolean().optional(),
   }),
 });
 
-export const CouponValidation = {
-  createCouponValidationSchema,
-  updateCouponValidationSchema,
+// Create Product Category Validation
+const createProductCategoryValidationSchema = z.object({
+  body: z.object({
+    name: z
+      .string({ required_error: 'Product category name is required' })
+      .min(2, 'Product category name must be at least 2 characters'),
+    slug: z.string().optional(),
+    description: z.string().optional(),
+    image: z.string().optional(),
+    businessCategoryId: z
+      .string({ required_error: 'Business category ID is required' })
+      .min(1),
+    isActive: z.boolean().default(true).optional(),
+  }),
+});
+
+// Update Product Category Validation
+const updateProductCategoryValidationSchema = z.object({
+  body: z.object({
+    name: z.string().optional(),
+    slug: z.string().optional(),
+    description: z.string().optional(),
+    image: z.string().optional(),
+    businessCategoryId: z.string().optional(),
+    isActive: z.boolean().optional(),
+  }),
+});
+
+export const CategoryValidation = {
+  createBusinessCategoryValidationSchema,
+  updateBusinessCategoryValidationSchema,
+  createProductCategoryValidationSchema,
+  updateProductCategoryValidationSchema,
 };

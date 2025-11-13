@@ -8,6 +8,7 @@ export type TBusinessCategory = {
   icon?: string; // optional icon url
   image?: string; // category banner or logo
   isActive: boolean;
+  isDeleted: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -18,8 +19,9 @@ export type TProductCategory = {
   slug: string;
   description?: string;
   image?: string;
-  businessCategoryId: Types.ObjectId | string; // 🔗 reference to BusinessCategory
+  businessCategoryId: Types.ObjectId | string; // reference to BusinessCategory
   isActive: boolean;
+  isDeleted: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };

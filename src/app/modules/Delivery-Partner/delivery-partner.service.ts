@@ -85,6 +85,16 @@ const getSingleDeliveryPartnerFromDB = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
 
+  if (
+    currentUser?.role === 'FLEET_MANAGER' &&
+    existingDeliveryPartner?.registeredBy !== currentUser?.id
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to access this delivery partner'
+    );
+  }
+
   return existingDeliveryPartner;
 };
 
