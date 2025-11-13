@@ -7,6 +7,7 @@ export type TProduct = {
   description: string;
   isDeleted: boolean;
   isApproved: boolean;
+  remarks?: string;
 
   category: string;
   subCategory?: string;

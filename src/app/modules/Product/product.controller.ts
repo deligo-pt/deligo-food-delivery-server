@@ -54,6 +54,22 @@ const updateProduct = catchAsync(async (req, res) => {
   });
 });
 
+// Approved product controller
+const approvedProduct = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.approvedProduct(
+    productId,
+    req.user as AuthUser,
+    req.body
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
 //product image delete controller
 const deleteProductImages = catchAsync(async (req, res) => {
   const { productId } = req.params;
@@ -136,10 +152,11 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
 
 export const ProductControllers = {
   productCreate,
+  updateProduct,
+  approvedProduct,
+  deleteProductImages,
   getAllProducts,
   getSingleProduct,
-  updateProduct,
-  deleteProductImages,
   softDeleteProduct,
   permanentDeleteProduct,
 };
