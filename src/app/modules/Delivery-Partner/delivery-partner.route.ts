@@ -26,7 +26,7 @@ router.get(
 // Get Single Delivery Partner Route
 router.get(
   '/:deliveryPartnerId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
   DeliveryPartnerControllers.getSingleDeliveryPartner
 );
 
