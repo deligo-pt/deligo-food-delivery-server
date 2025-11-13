@@ -9,14 +9,15 @@ const businessCategorySchema = new Schema<TBusinessCategory>(
     icon: { type: String },
     image: { type: String },
     isActive: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 const productCategorySchema = new Schema<TProductCategory>(
   {
-    name: { type: String, required: true },
-    slug: { type: String, required: true },
+    name: { type: String, required: true, unique: true },
+    slug: { type: String, required: true, unique: true },
     description: { type: String },
     image: { type: String },
     businessCategoryId: {
@@ -25,6 +26,7 @@ const productCategorySchema = new Schema<TProductCategory>(
       required: true,
     },
     isActive: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

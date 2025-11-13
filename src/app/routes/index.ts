@@ -12,6 +12,7 @@ import { AdminRoutes } from '../modules/Admin/admin.route';
 import { DeliveryPartnerRoutes } from '../modules/Delivery-Partner/delivery-partner.route';
 import { CouponRoutes } from '../modules/Coupon/coupon.route';
 import { NotificationRoutes } from '../modules/Notification/notification.route';
+import { CategoryRoutes } from '../modules/Category/category.route';
 
 const router = express.Router();
 
@@ -67,6 +68,10 @@ const moduleRoutes = [
   {
     path: '/notifications',
     route: NotificationRoutes,
+  },
+  {
+    path: '/categories',
+    route: CategoryRoutes,
   },
 ];
 
