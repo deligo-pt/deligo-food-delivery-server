@@ -77,7 +77,7 @@ export type TDeliveryPartner = {
   rejectedBy?: string;
   blockedBy?: string;
   submittedForApprovalAt?: Date;
-  approvedOrRejectedAt?: Date;
+  approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;
 
   // timestamps

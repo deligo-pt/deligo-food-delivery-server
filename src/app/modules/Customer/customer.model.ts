@@ -164,6 +164,10 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       type: String,
       default: '',
     },
+    approvedOrRejectedOrBlockedAt: {
+      type: Date,
+      default: null,
+    },
     remarks: {
       type: String,
       default: '',

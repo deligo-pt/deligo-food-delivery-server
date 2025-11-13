@@ -11,6 +11,7 @@ import { FleetManagerRoutes } from '../modules/Fleet-Manager/fleet-manager.route
 import { AdminRoutes } from '../modules/Admin/admin.route';
 import { DeliveryPartnerRoutes } from '../modules/Delivery-Partner/delivery-partner.route';
 import { CouponRoutes } from '../modules/Coupon/coupon.route';
+import { NotificationRoutes } from '../modules/Notification/notification.route';
 
 const router = express.Router();
 
@@ -62,6 +63,10 @@ const moduleRoutes = [
   {
     path: '/profile',
     route: ProfileRoutes,
+  },
+  {
+    path: '/notifications',
+    route: NotificationRoutes,
   },
 ];
 

@@ -35,31 +35,31 @@ router.delete(
   ProductControllers.deleteProductImages
 );
 
-// Get all products by vendor
-router.get(
-  '/vendor/products',
-  auth('VENDOR'),
-  ProductControllers.getAllProductsByVendor
-);
-
-// Get single product by vendor
-router.get(
-  '/vendor/products/:productId',
-  auth('VENDOR'),
-  ProductControllers.getSingleProductByVendor
-);
-
 // Get all products
 router.get(
   '/',
-  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
+  auth(
+    'CUSTOMER',
+    'ADMIN',
+    'SUPER_ADMIN',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+    'VENDOR'
+  ),
   ProductControllers.getAllProducts
 );
 
 // Get single product
 router.get(
   '/:productId',
-  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
+  auth(
+    'CUSTOMER',
+    'ADMIN',
+    'SUPER_ADMIN',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+    'VENDOR'
+  ),
   ProductControllers.getSingleProduct
 );
 

@@ -10,6 +10,7 @@ export const sendPushNotification = async (
   token: string,
   payload: TPushNotificationPayload
 ) => {
+  console.log({ token, payload });
   try {
     const message = {
       token,
@@ -21,9 +22,9 @@ export const sendPushNotification = async (
     };
 
     const response = await fcm.send(message);
-    console.log(`✅ Notification sent to token: ${token}`);
+    // console.log(`Notification sent to token: ${token}`);
     return response;
   } catch (error) {
-    console.error('❌ Error sending push notification:', error);
+    console.error('Error sending push notification:', error);
   }
 };

@@ -11,7 +11,8 @@ import { OrderSearchableFields } from './order.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { TOrder } from './order.interface';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
-// import { getUserFcmToken } from '../../utils/getUserFcmToken';
+import { getUserFcmToken } from '../../utils/getUserFcmToken';
+import { NotificationService } from '../Notification/notification.service';
 
 // Order Service
 
@@ -162,8 +163,29 @@ const createOrder = async (currentUser: AuthUser, payload: TOrder) => {
   }
 
   if (order) {
-    // const customerToken = await getUserFcmToken(customerId);
-    // const vendorToken = await getUserFcmToken(vendorId);
+    const customerToken = await getUserFcmToken(customerId);
+    const vendorToken = await getUserFcmToken(vendorId);
+    if (customerToken) {
+      // send notification to customer
+      await NotificationService.sendToUser(
+        customerId,
+        'Order Placed',
+        `Your order ${order.orderId} has been placed successfully.`,
+        { orderId: order.orderId },
+        'ORDER'
+      );
+    }
+
+    if (vendorToken) {
+      // send notification to vendor
+      await NotificationService.sendToUser(
+        vendorId!,
+        'New Order Received',
+        `You have received a new order ${order.orderId}.`,
+        { orderId: order.orderId },
+        'ORDER'
+      );
+    }
   }
 
   return order;
@@ -308,6 +330,8 @@ const acceptOrRejectOrderByVendor = async (
     };
     await order.save();
   }
+
+  // send notification to customer about order status update
 
   const result = await Order.findOneAndUpdate(
     { orderId },

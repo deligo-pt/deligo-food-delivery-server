@@ -114,7 +114,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     rejectedBy: { type: String, default: '' },
     blockedBy: { type: String, default: '' },
     submittedForApprovalAt: { type: Date, default: null },
-    approvedOrRejectedAt: { type: Date, default: null },
+    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },
   },
   {

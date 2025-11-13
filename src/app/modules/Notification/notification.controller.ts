@@ -2,6 +2,8 @@ import { Notification } from './notification.model';
 import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
+import { NotificationService } from './notification.service';
+import { AuthUser } from '../../constant/user.const';
 
 // Get notifications for current user
 const getMyNotifications = catchAsync(async (req, res) => {
@@ -13,15 +15,15 @@ const getMyNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Notifications fetched successfully',
+    message: 'Notifications retrieved successfully',
     data: notifications,
   });
 });
 
-// Mark as read
+// Mark as read (one)
 const markAsRead = catchAsync(async (req, res) => {
   const { id } = req.params;
-  await Notification.findByIdAndUpdate(id, { isRead: true });
+  await NotificationService.markAsRead(id, req?.user as AuthUser);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
