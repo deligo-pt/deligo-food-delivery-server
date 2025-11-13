@@ -217,7 +217,7 @@ const deliveryPartnerSchema = new Schema<
       type: Date,
       default: null,
     },
-    approvedOrRejectedAt: {
+    approvedOrRejectedOrBlockedAt: {
       type: Date,
       default: null,
     },

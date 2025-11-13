@@ -125,7 +125,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     rejectedBy: { type: String, default: '' },
     blockedBy: { type: String, default: '' },
     submittedForApprovalAt: { type: Date, default: null },
-    approvedOrRejectedAt: { type: Date, default: null },
+    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },
   },
   {

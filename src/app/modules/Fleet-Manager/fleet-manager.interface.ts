@@ -83,7 +83,7 @@ export type TFleetManager = {
   rejectedBy?: string;
   blockedBy?: string;
   submittedForApprovalAt?: Date | string;
-  approvedOrRejectedAt?: Date | string;
+  approvedOrRejectedOrBlockedAt?: Date | string;
   remarks?: string;
 
   createdAt: Date;

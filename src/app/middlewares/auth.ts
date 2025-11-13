@@ -23,6 +23,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
     ) as JwtPayload;
 
     const { role, email, iat } = decoded;
+    console.log(decoded);
 
     const result = await findUserByEmailOrId({ email, isDeleted: false });
 

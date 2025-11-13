@@ -1,17 +1,27 @@
 import admin from 'firebase-admin';
-import path from 'path';
-import fs from 'fs';
+import config from '.';
 
 // Path to service account file
-const serviceAccountPath = path.join(__dirname, 'deligo-firebase-fcm.json');
+const serviceAccountJson = config.firebase_service_account;
 
-if (!fs.existsSync(serviceAccountPath)) {
-  console.error('❌ Firebase service account file missing.');
-  process.exit(1);
+if (!admin.apps.length) {
+  if (!serviceAccountJson) {
+    console.error(
+      'Firebase service account is missing. Check your environment variables.'
+    );
+    process.exit(1);
+  }
+
+  try {
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  } catch (error) {
+    console.error('Invalid Firebase service account JSON:', error);
+    process.exit(1);
+  }
 }
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccountPath),
-});
 
 export const fcm = admin.messaging();

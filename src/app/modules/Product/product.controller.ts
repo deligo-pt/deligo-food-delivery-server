@@ -73,37 +73,6 @@ const deleteProductImages = catchAsync(async (req, res) => {
   });
 });
 
-// get all products by vendor controller
-const getAllProductsByVendor = catchAsync(async (req, res) => {
-  const result = await ProductServices.getAllProductsByVendor(
-    req.user.id,
-    req.query
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Products retrieved successfully',
-    meta: result?.meta,
-    data: result?.data,
-  });
-});
-
-// get single product by vendor controller
-const getSingleProductByVendor = catchAsync(async (req, res) => {
-  const { productId } = req.params;
-  const result = await ProductServices.getSingleProductByVendor(
-    req.user.id,
-    productId
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Product retrieved successfully',
-    data: result,
-  });
-});
-
 // get all products controller
 const getAllProducts = catchAsync(async (req, res) => {
   const result = await ProductServices.getAllProducts(
@@ -169,8 +138,6 @@ export const ProductControllers = {
   productCreate,
   getAllProducts,
   getSingleProduct,
-  getAllProductsByVendor,
-  getSingleProductByVendor,
   updateProduct,
   deleteProductImages,
   softDeleteProduct,

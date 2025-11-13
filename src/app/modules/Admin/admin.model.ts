@@ -137,7 +137,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       type: Date,
       default: null,
     },
-    approvedOrRejectedAt: {
+    approvedOrRejectedOrBlockedAt: {
       type: Date,
       default: null,
     },

@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 import AppError from '../errors/AppError';
 import { USER_ROLE, USER_STATUS } from '../constant/user.const';
 
@@ -17,7 +17,7 @@ export const createToken = (
   expiresIn: string
 ) => {
   return jwt.sign(jwtPayload, secret, {
-    expiresIn,
+    expiresIn: expiresIn as SignOptions['expiresIn'],
   });
 };
 

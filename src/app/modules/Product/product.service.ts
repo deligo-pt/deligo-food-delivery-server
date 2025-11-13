@@ -3,7 +3,6 @@
 import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.const';
 import AppError from '../../errors/AppError';
-import { Vendor } from '../Vendor/vendor.model';
 import { TProduct } from './product.interface';
 import { Product } from './product.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
@@ -189,52 +188,6 @@ const deleteProductImages = async (
   return product;
 };
 
-// get all products by vendor service
-const getAllProductsByVendor = async (
-  vendorId: string,
-  query: Record<string, unknown>
-) => {
-  const existingVendor = await Vendor.findOne({
-    userId: vendorId,
-    isDeleted: false,
-  });
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-  const products = new QueryBuilder(
-    Product.find({ 'vendor.vendorId': vendorId, isDeleted: false }),
-    query
-  )
-    .fields()
-    .paginate()
-    .sort()
-    .filter()
-    .search(ProductSearchableFields);
-  const meta = await products.countTotal();
-  const data = await products.modelQuery;
-  return {
-    meta,
-    data,
-  };
-};
-
-// get single product by vendor service
-const getSingleProductByVendor = async (
-  vendorId: string,
-  productId: string
-) => {
-  const product = await Product.findOne({
-    productId,
-    'vendor.vendorId': vendorId,
-    isDeleted: false,
-  });
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  }
-
-  return product;
-};
-
 // get all products service
 const getAllProducts = async (
   query: Record<string, unknown>,
@@ -251,8 +204,14 @@ const getAllProducts = async (
       `You are not approved to view products. Your account is ${existingCurrentUser.user.status}`
     );
   }
+  const role = currentUser.role;
 
-  if (currentUser.role === 'CUSTOMER') {
+  if (role === 'VENDOR') {
+    query['vendor.vendorId'] = currentUser.id;
+    query.isDeleted = false;
+  }
+
+  if (['CUSTOMER', 'FLEET_MANAGER', 'DELIVERY_PARTNER'].includes(role)) {
     query.isApproved = true;
     query.isDeleted = false;
   }
@@ -294,6 +253,11 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
       productId,
       isApproved: true,
       isDeleted: false,
+    });
+  } else if (currentUser.role === 'VENDOR') {
+    product = await Product.findOne({
+      productId,
+      'vendor.vendorId': currentUser.id,
     });
   } else {
     product = await Product.findOne({ productId });
@@ -379,9 +343,7 @@ const permanentDeleteProduct = async (
 export const ProductServices = {
   createProduct,
   getAllProducts,
-  getAllProductsByVendor,
   getSingleProduct,
-  getSingleProductByVendor,
   updateProduct,
   deleteProductImages,
   softDeleteProduct,

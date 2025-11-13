@@ -58,6 +58,7 @@ export type TCustomer = {
   approvedBy?: string;
   rejectedBy?: string;
   blockedBy?: string;
+  approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;
 
   // paymentDetails

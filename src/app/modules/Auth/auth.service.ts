@@ -294,7 +294,11 @@ const logoutUser = async (email: string) => {
 //   payload: { oldPassword: string; newPassword: string }
 // ) => {
 //   // checking if the user is exist
-//   const user = await User.isUserExistsByEmail(userData.email);
+//   const result = await findUserByEmailOrId({
+//     email: userData.email,
+//     isDeleted: false,
+//   });
+//   const user = result?.user;
 
 //   if (!user) {
 //     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
@@ -304,8 +308,11 @@ const logoutUser = async (email: string) => {
 
 //   const userStatus = user?.status;
 
-//   if (userStatus === USER_STATUS.BLOCKED) {
-//     throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+//   if (
+//     userStatus === USER_STATUS.BLOCKED &&
+//     userStatus === USER_STATUS.REJECTED
+//   ) {
+//     throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
 //   }
 
 //   //checking if the password is correct
@@ -363,14 +370,14 @@ const logoutUser = async (email: string) => {
 //     throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
 //   }
 
-//     const jwtPayload = {
-//   id: user?.userId,
-//   name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
-//   email: user?.email,
-//   contactNumber: user?.contactNumber,
-//   role: user?.role,
-//   status: user?.status,
-// };
+//   const jwtPayload = {
+//     id: user?.userId,
+//     name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
+//     email: user?.email,
+//     contactNumber: user?.contactNumber,
+//     role: user?.role,
+//     status: user?.status,
+//   };
 
 //   const accessToken = createToken(
 //     jwtPayload,
@@ -387,7 +394,6 @@ const logoutUser = async (email: string) => {
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
-  const model = result?.model;
 
   if (existingUser?.status === 'SUBMITTED') {
     throw new AppError(
@@ -412,11 +418,8 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   }
 
   existingUser.status = 'SUBMITTED';
-  await model.updateOne(
-    { userId: existingUser.userId },
-    { status: 'SUBMITTED' },
-    { new: true }
-  );
+  existingUser.submittedForApprovalAt = new Date();
+  await existingUser.save();
 
   // Prepare & send email to admin for user approval
   const emailHtml = await EmailHelper.createEmailContent(
@@ -456,15 +459,15 @@ const approvedOrRejectedUser = async (
     );
   }
 
-  if (
-    existingUser.role !== 'CUSTOMER' &&
-    existingUser?.status !== 'SUBMITTED'
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `${existingUser?.role} not submitted the approval request yet`
-    );
-  }
+  // if (
+  //   existingUser.role !== 'CUSTOMER' &&
+  //   existingUser?.status !== 'SUBMITTED'
+  // ) {
+  //   throw new AppError(
+  //     httpStatus.BAD_REQUEST,
+  //     `${existingUser?.role} not submitted the approval request yet`
+  //   );
+  // }
 
   if (existingUser.status === payload.status) {
     throw new AppError(
@@ -476,11 +479,13 @@ const approvedOrRejectedUser = async (
   existingUser.status = payload.status;
   if (payload.status === 'APPROVED') {
     existingUser.approvedBy = currentUser.id;
+    existingUser.approvedOrRejectedOrBlockedAt = new Date();
     existingUser.remarks =
       payload.remarks ||
       'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board. Our team will reach out shortly with the next steps to help you get started and make the most of your role on our platform.';
   } else if (payload.status === 'REJECTED') {
     existingUser.rejectedBy = currentUser.id;
+    existingUser.approvedOrRejectedOrBlockedAt = new Date();
     if (!payload.remarks) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -490,6 +495,7 @@ const approvedOrRejectedUser = async (
     existingUser.remarks = payload.remarks;
   } else if (payload.status === 'BLOCKED') {
     existingUser.blockedBy = currentUser.id;
+    existingUser.approvedOrRejectedOrBlockedAt = new Date();
     if (!payload.remarks) {
       throw new AppError(
         httpStatus.BAD_REQUEST,

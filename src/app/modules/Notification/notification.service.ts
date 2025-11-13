@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { USER_ROLE } from '../../constant/user.const';
+import httpStatus from 'http-status';
+import { AuthUser, USER_ROLE } from '../../constant/user.const';
+import AppError from '../../errors/AppError';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
@@ -43,13 +45,13 @@ const sendToUser = async (
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const user = result?.user;
 
-  if (!user || !user.deviceTokens?.length) {
+  if (!user || !user.fcmTokens?.length) {
     console.warn(`No tokens found for userId: ${userId}`);
     return;
   }
-
+  const uniqueTokens = [...new Set(user.fcmTokens as string[])];
   // Push notification
-  for (const token of user.deviceTokens) {
+  for (const token of uniqueTokens) {
     await sendPushNotification(token, {
       title,
       body: message,
@@ -81,10 +83,10 @@ const sendToRole = async (
 
   const users = await Model.find({
     isDeleted: false,
-    deviceTokens: { $exists: true, $ne: [] },
+    fcmTokens: { $exists: true, $ne: [] },
   });
   for (const user of users) {
-    for (const token of user.deviceTokens) {
+    for (const token of user.fcmTokens) {
       await sendPushNotification(token, { title, body: message, data });
     }
 
@@ -99,7 +101,32 @@ const sendToRole = async (
   }
 };
 
+// mark as read (one)
+const markAsRead = async (id: string, currentUser: AuthUser) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const user = result?.user;
+
+  const notification = await Notification.findById(id);
+  if (!notification) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Notification not found');
+  }
+
+  if (user.userId !== notification.receiverId) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to perform this action'
+    );
+  }
+
+  notification.isRead = true;
+  await notification.save();
+};
+
 export const NotificationService = {
   sendToUser,
   sendToRole,
+  markAsRead,
 };

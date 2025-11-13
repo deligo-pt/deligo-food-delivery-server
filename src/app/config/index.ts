@@ -25,4 +25,5 @@ export default {
   sender_app_password: process.env.SENDER_APP_PASS,
   stripe_secret_key: process.env.STRIPE_SECRET_KEY,
   stripe_webhook_secret: process.env.STRIPE_WEBHOOK_SECRET,
+  firebase_service_account: process.env.FIREBASE_SERVICE_ACCOUNT,
 };
