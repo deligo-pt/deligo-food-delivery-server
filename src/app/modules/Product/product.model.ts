@@ -11,6 +11,7 @@ const productSchema = new Schema<TProduct>(
     description: { type: String },
     isDeleted: { type: Boolean, default: false },
     isApproved: { type: Boolean, default: true },
+    remarks: { type: String },
 
     category: { type: String, required: true },
     subCategory: { type: String },

@@ -151,6 +151,60 @@ const updateProduct = async (
   return existingProduct;
 };
 
+// Approved Product Service
+const approvedProduct = async (
+  productId: string,
+  currentUser: AuthUser,
+  payload: { isApproved: boolean; remarks?: string }
+) => {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  const existingProduct = await Product.findOne({
+    productId,
+  });
+  if (!existingProduct) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
+  if (existingProduct.isApproved === payload.isApproved) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Product is already ${payload.isApproved ? 'approved' : 'rejected'}`
+    );
+  }
+
+  if (existingProduct.isApproved === false && payload.isApproved === true) {
+    existingProduct.isApproved = payload.isApproved;
+  } else if (
+    existingProduct.isApproved === true &&
+    payload.isApproved === false
+  ) {
+    if (payload.isApproved === false && !payload.remarks) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Remarks are required when rejecting a product'
+      );
+    }
+    existingProduct.remarks = payload.remarks;
+    existingProduct.isApproved = payload.isApproved;
+  }
+
+  await existingProduct.save();
+  return {
+    message: `Product has been ${
+      payload.isApproved ? 'approved' : 'rejected'
+    } successfully`,
+    data: {
+      productId: existingProduct.productId,
+      isApproved: existingProduct.isApproved,
+      remarks: existingProduct.remarks,
+    },
+  };
+};
+
 // product image delete service
 const deleteProductImages = async (
   productId: string,
@@ -342,10 +396,11 @@ const permanentDeleteProduct = async (
 
 export const ProductServices = {
   createProduct,
+  updateProduct,
+  approvedProduct,
+  deleteProductImages,
   getAllProducts,
   getSingleProduct,
-  updateProduct,
-  deleteProductImages,
   softDeleteProduct,
   permanentDeleteProduct,
 };

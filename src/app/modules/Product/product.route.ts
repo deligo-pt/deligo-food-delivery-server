@@ -28,6 +28,14 @@ router.patch(
   ProductControllers.updateProduct
 );
 
+// Approved product
+router.patch(
+  '/approveOrReject/:productId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(ProductValidation.approveProductValidationSchema),
+  ProductControllers.approvedProduct
+);
+
 // Product delete images
 router.delete(
   '/:productId/images',

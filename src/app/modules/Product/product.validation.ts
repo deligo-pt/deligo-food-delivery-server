@@ -143,7 +143,16 @@ const updateProductValidationSchema = z.object({
   }),
 });
 
+// approveProductValidationSchema
+const approveProductValidationSchema = z.object({
+  body: z.object({
+    isApproved: z.boolean({ required_error: 'isApproved is required' }),
+    remarks: z.string().optional(),
+  }),
+});
+
 export const ProductValidation = {
   createProductValidationSchema,
   updateProductValidationSchema,
+  approveProductValidationSchema,
 };
