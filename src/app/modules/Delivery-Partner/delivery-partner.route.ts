@@ -19,7 +19,7 @@ router.patch(
 // Get All Delivery Partners Route
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
   DeliveryPartnerControllers.getAllDeliveryPartners
 );
 

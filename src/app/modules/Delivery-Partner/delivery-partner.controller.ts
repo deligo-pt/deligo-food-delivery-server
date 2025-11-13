@@ -23,7 +23,8 @@ const updateDeliveryPartner = catchAsync(async (req, res) => {
 // get all delivery partners
 const getAllDeliveryPartners = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.getAllDeliveryPartnersFromDB(
-    req.query
+    req.query,
+    req.user as AuthUser
   );
 
   sendResponse(res, {
