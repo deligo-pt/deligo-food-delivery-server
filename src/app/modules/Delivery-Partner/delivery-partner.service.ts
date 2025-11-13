@@ -38,7 +38,14 @@ const updateDeliveryPartner = async (
 };
 
 //get all delivery partners
-const getAllDeliveryPartnersFromDB = async (query: Record<string, unknown>) => {
+const getAllDeliveryPartnersFromDB = async (
+  query: Record<string, unknown>,
+  currentUser: AuthUser
+) => {
+  if (currentUser?.role === 'FLEET_MANAGER') {
+    query.registeredBy = currentUser?.id;
+  }
+
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
     .fields()
     .paginate()

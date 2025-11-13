@@ -63,13 +63,13 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     },
     passwordChangedAt: { type: Date, default: null },
 
-    //  Company Details
-    companyDetails: {
-      companyName: { type: String, default: '' },
-      companyLicenseNumber: { type: String, default: '' },
+    //  business Details
+    businessDetails: {
+      businessName: { type: String, default: '' },
+      businessLicenseNumber: { type: String, default: '' },
     },
-    // Company Location
-    companyLocation: {
+    // business Location
+    businessLocation: {
       streetAddress: { type: String, default: '' },
       streetNumber: { type: String, default: '' },
       city: { type: String, default: '' },
@@ -88,7 +88,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // Documents & Verification
     documents: {
       idProof: { type: String, default: '' },
-      companyLicense: { type: String, default: '' },
+      businessLicense: { type: String, default: '' },
     },
     // Operation Data
     operationalData: {

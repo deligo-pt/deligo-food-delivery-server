@@ -35,13 +35,13 @@ export type TFleetManager = {
 
   passwordChangedAt?: Date | string;
 
-  //  Company Details
-  companyDetails?: {
-    companyName: string;
-    companyLicenseNumber?: string;
+  //  Business Details
+  businessDetails?: {
+    businessName: string;
+    businessLicenseNumber?: string;
   };
-  // Company Location
-  companyLocation?: {
+  // business Location
+  businessLocation?: {
     streetAddress: string;
     streetNumber: string;
     city: string;
@@ -60,7 +60,7 @@ export type TFleetManager = {
   // Documents & Verification
   documents?: {
     idProof?: string;
-    companyLicense?: string;
+    businessLicense?: string;
   };
 
   // Operation Data
@@ -91,5 +91,5 @@ export type TFleetManager = {
 };
 
 export type TFleetManagerImageDocuments = {
-  docImageTitle: 'idProof' | 'companyLicense';
+  docImageTitle: 'idProof' | 'businessLicense';
 };

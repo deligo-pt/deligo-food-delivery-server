@@ -22,6 +22,7 @@ const registerUser = async <
     email: string;
     role: keyof typeof USER_ROLE;
     isEmailVerified?: boolean;
+    registeredBy?: string;
   }
 >(
   payload: T,
@@ -34,6 +35,8 @@ const registerUser = async <
   if (!userTypeData || !modelData) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
+
+  let registeredBy;
   // Restrict Delivery Partner registration
   if (userType === '/create-delivery-partner') {
     const allowedRoles: (keyof typeof USER_ROLE)[] = [
@@ -57,6 +60,8 @@ const registerUser = async <
         'You do not have permission to register a Delivery Partner'
       );
     }
+
+    registeredBy = allowedUser.user.userId;
   }
 
   const { Model, idField } = modelData;
@@ -122,6 +127,7 @@ const registerUser = async <
         {
           ...payload,
           [idField]: userID,
+          registeredBy,
           otp,
           isOtpExpired: otpExpires,
         },
@@ -265,8 +271,7 @@ const saveFcmToken = async (userId: string, token: string) => {
   // Add new token if not exists
   const tokens = new Set([...(user.fcmTokens || []), token]);
   user.fcmTokens = Array.from(tokens);
-
-  await Model.findOneAndUpdate({ userId }, { fcmTokens: user.fcmTokens });
+  await user.save();
 
   return { userId, tokens: user.fcmTokens };
 };
