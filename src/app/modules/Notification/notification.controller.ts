@@ -32,19 +32,35 @@ const markAsRead = catchAsync(async (req, res) => {
   });
 });
 
+// Mark as read (all)
+const markAllAsRead = catchAsync(async (req, res) => {
+  await NotificationService.markAllAsRead(req?.user as AuthUser);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'All notifications marked as read',
+    data: null,
+  });
+});
+
 // Admin: Get all notifications
 const getAllNotifications = catchAsync(async (req, res) => {
-  const notifications = await Notification.find().sort({ createdAt: -1 });
+  const result = await NotificationService.getAllNotifications(
+    req.user as AuthUser,
+    req.query
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'All notifications retrieved successfully',
-    data: notifications,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
 export const NotificationControllers = {
   getMyNotifications,
   markAsRead,
+  markAllAsRead,
   getAllNotifications,
 };

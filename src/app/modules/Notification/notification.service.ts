@@ -6,6 +6,7 @@ import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
 import { Notification } from './notification.model';
+import { QueryBuilder } from '../../builder/QueryBuilder';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -125,8 +126,47 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
   await notification.save();
 };
 
+// mark as read (all)
+const markAllAsRead = async (currentUser: AuthUser) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const user = result?.user;
+  await Notification.updateMany({ receiverId: user.userId }, { isRead: true });
+  return null;
+};
+
+// Get all notifications
+const getAllNotifications = async (
+  currentUser: AuthUser,
+  query: Record<string, unknown>
+) => {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    query.receiverId = currentUser.id;
+  }
+
+  const notifications = new QueryBuilder(Notification.find(), query)
+    .fields()
+    .paginate()
+    .sort()
+    .filter()
+    .search(['title', 'message', 'receiverRole']);
+
+  const meta = await notifications.countTotal();
+  const data = await notifications.modelQuery;
+  return { meta, data };
+};
+
 export const NotificationService = {
   sendToUser,
   sendToRole,
   markAsRead,
+  markAllAsRead,
+  getAllNotifications,
 };
