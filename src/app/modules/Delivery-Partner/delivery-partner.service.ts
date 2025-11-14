@@ -5,20 +5,35 @@ import { AuthUser } from '../../constant/user.const';
 import { TDeliveryPartner } from './delivery-partner.interface';
 import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerId: string,
   currentUser: AuthUser
 ) => {
+  await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
   });
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
-  if (!existingDeliveryPartner?.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
+  if (currentUser?.role === 'DELIVERY_PARTNER') {
+    if (existingDeliveryPartner?.userId !== currentUser?.id) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized for update'
+      );
+    }
+
+    if (!existingDeliveryPartner?.isEmailVerified) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
+    }
   }
   if (currentUser?.id !== existingDeliveryPartner?.userId) {
     throw new AppError(
