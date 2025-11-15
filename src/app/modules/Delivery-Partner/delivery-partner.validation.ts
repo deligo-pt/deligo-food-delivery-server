@@ -41,8 +41,6 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
 
-    profilePhoto: z.string().optional(),
-
     // 2) Right to Work / Legal Status
 
     legalStatus: z
@@ -122,6 +120,21 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
   }),
 });
 
+// doc image update validation schema
+const deliveryPartnerDocImageValidationSchema = z.object({
+  body: z.object({
+    docImageTitle: z
+      .enum([
+        'idProof',
+        'drivingLicense',
+        'residencePermit',
+        'criminalRecordCertificate',
+      ])
+      .optional(),
+  }),
+});
+
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
+  deliveryPartnerDocImageValidationSchema,
 };

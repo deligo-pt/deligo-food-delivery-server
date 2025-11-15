@@ -74,7 +74,7 @@ export type TDeliveryPartner = {
 
   // 5) Criminal Background
   criminalRecord?: {
-    certificateURL?: string;
+    certificate?: string;
     issueDate?: Date;
   };
 
