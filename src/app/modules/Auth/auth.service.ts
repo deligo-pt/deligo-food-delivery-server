@@ -3,7 +3,7 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import generateUserId, { USER_TYPE_MAP } from '../../utils/generateUserId';
 import generateOtp from '../../utils/generateOtp';
-import mongoose, { Model } from 'mongoose';
+import { Model } from 'mongoose';
 import {
   ALL_USER_MODELS,
   TApprovedRejectsPayload,
@@ -36,7 +36,7 @@ const registerUser = async <
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
 
-  let registeredBy;
+  let registeredBy: string | undefined;
   // Restrict Delivery Partner registration
   if (userType === '/create-delivery-partner') {
     const allowedRoles: (keyof typeof USER_ROLE)[] = [
@@ -48,6 +48,10 @@ const registerUser = async <
       userId: currentUser?.id,
       isDeleted: false,
     });
+
+    if (!allowedUser?.user) {
+      throw new AppError(httpStatus.FORBIDDEN, 'Permission check failed');
+    }
     if (allowedUser.user.status !== 'APPROVED') {
       throw new AppError(
         httpStatus.FORBIDDEN,
@@ -65,101 +69,102 @@ const registerUser = async <
   }
 
   const { Model, idField } = modelData;
+  const mongooseModel = Model as unknown as Model<T>;
 
-  let user;
+  // Generate userId & OTP
   const userID = generateUserId(userType);
   payload.role = userTypeData.role;
-  // Generate OTP
   const { otp, otpExpires } = generateOtp();
 
-  const mongooseModel = Model as unknown as Model<T>;
   //  Check existing user in ALL models
-  let existingUser: any = null;
-  for (const EachModel of ALL_USER_MODELS) {
-    const user = await EachModel.isUserExistsByEmail(payload.email);
-    if (user) {
-      existingUser = user;
-      break;
-    }
+  const checkModels = ALL_USER_MODELS.map((M: any) =>
+    M.isUserExistsByEmail(payload.email).catch(() => null)
+  );
+
+  const checkUser = await Promise.all(checkModels);
+
+  const existingUser = checkUser.find((user) => user && user.email);
+  if (existingUser && existingUser.isEmailVerified) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      `${existingUser.email} already exists. Please Login!`
+    );
   }
 
-  const session = await mongoose.startSession();
+  if (existingUser && !existingUser.isEmailVerified) {
+    const index = checkUser.findIndex(
+      (user) => user && user.email === existingUser.email
+    );
 
-  try {
-    session.startTransaction();
-
-    if (existingUser) {
-      if (existingUser?.isEmailVerified) {
-        throw new AppError(
-          httpStatus.CONFLICT,
-          `${existingUser.email} already exists. Please Login!`
-        );
-      }
-
-      // Delete from its own collection
-
-      let modelToDelete: any = null;
-
-      for (const M of ALL_USER_MODELS) {
-        // if (typeof (M as any).isUserExistsByEmail !== 'function') continue;
-
-        const foundUser = await M.isUserExistsByEmail(existingUser.email);
-        if (foundUser && !foundUser.isEmailVerified) {
-          modelToDelete = M;
-          break;
-        }
-      }
-
-      if (modelToDelete) {
-        await modelToDelete.deleteOne(
-          { email: existingUser.email },
-          { session }
-        );
+    if (index !== -1) {
+      const modelToDelete = ALL_USER_MODELS[index];
+      try {
+        await modelToDelete.deleteOne({ email: existingUser.email });
         console.log(
           ` Deleted unverified user from: ${modelToDelete.modelName}`
         );
+      } catch (error) {
+        console.log(error);
       }
     }
+  }
 
-    // Create user
-    user = await mongooseModel.create(
-      [
-        {
-          ...payload,
-          [idField]: userID,
-          registeredBy,
-          otp,
-          isOtpExpired: otpExpires,
-        },
-      ],
-      { session }
-    );
-
-    // Prepare & send verification email
-    const emailHtml = await EmailHelper.createEmailContent(
+  let createdUser: any = null;
+  try {
+    const result = await mongooseModel.create([
       {
+        ...payload,
+        [idField]: userID,
+        registeredBy,
         otp,
-        userEmail: payload.email,
-        currentYear: new Date().getFullYear(),
+        isOtpExpired: otpExpires,
       },
-      'verify-email'
-    );
+    ]);
+    createdUser = Array.isArray(result) ? result[0] : result;
+  } catch (err: any) {
+    if (err?.code === 11000) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${payload.email} already exists`
+      );
+    }
+    throw err;
+  }
+  console.log(payload);
+  // create email html
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      otp,
+      userEmail: payload.email,
+      currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
+      website: 'https://deligo.pt',
+      phone: '+351 920 136 680',
+      address: 'Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal',
+      user: payload?.role.toLocaleLowerCase(),
+    },
+    'verify-email'
+  );
 
-    await EmailHelper.sendEmail(
+  // send email
+  setImmediate(() => {
+    EmailHelper.sendEmail(
       payload.email,
       emailHtml,
       'Verify your email for DeliGo'
-    );
+    )
+      .then(() => {
+        console.log(`Verification email sent to ${payload.email}`);
+      })
+      .catch((err) => {
+        console.error('Failed to send verification email:', err);
+      });
+  });
 
-    await session.commitTransaction();
-    await session.endSession();
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
-  }
-
-  return user;
+  return {
+    message: `${payload.role} registered successfully. Please check your email for verification.`,
+    data: createdUser,
+  };
 };
 
 // Login User
@@ -200,6 +205,11 @@ const loginUser = async (payload: TLoginUser) => {
         otp,
         userEmail: payload.email,
         currentYear: new Date().getFullYear(),
+        date: new Date().toDateString(),
+        website: 'https://deligo.pt',
+        phone: '+351 920 136 680',
+        address: 'Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal',
+        user: user?.role.toLocaleLowerCase(),
       },
       'verify-email'
     );

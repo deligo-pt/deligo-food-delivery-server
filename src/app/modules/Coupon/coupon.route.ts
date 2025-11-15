@@ -16,7 +16,7 @@ router.post(
 
 // update coupon
 router.patch(
-  '/:id',
+  '/:couponId',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(CouponValidation.updateCouponValidationSchema),
   CouponControllers.updateCoupon
@@ -27,7 +27,7 @@ router.get('/', auth('ADMIN', 'SUPER_ADMIN'), CouponControllers.getAllCoupons);
 
 // delete coupon
 router.delete(
-  '/:id',
+  '/:couponId',
   auth('ADMIN', 'SUPER_ADMIN'),
   CouponControllers.deleteCoupon
 );

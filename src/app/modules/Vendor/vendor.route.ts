@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router } from 'express';
 import auth from '../../middlewares/auth';
 import { VendorControllers } from './vendor.controller';
 import validateRequest from '../../middlewares/validateRequest';
@@ -6,11 +6,11 @@ import { VendorValidation } from './vendor.validation';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
 
-const router = express.Router();
+const router = Router();
 
 // Vendor update Route
 router.patch(
-  '/:id',
+  '/:vendorId',
   auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
   validateRequest(VendorValidation.vendorUpdateValidationSchema),
   VendorControllers.vendorUpdate
@@ -18,7 +18,7 @@ router.patch(
 
 // vendor doc image upload route
 router.patch(
-  '/:id/docImage',
+  '/:vendorId/docImage',
   auth('VENDOR', 'SUPER_ADMIN'),
   multerUpload.single('file'),
   parseBody,

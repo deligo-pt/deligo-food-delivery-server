@@ -9,7 +9,7 @@ const updateAdmin = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
   const result = await AdminServices.updateAdmin(
     req.body,
-    req.params.userId,
+    req.params.adminId,
     currentUser
   );
   sendResponse(res, {
@@ -36,7 +36,7 @@ const getAllAdmins = catchAsync(async (req, res) => {
 const getSingleAdmin = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
   const result = await AdminServices.getSingleAdmin(
-    req.params.userId,
+    req.params.adminId,
     currentUser
   );
   sendResponse(res, {

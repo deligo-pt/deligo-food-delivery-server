@@ -6,9 +6,9 @@ import { AdminValidation } from './admin.validation';
 
 const router = Router();
 
-// User Update Route
+// Admin Update Route
 router.patch(
-  '/:userId',
+  '/:adminId',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AdminValidation.updateAdminDataValidationSchema),
   AdminControllers.updateAdmin

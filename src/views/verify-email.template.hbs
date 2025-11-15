@@ -1,35 +1,145 @@
-{{! Email Verification Template }}
+{{! Email Verification Template - Industry Standard }}
 
 <html lang='en'>
   <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <style>
-      body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin:
-      0; padding: 0; } .container { width: 100%; max-width: 600px; margin: 0
-      auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); } .header { background-color:
-      #DC3173; color: #ffffff; padding: 20px; text-align: center; } .content {
-      padding: 20px; text-align: center; } .expired-note { color: #ff0000;
-      font-size: 12px; margin-top: 10px; } .footer { background-color: #f1f1f1;
-      color: #555555; text-align: center; padding: 10px; font-size: 14px; }
 
+    <style>
+      body { margin: 0; padding: 0; background: #F3F4FA; font-family: Arial,
+      sans-serif; } .container { max-width: 650px; margin: 0 auto; background:
+      #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 20px
+      rgba(0, 0, 0, 0.05); } /* ============ HEADER ============ */ .header {
+      background: #dc3173; padding: 20px 25px; display: flex; justify-content:
+      space-between; /* LEFT + RIGHT */ align-items: center; } .header-left {
+      display: flex; align-items: center; gap: 12px; } .header-left img { width:
+      48px; height: auto; display: block; } .logo-title { color: #ffffff;
+      font-size: 28px; font-weight: bold; margin: 0; line-height: 1; }
+      .header-date { color: #ffffff; font-size: 14px; white-space: nowrap; /*
+      Prevent line break */ } /* TITLE */ .title { text-align: center;
+      font-size: 26px; font-weight: bold; margin: 20px 0 10px 0; color: #1e1e1e;
+      } /* CONTENT */ .content { padding: 0 25px 25px 25px; font-size: 16px;
+      color: #333333; line-height: 1.6; } /* OTP */ .otp-box { font-size: 36px;
+      font-weight: 700; letter-spacing: 4px; padding: 16px 0; background:
+      #f7f7f7; border-radius: 8px; display: inline-block; width: 220px; color:
+      #dc3173; border: 1px solid #e0e0e0; margin-bottom: 10px; } /* NOTE */
+      .note { font-size: 14px; color: #ff3b3b; text-align: center;
+      margin-bottom: 25px; } /* SOCIAL ICONS */ .social-section { text-align:
+      center; padding: 20px 10px; } .social-section img { width: 34px; margin: 0
+      10px; } /* FOOTER */ .footer { font-size: 14px; text-align: center; color:
+      #666; padding: 10px 25px 20px 25px; border-top: 1px solid #e4e4e4; } /*
+      APP STORE BUTTONS */ .app-buttons { text-align: center; margin-top: 10px;
+      padding-bottom: 15px; } .app-buttons img { width: 150px; margin: 5px; } /*
+      ============ MOBILE RESPONSIVE ============ */ @media only screen and
+      (max-width: 480px) { .header { flex-direction: column; gap: 6px; }
+      .header-left { justify-content: center; } .header-left img { width: 38px
+      !important; } .logo-title { font-size: 22px !important; } .header-date {
+      text-align: center; width: 100%; } .otp-box { width: 180px !important;
+      font-size: 30px !important; letter-spacing: 2px; } }
     </style>
   </head>
+
   <body>
+    <br />
+
     <div class='container'>
+      <!-- HEADER -->
       <div class='header'>
-        <h1>Welcome to DeliGo</h1>
-      </div>
-      <div class='content'>
-        <p>Your OTP Verification Code:</p>
-        <h1>{{otp}}</h1>
-        <p class='expired-note'>This code will expire in 5 minutes.</p>
-      </div>
-      <div class='footer'>
-        <p>&copy; {{currentYear}} DeliGo. All rights reserved.</p>
+        <div class='header-left'>
+          <img
+            src='https://res.cloudinary.com/dmsezyylp/image/upload/v1763207245/DeliGo-White-logo_sme0nt.png'
+            alt='DeliGo Logo'
+          />
+          <h2 class='logo-title'>DeliGo</h2>
+        </div>
+
+        <div class='header-date'>{{date}}</div>
       </div>
 
+      <!-- TITLE -->
+      <div class='title'>Your One-Time Password</div>
+
+      <!-- CONTENT -->
+      <div class='content'>
+        <strong>
+          Dear
+          {{user}}</strong>,<br /><br />
+        Here is your One-Time Password to securely log in to your DeliGo
+        account:
+      </div>
+
+      <!-- OTP -->
+      <div style='text-align:center;'>
+        <div class='otp-box'>{{otp}}</div>
+      </div>
+
+      <!-- NOTE -->
+      <div class='note'>Note: This OTP is valid for 5 minutes.</div>
+
+      <div class='content' style='text-align:left;'>
+        If you did not request this OTP, please disregard this email or contact
+        our support team.
+        <br /><br />Team DeliGo.
+      </div>
+
+      <!-- SOCIAL ICONS -->
+      <div class='social-section'>
+        <a href='YOUR_FACEBOOK_LINK'>
+          <img
+            src='https://res.cloudinary.com/dmsezyylp/image/upload/v1763320001/facebook_pj4oht.png'
+          />
+        </a>
+
+        <a href='YOUR_YOUTUBE_LINK'>
+          <img
+            src='https://res.cloudinary.com/dmsezyylp/image/upload/v1763320013/youtube_n3avqh.png'
+          />
+        </a>
+
+        <a href='YOUR_LINKEDIN_LINK'>
+          <img
+            src='https://res.cloudinary.com/dmsezyylp/image/upload/v1763320025/linkedin_jte1pl.png'
+          />
+        </a>
+
+        <a href='YOUR_INSTAGRAM_LINK'>
+          <img
+            src='https://res.cloudinary.com/dmsezyylp/image/upload/v1763320034/instagram_yyuqjd.png'
+          />
+        </a>
+      </div>
+
+      <!-- FOOTER -->
+      <div class='footer'>
+        Website:
+        {{website}}
+        <br />
+        Phone:
+        {{phone}}
+        <br />
+        Address:
+        {{address}}
+      </div>
+
+      <!-- APP STORE BUTTONS -->
+      <div class='app-buttons'>
+        <img
+          src='https://res.cloudinary.com/dmsezyylp/image/upload/v1763320500/googleplay_awwgv6.png'
+          alt='Google Play'
+        />
+        <img
+          src='https://res.cloudinary.com/dmsezyylp/image/upload/v1763320510/appstore_ynphuv.png'
+          alt='App Store'
+        />
+        <img
+          src='https://res.cloudinary.com/dmsezyylp/image/upload/v1763320520/microsoftstore_fgxzcf.png'
+          alt='Microsoft Store'
+        />
+      </div>
+
+      <br />
     </div>
+
+    <br />
   </body>
 </html>
