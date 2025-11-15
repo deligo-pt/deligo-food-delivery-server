@@ -10,14 +10,8 @@ const deliveryPartnerSchema = new Schema<
   IUserModel<TDeliveryPartner>
 >(
   {
-    userId: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    registeredBy: {
-      type: String,
-    },
+    userId: { type: String, required: true, unique: true },
+    registeredBy: { type: String },
     role: {
       type: String,
       enum: ['DELIVERY_PARTNER'],
@@ -26,7 +20,6 @@ const deliveryPartnerSchema = new Schema<
     email: {
       type: String,
       required: true,
-      //validate email
       lowercase: true,
       trim: true,
       match: [
@@ -44,187 +37,130 @@ const deliveryPartnerSchema = new Schema<
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
-    isEmailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    isDeleted: {
-      type: Boolean,
-      default: false,
-    },
+    isEmailVerified: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
 
-    // fcm tokens for push notifications
+    // FCM tokens for push notifications
     fcmTokens: {
       type: [String],
       default: [],
     },
 
-    // OTP Details
-    otp: {
-      type: String,
+    // OTP
+    otp: { type: String },
+    isOtpExpired: { type: Date },
+
+    // 1) Personal Information (Portugal Required)
+    personalInfo: {
+      Name: {
+        firstName: { type: String, default: '' },
+        lastName: { type: String, default: '' },
+      },
+      dateOfBirth: { type: Date },
+      gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'] },
+      nationality: { type: String, default: '' },
+      nifNumber: { type: String, default: '' },
+      citizenCardNumber: { type: String, default: '' },
+      passportNumber: { type: String, default: '' },
+      idExpiryDate: { type: Date },
+      idDocumentFront: { type: String, default: '' },
+      idDocumentBack: { type: String, default: '' },
+      address: {
+        street: { type: String, default: '' },
+        city: { type: String, default: '' },
+        state: { type: String, default: '' },
+        country: { type: String, default: '' },
+        zipCode: { type: String, default: '' },
+      },
+      contactNumber: { type: String, default: '' },
     },
-    isOtpExpired: {
-      type: Date,
+    profilePhoto: { type: String, default: '' },
+    passwordChangedAt: { type: Date },
+
+    // 2) Right to Work / Legal Status
+    legalStatus: {
+      residencePermitType: { type: String, default: '' },
+      residencePermitNumber: { type: String, default: '' },
+      residencePermitExpiry: { type: Date },
     },
 
-    // Personal Details
-    name: {
-      firstName: {
-        type: String,
-        default: '',
-      },
-      lastName: {
-        type: String,
-        default: '',
-      },
+    // 3) Payment & Banking Details
+    bankDetails: {
+      bankName: { type: String, default: '' },
+      accountHolderName: { type: String, default: '' },
+      iban: { type: String, default: '' },
+      swiftCode: { type: String, default: '' },
     },
-    contactNumber: {
-      type: String,
-      default: '',
+
+    // 4) Vehicle Information
+    vehicleInfo: {
+      vehicleType: {
+        type: String,
+        enum: ['BICYCLE', 'E-BIKE', 'SCOOTER', 'MOTORBIKE', 'CAR'],
+      },
+      brand: { type: String, default: '' },
+      model: { type: String, default: '' },
+      licensePlate: { type: String, default: '' },
+      drivingLicenseNumber: { type: String, default: '' },
+      drivingLicenseExpiry: { type: Date },
+      insurancePolicyNumber: { type: String, default: '' },
+      insuranceExpiry: { type: Date },
     },
-    address: {
-      street: {
-        type: String,
-        default: '',
-      },
-      city: {
-        type: String,
-        default: '',
-      },
-      state: {
-        type: String,
-        default: '',
-      },
-      country: {
-        type: String,
-        default: '',
-      },
-      zipCode: {
-        type: String,
-        default: '',
-      },
+
+    // 5) Criminal Background
+    criminalRecord: {
+      certificateURL: { type: String, default: '' },
+      issueDate: { type: Date },
     },
-    profilePhoto: {
-      type: String,
-      default: '',
-    },
-    passwordChangedAt: {
-      type: Date,
+
+    // 6) Work Preferences
+    workPreferences: {
+      preferredZones: { type: [String], default: [] },
+      preferredHours: { type: [String], default: [] },
+      hasEquipment: {
+        isothermalBag: { type: Boolean, default: false },
+        helmet: { type: Boolean, default: false },
+        powerBank: { type: Boolean, default: false },
+      },
+      workedWithOtherPlatform: { type: Boolean, default: false },
+      otherPlatformName: { type: String, default: '' },
     },
 
     // Operational Data
     operationalData: {
-      totalDeliveries: {
-        type: Number,
-        default: 0,
-      },
-      completedDeliveries: {
-        type: Number,
-        default: 0,
-      },
-      canceledDeliveries: {
-        type: Number,
-        default: 0,
-      },
+      totalDeliveries: { type: Number, default: 0 },
+      completedDeliveries: { type: Number, default: 0 },
+      canceledDeliveries: { type: Number, default: 0 },
       rating: {
-        average: {
-          type: Number,
-          default: 0,
-        },
-        totalReviews: {
-          type: Number,
-          default: 0,
-        },
-      },
-      vehicleType: {
-        type: String,
-        enum: ['BIKE', 'CAR', 'SCOOTER', 'BICYCLE', 'OTHER'],
-      },
-      licenseNumber: {
-        type: String,
-        default: '',
-      },
-    },
-
-    // Bank Details
-    bankDetails: {
-      bankName: {
-        type: String,
-        default: '',
-      },
-      accountHolderName: {
-        type: String,
-        default: '',
-      },
-      iban: {
-        type: String,
-        default: '',
-      },
-      swiftCode: {
-        type: String,
-        default: '',
+        average: { type: Number, default: 0 },
+        totalReviews: { type: Number, default: 0 },
       },
     },
 
     // Earnings
     earnings: {
-      totalEarnings: {
-        type: Number,
-        default: 0,
-      },
-      pendingEarnings: {
-        type: Number,
-        default: 0,
-      },
+      totalEarnings: { type: Number, default: 0 },
+      pendingEarnings: { type: Number, default: 0 },
     },
 
     // Documents
     documents: {
-      idProof: {
-        type: String,
-        default: '',
-      },
-      addressProof: {
-        type: String,
-        default: '',
-      },
-      vehicleRegistration: {
-        type: String,
-        default: '',
-      },
+      idProof: { type: String, default: '' },
+      drivingLicense: { type: String, default: '' },
+      vehicleRegistration: { type: String, default: '' },
     },
 
     // Security & Access
-    twoFactorEnabled: {
-      type: Boolean,
-      default: false,
-    },
+    twoFactorEnabled: { type: Boolean, default: false },
     loginDevices: [{ deviceId: String, lastLogin: Date }],
 
-    approvedBy: {
-      type: String,
-      default: '',
-    },
-    rejectedBy: {
-      type: String,
-      default: '',
-    },
-    blockedBy: {
-      type: String,
-      default: '',
-    },
-    submittedForApprovalAt: {
-      type: Date,
-      default: null,
-    },
-    approvedOrRejectedOrBlockedAt: {
-      type: Date,
-      default: null,
-    },
-    remarks: {
-      type: String,
-      default: '',
-    },
+    // Admin & Audit
+    approvedBy: { type: String, default: '' },
+    rejectedBy: { type: String, default: '' },
+    blockedBy: { type: String, default: '' },
+    submittedForApprovalAt: { type: Date, default: null },
+    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
+    remarks: { type: String, default: '' },
   },
   {
     timestamps: true,

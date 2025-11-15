@@ -2,45 +2,121 @@ import { z } from 'zod';
 
 // Update delivery partner  data validation schema
 
-export const updateDeliveryPartnerDataValidationSchema = z.object({
+const updateDeliveryPartnerDataValidationSchema = z.object({
   body: z.object({
-    // Personal Details
-    name: z
-      .object({
-        firstName: z.string().optional(),
-        lastName: z.string().optional(),
-      })
-      .optional(),
-    contactNumber: z.string().optional(),
+    // 1) Personal Information
 
-    // Address
-    address: z
+    personalInfo: z
       .object({
-        street: z.string().optional(),
-        city: z.string().optional(),
-        state: z.string().optional(),
-        country: z.string().optional(),
-        zipCode: z.string().optional(),
-      })
-      .optional(),
-
-    // Operational Data
-    operationalData: z
-      .object({
-        vehicleType: z
-          .enum(['BIKE', 'CAR', 'SCOOTER', 'BICYCLE', 'OTHER'])
+        Name: z
+          .object({
+            firstName: z.string().optional(),
+            lastName: z.string().optional(),
+          })
           .optional(),
-        licenseNumber: z.string().optional(),
+
+        dateOfBirth: z.string().datetime().optional(),
+        gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
+        nationality: z.string().optional(),
+
+        nifNumber: z.string().optional(),
+        citizenCardNumber: z.string().optional(),
+        passportNumber: z.string().optional(),
+
+        idExpiryDate: z.string().datetime().optional(),
+
+        idDocumentFront: z.string().optional(),
+        idDocumentBack: z.string().optional(),
+
+        address: z
+          .object({
+            street: z.string().optional(),
+            city: z.string().optional(),
+            state: z.string().optional(),
+            country: z.string().optional(),
+            zipCode: z.string().optional(),
+          })
+          .optional(),
+        contactNumber: z.string().optional(),
       })
       .optional(),
 
-    // Bank Details
+    profilePhoto: z.string().optional(),
+
+    // 2) Right to Work / Legal Status
+
+    legalStatus: z
+      .object({
+        residencePermitType: z.string().optional(),
+        residencePermitNumber: z.string().optional(),
+        residencePermitExpiry: z.string().datetime().optional(),
+      })
+      .optional(),
+
+    // 3) Payment & Banking Details
+
     bankDetails: z
       .object({
         bankName: z.string().optional(),
         accountHolderName: z.string().optional(),
         iban: z.string().optional(),
         swiftCode: z.string().optional(),
+      })
+      .optional(),
+
+    // 4) Vehicle Information
+    vehicleInfo: z
+      .object({
+        vehicleType: z
+          .enum(['BICYCLE', 'E-BIKE', 'SCOOTER', 'MOTORBIKE', 'CAR'])
+          .optional(),
+        brand: z.string().optional(),
+        model: z.string().optional(),
+        licensePlate: z.string().optional(),
+        drivingLicenseNumber: z.string().optional(),
+        drivingLicenseExpiry: z.string().datetime().optional(),
+        insurancePolicyNumber: z.string().optional(),
+        insuranceExpiry: z.string().datetime().optional(),
+      })
+      .optional(),
+
+    // 5) Criminal Background
+    criminalRecord: z
+      .object({
+        certificateURL: z.string().optional(),
+        issueDate: z.string().datetime().optional(),
+      })
+      .optional(),
+
+    // 6) Work Preferences / Equipment
+    workPreferences: z
+      .object({
+        preferredZones: z.array(z.string()).optional(),
+        preferredHours: z.array(z.string()).optional(),
+        hasEquipment: z
+          .object({
+            isothermalBag: z.boolean().optional(),
+            helmet: z.boolean().optional(),
+            powerBank: z.boolean().optional(),
+          })
+          .optional(),
+        workedWithOtherPlatform: z.boolean().optional(),
+        otherPlatformName: z.string().optional(),
+      })
+      .optional(),
+
+    // Existing Operational Data
+    operationalData: z
+      .object({
+        totalDeliveries: z.number().optional(),
+        completedDeliveries: z.number().optional(),
+        canceledDeliveries: z.number().optional(),
+        rating: z
+          .object({
+            average: z.number().optional(),
+            totalReviews: z.number().optional(),
+          })
+          .optional(),
       })
       .optional(),
   }),

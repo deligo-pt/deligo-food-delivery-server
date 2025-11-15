@@ -13,6 +13,8 @@ import { DeliveryPartnerRoutes } from '../modules/Delivery-Partner/delivery-part
 import { CouponRoutes } from '../modules/Coupon/coupon.route';
 import { NotificationRoutes } from '../modules/Notification/notification.route';
 import { CategoryRoutes } from '../modules/Category/category.route';
+import { OfferRoutes } from '../modules/Offer/offer.route';
+import { RatingRoutes } from '../modules/Rating/rating.route';
 
 const router = express.Router();
 
@@ -72,6 +74,14 @@ const moduleRoutes = [
   {
     path: '/categories',
     route: CategoryRoutes,
+  },
+  {
+    path: '/offers',
+    route: OfferRoutes,
+  },
+  {
+    path: '/ratings',
+    route: RatingRoutes,
   },
 ];
 

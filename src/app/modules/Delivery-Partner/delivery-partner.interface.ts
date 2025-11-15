@@ -11,31 +11,87 @@ export type TDeliveryPartner = {
   isEmailVerified: boolean;
   isDeleted: boolean;
 
-  // fcm tokens for push notifications
+  // FCM tokens for push notifications
   fcmTokens?: string[];
 
   // OTP Details
   otp?: string;
   isOtpExpired?: Date;
 
-  // Personal Details
-  name?: {
-    firstName?: string;
-    lastName?: string;
+  // 1) Personal Information
+  personalInfo?: {
+    Name?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    dateOfBirth?: Date;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER';
+    nationality?: string;
+    nifNumber?: string;
+    citizenCardNumber?: string;
+    passportNumber?: string;
+    idExpiryDate?: Date;
+    idDocumentFront?: string;
+    idDocumentBack?: string;
+    address?: {
+      street?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      zipCode?: string;
+    };
+    contactNumber?: string;
   };
-  contactNumber?: string;
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    zipCode?: string;
-  };
-
   profilePhoto?: string;
   passwordChangedAt?: Date;
 
-  // Operational Data
+  // 2) Right to Work / Legal Status
+  legalStatus?: {
+    residencePermitType?: string;
+    residencePermitNumber?: string;
+    residencePermitExpiry?: Date;
+  };
+
+  // 3) Payment & Banking Details
+  bankDetails?: {
+    bankName?: string;
+    accountHolderName?: string;
+    iban?: string;
+    swiftCode?: string;
+  };
+
+  // 4) Vehicle Information
+  vehicleInfo?: {
+    vehicleType?: 'BICYCLE' | 'E-BIKE' | 'SCOOTER' | 'MOTORBIKE' | 'CAR';
+    brand?: string;
+    model?: string;
+    licensePlate?: string;
+    drivingLicenseNumber?: string;
+    drivingLicenseExpiry?: Date;
+    insurancePolicyNumber?: string;
+    insuranceExpiry?: Date;
+  };
+
+  // 5) Criminal Background
+  criminalRecord?: {
+    certificateURL?: string;
+    issueDate?: Date;
+  };
+
+  // 6) Equipment / Availability
+  workPreferences?: {
+    preferredZones?: string[];
+    preferredHours?: string[];
+    hasEquipment?: {
+      isothermalBag?: boolean;
+      helmet?: boolean;
+      powerBank?: boolean;
+    };
+    workedWithOtherPlatform?: boolean;
+    otherPlatformName?: string;
+  };
+
+  // Operational Data (existing)
   operationalData?: {
     totalDeliveries?: number;
     completedDeliveries?: number;
@@ -44,35 +100,24 @@ export type TDeliveryPartner = {
       average: number;
       totalReviews: number;
     };
-    vehicleType?: 'BIKE' | 'CAR' | 'SCOOTER' | 'BICYCLE' | 'OTHER';
-    licenseNumber?: string;
   };
 
-  // Bank Details
-  bankDetails?: {
-    bankName?: string;
-    accountHolderName?: string;
-    iban?: string;
-    swiftCode?: string;
-  };
-
-  // Earnings
+  // Earnings (existing)
   earnings?: {
     totalEarnings?: number;
     pendingEarnings?: number;
   };
 
-  // Documents
+  // Documents (existing)
   documents?: {
     idProof?: string;
     drivingLicense?: string;
     vehicleRegistration?: string;
   };
 
-  // Security & Access
+  // Security & Access (existing)
   twoFactorEnabled?: boolean;
   loginDevices?: { deviceId: string; lastLogin: Date }[];
-
   approvedBy?: string;
   rejectedBy?: string;
   blockedBy?: string;
@@ -80,7 +125,6 @@ export type TDeliveryPartner = {
   approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;
 
-  // timestamps
   createdAt?: Date;
   updatedAt?: Date;
 };
