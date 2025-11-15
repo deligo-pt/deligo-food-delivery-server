@@ -45,7 +45,7 @@ const registerUser = async <
       'FLEET_MANAGER',
     ];
     const allowedUser = await findUserByEmailOrId({
-      userId: currentUser?.id,
+      email: currentUser?.email,
       isDeleted: false,
     });
 

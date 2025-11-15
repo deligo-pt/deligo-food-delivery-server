@@ -22,16 +22,16 @@ export const fleetManagerUpdateValidationSchema = z.object({
       })
       .optional(),
 
-    // Company Details
-    companyDetails: z
+    // business Details
+    businessDetails: z
       .object({
-        companyName: z.string().optional(),
-        companyLicenseNumber: z.string().optional(),
+        businessName: z.string().optional(),
+        businessLicenseNumber: z.string().optional(),
       })
       .optional(),
 
-    // Company Location
-    companyLocation: z
+    // business Location
+    businessLocation: z
       .object({
         streetAddress: z.string().optional(),
         streetNumber: z.string().optional(),
@@ -72,7 +72,7 @@ export const fleetManagerUpdateValidationSchema = z.object({
 
 const fleetManagerDocImageValidationSchema = z.object({
   body: z.object({
-    docImageTitle: z.enum(['idProof', 'companyLicense']).optional(),
+    docImageTitle: z.enum(['idProof', 'businessLicense']).optional(),
   }),
 });
 
