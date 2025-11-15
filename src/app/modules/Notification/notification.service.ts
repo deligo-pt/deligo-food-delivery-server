@@ -47,9 +47,12 @@ const sendToUser = async (
   const user = result?.user;
 
   if (!user || !user.fcmTokens?.length) {
-    console.warn(`No tokens found for userId: ${userId}`);
-    return;
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `No tokens found for userId: ${userId}`
+    );
   }
+
   const uniqueTokens = [...new Set(user.fcmTokens as string[])];
   // Push notification
   for (const token of uniqueTokens) {

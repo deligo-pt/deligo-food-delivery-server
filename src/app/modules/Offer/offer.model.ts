@@ -1,0 +1,49 @@
+import { Schema, model } from 'mongoose';
+import { TOffer } from './offer.interface';
+
+const bogoSchema = new Schema(
+  {
+    buyQty: Number,
+    getQty: Number,
+    itemId: String,
+  },
+  { _id: false }
+);
+
+const offerSchema = new Schema<TOffer>(
+  {
+    title: { type: String, required: true },
+    description: { type: String },
+
+    offerType: {
+      type: String,
+      enum: ['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO'],
+      required: true,
+    },
+
+    discountValue: { type: Number },
+    maxDiscountAmount: { type: Number },
+
+    bogo: bogoSchema,
+
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+
+    vendorId: { type: String, default: null },
+    minOrderAmount: { type: Number },
+
+    isAutoApply: { type: Boolean, required: true },
+    code: { type: String },
+
+    maxUsageCount: { type: Number },
+    usageCount: { type: Number, default: 0 },
+    limitPerUser: { type: Number },
+
+    isActive: { type: Boolean, default: true },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export const Offer = model<TOffer>('Offer', offerSchema);
