@@ -127,7 +127,7 @@ const deliveryPartnerDocImageValidationSchema = z.object({
       .enum([
         'idProof',
         'drivingLicense',
-        'residencePermit',
+        'vehicleRegistration',
         'criminalRecordCertificate',
       ])
       .optional(),

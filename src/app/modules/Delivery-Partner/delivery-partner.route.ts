@@ -3,6 +3,8 @@ import auth from '../../middlewares/auth';
 import { Router } from 'express';
 import { DeliveryPartnerValidation } from './delivery-partner.validation';
 import { DeliveryPartnerControllers } from './delivery-partner.controller';
+import { multerUpload } from '../../config/multer.config';
+import { parseBody } from '../../middlewares/bodyParser';
 
 const router = Router();
 
@@ -14,6 +16,18 @@ router.patch(
     DeliveryPartnerValidation.updateDeliveryPartnerDataValidationSchema
   ),
   DeliveryPartnerControllers.updateDeliveryPartner
+);
+
+// Delivery Partner Doc Image Upload Route
+router.patch(
+  '/:deliveryPartnerId/docImage',
+  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER'),
+  multerUpload.single('file'),
+  parseBody,
+  validateRequest(
+    DeliveryPartnerValidation.deliveryPartnerDocImageValidationSchema
+  ),
+  DeliveryPartnerControllers.deliveryPartnerDocImageUpload
 );
 
 // Get All Delivery Partners Route

@@ -39,15 +39,15 @@ const vendorUpdate = async (
 const vendorDocImageUpload = async (
   file: string | undefined,
   data: TVendorImageDocuments,
-  user: AuthUser,
-  id: string
+  currentUser: AuthUser,
+  vendorId: string
 ) => {
-  const existingVendor = await Vendor.findOne({ userId: id });
+  const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  if (user?.id !== existingVendor?.userId) {
+  if (currentUser?.id !== existingVendor?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to upload document image!'
@@ -78,7 +78,7 @@ const vendorDocImageUpload = async (
   }
 
   return {
-    message: 'Image upload successfully',
+    message: 'Vendor document image updated successfully',
     existingVendor,
   };
 };
