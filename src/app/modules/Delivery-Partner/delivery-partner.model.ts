@@ -109,7 +109,7 @@ const deliveryPartnerSchema = new Schema<
 
     // 5) Criminal Background
     criminalRecord: {
-      certificateURL: { type: String, default: '' },
+      certificate: { type: Boolean },
       issueDate: { type: Date },
     },
 

@@ -22,6 +22,7 @@ router.patch(
   auth('VENDOR', 'SUPER_ADMIN'),
   multerUpload.single('file'),
   parseBody,
+  validateRequest(VendorValidation.vendorDocImageValidationSchema),
   VendorControllers.vendorDocImageUpload
 );
 // get all vendors

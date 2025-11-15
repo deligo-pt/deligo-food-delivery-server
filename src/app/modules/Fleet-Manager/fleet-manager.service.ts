@@ -9,6 +9,7 @@ import {
   TFleetManagerImageDocuments,
 } from './fleet-manager.interface';
 import { FleetManager } from './fleet-manager.model';
+import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -60,6 +61,21 @@ const fleetManagerDocImageUpload = async (
     );
   }
 
+  // delete previous image if exists
+  const docTitle = data?.docImageTitle;
+
+  if (docTitle && existingFleetManager?.documents?.[docTitle]) {
+    try {
+      const oldImage = existingFleetManager?.documents?.[docTitle];
+      await deleteSingleImageFromCloudinary(oldImage);
+    } catch (error) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Failed to delete previous document image!'
+      );
+    }
+  }
+
   if (data.docImageTitle && file) {
     existingFleetManager.documents = {
       ...existingFleetManager.documents,
@@ -69,7 +85,7 @@ const fleetManagerDocImageUpload = async (
   }
 
   return {
-    message: 'Image upload successfully',
+    message: 'Fleet Manager document image updated successfully',
     existingFleetManager,
   };
 };

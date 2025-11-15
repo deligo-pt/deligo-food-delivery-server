@@ -74,7 +74,7 @@ export type TDeliveryPartner = {
 
   // 5) Criminal Background
   criminalRecord?: {
-    certificateURL?: string;
+    certificate?: boolean;
     issueDate?: Date;
   };
 
@@ -113,6 +113,7 @@ export type TDeliveryPartner = {
     idProof?: string;
     drivingLicense?: string;
     vehicleRegistration?: string;
+    criminalRecordCertificate?: string;
   };
 
   // Security & Access (existing)
@@ -127,4 +128,12 @@ export type TDeliveryPartner = {
 
   createdAt?: Date;
   updatedAt?: Date;
+};
+
+export type TDeliveryPartnerImageDocuments = {
+  docImageTitle:
+    | 'idProof'
+    | 'drivingLicense'
+    | 'vehicleRegistration'
+    | 'criminalRecordCertificate';
 };
