@@ -1,6 +1,8 @@
 import { UrlPath } from '../../constant/user.const';
 import auth from '../../middlewares/auth';
-import validateRequest from '../../middlewares/validateRequest';
+import validateRequest, {
+  validateRequestCookies,
+} from '../../middlewares/validateRequest';
 import { AuthControllers } from './auth.controller';
 import { AuthValidation } from './auth.validation';
 import { Router } from 'express';
@@ -68,11 +70,11 @@ router.post(
   AuthControllers.changePassword
 );
 
-// router.post(
-//   '/refresh-token',
-//   validateRequestCookies(AuthValidation.refreshTokenValidationSchema),
-//   AuthControllers.refreshToken
-// );
+router.post(
+  '/refresh-token',
+  validateRequestCookies(AuthValidation.refreshTokenValidationSchema),
+  AuthControllers.refreshToken
+);
 
 // submit approval request Route
 router.patch(
