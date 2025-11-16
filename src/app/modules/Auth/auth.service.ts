@@ -3,7 +3,8 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import generateUserId, { USER_TYPE_MAP } from '../../utils/generateUserId';
 import generateOtp from '../../utils/generateOtp';
-import mongoose, { Model } from 'mongoose';
+import { Model } from 'mongoose';
+import bcryptjs from 'bcryptjs';
 import {
   ALL_USER_MODELS,
   TApprovedRejectsPayload,
@@ -36,7 +37,7 @@ const registerUser = async <
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
 
-  let registeredBy;
+  let registeredBy: string | undefined;
   // Restrict Delivery Partner registration
   if (userType === '/create-delivery-partner') {
     const allowedRoles: (keyof typeof USER_ROLE)[] = [
@@ -45,9 +46,13 @@ const registerUser = async <
       'FLEET_MANAGER',
     ];
     const allowedUser = await findUserByEmailOrId({
-      userId: currentUser?.id,
+      email: currentUser?.email,
       isDeleted: false,
     });
+
+    if (!allowedUser?.user) {
+      throw new AppError(httpStatus.FORBIDDEN, 'Permission check failed');
+    }
     if (allowedUser.user.status !== 'APPROVED') {
       throw new AppError(
         httpStatus.FORBIDDEN,
@@ -65,101 +70,95 @@ const registerUser = async <
   }
 
   const { Model, idField } = modelData;
+  const mongooseModel = Model as unknown as Model<T>;
 
-  let user;
+  // Generate userId & OTP
   const userID = generateUserId(userType);
   payload.role = userTypeData.role;
-  // Generate OTP
   const { otp, otpExpires } = generateOtp();
 
-  const mongooseModel = Model as unknown as Model<T>;
   //  Check existing user in ALL models
-  let existingUser: any = null;
-  for (const EachModel of ALL_USER_MODELS) {
-    const user = await EachModel.isUserExistsByEmail(payload.email);
-    if (user) {
-      existingUser = user;
-      break;
-    }
+  const checkModels = ALL_USER_MODELS.map((M: any) =>
+    M.isUserExistsByEmail(payload.email).catch(() => null)
+  );
+
+  const checkUser = await Promise.all(checkModels);
+
+  const existingUser = checkUser.find((user) => user && user.email);
+  if (existingUser && existingUser.isEmailVerified) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      `${existingUser.email} already exists. Please Login!`
+    );
   }
 
-  const session = await mongoose.startSession();
+  if (existingUser && !existingUser.isEmailVerified) {
+    const index = checkUser.findIndex(
+      (user) => user && user.email === existingUser.email
+    );
 
-  try {
-    session.startTransaction();
-
-    if (existingUser) {
-      if (existingUser?.isEmailVerified) {
+    if (index !== -1) {
+      const modelToDelete = ALL_USER_MODELS[index];
+      try {
+        await modelToDelete.deleteOne({ email: existingUser.email });
+      } catch (error) {
         throw new AppError(
-          httpStatus.CONFLICT,
-          `${existingUser.email} already exists. Please Login!`
-        );
-      }
-
-      // Delete from its own collection
-
-      let modelToDelete: any = null;
-
-      for (const M of ALL_USER_MODELS) {
-        // if (typeof (M as any).isUserExistsByEmail !== 'function') continue;
-
-        const foundUser = await M.isUserExistsByEmail(existingUser.email);
-        if (foundUser && !foundUser.isEmailVerified) {
-          modelToDelete = M;
-          break;
-        }
-      }
-
-      if (modelToDelete) {
-        await modelToDelete.deleteOne(
-          { email: existingUser.email },
-          { session }
-        );
-        console.log(
-          ` Deleted unverified user from: ${modelToDelete.modelName}`
+          httpStatus.INTERNAL_SERVER_ERROR,
+          'Error deleting user'
         );
       }
     }
-
-    // Create user
-    user = await mongooseModel.create(
-      [
-        {
-          ...payload,
-          [idField]: userID,
-          registeredBy,
-          otp,
-          isOtpExpired: otpExpires,
-        },
-      ],
-      { session }
-    );
-
-    // Prepare & send verification email
-    const emailHtml = await EmailHelper.createEmailContent(
-      {
-        otp,
-        userEmail: payload.email,
-        currentYear: new Date().getFullYear(),
-      },
-      'verify-email'
-    );
-
-    await EmailHelper.sendEmail(
-      payload.email,
-      emailHtml,
-      'Verify your email for DeliGo'
-    );
-
-    await session.commitTransaction();
-    await session.endSession();
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
   }
 
-  return user;
+  let createdUser: any = null;
+  try {
+    const result = await mongooseModel.create([
+      {
+        ...payload,
+        [idField]: userID,
+        registeredBy,
+        otp,
+        isOtpExpired: otpExpires,
+      },
+    ]);
+    createdUser = Array.isArray(result) ? result[0] : result;
+  } catch (err: any) {
+    if (err?.code === 11000) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${payload.email} already exists`
+      );
+    }
+    throw err;
+  }
+  // create email html
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      otp,
+      userEmail: payload.email,
+      currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
+      website: 'https://deligo.pt',
+      phone: '+351 920 136 680',
+      address: 'Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal',
+      user: payload?.role.toLocaleLowerCase(),
+    },
+    'verify-email'
+  );
+
+  // send email
+  EmailHelper.sendEmail(
+    payload?.email,
+    emailHtml,
+    'Verify your email for DeliGo'
+  ).catch((err) => {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+  });
+
+  return {
+    message: `${payload.role} registered successfully. Please check your email for verification.`,
+    data: createdUser,
+  };
 };
 
 // Login User
@@ -200,15 +199,22 @@ const loginUser = async (payload: TLoginUser) => {
         otp,
         userEmail: payload.email,
         currentYear: new Date().getFullYear(),
+        date: new Date().toDateString(),
+        website: 'https://deligo.pt',
+        phone: '+351 920 136 680',
+        address: 'Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal',
+        user: user?.role.toLocaleLowerCase(),
       },
       'verify-email'
     );
 
-    await EmailHelper.sendEmail(
+    EmailHelper.sendEmail(
       payload.email,
       emailHtml,
       'Verify your email for DeliGo'
-    );
+    ).catch((err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    });
 
     return {
       message: 'OTP sent to your email. Please verify to login.',
@@ -294,56 +300,57 @@ const logoutUser = async (email: string) => {
   };
 };
 
-// const changePassword = async (
-//   userData: JwtPayload,
-//   payload: { oldPassword: string; newPassword: string }
-// ) => {
-//   // checking if the user is exist
-//   const result = await findUserByEmailOrId({
-//     email: userData.email,
-//     isDeleted: false,
-//   });
-//   const user = result?.user;
+const changePassword = async (
+  currentUser: AuthUser,
+  payload: { oldPassword: string; newPassword: string }
+) => {
+  // checking if the user is exist
+  const result = await findUserByEmailOrId({
+    email: currentUser.email,
+    isDeleted: false,
+  });
+  const user = result?.user;
+  const model = result?.model;
 
-//   if (!user) {
-//     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-//   }
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
 
-//   // checking if the user is blocked
+  // checking if the user is blocked
 
-//   const userStatus = user?.status;
+  const userStatus = user?.status;
 
-//   if (
-//     userStatus === USER_STATUS.BLOCKED &&
-//     userStatus === USER_STATUS.REJECTED
-//   ) {
-//     throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
-//   }
+  if (
+    userStatus === USER_STATUS.BLOCKED &&
+    userStatus === USER_STATUS.REJECTED
+  ) {
+    throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
+  }
 
-//   //checking if the password is correct
+  //checking if the password is correct
 
-//   if (!(await User.isPasswordMatched(payload.oldPassword, user?.password)))
-//     throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
+  if (!(await model.isPasswordMatched(payload.oldPassword, user?.password)))
+    throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
 
-//   //hash new password
-//   const newHashedPassword = await bcrypt.hash(
-//     payload.newPassword,
-//     Number(config.bcrypt_salt_rounds)
-//   );
+  //hash new password
+  const newHashedPassword = await bcryptjs.hash(
+    payload.newPassword,
+    Number(config.bcrypt_salt_rounds)
+  );
 
-//   await User.findOneAndUpdate(
-//     {
-//       email: userData.email,
-//       role: userData.role,
-//     },
-//     {
-//       password: newHashedPassword,
-//       passwordChangedAt: new Date(),
-//     }
-//   );
+  await model.findOneAndUpdate(
+    {
+      email: currentUser.email,
+      role: currentUser.role,
+    },
+    {
+      password: newHashedPassword,
+      passwordChangedAt: new Date(),
+    }
+  );
 
-//   return null;
-// };
+  return null;
+};
 
 // const refreshToken = async (token: string) => {
 //   // checking if the given token is valid
@@ -422,6 +429,18 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     }
   }
 
+  if (existingUser?.role === 'DELIVERY_PARTNER') {
+    if (
+      currentUser?.role === 'FLEET_MANAGER' &&
+      existingUser?.registeredBy !== currentUser.id
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to submit approval request for this user'
+      );
+    }
+  }
+
   existingUser.status = 'SUBMITTED';
   existingUser.submittedForApprovalAt = new Date();
   await existingUser.save();
@@ -437,11 +456,13 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     'user-approval-submission-notification'
   );
 
-  await EmailHelper.sendEmail(
+  EmailHelper.sendEmail(
     existingUser?.email,
     emailHtml,
     `New ${existingUser?.role} Submission for Approval`
-  );
+  ).catch((err) => {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+  });
 
   return {
     message: `${existingUser?.role} submitted for approval successfully`,
@@ -463,16 +484,6 @@ const approvedOrRejectedUser = async (
       'You cannot change your own status'
     );
   }
-
-  // if (
-  //   existingUser.role !== 'CUSTOMER' &&
-  //   existingUser?.status !== 'SUBMITTED'
-  // ) {
-  //   throw new AppError(
-  //     httpStatus.BAD_REQUEST,
-  //     `${existingUser?.role} not submitted the approval request yet`
-  //   );
-  // }
 
   if (existingUser.status === payload.status) {
     throw new AppError(
@@ -531,7 +542,11 @@ const approvedOrRejectedUser = async (
       : `Your ${existingUser?.role} Application has been Rejected`;
 
   // Send email
-  await EmailHelper.sendEmail(existingUser.email, emailHtml, emailSubject);
+  EmailHelper.sendEmail(existingUser.email, emailHtml, emailSubject).catch(
+    (err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    }
+  );
 
   return {
     message: `${
@@ -611,7 +626,11 @@ const resendOtp = async (email: string) => {
   );
 
   // Send verification email
-  await EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo');
+  EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo').catch(
+    (err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    }
+  );
   return {
     message: 'OTP resent successfully. Please check your email.',
   };
@@ -695,7 +714,7 @@ export const AuthServices = {
   loginUser,
   saveFcmToken,
   logoutUser,
-  // changePassword,
+  changePassword,
   // refreshToken,
   resendOtp,
   verifyOtp,

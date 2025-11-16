@@ -54,12 +54,19 @@ router.post(
   AuthControllers.logoutUser
 );
 
-// router.post(
-//   '/change-password',
-//   auth(USER_ROLE.CUSTOMER, USER_ROLE.ADMIN),
-//   validateRequest(AuthValidation.changePasswordValidationSchema),
-//   AuthControllers.changePassword
-// );
+router.post(
+  '/change-password',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'CUSTOMER',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'FLEET_MANAGER'
+  ),
+  validateRequest(AuthValidation.changePasswordValidationSchema),
+  AuthControllers.changePassword
+);
 
 // router.post(
 //   '/refresh-token',

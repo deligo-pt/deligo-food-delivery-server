@@ -39,7 +39,7 @@ const updateDeliveryPartner = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
     }
   }
-  if (currentUser?.id !== existingDeliveryPartner?.userId) {
+  if (currentUser?.id !== existingDeliveryPartner?.registeredBy) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
@@ -57,7 +57,6 @@ const updateDeliveryPartner = async (
 };
 
 // update doc image
-// fleet manager doc image upload service
 const deliverPartnerDocImageUpload = async (
   file: string | undefined,
   data: TDeliveryPartnerImageDocuments,
@@ -84,15 +83,10 @@ const deliverPartnerDocImageUpload = async (
   const docTitle = data?.docImageTitle;
 
   if (docTitle && existingDeliveryPartner?.documents?.[docTitle]) {
-    try {
-      const oldImage = existingDeliveryPartner?.documents?.[docTitle];
-      await deleteSingleImageFromCloudinary(oldImage);
-    } catch (error) {
-      throw new AppError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Failed to delete previous document image!'
-      );
-    }
+    const oldImage = existingDeliveryPartner?.documents?.[docTitle];
+    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
+      throw new AppError(httpStatus.BAD_REQUEST, err.message);
+    });
   }
 
   if (data.docImageTitle && file) {

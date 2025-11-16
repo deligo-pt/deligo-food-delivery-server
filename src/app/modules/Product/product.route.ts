@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router } from 'express';
 import auth from '../../middlewares/auth';
 import { ProductControllers } from './product.controller';
 import { multerUpload } from '../../config/multer.config';
@@ -6,7 +6,7 @@ import { parseBody } from '../../middlewares/bodyParser';
 import validateRequest from '../../middlewares/validateRequest';
 import { ProductValidation } from './product.validation';
 
-const router = express.Router();
+const router = Router();
 
 // Product create
 router.post(

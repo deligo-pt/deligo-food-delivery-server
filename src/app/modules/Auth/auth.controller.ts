@@ -17,8 +17,8 @@ const registerUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'User registered in successfully!',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -79,17 +79,20 @@ const logoutUser = catchAsync(async (req, res) => {
   });
 });
 
-// const changePassword = catchAsync(async (req, res) => {
-//   const { ...passwordData } = req.body;
+const changePassword = catchAsync(async (req, res) => {
+  const { ...passwordData } = req.body;
 
-//   const result = await AuthServices.changePassword(req.user, passwordData);
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: 'Password updated successfully!',
-//     data: result,
-//   });
-// });
+  const result = await AuthServices.changePassword(
+    req.user as AuthUser,
+    passwordData
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Password updated successfully!',
+    data: result,
+  });
+});
 
 // const refreshToken = catchAsync(async (req, res) => {
 //   const { refreshToken } = req.cookies;
@@ -204,7 +207,7 @@ export const AuthControllers = {
   loginUser,
   saveFcmToken,
   logoutUser,
-  // changePassword,
+  changePassword,
   // refreshToken,
   resendOtp,
   verifyOtp,

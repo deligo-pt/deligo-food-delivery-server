@@ -145,7 +145,8 @@ const deliveryPartnerSchema = new Schema<
 
     // Documents
     documents: {
-      idProof: { type: String, default: '' },
+      idDocumentFront: { type: String, default: '' },
+      idDocumentBack: { type: String, default: '' },
       drivingLicense: { type: String, default: '' },
       vehicleRegistration: { type: String, default: '' },
     },

@@ -57,16 +57,11 @@ const vendorDocImageUpload = async (
   // delete previous image if exists
   const docTitle = data?.docImageTitle;
 
-  if (docTitle && existingVendor?.documents?.[docTitle]) {
-    try {
-      const oldImage = existingVendor?.documents?.[docTitle];
-      await deleteSingleImageFromCloudinary(oldImage);
-    } catch (error) {
-      throw new AppError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Failed to delete previous document image!'
-      );
-    }
+  if (docTitle && existingVendor.documents?.[docTitle]) {
+    const oldImage = existingVendor.documents[docTitle];
+    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
+      throw new AppError(httpStatus.BAD_REQUEST, err.message);
+    });
   }
 
   if (data.docImageTitle && file) {

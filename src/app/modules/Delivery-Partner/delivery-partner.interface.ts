@@ -31,8 +31,6 @@ export type TDeliveryPartner = {
     citizenCardNumber?: string;
     passportNumber?: string;
     idExpiryDate?: Date;
-    idDocumentFront?: string;
-    idDocumentBack?: string;
     address?: {
       street?: string;
       city?: string;
@@ -110,7 +108,8 @@ export type TDeliveryPartner = {
 
   // Documents (existing)
   documents?: {
-    idProof?: string;
+    idDocumentFront?: string;
+    idDocumentBack?: string;
     drivingLicense?: string;
     vehicleRegistration?: string;
     criminalRecordCertificate?: string;
@@ -132,7 +131,8 @@ export type TDeliveryPartner = {
 
 export type TDeliveryPartnerImageDocuments = {
   docImageTitle:
-    | 'idProof'
+    | 'idDocumentFront'
+    | 'idDocumentBack'
     | 'drivingLicense'
     | 'vehicleRegistration'
     | 'criminalRecordCertificate';

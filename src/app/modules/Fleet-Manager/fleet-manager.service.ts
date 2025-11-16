@@ -65,15 +65,10 @@ const fleetManagerDocImageUpload = async (
   const docTitle = data?.docImageTitle;
 
   if (docTitle && existingFleetManager?.documents?.[docTitle]) {
-    try {
-      const oldImage = existingFleetManager?.documents?.[docTitle];
-      await deleteSingleImageFromCloudinary(oldImage);
-    } catch (error) {
-      throw new AppError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Failed to delete previous document image!'
-      );
-    }
+    const oldImage = existingFleetManager?.documents?.[docTitle];
+    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
+      throw new AppError(httpStatus.BAD_REQUEST, err.message);
+    });
   }
 
   if (data.docImageTitle && file) {

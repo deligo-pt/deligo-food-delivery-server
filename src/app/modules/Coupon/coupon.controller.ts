@@ -20,9 +20,9 @@ const createCoupon = catchAsync(async (req, res) => {
 
 // update coupon controller
 const updateCoupon = catchAsync(async (req, res) => {
-  const { id } = req.params;
+  const { id: couponId } = req.params;
   const result = await CouponServices.updateCoupon(
-    id,
+    couponId,
     req.body,
     req.user as AuthUser
   );
@@ -51,8 +51,11 @@ const getAllCoupons = catchAsync(async (req, res) => {
 
 // delete coupon controller
 const deleteCoupon = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const result = await CouponServices.deleteCoupon(id, req.user as AuthUser);
+  const { couponId } = req.params;
+  const result = await CouponServices.deleteCoupon(
+    couponId,
+    req.user as AuthUser
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

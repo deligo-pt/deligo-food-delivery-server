@@ -54,15 +54,10 @@ const updateMyProfile = async (
   }
 
   if (user?.profilePhoto) {
-    try {
-      const oldProfilePhoto = user?.profilePhoto;
-      await deleteSingleImageFromCloudinary(oldProfilePhoto);
-    } catch (error) {
-      throw new AppError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Failed to delete existing profile photo from cloudinary.'
-      );
-    }
+    const oldProfilePhoto = user?.profilePhoto;
+    deleteSingleImageFromCloudinary(oldProfilePhoto).catch((err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    });
   }
 
   if (profilePhoto) {

@@ -8,7 +8,7 @@ import { AuthUser } from '../../constant/user.const';
 const vendorUpdate = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
   const result = await VendorServices.vendorUpdate(
-    req.params.id,
+    req.params.vendorId,
     req?.body,
     currentUser
   );
@@ -27,7 +27,7 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
     file?.path,
     req.body,
     req.user as AuthUser,
-    req.params.id
+    req.params.vendorId
   );
 
   sendResponse(res, {

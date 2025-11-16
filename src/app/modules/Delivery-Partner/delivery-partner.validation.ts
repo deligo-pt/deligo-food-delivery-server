@@ -5,7 +5,6 @@ import { z } from 'zod';
 const updateDeliveryPartnerDataValidationSchema = z.object({
   body: z.object({
     // 1) Personal Information
-
     personalInfo: z
       .object({
         Name: z
@@ -24,9 +23,6 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
         passportNumber: z.string().optional(),
 
         idExpiryDate: z.string().datetime().optional(),
-
-        idDocumentFront: z.string().optional(),
-        idDocumentBack: z.string().optional(),
 
         address: z
           .object({
@@ -81,7 +77,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
     // 5) Criminal Background
     criminalRecord: z
       .object({
-        certificateURL: z.string().optional(),
+        certificate: z.boolean().optional(),
         issueDate: z.string().datetime().optional(),
       })
       .optional(),
