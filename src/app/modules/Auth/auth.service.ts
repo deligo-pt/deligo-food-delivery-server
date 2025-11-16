@@ -13,9 +13,10 @@ import {
 import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
 import config from '../../config';
-import { createToken } from '../../utils/verifyJWT';
+import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginUser } from './auth.interface';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { JwtPayload } from 'jsonwebtoken';
 
 // Register User
 const registerUser = async <
@@ -352,55 +353,60 @@ const changePassword = async (
   return null;
 };
 
-// const refreshToken = async (token: string) => {
-//   // checking if the given token is valid
-//   const decoded = jwt.verify(
-//     token,
-//     config.jwt_refresh_secret as string
-//   ) as JwtPayload;
+const refreshToken = async (token: string) => {
+  // checking if the given token is valid
+  const decoded = verifyToken(
+    token,
+    config.jwt_refresh_secret as string
+  ) as JwtPayload;
 
-//   const { email, iat } = decoded;
+  const { email, iat } = decoded;
 
-//   // checking if the user is exist
-//   const user = await User.isUserExistsByEmail(email);
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
 
-//   if (!user) {
-//     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-//   }
+  const user = result?.user;
+  const model = result?.model;
 
-//   // checking if the user is blocked
-//   const userStatus = user?.status;
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
 
-//   if (userStatus === USER_STATUS.BLOCKED) {
-//     throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
-//   }
+  // checking if the user is blocked
+  const userStatus = user?.status;
 
-//   if (
-//     user.passwordChangedAt &&
-//     User.isJWTIssuedBeforePasswordChanged(user.passwordChangedAt, iat as number)
-//   ) {
-//     throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
-//   }
+  if (userStatus === USER_STATUS.BLOCKED) {
+    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+  }
 
-//   const jwtPayload = {
-//     id: user?.userId,
-//     name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
-//     email: user?.email,
-//     contactNumber: user?.contactNumber,
-//     role: user?.role,
-//     status: user?.status,
-//   };
+  if (
+    user.passwordChangedAt &&
+    model.isJWTIssuedBeforePasswordChanged(
+      user.passwordChangedAt,
+      iat as number
+    )
+  ) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+  }
 
-//   const accessToken = createToken(
-//     jwtPayload,
-//     config.jwt_access_secret as string,
-//     config.jwt_access_expires_in as string
-//   );
+  const jwtPayload = {
+    id: user?.userId,
+    name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
+    email: user?.email,
+    contactNumber: user?.contactNumber,
+    role: user?.role,
+    status: user?.status,
+  };
 
-//   return {
-//     accessToken,
-//   };
-// };
+  const accessToken = createToken(
+    jwtPayload,
+    config.jwt_access_secret as string,
+    config.jwt_access_expires_in as string
+  );
+
+  return {
+    accessToken,
+  };
+};
 
 // submit approval request service
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
@@ -715,7 +721,7 @@ export const AuthServices = {
   saveFcmToken,
   logoutUser,
   changePassword,
-  // refreshToken,
+  refreshToken,
   resendOtp,
   verifyOtp,
   approvedOrRejectedUser,

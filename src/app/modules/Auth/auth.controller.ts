@@ -79,6 +79,7 @@ const logoutUser = catchAsync(async (req, res) => {
   });
 });
 
+// Change Password
 const changePassword = catchAsync(async (req, res) => {
   const { ...passwordData } = req.body;
 
@@ -94,17 +95,18 @@ const changePassword = catchAsync(async (req, res) => {
   });
 });
 
-// const refreshToken = catchAsync(async (req, res) => {
-//   const { refreshToken } = req.cookies;
-//   const result = await AuthServices.refreshToken(refreshToken);
+// Refresh Token
+const refreshToken = catchAsync(async (req, res) => {
+  const { refreshToken } = req.cookies;
+  const result = await AuthServices.refreshToken(refreshToken);
 
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: 'Access token retrieved successfully!',
-//     data: result,
-//   });
-// });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Access token retrieved successfully!',
+    data: result,
+  });
+});
 
 //  Submit Approval Request Controller
 const submitForApproval = catchAsync(async (req, res) => {
@@ -208,7 +210,7 @@ export const AuthControllers = {
   saveFcmToken,
   logoutUser,
   changePassword,
-  // refreshToken,
+  refreshToken,
   resendOtp,
   verifyOtp,
   approvedOrRejectedUser,
