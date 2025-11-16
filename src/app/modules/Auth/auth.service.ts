@@ -4,6 +4,7 @@ import AppError from '../../errors/AppError';
 import generateUserId, { USER_TYPE_MAP } from '../../utils/generateUserId';
 import generateOtp from '../../utils/generateOtp';
 import { Model } from 'mongoose';
+import bcryptjs from 'bcryptjs';
 import {
   ALL_USER_MODELS,
   TApprovedRejectsPayload,
@@ -100,11 +101,11 @@ const registerUser = async <
       const modelToDelete = ALL_USER_MODELS[index];
       try {
         await modelToDelete.deleteOne({ email: existingUser.email });
-        console.log(
-          ` Deleted unverified user from: ${modelToDelete.modelName}`
-        );
       } catch (error) {
-        console.log(error);
+        throw new AppError(
+          httpStatus.INTERNAL_SERVER_ERROR,
+          'Error deleting user'
+        );
       }
     }
   }
@@ -130,7 +131,6 @@ const registerUser = async <
     }
     throw err;
   }
-  console.log(payload);
   // create email html
   const emailHtml = await EmailHelper.createEmailContent(
     {
@@ -147,18 +147,12 @@ const registerUser = async <
   );
 
   // send email
-  setImmediate(() => {
-    EmailHelper.sendEmail(
-      payload.email,
-      emailHtml,
-      'Verify your email for DeliGo'
-    )
-      .then(() => {
-        console.log(`Verification email sent to ${payload.email}`);
-      })
-      .catch((err) => {
-        console.error('Failed to send verification email:', err);
-      });
+  EmailHelper.sendEmail(
+    payload?.email,
+    emailHtml,
+    'Verify your email for DeliGo'
+  ).catch((err) => {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
   });
 
   return {
@@ -214,11 +208,13 @@ const loginUser = async (payload: TLoginUser) => {
       'verify-email'
     );
 
-    await EmailHelper.sendEmail(
+    EmailHelper.sendEmail(
       payload.email,
       emailHtml,
       'Verify your email for DeliGo'
-    );
+    ).catch((err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    });
 
     return {
       message: 'OTP sent to your email. Please verify to login.',
@@ -304,56 +300,57 @@ const logoutUser = async (email: string) => {
   };
 };
 
-// const changePassword = async (
-//   userData: JwtPayload,
-//   payload: { oldPassword: string; newPassword: string }
-// ) => {
-//   // checking if the user is exist
-//   const result = await findUserByEmailOrId({
-//     email: userData.email,
-//     isDeleted: false,
-//   });
-//   const user = result?.user;
+const changePassword = async (
+  currentUser: AuthUser,
+  payload: { oldPassword: string; newPassword: string }
+) => {
+  // checking if the user is exist
+  const result = await findUserByEmailOrId({
+    email: currentUser.email,
+    isDeleted: false,
+  });
+  const user = result?.user;
+  const model = result?.model;
 
-//   if (!user) {
-//     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-//   }
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
 
-//   // checking if the user is blocked
+  // checking if the user is blocked
 
-//   const userStatus = user?.status;
+  const userStatus = user?.status;
 
-//   if (
-//     userStatus === USER_STATUS.BLOCKED &&
-//     userStatus === USER_STATUS.REJECTED
-//   ) {
-//     throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
-//   }
+  if (
+    userStatus === USER_STATUS.BLOCKED &&
+    userStatus === USER_STATUS.REJECTED
+  ) {
+    throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
+  }
 
-//   //checking if the password is correct
+  //checking if the password is correct
 
-//   if (!(await User.isPasswordMatched(payload.oldPassword, user?.password)))
-//     throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
+  if (!(await model.isPasswordMatched(payload.oldPassword, user?.password)))
+    throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
 
-//   //hash new password
-//   const newHashedPassword = await bcrypt.hash(
-//     payload.newPassword,
-//     Number(config.bcrypt_salt_rounds)
-//   );
+  //hash new password
+  const newHashedPassword = await bcryptjs.hash(
+    payload.newPassword,
+    Number(config.bcrypt_salt_rounds)
+  );
 
-//   await User.findOneAndUpdate(
-//     {
-//       email: userData.email,
-//       role: userData.role,
-//     },
-//     {
-//       password: newHashedPassword,
-//       passwordChangedAt: new Date(),
-//     }
-//   );
+  await model.findOneAndUpdate(
+    {
+      email: currentUser.email,
+      role: currentUser.role,
+    },
+    {
+      password: newHashedPassword,
+      passwordChangedAt: new Date(),
+    }
+  );
 
-//   return null;
-// };
+  return null;
+};
 
 // const refreshToken = async (token: string) => {
 //   // checking if the given token is valid
@@ -432,6 +429,18 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     }
   }
 
+  if (existingUser?.role === 'DELIVERY_PARTNER') {
+    if (
+      currentUser?.role === 'FLEET_MANAGER' &&
+      existingUser?.registeredBy !== currentUser.id
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to submit approval request for this user'
+      );
+    }
+  }
+
   existingUser.status = 'SUBMITTED';
   existingUser.submittedForApprovalAt = new Date();
   await existingUser.save();
@@ -447,11 +456,13 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     'user-approval-submission-notification'
   );
 
-  await EmailHelper.sendEmail(
+  EmailHelper.sendEmail(
     existingUser?.email,
     emailHtml,
     `New ${existingUser?.role} Submission for Approval`
-  );
+  ).catch((err) => {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+  });
 
   return {
     message: `${existingUser?.role} submitted for approval successfully`,
@@ -473,16 +484,6 @@ const approvedOrRejectedUser = async (
       'You cannot change your own status'
     );
   }
-
-  // if (
-  //   existingUser.role !== 'CUSTOMER' &&
-  //   existingUser?.status !== 'SUBMITTED'
-  // ) {
-  //   throw new AppError(
-  //     httpStatus.BAD_REQUEST,
-  //     `${existingUser?.role} not submitted the approval request yet`
-  //   );
-  // }
 
   if (existingUser.status === payload.status) {
     throw new AppError(
@@ -541,7 +542,11 @@ const approvedOrRejectedUser = async (
       : `Your ${existingUser?.role} Application has been Rejected`;
 
   // Send email
-  await EmailHelper.sendEmail(existingUser.email, emailHtml, emailSubject);
+  EmailHelper.sendEmail(existingUser.email, emailHtml, emailSubject).catch(
+    (err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    }
+  );
 
   return {
     message: `${
@@ -621,7 +626,11 @@ const resendOtp = async (email: string) => {
   );
 
   // Send verification email
-  await EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo');
+  EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo').catch(
+    (err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    }
+  );
   return {
     message: 'OTP resent successfully. Please check your email.',
   };
@@ -705,7 +714,7 @@ export const AuthServices = {
   loginUser,
   saveFcmToken,
   logoutUser,
-  // changePassword,
+  changePassword,
   // refreshToken,
   resendOtp,
   verifyOtp,
