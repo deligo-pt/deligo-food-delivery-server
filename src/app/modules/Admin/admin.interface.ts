@@ -17,6 +17,10 @@ export type TAdmin = {
   otp?: string;
   isOtpExpired?: Date;
 
+  // password reset details
+  passwordResetToken?: string;
+  passwordResetTokenExpiresAt?: Date;
+
   // Personal Details
   name?: {
     firstName?: string;

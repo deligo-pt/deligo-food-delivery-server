@@ -14,6 +14,10 @@ export type TCustomer = {
   otp?: string;
   isOtpExpired?: Date;
 
+  // Password Reset Details
+  passwordResetToken?: string;
+  passwordResetTokenExpiresAt?: Date;
+
   // fcm tokens for push notifications
   fcmTokens?: string[];
 

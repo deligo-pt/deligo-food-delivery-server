@@ -18,6 +18,10 @@ export type TDeliveryPartner = {
   otp?: string;
   isOtpExpired?: Date;
 
+  // Password Reset Details
+  passwordResetToken?: string;
+  passwordResetTokenExpiresAt?: Date;
+
   // 1) Personal Information
   personalInfo?: {
     Name?: {

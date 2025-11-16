@@ -50,6 +50,10 @@ const deliveryPartnerSchema = new Schema<
     otp: { type: String },
     isOtpExpired: { type: Date },
 
+    // password reset
+    passwordResetToken: { type: String },
+    passwordResetTokenExpiresAt: { type: Date },
+
     // 1) Personal Information (Portugal Required)
     personalInfo: {
       Name: {

@@ -58,6 +58,16 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       default: null,
     },
 
+    // password reset details
+    passwordResetToken: {
+      type: String,
+      default: '',
+    },
+    passwordResetTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+
     // Personal Details
     name: {
       firstName: {
