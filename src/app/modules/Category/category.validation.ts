@@ -8,8 +8,6 @@ const createBusinessCategoryValidationSchema = z.object({
       .min(2, 'Business category name must be at least 2 characters'),
     slug: z.string().optional(),
     description: z.string().optional(),
-    icon: z.string().optional(),
-    image: z.string().optional(),
     isActive: z.boolean().default(true).optional(),
   }),
 });
@@ -20,8 +18,6 @@ const updateBusinessCategoryValidationSchema = z.object({
     name: z.string().optional(),
     slug: z.string().optional(),
     description: z.string().optional(),
-    icon: z.string().optional(),
-    image: z.string().optional(),
     isActive: z.boolean().optional(),
   }),
 });
@@ -34,7 +30,6 @@ const createProductCategoryValidationSchema = z.object({
       .min(2, 'Product category name must be at least 2 characters'),
     slug: z.string().optional(),
     description: z.string().optional(),
-    image: z.string().optional(),
     businessCategoryId: z
       .string({ required_error: 'Business category ID is required' })
       .min(1),
@@ -48,9 +43,9 @@ const updateProductCategoryValidationSchema = z.object({
     name: z.string().optional(),
     slug: z.string().optional(),
     description: z.string().optional(),
-    image: z.string().optional(),
     businessCategoryId: z.string().optional(),
     isActive: z.boolean().optional(),
+    isDeleted: z.boolean().optional(),
   }),
 });
 

@@ -2,10 +2,26 @@ import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 
 export const parseBody = catchAsync(async (req, res, next) => {
-  if (!req.body.data) {
-    throw new AppError(400, 'Please provide data in the body under data key');
-  }
-  req.body = JSON.parse(req.body.data);
+  const hasFiles =
+    req.files &&
+    (Array.isArray(req.files)
+      ? req.files.length > 0
+      : Object.keys(req.files).length > 0);
 
-  next();
+  const hasData = req.body?.data;
+
+  if (hasData) {
+    req.body = JSON.parse(req.body.data);
+    return next();
+  }
+
+  if (hasFiles && !hasData) {
+    req.body = {};
+    return next();
+  }
+
+  throw new AppError(
+    400,
+    'Please provide required data or an image file as form data'
+  );
 });
