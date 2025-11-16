@@ -3,6 +3,7 @@
 import { Schema } from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import config from '../config';
+import crypto from 'crypto';
 
 export const passwordPlugin = <T extends { email: string }>(
   schema: Schema<T>
@@ -68,5 +69,16 @@ export const passwordPlugin = <T extends { email: string }>(
     const passwordChangedTime =
       new Date(passwordChangedTimestamp).getTime() / 1000;
     return passwordChangedTime > jwtIssuedTimestamp;
+  };
+
+  // create password reset token
+  schema.methods.createPasswordResetToken = async function () {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    this.passwordResetToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+    this.passwordResetTokenExpiresAt = Date.now() + 10 * 60 * 1000;
+    return resetToken;
   };
 };

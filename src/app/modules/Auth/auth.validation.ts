@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { USER_STATUS } from '../../constant/user.const';
-
+// Register
 const registerValidationSchema = z.object({
   body: z.object({
     email: z
@@ -17,7 +17,7 @@ const registerValidationSchema = z.object({
       .optional(),
   }),
 });
-
+// Login
 const loginValidationSchema = z.object({
   body: z.object({
     email: z.string({
@@ -26,7 +26,7 @@ const loginValidationSchema = z.object({
     password: z.string({ required_error: 'Password is required' }).optional(),
   }),
 });
-
+// Change Password
 const changePasswordValidationSchema = z.object({
   body: z.object({
     oldPassword: z.string({
@@ -35,7 +35,29 @@ const changePasswordValidationSchema = z.object({
     newPassword: z.string({ required_error: 'Password is required' }),
   }),
 });
+// Forgot Password
+const forgotPasswordValidationSchema = z.object({
+  body: z.object({
+    email: z.string({
+      required_error: 'Email is required',
+    }),
+  }),
+});
 
+// reset Password
+const resetPasswordValidationSchema = z.object({
+  body: z.object({
+    email: z.string({
+      required_error: 'Email is required',
+    }),
+    token: z.string({
+      required_error: 'Token is required',
+    }),
+    newPassword: z.string({ required_error: 'Password is required' }),
+  }),
+});
+
+// Refresh Token
 const refreshTokenValidationSchema = z.object({
   cookies: z.object({
     refreshToken: z.string({
@@ -79,6 +101,8 @@ export const AuthValidation = {
   registerValidationSchema,
   loginValidationSchema,
   changePasswordValidationSchema,
+  forgotPasswordValidationSchema,
+  resetPasswordValidationSchema,
   refreshTokenValidationSchema,
   approvedOrRejectedUserValidationSchema,
   verifyOtpValidationSchema,

@@ -25,6 +25,10 @@ export type TVendor = {
   otp?: string;
   isOtpExpired?: Date | string;
 
+  // Password Reset Details
+  passwordResetToken?: string;
+  passwordResetTokenExpiresAt?: Date | string;
+
   // Personal Details
   name?: {
     firstName?: string;

@@ -17,6 +17,10 @@ export type TFleetManager = {
   otp?: string;
   isOtpExpired?: Date | string;
 
+  // Password Reset Details
+  passwordResetToken?: string;
+  passwordResetTokenExpiresAt?: Date;
+
   // Personal Details
   name?: {
     firstName?: string;

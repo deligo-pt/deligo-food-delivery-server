@@ -95,6 +95,30 @@ const changePassword = catchAsync(async (req, res) => {
   });
 });
 
+// Forgot Password
+const forgotPassword = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  const result = await AuthServices.forgotPassword(email);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// Reset Password
+const resetPassword = catchAsync(async (req, res) => {
+  const { email, token, newPassword } = req.body;
+  const result = await AuthServices.resetPassword(email, token, newPassword);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result?.message,
+    data: null,
+  });
+});
+
 // Refresh Token
 const refreshToken = catchAsync(async (req, res) => {
   const { refreshToken } = req.cookies;
@@ -210,6 +234,8 @@ export const AuthControllers = {
   saveFcmToken,
   logoutUser,
   changePassword,
+  forgotPassword,
+  resetPassword,
   refreshToken,
   resendOtp,
   verifyOtp,

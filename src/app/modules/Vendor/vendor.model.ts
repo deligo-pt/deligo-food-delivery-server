@@ -55,6 +55,10 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     otp: { type: String, default: '' },
     isOtpExpired: { type: Date, default: null },
 
+    // password reset
+    passwordResetToken: { type: String, default: '' },
+    passwordResetTokenExpiresAt: { type: Date, default: null },
+
     // Personal Details
     name: {
       firstName: { type: String, default: '' },

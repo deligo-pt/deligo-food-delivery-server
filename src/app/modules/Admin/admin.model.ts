@@ -63,6 +63,14 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       type: Date,
     },
 
+    // password reset
+    passwordResetToken: {
+      type: String,
+    },
+    passwordResetTokenExpiresAt: {
+      type: Date,
+    },
+
     // Personal Details
     name: {
       type: String,

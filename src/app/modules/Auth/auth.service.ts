@@ -17,6 +17,7 @@ import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginUser } from './auth.interface';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { JwtPayload } from 'jsonwebtoken';
+import crypto from 'crypto';
 
 // Register User
 const registerUser = async <
@@ -300,7 +301,7 @@ const logoutUser = async (email: string) => {
         : 'User logged out successfully',
   };
 };
-
+// Change Password
 const changePassword = async (
   currentUser: AuthUser,
   payload: { oldPassword: string; newPassword: string }
@@ -353,6 +354,116 @@ const changePassword = async (
   return null;
 };
 
+// Forgot Password
+const forgotPassword = async (email: string) => {
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
+  const user = result?.user;
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+
+  // checking if the user is blocked
+  const userStatus = user?.status;
+
+  if (userStatus === USER_STATUS.BLOCKED) {
+    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+  }
+
+  const token = await user.createPasswordResetToken();
+
+  const resetURL = `${config.frontend_url}/reset-password?token=${token}`;
+
+  await user.save({ validateBeforeSave: false });
+
+  // create email html
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      resetPasswordLink: resetURL,
+      userName: user?.name?.firstName || 'User',
+      currentYear: new Date().getFullYear(),
+    },
+    'reset-password'
+  );
+
+  // send email
+  EmailHelper.sendEmail(
+    email,
+    emailHtml,
+    'Reset your password for DeliGo'
+  ).catch((err) => {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+  });
+
+  return {
+    message: 'Password reset link sent to your email address successfully',
+    token,
+  };
+};
+
+// reset Password
+const resetPassword = async (
+  email: string,
+  token: string,
+  newPassword: string
+) => {
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
+  const user = result?.user;
+  const model = result?.model;
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+
+  // checking if the user is blocked
+  const userStatus = user?.status;
+
+  if (userStatus === USER_STATUS.BLOCKED) {
+    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+  }
+
+  // hashed incoming token
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  //  valid user
+  const validUser = await model.findOne({
+    email: user.email,
+    role: user.role,
+    passwordResetToken: hashedToken,
+    passwordResetTokenExpiresAt: { $gt: Date.now() },
+  });
+
+  if (!validUser) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Reset token is invalid or has been expired'
+    );
+  }
+
+  const newHashedPassword = await bcryptjs.hash(
+    newPassword,
+    Number(config.bcrypt_salt_rounds)
+  );
+
+  await model.findOneAndUpdate(
+    {
+      email: user.email,
+      role: user.role,
+    },
+    {
+      password: newHashedPassword,
+      passwordChangedAt: new Date(),
+      passwordResetToken: null,
+      passwordResetTokenExpiresAt: null,
+    }
+  );
+
+  return {
+    message: 'Password reset successfully',
+  };
+};
+
+// Refresh Token
 const refreshToken = async (token: string) => {
   // checking if the given token is valid
   const decoded = verifyToken(
@@ -721,6 +832,8 @@ export const AuthServices = {
   saveFcmToken,
   logoutUser,
   changePassword,
+  forgotPassword,
+  resetPassword,
   refreshToken,
   resendOtp,
   verifyOtp,

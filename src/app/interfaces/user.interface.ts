@@ -12,4 +12,5 @@ export interface IUserModel<T> extends Model<T> {
     passwordChangedTimestamp: Date,
     jwtIssuedTimestamp: number
   ): boolean;
+  createPasswordResetToken(): string;
 }
