@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 const updateDeliveryPartnerDataValidationSchema = z.object({
   body: z.object({
+    profilePhoto: z.string().optional(),
     // 1) Personal Information
     personalInfo: z
       .object({
@@ -96,21 +97,6 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
           .optional(),
         workedWithOtherPlatform: z.boolean().optional(),
         otherPlatformName: z.string().optional(),
-      })
-      .optional(),
-
-    // Existing Operational Data
-    operationalData: z
-      .object({
-        totalDeliveries: z.number().optional(),
-        completedDeliveries: z.number().optional(),
-        canceledDeliveries: z.number().optional(),
-        rating: z
-          .object({
-            average: z.number().optional(),
-            totalReviews: z.number().optional(),
-          })
-          .optional(),
       })
       .optional(),
   }),

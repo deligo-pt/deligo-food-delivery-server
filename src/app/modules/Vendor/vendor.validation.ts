@@ -10,6 +10,7 @@ export const vendorUpdateValidationSchema = z.object({
       })
       .optional(),
     contactNumber: z.string().optional(),
+    profilePhoto: z.string().optional(),
 
     // Address
     address: z
