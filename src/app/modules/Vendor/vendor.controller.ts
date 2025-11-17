@@ -7,10 +7,12 @@ import { AuthUser } from '../../constant/user.const';
 // Vendor Update Controller
 const vendorUpdate = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
+  const profilePhoto = req.file?.path as string;
   const result = await VendorServices.vendorUpdate(
     req.params.vendorId,
     req?.body,
-    currentUser
+    currentUser,
+    profilePhoto
   );
 
   sendResponse(res, {

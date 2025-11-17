@@ -14,7 +14,8 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
+  profilePhoto?: string
 ) => {
   await findUserByEmailOrId({
     userId: currentUser?.id,
@@ -44,6 +45,16 @@ const updateDeliveryPartner = async (
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
     );
+  }
+
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
   }
 
   const updateDeliveryPartner = await DeliveryPartner.findOneAndUpdate(

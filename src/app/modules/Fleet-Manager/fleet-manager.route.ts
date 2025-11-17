@@ -12,6 +12,8 @@ const router = Router();
 router.patch(
   '/:fleetManagerId',
   auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN'),
+  multerUpload.single('file'),
+  parseBody,
   validateRequest(FleetManagerValidation.fleetManagerUpdateValidationSchema),
   FleetManagerControllers.fleetManagerUpdate
 );

@@ -15,7 +15,8 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 const fleetManagerUpdate = async (
   fleetManagerId: string,
   payload: Partial<TFleetManager>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
+  profilePhoto?: string
 ) => {
   //   istFleetManagerExistsById
   const existingFleetManager = await FleetManager.findOne({
@@ -32,6 +33,15 @@ const fleetManagerUpdate = async (
     );
   }
 
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
+  }
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
     { userId: existingFleetManager.userId },
     payload,
