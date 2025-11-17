@@ -111,16 +111,44 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         type: String,
         default: '',
       },
+      latitude: {
+        type: Number,
+      },
+      longitude: {
+        type: Number,
+      },
     },
     deliveryAddresses: [
       {
-        address: {
+        street: {
           type: String,
           default: '',
         },
-        isActive: {
+        city: {
+          type: String,
+          default: '',
+        },
+        state: {
+          type: String,
+          default: '',
+        },
+        country: {
+          type: String,
+          default: '',
+        },
+        zipCode: {
+          type: String,
+          default: '',
+        },
+        latitude: {
+          type: Number,
+        },
+        longitude: {
+          type: Number,
+        },
+        isDefault: {
           type: Boolean,
-          default: false,
+          default: true,
         },
       },
     ],
