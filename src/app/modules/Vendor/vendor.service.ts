@@ -13,7 +13,8 @@ import { BusinessCategory } from '../Category/category.model';
 const vendorUpdate = async (
   id: string,
   payload: Partial<TVendor>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
+  profilePhoto: string
 ) => {
   //   istVendorExistsById
   const existingVendor = await Vendor.findOne({ userId: id });
@@ -36,6 +37,16 @@ const vendorUpdate = async (
     if (!businessType) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid business type');
     }
+  }
+
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
   }
 
   const updatedVendor = await Vendor.findOneAndUpdate(
