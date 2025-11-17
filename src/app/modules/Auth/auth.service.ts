@@ -188,6 +188,10 @@ const loginUser = async (payload: TLoginUser) => {
     );
   }
 
+  if (user?.role !== 'CUSTOMER' && !payload?.password) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Password is required.');
+  }
+
   if (user.role === 'CUSTOMER') {
     const { otp, otpExpires } = generateOtp();
 
@@ -318,6 +322,13 @@ const changePassword = async (
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
   }
 
+  if (user?.role === 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Customer no need to change password'
+    );
+  }
+
   // checking if the user is blocked
 
   const userStatus = user?.status;
@@ -361,6 +372,13 @@ const forgotPassword = async (email: string) => {
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+
+  if (user?.role === 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Customer no need to reset password'
+    );
   }
 
   // checking if the user is blocked
@@ -413,6 +431,13 @@ const resetPassword = async (
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+
+  if (user?.role === 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Customer no need to reset password'
+    );
   }
 
   // checking if the user is blocked

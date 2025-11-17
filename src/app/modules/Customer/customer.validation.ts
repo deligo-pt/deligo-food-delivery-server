@@ -22,6 +22,8 @@ const updateCustomerDataValidationSchema = z.object({
         state: z.string().optional(),
         country: z.string().optional(),
         zipCode: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
       })
       .optional(),
 
@@ -29,8 +31,14 @@ const updateCustomerDataValidationSchema = z.object({
     deliveryAddresses: z
       .array(
         z.object({
-          address: z.string().optional(),
-          isActive: z.boolean().optional(),
+          street: z.string().optional(),
+          city: z.string().optional(),
+          state: z.string().optional(),
+          country: z.string().optional(),
+          zipCode: z.string().optional(),
+          latitude: z.number().optional(),
+          longitude: z.number().optional(),
+          isDefault: z.boolean().optional(),
         })
       )
       .optional(),

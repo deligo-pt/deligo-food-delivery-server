@@ -7,6 +7,7 @@ import { AuthUser } from '../../constant/user.const';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { BusinessCategory } from '../Category/category.model';
 
 // Vendor Update Service
 const vendorUpdate = async (
@@ -25,6 +26,16 @@ const vendorUpdate = async (
       httpStatus.BAD_REQUEST,
       'You are not authorize to update!'
     );
+  }
+
+  // check business type
+  if (payload?.businessDetails?.businessType) {
+    const businessType = await BusinessCategory.findOne({
+      name: payload?.businessDetails?.businessType,
+    });
+    if (!businessType) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid business type');
+    }
   }
 
   const updatedVendor = await Vendor.findOneAndUpdate(

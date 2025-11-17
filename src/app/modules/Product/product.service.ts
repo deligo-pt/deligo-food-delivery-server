@@ -8,6 +8,8 @@ import { Product } from './product.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { ProductCategory } from '../Category/category.model';
+import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 // Product Create Service
 const createProduct = async (
@@ -27,13 +29,20 @@ const createProduct = async (
       'Vendor is not approved to add products'
     );
   }
-  if (currentUser.role === 'VENDOR') {
-    payload.vendor = {
-      vendorId: existingUser?.userId,
-      vendorName: existingUser?.businessDetails?.businessName || '',
-      vendorType: existingUser?.businessDetails?.businessType || '',
-      rating: existingUser?.rating?.average || 0,
-    };
+
+  payload.vendor = {
+    vendorId: existingUser?.userId,
+    vendorName: existingUser?.businessDetails?.businessName || '',
+    vendorType: existingUser?.businessDetails?.businessType || '',
+    rating: existingUser?.rating?.average || 0,
+  };
+
+  // check category
+  if (payload?.category) {
+    const category = await ProductCategory.findOne({ name: payload.category });
+    if (!category) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
+    }
   }
 
   //  ------------ Generating productId ------------
@@ -92,10 +101,13 @@ const updateProduct = async (
       `You are not approved to delete product images. Your account is ${existingUser.status}`
     );
   }
-  if (!existingUser) {
+
+  // check image if up to 5
+
+  if (existingProduct.images.length + images.length > 5) {
     throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to update this product'
+      httpStatus.BAD_REQUEST,
+      'You can upload maximum 5 images'
     );
   }
 
@@ -233,6 +245,13 @@ const deleteProductImages = async (
   const invalidImages = images.filter((img) => !product.images.includes(img));
   if (invalidImages.length > 0) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid images');
+  }
+
+  // delete image from cloudinary
+  for (const image of images) {
+    deleteSingleImageFromCloudinary(image).catch((err) => {
+      throw new AppError(httpStatus.BAD_REQUEST, err.message);
+    });
   }
 
   // Remove images from product

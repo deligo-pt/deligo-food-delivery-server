@@ -11,7 +11,7 @@ const router = Router();
 // Product create
 router.post(
   '/create-product',
-  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR'),
   multerUpload.array('files', 5),
   parseBody,
   validateRequest(ProductValidation.createProductValidationSchema),
@@ -22,7 +22,7 @@ router.post(
 router.patch(
   '/:productId',
   auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
-  multerUpload.array('files'),
+  multerUpload.array('files', 5),
   parseBody,
   validateRequest(ProductValidation.updateProductValidationSchema),
   ProductControllers.updateProduct

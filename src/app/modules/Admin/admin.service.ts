@@ -9,7 +9,8 @@ import { AdminSearchableFields } from './admin.constant';
 const updateAdmin = async (
   payload: Partial<TAdmin>,
   adminId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
+  profilePhoto: string
 ) => {
   const existingAdmin = await Admin.findOne({ userId: adminId });
   if (!existingAdmin) {
@@ -23,6 +24,16 @@ const updateAdmin = async (
       httpStatus.FORBIDDEN,
       'You are not authorized for update'
     );
+  }
+
+  if (payload.profilePhoto) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile photo should be in file!'
+    );
+  }
+  if (profilePhoto) {
+    payload.profilePhoto = profilePhoto;
   }
 
   const updateAdmin = await Admin.findOneAndUpdate(

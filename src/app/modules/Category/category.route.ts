@@ -68,7 +68,7 @@ router.get(
 // Get Single Product Category
 router.get(
   '/productCategory/:id',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN'),
   CategoryController.getSingleProductCategory
 );
 
