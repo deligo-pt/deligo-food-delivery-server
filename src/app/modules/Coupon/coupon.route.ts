@@ -24,12 +24,25 @@ router.patch(
 
 // get all coupons
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), CouponControllers.getAllCoupons);
-
-// delete coupon
-router.delete(
+// get single coupon
+router.get(
   '/:couponId',
   auth('ADMIN', 'SUPER_ADMIN'),
-  CouponControllers.deleteCoupon
+  CouponControllers.getSingleCoupon
+);
+
+// soft delete coupon
+router.delete(
+  '/soft-delete/:couponId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  CouponControllers.softDeleteCoupon
+);
+
+// permanent delete coupon
+router.delete(
+  '/permanent-delete/:couponId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  CouponControllers.permanentDeleteCoupon
 );
 
 export const CouponRoutes = router;

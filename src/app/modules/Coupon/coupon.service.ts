@@ -29,7 +29,7 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
 
 // update coupon service
 const updateCoupon = async (
-  id: string,
+  couponId: string,
   payload: Partial<TCoupon>,
   currentUser: AuthUser
 ) => {
@@ -44,7 +44,7 @@ const updateCoupon = async (
     );
   }
 
-  const existingCoupon = await Coupon.findById(id);
+  const existingCoupon = await Coupon.findById(couponId);
   if (!existingCoupon) {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
@@ -67,7 +67,7 @@ const updateCoupon = async (
     );
   }
 
-  const updatedCoupon = await Coupon.findByIdAndUpdate(id, payload, {
+  const updatedCoupon = await Coupon.findByIdAndUpdate(couponId, payload, {
     new: true,
   });
   return updatedCoupon;
@@ -101,8 +101,29 @@ const getAllCoupons = async (
   return { meta, data };
 };
 
-// coupon delete service
-const deleteCoupon = async (id: string, currentUser: AuthUser) => {
+// get single coupon service
+const getSingleCoupon = async (couponId: string, currentUser: AuthUser) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (result.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view a coupon. Your account is ${result.user.status}`
+    );
+  }
+
+  const existingCoupon = await Coupon.findById(couponId);
+  if (!existingCoupon) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+  return existingCoupon;
+};
+
+// coupon soft delete service
+const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
   const existingCurrentUser = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
@@ -115,7 +136,7 @@ const deleteCoupon = async (id: string, currentUser: AuthUser) => {
     );
   }
 
-  const existingCoupon = await Coupon.findById(id);
+  const existingCoupon = await Coupon.findById(couponId);
   if (!existingCoupon) {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
@@ -127,13 +148,49 @@ const deleteCoupon = async (id: string, currentUser: AuthUser) => {
     );
   }
 
-  await Coupon.findByIdAndDelete(id);
-  return existingCoupon;
+  existingCoupon.isDeleted = true;
+  await existingCoupon.save();
+  return {
+    message: 'Coupon deleted successfully',
+  };
+};
+
+// coupon permanent delete service
+const permanentDeleteCoupon = async (
+  couponId: string,
+  currentUser: AuthUser
+) => {
+  const existingCurrentUser = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (existingCurrentUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete a coupon. Your account is ${existingCurrentUser.user.status}`
+    );
+  }
+  const existingCoupon = await Coupon.findById(couponId);
+  if (!existingCoupon) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+
+  if (existingCoupon?.isDeleted === false) {
+    throw new AppError(httpStatus.CONFLICT, 'Please soft delete first');
+  }
+
+  await existingCoupon.deleteOne();
+  return {
+    message: 'Coupon deleted permanently',
+  };
 };
 
 export const CouponServices = {
   createCoupon,
   updateCoupon,
   getAllCoupons,
-  deleteCoupon,
+  getSingleCoupon,
+  softDeleteCoupon,
+  permanentDeleteCoupon,
 };

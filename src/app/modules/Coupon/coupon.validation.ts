@@ -34,6 +34,7 @@ export const updateCouponValidationSchema = z.object({
     expiresAt: z.coerce.date().optional(),
     applicableCategories: z.array(z.string()).optional(),
     isActive: z.boolean().optional(),
+    isDeleted: z.boolean().optional(),
   }),
 });
 
