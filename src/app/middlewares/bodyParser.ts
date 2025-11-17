@@ -2,11 +2,14 @@ import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 
 export const parseBody = catchAsync(async (req, res, next) => {
+  const singleFile = req.file;
+  const multipleFiles = req.files;
   const hasFiles =
-    req.files &&
-    (Array.isArray(req.files)
-      ? req.files.length > 0
-      : Object.keys(req.files).length > 0);
+    !!singleFile ||
+    (Array.isArray(multipleFiles) && multipleFiles.length > 0) ||
+    (multipleFiles &&
+      typeof multipleFiles === 'object' &&
+      Object.keys(multipleFiles).length > 0);
 
   const hasData = req.body?.data;
 
