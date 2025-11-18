@@ -11,6 +11,7 @@ export type TCoupon = {
   expiresAt?: Date; // Expiration date
   applicableCategories?: string[]; // e.g. ['food', 'grocery']
   isActive: boolean; // Status
+  isDeleted: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };

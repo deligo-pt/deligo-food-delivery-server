@@ -38,7 +38,7 @@ const updateCustomerDataValidationSchema = z.object({
           zipCode: z.string().optional(),
           latitude: z.number().optional(),
           longitude: z.number().optional(),
-          isDefault: z.boolean().optional(),
+          isActive: z.boolean().optional(),
         })
       )
       .optional(),

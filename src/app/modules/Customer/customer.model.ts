@@ -146,7 +146,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         longitude: {
           type: Number,
         },
-        isDefault: {
+        isActive: {
           type: Boolean,
           default: true,
         },

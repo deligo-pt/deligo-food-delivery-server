@@ -20,7 +20,7 @@ const createCoupon = catchAsync(async (req, res) => {
 
 // update coupon controller
 const updateCoupon = catchAsync(async (req, res) => {
-  const { id: couponId } = req.params;
+  const { couponId } = req.params;
   const result = await CouponServices.updateCoupon(
     couponId,
     req.body,
@@ -49,18 +49,48 @@ const getAllCoupons = catchAsync(async (req, res) => {
   });
 });
 
-// delete coupon controller
-const deleteCoupon = catchAsync(async (req, res) => {
+// get single coupon controller
+const getSingleCoupon = catchAsync(async (req, res) => {
   const { couponId } = req.params;
-  const result = await CouponServices.deleteCoupon(
+  const result = await CouponServices.getSingleCoupon(
+    couponId,
+    req?.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Coupon retrieved successfully',
+    data: result,
+  });
+});
+
+// soft delete coupon controller
+const softDeleteCoupon = catchAsync(async (req, res) => {
+  const { couponId } = req.params;
+  const result = await CouponServices.softDeleteCoupon(
     couponId,
     req.user as AuthUser
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Coupon deleted successfully',
-    data: result,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// permanent delete coupon controller
+const permanentDeleteCoupon = catchAsync(async (req, res) => {
+  const { couponId } = req.params;
+  const result = await CouponServices.permanentDeleteCoupon(
+    couponId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
   });
 });
 
@@ -68,5 +98,7 @@ export const CouponControllers = {
   createCoupon,
   updateCoupon,
   getAllCoupons,
-  deleteCoupon,
+  getSingleCoupon,
+  softDeleteCoupon,
+  permanentDeleteCoupon,
 };

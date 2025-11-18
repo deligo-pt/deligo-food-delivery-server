@@ -18,7 +18,7 @@ router.patch(
   VendorControllers.vendorUpdate
 );
 
-// vendor doc image upload route
+// Vendor doc image upload route
 router.patch(
   '/:vendorId/docImage',
   auth('VENDOR', 'SUPER_ADMIN'),
