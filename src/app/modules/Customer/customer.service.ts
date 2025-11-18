@@ -54,6 +54,24 @@ const updateCustomer = async (
   if (profilePhoto) {
     payload.profilePhoto = profilePhoto;
   }
+
+  if (payload?.address && !payload?.deliveryAddresses) {
+    if (!existingCustomer.deliveryAddresses) {
+      existingCustomer.deliveryAddresses = [];
+    }
+    existingCustomer?.deliveryAddresses?.push({
+      street: payload?.address?.street || '',
+      city: payload?.address?.city || '',
+      state: payload?.address?.state || '',
+      country: payload?.address?.country || '',
+      zipCode: payload?.address?.zipCode || '',
+      latitude: payload?.address?.latitude || 0,
+      longitude: payload?.address?.longitude || 0,
+      isActive: true,
+    });
+    payload.deliveryAddresses = existingCustomer.deliveryAddresses;
+  }
+
   const updateCustomer = await Customer.findOneAndUpdate(
     { userId: customerId },
     { ...payload },

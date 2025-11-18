@@ -179,10 +179,18 @@ const getAllProductCategories = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const user = result.user;
   if (currentUser.role === 'VENDOR') {
     query.isActive = true;
     query.isDeleted = false;
+    const findBusinessCategory = await BusinessCategory.findOne({
+      name: user?.businessDetails?.businessType,
+    });
+    query.businessCategoryId = findBusinessCategory?._id;
   }
   const productCategories = new QueryBuilder(ProductCategory.find(), query)
     .fields()
