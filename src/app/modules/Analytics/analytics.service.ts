@@ -7,6 +7,7 @@ import { Vendor } from '../Vendor/vendor.model';
 const getOverview = async () => {
   const customers = await Customer.countDocuments();
   const vendors = await Vendor.countDocuments();
+  const fleetManagers = await DeliveryPartner.countDocuments();
   const totalOrders = await Order.countDocuments();
 
   const pendingOrders = await Order.countDocuments({ orderStatus: 'PENDING' });
@@ -37,6 +38,7 @@ const getOverview = async () => {
   return {
     customers,
     vendors,
+    fleetManagers,
     totalOrders,
     pendingOrders,
     completedOrders,
