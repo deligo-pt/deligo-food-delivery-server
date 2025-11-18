@@ -15,6 +15,7 @@ import { NotificationRoutes } from '../modules/Notification/notification.route';
 import { CategoryRoutes } from '../modules/Category/category.route';
 import { OfferRoutes } from '../modules/Offer/offer.route';
 import { RatingRoutes } from '../modules/Rating/rating.route';
+import { AnalyticsRoutes } from '../modules/Analytics/analytics.route';
 
 const router = express.Router();
 
@@ -82,6 +83,10 @@ const moduleRoutes = [
   {
     path: '/ratings',
     route: RatingRoutes,
+  },
+  {
+    path: '/analytics',
+    route: AnalyticsRoutes,
   },
 ];
 
