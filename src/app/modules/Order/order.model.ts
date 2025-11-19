@@ -1,5 +1,6 @@
 import { model, Schema } from 'mongoose';
 import { TOrder } from './order.interface';
+import { ORDER_STATUS } from './order.constant';
 
 const orderItemSchema = new Schema(
   {
@@ -12,15 +13,18 @@ const orderItemSchema = new Schema(
   { _id: false }
 );
 
-const addressSchema = new Schema(
+const deliveryAddressSchema = new Schema(
   {
-    street: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String },
-    postalCode: { type: String },
-    country: { type: String, required: true },
-    latitude: { type: Number },
-    longitude: { type: Number },
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    country: { type: String, default: '' },
+    zipCode: { type: String, default: '' },
+
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+
+    isActive: { type: Boolean },
   },
   { _id: false }
 );
@@ -52,9 +56,11 @@ const orderSchema = new Schema<TOrder>(
     customerId: { type: String, required: true },
     vendorId: { type: String, required: true },
     deliveryPartnerId: { type: String },
+    useCart: { type: Boolean, default: false },
 
     items: { type: [orderItemSchema], required: true },
 
+    totalItems: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     finalAmount: { type: Number, required: true },
@@ -68,16 +74,7 @@ const orderSchema = new Schema<TOrder>(
 
     orderStatus: {
       type: String,
-      enum: [
-        'PENDING',
-        'ACCEPTED',
-        'REJECTED',
-        'ASSIGNED',
-        'PICKED_UP',
-        'ON_THE_WAY',
-        'DELIVERED',
-        'CANCELED',
-      ],
+      enum: Object.keys(ORDER_STATUS),
       default: 'PENDING',
     },
 
@@ -86,7 +83,7 @@ const orderSchema = new Schema<TOrder>(
     deliveryOtp: { type: String },
     isOtpVerified: { type: Boolean, default: false },
 
-    deliveryAddress: { type: addressSchema, required: true },
+    deliveryAddress: { type: [deliveryAddressSchema], required: true },
     pickupAddress: { type: pickupAddressSchema },
 
     deliveryCharge: { type: Number, default: 0 },

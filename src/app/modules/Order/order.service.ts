@@ -7,59 +7,16 @@ import { Order } from './order.model';
 import { Customer } from '../Customer/customer.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
-import { OrderSearchableFields } from './order.constant';
+import { ORDER_STATUS, OrderSearchableFields } from './order.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { TOrder } from './order.interface';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
-import { getUserFcmToken } from '../../utils/getUserFcmToken';
-import { NotificationService } from '../Notification/notification.service';
 
-// Order Service
-
-const createOrder = async (currentUser: AuthUser, payload: TOrder) => {
+// Checkout Service
+const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
   const customerId = currentUser.id;
 
-  // -------- Check if cart exists --------
-  const cart = await Cart.findOne({ customerId, isDeleted: false });
-  if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
-  }
-
-  if (cart.items.length === 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
-  }
-
-  // -------- Match selected products with cart --------
-  const selectedItems = cart.items.filter((item) =>
-    payload.items.some((orderItem) => orderItem.productId === item.productId)
-  );
-
-  if (selectedItems.length === 0) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'No matching products found in cart'
-    );
-  }
-
-  // -------- Check stock for all selected products --------
-  const productIds = selectedItems.map((item) => item.productId);
-  const products = await Product.find({ productId: { $in: productIds } });
-
-  if (products.length === 0) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Products not found');
-  }
-
-  for (const item of selectedItems) {
-    const product = products.find((p) => p.productId === item.productId);
-    if (!product || product.stock.quantity < item.quantity) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Insufficient stock for product: ${product?.name || item.productId}`
-      );
-    }
-  }
-
-  // -------- Validate customer profile --------
+  // ---------- Find Customer ----------
   const customer = await Customer.findOne({
     userId: customerId,
     isDeleted: false,
@@ -68,127 +25,139 @@ const createOrder = async (currentUser: AuthUser, payload: TOrder) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
   }
 
+  // Validate address
   if (
-    !customer.name ||
+    !customer.name?.firstName ||
+    !customer.name?.lastName ||
     !customer.contactNumber ||
+    !customer.address?.state ||
     !customer.address?.city ||
-    !customer.address?.country
-  ) {
+    !customer.address?.country ||
+    !customer.address?.zipCode
+  )
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please complete your profile before ordering'
+      'Please complete your profile before checking out'
     );
+
+  // ---------- Get items ----------
+  let selectedItems = [];
+
+  if (payload.useCart === true) {
+    // ====== Checkout using CART ======
+    const cart = await Cart.findOne({ customerId, isDeleted: false });
+
+    if (!cart || cart.items.length === 0) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
+    }
+
+    const activeItems = cart.items.filter((i) => i.isActive === true);
+
+    if (activeItems.length === 0) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Please select at least one product from your cart to order'
+      );
+    }
+
+    selectedItems = activeItems;
+  } else {
+    // ====== DIRECT CHECKOUT ======
+    if (!payload.items || payload.items.length === 0) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'No items provided for checkout'
+      );
+    }
+
+    if (payload.items.length > 1) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Direct checkout supports only one product at a time'
+      );
+    }
+
+    if (!payload.items[0].quantity) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Quantity is required for direct checkout'
+      );
+    }
+
+    selectedItems = payload.items;
   }
 
-  // -------- Determine delivery address --------
-  let activeDeliveryAddress = customer.deliveryAddresses?.find(
-    (addr: { address: string; isActive: boolean }) => addr.isActive
-  )?.address;
+  // ---------- Check Product Stock ----------
+  const productIds = selectedItems.map((i) => i.productId);
+  const products = await Product.find({ productId: { $in: productIds } });
 
-  if (!activeDeliveryAddress) {
-    const addr = customer.address;
-    activeDeliveryAddress = `${addr?.street || ''}, ${addr?.city || ''}, ${
-      addr?.state || ''
-    }, ${addr?.country || ''} - ${addr?.zipCode || ''}`;
-  }
-
-  // -------- Vendor ID from first product --------
-  const vendorId = products[0].vendor?.vendorId;
-
-  // -------Generate Order ID--------
-  const timestamp = Date.now().toString().slice(-6);
-  const orderId = `ORD-${timestamp}`;
-
-  // -------- Build order items --------
   const orderItems = selectedItems.map((item) => {
-    const product = products.find((p) => p.productId === item.productId)!;
+    const product = products.find((p) => p.productId === item.productId);
+
+    if (!product)
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        `Product not found: ${item.productId}`
+      );
+
+    if (product.stock.quantity < item.quantity)
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Stock not available for ${product.name}`
+      );
+
     return {
       productId: product.productId,
       name: product.name,
       quantity: item.quantity,
       price: product.pricing.finalPrice,
       subtotal: product.pricing.finalPrice * item.quantity,
+      vendorId: product.vendor.vendorId,
+      estimatedDeliveryTime: payload?.estimatedDeliveryTime || 'N/A',
     };
   });
 
-  // -------- Calculate total and discount --------
-  const totalPrice = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
-  const discount = 0; // apply coupon logic later
-  const finalAmount = totalPrice - (totalPrice * discount) / 100;
+  // ---------- Calculate ----------
+  const totalItems = orderItems.reduce((s, i) => s + i.quantity, 0);
+  const rawTotalPrice = orderItems.reduce((s, i) => s + i.subtotal, 0);
+  const totalPrice = parseFloat(rawTotalPrice.toFixed(2));
+  const deliveryCharge = Number(payload.deliveryCharge || 0);
+  const discount = Number(payload.discount || 0);
 
-  // -------- Mock payment (to integrate gateway later) --------
-  const isPaymentSuccess = true;
+  const finalAmount = parseFloat(
+    (totalPrice + deliveryCharge - discount).toFixed(2)
+  );
 
-  let order = null;
-  if (isPaymentSuccess) {
-    order = await Order.create({
-      orderId,
-      customerId,
-      vendorId,
-      items: orderItems,
-      totalPrice,
-      discount,
-      finalAmount,
-      paymentMethod: 'CARD', // set dynamically later
-      paymentStatus: 'COMPLETED',
-      orderStatus: 'PENDING',
-      deliveryAddress: {
-        street: customer.address?.street || '',
-        city: customer.address?.city || '',
-        country: customer.address?.country || '',
-      },
-      isPaid: true,
-    });
-
-    // -------- Reduce product stock --------
-    for (const item of selectedItems) {
-      const product = products.find((p) => p.productId === item.productId)!;
-      product.stock.quantity -= item.quantity;
-      await product.save();
-    }
-
-    // -------- Remove ordered items from cart --------
-    cart.items = cart.items.filter(
-      (item) =>
-        !payload.items.some((ordered) => ordered.productId === item.productId)
-    );
-    await cart.save();
-  }
-
-  if (!order) {
+  // Vendor check
+  const vendorIds = orderItems.map((i) => i.vendorId);
+  if (new Set(vendorIds).size > 1) {
     throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Order creation failed due to payment issues'
+      httpStatus.BAD_REQUEST,
+      'You can only order products from ONE vendor at a time'
     );
   }
 
-  if (order) {
-    const customerToken = await getUserFcmToken(customerId);
-    const vendorToken = await getUserFcmToken(vendorId);
-    if (customerToken) {
-      // send notification to customer
-      await NotificationService.sendToUser(
-        customerId,
-        'Order Placed',
-        `Your order ${order.orderId} has been placed successfully.`,
-        { orderId: order.orderId },
-        'ORDER'
-      );
-    }
-
-    if (vendorToken) {
-      // send notification to vendor
-      await NotificationService.sendToUser(
-        vendorId!,
-        'New Order Received',
-        `You have received a new order ${order.orderId}.`,
-        { orderId: order.orderId },
-        'ORDER'
-      );
-    }
+  // Delivery address
+  const activeAddress = customer.deliveryAddresses?.find((a) => a.isActive);
+  if (!activeAddress) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'No active delivery address found'
+    );
   }
 
-  return order;
+  return {
+    customerId,
+    vendorId: orderItems[0].vendorId,
+    items: orderItems,
+    discount: discount,
+    totalItems,
+    totalPrice,
+    deliveryCharge,
+    finalAmount,
+    estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
+    deliveryAddress: activeAddress,
+  };
 };
 
 //  order by vendor service
@@ -265,6 +234,8 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
     order = await Order.findOne({ orderId, customerId: userId });
   } else if (existingCurrentUser?.user?.role === 'VENDOR') {
     order = await Order.findOne({ orderId, vendorId: userId });
+  } else if (existingCurrentUser?.user?.role === 'DELIVERY_PARTNER') {
+    order = await Order.findOne({ orderId, deliveryPartnerId: userId });
   } else {
     order = await Order.findOne({ orderId });
   }
@@ -364,13 +335,6 @@ const assignDeliveryPartner = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
   }
 
-  if (order.orderStatus === 'ASSIGNED') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Order is already assigned to a delivery partner.'
-    );
-  }
-
   if (order.orderStatus !== 'ACCEPTED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -388,11 +352,36 @@ const assignDeliveryPartner = async (
   return result;
 };
 
+// update order status service
+const updateOrderStatus = async (
+  orderId: string,
+  status: keyof typeof ORDER_STATUS,
+  currentUser: AuthUser
+) => {
+  const existingUser = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  if (existingUser.user.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update the order. Your account is ${existingUser.user.status}`
+    );
+  }
+  const result = await Order.findOneAndUpdate(
+    { orderId },
+    { orderStatus: status },
+    { new: true }
+  );
+  return result;
+};
+
 export const OrderServices = {
-  createOrder,
+  checkout,
   getOrdersByVendor,
   getAllOrders,
   getSingleOrder,
   acceptOrRejectOrderByVendor,
   assignDeliveryPartner,
+  updateOrderStatus,
 };

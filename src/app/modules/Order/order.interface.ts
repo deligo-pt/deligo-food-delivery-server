@@ -1,3 +1,5 @@
+import { ORDER_STATUS } from './order.constant';
+
 export type TOrder = {
   _id?: string;
 
@@ -6,6 +8,7 @@ export type TOrder = {
   customerId: string;
   vendorId: string;
   deliveryPartnerId?: string; // assigned after vendor accepts
+  useCart?: boolean;
 
   // Items
   items: {
@@ -17,6 +20,7 @@ export type TOrder = {
   }[];
 
   // Pricing & Payment
+  totalItems: number;
   totalPrice: number;
   discount?: number;
   finalAmount: number;
@@ -24,15 +28,7 @@ export type TOrder = {
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
   // Order Lifecycle
-  orderStatus:
-    | 'PENDING' // created by customer, waiting for vendor
-    | 'ACCEPTED' // vendor accepted
-    | 'REJECTED' // vendor rejected
-    | 'ASSIGNED' // delivery partner assigned
-    | 'PICKED_UP' // delivery partner collected product
-    | 'ON_THE_WAY' // delivery partner en route
-    | 'DELIVERED' // completed successfully
-    | 'CANCELED'; // canceled (vendor/customer/admin)
+  orderStatus: keyof typeof ORDER_STATUS;
 
   remarks?: string;
   // OTP Verification
@@ -41,14 +37,16 @@ export type TOrder = {
 
   // Address & Location
   deliveryAddress: {
-    street: string;
-    city: string;
+    street?: string;
+    city?: string;
     state?: string;
-    postalCode?: string;
-    country: string;
+    country?: string;
+    zipCode?: string;
     latitude?: number;
     longitude?: number;
-  };
+    isActive: boolean;
+  }[];
+
   pickupAddress?: {
     // vendor’s location
     streetAddress: string;

@@ -4,7 +4,6 @@ import AppError from '../../errors/AppError';
 import { Product } from '../Product/product.model';
 import { TCart } from './cart.interface';
 import { Cart } from './cart.model';
-import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Customer } from '../Customer/customer.model';
 
 // Add cart Service
@@ -133,23 +132,8 @@ const viewCart = async (user: AuthUser) => {
   return cart;
 };
 
-// view all cart Service
-const viewAllCarts = async (query: Record<string, unknown>) => {
-  const carts = new QueryBuilder(Cart.find(), query)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .search(['customerId']);
-
-  const meta = await carts.countTotal();
-  const data = await carts.modelQuery;
-  return { meta, data };
-};
-
 export const CartServices = {
   addToCart,
   activateItem,
   viewCart,
-  viewAllCarts,
 };
