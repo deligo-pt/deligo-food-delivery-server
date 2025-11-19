@@ -8,7 +8,7 @@ import { Product } from './product.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
-import { ProductCategory } from '../Category/category.model';
+import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 // Product Create Service
@@ -29,11 +29,16 @@ const createProduct = async (
       'Vendor is not approved to add products'
     );
   }
+  const vendorCategory = existingUser?.businessDetails?.businessType;
+  // find vendor category is exist
+  const vendorCategoryExist = await BusinessCategory.findOne({
+    name: vendorCategory,
+  });
 
   payload.vendor = {
     vendorId: existingUser?.userId,
     vendorName: existingUser?.businessDetails?.businessName || '',
-    vendorType: existingUser?.businessDetails?.businessType || '',
+    vendorType: vendorCategory || '',
     rating: existingUser?.rating?.average || 0,
   };
 
@@ -42,6 +47,16 @@ const createProduct = async (
     const category = await ProductCategory.findOne({ name: payload.category });
     if (!category) {
       throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
+    }
+
+    if (
+      category?.businessCategoryId.toString !==
+      vendorCategoryExist?._id.toString
+    ) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Category is not under business category of vendor'
+      );
     }
   }
 

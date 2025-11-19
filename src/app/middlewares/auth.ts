@@ -22,9 +22,9 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
       config.jwt_access_secret as string
     ) as JwtPayload;
 
-    const { role, email, iat } = decoded;
+    const { role, iat, id } = decoded;
 
-    const result = await findUserByEmailOrId({ email, isDeleted: false });
+    const result = await findUserByEmailOrId({ userId: id, isDeleted: false });
 
     const foundModel = result?.model;
 

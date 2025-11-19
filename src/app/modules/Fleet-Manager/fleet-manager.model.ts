@@ -7,7 +7,7 @@ import { passwordPlugin } from '../../plugins/passwordPlugin';
 
 const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   {
-    fleetManagerId: {
+    userId: {
       type: String,
       required: true,
       unique: true,

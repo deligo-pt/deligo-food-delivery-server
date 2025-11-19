@@ -46,12 +46,6 @@ const productSchema = new Schema<TProduct>(
 
     tags: [{ type: String }],
 
-    deliveryInfo: {
-      deliveryType: { type: String },
-      estimatedTime: { type: String },
-      deliveryCharge: { type: Number },
-      freeDeliveryAbove: { type: Number },
-    },
     attributes: { type: Schema.Types.Mixed, default: {} },
 
     rating: {

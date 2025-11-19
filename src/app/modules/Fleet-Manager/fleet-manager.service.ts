@@ -20,7 +20,7 @@ const fleetManagerUpdate = async (
 ) => {
   //   istFleetManagerExistsById
   const existingFleetManager = await FleetManager.findOne({
-    fleetManagerId,
+    userId: fleetManagerId,
     isDeleted: false,
   });
   if (!existingFleetManager) {
@@ -44,7 +44,7 @@ const fleetManagerUpdate = async (
     payload.profilePhoto = profilePhoto;
   }
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
-    { fleetManagerId },
+    { userId: fleetManagerId },
     payload,
     { new: true }
   );
@@ -59,7 +59,7 @@ const fleetManagerDocImageUpload = async (
   fleetManagerId: string
 ) => {
   const existingFleetManager = await FleetManager.findOne({
-    fleetManagerId,
+    userId: fleetManagerId,
     isDeleted: false,
   });
   if (!existingFleetManager) {

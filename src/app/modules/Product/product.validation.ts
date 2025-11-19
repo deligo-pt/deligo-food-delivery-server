@@ -38,15 +38,6 @@ const createProductValidationSchema = z.object({
 
     tags: z.array(z.string()).optional(),
 
-    deliveryInfo: z
-      .object({
-        deliveryType: z.enum(['Instant', 'Scheduled', 'Pickup']).optional(),
-        estimatedTime: z.string().optional(),
-        deliveryCharge: z.number().optional(),
-        freeDeliveryAbove: z.number().optional(),
-      })
-      .optional(),
-
     attributes: z
       .record(
         z.union([
@@ -110,15 +101,6 @@ const updateProductValidationSchema = z.object({
     images: z.array(z.string()).optional(),
 
     tags: z.array(z.string()).optional(),
-
-    deliveryInfo: z
-      .object({
-        deliveryType: z.enum(['Instant', 'Scheduled', 'Pickup']).optional(),
-        estimatedTime: z.string().optional(),
-        deliveryCharge: z.number().optional(),
-        freeDeliveryAbove: z.number().optional(),
-      })
-      .optional(),
 
     attributes: z
       .record(
