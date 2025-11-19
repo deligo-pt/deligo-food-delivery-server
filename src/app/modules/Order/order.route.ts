@@ -7,7 +7,12 @@ import { OrderValidation } from './order.validation';
 const router = Router();
 
 // Order add
-router.post('/checkout', auth('CUSTOMER'), OrderControllers.createOrder);
+router.post(
+  '/checkout',
+  auth('CUSTOMER'),
+  validateRequest(OrderValidation.checkoutValidationSchema),
+  OrderControllers.checkout
+);
 
 // Get orders by vendor
 router.get('/vendor', auth('VENDOR'), OrderControllers.getOrdersByVendor);

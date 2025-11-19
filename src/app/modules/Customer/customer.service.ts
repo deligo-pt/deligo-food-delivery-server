@@ -15,7 +15,7 @@ const updateCustomer = async (
   profilePhoto: string | undefined
 ) => {
   const existingCurrentUser = await findUserByEmailOrId({
-    email: currentUser?.email,
+    userId: currentUser?.id,
     isDeleted: false,
   });
 
@@ -88,7 +88,7 @@ const getAllCustomersFromDB = async (
   currentUser: AuthUser
 ) => {
   const existingCurrentUser = await findUserByEmailOrId({
-    email: currentUser?.email,
+    userId: currentUser?.id,
     isDeleted: false,
   });
   if (existingCurrentUser.user.status !== 'APPROVED') {
@@ -121,7 +121,7 @@ const getSingleCustomerFromDB = async (
   currentUser: AuthUser
 ) => {
   const existingCurrentUser = await findUserByEmailOrId({
-    email: currentUser?.email,
+    userId: currentUser?.id,
     isDeleted: false,
   });
 

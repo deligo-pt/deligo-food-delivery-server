@@ -24,7 +24,4 @@ router.patch(
 // view cart
 router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
 
-// view all carts
-router.get('/', auth('ADMIN', 'SUPER_ADMIN'), CartControllers.viewAllCarts);
-
 export const CartRoutes = router;

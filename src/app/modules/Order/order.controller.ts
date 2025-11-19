@@ -4,12 +4,9 @@ import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/user.const';
 
-// Order Controller
-const createOrder = catchAsync(async (req, res) => {
-  const result = await OrderServices.createOrder(
-    req.user as AuthUser,
-    req.body
-  );
+// checkout Controller
+const checkout = catchAsync(async (req, res) => {
+  const result = await OrderServices.checkout(req.user as AuthUser, req.body);
 
   sendResponse(res, {
     success: true,
@@ -98,7 +95,7 @@ const assignDeliveryPartner = catchAsync(async (req, res) => {
 });
 
 export const OrderControllers = {
-  createOrder,
+  checkout,
   getOrdersByVendor,
   getAllOrders,
   getSingleOrder,

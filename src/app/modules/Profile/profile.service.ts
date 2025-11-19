@@ -6,7 +6,6 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 const getMyProfile = async (currentUser: AuthUser) => {
   const result = await findUserByEmailOrId({
-    email: currentUser.email,
     userId: currentUser.id,
     isDeleted: false,
   });
@@ -32,7 +31,6 @@ const updateMyProfile = async (
   profilePhoto?: string
 ) => {
   const result = await findUserByEmailOrId({
-    email: currentUser.email,
     userId: currentUser.id,
     isDeleted: false,
   });
