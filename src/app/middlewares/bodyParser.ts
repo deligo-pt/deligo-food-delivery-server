@@ -1,3 +1,4 @@
+import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 
@@ -24,7 +25,7 @@ export const parseBody = catchAsync(async (req, res, next) => {
   }
 
   throw new AppError(
-    400,
+    httpStatus.BAD_REQUEST,
     'Please provide required data or an image file as form data'
   );
 });

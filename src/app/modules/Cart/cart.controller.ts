@@ -16,6 +16,20 @@ const addToCart = catchAsync(async (req, res) => {
   });
 });
 
+// activate item Controller
+const activateItem = catchAsync(async (req, res) => {
+  const result = await CartServices.activateItem(
+    req.user as AuthUser,
+    req.params.productId
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Item activated successfully',
+    data: result,
+  });
+});
+
 // view cart Controller
 const viewCart = catchAsync(async (req, res) => {
   const result = await CartServices.viewCart(req.user as AuthUser);
@@ -43,6 +57,7 @@ const viewAllCarts = catchAsync(async (req, res) => {
 
 export const CartControllers = {
   addToCart,
+  activateItem,
   viewCart,
   viewAllCarts,
 };

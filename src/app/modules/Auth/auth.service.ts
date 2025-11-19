@@ -12,12 +12,12 @@ import {
 } from './auth.constant';
 import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
-import config from '../../config';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginUser } from './auth.interface';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
+import config from '../../config';
 
 // Register User
 const registerUser = async <
@@ -48,7 +48,7 @@ const registerUser = async <
       'FLEET_MANAGER',
     ];
     const allowedUser = await findUserByEmailOrId({
-      email: currentUser?.email,
+      userId: currentUser?.id,
       isDeleted: false,
     });
 
@@ -171,6 +171,7 @@ const loginUser = async (payload: TLoginUser) => {
     isDeleted: false,
   });
   const user = result?.user;
+  await findUserByEmailOrId({ userId: user?.userId, isDeleted: false });
   const userModel = result?.model;
 
   // checking if the user is blocked
@@ -312,7 +313,7 @@ const changePassword = async (
 ) => {
   // checking if the user is exist
   const result = await findUserByEmailOrId({
-    email: currentUser.email,
+    userId: currentUser.id,
     isDeleted: false,
   });
   const user = result?.user;
@@ -496,9 +497,9 @@ const refreshToken = async (token: string) => {
     config.jwt_refresh_secret as string
   ) as JwtPayload;
 
-  const { email, iat } = decoded;
+  const { iat, id } = decoded;
 
-  const result = await findUserByEmailOrId({ email, isDeleted: false });
+  const result = await findUserByEmailOrId({ userId: id, isDeleted: false });
 
   const user = result?.user;
   const model = result?.model;
@@ -562,20 +563,18 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     );
   }
 
-  if (currentUser.role !== 'SUPER_ADMIN') {
-    if (existingUser.userId !== currentUser.id) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user'
-      );
-    }
-  }
-
   if (existingUser?.role === 'DELIVERY_PARTNER') {
     if (
       currentUser?.role === 'FLEET_MANAGER' &&
       existingUser?.registeredBy !== currentUser.id
     ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to submit approval request for this user'
+      );
+    }
+  } else {
+    if (existingUser.userId !== currentUser.id) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to submit approval request for this user'
@@ -743,7 +742,7 @@ const verifyOtp = async (email: string, otp: string) => {
   );
 
   return {
-    message: 'Email verified successfully',
+    message: `${user?.role} Email verified successfully`,
     accessToken,
     refreshToken,
   };
@@ -763,7 +762,16 @@ const resendOtp = async (email: string) => {
 
   // Prepare email template content
   const emailHtml = await EmailHelper.createEmailContent(
-    { otp, userEmail: email, currentYear: new Date().getFullYear() },
+    {
+      otp,
+      userEmail: user?.email,
+      currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
+      website: 'https://deligo.pt',
+      phone: '+351 920 136 680',
+      address: 'Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal',
+      user: user?.role.toLocaleLowerCase(),
+    },
     'verify-email'
   );
 
@@ -781,7 +789,7 @@ const resendOtp = async (email: string) => {
 // soft delete user service
 const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
   const existingCurrentUser = await findUserByEmailOrId({
-    email: currentUser?.email,
+    userId: currentUser?.id,
     isDeleted: false,
   });
 
@@ -813,7 +821,7 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 // permanent delete user service
 const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
   const existingCurrentUser = await findUserByEmailOrId({
-    email: currentUser?.email,
+    userId: currentUser?.id,
     isDeleted: false,
   });
 

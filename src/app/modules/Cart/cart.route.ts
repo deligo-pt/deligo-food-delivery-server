@@ -1,10 +1,10 @@
-import express from 'express';
+import { Router } from 'express';
 import auth from '../../middlewares/auth';
 import validateRequest from '../../middlewares/validateRequest';
 import { CartValidation } from './cart.validation';
 import { CartControllers } from './cart.controller';
 
-const router = express.Router();
+const router = Router();
 
 // Cart add
 router.post(
@@ -12,6 +12,13 @@ router.post(
   auth('CUSTOMER'),
   validateRequest(CartValidation.addToCartValidationSchema),
   CartControllers.addToCart
+);
+
+// activate item
+router.patch(
+  '/activate-item/:productId',
+  auth('CUSTOMER'),
+  CartControllers.activateItem
 );
 
 // view cart

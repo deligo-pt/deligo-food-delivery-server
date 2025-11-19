@@ -1,9 +1,11 @@
 export type TCartItem = {
   productId: string;
+  vendorId: string;
   name: string;
   price: number;
   quantity: number;
   subtotal: number;
+  isActive: boolean;
 };
 
 export type TCart = {

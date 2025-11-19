@@ -19,6 +19,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
   const customerId = currentUser.id;
   payload.customerId = customerId;
+
   const { productId, quantity } = payload.items[0];
 
   const existingProduct = await Product.findOne({ productId });
@@ -28,61 +29,98 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
   let cart = await Cart.findOne({ customerId });
 
+  const newItem = {
+    productId,
+    vendorId: existingProduct.vendor.vendorId,
+    quantity,
+    price: existingProduct.pricing.finalPrice,
+    name: existingProduct.name,
+    subtotal: existingProduct.pricing.finalPrice * quantity,
+    isActive: true,
+  };
   if (!cart) {
-    // --------- No existing cart, create a new one and check availability before adding---------
     if (quantity > existingProduct.stock.quantity) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
     }
+
     cart = new Cart({
       customerId,
-      items: [
-        {
-          productId,
-          quantity,
-          price: existingProduct.pricing.finalPrice,
-          name: existingProduct.name,
-          subtotal: existingProduct.pricing.finalPrice * quantity,
-        },
-      ],
+      items: [newItem],
       totalItems: quantity,
       totalPrice: existingProduct.pricing.finalPrice * quantity,
     });
-  } else {
-    const itemIndex = cart.items.findIndex(
-      (item) => item.productId.toString() === productId
-    );
-    if (itemIndex > -1) {
-      // ----------Product exists in cart, update quantity and check availability-------------
-      const currentItem = cart.items[itemIndex];
-      if (currentItem.quantity + quantity > existingProduct.stock.quantity) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Insufficient product stock'
-        );
-      }
-      cart.items[itemIndex].quantity += quantity;
-      cart.items[itemIndex].subtotal +=
-        existingProduct?.pricing.finalPrice * quantity;
-    } else {
-      // ----------Product does not exist in cart, add new item and check availability-------------
-      if (quantity > existingProduct.stock.quantity) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Insufficient product stock'
-        );
-      }
-      cart.items.push({
-        productId,
-        quantity,
-        price: existingProduct?.pricing.finalPrice,
-        name: existingProduct?.name,
-        subtotal: existingProduct?.pricing.finalPrice * quantity,
-      });
-    }
+
+    await cart.save();
+    return cart;
   }
+  const activeItem = cart.items.find((i) => i.isActive === true);
+  // product exists in cart
+  const itemIndex = cart.items.findIndex((i) => i.productId === productId);
+
+  if (itemIndex > -1) {
+    // Product exists then Update quantity
+    const currentItem = cart.items[itemIndex];
+
+    if (currentItem.quantity + quantity > existingProduct.stock.quantity) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
+    }
+
+    currentItem.quantity += quantity;
+    currentItem.subtotal += existingProduct.pricing.finalPrice * quantity;
+  } else {
+    if (activeItem && activeItem.vendorId !== newItem.vendorId) {
+      newItem.isActive = false;
+    }
+    cart.items.push(newItem);
+  }
+
   cart.markModified('items');
   await cart.save();
   return cart;
+};
+
+// active item Service
+const activateItem = async (currentUser: AuthUser, productId: string) => {
+  const customerId = currentUser.id;
+
+  const cart = await Cart.findOne({ customerId });
+  if (!cart) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+  }
+  // Item to activate
+  const itemToActivate = cart.items.find((i) => i.productId === productId);
+  if (!itemToActivate) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
+  }
+
+  const selectedVendorId = itemToActivate.vendorId;
+
+  // // Get existing active items
+  const activeItems = cart.items.filter((i) => i.isActive === true);
+
+  // // If already active items exist → vendor must match
+  if (activeItems.length > 0) {
+    const activeVendorId = activeItems[0].vendorId;
+
+    if (activeVendorId !== selectedVendorId) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'You can only select items from the same vendor'
+      );
+    }
+  }
+
+  // Activate this item
+  if (itemToActivate?.isActive === false) {
+    itemToActivate.isActive = true;
+  } else {
+    itemToActivate.isActive = false;
+  }
+  cart.markModified('items');
+  await cart.save();
+  const freshCart = await Cart.findOne({ customerId });
+
+  return freshCart;
 };
 
 // view cart Service
@@ -111,6 +149,7 @@ const viewAllCarts = async (query: Record<string, unknown>) => {
 
 export const CartServices = {
   addToCart,
+  activateItem,
   viewCart,
   viewAllCarts,
 };

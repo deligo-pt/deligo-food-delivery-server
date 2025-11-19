@@ -37,14 +37,6 @@ export type TProduct = {
   };
 
   tags?: string[];
-
-  deliveryInfo?: {
-    deliveryType: 'Instant' | 'Scheduled' | 'Pickup';
-    estimatedTime?: string;
-    deliveryCharge?: number;
-    freeDeliveryAbove?: number;
-  };
-
   attributes?: Record<string, string | number | boolean | string[] | null>;
 
   rating?: {
