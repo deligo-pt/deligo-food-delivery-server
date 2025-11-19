@@ -20,13 +20,14 @@ const fleetManagerUpdate = async (
 ) => {
   //   istFleetManagerExistsById
   const existingFleetManager = await FleetManager.findOne({
-    userId: fleetManagerId,
+    fleetManagerId,
+    isDeleted: false,
   });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (currentUser?.id !== existingFleetManager?.userId) {
+  if (currentUser?.id !== fleetManagerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update!'
@@ -43,7 +44,7 @@ const fleetManagerUpdate = async (
     payload.profilePhoto = profilePhoto;
   }
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
-    { userId: existingFleetManager.userId },
+    { fleetManagerId },
     payload,
     { new: true }
   );
@@ -58,13 +59,14 @@ const fleetManagerDocImageUpload = async (
   fleetManagerId: string
 ) => {
   const existingFleetManager = await FleetManager.findOne({
-    userId: fleetManagerId,
+    fleetManagerId,
+    isDeleted: false,
   });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (currentUser?.id !== existingFleetManager?.userId) {
+  if (currentUser?.id !== fleetManagerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to upload document image!'
@@ -128,7 +130,8 @@ const getSingleFleetManagerFromDB = async (
   }
 
   const existingFleetManager = await FleetManager.findOne({
-    userId: fleetManagerId,
+    fleetManagerId,
+    isDeleted: false,
   });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
