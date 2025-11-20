@@ -70,8 +70,11 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       street: { type: String, default: '' },
       city: { type: String, default: '' },
       state: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
       country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
+      goAccuracy: { type: Number, default: null },
     },
     passwordChangedAt: { type: Date, default: null },
 
@@ -91,9 +94,10 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     },
     // Business Location
     businessLocation: {
-      streetAddress: { type: String, default: '' },
-      streetNumber: { type: String, default: '' },
+      street: { type: String, default: '' },
       city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
       latitude: { type: Number, default: null },
       longitude: { type: Number, default: null },

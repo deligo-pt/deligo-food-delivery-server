@@ -63,8 +63,11 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       street: { type: String, default: '' },
       city: { type: String, default: '' },
       state: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
       country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
+      goAccuracy: { type: Number, default: null },
     },
     passwordChangedAt: { type: Date, default: null },
 
@@ -75,9 +78,10 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     },
     // business Location
     businessLocation: {
-      streetAddress: { type: String, default: '' },
-      streetNumber: { type: String, default: '' },
+      street: { type: String, default: '' },
       city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
       latitude: { type: Number, default: null },
       longitude: { type: Number, default: null },

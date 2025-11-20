@@ -103,9 +103,18 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
         type: String,
         default: '',
       },
-      zipCode: {
+      postalCode: {
         type: String,
         default: '',
+      },
+      latitude: {
+        type: Number,
+      },
+      longitude: {
+        type: Number,
+      },
+      goAccuracy: {
+        type: Number,
       },
     },
 

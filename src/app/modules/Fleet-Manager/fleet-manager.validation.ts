@@ -18,8 +18,11 @@ export const fleetManagerUpdateValidationSchema = z.object({
         street: z.string().optional(),
         city: z.string().optional(),
         state: z.string().optional(),
-        postalCode: z.string().optional(),
         country: z.string().optional(),
+        postalCode: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+        goAccuracy: z.number().optional(),
       })
       .optional(),
 
@@ -34,9 +37,10 @@ export const fleetManagerUpdateValidationSchema = z.object({
     // business Location
     businessLocation: z
       .object({
-        streetAddress: z.string().optional(),
-        streetNumber: z.string().optional(),
+        street: z.string().optional(),
         city: z.string().optional(),
+        state: z.string().optional(),
+        country: z.string().optional(),
         postalCode: z.string().optional(),
         latitude: z.number().optional(),
         longitude: z.number().optional(),

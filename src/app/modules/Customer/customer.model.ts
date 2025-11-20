@@ -111,7 +111,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         type: String,
         default: '',
       },
-      zipCode: {
+      postalCode: {
         type: String,
         default: '',
       },
@@ -119,6 +119,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         type: Number,
       },
       longitude: {
+        type: Number,
+      },
+      goAccuracy: {
         type: Number,
       },
     },
@@ -140,7 +143,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
           type: String,
           default: '',
         },
-        zipCode: {
+        postalCode: {
           type: String,
           default: '',
         },
@@ -148,6 +151,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
           type: Number,
         },
         longitude: {
+          type: Number,
+        },
+        goAccuracy: {
           type: Number,
         },
         isActive: {

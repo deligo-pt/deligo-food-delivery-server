@@ -68,7 +68,7 @@ const createOrder = async (currentUser: AuthUser, payload: TOrder) => {
     !customer.address?.state ||
     !customer.address?.city ||
     !customer.address?.country ||
-    !customer.address?.zipCode
+    !customer.address?.postalCode
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -85,7 +85,7 @@ const createOrder = async (currentUser: AuthUser, payload: TOrder) => {
     const addr = customer.address;
     activeDeliveryAddress = `${addr?.street || ''}, ${addr?.city || ''}, ${
       addr?.state || ''
-    }, ${addr?.country || ''} - ${addr?.zipCode || ''}`;
+    }, ${addr?.country || ''} - ${addr?.postalCode || ''}`;
   }
 
   // -------- Vendor ID from first product --------

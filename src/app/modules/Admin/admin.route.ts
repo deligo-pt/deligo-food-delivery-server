@@ -5,6 +5,7 @@ import { AdminControllers } from './admin.controller';
 import { AdminValidation } from './admin.validation';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
+import { GlobalSettingControllers } from '../GlobalSetting/globalSetting.controller';
 
 const router = Router();
 
@@ -26,6 +27,13 @@ router.get(
   '/:adminId',
   auth('ADMIN', 'SUPER_ADMIN'),
   AdminControllers.getSingleAdmin
+);
+
+// get per meter rate
+router.get(
+  '/perMeterRate',
+  auth('SUPER_ADMIN'),
+  GlobalSettingControllers.getPerMeterRate
 );
 
 export const AdminRoutes = router;

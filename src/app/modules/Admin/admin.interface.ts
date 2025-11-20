@@ -32,7 +32,10 @@ export type TAdmin = {
     city?: string;
     state?: string;
     country?: string;
-    zipCode?: string;
+    postalCode?: string;
+    latitude?: number;
+    longitude?: number;
+    goAccuracy?: number;
   };
 
   profilePhoto?: string;

@@ -5,5 +5,5 @@ export const DeliveryPartnerSearchableFields = [
   'phoneNumber',
   'address.city',
   'address.state',
-  'address.zipCode',
+  'address.postalCode',
 ];

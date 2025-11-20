@@ -33,7 +33,7 @@ const updateCustomer = async (
   if (!existingCustomer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
   }
-  if (!existingCustomer?.isEmailVerified) {
+  if (!existingCustomer?.isOtpVerified) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
   }
   if (
@@ -64,9 +64,10 @@ const updateCustomer = async (
       city: payload?.address?.city || '',
       state: payload?.address?.state || '',
       country: payload?.address?.country || '',
-      zipCode: payload?.address?.zipCode || '',
+      postalCode: payload?.address?.postalCode || '',
       latitude: payload?.address?.latitude || 0,
       longitude: payload?.address?.longitude || 0,
+      goAccuracy: payload?.address?.goAccuracy || 0,
       isActive: true,
     });
     payload.deliveryAddresses = existingCustomer.deliveryAddresses;

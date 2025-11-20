@@ -35,9 +35,10 @@ export type TCustomer = {
     city?: string;
     state?: string;
     country?: string;
-    zipCode?: string;
+    postalCode?: string;
     latitude?: number;
     longitude?: number;
+    goAccuracy?: number;
   };
 
   deliveryAddresses?: Array<{
@@ -45,9 +46,10 @@ export type TCustomer = {
     city?: string;
     state?: string;
     country?: string;
-    zipCode?: string;
+    postalCode?: string;
     latitude?: number;
     longitude?: number;
+    goAccuracy?: number;
     isActive: boolean;
   }>;
 

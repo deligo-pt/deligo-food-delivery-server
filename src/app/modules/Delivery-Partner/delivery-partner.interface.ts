@@ -40,7 +40,10 @@ export type TDeliveryPartner = {
       city?: string;
       state?: string;
       country?: string;
-      zipCode?: string;
+      postalCode?: string;
+      latitude?: number;
+      longitude?: number;
+      goAccuracy?: number;
     };
     contactNumber?: string;
   };

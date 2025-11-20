@@ -19,21 +19,22 @@ const deliveryAddressSchema = new Schema(
     city: { type: String, default: '' },
     state: { type: String, default: '' },
     country: { type: String, default: '' },
-    zipCode: { type: String, default: '' },
+    postalCode: { type: String, default: '' },
 
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
 
-    isActive: { type: Boolean },
+    goAccuracy: { type: Number, default: null },
   },
   { _id: false }
 );
 
 const pickupAddressSchema = new Schema(
   {
-    streetAddress: { type: String, default: '' },
-    streetNumber: { type: String, default: '' },
+    street: { type: String, default: '' },
     city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    country: { type: String, default: '' },
     postalCode: { type: String, default: '' },
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
@@ -83,7 +84,7 @@ const orderSchema = new Schema<TOrder>(
     deliveryOtp: { type: String },
     isOtpVerified: { type: Boolean, default: false },
 
-    deliveryAddress: { type: [deliveryAddressSchema], required: true },
+    deliveryAddress: { type: deliveryAddressSchema, required: true },
     pickupAddress: { type: pickupAddressSchema },
 
     deliveryCharge: { type: Number, default: 0 },

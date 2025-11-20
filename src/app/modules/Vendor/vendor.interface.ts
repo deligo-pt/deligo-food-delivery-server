@@ -41,8 +41,11 @@ export type TVendor = {
     street?: string;
     city?: string;
     state?: string;
-    postalCode?: string;
     country?: string;
+    postalCode?: string;
+    latitude?: number;
+    longitude?: number;
+    goAccuracy?: number;
   };
 
   passwordChangedAt?: Date | string;
@@ -61,9 +64,10 @@ export type TVendor = {
 
   // Business Location
   businessLocation?: {
-    streetAddress: string;
-    streetNumber: string;
+    street: string;
     city: string;
+    state: string;
+    country: string;
     postalCode: string;
     latitude?: number;
     longitude?: number;

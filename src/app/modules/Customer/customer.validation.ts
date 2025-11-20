@@ -21,9 +21,10 @@ const updateCustomerDataValidationSchema = z.object({
         city: z.string().optional(),
         state: z.string().optional(),
         country: z.string().optional(),
-        zipCode: z.string().optional(),
+        postalCode: z.string().optional(),
         latitude: z.number().optional(),
         longitude: z.number().optional(),
+        goAccuracy: z.number().optional(),
       })
       .optional(),
 
@@ -35,9 +36,10 @@ const updateCustomerDataValidationSchema = z.object({
           city: z.string().optional(),
           state: z.string().optional(),
           country: z.string().optional(),
-          zipCode: z.string().optional(),
+          postalCode: z.string().optional(),
           latitude: z.number().optional(),
           longitude: z.number().optional(),
+          goAccuracy: z.number().optional(),
           isActive: z.boolean().optional(),
         })
       )
