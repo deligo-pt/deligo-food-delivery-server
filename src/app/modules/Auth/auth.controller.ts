@@ -25,16 +25,6 @@ const registerUser = catchAsync(async (req, res) => {
 // Login User Controller
 const loginUser = catchAsync(async (req, res) => {
   const result = await AuthServices.loginUser(req.body);
-
-  if (result?.requiresOtpVerification) {
-    return sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: result?.message,
-      data: null,
-    });
-  }
-
   const { refreshToken, accessToken } = result;
 
   res.cookie('refreshToken', refreshToken, {
@@ -50,6 +40,18 @@ const loginUser = catchAsync(async (req, res) => {
       accessToken,
       refreshToken,
     },
+  });
+});
+
+// Login Customer Controller
+const loginCustomer = catchAsync(async (req, res) => {
+  res.clearCookie('refreshToken');
+  const result = await AuthServices.loginCustomer(req.body);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result?.message,
+    data: null,
   });
 });
 
@@ -231,6 +233,7 @@ const permanentDeleteUser = catchAsync(async (req, res) => {
 export const AuthControllers = {
   registerUser,
   loginUser,
+  loginCustomer,
   saveFcmToken,
   logoutUser,
   changePassword,

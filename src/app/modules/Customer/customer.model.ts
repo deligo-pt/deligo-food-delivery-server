@@ -33,7 +33,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.APPROVED,
     },
-    isEmailVerified: {
+    isOtpVerified: {
       type: Boolean,
       default: false,
     },
@@ -56,6 +56,10 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     isOtpExpired: {
       type: Date,
       default: null,
+    },
+    requiresOtpVerification: {
+      type: Boolean,
+      default: true,
     },
 
     // password reset details

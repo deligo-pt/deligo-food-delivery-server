@@ -130,7 +130,7 @@ const getSingleFleetManagerFromDB = async (
   }
 
   const existingFleetManager = await FleetManager.findOne({
-    fleetManagerId,
+    userId: fleetManagerId,
     isDeleted: false,
   });
   if (!existingFleetManager) {

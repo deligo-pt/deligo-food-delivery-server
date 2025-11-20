@@ -13,11 +13,13 @@ import {
 import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.const';
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
-import { TLoginUser } from './auth.interface';
+import { TLoginCustomer, TLoginUser } from './auth.interface';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../../config';
+import { Customer } from '../Customer/customer.model';
+import { v4 as uuidv4 } from 'uuid';
 
 // Register User
 const registerUser = async <
@@ -128,7 +130,7 @@ const registerUser = async <
     if (err?.code === 11000) {
       throw new AppError(
         httpStatus.CONFLICT,
-        `${payload.email} already exists`
+        'Something went wrong. Please try again'
       );
     }
     throw err;
@@ -140,9 +142,6 @@ const registerUser = async <
       userEmail: payload.email,
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
-      website: 'https://deligo.pt',
-      phone: '+351 920 136 680',
-      address: 'Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal',
       user: payload?.role.toLocaleLowerCase(),
     },
     'verify-email'
@@ -182,51 +181,11 @@ const loginUser = async (payload: TLoginUser) => {
     throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
   }
 
-  if (!user?.isEmailVerified && user.role !== 'CUSTOMER') {
+  if (!user?.isEmailVerified) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'This user is not verified. Please verify your email.'
     );
-  }
-
-  if (user?.role !== 'CUSTOMER' && !payload?.password) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Password is required.');
-  }
-
-  if (user.role === 'CUSTOMER') {
-    const { otp, otpExpires } = generateOtp();
-
-    user.otp = otp;
-    user.isOtpExpired = otpExpires;
-    user.isEmailVerified = false;
-    await user.save();
-    // Prepare & send verification email
-    const emailHtml = await EmailHelper.createEmailContent(
-      {
-        otp,
-        userEmail: payload.email,
-        currentYear: new Date().getFullYear(),
-        date: new Date().toDateString(),
-        website: 'https://deligo.pt',
-        phone: '+351 920 136 680',
-        address: 'Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal',
-        user: user?.role.toLocaleLowerCase(),
-      },
-      'verify-email'
-    );
-
-    EmailHelper.sendEmail(
-      payload.email,
-      emailHtml,
-      'Verify your email for DeliGo'
-    ).catch((err) => {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-    });
-
-    return {
-      message: 'OTP sent to your email. Please verify to login.',
-      requiresOtpVerification: true,
-    };
   }
 
   //checking if the password is correct
@@ -267,6 +226,64 @@ const loginUser = async (payload: TLoginUser) => {
     message: `${user?.role} logged in successfully!`,
   };
 };
+
+// login customer
+const loginCustomer = async (payload: TLoginCustomer) => {
+  if (!payload?.email && !payload?.mobileNumber) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Email or mobile number is required'
+    );
+  }
+  const existingUserWithEmail = await Customer.findOne({
+    email: payload.email,
+  });
+  const { otp, otpExpires } = generateOtp();
+
+  // Prepare & send verification email
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      otp,
+      userEmail: payload.email,
+      currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
+      user: existingUserWithEmail?.name?.firstName || 'Customer',
+    },
+    'verify-email'
+  );
+  if (payload?.email) {
+    if (existingUserWithEmail) {
+      existingUserWithEmail.otp = otp;
+      existingUserWithEmail.isOtpExpired = otpExpires;
+      existingUserWithEmail.isOtpVerified = false;
+      existingUserWithEmail.requiresOtpVerification = true;
+      await existingUserWithEmail.save();
+    } else {
+      const userId = `C-${uuidv4().split('-')[0]}`;
+      await Customer.create({
+        userId,
+        role: 'CUSTOMER',
+        email: payload.email,
+        mobileNumber: payload?.mobileNumber,
+        otp,
+        isOtpExpired: otpExpires,
+      });
+    }
+    // send email
+    EmailHelper.sendEmail(
+      payload?.email,
+      emailHtml,
+      'Verify your email for DeliGo'
+    ).catch((err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    });
+  }
+
+  return {
+    message: 'OTP sent to your email. Please verify to login.',
+  };
+};
+
 //save FCM Token
 const saveFcmToken = async (userId: string, token: string) => {
   if (!token) {
@@ -707,7 +724,12 @@ const verifyOtp = async (email: string, otp: string) => {
       'User is already verified. Please log in.'
     );
   }
-
+  if (user?.isOtpVerified) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'User is already verified. Please log in.'
+    );
+  }
   if (user.otp !== otp) {
     throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
   }
@@ -717,6 +739,10 @@ const verifyOtp = async (email: string, otp: string) => {
   user.isEmailVerified = true;
   user.otp = undefined;
   user.isOtpExpired = undefined;
+  if (user.role === 'CUSTOMER') {
+    user.requiresOtpVerification = false;
+    user.isOtpVerified = true;
+  }
   await user.save();
 
   // Generate JWT token after successful verification
@@ -767,10 +793,7 @@ const resendOtp = async (email: string) => {
       userEmail: user?.email,
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
-      website: 'https://deligo.pt',
-      phone: '+351 920 136 680',
-      address: 'Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal',
-      user: user?.role.toLocaleLowerCase(),
+      user: user?.name?.firstName || user?.role.toLocaleLowerCase(),
     },
     'verify-email'
   );
@@ -862,6 +885,7 @@ const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
 export const AuthServices = {
   registerUser,
   loginUser,
+  loginCustomer,
   saveFcmToken,
   logoutUser,
   changePassword,

@@ -7,12 +7,13 @@ export type TCustomer = {
   email: string;
   password?: string;
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
+  isOtpVerified: boolean;
   isDeleted: boolean;
 
   // OTP Details
   otp?: string;
   isOtpExpired?: Date;
+  requiresOtpVerification?: boolean;
 
   // Password Reset Details
   passwordResetToken?: string;

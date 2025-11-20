@@ -10,11 +10,9 @@ const registerValidationSchema = z.object({
       .email({
         message: 'Invalid email',
       }),
-    password: z
-      .string({
-        required_error: 'Password is required',
-      })
-      .optional(),
+    password: z.string({
+      required_error: 'Password is required',
+    }),
   }),
 });
 // Login
@@ -23,9 +21,26 @@ const loginValidationSchema = z.object({
     email: z.string({
       required_error: 'Email is required',
     }),
-    password: z.string({ required_error: 'Password is required' }).optional(),
+    password: z.string({ required_error: 'Password is required' }),
   }),
 });
+
+// login customer
+const loginCustomerValidationSchema = z.object({
+  body: z.object({
+    email: z
+      .string({
+        required_error: 'Email is required',
+      })
+      .optional(),
+    mobileNumber: z
+      .string({
+        required_error: 'Mobile number is required',
+      })
+      .optional(),
+  }),
+});
+
 // Change Password
 const changePasswordValidationSchema = z.object({
   body: z.object({
@@ -100,6 +115,7 @@ const resendOtpValidationSchema = z.object({
 export const AuthValidation = {
   registerValidationSchema,
   loginValidationSchema,
+  loginCustomerValidationSchema,
   changePasswordValidationSchema,
   forgotPasswordValidationSchema,
   resetPasswordValidationSchema,

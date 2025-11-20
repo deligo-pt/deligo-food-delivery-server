@@ -10,7 +10,7 @@ import { Router } from 'express';
 const router = Router();
 // Register User Route
 router.post(
-  [UrlPath.CUSTOMER, UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
+  [UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
   validateRequest(AuthValidation.registerValidationSchema),
   AuthControllers.registerUser
 );
@@ -26,6 +26,13 @@ router.post(
   '/login',
   validateRequest(AuthValidation.loginValidationSchema),
   AuthControllers.loginUser
+);
+
+// login customer
+router.post(
+  '/login-customer',
+  validateRequest(AuthValidation.loginCustomerValidationSchema),
+  AuthControllers.loginCustomer
 );
 
 // Save FCM Token Route
