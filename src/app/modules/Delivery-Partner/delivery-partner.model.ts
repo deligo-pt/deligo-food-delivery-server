@@ -156,6 +156,7 @@ const deliveryPartnerSchema = new Schema<
       idDocumentBack: { type: String, default: '' },
       drivingLicense: { type: String, default: '' },
       vehicleRegistration: { type: String, default: '' },
+      criminalRecordCertificate: { type: String, default: '' },
     },
 
     // Security & Access
