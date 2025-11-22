@@ -198,6 +198,16 @@ const softDeleteDeliveryPartner = async (
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
+
+  if (currentUser?.role === 'FLEET_MANAGER') {
+    if (existingDeliveryPartner?.registeredBy !== currentUser?.id) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized for delete'
+      );
+    }
+  }
+
   existingDeliveryPartner.isDeleted = true;
   await existingDeliveryPartner.save();
   return {
