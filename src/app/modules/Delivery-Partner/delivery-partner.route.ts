@@ -46,4 +46,18 @@ router.get(
   DeliveryPartnerControllers.getSingleDeliveryPartner
 );
 
+// Soft Delete Delivery Partner Route
+router.delete(
+  '/soft-delete/:deliveryPartnerId',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
+  DeliveryPartnerControllers.softDeleteDeliveryPartner
+);
+
+// Permanent Delete Delivery Partner Route
+router.delete(
+  '/permanent-delete/:deliveryPartnerId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  DeliveryPartnerControllers.permanentDeleteDeliveryPartner
+);
+
 export const DeliveryPartnerRoutes = router;

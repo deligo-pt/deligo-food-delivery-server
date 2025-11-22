@@ -70,9 +70,39 @@ const getSingleDeliveryPartner = catchAsync(async (req, res) => {
   });
 });
 
+// soft delete delivery partner
+const softDeleteDeliveryPartner = catchAsync(async (req, res) => {
+  const result = await DeliveryPartnerServices.softDeleteDeliveryPartner(
+    req.params.deliveryPartnerId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// permanent delete delivery partner
+const permanentDeleteDeliveryPartner = catchAsync(async (req, res) => {
+  const result = await DeliveryPartnerServices.permanentDeleteDeliveryPartner(
+    req.params.deliveryPartnerId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 export const DeliveryPartnerControllers = {
   updateDeliveryPartner,
   deliveryPartnerDocImageUpload,
   getAllDeliveryPartners,
   getSingleDeliveryPartner,
+  softDeleteDeliveryPartner,
+  permanentDeleteDeliveryPartner,
 };

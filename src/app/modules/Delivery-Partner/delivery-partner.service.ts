@@ -175,9 +175,62 @@ const getSingleDeliveryPartnerFromDB = async (
   return existingDeliveryPartner;
 };
 
+// soft delete delivery partner
+const softDeleteDeliveryPartner = async (
+  deliveryPartnerId: string,
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  if (currentUser?.role === 'DELIVERY_PARTNER') {
+    if (currentUser?.id !== deliveryPartnerId) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized for delete'
+      );
+    }
+  }
+  const existingDeliveryPartner = await DeliveryPartner.findOne({
+    userId: deliveryPartnerId,
+  });
+  if (!existingDeliveryPartner) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
+  }
+  existingDeliveryPartner.isDeleted = true;
+  await existingDeliveryPartner.save();
+  return {
+    message: 'Delivery Partner deleted successfully',
+  };
+};
+
+// permanent delete delivery partner
+const permanentDeleteDeliveryPartner = async (
+  deliveryPartnerId: string,
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const existingDeliveryPartner = await DeliveryPartner.findOne({
+    userId: deliveryPartnerId,
+  });
+  if (!existingDeliveryPartner) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
+  }
+  await existingDeliveryPartner.deleteOne();
+  return {
+    message: 'Delivery Partner deleted permanently',
+  };
+};
+
 export const DeliveryPartnerServices = {
   updateDeliveryPartner,
   deliverPartnerDocImageUpload,
   getAllDeliveryPartnersFromDB,
   getSingleDeliveryPartnerFromDB,
+  softDeleteDeliveryPartner,
+  permanentDeleteDeliveryPartner,
 };
