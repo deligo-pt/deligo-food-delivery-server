@@ -130,7 +130,14 @@ router.post(
 // soft Delete User Route
 router.delete(
   '/soft-delete/:userId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'CUSTOMER'
+  ),
   AuthControllers.softDeleteUser
 );
 

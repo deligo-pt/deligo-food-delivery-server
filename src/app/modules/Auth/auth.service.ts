@@ -811,15 +811,16 @@ const resendOtp = async (email: string) => {
 
 // soft delete user service
 const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const results = await findUserByEmailOrId({
     userId: currentUser?.id,
     isDeleted: false,
   });
+  const existingCurrentUser = results?.user;
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  if (existingCurrentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a user. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to delete a user. Your account is ${existingCurrentUser.status}`
     );
   }
 
@@ -827,6 +828,32 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
   const existingUser = result?.user;
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+  }
+
+  if (
+    (existingCurrentUser?.role === 'DELIVERY_PARTNER',
+    existingCurrentUser?.role === 'CUSTOMER',
+    existingCurrentUser?.role === 'VENDOR',
+    existingCurrentUser?.role === 'FLEET_MANAGER')
+  ) {
+    if (existingCurrentUser?.userId !== existingUser?.userID) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to delete this user!'
+      );
+    }
+  }
+
+  if (
+    existingCurrentUser?.role === 'FLEET_MANAGER' &&
+    existingUser?.role === 'DELIVERY_PARTNER'
+  ) {
+    if (existingCurrentUser?.userId !== existingUser?.registeredBy) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to delete this user!'
+      );
+    }
   }
 
   if (existingUser.role === USER_ROLE.SUPER_ADMIN) {
