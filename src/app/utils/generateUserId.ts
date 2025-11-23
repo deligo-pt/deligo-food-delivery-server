@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { USER_ROLE } from '../constant/user.const';
+import { USER_ROLE } from '../constant/user.constant';
 
 export const USER_TYPE_MAP = {
   '/create-customer': { prefix: 'C-', role: USER_ROLE.CUSTOMER },

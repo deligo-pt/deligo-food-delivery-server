@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { ProductServices } from './product.service';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 
 // Product create Controller
 const productCreate = catchAsync(async (req, res) => {

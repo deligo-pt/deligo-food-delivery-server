@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { AuthServices } from './auth.service';
 import { catchAsync } from '../../utils/catchAsync';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import config from '../../config';
 
 //register User Controller

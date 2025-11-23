@@ -9,7 +9,7 @@ import {
   calcAndUpdateVendor,
 } from './rating.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // create rating service

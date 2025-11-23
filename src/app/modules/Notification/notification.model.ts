@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { TNotification } from './notification.interface';
-import { USER_ROLE } from '../../constant/user.const';
+import { USER_ROLE } from '../../constant/user.constant';
 
 const notificationSchema = new Schema<TNotification>(
   {

@@ -1,21 +1,27 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TFleetManager } from './fleet-manager.interface';
-import { USER_STATUS } from '../../constant/user.const';
+import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 
 const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   {
+    // ------------------------------------------
+    // Core Identifiers
+    // ------------------------------------------
     userId: {
       type: String,
       required: true,
       unique: true,
     },
+
     role: {
       type: String,
       enum: ['FLEET_MANAGER'],
+      required: true,
     },
+
     email: {
       type: String,
       required: true,
@@ -23,107 +29,130 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       lowercase: true,
       trim: true,
     },
+
     password: {
       type: String,
       required: true,
+      select: false,
     },
+
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
-      default: 'PENDING',
-    },
-    isEmailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    isDeleted: {
-      type: Boolean,
-      default: false,
+      default: USER_STATUS.PENDING,
     },
 
-    // fcm token for push notifications
+    isEmailVerified: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
+
+    // ------------------------------------------
+    // FCM Tokens
+    // ------------------------------------------
     fcmTokens: { type: [String], default: [] },
 
-    // OTP Details
+    // ------------------------------------------
+    // OTP & Password Reset
+    // ------------------------------------------
     otp: { type: String, default: '' },
     isOtpExpired: { type: Date, default: null },
 
-    // password reset details
     passwordResetToken: { type: String, default: '' },
     passwordResetTokenExpiresAt: { type: Date, default: null },
 
+    // ------------------------------------------
     // Personal Details
+    // ------------------------------------------
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
+
     contactNumber: { type: String, default: '' },
     profilePhoto: { type: String, default: '' },
+
     address: {
       street: { type: String, default: '' },
       city: { type: String, default: '' },
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number, default: null },
-      longitude: { type: Number, default: null },
-      goAccuracy: { type: Number, default: null },
+      latitude: { type: Number },
+      longitude: { type: Number },
+      geoAccuracy: { type: Number },
     },
+
     passwordChangedAt: { type: Date, default: null },
 
-    //  business Details
+    // ------------------------------------------
+    // Business Details
+    // ------------------------------------------
     businessDetails: {
       businessName: { type: String, default: '' },
       businessLicenseNumber: { type: String, default: '' },
     },
-    // business Location
+
     businessLocation: {
       street: { type: String, default: '' },
       city: { type: String, default: '' },
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number, default: null },
-      longitude: { type: Number, default: null },
-      geoAccuracy: { type: Number, default: null }, // meters
+      latitude: { type: Number },
+      longitude: { type: Number },
+      geoAccuracy: { type: Number },
     },
-    // Bank & Payment Information
+
+    // ------------------------------------------
+    // Bank Details
+    // ------------------------------------------
     bankDetails: {
       bankName: { type: String, default: '' },
       accountHolderName: { type: String, default: '' },
       iban: { type: String, default: '' },
       swiftCode: { type: String, default: '' },
     },
-    // Documents & Verification
+
+    // ------------------------------------------
+    // Documents
+    // ------------------------------------------
     documents: {
       idProof: { type: String, default: '' },
       businessLicense: { type: String, default: '' },
     },
-    // Operation Data
+
+    // ------------------------------------------
+    // Operational Data
+    // ------------------------------------------
     operationalData: {
-      noOfDrivers: { type: Number, default: null },
-      activeVehicles: { type: Number, default: null },
-      totalDeliveries: { type: Number, default: null },
+      totalDrivers: { type: Number, default: 0 },
+      activeVehicles: { type: Number, default: 0 },
+      totalDeliveries: { type: Number, default: 0 },
       rating: {
-        average: { type: Number, default: null },
-        total: { type: Number, default: null },
+        average: { type: Number, default: 0 },
+        totalReviews: { type: Number, default: 0 },
       },
     },
 
-    // Security & Access Control
+    // ------------------------------------------
+    // Security & Access
+    // ------------------------------------------
     twoFactorEnabled: { type: Boolean, default: false },
-    loginDevices: [
-      {
-        deviceId: { type: String, required: true },
-        lastLogin: { type: Date, default: Date.now },
-      },
-    ],
-    // Admin & Audit Fields
+
+    loginDevices: {
+      type: [loginDeviceSchema],
+      default: [],
+    },
+
+    // ------------------------------------------
+    // Admin Workflow / Audit
+    // ------------------------------------------
     approvedBy: { type: String, default: '' },
     rejectedBy: { type: String, default: '' },
     blockedBy: { type: String, default: '' },
+
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
+
     remarks: { type: String, default: '' },
   },
   {

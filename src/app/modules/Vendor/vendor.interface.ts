@@ -1,39 +1,50 @@
-import { USER_STATUS } from '../../constant/user.const';
+import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
 export type TVendor = {
+  // --------------------------------------------------------
+  // Core Identifiers
+  // --------------------------------------------------------
   _id?: string;
   userId: string;
   role: 'VENDOR';
   email: string;
   password: string;
+
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;
 
+  // --------------------------------------------------------
   // Rating & Activity
+  // --------------------------------------------------------
   rating?: {
     average: number;
     totalReviews: number;
   };
-  totalOrders?: number;
-  lastLoginAt?: Date | string;
 
-  // fcm tokens
+  totalOrders?: number;
+  lastLoginAt?: Date;
+
+  // Push notifications
   fcmTokens?: string[];
 
-  // OTP Details
+  // --------------------------------------------------------
+  // OTP & Password Reset
+  // --------------------------------------------------------
   otp?: string;
-  isOtpExpired?: Date | string;
+  isOtpExpired?: Date;
 
-  // Password Reset Details
   passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date | string;
+  passwordResetTokenExpiresAt?: Date;
 
-  // Personal Details
+  // --------------------------------------------------------
+  // Personal Information
+  // --------------------------------------------------------
   name?: {
     firstName?: string;
     lastName?: string;
   };
+
   contactNumber?: string;
   profilePhoto?: string;
 
@@ -45,24 +56,29 @@ export type TVendor = {
     postalCode?: string;
     latitude?: number;
     longitude?: number;
-    goAccuracy?: number;
+    geoAccuracy?: number;
   };
 
-  passwordChangedAt?: Date | string;
+  passwordChangedAt?: Date;
 
+  // --------------------------------------------------------
   // Business Details
+  // --------------------------------------------------------
   businessDetails?: {
     businessName: string;
     businessType: string;
     businessLicenseNumber?: string;
     NIF?: string;
-    noOfBranch: number;
-    openingHours?: string; // e.g. "09:00 AM"
-    closingHours?: string; // e.g. "11:00 PM"
-    closingDays?: string[]; // ["Friday", "Public Holidays"]
+    totalBranches: number;
+
+    openingHours?: string; // "09:00 AM"
+    closingHours?: string; // "11:00 PM"
+    closingDays?: string[]; // ["Friday", "Holidays"]
   };
 
+  // --------------------------------------------------------
   // Business Location
+  // --------------------------------------------------------
   businessLocation?: {
     street: string;
     city: string;
@@ -71,10 +87,12 @@ export type TVendor = {
     postalCode: string;
     latitude?: number;
     longitude?: number;
-    geoAccuracy?: number; // meters
+    geoAccuracy?: number;
   };
 
-  // Bank & Payment Information
+  // --------------------------------------------------------
+  // Banking & Payments
+  // --------------------------------------------------------
   bankDetails?: {
     bankName: string;
     accountHolderName: string;
@@ -82,7 +100,9 @@ export type TVendor = {
     swiftCode: string;
   };
 
+  // --------------------------------------------------------
   // Documents & Verification
+  // --------------------------------------------------------
   documents?: {
     businessLicenseDoc?: string;
     taxDoc?: string;
@@ -91,20 +111,29 @@ export type TVendor = {
     menuUpload?: string;
   };
 
-  // Security & Access Control
+  // --------------------------------------------------------
+  // Security & Access
+  // --------------------------------------------------------
   twoFactorEnabled?: boolean;
-  loginDevices?: { deviceId: string; lastLogin: Date | string }[];
+  loginDevices?: TLoginDevice[];
 
-  // Admin & Audit Fields
+  // --------------------------------------------------------
+  // Admin Workflow / Audit
+  // --------------------------------------------------------
   approvedBy?: string;
   rejectedBy?: string;
   blockedBy?: string;
-  submittedForApprovalAt?: Date | string;
-  approvedOrRejectedOrBlockedAt?: Date | string;
+
+  submittedForApprovalAt?: Date;
+  approvedOrRejectedOrBlockedAt?: Date;
+
   remarks?: string;
 
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  // --------------------------------------------------------
+  // Timestamps
+  // --------------------------------------------------------
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type TVendorImageDocuments = {

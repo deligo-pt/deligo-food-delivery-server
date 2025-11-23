@@ -1,8 +1,18 @@
 import { z } from 'zod';
-import { USER_STATUS } from '../../constant/user.const';
+import { USER_STATUS } from '../../constant/user.constant';
 
-// Update admin data validation schema
+// ---------------------------------------------
+// Reusable Email Schema
+// ---------------------------------------------
+const emailSchema = z
+  .string({
+    required_error: 'Email is required',
+  })
+  .email('Invalid email address');
 
+// ---------------------------------------------
+// Update Admin Data Validation Schema
+// ---------------------------------------------
 export const updateAdminDataValidationSchema = z.object({
   body: z.object({
     // Personal Details
@@ -12,6 +22,7 @@ export const updateAdminDataValidationSchema = z.object({
         lastName: z.string().optional(),
       })
       .optional(),
+
     contactNumber: z.string().optional(),
     profilePhoto: z.string().optional(),
 
@@ -25,40 +36,47 @@ export const updateAdminDataValidationSchema = z.object({
         postalCode: z.string().optional(),
         latitude: z.number().optional(),
         longitude: z.number().optional(),
-        goAccuracy: z.number().optional(),
+        geoAccuracy: z.number().optional(),
       })
       .optional(),
   }),
 });
 
-// Activate or Block User Validation Schema
-const activateOrBlockUserValidationSchema = z.object({
+// ---------------------------------------------
+// Activate or Block User
+// ---------------------------------------------
+export const activateOrBlockUserValidationSchema = z.object({
   body: z.object({
-    status: z.nativeEnum(USER_STATUS),
+    status: z.nativeEnum(USER_STATUS, {
+      required_error: 'Status is required',
+    }),
   }),
 });
 
+// ---------------------------------------------
 // Verify OTP Validation Schema
-const verifyOtpValidationSchema = z.object({
+// ---------------------------------------------
+export const verifyOtpValidationSchema = z.object({
   body: z.object({
-    email: z.string({
-      required_error: 'Email is required',
-    }),
+    email: emailSchema,
     otp: z.string({
       required_error: 'OTP is required',
     }),
   }),
 });
 
+// ---------------------------------------------
 // Resend OTP Validation Schema
-const resendOtpValidationSchema = z.object({
+// ---------------------------------------------
+export const resendOtpValidationSchema = z.object({
   body: z.object({
-    email: z.string({
-      required_error: 'Email is required',
-    }),
+    email: emailSchema,
   }),
 });
 
+// ---------------------------------------------
+// Final Export
+// ---------------------------------------------
 export const AdminValidation = {
   updateAdminDataValidationSchema,
   activateOrBlockUserValidationSchema,

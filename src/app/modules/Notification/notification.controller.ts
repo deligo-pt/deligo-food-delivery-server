@@ -3,7 +3,7 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { NotificationService } from './notification.service';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 
 // Get notifications for current user
 const getMyNotifications = catchAsync(async (req, res) => {

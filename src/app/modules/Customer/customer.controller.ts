@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import { CustomerServices } from './customer.service';
 
 // Customer Update Controller

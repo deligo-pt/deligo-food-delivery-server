@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { USER_STATUS } from '../../constant/user.const';
+import { USER_STATUS } from '../../constant/user.constant';
 import { IUserModel } from '../../interfaces/user.interface';
 import { Admin } from '../Admin/admin.model';
 import { Customer } from '../Customer/customer.model';

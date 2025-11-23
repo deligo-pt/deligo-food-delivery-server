@@ -1,28 +1,21 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
-import sendResponse from '../../utils/sendResponse';
 import { PaymentServices } from './payment.service';
+import sendResponse from '../../utils/sendResponse';
 
-// payment controller to handle payment routes
+const createPaymentSessionController = catchAsync(async (req, res) => {
+  const { checkoutSummaryId } = req.body;
 
-const processPaymentController = catchAsync(async (req, res) => {
-  const { amount, currency, paymentMethodType, returnUrl } = req.body;
-
-  const paymentIntent = await PaymentServices.processPayment(
-    amount,
-    currency,
-    paymentMethodType,
-    returnUrl
-  );
+  const session = await PaymentServices.createPaymentSession(checkoutSummaryId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Payment processed successfully',
-    data: paymentIntent,
+    message: 'Stripe payment session created',
+    data: session,
   });
 });
 
 export const PaymentController = {
-  processPaymentController,
+  createPaymentSessionController,
 };

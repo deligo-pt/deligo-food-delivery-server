@@ -1,5 +1,5 @@
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
@@ -13,6 +13,7 @@ import { TOrder } from './order.interface';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { calculateDistance } from '../../utils/calculateDistance';
 import { GlobalSettingServices } from '../GlobalSetting/globalSetting.service';
+import { CheckoutSummary } from './checkoutSummary.model';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
@@ -175,7 +176,7 @@ const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
     );
   }
 
-  return {
+  const summaryData = {
     customerId,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
@@ -186,6 +187,15 @@ const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
     finalAmount,
     estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
     deliveryAddress: activeAddress,
+  };
+
+  const summary = await CheckoutSummary.create(summaryData);
+
+  return {
+    CheckoutSummaryId: summary._id,
+    finalAmount: summary.finalAmount,
+    items: summary.items,
+    vendorId: summary.vendorId,
   };
 };
 

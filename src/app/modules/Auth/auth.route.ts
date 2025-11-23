@@ -1,4 +1,4 @@
-import { UrlPath } from '../../constant/user.const';
+import { UrlPath } from '../../constant/user.constant';
 import auth from '../../middlewares/auth';
 import validateRequest, {
   validateRequestCookies,

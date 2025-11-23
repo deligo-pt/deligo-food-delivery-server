@@ -10,7 +10,7 @@ import {
   TApprovedRejectsPayload,
   USER_MODEL_MAP,
 } from './auth.constant';
-import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.const';
+import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.constant';
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginCustomer, TLoginUser } from './auth.interface';

@@ -1,4 +1,4 @@
-import { USER_ROLE } from '../../constant/user.const';
+import { USER_ROLE } from '../../constant/user.constant';
 
 export type TNotification = {
   _id?: string;

@@ -1,6 +1,6 @@
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import { TAdmin } from './admin.interface';
 import { Admin } from './admin.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';

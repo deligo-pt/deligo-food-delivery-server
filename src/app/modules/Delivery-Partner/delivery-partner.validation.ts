@@ -1,21 +1,37 @@
 import { z } from 'zod';
 
-// Update delivery partner  data validation schema
+// ---------------------------------------------
+// Reusable Address Schema
+// ---------------------------------------------
+const addressSchema = z.object({
+  street: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  postalCode: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  geoAccuracy: z.number().optional(),
+});
 
+// ---------------------------------------------
+// Update Delivery Partner Data Validation Schema
+// ---------------------------------------------
 const updateDeliveryPartnerDataValidationSchema = z.object({
   body: z.object({
     profilePhoto: z.string().optional(),
-    // 1) Personal Information
+
+    // 1️⃣ Personal Information
     personalInfo: z
       .object({
-        Name: z
+        name: z
           .object({
             firstName: z.string().optional(),
             lastName: z.string().optional(),
           })
           .optional(),
 
-        dateOfBirth: z.string().datetime().optional(),
+        dateOfBirth: z.string().optional(),
         gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
         nationality: z.string().optional(),
 
@@ -23,36 +39,23 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
         citizenCardNumber: z.string().optional(),
         passportNumber: z.string().optional(),
 
-        idExpiryDate: z.string().datetime().optional(),
+        idExpiryDate: z.string().optional(),
 
-        address: z
-          .object({
-            street: z.string().optional(),
-            city: z.string().optional(),
-            state: z.string().optional(),
-            country: z.string().optional(),
-            postalCode: z.string().optional(),
-            latitude: z.number().optional(),
-            longitude: z.number().optional(),
-            goAccuracy: z.number().optional(),
-          })
-          .optional(),
+        address: addressSchema.optional(),
         contactNumber: z.string().optional(),
       })
       .optional(),
 
-    // 2) Right to Work / Legal Status
-
+    // 2️⃣ Right to Work / Legal Status
     legalStatus: z
       .object({
         residencePermitType: z.string().optional(),
         residencePermitNumber: z.string().optional(),
-        residencePermitExpiry: z.string().datetime().optional(),
+        residencePermitExpiry: z.string().optional(),
       })
       .optional(),
 
-    // 3) Payment & Banking Details
-
+    // 3️⃣ Banking Details
     bankDetails: z
       .object({
         bankName: z.string().optional(),
@@ -62,7 +65,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
 
-    // 4) Vehicle Information
+    // 4️⃣ Vehicle Information
     vehicleInfo: z
       .object({
         vehicleType: z
@@ -72,25 +75,26 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
         model: z.string().optional(),
         licensePlate: z.string().optional(),
         drivingLicenseNumber: z.string().optional(),
-        drivingLicenseExpiry: z.string().datetime().optional(),
+        drivingLicenseExpiry: z.string().optional(),
         insurancePolicyNumber: z.string().optional(),
-        insuranceExpiry: z.string().datetime().optional(),
+        insuranceExpiry: z.string().optional(),
       })
       .optional(),
 
-    // 5) Criminal Background
+    // 5️⃣ Criminal Background
     criminalRecord: z
       .object({
         certificate: z.boolean().optional(),
-        issueDate: z.string().datetime().optional(),
+        issueDate: z.string().optional(),
       })
       .optional(),
 
-    // 6) Work Preferences / Equipment
+    // 6️⃣ Work Preferences & Equipment
     workPreferences: z
       .object({
         preferredZones: z.array(z.string()).optional(),
         preferredHours: z.array(z.string()).optional(),
+
         hasEquipment: z
           .object({
             isothermalBag: z.boolean().optional(),
@@ -98,6 +102,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
             powerBank: z.boolean().optional(),
           })
           .optional(),
+
         workedWithOtherPlatform: z.boolean().optional(),
         otherPlatformName: z.string().optional(),
       })
@@ -105,21 +110,22 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
   }),
 });
 
-// doc image update validation schema
+// ---------------------------------------------
+// Document Upload Validation Schema
+// ---------------------------------------------
 const deliveryPartnerDocImageValidationSchema = z.object({
   body: z.object({
-    docImageTitle: z
-      .enum([
-        'idDocumentFront',
-        'idDocumentBack',
-        'drivingLicense',
-        'vehicleRegistration',
-        'criminalRecordCertificate',
-      ])
-      .optional(),
+    docImageTitle: z.enum([
+      'idDocumentFront',
+      'idDocumentBack',
+      'drivingLicense',
+      'vehicleRegistration',
+      'criminalRecordCertificate',
+    ]),
   }),
 });
 
+// ---------------------------------------------
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
   deliveryPartnerDocImageValidationSchema,

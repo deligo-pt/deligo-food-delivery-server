@@ -1,5 +1,5 @@
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { Product } from '../Product/product.model';
 import { TCart } from './cart.interface';
