@@ -3,11 +3,14 @@
 import { model, Schema } from 'mongoose';
 import { TAdmin } from './admin.interface';
 import { IUserModel } from '../../interfaces/user.interface';
-import { USER_STATUS } from '../../constant/user.const';
+import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 
 const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
   {
+    // --------------------------------------------------------
+    // Core Identifiers
+    // --------------------------------------------------------
     userId: {
       type: String,
       required: true,
@@ -24,11 +27,6 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       unique: true,
       lowercase: true,
       trim: true,
-      //validate email
-      match: [
-        /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
-        'Please fill a valid email address',
-      ],
     },
     password: {
       type: String,
@@ -43,110 +41,78 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       type: Boolean,
       default: false,
     },
-    // Soft Delete
     isDeleted: {
       type: Boolean,
       default: false,
     },
 
-    // fcm tokens for push notifications
+    // --------------------------------------------------------
+    // Push Tokens
+    // --------------------------------------------------------
     fcmTokens: {
       type: [String],
       default: [],
     },
 
-    // OTP Details
-    otp: {
-      type: String,
-    },
-    isOtpExpired: {
-      type: Date,
-    },
+    // --------------------------------------------------------
+    // OTP & Password Reset
+    // --------------------------------------------------------
+    otp: { type: String },
+    isOtpExpired: { type: Date },
 
-    // password reset
-    passwordResetToken: {
-      type: String,
-    },
-    passwordResetTokenExpiresAt: {
-      type: Date,
-    },
+    passwordResetToken: { type: String, default: null },
+    passwordResetTokenExpiresAt: { type: Date, default: null },
 
+    // --------------------------------------------------------
     // Personal Details
+    // --------------------------------------------------------
     name: {
-      firstName: {
-        type: String,
-        default: '',
-      },
-      lastName: {
-        type: String,
-        default: '',
-      },
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
     },
-    contactNumber: {
-      type: String,
-      default: '',
-    },
+    contactNumber: { type: String, default: '' },
+
     address: {
-      street: {
-        type: String,
-        default: '',
-      },
-      city: {
-        type: String,
-        default: '',
-      },
-      state: {
-        type: String,
-        default: '',
-      },
-      country: {
-        type: String,
-        default: '',
-      },
-      zipCode: {
-        type: String,
-        default: '',
-      },
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
+      geoAccuracy: { type: Number, default: null },
     },
 
-    profilePhoto: {
-      type: String,
-      default: '',
-    },
-    passwordChangedAt: {
-      type: Date,
-    },
+    profilePhoto: { type: String, default: '' },
+    passwordChangedAt: { type: Date, default: null },
 
+    // --------------------------------------------------------
     // Permissions
+    // --------------------------------------------------------
     permissions: {
       type: [String],
       default: [],
     },
 
-    // Security & Access Details
+    // --------------------------------------------------------
+    // Security & Access
+    // --------------------------------------------------------
     twoFactorEnabled: {
       type: Boolean,
       default: false,
     },
-    loginDevices: [
-      {
-        deviceId: { type: String },
-        lastLogin: { type: Date },
-      },
-    ],
-    // Admin & Audit Fields
-    approvedBy: {
-      type: String,
-      default: '',
+    loginDevices: {
+      type: [loginDeviceSchema],
+      default: [],
     },
-    rejectedBy: {
-      type: String,
-      default: '',
-    },
-    blockedBy: {
-      type: String,
-      default: '',
-    },
+
+    // --------------------------------------------------------
+    // Admin Workflow & Audit
+    // --------------------------------------------------------
+    approvedBy: { type: String, default: '' },
+    rejectedBy: { type: String, default: '' },
+    blockedBy: { type: String, default: '' },
+
     submittedForApprovalAt: {
       type: Date,
       default: null,
@@ -155,6 +121,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       type: Date,
       default: null,
     },
+
     remarks: {
       type: String,
       default: '',
@@ -166,6 +133,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
   }
 );
 
+// password hashing plugin
 adminSchema.plugin(passwordPlugin);
 
 export const Admin = model<TAdmin, IUserModel<TAdmin>>('Admin', adminSchema);

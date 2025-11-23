@@ -1,4 +1,4 @@
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';

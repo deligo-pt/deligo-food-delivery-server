@@ -1,5 +1,22 @@
 import { z } from 'zod';
 
+// ----------------------------------------------------
+// Reusable Address Schema
+// ----------------------------------------------------
+const addressSchema = z.object({
+  street: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  postalCode: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  geoAccuracy: z.number().optional(),
+});
+
+// ----------------------------------------------------
+// Fleet Manager Update Validation
+// ----------------------------------------------------
 export const fleetManagerUpdateValidationSchema = z.object({
   body: z.object({
     // Personal Details
@@ -9,21 +26,14 @@ export const fleetManagerUpdateValidationSchema = z.object({
         lastName: z.string().optional(),
       })
       .optional(),
+
     contactNumber: z.string().optional(),
     profilePhoto: z.string().optional(),
 
     // Address
-    address: z
-      .object({
-        street: z.string().optional(),
-        city: z.string().optional(),
-        state: z.string().optional(),
-        postalCode: z.string().optional(),
-        country: z.string().optional(),
-      })
-      .optional(),
+    address: addressSchema.optional(),
 
-    // business Details
+    // Business Details
     businessDetails: z
       .object({
         businessName: z.string().optional(),
@@ -31,18 +41,8 @@ export const fleetManagerUpdateValidationSchema = z.object({
       })
       .optional(),
 
-    // business Location
-    businessLocation: z
-      .object({
-        streetAddress: z.string().optional(),
-        streetNumber: z.string().optional(),
-        city: z.string().optional(),
-        postalCode: z.string().optional(),
-        latitude: z.number().optional(),
-        longitude: z.number().optional(),
-        geoAccuracy: z.number().optional(),
-      })
-      .optional(),
+    // Business Location
+    businessLocation: addressSchema.optional(),
 
     // Bank & Payment Information
     bankDetails: z
@@ -54,12 +54,13 @@ export const fleetManagerUpdateValidationSchema = z.object({
       })
       .optional(),
 
-    // Operation Data
+    // Operational Data
     operationalData: z
       .object({
-        noOfDrivers: z.number().optional(),
+        totalDrivers: z.number().optional(),
         activeVehicles: z.number().optional(),
         totalDeliveries: z.number().optional(),
+
         rating: z
           .object({
             average: z.number().optional(),
@@ -71,12 +72,18 @@ export const fleetManagerUpdateValidationSchema = z.object({
   }),
 });
 
-const fleetManagerDocImageValidationSchema = z.object({
+// ----------------------------------------------------
+// Document Upload Validation
+// ----------------------------------------------------
+export const fleetManagerDocImageValidationSchema = z.object({
   body: z.object({
-    docImageTitle: z.enum(['idProof', 'businessLicense']).optional(),
+    docImageTitle: z.enum(['idProof', 'businessLicense'], {
+      required_error: 'Document title is required',
+    }),
   }),
 });
 
+// ----------------------------------------------------
 export const FleetManagerValidation = {
   fleetManagerUpdateValidationSchema,
   fleetManagerDocImageValidationSchema,

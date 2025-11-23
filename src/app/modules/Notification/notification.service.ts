@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser, USER_ROLE } from '../../constant/user.const';
+import { AuthUser, USER_ROLE } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { sendPushNotification } from '../../utils/sendPushNotification';

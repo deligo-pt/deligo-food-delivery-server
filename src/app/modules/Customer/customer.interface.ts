@@ -1,56 +1,70 @@
-import { USER_STATUS } from '../../constant/user.const';
+import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
 export type TCustomer = {
+  // ------------------------------------------------------
+  // Core Identifiers
+  // ------------------------------------------------------
   _id?: string;
   userId: string;
   role: 'CUSTOMER';
   email: string;
   password?: string;
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
+  isOtpVerified: boolean;
   isDeleted: boolean;
 
-  // OTP Details
+  // ------------------------------------------------------
+  // OTP & Password Reset
+  // ------------------------------------------------------
   otp?: string;
   isOtpExpired?: Date;
+  requiresOtpVerification?: boolean;
 
-  // Password Reset Details
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
 
-  // fcm tokens for push notifications
+  // Push notifications
   fcmTokens?: string[];
 
-  // Personal Details
+  // ------------------------------------------------------
+  // Personal Information
+  // ------------------------------------------------------
   name?: {
     firstName?: string;
     lastName?: string;
   };
+
   contactNumber?: string;
   profilePhoto?: string;
   passwordChangedAt?: Date;
+
   address?: {
     street?: string;
     city?: string;
     state?: string;
     country?: string;
-    zipCode?: string;
+    postalCode?: string;
     latitude?: number;
     longitude?: number;
+    geoAccuracy?: number;
   };
 
+  // Multiple Saved Delivery Addresses
   deliveryAddresses?: Array<{
     street?: string;
     city?: string;
     state?: string;
     country?: string;
-    zipCode?: string;
+    postalCode?: string;
     latitude?: number;
     longitude?: number;
+    geoAccuracy?: number;
     isActive: boolean;
   }>;
 
-  // Order & Activity Details
+  // ------------------------------------------------------
+  // Orders & Activity
+  // ------------------------------------------------------
   orders: {
     totalOrders?: number;
     totalSpent?: number;
@@ -58,22 +72,30 @@ export type TCustomer = {
     lastLoginAt?: Date;
   };
 
-  // Security & Access Details
+  // ------------------------------------------------------
+  // Security & Access
+  // ------------------------------------------------------
   twoFactorEnabled?: boolean;
-  loginDevices?: { deviceId: string; lastLogin: Date }[];
+  loginDevices?: TLoginDevice[];
 
-  // referral & loyalty
+  // ------------------------------------------------------
+  // Referral & Loyalty
+  // ------------------------------------------------------
   referralCode?: string;
   loyaltyPoints?: number;
 
-  // Admin & Audit Fields
+  // ------------------------------------------------------
+  // Admin Workflow / Audit
+  // ------------------------------------------------------
   approvedBy?: string;
   rejectedBy?: string;
   blockedBy?: string;
   approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;
 
-  // paymentDetails
+  // ------------------------------------------------------
+  // Payment Methods
+  // ------------------------------------------------------
   paymentMethods?: Array<{
     cardType: string;
     lastFourDigits: string;
@@ -81,7 +103,9 @@ export type TCustomer = {
     isDefault: boolean;
   }>;
 
-  // timestamps
+  // ------------------------------------------------------
+  // Timestamps
+  // ------------------------------------------------------
   createdAt?: Date;
   updatedAt?: Date;
 };

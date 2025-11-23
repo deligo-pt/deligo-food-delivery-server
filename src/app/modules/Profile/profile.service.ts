@@ -1,6 +1,6 @@
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser, USER_STATUS } from '../../constant/user.const';
+import { AuthUser, USER_STATUS } from '../../constant/user.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 

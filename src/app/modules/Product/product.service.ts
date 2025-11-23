@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { TProduct } from './product.interface';
 import { Product } from './product.model';
@@ -49,9 +49,32 @@ const createProduct = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
     }
 
+    //  ------------ Generating productId ------------
+    const lastProduct = await Product.findOne().sort({ productId: -1 });
+    let newProductId = 'PROD-0001';
+    if (lastProduct) {
+      const lastProductIdNumber = parseInt(lastProduct.productId.split('-')[1]);
+      const newProductIdNumber = lastProductIdNumber + 1;
+      newProductId = `PROD-${String(newProductIdNumber).padStart(4, '0')}`;
+    }
+    payload.productId = newProductId;
+    //  ------------ Generating slug ------------
+    const newSlug = payload.name
+      .toLowerCase()
+      .replace(/ /g, '-')
+      .replace(/[^\w-]+/g, '');
+    payload.slug = newSlug;
+    //  ------------ Generating SKU ------------
+    const newSKU = `SKU-${payload?.category?.toUpperCase()}-${String(
+      newProductId
+    )
+      .split('-')
+      .pop()
+      ?.padStart(4, '0')}`;
+    payload.sku = newSKU;
     if (
-      category?.businessCategoryId.toString !==
-      vendorCategoryExist?._id.toString
+      category?.businessCategoryId.toString() !==
+      vendorCategoryExist?._id.toString()
     ) {
       throw new AppError(
         httpStatus.NOT_FOUND,
@@ -59,28 +82,6 @@ const createProduct = async (
       );
     }
   }
-
-  //  ------------ Generating productId ------------
-  const lastProduct = await Product.findOne().sort({ productId: -1 });
-  let newProductId = 'PROD-0001';
-  if (lastProduct) {
-    const lastProductIdNumber = parseInt(lastProduct.productId.split('-')[1]);
-    const newProductIdNumber = lastProductIdNumber + 1;
-    newProductId = `PROD-${String(newProductIdNumber).padStart(4, '0')}`;
-  }
-  payload.productId = newProductId;
-  //  ------------ Generating slug ------------
-  const newSlug = payload.name
-    .toLowerCase()
-    .replace(/ /g, '-')
-    .replace(/[^\w-]+/g, '');
-  payload.slug = newSlug;
-  //  ------------ Generating SKU ------------
-  const newSKU = `SKU-${payload?.category?.toUpperCase()}-${String(newProductId)
-    .split('-')
-    .pop()
-    ?.padStart(4, '0')}`;
-  payload.sku = newSKU;
 
   const newProduct = await Product.create({ ...payload, images });
   return newProduct;

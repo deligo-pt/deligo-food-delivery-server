@@ -4,7 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { ProfileServices } from './profile.service';
 import { TImageFile } from '../../interfaces/image.interface';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   const result = await ProfileServices.getMyProfile(req.user as AuthUser);

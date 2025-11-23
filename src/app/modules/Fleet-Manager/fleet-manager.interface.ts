@@ -1,31 +1,39 @@
-import { USER_STATUS } from '../../constant/user.const';
+import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
 export type TFleetManager = {
+  // ---------------------------------------------
+  // Core Identifiers
+  // ---------------------------------------------
   _id?: string;
   userId: string;
   role: 'FLEET_MANAGER';
   email: string;
   password: string;
+
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;
 
-  // fcm token for push notifications
+  // Push notifications
   fcmTokens?: string[];
 
-  // OTP Details
+  // ---------------------------------------------
+  // OTP & Password Reset
+  // ---------------------------------------------
   otp?: string;
-  isOtpExpired?: Date | string;
+  isOtpExpired?: Date;
 
-  // Password Reset Details
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
 
-  // Personal Details
+  // ---------------------------------------------
+  // Personal Information
+  // ---------------------------------------------
   name?: {
     firstName?: string;
     lastName?: string;
   };
+
   contactNumber?: string;
   profilePhoto?: string;
 
@@ -33,43 +41,57 @@ export type TFleetManager = {
     street?: string;
     city?: string;
     state?: string;
-    postalCode?: string;
     country?: string;
+    postalCode?: string;
+    latitude?: number;
+    longitude?: number;
+    geoAccuracy?: number;
   };
 
-  passwordChangedAt?: Date | string;
+  passwordChangedAt?: Date;
 
-  //  Business Details
+  // ---------------------------------------------
+  // Business Details
+  // ---------------------------------------------
   businessDetails?: {
     businessName: string;
     businessLicenseNumber?: string;
   };
-  // business Location
+
   businessLocation?: {
-    streetAddress: string;
-    streetNumber: string;
+    street: string;
     city: string;
+    state: string;
+    country: string;
     postalCode: string;
     latitude?: number;
     longitude?: number;
-    geoAccuracy?: number; // meters
+    geoAccuracy?: number;
   };
+
+  // ---------------------------------------------
   // Bank & Payment Information
+  // ---------------------------------------------
   bankDetails?: {
     bankName: string;
     accountHolderName: string;
     iban: string;
     swiftCode: string;
   };
+
+  // ---------------------------------------------
   // Documents & Verification
+  // ---------------------------------------------
   documents?: {
     idProof?: string;
     businessLicense?: string;
   };
 
-  // Operation Data
+  // ---------------------------------------------
+  // Operational Data
+  // ---------------------------------------------
   operationalData?: {
-    noOfDrivers: number;
+    totalDrivers: number;
     activeVehicles?: number;
     totalDeliveries?: number;
     rating?: {
@@ -78,18 +100,27 @@ export type TFleetManager = {
     };
   };
 
-  // Security & Access Control
+  // ---------------------------------------------
+  // Security & Access
+  // ---------------------------------------------
   twoFactorEnabled?: boolean;
-  loginDevices?: { deviceId: string; lastLogin: Date | string }[];
+  loginDevices?: TLoginDevice[];
 
-  // Admin & Audit Fields
+  // ---------------------------------------------
+  // Admin Workflow / Audit
+  // ---------------------------------------------
   approvedBy?: string;
   rejectedBy?: string;
   blockedBy?: string;
-  submittedForApprovalAt?: Date | string;
-  approvedOrRejectedOrBlockedAt?: Date | string;
+
+  submittedForApprovalAt?: Date;
+  approvedOrRejectedOrBlockedAt?: Date;
+
   remarks?: string;
 
+  // ---------------------------------------------
+  // Timestamps
+  // ---------------------------------------------
   createdAt: Date;
   updatedAt: Date;
 };

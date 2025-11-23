@@ -1,49 +1,47 @@
-// i want to use stripe card payment gateway here
-import { Stripe } from 'stripe';
+import Stripe from 'stripe';
 import config from '../../config';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
+import { CheckoutSummary } from '../Order/checkoutSummary.model';
 
 const stripe = new Stripe(config.stripe_secret_key as string);
-// payment service to process payment
-const processPayment = async (
-  amount: number,
-  currency: string,
-  paymentMethodType: 'card' | 'mb_way',
-  returnUrl?: string
-) => {
-  const finalAmount = amount * 100; // Convert to smallest currency unit
-  if (finalAmount < 50) {
-    throw new Error('Amount must be at least 0.50 in the selected currency.');
+
+const createPaymentSession = async (checkoutSummaryId: string) => {
+  if (!checkoutSummaryId) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Checkout summary not found');
   }
-
-  const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-    amount: finalAmount,
-    currency,
-    payment_method_types: [paymentMethodType],
-  };
-
-  // MB way requires a return_url
-  if (paymentMethodType === 'mb_way') {
-    if (!returnUrl) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'Return URL is required for MB Way payments.'
-      );
-    }
-    paymentIntentParams.confirm = true;
-    paymentIntentParams.return_url = returnUrl;
-  } else if (paymentMethodType === 'card') {
-    paymentIntentParams.automatic_payment_methods = {
-      enabled: true,
-      allow_redirects: 'never',
-    };
+  const summary = await CheckoutSummary.findById({ _id: checkoutSummaryId });
+  console.log({ summary });
+  if (!summary) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Checkout summary not found');
   }
+  // const checkoutData = await getCheckoutSummary(checkoutSummaryId);
 
-  const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
-  console.log(paymentIntent);
-  return paymentIntent;
+  // const session = await stripe.checkout.sessions.create({
+  //   mode: 'payment',
+  //   payment_method_types: ['card'],
+
+  //   line_items: checkoutData.items.map((item: TCheckoutItem) => ({
+  //     price_data: {
+  //       currency: 'eur',
+  //       product_data: { name: item.name },
+  //       unit_amount: Math.round(item.price * 100),
+  //     },
+  //     quantity: item.quantity,
+  //   })),
+
+  //   success_url: `${config.frontend_url}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+  //   cancel_url: `${config.frontend_url}/payment-cancel`,
+
+  //   metadata: {
+  //     customerId,
+  //     checkoutData: JSON.stringify(checkoutData),
+  //   },
+  // });
+
+  // return { url: session.url };
 };
+
 export const PaymentServices = {
-  processPayment,
+  createPaymentSession,
 };

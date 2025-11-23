@@ -1,6 +1,22 @@
 import { z } from 'zod';
 
-// Update customer data validation schema
+// ---------------------------------------------
+// Reusable Address Schema
+// ---------------------------------------------
+const addressSchema = z.object({
+  street: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  postalCode: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  geoAccuracy: z.number().optional(),
+});
+
+// ---------------------------------------------
+// Update Customer Data Validation Schema
+// ---------------------------------------------
 const updateCustomerDataValidationSchema = z.object({
   body: z.object({
     // Personal Details
@@ -14,30 +30,13 @@ const updateCustomerDataValidationSchema = z.object({
     contactNumber: z.string().optional(),
     profilePhoto: z.string().optional(),
 
-    // Address
-    address: z
-      .object({
-        street: z.string().optional(),
-        city: z.string().optional(),
-        state: z.string().optional(),
-        country: z.string().optional(),
-        zipCode: z.string().optional(),
-        latitude: z.number().optional(),
-        longitude: z.number().optional(),
-      })
-      .optional(),
+    // Main Customer Address
+    address: addressSchema.optional(),
 
-    // Delivery Addresses
+    // Delivery Addresses (multiple saved addresses)
     deliveryAddresses: z
       .array(
-        z.object({
-          street: z.string().optional(),
-          city: z.string().optional(),
-          state: z.string().optional(),
-          country: z.string().optional(),
-          zipCode: z.string().optional(),
-          latitude: z.number().optional(),
-          longitude: z.number().optional(),
+        addressSchema.extend({
           isActive: z.boolean().optional(),
         })
       )
@@ -45,6 +44,9 @@ const updateCustomerDataValidationSchema = z.object({
   }),
 });
 
+// ---------------------------------------------
+// Export
+// ---------------------------------------------
 export const CustomerValidation = {
   updateCustomerDataValidationSchema,
 };

@@ -1,5 +1,5 @@
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
@@ -11,6 +11,9 @@ import { ORDER_STATUS, OrderSearchableFields } from './order.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { TOrder } from './order.interface';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
+import { calculateDistance } from '../../utils/calculateDistance';
+import { GlobalSettingServices } from '../GlobalSetting/globalSetting.service';
+import { CheckoutSummary } from './checkoutSummary.model';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
@@ -33,7 +36,7 @@ const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
     !customer.address?.state ||
     !customer.address?.city ||
     !customer.address?.country ||
-    !customer.address?.zipCode
+    !customer.address?.postalCode
   )
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -90,6 +93,34 @@ const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
   // ---------- Check Product Stock ----------
   const productIds = selectedItems.map((i) => i.productId);
   const products = await Product.find({ productId: { $in: productIds } });
+  const deliveryAddress = customer?.deliveryAddresses?.find(
+    (i) => i.isActive === true
+  );
+  const existingVendor = await Vendor.findOne({
+    userId: products[0].vendor.vendorId,
+  });
+
+  const vendorLatitude = existingVendor?.businessLocation?.latitude;
+  const vendorLongitude = existingVendor?.businessLocation?.longitude;
+  const customerLatitude = deliveryAddress?.latitude;
+  const customerLongitude = deliveryAddress?.longitude;
+  if (
+    !vendorLatitude ||
+    !vendorLongitude ||
+    !customerLatitude ||
+    !customerLongitude
+  ) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Delivery address not found');
+  }
+  const deliveryDistance = calculateDistance(
+    vendorLatitude,
+    vendorLongitude,
+    customerLatitude,
+    customerLongitude
+  );
+  const deliveryChargePerMeter = await GlobalSettingServices.getPerMeterRate();
+
+  const deliveryCharge = deliveryDistance.meters * deliveryChargePerMeter;
 
   const orderItems = selectedItems.map((item) => {
     const product = products.find((p) => p.productId === item.productId);
@@ -121,7 +152,6 @@ const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
   const totalItems = orderItems.reduce((s, i) => s + i.quantity, 0);
   const rawTotalPrice = orderItems.reduce((s, i) => s + i.subtotal, 0);
   const totalPrice = parseFloat(rawTotalPrice.toFixed(2));
-  const deliveryCharge = Number(payload.deliveryCharge || 0);
   const discount = Number(payload.discount || 0);
 
   const finalAmount = parseFloat(
@@ -146,7 +176,7 @@ const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
     );
   }
 
-  return {
+  const summaryData = {
     customerId,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
@@ -157,6 +187,15 @@ const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
     finalAmount,
     estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
     deliveryAddress: activeAddress,
+  };
+
+  const summary = await CheckoutSummary.create(summaryData);
+
+  return {
+    CheckoutSummaryId: summary._id,
+    finalAmount: summary.finalAmount,
+    items: summary.items,
+    vendorId: summary.vendorId,
   };
 };
 
@@ -291,9 +330,10 @@ const acceptOrRejectOrderByVendor = async (
 
   if (action.type === 'ACCEPTED') {
     order.pickupAddress = {
-      streetAddress: existingVendor.businessLocation?.streetNumber || '',
-      streetNumber: existingVendor.businessLocation?.streetNumber || '',
+      street: existingVendor.businessLocation?.street || '',
       city: existingVendor.businessLocation?.city || '',
+      state: existingVendor.businessLocation?.state || '',
+      country: existingVendor.businessLocation?.country || '',
       postalCode: existingVendor?.businessLocation?.postalCode || '',
       latitude: existingVendor.businessLocation?.latitude,
       longitude: existingVendor.businessLocation?.longitude,

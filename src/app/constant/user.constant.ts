@@ -1,3 +1,5 @@
+import { Schema } from 'mongoose';
+
 // User Roles constant
 export const USER_ROLE = {
   SUPER_ADMIN: 'SUPER_ADMIN',
@@ -35,3 +37,42 @@ export type AuthUser = {
   iat: number;
   exp: number;
 };
+
+export type TLoginDevice = {
+  deviceId: string;
+  deviceName?: string;
+  userAgent?: string;
+  ip?: string;
+  isVerified: boolean;
+  lastLogin?: Date | null;
+};
+
+export const loginDeviceSchema = new Schema(
+  {
+    deviceId: {
+      type: String,
+      required: true,
+    },
+    deviceName: {
+      type: String,
+      default: '',
+    },
+    userAgent: {
+      type: String,
+      default: '',
+    },
+    ip: {
+      type: String,
+      default: '',
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
+  },
+  { _id: false }
+);

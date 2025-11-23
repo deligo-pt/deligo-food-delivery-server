@@ -3,6 +3,6 @@ export const AdminSearchableFields = [
   'address.street',
   'address.city',
   'address.state',
-  'address.zipCode',
+  'address.postalCode',
   'address.country',
 ];

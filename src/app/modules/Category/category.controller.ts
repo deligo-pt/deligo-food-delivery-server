@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { CategoryService } from './category.service';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {

@@ -1,4 +1,4 @@
-import { UrlPath } from '../../constant/user.const';
+import { UrlPath } from '../../constant/user.constant';
 import auth from '../../middlewares/auth';
 import validateRequest, {
   validateRequestCookies,
@@ -10,7 +10,7 @@ import { Router } from 'express';
 const router = Router();
 // Register User Route
 router.post(
-  [UrlPath.CUSTOMER, UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
+  [UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
   validateRequest(AuthValidation.registerValidationSchema),
   AuthControllers.registerUser
 );
@@ -26,6 +26,13 @@ router.post(
   '/login',
   validateRequest(AuthValidation.loginValidationSchema),
   AuthControllers.loginUser
+);
+
+// login customer
+router.post(
+  '/login-customer',
+  validateRequest(AuthValidation.loginCustomerValidationSchema),
+  AuthControllers.loginCustomer
 );
 
 // Save FCM Token Route
@@ -123,7 +130,14 @@ router.post(
 // soft Delete User Route
 router.delete(
   '/soft-delete/:userId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'CUSTOMER'
+  ),
   AuthControllers.softDeleteUser
 );
 

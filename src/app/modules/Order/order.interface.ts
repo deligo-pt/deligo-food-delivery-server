@@ -41,17 +41,18 @@ export type TOrder = {
     city?: string;
     state?: string;
     country?: string;
-    zipCode?: string;
+    postalCode?: string;
     latitude?: number;
     longitude?: number;
-    isActive: boolean;
-  }[];
+    gooAccuracy?: number;
+  };
 
   pickupAddress?: {
     // vendor’s location
-    streetAddress: string;
-    streetNumber: string;
+    street: string;
     city: string;
+    state: string;
+    country: string;
     postalCode: string;
     latitude?: number;
     longitude?: number;

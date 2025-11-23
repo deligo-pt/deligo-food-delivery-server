@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { FleetManagerSearchableFields } from './fleet-manager.constant';
 import {
@@ -130,7 +130,7 @@ const getSingleFleetManagerFromDB = async (
   }
 
   const existingFleetManager = await FleetManager.findOne({
-    fleetManagerId,
+    userId: fleetManagerId,
     isDeleted: false,
   });
   if (!existingFleetManager) {

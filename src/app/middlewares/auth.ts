@@ -5,7 +5,7 @@ import config from '../config';
 import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
-import { USER_ROLE, USER_STATUS } from '../constant/user.const';
+import { USER_ROLE, USER_STATUS } from '../constant/user.constant';
 import { findUserByEmailOrId } from '../utils/findUserByEmailOrId';
 
 const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {

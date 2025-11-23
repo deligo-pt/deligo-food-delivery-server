@@ -3,7 +3,7 @@ import AppError from '../../errors/AppError';
 import { TVendor, TVendorImageDocuments } from './vendor.interface';
 import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
-import { AuthUser } from '../../constant/user.const';
+import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
