@@ -4,10 +4,12 @@ import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/user.constant';
 
-// checkout Controller
-const checkout = catchAsync(async (req, res) => {
-  const result = await OrderServices.checkout(req.user as AuthUser, req.body);
-
+// order after payment secure controller
+const createOrderAfterPayment = catchAsync(async (req, res) => {
+  const result = await OrderServices.createOrderAfterPayment(
+    req.body,
+    req.user as AuthUser
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -95,7 +97,7 @@ const assignDeliveryPartner = catchAsync(async (req, res) => {
 });
 
 export const OrderControllers = {
-  checkout,
+  createOrderAfterPayment,
   getOrdersByVendor,
   getAllOrders,
   getSingleOrder,

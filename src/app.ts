@@ -10,7 +10,17 @@ import notFound from './app/middlewares/notFound';
 
 const app: Application = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      'https://fleet-managerdeligopt.vercel.app',
+      'https://super-admin-deligo-food-pt.vercel.app',
+      'https://vendor-food-deligo-pt.vercel.app',
+      'http://localhost:5173',
+    ],
+    credentials: true,
+  })
+);
 app.use(cookieParser());
 
 //parser

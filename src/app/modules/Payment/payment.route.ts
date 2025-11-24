@@ -4,11 +4,11 @@ import auth from '../../middlewares/auth';
 
 const router = Router();
 
-// create payment session
+// create stripe payment intent
 router.post(
-  '/create-session',
+  '/stripe/create-payment-intent',
   auth('CUSTOMER'),
-  PaymentController.createPaymentSessionController
+  PaymentController.createPaymentIntent
 );
 
 export const PaymentRoutes = router;
