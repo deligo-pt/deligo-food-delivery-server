@@ -8,7 +8,6 @@ export type TOrder = {
   customerId: string;
   vendorId: string;
   deliveryPartnerId?: string; // assigned after vendor accepts
-  useCart?: boolean;
 
   // Items
   items: {

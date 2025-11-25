@@ -6,6 +6,7 @@ import { ProfileServices } from './profile.service';
 import { TImageFile } from '../../interfaces/image.interface';
 import { AuthUser } from '../../constant/user.constant';
 
+// get my profile controller
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   const result = await ProfileServices.getMyProfile(req.user as AuthUser);
 
@@ -17,11 +18,13 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// update my profile controller
 const updateMyProfile = catchAsync(async (req, res) => {
-  const file = req.file as TImageFile;
+  const file = req.file as TImageFile | undefined;
   const result = await ProfileServices.updateMyProfile(
     req.user as AuthUser,
-    file?.path
+    file?.path ?? null,
+    req?.body
   );
 
   sendResponse(res, {

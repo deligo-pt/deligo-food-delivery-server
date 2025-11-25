@@ -1,4 +1,4 @@
-export interface ICheckoutItem {
+export type TCheckoutItem = {
   productId: string;
   name: string;
   quantity: number;
@@ -6,9 +6,9 @@ export interface ICheckoutItem {
   subtotal: number;
   vendorId: string;
   estimatedDeliveryTime?: string;
-}
+};
 
-export interface ICheckoutAddress {
+export type TCheckoutAddress = {
   street?: string;
   city?: string;
   state?: string;
@@ -16,18 +16,19 @@ export interface ICheckoutAddress {
   postalCode?: string;
   latitude?: number;
   longitude?: number;
-  goAccuracy?: number;
+  geoAccuracy?: number;
   isActive?: boolean;
   _id?: string;
-}
+};
 
-export interface ICheckoutSummary {
+export type TCheckoutSummary = {
   _id?: string;
 
   customerId: string;
+  customerEmail: string;
   vendorId: string;
 
-  items: ICheckoutItem[];
+  items: TCheckoutItem[];
 
   discount: number;
   totalItems: number;
@@ -36,10 +37,29 @@ export interface ICheckoutSummary {
   finalAmount: number;
   estimatedDeliveryTime: string;
 
-  deliveryAddress: ICheckoutAddress;
+  deliveryAddress: TCheckoutAddress;
+
+  paymentStatus?: 'pending' | 'paid' | 'failed';
+  paymentMethod?: 'CARD' | 'MOBILE';
+  transactionId?: string; // Stripe PaymentIntent ID
+  orderId?: string; // Linked Order ID
 
   isConvertedToOrder?: boolean;
 
+  isDeleted?: boolean;
+
   createdAt?: Date;
   updatedAt?: Date;
-}
+};
+
+export type TCheckoutPayload = {
+  useCart?: boolean;
+
+  items?: {
+    productId: string;
+    quantity: number;
+  }[];
+
+  estimatedDeliveryTime?: string;
+  discount?: number;
+};

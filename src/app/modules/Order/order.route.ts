@@ -6,12 +6,11 @@ import { OrderValidation } from './order.validation';
 
 const router = Router();
 
-// Order add
+// Create order
 router.post(
-  '/checkout',
-  auth('CUSTOMER'),
-  validateRequest(OrderValidation.checkoutValidationSchema),
-  OrderControllers.checkout
+  '/create-order',
+  // auth('CUSTOMER'),
+  OrderControllers.createOrderAfterPayment
 );
 
 // Get orders by vendor

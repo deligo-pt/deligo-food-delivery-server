@@ -13,6 +13,7 @@ export type TFleetManager = {
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;
+  isUpdateLocked: boolean;
 
   // Push notifications
   fcmTokens?: string[];
@@ -25,6 +26,7 @@ export type TFleetManager = {
 
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
+  passwordChangedAt?: Date;
 
   // ---------------------------------------------
   // Personal Information
@@ -47,8 +49,6 @@ export type TFleetManager = {
     longitude?: number;
     geoAccuracy?: number;
   };
-
-  passwordChangedAt?: Date;
 
   // ---------------------------------------------
   // Business Details

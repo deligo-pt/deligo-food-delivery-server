@@ -9,9 +9,13 @@ export type TCustomer = {
   role: 'CUSTOMER';
   email: string;
   password?: string;
+
   status: keyof typeof USER_STATUS;
   isOtpVerified: boolean;
   isDeleted: boolean;
+
+  // Push notifications
+  fcmTokens?: string[];
 
   // ------------------------------------------------------
   // OTP & Password Reset
@@ -22,9 +26,7 @@ export type TCustomer = {
 
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
-
-  // Push notifications
-  fcmTokens?: string[];
+  passwordChangedAt?: Date;
 
   // ------------------------------------------------------
   // Personal Information
@@ -36,7 +38,6 @@ export type TCustomer = {
 
   contactNumber?: string;
   profilePhoto?: string;
-  passwordChangedAt?: Date;
 
   address?: {
     street?: string;

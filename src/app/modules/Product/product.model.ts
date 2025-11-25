@@ -8,10 +8,6 @@ const productSchema = new Schema<TProduct>(
     sku: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     slug: { type: String, required: true },
-    test: {
-      type: Number,
-      default: 0,
-    },
     description: { type: String },
     isDeleted: { type: Boolean, default: false },
     isApproved: { type: Boolean, default: true },

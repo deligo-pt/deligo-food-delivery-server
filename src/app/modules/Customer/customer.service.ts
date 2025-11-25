@@ -59,18 +59,55 @@ const updateCustomer = async (
     if (!existingCustomer.deliveryAddresses) {
       existingCustomer.deliveryAddresses = [];
     }
-    existingCustomer?.deliveryAddresses?.push({
-      street: payload?.address?.street || '',
-      city: payload?.address?.city || '',
-      state: payload?.address?.state || '',
-      country: payload?.address?.country || '',
-      postalCode: payload?.address?.postalCode || '',
-      latitude: payload?.address?.latitude || 0,
-      longitude: payload?.address?.longitude || 0,
-      goAccuracy: payload?.address?.goAccuracy || 0,
-      isActive: true,
-    });
-    payload.deliveryAddresses = existingCustomer.deliveryAddresses;
+
+    const newAddress = {
+      street: payload.address.street || '',
+      city: payload.address.city || '',
+      state: payload.address.state || '',
+      country: payload.address.country || '',
+      postalCode: payload.address.postalCode || '',
+      latitude: payload.address.latitude || 0,
+      longitude: payload.address.longitude || 0,
+      geoAccuracy: payload.address.geoAccuracy || 0,
+    };
+
+    // ------------------------------------------
+    // Check if same address already exists
+    // ------------------------------------------
+    const isSameAddress = existingCustomer.deliveryAddresses.some(
+      (addr) =>
+        addr.street === newAddress.street &&
+        addr.city === newAddress.city &&
+        addr.state === newAddress.state &&
+        addr.country === newAddress.country &&
+        addr.postalCode === newAddress.postalCode
+    );
+
+    if (isSameAddress) {
+      // ----------------------------------------------------
+      // Do nothing if the address already exists
+      // ----------------------------------------------------
+      payload.deliveryAddresses = existingCustomer.deliveryAddresses;
+    } else {
+      // ----------------------------------------------------
+      //  Deactivate previously active address
+      // ----------------------------------------------------
+      existingCustomer.deliveryAddresses =
+        existingCustomer.deliveryAddresses.map((addr) => ({
+          ...addr,
+          isActive: false,
+        }));
+
+      // ----------------------------------------------
+      // Push new address with isActive = true
+      // ----------------------------------------------
+      existingCustomer.deliveryAddresses.push({
+        ...newAddress,
+        isActive: true,
+      });
+
+      payload.deliveryAddresses = existingCustomer.deliveryAddresses;
+    }
   }
 
   const updateCustomer = await Customer.findOneAndUpdate(
@@ -121,23 +158,38 @@ const getSingleCustomerFromDB = async (
   customerId: string,
   currentUser: AuthUser
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser?.id,
     isDeleted: false,
   });
+  const user = result?.user;
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  if (user.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view a customer. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to view a customer. Your account is ${user.status}`
     );
   }
 
   let existingCustomer;
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    existingCustomer = await Customer.isUserExistsByUserId(customerId, false);
+    existingCustomer = await Customer.findOne({
+      userId: user?.userId,
+      isDeleted: false,
+    });
+    if (
+      existingCustomer?.userId !== currentUser?.id ||
+      customerId !== currentUser?.id
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to view this customer'
+      );
+    }
   } else {
-    existingCustomer = await Customer.isUserExistsByUserId(customerId);
+    existingCustomer = await Customer.findOne({
+      userId: customerId,
+    });
   }
   if (!existingCustomer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');

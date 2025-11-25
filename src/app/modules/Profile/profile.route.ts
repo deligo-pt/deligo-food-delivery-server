@@ -2,9 +2,13 @@ import auth from '../../middlewares/auth';
 import { ProfileController } from './profile.controller';
 import { multerUpload } from '../../config/multer.config';
 import { Router } from 'express';
+import { parseBody } from '../../middlewares/bodyParser';
+import validateRequest from '../../middlewares/validateRequest';
+import { ProfileValidation } from './profile.validation';
 
 const router = Router();
 
+// get my profile route
 router.get(
   '/',
   auth(
@@ -18,6 +22,7 @@ router.get(
   ProfileController.getMyProfile
 );
 
+// update my profile route
 router.patch(
   '/',
   auth(
@@ -29,6 +34,8 @@ router.patch(
     'SUPER_ADMIN'
   ),
   multerUpload.single('file'),
+  parseBody,
+  validateRequest(ProfileValidation.userProfileUpdateValidationSchema),
   ProfileController.updateMyProfile
 );
 

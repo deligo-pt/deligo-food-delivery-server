@@ -48,6 +48,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
 
     isEmailVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    isUpdateLocked: { type: Boolean, default: false },
 
     // -------------------------------------------------------
     // Rating & Activity

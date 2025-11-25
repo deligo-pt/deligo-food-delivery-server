@@ -4,7 +4,6 @@ export type TProduct = {
   sku: string;
   name: string;
   slug: string;
-  test: number;
   description: string;
   isDeleted: boolean;
   isApproved: boolean;

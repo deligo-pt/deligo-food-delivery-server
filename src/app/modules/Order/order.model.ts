@@ -24,7 +24,7 @@ const deliveryAddressSchema = new Schema(
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
 
-    goAccuracy: { type: Number, default: null },
+    geoAccuracy: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -57,7 +57,6 @@ const orderSchema = new Schema<TOrder>(
     customerId: { type: String, required: true },
     vendorId: { type: String, required: true },
     deliveryPartnerId: { type: String },
-    useCart: { type: Boolean, default: false },
 
     items: { type: [orderItemSchema], required: true },
 

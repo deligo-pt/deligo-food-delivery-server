@@ -1,9 +1,10 @@
 import { Schema, model } from 'mongoose';
-import { ICheckoutSummary } from './checkoutSummary.interface';
+import { TCheckoutSummary } from './checkout.interface';
 
-const CheckoutSummarySchema = new Schema<ICheckoutSummary>(
+const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
   {
     customerId: { type: String, required: true },
+    customerEmail: { type: String, required: true },
     vendorId: { type: String, required: true },
 
     items: [
@@ -33,17 +34,33 @@ const CheckoutSummarySchema = new Schema<ICheckoutSummary>(
       postalCode: String,
       latitude: Number,
       longitude: Number,
-      goAccuracy: Number,
+      geoAccuracy: Number,
       isActive: Boolean,
       _id: String,
     },
 
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid', 'failed'],
+      default: 'pending',
+    },
+
+    paymentMethod: {
+      type: String,
+      enum: ['CARD', 'MOBILE'],
+    },
+
+    transactionId: { type: String, default: undefined },
+
+    orderId: { type: String, default: undefined },
+
     isConvertedToOrder: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-export const CheckoutSummary = model<ICheckoutSummary>(
+export const CheckoutSummary = model<TCheckoutSummary>(
   'CheckoutSummary',
   CheckoutSummarySchema
 );

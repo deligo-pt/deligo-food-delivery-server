@@ -1,202 +1,93 @@
 import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
-import { Cart } from '../Cart/cart.model';
-import { Product } from '../Product/product.model';
 import { Order } from './order.model';
-import { Customer } from '../Customer/customer.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { ORDER_STATUS, OrderSearchableFields } from './order.constant';
 import { Vendor } from '../Vendor/vendor.model';
-import { TOrder } from './order.interface';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
-import { calculateDistance } from '../../utils/calculateDistance';
-import { GlobalSettingServices } from '../GlobalSetting/globalSetting.service';
-import { CheckoutSummary } from './checkoutSummary.model';
+import { CheckoutSummary } from '../Checkout/checkout.model';
+import { stripe } from '../Payment/payment.service';
+import { Cart } from '../Cart/cart.model';
 
-// Checkout Service
-const checkout = async (currentUser: AuthUser, payload: Partial<TOrder>) => {
-  const customerId = currentUser.id;
+const createOrderAfterPayment = async (
+  payload: {
+    checkoutSummaryId: string;
+    paymentIntentId: string;
+  },
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const { checkoutSummaryId, paymentIntentId } = payload;
+  const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
-  // ---------- Find Customer ----------
-  const customer = await Customer.findOne({
-    userId: customerId,
-    isDeleted: false,
-  });
-  if (!customer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  if (!summary) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
   }
 
-  // Validate address
-  if (
-    !customer.name?.firstName ||
-    !customer.name?.lastName ||
-    !customer.contactNumber ||
-    !customer.address?.state ||
-    !customer.address?.city ||
-    !customer.address?.country ||
-    !customer.address?.postalCode
-  )
+  if (summary.isConvertedToOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please complete your profile before checking out'
-    );
-
-  // ---------- Get items ----------
-  let selectedItems = [];
-
-  if (payload.useCart === true) {
-    // ====== Checkout using CART ======
-    const cart = await Cart.findOne({ customerId, isDeleted: false });
-
-    if (!cart || cart.items.length === 0) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
-    }
-
-    const activeItems = cart.items.filter((i) => i.isActive === true);
-
-    if (activeItems.length === 0) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Please select at least one product from your cart to order'
-      );
-    }
-
-    selectedItems = activeItems;
-  } else {
-    // ====== DIRECT CHECKOUT ======
-    if (!payload.items || payload.items.length === 0) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'No items provided for checkout'
-      );
-    }
-
-    if (payload.items.length > 1) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Direct checkout supports only one product at a time'
-      );
-    }
-
-    if (!payload.items[0].quantity) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Quantity is required for direct checkout'
-      );
-    }
-
-    selectedItems = payload.items;
-  }
-
-  // ---------- Check Product Stock ----------
-  const productIds = selectedItems.map((i) => i.productId);
-  const products = await Product.find({ productId: { $in: productIds } });
-  const deliveryAddress = customer?.deliveryAddresses?.find(
-    (i) => i.isActive === true
-  );
-  const existingVendor = await Vendor.findOne({
-    userId: products[0].vendor.vendorId,
-  });
-
-  const vendorLatitude = existingVendor?.businessLocation?.latitude;
-  const vendorLongitude = existingVendor?.businessLocation?.longitude;
-  const customerLatitude = deliveryAddress?.latitude;
-  const customerLongitude = deliveryAddress?.longitude;
-  if (
-    !vendorLatitude ||
-    !vendorLongitude ||
-    !customerLatitude ||
-    !customerLongitude
-  ) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Delivery address not found');
-  }
-  const deliveryDistance = calculateDistance(
-    vendorLatitude,
-    vendorLongitude,
-    customerLatitude,
-    customerLongitude
-  );
-  const deliveryChargePerMeter = await GlobalSettingServices.getPerMeterRate();
-
-  const deliveryCharge = deliveryDistance.meters * deliveryChargePerMeter;
-
-  const orderItems = selectedItems.map((item) => {
-    const product = products.find((p) => p.productId === item.productId);
-
-    if (!product)
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        `Product not found: ${item.productId}`
-      );
-
-    if (product.stock.quantity < item.quantity)
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Stock not available for ${product.name}`
-      );
-
-    return {
-      productId: product.productId,
-      name: product.name,
-      quantity: item.quantity,
-      price: product.pricing.finalPrice,
-      subtotal: product.pricing.finalPrice * item.quantity,
-      vendorId: product.vendor.vendorId,
-      estimatedDeliveryTime: payload?.estimatedDeliveryTime || 'N/A',
-    };
-  });
-
-  // ---------- Calculate ----------
-  const totalItems = orderItems.reduce((s, i) => s + i.quantity, 0);
-  const rawTotalPrice = orderItems.reduce((s, i) => s + i.subtotal, 0);
-  const totalPrice = parseFloat(rawTotalPrice.toFixed(2));
-  const discount = Number(payload.discount || 0);
-
-  const finalAmount = parseFloat(
-    (totalPrice + deliveryCharge - discount).toFixed(2)
-  );
-
-  // Vendor check
-  const vendorIds = orderItems.map((i) => i.vendorId);
-  if (new Set(vendorIds).size > 1) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You can only order products from ONE vendor at a time'
+      'Order already created for this payment'
     );
   }
 
-  // Delivery address
-  const activeAddress = customer.deliveryAddresses?.find((a) => a.isActive);
-  if (!activeAddress) {
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  console.log(paymentIntent);
+
+  if (paymentIntent.status !== 'succeeded') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'No active delivery address found'
+      'Payment is not successful. Order cannot be created.'
     );
   }
 
-  const summaryData = {
-    customerId,
-    vendorId: orderItems[0].vendorId,
-    items: orderItems,
-    discount: discount,
-    totalItems,
-    totalPrice,
-    deliveryCharge,
-    finalAmount,
-    estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
-    deliveryAddress: activeAddress,
-  };
-
-  const summary = await CheckoutSummary.create(summaryData);
-
-  return {
-    CheckoutSummaryId: summary._id,
-    finalAmount: summary.finalAmount,
-    items: summary.items,
+  const orderData = {
+    orderId: `ORD-${Date.now()}`,
+    customerId: summary.customerId,
     vendorId: summary.vendorId,
+
+    items: summary.items.map((item) => ({
+      productId: item.productId,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.subtotal,
+    })),
+
+    totalItems: summary.totalItems,
+    totalPrice: summary.totalPrice,
+    discount: summary.discount,
+    finalAmount: summary.finalAmount,
+
+    paymentMethod: 'CARD',
+    paymentStatus: 'COMPLETED',
+    isPaid: true,
+
+    deliveryAddress: summary.deliveryAddress,
+    deliveryCharge: summary.deliveryCharge,
+    estimatedDeliveryTime: summary.estimatedDeliveryTime,
+
+    transactionId: paymentIntentId,
   };
+
+  const order = await Order.create(orderData);
+
+  summary.isConvertedToOrder = true;
+  summary.paymentStatus = 'paid';
+  summary.transactionId = paymentIntentId;
+  summary.orderId = order.orderId;
+
+  await summary.save();
+
+  // Clear cart
+  await Cart.findOneAndUpdate(
+    { customerId: summary.customerId },
+    { $set: { items: [] } }
+  );
+
+  return order;
 };
 
 //  order by vendor service
@@ -417,7 +308,7 @@ const updateOrderStatus = async (
 };
 
 export const OrderServices = {
-  checkout,
+  createOrderAfterPayment,
   getOrdersByVendor,
   getAllOrders,
   getSingleOrder,

@@ -13,17 +13,7 @@ export type TVendor = {
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;
-
-  // --------------------------------------------------------
-  // Rating & Activity
-  // --------------------------------------------------------
-  rating?: {
-    average: number;
-    totalReviews: number;
-  };
-
-  totalOrders?: number;
-  lastLoginAt?: Date;
+  isUpdateLocked: boolean;
 
   // Push notifications
   fcmTokens?: string[];
@@ -36,6 +26,7 @@ export type TVendor = {
 
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
+  passwordChangedAt?: Date;
 
   // --------------------------------------------------------
   // Personal Information
@@ -58,8 +49,6 @@ export type TVendor = {
     longitude?: number;
     geoAccuracy?: number;
   };
-
-  passwordChangedAt?: Date;
 
   // --------------------------------------------------------
   // Business Details
@@ -116,6 +105,17 @@ export type TVendor = {
   // --------------------------------------------------------
   twoFactorEnabled?: boolean;
   loginDevices?: TLoginDevice[];
+
+  // --------------------------------------------------------
+  // Rating & Activity
+  // --------------------------------------------------------
+  rating?: {
+    average: number;
+    totalReviews: number;
+  };
+
+  totalOrders?: number;
+  lastLoginAt?: Date;
 
   // --------------------------------------------------------
   // Admin Workflow / Audit

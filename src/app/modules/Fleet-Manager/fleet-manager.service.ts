@@ -10,44 +10,76 @@ import {
 } from './fleet-manager.interface';
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
   fleetManagerId: string,
   payload: Partial<TFleetManager>,
-  currentUser: AuthUser,
-  profilePhoto?: string
+  currentUser: AuthUser
 ) => {
-  //   istFleetManagerExistsById
+  // ---------------------------------------------------------
+  // Find Fleet Manager
+  // ---------------------------------------------------------
   const existingFleetManager = await FleetManager.findOne({
     userId: fleetManagerId,
     isDeleted: false,
   });
+
   if (!existingFleetManager) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found.');
   }
 
-  if (currentUser?.id !== fleetManagerId) {
+  // ---------------------------------------------------------
+  // Only the Fleet Manager can update their own profile
+  // ---------------------------------------------------------
+  const isSelf =
+    currentUser.role === 'FLEET_MANAGER' &&
+    currentUser.id === existingFleetManager.userId;
+
+  if (!isSelf) {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You are not authorize to update!'
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this Fleet Manager.'
     );
   }
 
-  if (payload.profilePhoto) {
+  // ---------------------------------------------------------
+  // Ensure email is verified before self-update
+  // ---------------------------------------------------------
+  if (!existingFleetManager.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Profile photo should be in file!'
+      'Please verify your email before updating your profile.'
     );
   }
-  if (profilePhoto) {
-    payload.profilePhoto = profilePhoto;
+
+  // ---------------------------------------------------------
+  // Check if update is locked
+  // ---------------------------------------------------------
+  if (existingFleetManager.isUpdateLocked) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Fleet Manager update is locked. Please contact support.'
+    );
   }
+
+  // ---------------------------------------------------------
+  // Perform Update
+  // ---------------------------------------------------------
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
     { userId: fleetManagerId },
-    payload,
+    { $set: payload },
     { new: true }
   );
+
+  if (!updatedFleetManager) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to update Fleet Manager.'
+    );
+  }
+
   return updatedFleetManager;
 };
 
@@ -119,20 +151,30 @@ const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
   currentUser: AuthUser
 ) => {
-  if (
-    currentUser?.role === 'FLEET_MANAGER' &&
-    currentUser?.id !== fleetManagerId
-  ) {
+  const result = await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const user = result?.user;
+  if (user?.role === 'FLEET_MANAGER' && user?.id !== fleetManagerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this fleet manager!'
     );
   }
+  let existingFleetManager;
 
-  const existingFleetManager = await FleetManager.findOne({
-    userId: fleetManagerId,
-    isDeleted: false,
-  });
+  if (user?.role === 'FLEET_MANAGER') {
+    existingFleetManager = await FleetManager.findOne({
+      userId: user?.userId,
+      isDeleted: false,
+    });
+  } else {
+    existingFleetManager = await FleetManager.findOne({
+      userId: fleetManagerId,
+    });
+  }
+
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
   }

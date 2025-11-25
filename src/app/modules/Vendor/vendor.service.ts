@@ -8,52 +8,72 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { BusinessCategory } from '../Category/category.model';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Vendor Update Service
 const vendorUpdate = async (
   id: string,
   payload: Partial<TVendor>,
-  currentUser: AuthUser,
-  profilePhoto: string
+  currentUser: AuthUser
 ) => {
-  //   istVendorExistsById
+  // -----------------------------------------
+  // Check if vendor exists
+  // -----------------------------------------
   const existingVendor = await Vendor.findOne({ userId: id });
+
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found.');
   }
 
-  if (currentUser?.id !== existingVendor?.userId) {
+  // -----------------------------------------
+  // Check if vendor is locked for update
+  // -----------------------------------------
+  if (existingVendor.isUpdateLocked) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to update!'
+      'Vendor update is locked. Please contact support.'
     );
   }
 
-  // check business type
-  if (payload?.businessDetails?.businessType) {
-    const businessType = await BusinessCategory.findOne({
-      name: payload?.businessDetails?.businessType,
+  // -----------------------------------------
+  // Authorization check
+  // -----------------------------------------
+  if (currentUser.id !== existingVendor.userId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this vendor.'
+    );
+  }
+
+  // -----------------------------------------
+  // Validate business type if provided
+  // -----------------------------------------
+  if (payload.businessDetails?.businessType) {
+    const exists = await BusinessCategory.findOne({
+      name: payload.businessDetails.businessType,
     });
-    if (!businessType) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid business type');
+
+    if (!exists) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid business type.');
     }
   }
 
-  if (payload.profilePhoto) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Profile photo should be in file!'
-    );
-  }
-  if (profilePhoto) {
-    payload.profilePhoto = profilePhoto;
-  }
-
+  // -----------------------------------------
+  // Update vendor
+  // -----------------------------------------
   const updatedVendor = await Vendor.findOneAndUpdate(
     { userId: existingVendor.userId },
-    payload,
+    { $set: payload },
     { new: true }
   );
+
+  if (!updatedVendor) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to update vendor.'
+    );
+  }
+
   return updatedVendor;
 };
 
@@ -67,6 +87,13 @@ const vendorDocImageUpload = async (
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  if (existingVendor?.isUpdateLocked) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Vendor update is locked. Please contact support.'
+    );
   }
 
   if (currentUser?.id !== existingVendor?.userId) {
@@ -121,13 +148,29 @@ const getSingleVendorFromDB = async (
   vendorId: string,
   currentUser: AuthUser
 ) => {
-  if (currentUser.role === 'VENDOR' && currentUser.id !== vendorId) {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const user = result.user;
+  if (user.role === 'VENDOR' && user.id !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this vendor!'
     );
   }
-  const existingVendor = await Vendor.findOne({ userId: vendorId });
+
+  let existingVendor;
+  if (user.role === 'VENDOR') {
+    existingVendor = await Vendor.findOne({
+      userId: user.userId,
+      isDeleted: false,
+    });
+  } else {
+    existingVendor = await Vendor.findOne({
+      userId: vendorId,
+    });
+  }
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
   }

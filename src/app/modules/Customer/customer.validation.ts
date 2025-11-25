@@ -1,18 +1,5 @@
 import { z } from 'zod';
-
-// ---------------------------------------------
-// Reusable Address Schema
-// ---------------------------------------------
-const addressSchema = z.object({
-  street: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-  postalCode: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  geoAccuracy: z.number().optional(),
-});
+import { addressSchema } from '../Admin/admin.validation';
 
 // ---------------------------------------------
 // Update Customer Data Validation Schema

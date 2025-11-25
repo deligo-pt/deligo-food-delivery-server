@@ -30,8 +30,6 @@ export const UrlPath = {
 export type AuthUser = {
   id: string;
   name: string;
-  email: string;
-  mobileNumber: string;
   role: keyof typeof USER_ROLE;
   status: keyof typeof USER_STATUS;
   iat: number;

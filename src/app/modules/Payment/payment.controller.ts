@@ -3,10 +3,11 @@ import { catchAsync } from '../../utils/catchAsync';
 import { PaymentServices } from './payment.service';
 import sendResponse from '../../utils/sendResponse';
 
-const createPaymentSessionController = catchAsync(async (req, res) => {
+// create stripe payment intent controller
+const createPaymentIntent = catchAsync(async (req, res) => {
   const { checkoutSummaryId } = req.body;
 
-  const session = await PaymentServices.createPaymentSession(checkoutSummaryId);
+  const session = await PaymentServices.createPaymentIntent(checkoutSummaryId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -17,5 +18,5 @@ const createPaymentSessionController = catchAsync(async (req, res) => {
 });
 
 export const PaymentController = {
-  createPaymentSessionController,
+  createPaymentIntent,
 };

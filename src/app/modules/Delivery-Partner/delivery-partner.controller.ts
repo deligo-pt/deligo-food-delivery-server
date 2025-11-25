@@ -7,12 +7,10 @@ import { AuthUser } from '../../constant/user.constant';
 // Delivery Partner Update Controller
 const updateDeliveryPartner = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
-  const profilePhoto = req.file?.path as string;
   const result = await DeliveryPartnerServices.updateDeliveryPartner(
     req.body,
     req.params.deliveryPartnerId,
-    currentUser,
-    profilePhoto
+    currentUser
   );
   sendResponse(res, {
     success: true,
