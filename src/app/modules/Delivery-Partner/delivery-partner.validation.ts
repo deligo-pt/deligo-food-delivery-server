@@ -1,18 +1,5 @@
 import { z } from 'zod';
-
-// ---------------------------------------------
-// Reusable Address Schema
-// ---------------------------------------------
-const addressSchema = z.object({
-  street: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-  postalCode: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  geoAccuracy: z.number().optional(),
-});
+import { addressSchema } from '../Admin/admin.validation';
 
 // ---------------------------------------------
 // Update Delivery Partner Data Validation Schema
@@ -21,7 +8,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
   body: z.object({
     profilePhoto: z.string().optional(),
 
-    // 1️⃣ Personal Information
+    // Personal Information
     personalInfo: z
       .object({
         name: z
@@ -46,7 +33,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
 
-    // 2️⃣ Right to Work / Legal Status
+    //  Right to Work / Legal Status
     legalStatus: z
       .object({
         residencePermitType: z.string().optional(),
@@ -55,7 +42,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
 
-    // 3️⃣ Banking Details
+    // Banking Details
     bankDetails: z
       .object({
         bankName: z.string().optional(),
@@ -65,7 +52,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
 
-    // 4️⃣ Vehicle Information
+    // Vehicle Information
     vehicleInfo: z
       .object({
         vehicleType: z
@@ -81,7 +68,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
 
-    // 5️⃣ Criminal Background
+    // Criminal Background
     criminalRecord: z
       .object({
         certificate: z.boolean().optional(),
@@ -89,7 +76,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
 
-    // 6️⃣ Work Preferences & Equipment
+    // Work Preferences & Equipment
     workPreferences: z
       .object({
         preferredZones: z.array(z.string()).optional(),
