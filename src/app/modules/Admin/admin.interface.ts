@@ -12,6 +12,7 @@ export type TAdmin = {
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;
+  isUpdateLocked: boolean;
 
   // Push notifications
   fcmTokens?: string[];

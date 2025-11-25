@@ -11,60 +11,96 @@ import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
+// update delivery partner profile service
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerId: string,
-  currentUser: AuthUser,
-  profilePhoto?: string
+  currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({
-    userId: currentUser?.id,
+  // ---------------------------------------------------------
+  // Validate logged-in user (exists & active)
+  // ---------------------------------------------------------
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
     isDeleted: false,
   });
 
+  const loggedInUser = result?.user;
+
+  if (!loggedInUser) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'User not found!');
+  }
+
+  // ---------------------------------------------------------
+  // Check if target delivery partner exists
+  // ---------------------------------------------------------
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
   });
+
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
-  if (currentUser?.role === 'DELIVERY_PARTNER') {
-    if (existingDeliveryPartner?.userId !== currentUser?.id) {
+
+  // ---------------------------------------------------------
+  // Check if update is locked
+  // ---------------------------------------------------------
+  if (existingDeliveryPartner.isUpdateLocked) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Delivery Partner update is locked. Please contact support.'
+    );
+  }
+
+  // ---------------------------------------------------------
+  // Authorization Logic
+  // ---------------------------------------------------------
+
+  // Delivery Partner updating their own profile
+  if (loggedInUser.role === 'DELIVERY_PARTNER') {
+    if (existingDeliveryPartner.userId !== loggedInUser?.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized for update'
+        'You are not authorized to update this profile.'
       );
     }
 
-    if (!existingDeliveryPartner?.isEmailVerified) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
+    if (!existingDeliveryPartner.isEmailVerified) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Please verify your email before updating your profile.'
+      );
     }
   }
-  if (currentUser?.id !== existingDeliveryPartner?.registeredBy) {
+
+  // Admin/SuperAdmin updating a partner they registered
+  if (
+    currentUser.role !== 'DELIVERY_PARTNER' &&
+    existingDeliveryPartner.registeredBy !== loggedInUser?.userId
+  ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized for update'
+      'You are not authorized to update this Delivery Partner.'
     );
   }
 
-  if (payload.profilePhoto) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Profile photo should be in file!'
-    );
-  }
-  if (profilePhoto) {
-    payload.profilePhoto = profilePhoto;
-  }
-
-  const updateDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
+  // ---------------------------------------------------------
+  // Update the delivery partner
+  // ---------------------------------------------------------
+  const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
     { userId: deliveryPartnerId },
-    payload,
-    {
-      new: true,
-    }
+    { $set: payload },
+    { new: true }
   );
-  return updateDeliveryPartner;
+
+  if (!updatedDeliveryPartner) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to update Delivery Partner.'
+    );
+  }
+
+  return updatedDeliveryPartner;
 };
 
 // update doc image

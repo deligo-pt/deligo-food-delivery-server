@@ -45,6 +45,10 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       type: Boolean,
       default: false,
     },
+    isUpdateLocked: {
+      type: Boolean,
+      default: false,
+    },
 
     // --------------------------------------------------------
     // Push Tokens

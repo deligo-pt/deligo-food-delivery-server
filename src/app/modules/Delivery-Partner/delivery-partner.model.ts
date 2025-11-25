@@ -47,6 +47,7 @@ const deliveryPartnerSchema = new Schema<
 
     isEmailVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    isUpdateLocked: { type: Boolean, default: false },
 
     //-------------------------------------------------
     // FCM Tokens

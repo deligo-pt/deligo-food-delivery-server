@@ -13,6 +13,7 @@ export type TFleetManager = {
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;
+  isUpdateLocked: boolean;
 
   // Push notifications
   fcmTokens?: string[];

@@ -3,8 +3,6 @@ import auth from '../../middlewares/auth';
 import { Router } from 'express';
 import { AdminControllers } from './admin.controller';
 import { AdminValidation } from './admin.validation';
-import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
 import { GlobalSettingControllers } from '../GlobalSetting/globalSetting.controller';
 
 const router = Router();
@@ -13,8 +11,6 @@ const router = Router();
 router.patch(
   '/:adminId',
   auth('ADMIN', 'SUPER_ADMIN'),
-  multerUpload.single('file'),
-  parseBody,
   validateRequest(AdminValidation.updateAdminDataValidationSchema),
   AdminControllers.updateAdmin
 );

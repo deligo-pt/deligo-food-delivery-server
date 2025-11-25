@@ -16,39 +16,70 @@ import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 const fleetManagerUpdate = async (
   fleetManagerId: string,
   payload: Partial<TFleetManager>,
-  currentUser: AuthUser,
-  profilePhoto?: string
+  currentUser: AuthUser
 ) => {
-  //   istFleetManagerExistsById
+  // ---------------------------------------------------------
+  // Find Fleet Manager
+  // ---------------------------------------------------------
   const existingFleetManager = await FleetManager.findOne({
     userId: fleetManagerId,
     isDeleted: false,
   });
+
   if (!existingFleetManager) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found.');
   }
 
-  if (currentUser?.id !== fleetManagerId) {
+  // ---------------------------------------------------------
+  // Only the Fleet Manager can update their own profile
+  // ---------------------------------------------------------
+  const isSelf =
+    currentUser.role === 'FLEET_MANAGER' &&
+    currentUser.id === existingFleetManager.userId;
+
+  if (!isSelf) {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You are not authorize to update!'
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this Fleet Manager.'
     );
   }
 
-  if (payload.profilePhoto) {
+  // ---------------------------------------------------------
+  // Ensure email is verified before self-update
+  // ---------------------------------------------------------
+  if (!existingFleetManager.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Profile photo should be in file!'
+      'Please verify your email before updating your profile.'
     );
   }
-  if (profilePhoto) {
-    payload.profilePhoto = profilePhoto;
+
+  // ---------------------------------------------------------
+  // Check if update is locked
+  // ---------------------------------------------------------
+  if (existingFleetManager.isUpdateLocked) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Fleet Manager update is locked. Please contact support.'
+    );
   }
+
+  // ---------------------------------------------------------
+  // Perform Update
+  // ---------------------------------------------------------
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
     { userId: fleetManagerId },
-    payload,
+    { $set: payload },
     { new: true }
   );
+
+  if (!updatedFleetManager) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to update Fleet Manager.'
+    );
+  }
+
   return updatedFleetManager;
 };
 

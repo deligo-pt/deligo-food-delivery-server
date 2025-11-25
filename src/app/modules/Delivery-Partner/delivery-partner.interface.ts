@@ -13,6 +13,7 @@ export type TDeliveryPartner = {
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;
+  isUpdateLocked: boolean;
 
   // FCM tokens
   fcmTokens?: string[];
