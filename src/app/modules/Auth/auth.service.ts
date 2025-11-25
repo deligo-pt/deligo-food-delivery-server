@@ -408,7 +408,15 @@ const forgotPassword = async (email: string) => {
 
   const token = await user.createPasswordResetToken();
 
-  const resetURL = `${config.frontend_url}/reset-password?token=${token}`;
+  let resetURL;
+
+  if (user?.role === 'ADMIN') {
+    resetURL = `${config.frontend_url_admin}/reset-password?token=${token}`;
+  } else if (user?.role === 'VENDOR') {
+    resetURL = `${config.frontend_url_vendor}/reset-password?token=${token}`;
+  } else if (user?.role === 'FLEET_MANAGER') {
+    resetURL = `${config.frontend_url_fleet_manager}/reset-password?token=${token}`;
+  }
 
   await user.save({ validateBeforeSave: false });
 
@@ -449,6 +457,10 @@ const resetPassword = async (
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+
+  if (user?.email !== email) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Email doesn't match");
   }
 
   if (user?.role === 'CUSTOMER') {

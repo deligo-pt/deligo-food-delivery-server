@@ -40,6 +40,7 @@ export type TCheckoutSummary = {
   deliveryAddress: TCheckoutAddress;
 
   paymentStatus?: 'pending' | 'paid' | 'failed';
+  paymentMethod?: 'CARD' | 'MOBILE';
   transactionId?: string; // Stripe PaymentIntent ID
   orderId?: string; // Linked Order ID
 

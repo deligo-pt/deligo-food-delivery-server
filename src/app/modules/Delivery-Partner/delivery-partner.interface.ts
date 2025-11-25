@@ -17,23 +17,37 @@ export type TDeliveryPartner = {
   // FCM tokens
   fcmTokens?: string[];
 
+  // ------------------------------------------------------
   // OTP & Password Reset
+  // ------------------------------------------------------
   otp?: string;
   isOtpExpired?: Date;
+  requiresOtpVerification?: boolean;
+
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
-
-  profilePhoto?: string;
   passwordChangedAt?: Date;
 
   // -------------------------------------------------
   // 1) Personal Information
   // -------------------------------------------------
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  contactNumber?: string;
+  profilePhoto?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    latitude?: number;
+    longitude?: number;
+    geoAccuracy?: number;
+  };
   personalInfo?: {
-    name?: {
-      firstName?: string;
-      lastName?: string;
-    };
     dateOfBirth?: Date;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     nationality?: string;
@@ -42,19 +56,6 @@ export type TDeliveryPartner = {
     citizenCardNumber?: string;
     passportNumber?: string;
     idExpiryDate?: Date;
-
-    address?: {
-      street?: string;
-      city?: string;
-      state?: string;
-      country?: string;
-      postalCode?: string;
-      latitude?: number;
-      longitude?: number;
-      geoAccuracy?: number;
-    };
-
-    contactNumber?: string;
   };
 
   // -------------------------------------------------

@@ -13,10 +13,9 @@ const app: Application = express();
 app.use(
   cors({
     origin: [
-      'https://fleet-managerdeligopt.vercel.app',
-      'https://super-admin-deligo-food-pt.vercel.app',
+      'https://admin-food-deligo-pt.vercel.app',
       'https://vendor-food-deligo-pt.vercel.app',
-      'http://localhost:5173',
+      'https://fleet-manager-food-deligo-pt.vercel.app',
     ],
     credentials: true,
   })

@@ -13,7 +13,6 @@ import { TCheckoutPayload } from './checkout.interface';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
-  console.log(currentUser);
   const customerId = currentUser?.id;
 
   // ---------- Find Customer ----------

@@ -145,8 +145,13 @@ const getSingleDeliveryPartnerFromDB = async (
   deliveryPartnerId: string,
   currentUser: AuthUser
 ) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const user = result?.user;
   if (
-    currentUser?.role === 'DELIVERY_PARTNER' &&
+    user?.role === 'DELIVERY_PARTNER' &&
     currentUser?.id !== deliveryPartnerId
   ) {
     throw new AppError(
@@ -155,16 +160,26 @@ const getSingleDeliveryPartnerFromDB = async (
     );
   }
 
-  const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userId: deliveryPartnerId,
-  });
+  let existingDeliveryPartner;
+
+  if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
+    existingDeliveryPartner = await DeliveryPartner.findOne({
+      userId: deliveryPartnerId,
+      isDeleted: false,
+    });
+  } else {
+    existingDeliveryPartner = await DeliveryPartner.findOne({
+      userId: deliveryPartnerId,
+    });
+  }
+
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
 
   if (
-    currentUser?.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner?.registeredBy !== currentUser?.id
+    user?.role === 'FLEET_MANAGER' &&
+    existingDeliveryPartner?.registeredBy !== user?.id
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,

@@ -5,6 +5,7 @@ import { TAdmin } from './admin.interface';
 import { Admin } from './admin.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
@@ -66,13 +67,18 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
 
 // get single admin service
 const getSingleAdmin = async (adminId: string, currentUser: AuthUser) => {
-  if (currentUser.role === 'ADMIN' && currentUser.id !== adminId) {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const user = result?.user;
+  if (user?.role === 'ADMIN' && user.id !== adminId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this admin!'
     );
   }
-  const existingAdmin = await Admin.findOne({ userId: adminId, role: 'ADMIN' });
+  const existingAdmin = await Admin.findOne({ userId: user?.userId });
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
   }

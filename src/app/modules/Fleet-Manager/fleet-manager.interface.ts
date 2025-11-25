@@ -25,6 +25,7 @@ export type TFleetManager = {
 
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
+  passwordChangedAt?: Date;
 
   // ---------------------------------------------
   // Personal Information
@@ -47,8 +48,6 @@ export type TFleetManager = {
     longitude?: number;
     geoAccuracy?: number;
   };
-
-  passwordChangedAt?: Date;
 
   // ---------------------------------------------
   // Business Details

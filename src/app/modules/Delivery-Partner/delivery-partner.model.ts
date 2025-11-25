@@ -61,15 +61,29 @@ const deliveryPartnerSchema = new Schema<
 
     passwordResetToken: { type: String },
     passwordResetTokenExpiresAt: { type: Date },
+    passwordChangedAt: { type: Date },
 
     //-------------------------------------------------
     // 1) Personal Information
     //-------------------------------------------------
+    name: {
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
+    },
+    contactNumber: { type: String, default: '' },
+    profilePhoto: { type: String, default: '' },
+    address: {
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      latitude: { type: Number },
+      longitude: { type: Number },
+      geoAccuracy: { type: Number },
+    },
+
     personalInfo: {
-      name: {
-        firstName: { type: String, default: '' },
-        lastName: { type: String, default: '' },
-      },
       dateOfBirth: { type: Date },
       gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'] },
       nationality: { type: String, default: '' },
@@ -78,23 +92,7 @@ const deliveryPartnerSchema = new Schema<
       citizenCardNumber: { type: String, default: '' },
       passportNumber: { type: String, default: '' },
       idExpiryDate: { type: Date },
-
-      address: {
-        street: { type: String, default: '' },
-        city: { type: String, default: '' },
-        state: { type: String, default: '' },
-        country: { type: String, default: '' },
-        postalCode: { type: String, default: '' },
-        latitude: { type: Number },
-        longitude: { type: Number },
-        geoAccuracy: { type: Number },
-      },
-
-      contactNumber: { type: String, default: '' },
     },
-
-    profilePhoto: { type: String, default: '' },
-    passwordChangedAt: { type: Date },
 
     //-------------------------------------------------
     // 2) Legal Status

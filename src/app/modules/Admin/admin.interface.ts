@@ -13,8 +13,21 @@ export type TAdmin = {
   isEmailVerified: boolean;
   isDeleted: boolean;
 
+  // Push notifications
+  fcmTokens?: string[];
+
+  // ------------------------------------------------------
+  // OTP & Password Reset
+  // ------------------------------------------------------
+  otp?: string;
+  isOtpExpired?: Date;
+
+  passwordResetToken?: string;
+  passwordResetTokenExpiresAt?: Date;
+  passwordChangedAt?: Date;
+
   // ------------------------------------------------------------------
-  // Personal Profile
+  // Personal Information
   // ------------------------------------------------------------------
   name?: {
     firstName?: string;
@@ -22,6 +35,7 @@ export type TAdmin = {
   };
 
   contactNumber?: string;
+  profilePhoto?: string;
 
   address?: {
     street?: string;
@@ -34,24 +48,11 @@ export type TAdmin = {
     geoAccuracy?: number;
   };
 
-  profilePhoto?: string;
-
   // ------------------------------------------------------------------
   // Security & Authentication
   // ------------------------------------------------------------------
-  passwordChangedAt?: Date;
   twoFactorEnabled?: boolean;
   loginDevices?: TLoginDevice[];
-
-  fcmTokens?: string[]; // Push notifications
-
-  // OTP
-  otp?: string;
-  isOtpExpired?: Date;
-
-  // Password reset
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
 
   // ------------------------------------------------------------------
   // Permissions & Role Controls

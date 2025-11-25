@@ -10,6 +10,7 @@ import {
 } from './fleet-manager.interface';
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -119,20 +120,30 @@ const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
   currentUser: AuthUser
 ) => {
-  if (
-    currentUser?.role === 'FLEET_MANAGER' &&
-    currentUser?.id !== fleetManagerId
-  ) {
+  const result = await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const user = result?.user;
+  if (user?.role === 'FLEET_MANAGER' && user?.id !== fleetManagerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this fleet manager!'
     );
   }
+  let existingFleetManager;
 
-  const existingFleetManager = await FleetManager.findOne({
-    userId: fleetManagerId,
-    isDeleted: false,
-  });
+  if (user?.role === 'FLEET_MANAGER') {
+    existingFleetManager = await FleetManager.findOne({
+      userId: user?.userId,
+      isDeleted: false,
+    });
+  } else {
+    existingFleetManager = await FleetManager.findOne({
+      userId: fleetManagerId,
+    });
+  }
+
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
   }

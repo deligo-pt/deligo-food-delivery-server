@@ -45,6 +45,11 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       default: 'pending',
     },
 
+    paymentMethod: {
+      type: String,
+      enum: ['CARD', 'MOBILE'],
+    },
+
     transactionId: { type: String, default: undefined },
 
     orderId: { type: String, default: undefined },

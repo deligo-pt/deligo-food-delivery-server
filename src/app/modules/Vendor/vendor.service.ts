@@ -8,6 +8,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { BusinessCategory } from '../Category/category.model';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Vendor Update Service
 const vendorUpdate = async (
@@ -121,13 +122,29 @@ const getSingleVendorFromDB = async (
   vendorId: string,
   currentUser: AuthUser
 ) => {
-  if (currentUser.role === 'VENDOR' && currentUser.id !== vendorId) {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const user = result.user;
+  if (user.role === 'VENDOR' && user.id !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this vendor!'
     );
   }
-  const existingVendor = await Vendor.findOne({ userId: vendorId });
+
+  let existingVendor;
+  if (user.role === 'VENDOR') {
+    existingVendor = await Vendor.findOne({
+      userId: user.userId,
+      isDeleted: false,
+    });
+  } else {
+    existingVendor = await Vendor.findOne({
+      userId: vendorId,
+    });
+  }
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
   }

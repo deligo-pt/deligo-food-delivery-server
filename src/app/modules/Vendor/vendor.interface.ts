@@ -14,17 +14,6 @@ export type TVendor = {
   isEmailVerified: boolean;
   isDeleted: boolean;
 
-  // --------------------------------------------------------
-  // Rating & Activity
-  // --------------------------------------------------------
-  rating?: {
-    average: number;
-    totalReviews: number;
-  };
-
-  totalOrders?: number;
-  lastLoginAt?: Date;
-
   // Push notifications
   fcmTokens?: string[];
 
@@ -36,6 +25,7 @@ export type TVendor = {
 
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
+  passwordChangedAt?: Date;
 
   // --------------------------------------------------------
   // Personal Information
@@ -58,8 +48,6 @@ export type TVendor = {
     longitude?: number;
     geoAccuracy?: number;
   };
-
-  passwordChangedAt?: Date;
 
   // --------------------------------------------------------
   // Business Details
@@ -116,6 +104,17 @@ export type TVendor = {
   // --------------------------------------------------------
   twoFactorEnabled?: boolean;
   loginDevices?: TLoginDevice[];
+
+  // --------------------------------------------------------
+  // Rating & Activity
+  // --------------------------------------------------------
+  rating?: {
+    average: number;
+    totalReviews: number;
+  };
+
+  totalOrders?: number;
+  lastLoginAt?: Date;
 
   // --------------------------------------------------------
   // Admin Workflow / Audit
