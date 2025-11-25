@@ -4,57 +4,151 @@
   <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+
     <style>
-      body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin:
-      0; padding: 0; } .container { width: 100%; max-width: 600px; margin: 0
-      auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); } .header { background-color:
-      #DC3173; color: #ffffff; padding: 20px; text-align: center; } .content {
-      padding: 20px; } .user-name { font-weight: bold; font-style: italic; }
-      .author { font-style: italic; font-weight: bold; } .footer {
-      background-color: #f1f1f1; color: #555555; text-align: center; padding:
-      10px; font-size: 14px; } .remarks { margin-top: 15px; margin-bottom: 15px;
-      text-align: center; color: #DC3173; font-style: italic; }
+      body { margin: 0; padding: 0; background: #f3f4fa; font-family: monospace;
+      font-weight: 600; } .container { max-width: 650px; margin: 0 auto;
+      background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0
+      8px 30px rgba(0, 0, 0, 0.07); } /* HEADER */ .header { background:
+      linear-gradient(135deg, #dc3173, #a80e52); padding: 22px 30px; display:
+      flex; justify-content: space-between; align-items: center; } .header-left
+      { display: flex; align-items: center; gap: 12px; } .header-left img {
+      width: 70px; height: auto; display: block; } .header-date { color:
+      #ffffff; font-size: 15px; white-space: nowrap; } /* BODY */ .middle {
+      background: #fae0ea; } /* TITLE */ .title { text-align: center; font-size:
+      28px; font-weight: bold; padding: 25px 0 15px; color: #1e1e1e; } /*
+      CONTENT */ .content { padding: 0 30px 25px 30px; font-size: 17px; color:
+      #333333; line-height: 1.7; } /* QUOTATION STYLE REMARKS */ .remarks-box {
+      font-style: italic; background: #fff; padding: 18px 20px; border-left: 4px
+      solid #dc3173; margin: 18px 0; border-radius: 6px; color: #444;
+      line-height: 1.7; text-align: left; font-weight: bold;} /* SOCIAL ICONS */
+      .social-section { text-align: center; padding: 20px 0; background:
+      #fae0ea; } .social-section img { width: 34px; margin: 0 10px; } /* FOOTER
+      */ .footer { font-size: 14px; text-align: center; color: #666; padding:
+      15px 30px 25px 30px; border-top: 1px solid #e4e4e4; background: #fae0ea; }
+      @media only screen and (max-width: 480px) { .header { flex-direction:
+      column; gap: 6px; } .header-left { justify-content: center; } .header-left
+      img { width: 40px !important; } .content { padding: 0 20px 25px 20px; }
+      .footer { padding: 10px 20px 20px 20px; } }
     </style>
   </head>
+
   <body>
+    <br />
+
     <div class='container'>
+      <!-- HEADER -->
       <div class='header'>
-        <h1>DeliGo {{userRole}} Application Update</h1>
+        <table
+          width='100%'
+          cellspacing='0'
+          cellpadding='0'
+          style='border-collapse: collapse;'
+        >
+          <tr>
+            <td align='left' style='padding: 0;'>
+              <div class='header-left'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763599290/DeliGo-White_cfd6my.png'
+                  alt='DeliGo Logo'
+                />
+              </div>
+            </td>
+
+            <td align='right' style='padding: 0;'>
+              <div class='header-date'>{{date}}</div>
+            </td>
+          </tr>
+        </table>
       </div>
-      <div class='content'>
-        <p>Dear <span class='user-name'>{{userName}}</span>,</p>
-        <p>
-          We are pleased to inform you that your application to become a vendor
-          with DeliGo has been
+
+      <!-- MAIN BODY -->
+      <div class='middle'>
+        <div class='title'>DeliGo {{userRole}} Application Update</div>
+
+        <div class='content'>
+          <strong>Dear {{userName}},</strong>
+          <br /><br />
+
+          We are pleased to inform you that your application to become a
+          <strong>{{userRole}}</strong>
+          has been
           <strong>{{#if isApproved}}approved{{else}}rejected{{/if}}</strong>.
-        </p>
-        {{#if isApproved}}
-          <p>
-            <div class='remarks'>Remarks: {{remarks}}</div>
-          </p>
-        {{else}}
-          <p>
+          <br /><br />
+
+          {{#if isApproved}}
+            <!-- APPROVED REMARKS -->
+            <div class='remarks-box'>
+              “Remarks:
+              {{remarks}}”
+            </div>
+
+          {{else}}
+            <!-- REJECTED MESSAGE -->
             We regret to inform you that your application did not meet our
             criteria at this time.
+
             {{#if remarks}}
-              <div class='remarks'>Remarks: {{remarks}}</div>
+              <div class='remarks-box'>
+                “Remarks:
+                {{remarks}}”
+              </div>
             {{/if}}
-            Please feel free to reach out to our support team for more
-            information or to discuss potential next steps.
-          </p>
-        {{/if}}
-        <p>Thank you for your interest in partnering with DeliGo!</p>
-        <div>
-          <p>Sincerely,</p>
-          <p class='author'>The DeliGo Team</p>
+
+            Please feel free to reach out to our support team for further
+            details.
+            <br /><br />
+          {{/if}}
+
+          Thank you for your interest in partnering with DeliGo!
+          <br /><br />
+
+          Regards,<br />
+          <strong>The DeliGo Team</strong>
         </div>
       </div>
+
+      <!-- SOCIAL ICONS -->
+      <div class='social-section'>
+        <a href='https://www.facebook.com/deligoeu' target='_blank'>
+          <img
+            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/facebook_pcla1y.png'
+            alt='Facebook'
+          />
+        </a>
+        <a href='https://www.youtube.com/@DeliGoPT' target='_blank'>
+          <img
+            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/youtube_f3hzep.png'
+            alt='Youtube'
+          />
+        </a>
+        <a href='https://www.linkedin.com/in/deligopt' target='_blank'>
+          <img
+            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/linkedin_bhmzdk.png'
+            alt='LinkedIn'
+          />
+        </a>
+        <a href='https://www.instagram.com/deligo.pt/#' target='_blank'>
+          <img
+            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520443/instagram_lwmdxa.png'
+            alt='Instagram'
+          />
+        </a>
+      </div>
+
+      <!-- FOOTER -->
       <div class='footer'>
-        &copy;
-        {{currentYear}}
-        DeliGo. All rights reserved.
+        Website: https://deligo.pt
+        <span style='margin: 0 4px;'>|</span>
+        Phone: +351 920 136 680
+        <br />
+        Address: Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal
+        <div>
+          <p>&copy; {{currentYear}} DeliGo. All rights reserved.</p>
+        </div>
       </div>
     </div>
+
+    <br />
   </body>
 </html>
