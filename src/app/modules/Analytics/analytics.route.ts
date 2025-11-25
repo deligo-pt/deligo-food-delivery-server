@@ -11,6 +11,7 @@ router.get(
   AnalyticsControllers.overview
 );
 
+// analytics monthly orders route
 router.get(
   '/monthly-orders',
   auth('ADMIN', 'SUPER_ADMIN'),
