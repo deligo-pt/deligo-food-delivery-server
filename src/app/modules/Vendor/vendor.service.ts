@@ -153,7 +153,7 @@ const getSingleVendorFromDB = async (
     isDeleted: false,
   });
   const user = result.user;
-  if (user.role === 'VENDOR' && user.id !== vendorId) {
+  if (user.role === 'VENDOR' && user.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this vendor!'
