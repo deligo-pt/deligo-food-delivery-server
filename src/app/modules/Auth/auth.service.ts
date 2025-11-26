@@ -371,7 +371,7 @@ const changePassword = async (
 
   await model.findOneAndUpdate(
     {
-      email: currentUser.email,
+      userId: currentUser.id,
       role: currentUser.role,
     },
     {
@@ -426,6 +426,7 @@ const forgotPassword = async (email: string) => {
       resetPasswordLink: resetURL,
       userName: user?.name?.firstName || 'User',
       currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
     },
     'reset-password'
   );
@@ -622,6 +623,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
       userId: existingUser.userId,
       currentYear: new Date().getFullYear(),
       userRole: existingUser.role,
+      date: new Date().toDateString(),
     },
     'user-approval-submission-notification'
   );
@@ -698,6 +700,7 @@ const approvedOrRejectedUser = async (
     userRole: existingUser.role,
     currentYear: new Date().getFullYear(),
     remarks: existingUser.remarks || '',
+    date: new Date().toDateString(),
     isApproved: payload.status === 'APPROVED',
   };
 

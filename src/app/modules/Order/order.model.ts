@@ -99,14 +99,14 @@ const orderSchema = new Schema<TOrder>(
 );
 
 // --- Pre-save hook: auto-generate orderId & recalculate finalAmount ---
-orderSchema.pre('save', function (next) {
-  const total = this.totalPrice || 0;
-  const discount = this.discount || 0;
+// orderSchema.pre('save', function (next) {
+//   const total = this.totalPrice || 0;
+//   const discount = this.discount || 0;
 
-  // Calculate final amount
-  this.finalAmount = parseFloat((total - (total * discount) / 100).toFixed(2));
+//   // Calculate final amount
+//   this.finalAmount = parseFloat((total - (total * discount) / 100).toFixed(2));
 
-  next();
-});
+//   next();
+// });
 
 export const Order = model<TOrder>('Order', orderSchema);

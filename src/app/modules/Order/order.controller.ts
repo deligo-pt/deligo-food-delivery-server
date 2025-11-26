@@ -18,22 +18,6 @@ const createOrderAfterPayment = catchAsync(async (req, res) => {
   });
 });
 
-// order by vendor controller
-const getOrdersByVendor = catchAsync(async (req, res) => {
-  const result = await OrderServices.getOrdersByVendor(
-    req.user?.id as string,
-    req.query
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Orders retrieved successfully',
-    meta: result?.meta,
-    data: result?.data,
-  });
-});
-
 // get all orders
 const getAllOrders = catchAsync(async (req, res) => {
   const result = await OrderServices.getAllOrders(
@@ -98,7 +82,6 @@ const assignDeliveryPartner = catchAsync(async (req, res) => {
 
 export const OrderControllers = {
   createOrderAfterPayment,
-  getOrdersByVendor,
   getAllOrders,
   getSingleOrder,
   acceptOrRejectOrderByVendor,

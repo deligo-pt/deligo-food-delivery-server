@@ -4,12 +4,14 @@ import auth from '../../middlewares/auth';
 
 const router = Router();
 
+// analytics overview route
 router.get(
   '/overview',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.overview
 );
 
+// analytics monthly orders route
 router.get(
   '/monthly-orders',
   auth('ADMIN', 'SUPER_ADMIN'),
