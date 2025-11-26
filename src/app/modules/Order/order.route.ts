@@ -9,17 +9,14 @@ const router = Router();
 // Create order
 router.post(
   '/create-order',
-  // auth('CUSTOMER'),
+  auth('CUSTOMER'),
   OrderControllers.createOrderAfterPayment
 );
 
-// Get orders by vendor
-router.get('/vendor', auth('VENDOR'), OrderControllers.getOrdersByVendor);
-
-// Get all orders (admin)
+// Get all orders
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'VENDOR', 'CUSTOMER'),
   OrderControllers.getAllOrders
 );
 

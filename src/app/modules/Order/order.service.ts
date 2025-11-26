@@ -10,6 +10,7 @@ import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { stripe } from '../Payment/payment.service';
 import { Cart } from '../Cart/cart.model';
+import { Product } from '../Product/product.model';
 
 const createOrderAfterPayment = async (
   payload: {
@@ -18,7 +19,7 @@ const createOrderAfterPayment = async (
   },
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  await findUserByEmailOrId({ userId: currentUser?.id, isDeleted: false });
   const { checkoutSummaryId, paymentIntentId } = payload;
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
@@ -34,7 +35,6 @@ const createOrderAfterPayment = async (
   }
 
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-  console.log(paymentIntent);
 
   if (paymentIntent.status !== 'succeeded') {
     throw new AppError(
@@ -42,6 +42,39 @@ const createOrderAfterPayment = async (
       'Payment is not successful. Order cannot be created.'
     );
   }
+  console.log(summary.items);
+
+  // --------------------------------------------------------------
+  // Reduce Product Stock
+  // --------------------------------------------------------------
+  const stockOperations = summary.items.map((item) => ({
+    updateOne: {
+      filter: { productId: item.productId },
+      update: {
+        $inc: { 'stock.quantity': -item.quantity },
+      },
+    },
+  }));
+
+  await Product.bulkWrite(stockOperations);
+
+  // --------------------------------------------------------------
+  // Clear Purchased Items from Cart
+  // --------------------------------------------------------------
+  await Cart.updateOne(
+    { customerId: summary.customerId },
+    {
+      $pull: {
+        items: {
+          productId: { $in: summary.items.map((i) => i.productId) },
+        },
+      },
+      $inc: {
+        totalItems: -summary.totalItems,
+        totalPrice: -summary.totalPrice,
+      },
+    }
+  );
 
   const orderData = {
     orderId: `ORD-${Date.now()}`,
@@ -81,32 +114,7 @@ const createOrderAfterPayment = async (
 
   await summary.save();
 
-  // Clear cart
-  await Cart.findOneAndUpdate(
-    { customerId: summary.customerId },
-    { $set: { items: [] } }
-  );
-
   return order;
-};
-
-//  order by vendor service
-const getOrdersByVendor = async (
-  vendorId: string,
-  query: Record<string, unknown>
-) => {
-  const orders = new QueryBuilder(Order.find({ vendorId }), query)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .search(OrderSearchableFields);
-  const meta = await orders.countTotal();
-  const data = await orders.modelQuery;
-  return {
-    meta,
-    data,
-  };
 };
 
 // get all order service
@@ -114,20 +122,28 @@ const getAllOrders = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
 
-  const existingUser = existingCurrentUser.user;
-  if (existingUser.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view orders. Your account is ${existingUser.status}`
+      `You are not approved to view orders. Your account is ${loggedInUser.status}`
     );
   }
-  if (existingCurrentUser.user.role === 'DELIVERY_PARTNER') {
+  if (loggedInUser.role === 'DELIVERY_PARTNER') {
     query.orderStatus = 'ACCEPTED';
+  }
+
+  if (loggedInUser.role === 'VENDOR') {
+    query.vendorId = loggedInUser.userId;
+  }
+
+  if (loggedInUser.role === 'CUSTOMER') {
+    query.customerId = loggedInUser.userId;
   }
 
   const orders = new QueryBuilder(Order.find(), query)
@@ -147,24 +163,26 @@ const getAllOrders = async (
 
 // get single order for customer service
 const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to view the order. Your account is ${loggedInUser.status}`
     );
   }
 
   let order;
-  const userId = currentUser.id;
-  if (existingCurrentUser?.user?.role === 'CUSTOMER') {
+  const userId = loggedInUser.userId;
+  if (loggedInUser?.role === 'CUSTOMER') {
     order = await Order.findOne({ orderId, customerId: userId });
-  } else if (existingCurrentUser?.user?.role === 'VENDOR') {
+  } else if (loggedInUser?.role === 'VENDOR') {
     order = await Order.findOne({ orderId, vendorId: userId });
-  } else if (existingCurrentUser?.user?.role === 'DELIVERY_PARTNER') {
+  } else if (loggedInUser?.role === 'DELIVERY_PARTNER') {
     order = await Order.findOne({ orderId, deliveryPartnerId: userId });
   } else {
     order = await Order.findOne({ orderId });
@@ -193,7 +211,11 @@ const acceptOrRejectOrderByVendor = async (
     );
   }
 
-  const order = await Order.findOne({ orderId, isDeleted: false });
+  const order = await Order.findOne({
+    orderId,
+    vendorId: existingVendor.userId,
+    isDeleted: false,
+  });
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
   }
@@ -309,7 +331,6 @@ const updateOrderStatus = async (
 
 export const OrderServices = {
   createOrderAfterPayment,
-  getOrdersByVendor,
   getAllOrders,
   getSingleOrder,
   acceptOrRejectOrderByVendor,
