@@ -33,6 +33,9 @@ export type TProduct = {
     vendorId: string;
     vendorName: string;
     vendorType: string;
+    storePhoto: string;
+    latitude: number;
+    longitude: number;
     rating?: number;
   };
 
