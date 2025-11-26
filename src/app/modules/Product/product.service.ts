@@ -39,6 +39,9 @@ const createProduct = async (
     vendorId: existingUser?.userId,
     vendorName: existingUser?.businessDetails?.businessName || '',
     vendorType: vendorCategory || '',
+    storePhoto: existingUser?.documents?.storePhoto || '',
+    latitude: existingUser?.businessLocation?.latitude || 0,
+    longitude: existingUser?.businessLocation?.longitude || 0,
     rating: existingUser?.rating?.average || 0,
   };
 
