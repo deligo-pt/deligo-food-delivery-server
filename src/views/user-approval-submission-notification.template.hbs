@@ -7,29 +7,33 @@
 
     <style>
       body { margin: 0; padding: 0; background: #f3f4fa; font-family: monospace;
-      font-weight: 600; } .container { max-width: 650px; margin: 0 auto;
-      background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0
-      8px 30px rgba(0, 0, 0, 0.07); } /* HEADER */ .header { background:
-      linear-gradient(135deg, #dc3173, #a80e52); padding: 22px 30px; display:
-      flex; justify-content: space-between; align-items: center; } .header-left
-      { display: flex; align-items: center; gap: 12px; } .header-left img {
-      width: 70px; height: auto; display: block; } .header-date { color:
-      #ffffff; font-size: 15px; white-space: nowrap; } /* MIDDLE SECTION */
-      .middle { background: #fae0ea; } /* TITLE */ .title { text-align: center;
-      font-size: 28px; font-weight: bold; padding: 25px 0 15px; color: #1e1e1e;
-      } /* QUOTATION STYLE MAIN TEXT */ .main-text { font-style: italic;
-      background: #fff; padding: 18px 20px; border-left: 4px solid #dc3173;
-      margin: 18px 0; border-radius: 6px; color: #444; line-height: 1.7; } /*
-      CONTENT */ .content { padding: 0 30px 25px 30px; font-size: 17px; color:
-      #333333; line-height: 1.7; } /* SOCIAL ICONS */ .social-section {
-      text-align: center; padding: 20px 0; background: #fae0ea; }
-      .social-section img { width: 34px; margin: 0 10px; } /* FOOTER */ .footer
-      { font-size: 14px; text-align: center; color: #666; padding: 15px 30px
-      25px 30px; border-top: 1px solid #e4e4e4; background: #fae0ea; } @media
-      only screen and (max-width: 480px) { .header { flex-direction: column;
-      gap: 6px; } .header-left { justify-content: center; } .header-left img {
-      width: 40px !important; } .content { padding: 0 20px 25px 20px; } .footer
-      { padding: 10px 20px 20px 20px; } }
+      font-weight: 600; } img { max-width: 100%; display: block; } .container {
+      max-width: 650px; margin: 0 auto; background: #ffffff; border-radius:
+      18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07); } /*
+      HEADER */ .header { background: linear-gradient(135deg, #dc3173, #a80e52);
+      padding: 22px 30px; display: flex; justify-content: space-between;
+      align-items: center; } .header-left { display: flex; align-items: center;
+      gap: 12px; } .header-left img { width: 70px; height: auto; } .header-date
+      { color: #ffffff; font-size: 15px; white-space: nowrap; } /* MIDDLE
+      SECTION */ .middle { background: #fae0ea; } /* TITLE */ .title {
+      text-align: center; font-size: 24px; font-weight: bold; padding: 25px 0
+      15px; color: #1e1e1e; } /* QUOTATION TEXT */ .main-text { font-style:
+      italic; background: #fff; padding: 18px 20px; border-left: 4px solid
+      #dc3173; margin: 18px 0; border-radius: 6px; color: #444; line-height:
+      1.7; } /* CONTENT */ .content { padding: 0 30px 25px 30px; font-size:
+      17px; color: #333333; line-height: 1.7; } /* SOCIAL ICONS */
+      .social-section { text-align: center; padding: 20px 0; background:
+      #fae0ea; } .social-section img { width: 34px; margin: 0 10px; } /* FOOTER
+      */ .footer { font-size: 14px; text-align: center; color: #666; padding:
+      15px 30px 25px 30px; border-top: 1px solid #e4e4e4; background: #fae0ea; }
+      /* RESPONSIVE */ @media only screen and (max-width: 480px) { .header {
+      flex-direction: column; gap: 6px; text-align: center; } .header-left {
+      justify-content: center; } .header-left img { width: 42px !important; }
+      .header-date { width: 100%; text-align: center; margin-top: 4px; } .title
+      { font-size: 22px !important; padding: 22px 0 12px; } .main-text {
+      font-size: 15px !important; padding: 16px; } .content { padding: 0 20px
+      25px 20px; font-size: 16px !important; } .social-section img { width:
+      30px; margin: 0 6px; } .footer { padding: 10px 20px 20px 20px; } }
     </style>
   </head>
 
@@ -76,7 +80,7 @@
           <strong>{{userRole}}</strong>
           with DeliGo.
 
-          <!-- MAIN TEXT AS QUOTATION -->
+          <!-- MAIN TEXT -->
           <div class='main-text'>
             “Our team is currently reviewing your information. You will be
             notified once the review process is complete. If additional details
@@ -93,30 +97,55 @@
 
       <!-- SOCIAL ICONS -->
       <div class='social-section'>
-        <a href='https://www.facebook.com/deligoeu' target='_blank'>
-          <img
-            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/facebook_pcla1y.png'
-            alt='Facebook'
-          />
-        </a>
-        <a href='https://www.youtube.com/@DeliGoPT' target='_blank'>
-          <img
-            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/youtube_f3hzep.png'
-            alt='Youtube'
-          />
-        </a>
-        <a href='https://www.linkedin.com/in/deligopt' target='_blank'>
-          <img
-            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/linkedin_bhmzdk.png'
-            alt='LinkedIn'
-          />
-        </a>
-        <a href='https://www.instagram.com/deligo.pt/#' target='_blank'>
-          <img
-            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520443/instagram_lwmdxa.png'
-            alt='Instagram'
-          />
-        </a>
+        <table
+          role='presentation'
+          cellspacing='0'
+          cellpadding='0'
+          border='0'
+          align='center'
+        >
+          <tr>
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.facebook.com/deligoeu' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/facebook_pcla1y.png'
+                  alt='Facebook'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.youtube.com/@DeliGoPT' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/youtube_f3hzep.png'
+                  alt='Youtube'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.linkedin.com/in/deligopt' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/linkedin_bhmzdk.png'
+                  alt='LinkedIn'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.instagram.com/deligo.pt/#' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520443/instagram_lwmdxa.png'
+                  alt='Instagram'
+                  width='34'
+                />
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
 
       <!-- FOOTER -->

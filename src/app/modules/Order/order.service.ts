@@ -4,8 +4,11 @@ import AppError from '../../errors/AppError';
 import { Order } from './order.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
-import { ORDER_STATUS, OrderSearchableFields } from './order.constant';
-import { Vendor } from '../Vendor/vendor.model';
+import {
+  BLOCKED_FOR_ORDER_CANCEL,
+  ORDER_STATUS,
+  OrderSearchableFields,
+} from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { stripe } from '../Payment/payment.service';
@@ -199,28 +202,66 @@ const acceptOrRejectOrderByVendor = async (
   orderId: string,
   action: { type: 'ACCEPTED' | 'REJECTED' }
 ) => {
-  const existingVendor = await Vendor.findOne({
+  // ---------------------------------------------------------
+  // Ensure current user is an approved vendor
+  // ---------------------------------------------------------
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
-    status: 'APPROVED',
   });
-  if (!existingVendor) {
+
+  const loggedInUser = result.user;
+
+  if (!loggedInUser) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to accept or reject orders. Please ensure your vendor profile is approved.'
+      'You are not authorized to accept or reject orders.'
     );
   }
 
-  const order = await Order.findOne({
-    orderId,
-    vendorId: existingVendor.userId,
-    isDeleted: false,
-  });
-  if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to accept or reject orders. Your account is ${loggedInUser.status}`
+    );
   }
 
-  // only paid and pending orders can be accepted or rejected
+  // ---------------------------------------------------------
+  // Find the order for this vendor
+  // ---------------------------------------------------------
+
+  let order;
+  if (loggedInUser.role === 'VENDOR') {
+    order = await Order.findOne({
+      orderId,
+      vendorId: loggedInUser.userId,
+      isDeleted: false,
+    });
+  } else {
+    order = await Order.findOne({ orderId });
+  }
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+  }
+
+  // ---------------------------------------------------------
+  // Prevent vendor from accepting/rejecting an order that is already assigned, picked up, on the way, or delivered
+  // ---------------------------------------------------------
+  if (
+    loggedInUser.role === 'VENDOR' &&
+    action.type === 'REJECTED' &&
+    BLOCKED_FOR_ORDER_CANCEL.some((status) => order.orderStatus === status)
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Cannot cancel an order that is already assigned, picked up, on the way, or delivered. Please contact support if you need to cancel the order'
+    );
+  }
+
+  // ---------------------------------------------------------
+  // Only paid orders can be processed
+  // ---------------------------------------------------------
   if (!order.isPaid) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -228,42 +269,68 @@ const acceptOrRejectOrderByVendor = async (
     );
   }
 
+  // ---------------------------------------------------------
+  // Prevent duplicate status
+  // ---------------------------------------------------------
   if (action.type === order.orderStatus) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Order is already ${action.type}.`
+      `Order is already ${action.type.toLowerCase()}.`
     );
   }
-  if (order.orderStatus !== 'PENDING') {
+
+  // ---------------------------------------------------------
+  // Only pending orders are allowed to be accepted/rejected
+  // ---------------------------------------------------------
+  if (
+    loggedInUser.role === 'VENDOR' &&
+    action.type === 'ACCEPTED' &&
+    order.orderStatus !== 'PENDING'
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Only pending orders can be accepted or rejected.'
+      'Only pending orders can be accepted.'
     );
   }
 
+  // ---------------------------------------------------------
+  // If ACCEPTED → set pickup address from vendor location
+  // ---------------------------------------------------------
   if (action.type === 'ACCEPTED') {
+    if (!loggedInUser.businessLocation) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Vendor business location is missing. Please update your business location before accepting orders.'
+      );
+    }
+
     order.pickupAddress = {
-      street: existingVendor.businessLocation?.street || '',
-      city: existingVendor.businessLocation?.city || '',
-      state: existingVendor.businessLocation?.state || '',
-      country: existingVendor.businessLocation?.country || '',
-      postalCode: existingVendor?.businessLocation?.postalCode || '',
-      latitude: existingVendor.businessLocation?.latitude,
-      longitude: existingVendor.businessLocation?.longitude,
-      geoAccuracy: existingVendor.businessLocation?.geoAccuracy,
+      street: loggedInUser.businessLocation.street || '',
+      city: loggedInUser.businessLocation.city || '',
+      state: loggedInUser.businessLocation.state || '',
+      country: loggedInUser.businessLocation.country || '',
+      postalCode: loggedInUser.businessLocation.postalCode || '',
+      latitude: loggedInUser.businessLocation.latitude,
+      longitude: loggedInUser.businessLocation.longitude,
+      geoAccuracy: loggedInUser.businessLocation.geoAccuracy,
     };
-    await order.save();
   }
 
-  // send notification to customer about order status update
+  // ---------------------------------------------------------
+  // Update order status & save
+  // ---------------------------------------------------------
+  order.orderStatus = action.type;
+  await order.save();
 
-  const result = await Order.findOneAndUpdate(
-    { orderId },
-    { orderStatus: action.type },
-    { new: true }
-  );
+  // ---------------------------------------------------------
+  // TODO: send notification to customer about status change
+  // ---------------------------------------------------------
 
-  return result;
+  // ---------------------------------------------------------
+  // TODO: send notification to delivery partner about status change
+  // ---------------------------------------------------------
+
+  return order;
 };
 
 // assigned delivery partner service

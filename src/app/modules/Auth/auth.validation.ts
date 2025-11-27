@@ -84,7 +84,11 @@ const refreshTokenValidationSchema = z.object({
 // Approve or Reject User Validation Schema
 const approvedOrRejectedUserValidationSchema = z.object({
   body: z.object({
-    status: z.nativeEnum(USER_STATUS),
+    status: z.enum([
+      USER_STATUS.APPROVED,
+      USER_STATUS.REJECTED,
+      USER_STATUS.BLOCKED,
+    ]),
     approvedBy: z.string().optional(),
     rejectedBy: z.string().optional(),
     remarks: z.string().optional(),

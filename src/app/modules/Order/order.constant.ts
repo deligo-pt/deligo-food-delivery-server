@@ -9,6 +9,14 @@ export const ORDER_STATUS = {
   CANCELED: 'CANCELED', // canceled (vendor/customer/admin)
 } as const;
 
+export const BLOCKED_FOR_ORDER_CANCEL = [
+  'ASSIGNED',
+  'PICKED_UP',
+  'ON_THE_WAY',
+  'DELIVERED',
+  'DELIVERED',
+] as const;
+
 export const OrderSearchableFields = [
   'orderId',
   'customerId',

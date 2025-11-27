@@ -579,6 +579,12 @@ const refreshToken = async (token: string) => {
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
+  if (currentUser?.role === 'DELIVERY_PARTNER') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You can't submit approval request."
+    );
+  }
 
   if (existingUser?.status === 'SUBMITTED') {
     throw new AppError(
@@ -614,6 +620,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
 
   existingUser.status = 'SUBMITTED';
   existingUser.submittedForApprovalAt = new Date();
+  existingUser.isUpdateLocked = true;
   await existingUser.save();
 
   // Prepare & send email to admin for user approval
@@ -681,6 +688,7 @@ const approvedOrRejectedUser = async (
       );
     }
     existingUser.remarks = payload.remarks;
+    existingUser.isUpdateLocked = false;
   } else if (payload.status === 'BLOCKED') {
     existingUser.blockedBy = currentUser.id;
     existingUser.approvedOrRejectedOrBlockedAt = new Date();

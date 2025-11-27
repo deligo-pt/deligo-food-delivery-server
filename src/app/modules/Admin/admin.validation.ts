@@ -33,7 +33,6 @@ const updateAdminDataValidationSchema = z.object({
       .optional(),
 
     contactNumber: z.string().optional(),
-    profilePhoto: z.string().optional(),
 
     // Address Details
     address: addressSchema.optional(),

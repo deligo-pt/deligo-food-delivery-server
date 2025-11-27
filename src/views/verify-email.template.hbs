@@ -5,35 +5,32 @@
 
     <style>
       body { margin: 0; padding: 0; background: #f3f4fa; font-family: monospace;
-      font-weight: 600;} .container { max-width: 650px; margin: 0 auto;
-      background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0
-      8px 30px rgba(0, 0, 0, 0.07); } /* ============ HEADER ============ */
-      .header { background: linear-gradient(135deg, #dc3173, #a80e52); padding:
-      22px 30px; display: flex; justify-content: space-between; align-items:
-      center; } .header-left { display: flex; align-items: center; gap: 12px; }
-      .header-left img { width: 70px; height: auto; display: block; }
-      .logo-title { color: #ffffff; font-size: 30px; font-weight: 700; margin:
-      0; line-height: 1; } .header-date { color: #ffffff; font-size: 15px;
-      white-space: nowrap; } /* MIDDLE */ .middle { background: #FAE0EA; } /*
-      TITLE */ .title { text-align: center; font-size: 28px; font-weight: bold;
-      padding: 25px 0 15px; color: #1e1e1e; } /* CONTENT */ .content { padding:
-      0 30px 25px 30px; font-size: 17px; color: #333333; line-height: 1.7; } /*
-      OTP */ .otp-box { font-size: 36px; font-weight: 800; letter-spacing: 4px;
+      font-weight: 600; } img { max-width: 100%; display: block; } .container {
+      max-width: 650px; margin: 0 auto; background: #ffffff; border-radius:
+      18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07); } /*
+      HEADER (table-based for Gmail Mobile) */ .header { background:
+      linear-gradient(135deg, #dc3173, #a80e52); padding: 22px 30px; }
+      .header-left img { width: 70px; height: auto; } .header-date { color:
+      #ffffff; font-size: 15px; white-space: nowrap; } /* MIDDLE */ .middle {
+      background: #fae0ea; } .title { text-align: center; font-size: 24px;
+      font-weight: bold; padding: 25px 0 15px; color: #1e1e1e; } .content {
+      padding: 0 30px 25px 30px; font-size: 17px; color: #333333; line-height:
+      1.7; } .otp-box { font-size: 36px; font-weight: 800; letter-spacing: 4px;
       padding: 18px 0; background: #fafafa; border-radius: 10px; display:
       inline-block; width: 240px; color: #dc3173; border: 1px solid #e0e0e0;
-      margin: 15px auto 10px; } /* NOTE */ .note { font-size: 15px; color:
-      #ff3b3b; text-align: center; margin-bottom: 25px; } /* SOCIAL ICONS */
-      .social-section { text-align: center; padding: 20px 0; background:
-      #FAE0EA; } .social-section img { width: 34px; margin: 0 10px; } /* FOOTER
-      */ .footer { font-size: 14px; text-align: center; color: #666; padding:
-      15px 30px 25px 30px; border-top: 1px solid #e4e4e4; background: #FAE0EA; }
-      /* APP STORE BUTTONS */ /* RESPONSIVE */ @media only screen and
-      (max-width: 480px) { .header { flex-direction: column; gap: 6px; }
-      .header-left { justify-content: center; } .header-left img { width: 40px
-      !important; } .logo-title { font-size: 22px !important; } .header-date {
-      text-align: center; width: 100%; } .otp-box { width: 200px !important;
+      margin: 15px auto 10px; text-align: center; } .note { font-size: 15px;
+      color: #ff3b3b; text-align: center; margin-bottom: 25px; } .social-section
+      { text-align: center; padding: 20px 0; background: #fae0ea; }
+      .social-section img { width: 34px; } .footer { font-size: 14px;
+      text-align: center; color: #666; padding: 15px 30px 25px 30px; border-top:
+      1px solid #e4e4e4; background: #fae0ea; } /* RESPONSIVE */ @media only
+      screen and (max-width: 480px) { .header-left img { width: 42px !important;
+      } .header-date { width: 100%; text-align: right; padding-top: 8px; }
+      .title { font-size: 22px !important; } .otp-box { width: 200px !important;
       font-size: 30px !important; letter-spacing: 2px; } .content { padding: 0
-      20px 25px 20px; } .footer { padding: 10px 20px 20px 20px; } }
+      20px 25px 20px !important; font-size: 16px !important; } .social-section
+      img { width: 30px; } .footer { padding: 10px 20px 20px 20px !important; }
+      }
     </style>
   </head>
 
@@ -41,52 +38,42 @@
     <br />
 
     <div class='container'>
-      <!-- HEADER -->
+      <!-- HEADER (fixed for Gmail mobile) -->
       <div class='header'>
-        <table
-          width='100%'
-          cellspacing='0'
-          cellpadding='0'
-          style='border-collapse: collapse;'
-        >
+        <table width='100%' cellspacing='0' cellpadding='0'>
           <tr>
-            <!-- LEFT -->
-            <td align='left' style='padding: 0;'>
-
-              <div class='header-left'>
-                <img
-                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763599290/DeliGo-White_cfd6my.png'
-                  alt='DeliGo Logo'
-                />
-              </div>
-
+            <td align='left' style='vertical-align:middle;'>
+              <img
+                src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763599290/DeliGo-White_cfd6my.png'
+                alt='DeliGo Logo'
+                width='70'
+              />
             </td>
 
-            <!-- RIGHT -->
-            <td align='right' style='padding: 0;'>
-              <div class='header-date'>{{date}}</div>
+            <td
+              align='right'
+              style='vertical-align:middle; color:#fff; font-size:15px; white-space:nowrap;'
+            >
+              {{date}}
             </td>
           </tr>
         </table>
       </div>
 
+      <!-- BODY -->
       <div class='middle'>
-        <!-- TITLE -->
         <div class='title'>Your One-Time Password</div>
 
-        <!-- CONTENT -->
         <div class='content'>
           <strong>Dear {{user}},</strong><br /><br />
           Your One-Time Password (OTP) to securely access your DeliGo account
           is:
         </div>
 
-        <!-- OTP -->
         <div style='text-align:center;'>
           <div class='otp-box'>{{otp}}</div>
         </div>
 
-        <!-- NOTE -->
         <div class='note'>Note: This OTP is valid for 5 minutes only.</div>
 
         <div class='content'>
@@ -97,43 +84,64 @@
         </div>
       </div>
 
-      <!-- SOCIAL ICONS -->
+      <!-- SOCIAL ICONS (always in row) -->
       <div class='social-section'>
-        <a href='https://www.facebook.com/deligoeu' target='_blank'>
-          <img
-            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/facebook_pcla1y.png'
-            alt='Facebook'
-          />
-        </a>
-        <a href='https://www.youtube.com/@DeliGoPT' target='_blank'>
-          <img
-            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/youtube_f3hzep.png'
-            alt='Youtube'
-          />
-        </a>
-        <a href='https://www.linkedin.com/in/deligopt' target='_blank'>
-          <img
-            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/linkedin_bhmzdk.png'
-            alt='Linkedin'
-          />
-        </a>
-        <a href='https://www.instagram.com/deligo.pt/#' target='_blank'>
-          <img
-            src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520443/instagram_lwmdxa.png'
-            alt='Instagram'
-          />
-        </a>
+        <table
+          role='presentation'
+          cellspacing='0'
+          cellpadding='0'
+          border='0'
+          align='center'
+        >
+          <tr>
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.facebook.com/deligoeu' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/facebook_pcla1y.png'
+                  alt='Facebook'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.youtube.com/@DeliGoPT' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/youtube_f3hzep.png'
+                  alt='Youtube'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.linkedin.com/in/deligopt' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/linkedin_bhmzdk.png'
+                  alt='LinkedIn'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.instagram.com/deligo.pt/#' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520443/instagram_lwmdxa.png'
+                  alt='Instagram'
+                  width='34'
+                />
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
 
       <!-- FOOTER -->
       <div class='footer'>
-        Website: https://deligo.pt
-        <span style='margin-left: 2px; margin-right: 2px'>|</span>
-        Phone: +351 920 136 680<br />
+        Website: https://deligo.pt | Phone: +351 920 136 680<br />
         Address: Rua Joaquim Agostinho 16C 1750-126 Lisbon, Portugal
-        <div>
-          <p>&copy; {{currentYear}} DeliGo. All rights reserved.</p>
-        </div>
+        <p>&copy; {{currentYear}} DeliGo. All rights reserved.</p>
       </div>
     </div>
 
