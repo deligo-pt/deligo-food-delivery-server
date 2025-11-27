@@ -200,7 +200,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 const acceptOrRejectOrderByVendor = async (
   currentUser: AuthUser,
   orderId: string,
-  action: { type: 'ACCEPTED' | 'REJECTED' }
+  action: { type: 'ACCEPTED' | 'REJECTED' | 'CANCELED' }
 ) => {
   // ---------------------------------------------------------
   // Ensure current user is an approved vendor
@@ -246,16 +246,26 @@ const acceptOrRejectOrderByVendor = async (
   }
 
   // ---------------------------------------------------------
+  // Prevent duplicate status
+  // ---------------------------------------------------------
+  if (action.type === order.orderStatus) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Order is already ${action.type.toLowerCase()}.`
+    );
+  }
+
+  // ---------------------------------------------------------
   // Prevent vendor from accepting/rejecting an order that is already assigned, picked up, on the way, or delivered
   // ---------------------------------------------------------
   if (
     loggedInUser.role === 'VENDOR' &&
-    action.type === 'REJECTED' &&
+    (action.type === 'REJECTED' || action.type === 'CANCELED') &&
     BLOCKED_FOR_ORDER_CANCEL.some((status) => order.orderStatus === status)
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Cannot cancel an order that is already assigned, picked up, on the way, or delivered. Please contact support if you need to cancel the order'
+      'Cannot cancel or reject an order that is already assigned, picked up, on the way, or delivered. Please contact support if you need to cancel the order'
     );
   }
 
@@ -270,12 +280,16 @@ const acceptOrRejectOrderByVendor = async (
   }
 
   // ---------------------------------------------------------
-  // Prevent duplicate status
+  // Cancel Customer Order
   // ---------------------------------------------------------
-  if (action.type === order.orderStatus) {
+  if (
+    loggedInUser.role === 'CUSTOMER' &&
+    action.type === 'CANCELED' &&
+    order.orderStatus !== 'PENDING'
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Order is already ${action.type.toLowerCase()}.`
+      'Only pending orders can be canceled by customer.'
     );
   }
 
@@ -296,7 +310,7 @@ const acceptOrRejectOrderByVendor = async (
   // ---------------------------------------------------------
   // If ACCEPTED → set pickup address from vendor location
   // ---------------------------------------------------------
-  if (action.type === 'ACCEPTED') {
+  if (loggedInUser.role === 'VENDOR' && action.type === 'ACCEPTED') {
     if (!loggedInUser.businessLocation) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
