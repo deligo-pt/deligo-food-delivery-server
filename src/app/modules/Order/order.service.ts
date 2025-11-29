@@ -45,21 +45,20 @@ const createOrderAfterPayment = async (
       'Payment is not successful. Order cannot be created.'
     );
   }
-  console.log(summary.items);
 
   // --------------------------------------------------------------
   // Reduce Product Stock
   // --------------------------------------------------------------
-  const stockOperations = summary.items.map((item) => ({
-    updateOne: {
-      filter: { productId: item.productId },
-      update: {
-        $inc: { 'stock.quantity': -item.quantity },
-      },
-    },
-  }));
+  // const stockOperations = summary.items.map((item) => ({
+  //   updateOne: {
+  //     filter: { productId: item.productId },
+  //     update: {
+  //       $inc: { 'stock.quantity': -item.quantity },
+  //     },
+  //   },
+  // }));
 
-  await Product.bulkWrite(stockOperations);
+  // await Product.bulkWrite(stockOperations);
 
   // --------------------------------------------------------------
   // Clear Purchased Items from Cart
@@ -200,7 +199,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 const acceptOrRejectOrderByVendor = async (
   currentUser: AuthUser,
   orderId: string,
-  action: { type: 'ACCEPTED' | 'REJECTED' | 'CANCELED' }
+  action: { type: keyof typeof ORDER_STATUS; reason?: string }
 ) => {
   // ---------------------------------------------------------
   // Ensure current user is an approved vendor
@@ -211,7 +210,6 @@ const acceptOrRejectOrderByVendor = async (
   });
 
   const loggedInUser = result.user;
-
   if (!loggedInUser) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -256,6 +254,21 @@ const acceptOrRejectOrderByVendor = async (
   }
 
   // ---------------------------------------------------------
+  // Prevent vendor from if action type are not accepted, rejected, or canceled
+  // ---------------------------------------------------------
+  if (
+    loggedInUser.role === 'VENDOR' &&
+    action.type !== 'ACCEPTED' &&
+    action.type !== 'REJECTED' &&
+    action.type !== 'CANCELED'
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not authorized to change order status to ${action.type.toLowerCase()}. Please contact support.`
+    );
+  }
+
+  // ---------------------------------------------------------
   // Prevent vendor from accepting/rejecting an order that is already assigned, picked up, on the way, or delivered
   // ---------------------------------------------------------
   if (
@@ -280,20 +293,6 @@ const acceptOrRejectOrderByVendor = async (
   }
 
   // ---------------------------------------------------------
-  // Cancel Customer Order
-  // ---------------------------------------------------------
-  if (
-    loggedInUser.role === 'CUSTOMER' &&
-    action.type === 'CANCELED' &&
-    order.orderStatus !== 'PENDING'
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Only pending orders can be canceled by customer.'
-    );
-  }
-
-  // ---------------------------------------------------------
   // Only pending orders are allowed to be accepted/rejected
   // ---------------------------------------------------------
   if (
@@ -303,14 +302,14 @@ const acceptOrRejectOrderByVendor = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Only pending orders can be accepted.'
+      'Only pending orders can be accepted. Please contact support if you need to accept an order.'
     );
   }
 
   // ---------------------------------------------------------
-  // If ACCEPTED → set pickup address from vendor location
+  // If ACCEPTED → set pickup address from vendor location and reduce product stock
   // ---------------------------------------------------------
-  if (loggedInUser.role === 'VENDOR' && action.type === 'ACCEPTED') {
+  if (action.type === 'ACCEPTED') {
     if (!loggedInUser.businessLocation) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -318,16 +317,53 @@ const acceptOrRejectOrderByVendor = async (
       );
     }
 
-    order.pickupAddress = {
-      street: loggedInUser.businessLocation.street || '',
-      city: loggedInUser.businessLocation.city || '',
-      state: loggedInUser.businessLocation.state || '',
-      country: loggedInUser.businessLocation.country || '',
-      postalCode: loggedInUser.businessLocation.postalCode || '',
-      latitude: loggedInUser.businessLocation.latitude,
-      longitude: loggedInUser.businessLocation.longitude,
-      geoAccuracy: loggedInUser.businessLocation.geoAccuracy,
-    };
+    if (loggedInUser?.role === 'VENDOR' && !order.pickupAddress) {
+      order.pickupAddress = {
+        street: loggedInUser.businessLocation.street || '',
+        city: loggedInUser.businessLocation.city || '',
+        state: loggedInUser.businessLocation.state || '',
+        country: loggedInUser.businessLocation.country || '',
+        postalCode: loggedInUser.businessLocation.postalCode || '',
+        latitude: loggedInUser.businessLocation.latitude,
+        longitude: loggedInUser.businessLocation.longitude,
+        geoAccuracy: loggedInUser.businessLocation.geoAccuracy,
+      };
+    }
+
+    // --------------------------------------------------------
+    // Reduce product stock
+    // --------------------------------------------------------
+    const stockOperations = order.items.map((item) => ({
+      updateOne: {
+        filter: { productId: item.productId },
+        update: {
+          $inc: { 'stock.quantity': -item.quantity },
+        },
+      },
+    }));
+    await Product.bulkWrite(stockOperations);
+  }
+
+  // ---------------------------------------------------------
+  // If Canceled → add cancel reason and add product to stock
+  // ---------------------------------------------------------
+  if (action.type === 'CANCELED') {
+    if (!action.reason) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Cancel reason is required.');
+    }
+    order.cancelReason = action.reason;
+    // --------------------------------------------------------
+    // Add product to stock
+    // --------------------------------------------------------
+    const stockOperations = order.items.map((item) => ({
+      updateOne: {
+        filter: { productId: item.productId },
+        update: {
+          $inc: { 'stock.quantity': item.quantity },
+        },
+      },
+    }));
+    await Product.bulkWrite(stockOperations);
   }
 
   // ---------------------------------------------------------

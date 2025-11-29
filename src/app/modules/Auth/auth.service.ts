@@ -235,6 +235,17 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       'Email or mobile number is required'
     );
   }
+  const result = await findUserByEmailOrId({
+    email: payload?.email,
+    isDeleted: false,
+  });
+  const user = result?.user;
+  if (user?.role !== 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This email is already registered as different role'
+    );
+  }
   const existingUserWithEmail = await Customer.findOne({
     email: payload.email,
   });

@@ -30,7 +30,7 @@ router.get(
 // Accept / Reject / Cancel order
 router.patch(
   '/:orderId/accept-reject',
-  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
+  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   validateRequest(OrderValidation.acceptOrRejectOrderValidationSchema),
   OrderControllers.acceptOrRejectOrderByVendor
 );

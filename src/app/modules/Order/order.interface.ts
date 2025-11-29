@@ -28,6 +28,7 @@ export type TOrder = {
 
   // Order Lifecycle
   orderStatus: keyof typeof ORDER_STATUS;
+  cancelReason?: string;
 
   remarks?: string;
   // OTP Verification
