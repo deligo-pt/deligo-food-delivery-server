@@ -17,6 +17,9 @@ app.use(
       'https://vendor-food-deligo-pt.vercel.app',
       'https://fleet-manager-food-deligo-pt.vercel.app',
       'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
     ],
     credentials: true,
   })
