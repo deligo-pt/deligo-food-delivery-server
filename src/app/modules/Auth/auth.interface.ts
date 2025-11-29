@@ -4,6 +4,6 @@ export type TLoginUser = {
 };
 
 export type TLoginCustomer = {
-  email?: string;
+  email: string;
   mobileNumber?: string;
 };

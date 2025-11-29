@@ -235,12 +235,13 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       'Email or mobile number is required'
     );
   }
-  const result = await findUserByEmailOrId({
-    email: payload?.email,
-    isDeleted: false,
-  });
-  const user = result?.user;
-  if (user?.role !== 'CUSTOMER') {
+
+  const checkModels = ALL_USER_MODELS.map((M: any) =>
+    M.isUserExistsByEmail(payload.email).catch(() => null)
+  );
+  const checkUser = await Promise.all(checkModels);
+  const user = checkUser.find((user) => user);
+  if (user && user?.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'This email is already registered as different role'
