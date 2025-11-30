@@ -123,13 +123,47 @@ const activateItem = async (currentUser: AuthUser, productId: string) => {
   return freshCart;
 };
 
-// view cart Service
-const viewCart = async (user: AuthUser) => {
-  const customerId = user.id;
+// update cart item quantity
+const updateCartItemQuantity = async (
+  currentUser: AuthUser,
+  payload: {
+    productId: string;
+    quantity: number;
+    action: 'increment' | 'decrement';
+  }
+) => {
+  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const customerId = currentUser.id;
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
+  const { productId, quantity, action } = payload;
+  const itemIndex = cart.items.findIndex((i) => i.productId === productId);
+  if (itemIndex === -1) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
+  }
+  const product = await Product.findOne({ productId });
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+  if (action === 'increment') {
+    if (cart.items[itemIndex].quantity + quantity > product.stock.quantity) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
+    }
+    cart.items[itemIndex].quantity += quantity;
+    cart.items[itemIndex].subtotal += cart.items[itemIndex].price * quantity;
+  } else if (action === 'decrement') {
+    if (cart.items[itemIndex].quantity - quantity < 1) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Not allowed to decrement quantity below 1'
+      );
+    }
+    cart.items[itemIndex].quantity -= quantity;
+    cart.items[itemIndex].subtotal -= cart.items[itemIndex].price * quantity;
+  }
+  await cart.save();
   return cart;
 };
 
@@ -153,9 +187,20 @@ const deleteCartItem = async (currentUser: AuthUser, productId: string[]) => {
   return cart;
 };
 
+// view cart Service
+const viewCart = async (user: AuthUser) => {
+  const customerId = user.id;
+  const cart = await Cart.findOne({ customerId });
+  if (!cart) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+  }
+  return cart;
+};
+
 export const CartServices = {
   addToCart,
   activateItem,
-  viewCart,
+  updateCartItemQuantity,
   deleteCartItem,
+  viewCart,
 };

@@ -30,14 +30,16 @@ const activateItem = catchAsync(async (req, res) => {
   });
 });
 
-// view cart Controller
-const viewCart = catchAsync(async (req, res) => {
-  const result = await CartServices.viewCart(req.user as AuthUser);
-
+// update cart item Controller
+const updateCartItemQuantity = catchAsync(async (req, res) => {
+  const result = await CartServices.updateCartItemQuantity(
+    req.user as AuthUser,
+    req.body
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart retrieved successfully',
+    message: 'Product quantity updated successfully',
     data: result,
   });
 });
@@ -56,9 +58,22 @@ const deleteCartItem = catchAsync(async (req, res) => {
   });
 });
 
+// view cart Controller
+const viewCart = catchAsync(async (req, res) => {
+  const result = await CartServices.viewCart(req.user as AuthUser);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Cart retrieved successfully',
+    data: result,
+  });
+});
+
 export const CartControllers = {
   addToCart,
   activateItem,
-  viewCart,
+  updateCartItemQuantity,
   deleteCartItem,
+  viewCart,
 };

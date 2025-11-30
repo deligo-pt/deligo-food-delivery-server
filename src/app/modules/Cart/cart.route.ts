@@ -21,8 +21,13 @@ router.patch(
   CartControllers.activateItem
 );
 
-// view cart
-router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
+// update cart item quantity
+router.patch(
+  '/update-quantity',
+  auth('CUSTOMER'),
+  validateRequest(CartValidation.updateCartItemQuantityValidationSchema),
+  CartControllers.updateCartItemQuantity
+);
 
 // delete cart item
 router.delete(
@@ -31,5 +36,7 @@ router.delete(
   validateRequest(CartValidation.deleteCartItemValidationSchema),
   CartControllers.deleteCartItem
 );
+// view cart
+router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
 
 export const CartRoutes = router;
