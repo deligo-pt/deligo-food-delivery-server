@@ -5,6 +5,7 @@ import { Product } from '../Product/product.model';
 import { TCart } from './cart.interface';
 import { Cart } from './cart.model';
 import { Customer } from '../Customer/customer.model';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
@@ -132,8 +133,29 @@ const viewCart = async (user: AuthUser) => {
   return cart;
 };
 
+// delete cart item
+const deleteCartItem = async (currentUser: AuthUser, productId: string[]) => {
+  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const customerId = currentUser.id;
+  const cart = await Cart.findOne({ customerId });
+  if (!cart) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+  }
+  const filteredItems = cart.items.filter(
+    (item) => !productId.includes(item.productId)
+  );
+  if (filteredItems.length === cart.items.length) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
+  }
+
+  cart.items = filteredItems;
+  await cart.save();
+  return cart;
+};
+
 export const CartServices = {
   addToCart,
   activateItem,
   viewCart,
+  deleteCartItem,
 };

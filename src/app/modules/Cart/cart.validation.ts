@@ -12,6 +12,16 @@ const addToCartValidationSchema = z.object({
   }),
 });
 
+// delete cart item validation
+const deleteCartItemValidationSchema = z.object({
+  body: z.object({
+    productId: z.array(z.string(), {
+      required_error: 'Product ID is required',
+    }),
+  }),
+});
+
 export const CartValidation = {
   addToCartValidationSchema,
+  deleteCartItemValidationSchema,
 };

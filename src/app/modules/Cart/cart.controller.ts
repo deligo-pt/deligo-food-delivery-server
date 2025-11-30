@@ -42,8 +42,23 @@ const viewCart = catchAsync(async (req, res) => {
   });
 });
 
+// delete cart item Controller
+const deleteCartItem = catchAsync(async (req, res) => {
+  const result = await CartServices.deleteCartItem(
+    req.user as AuthUser,
+    req.body.productId
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product deleted from cart successfully',
+    data: result,
+  });
+});
+
 export const CartControllers = {
   addToCart,
   activateItem,
   viewCart,
+  deleteCartItem,
 };

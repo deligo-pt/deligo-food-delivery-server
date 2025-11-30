@@ -24,4 +24,12 @@ router.patch(
 // view cart
 router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
 
+// delete cart item
+router.delete(
+  '/delete-item',
+  auth('CUSTOMER'),
+  validateRequest(CartValidation.deleteCartItemValidationSchema),
+  CartControllers.deleteCartItem
+);
+
 export const CartRoutes = router;
