@@ -9,6 +9,7 @@ export default {
   frontend_url_vendor: process.env.FRONTEND_URL_VENDOR,
   frontend_url_admin: process.env.FRONTEND_URL_ADMIN,
   frontend_url_fleet_manager: process.env.FRONTEND_URL_FLEET_MANAGER,
+  origins: process.env.ORIGINS,
   db_url: process.env.DB_URL,
   bcrypt_salt_rounds: process.env.BCRYPT_SALT_ROUNDS,
   jwt_access_secret: process.env.JWT_ACCESS_SECRET,

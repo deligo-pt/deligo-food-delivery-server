@@ -7,20 +7,21 @@ import globalErrorHandler from './app/middlewares/globalErrorHandler';
 import routes from './app/routes';
 import cookieParser from 'cookie-parser';
 import notFound from './app/middlewares/notFound';
+import config from './app/config';
 
 const app: Application = express();
 
+const allowedOrigins = config.origins?.split(',') ?? [];
+
 app.use(
   cors({
-    origin: [
-      'https://admin-food-deligo-pt.vercel.app',
-      'https://vendor-food-deligo-pt.vercel.app',
-      'https://fleet-manager-food-deligo-pt.vercel.app',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002',
-    ],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
@@ -40,10 +41,10 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-//global error handler
-app.use(globalErrorHandler);
-
 //handle not found
 app.use(notFound);
+
+//global error handler
+app.use(globalErrorHandler);
 
 export default app;
