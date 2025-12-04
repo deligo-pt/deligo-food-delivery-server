@@ -64,6 +64,17 @@ export const initializeSocket = async (httpServer: HTTPServer) => {
       socket.on('message', (data) => {
         console.log('Message event:', data);
       });
+      socket.on('join-room', ({ room }) => {
+        socket.join(room);
+      });
+
+      socket.emit('support-message', {
+        message: 'Welcome to the support chat!',
+        senderId: 'system',
+        senderRole: 'SYSTEM',
+        attachments: [],
+        createdAt: new Date(),
+      });
 
       socket.on('disconnect', () => {
         console.log('Socket disconnected', socket.id);

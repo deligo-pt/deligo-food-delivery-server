@@ -85,6 +85,16 @@ const updateDeliveryPartner = async (
   }
 
   // ---------------------------------------------------------
+  // GeoJSON location updates if lat/lng is provided
+  // ---------------------------------------------------------
+  if (payload.address?.latitude && payload.address?.longitude) {
+    payload.location = {
+      type: 'Point',
+      coordinates: [payload.address.longitude, payload.address.latitude],
+    };
+  }
+  payload.status = 'PENDING';
+  // ---------------------------------------------------------
   // Update the delivery partner
   // ---------------------------------------------------------
   const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(

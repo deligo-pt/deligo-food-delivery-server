@@ -12,11 +12,14 @@ export type TSupportConversation = {
     | 'DELIVERY_PARTNER'
     | 'ADMIN'
     | 'SUPER_ADMIN';
+
   assignedAdmin?: string | null;
-  status?: 'OPEN' | 'CLOSED';
   lastMessage?: string;
   lastMessageTime?: Date;
   isDeleted?: boolean;
+  unreadUserCount?: number;
+  unreadAdminCount?: number;
+
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -32,10 +35,16 @@ export type TSupportMessage = {
     | 'DELIVERY_PARTNER'
     | 'ADMIN'
     | 'SUPER_ADMIN';
+
   message: string;
   attachments?: string[];
   readByAdmin?: boolean;
   readByUser?: boolean;
+  isEdited?: boolean;
+  editedAt?: Date | null;
+  isDeleted?: boolean;
+  replyTo?: Types.ObjectId | null;
+
   createdAt?: Date;
   updatedAt?: Date;
 };

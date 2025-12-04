@@ -30,16 +30,17 @@ export type TCheckoutSummary = {
 
   items: TCheckoutItem[];
 
-  discount: number;
   totalItems: number;
   totalPrice: number;
+  discount: number;
   deliveryCharge: number;
   finalAmount: number;
+  couponCode?: string;
   estimatedDeliveryTime: string;
 
   deliveryAddress: TCheckoutAddress;
 
-  paymentStatus?: 'pending' | 'paid' | 'failed';
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
   paymentMethod?: 'CARD' | 'MOBILE';
   transactionId?: string; // Stripe PaymentIntent ID
   orderId?: string; // Linked Order ID

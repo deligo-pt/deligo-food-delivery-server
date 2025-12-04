@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import validateRequest from '../../middlewares/validateRequest';
-import { SupportValidation } from './support.validation';
 import { SupportControllers } from './support.controller';
 import auth from '../../middlewares/auth';
+import validateRequest from '../../middlewares/validateRequest';
+import { SupportValidation } from './support.validation';
 
 const router = Router();
 
-// Route to open or create a support conversation
+// Open or create new conversation
 router.post(
   '/conversation',
   auth(
@@ -20,14 +20,14 @@ router.post(
   SupportControllers.openOrCreateConversationController
 );
 
-// Route to get all support conversations
+// Get all conversations (Admin only)
 router.get(
   '/conversations',
   auth('ADMIN', 'SUPER_ADMIN'),
-  SupportControllers.getAllSupportConversations
+  SupportControllers.getAllSupportConversationsController
 );
 
-// Route to store a support message
+// Store message in conversation (with rate limit)
 router.post(
   '/message',
   auth(
@@ -42,7 +42,7 @@ router.post(
   SupportControllers.storeSupportMessageController
 );
 
-// Route to get messages by room
+// Get messages by room (User sees own, Admin sees all)
 router.get(
   '/:room/messages',
   auth(
@@ -53,12 +53,12 @@ router.get(
     'DELIVERY_PARTNER',
     'SUPER_ADMIN'
   ),
-  SupportControllers.getMessagesByRoom
+  SupportControllers.getMessagesByRoomController
 );
 
-// Route to mark messages as read by admin or user
+// Mark messages read (both Admin & User)
 router.patch(
-  '/message/read',
+  '/conversation/:room/read',
   auth(
     'ADMIN',
     'VENDOR',
@@ -67,8 +67,7 @@ router.patch(
     'DELIVERY_PARTNER',
     'SUPER_ADMIN'
   ),
-  validateRequest(SupportValidation.readMessageSchema),
-  SupportControllers.markMessagesAsRead
+  SupportControllers.markReadByAdminOrUserController
 );
 
 export const SupportRoutes = router;

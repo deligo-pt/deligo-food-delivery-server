@@ -110,7 +110,7 @@ const createOrderAfterPayment = async (
   const order = await Order.create(orderData);
 
   summary.isConvertedToOrder = true;
-  summary.paymentStatus = 'paid';
+  summary.paymentStatus = 'PAID';
   summary.transactionId = paymentIntentId;
   summary.orderId = order.orderId;
 
@@ -305,7 +305,6 @@ const acceptOrRejectOrderByVendor = async (
       'Only pending orders can be accepted. Please contact support if you need to accept an order.'
     );
   }
-
   // ---------------------------------------------------------
   // If ACCEPTED → set pickup address from vendor location and reduce product stock
   // ---------------------------------------------------------
@@ -316,6 +315,25 @@ const acceptOrRejectOrderByVendor = async (
         'Vendor business location is missing. Please update your business location before accepting orders.'
       );
     }
+    const partners = await DeliveryPartner.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: 'Point',
+            coordinates: [
+              loggedInUser.businessLocation.longitude,
+              loggedInUser.businessLocation.latitude,
+            ],
+          },
+          maxDistance: 1000,
+          spherical: true,
+          distanceField: 'distance',
+          key: 'location',
+        },
+      },
+    ]);
+
+    console.log({ partners });
 
     if (loggedInUser?.role === 'VENDOR' && !order.pickupAddress) {
       order.pickupAddress = {

@@ -8,13 +8,17 @@ const sendMessageSchema = z.object({
     message: z
       .string({ required_error: 'Message is required' })
       .min(1, 'Message must be at least 1 character long'),
-    attachments: z.array(z.string()).optional(),
+    attachments: z
+      .array(z.string())
+      .max(5, 'Attachments cannot exceed 5 files')
+      .optional(),
+    replyTo: z.string().optional().nullable(),
   }),
 });
 
 const readMessageSchema = z.object({
-  body: z.object({
-    room: z.string(),
+  params: z.object({
+    room: z.string({ required_error: 'Room param is required' }).min(1),
   }),
 });
 

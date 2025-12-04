@@ -8,9 +8,6 @@ import { initializeSocket } from './app/lib/socket';
 
 const server = http.createServer(app);
 
-// Initialize Socket.IO
-initializeSocket(server);
-
 // Handle unexpected errors
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
@@ -39,6 +36,9 @@ async function bootstrap() {
     // Seed database
     await seed();
     console.log('DB Seed complete');
+
+    // Initialize Socket.IO
+    await initializeSocket(server);
 
     server.listen(config.port, () => {
       console.log(`Application is running on port ${config.port}`);
