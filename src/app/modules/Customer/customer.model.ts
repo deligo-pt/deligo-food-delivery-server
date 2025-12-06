@@ -2,8 +2,8 @@
 import { Schema, model } from 'mongoose';
 import { TCustomer } from './customer.interface';
 import { IUserModel } from '../../interfaces/user.interface';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
+import { passwordPlugin } from '../../plugins/passwordPlugin';
 
 const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {
@@ -20,15 +20,10 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
 
     email: {
       type: String,
-      required: true,
       unique: true,
       lowercase: true,
       trim: true,
-    },
-
-    password: {
-      type: String,
-      select: false,
+      sparse: true,
     },
 
     status: {
@@ -46,14 +41,12 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     fcmTokens: { type: [String], default: [] },
 
     // ----------------------------------------------------------------
-    // OTP & Password Reset
+    // OTP
     // ----------------------------------------------------------------
     otp: { type: String, default: '' },
     isOtpExpired: { type: Date, default: null },
     requiresOtpVerification: { type: Boolean, default: true },
-
-    passwordResetToken: { type: String, default: '' },
-    passwordResetTokenExpiresAt: { type: Date, default: null },
+    mobileOtpId: { type: String, default: '' },
 
     // ----------------------------------------------------------------
     // Personal Details
@@ -63,11 +56,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       lastName: { type: String, default: '' },
     },
 
-    contactNumber: { type: String, default: '' },
+    contactNumber: { type: String, unique: true, sparse: true },
 
     profilePhoto: { type: String, default: '' },
-
-    passwordChangedAt: { type: Date },
 
     address: {
       street: { type: String, default: '' },

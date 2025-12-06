@@ -5,5 +5,5 @@ export type TLoginUser = {
 
 export type TLoginCustomer = {
   email: string;
-  mobileNumber?: string;
+  contactNumber?: string;
 };
