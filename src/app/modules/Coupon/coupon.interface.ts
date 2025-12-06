@@ -1,6 +1,7 @@
 export type TCoupon = {
   _id?: string;
   code: string; // Unique coupon code (e.g. SAVE10)
+  createdBy: string; // User ID of creator
   discountType: 'PERCENT' | 'FLAT'; // Type of discount
   discountValue: number; // % or amount
   minPurchase?: number; // Minimum purchase required

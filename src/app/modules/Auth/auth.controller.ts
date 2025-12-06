@@ -169,8 +169,8 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
 
 // Verify OTP Controller
 const verifyOtp = catchAsync(async (req, res) => {
-  const { email, otp } = req.body;
-  const result = await AuthServices.verifyOtp(email, otp);
+  const { email, contactNumber, otp } = req.body;
+  const result = await AuthServices.verifyOtp(email, contactNumber, otp);
 
   const { accessToken, refreshToken, message } = result;
 
@@ -189,8 +189,8 @@ const verifyOtp = catchAsync(async (req, res) => {
 
 // Resend OTP Controller
 const resendOtp = catchAsync(async (req, res) => {
-  const { email } = req.body;
-  const result = await AuthServices.resendOtp(email);
+  const { email, contactNumber } = req.body;
+  const result = await AuthServices.resendOtp(email, contactNumber);
 
   sendResponse(res, {
     success: true,

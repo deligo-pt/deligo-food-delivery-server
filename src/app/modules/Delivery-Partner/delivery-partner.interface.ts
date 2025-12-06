@@ -48,6 +48,15 @@ export type TDeliveryPartner = {
     longitude?: number;
     geoAccuracy?: number;
   };
+
+  // -------------------------------------------------
+  // Required for geo search and nearest partner match
+  // -------------------------------------------------
+  location: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+
   personalInfo?: {
     dateOfBirth?: Date;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';

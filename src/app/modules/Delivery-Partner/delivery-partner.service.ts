@@ -85,6 +85,16 @@ const updateDeliveryPartner = async (
   }
 
   // ---------------------------------------------------------
+  // GeoJSON location updates if lat/lng is provided
+  // ---------------------------------------------------------
+  if (payload.address?.latitude && payload.address?.longitude) {
+    payload.location = {
+      type: 'Point',
+      coordinates: [payload.address.longitude, payload.address.latitude],
+    };
+  }
+  payload.status = 'PENDING';
+  // ---------------------------------------------------------
   // Update the delivery partner
   // ---------------------------------------------------------
   const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
@@ -215,7 +225,7 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (
     user?.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner?.registeredBy !== user?.id
+    existingDeliveryPartner?.registeredBy !== user?.userId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,

@@ -1,17 +1,20 @@
 /* eslint-disable no-console */
-import { Server } from 'http';
 import mongoose from 'mongoose';
 import app from './app';
 import config from './app/config';
 import { seed } from './app/utils/seeding';
+import http from 'http';
+import { initializeSocket } from './app/lib/socket';
 
-let server: Server;
+const server = http.createServer(app);
 
+// Handle unexpected errors
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
   process.exit(1);
 });
 
+// Handle Promise rejections
 process.on('unhandledRejection', (error) => {
   console.error('Unhandled Rejection:', error);
   if (server) {
@@ -26,11 +29,19 @@ process.on('unhandledRejection', (error) => {
 
 async function bootstrap() {
   try {
+    // Connect database
     await mongoose.connect(config.db_url as string);
-    console.log('🛢 Database connected successfully');
+    console.log('Database connected successfully');
+
+    // Seed database
     await seed();
-    server = app.listen(config.port, () => {
-      console.log(`🚀 Application is running on port ${config.port}`);
+    console.log('DB Seed complete');
+
+    // Initialize Socket.IO
+    await initializeSocket(server);
+
+    server.listen(config.port, () => {
+      console.log(`Application is running on port ${config.port}`);
     });
   } catch (err) {
     console.error('Failed to connect to database:', err);

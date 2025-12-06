@@ -24,9 +24,9 @@ const cartSchema = new Schema<TCart>(
     items: { type: [cartItemSchema], required: true, default: [] },
 
     totalItems: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
     totalPrice: { type: Number, default: 0 },
 
-    discount: { type: Number, default: 0 },
     couponCode: { type: String, default: '' },
 
     isDeleted: { type: Boolean, default: false },

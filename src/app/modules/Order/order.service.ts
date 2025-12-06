@@ -4,8 +4,11 @@ import AppError from '../../errors/AppError';
 import { Order } from './order.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
-import { ORDER_STATUS, OrderSearchableFields } from './order.constant';
-import { Vendor } from '../Vendor/vendor.model';
+import {
+  BLOCKED_FOR_ORDER_CANCEL,
+  ORDER_STATUS,
+  OrderSearchableFields,
+} from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { stripe } from '../Payment/payment.service';
@@ -42,21 +45,20 @@ const createOrderAfterPayment = async (
       'Payment is not successful. Order cannot be created.'
     );
   }
-  console.log(summary.items);
 
   // --------------------------------------------------------------
   // Reduce Product Stock
   // --------------------------------------------------------------
-  const stockOperations = summary.items.map((item) => ({
-    updateOne: {
-      filter: { productId: item.productId },
-      update: {
-        $inc: { 'stock.quantity': -item.quantity },
-      },
-    },
-  }));
+  // const stockOperations = summary.items.map((item) => ({
+  //   updateOne: {
+  //     filter: { productId: item.productId },
+  //     update: {
+  //       $inc: { 'stock.quantity': -item.quantity },
+  //     },
+  //   },
+  // }));
 
-  await Product.bulkWrite(stockOperations);
+  // await Product.bulkWrite(stockOperations);
 
   // --------------------------------------------------------------
   // Clear Purchased Items from Cart
@@ -108,7 +110,7 @@ const createOrderAfterPayment = async (
   const order = await Order.create(orderData);
 
   summary.isConvertedToOrder = true;
-  summary.paymentStatus = 'paid';
+  summary.paymentStatus = 'PAID';
   summary.transactionId = paymentIntentId;
   summary.orderId = order.orderId;
 
@@ -197,30 +199,92 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 const acceptOrRejectOrderByVendor = async (
   currentUser: AuthUser,
   orderId: string,
-  action: { type: 'ACCEPTED' | 'REJECTED' }
+  action: { type: keyof typeof ORDER_STATUS; reason?: string }
 ) => {
-  const existingVendor = await Vendor.findOne({
+  // ---------------------------------------------------------
+  // Ensure current user is an approved vendor
+  // ---------------------------------------------------------
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
-    status: 'APPROVED',
   });
-  if (!existingVendor) {
+
+  const loggedInUser = result.user;
+  if (!loggedInUser) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to accept or reject orders. Please ensure your vendor profile is approved.'
+      'You are not authorized to accept or reject orders.'
     );
   }
 
-  const order = await Order.findOne({
-    orderId,
-    vendorId: existingVendor.userId,
-    isDeleted: false,
-  });
-  if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to accept or reject orders. Your account is ${loggedInUser.status}`
+    );
   }
 
-  // only paid and pending orders can be accepted or rejected
+  // ---------------------------------------------------------
+  // Find the order for this vendor
+  // ---------------------------------------------------------
+
+  let order;
+  if (loggedInUser.role === 'VENDOR') {
+    order = await Order.findOne({
+      orderId,
+      vendorId: loggedInUser.userId,
+      isDeleted: false,
+    });
+  } else {
+    order = await Order.findOne({ orderId });
+  }
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+  }
+
+  // ---------------------------------------------------------
+  // Prevent duplicate status
+  // ---------------------------------------------------------
+  if (action.type === order.orderStatus) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Order is already ${action.type.toLowerCase()}.`
+    );
+  }
+
+  // ---------------------------------------------------------
+  // Prevent vendor from if action type are not accepted, rejected, or canceled
+  // ---------------------------------------------------------
+  if (
+    loggedInUser.role === 'VENDOR' &&
+    action.type !== 'ACCEPTED' &&
+    action.type !== 'REJECTED' &&
+    action.type !== 'CANCELED'
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not authorized to change order status to ${action.type.toLowerCase()}. Please contact support.`
+    );
+  }
+
+  // ---------------------------------------------------------
+  // Prevent vendor from accepting/rejecting an order that is already assigned, picked up, on the way, or delivered
+  // ---------------------------------------------------------
+  if (
+    loggedInUser.role === 'VENDOR' &&
+    (action.type === 'REJECTED' || action.type === 'CANCELED') &&
+    BLOCKED_FOR_ORDER_CANCEL.some((status) => order.orderStatus === status)
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Cannot cancel or reject an order that is already assigned, picked up, on the way, or delivered. Please contact support if you need to cancel the order'
+    );
+  }
+
+  // ---------------------------------------------------------
+  // Only paid orders can be processed
+  // ---------------------------------------------------------
   if (!order.isPaid) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -228,42 +292,113 @@ const acceptOrRejectOrderByVendor = async (
     );
   }
 
-  if (action.type === order.orderStatus) {
+  // ---------------------------------------------------------
+  // Only pending orders are allowed to be accepted/rejected
+  // ---------------------------------------------------------
+  if (
+    loggedInUser.role === 'VENDOR' &&
+    action.type === 'ACCEPTED' &&
+    order.orderStatus !== 'PENDING'
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Order is already ${action.type}.`
+      'Only pending orders can be accepted. Please contact support if you need to accept an order.'
     );
   }
-  if (order.orderStatus !== 'PENDING') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Only pending orders can be accepted or rejected.'
-    );
-  }
-
+  // ---------------------------------------------------------
+  // If ACCEPTED → set pickup address from vendor location and reduce product stock
+  // ---------------------------------------------------------
   if (action.type === 'ACCEPTED') {
-    order.pickupAddress = {
-      street: existingVendor.businessLocation?.street || '',
-      city: existingVendor.businessLocation?.city || '',
-      state: existingVendor.businessLocation?.state || '',
-      country: existingVendor.businessLocation?.country || '',
-      postalCode: existingVendor?.businessLocation?.postalCode || '',
-      latitude: existingVendor.businessLocation?.latitude,
-      longitude: existingVendor.businessLocation?.longitude,
-      geoAccuracy: existingVendor.businessLocation?.geoAccuracy,
-    };
-    await order.save();
+    if (!loggedInUser.businessLocation) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Vendor business location is missing. Please update your business location before accepting orders.'
+      );
+    }
+    const partners = await DeliveryPartner.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: 'Point',
+            coordinates: [
+              loggedInUser.businessLocation.longitude,
+              loggedInUser.businessLocation.latitude,
+            ],
+          },
+          maxDistance: 1000,
+          spherical: true,
+          distanceField: 'distance',
+          key: 'location',
+        },
+      },
+    ]);
+
+    console.log({ partners });
+
+    if (loggedInUser?.role === 'VENDOR' && !order.pickupAddress) {
+      order.pickupAddress = {
+        street: loggedInUser.businessLocation.street || '',
+        city: loggedInUser.businessLocation.city || '',
+        state: loggedInUser.businessLocation.state || '',
+        country: loggedInUser.businessLocation.country || '',
+        postalCode: loggedInUser.businessLocation.postalCode || '',
+        latitude: loggedInUser.businessLocation.latitude,
+        longitude: loggedInUser.businessLocation.longitude,
+        geoAccuracy: loggedInUser.businessLocation.geoAccuracy,
+      };
+    }
+
+    // --------------------------------------------------------
+    // Reduce product stock
+    // --------------------------------------------------------
+    const stockOperations = order.items.map((item) => ({
+      updateOne: {
+        filter: { productId: item.productId },
+        update: {
+          $inc: { 'stock.quantity': -item.quantity },
+        },
+      },
+    }));
+    await Product.bulkWrite(stockOperations);
   }
 
-  // send notification to customer about order status update
+  // ---------------------------------------------------------
+  // If Canceled → add cancel reason and add product to stock
+  // ---------------------------------------------------------
+  if (action.type === 'CANCELED') {
+    if (!action.reason) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Cancel reason is required.');
+    }
+    order.cancelReason = action.reason;
+    // --------------------------------------------------------
+    // Add product to stock
+    // --------------------------------------------------------
+    const stockOperations = order.items.map((item) => ({
+      updateOne: {
+        filter: { productId: item.productId },
+        update: {
+          $inc: { 'stock.quantity': item.quantity },
+        },
+      },
+    }));
+    await Product.bulkWrite(stockOperations);
+  }
 
-  const result = await Order.findOneAndUpdate(
-    { orderId },
-    { orderStatus: action.type },
-    { new: true }
-  );
+  // ---------------------------------------------------------
+  // Update order status & save
+  // ---------------------------------------------------------
+  order.orderStatus = action.type;
+  await order.save();
 
-  return result;
+  // ---------------------------------------------------------
+  // TODO: send notification to customer about status change
+  // ---------------------------------------------------------
+
+  // ---------------------------------------------------------
+  // TODO: send notification to delivery partner about status change
+  // ---------------------------------------------------------
+
+  return order;
 };
 
 // assigned delivery partner service

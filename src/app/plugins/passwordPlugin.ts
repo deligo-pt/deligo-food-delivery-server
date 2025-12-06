@@ -5,7 +5,7 @@ import bcryptjs from 'bcryptjs';
 import config from '../config';
 import crypto from 'crypto';
 
-export const passwordPlugin = <T extends { email: string }>(
+export const passwordPlugin = <T extends { email?: string }>(
   schema: Schema<T>
 ): void => {
   // Pre-save Hook: Hash password before saving

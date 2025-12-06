@@ -13,8 +13,8 @@ export type TCart = {
   customerId: string;
   items: TCartItem[];
   totalItems: number;
-  totalPrice: number;
   discount?: number;
+  totalPrice: number;
   couponCode?: string;
   isDeleted: boolean;
   createdAt: Date;

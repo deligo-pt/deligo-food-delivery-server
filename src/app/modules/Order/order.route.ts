@@ -27,10 +27,10 @@ router.get(
   OrderControllers.getSingleOrder
 );
 
-// Accept or Reject order by vendor
+// Accept / Reject / Cancel order
 router.patch(
   '/:orderId/accept-reject',
-  auth('VENDOR'),
+  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   validateRequest(OrderValidation.acceptOrRejectOrderValidationSchema),
   OrderControllers.acceptOrRejectOrderByVendor
 );

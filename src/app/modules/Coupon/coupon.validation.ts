@@ -6,6 +6,9 @@ const createCouponValidationSchema = z.object({
       .string({ required_error: 'Coupon code is required' })
       .min(3, 'Coupon code must be at least 3 characters')
       .toUpperCase(),
+    createdBy: z
+      .string({ required_error: 'Creator ID is required' })
+      .optional(),
     discountType: z.enum(['PERCENT', 'FLAT'], {
       required_error: 'Discount type is required',
     }),
@@ -38,7 +41,20 @@ export const updateCouponValidationSchema = z.object({
   }),
 });
 
+// apply coupon validation schema
+const applyCouponValidationSchema = z.object({
+  body: z.object({
+    code: z
+      .string({ required_error: 'Coupon code is required' })
+      .min(1, 'Please provide a valid coupon code'),
+    type: z.enum(['CART', 'CHECKOUT'], {
+      required_error: 'Type is required',
+    }),
+  }),
+});
+
 export const CouponValidation = {
   createCouponValidationSchema,
   updateCouponValidationSchema,
+  applyCouponValidationSchema,
 };

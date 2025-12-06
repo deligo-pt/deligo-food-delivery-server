@@ -7,8 +7,7 @@ export type TCustomer = {
   _id?: string;
   userId: string;
   role: 'CUSTOMER';
-  email: string;
-  password?: string;
+  email?: string;
 
   status: keyof typeof USER_STATUS;
   isOtpVerified: boolean;
@@ -18,15 +17,12 @@ export type TCustomer = {
   fcmTokens?: string[];
 
   // ------------------------------------------------------
-  // OTP & Password Reset
+  // OTP
   // ------------------------------------------------------
   otp?: string;
   isOtpExpired?: Date;
   requiresOtpVerification?: boolean;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
+  mobileOtpId?: string;
 
   // ------------------------------------------------------
   // Personal Information

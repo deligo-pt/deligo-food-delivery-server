@@ -34,6 +34,22 @@ const updateCoupon = catchAsync(async (req, res) => {
   });
 });
 
+// apply coupon controller
+const applyCoupon = catchAsync(async (req, res) => {
+  const { code, type } = req.body;
+  const result = await CouponServices.applyCoupon(
+    code,
+    req.user as AuthUser,
+    type
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Coupon applied successfully',
+    data: result,
+  });
+});
+
 // get all coupons controller
 const getAllCoupons = catchAsync(async (req, res) => {
   const result = await CouponServices.getAllCoupons(
@@ -97,6 +113,7 @@ const permanentDeleteCoupon = catchAsync(async (req, res) => {
 export const CouponControllers = {
   createCoupon,
   updateCoupon,
+  applyCoupon,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,

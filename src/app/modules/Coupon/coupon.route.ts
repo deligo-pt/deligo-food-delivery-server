@@ -9,7 +9,7 @@ const router = Router();
 // create coupon
 router.post(
   '/create-coupon',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
   validateRequest(CouponValidation.createCouponValidationSchema),
   CouponControllers.createCoupon
 );
@@ -17,9 +17,17 @@ router.post(
 // update coupon
 router.patch(
   '/:couponId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
   validateRequest(CouponValidation.updateCouponValidationSchema),
   CouponControllers.updateCoupon
+);
+
+// apply coupon
+router.post(
+  '/apply-coupon',
+  auth('CUSTOMER'),
+  validateRequest(CouponValidation.applyCouponValidationSchema),
+  CouponControllers.applyCoupon
 );
 
 // get all coupons

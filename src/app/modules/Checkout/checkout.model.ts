@@ -19,12 +19,13 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       },
     ],
 
-    discount: { type: Number, default: 0 },
     totalItems: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
+    discount: { type: Number, default: 0 },
     deliveryCharge: { type: Number, required: true },
     finalAmount: { type: Number, required: true },
     estimatedDeliveryTime: { type: String, default: 'N/A' },
+    couponCode: { type: String, default: undefined },
 
     deliveryAddress: {
       street: String,
@@ -41,8 +42,8 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
 
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'failed'],
-      default: 'pending',
+      enum: ['PENDING', 'PAID', 'FAILED'],
+      default: 'PENDING',
     },
 
     paymentMethod: {

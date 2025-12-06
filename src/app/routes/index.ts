@@ -17,6 +17,7 @@ import { OfferRoutes } from '../modules/Offer/offer.route';
 import { RatingRoutes } from '../modules/Rating/rating.route';
 import { AnalyticsRoutes } from '../modules/Analytics/analytics.route';
 import { CheckoutRoutes } from '../modules/Checkout/checkout.route';
+import { SupportRoutes } from '../modules/Support/support.route';
 
 const router = express.Router();
 
@@ -92,6 +93,10 @@ const moduleRoutes = [
   {
     path: '/analytics',
     route: AnalyticsRoutes,
+  },
+  {
+    path: '/support',
+    route: SupportRoutes,
   },
 ];
 

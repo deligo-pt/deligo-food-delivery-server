@@ -6,18 +6,30 @@ import { addressSchema } from '../Admin/admin.validation';
 // ---------------------------------------------
 const updateDeliveryPartnerDataValidationSchema = z.object({
   body: z.object({
-    profilePhoto: z.string().optional(),
+    name: z
+      .object({
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+      })
+      .optional(),
+    contactNumber: z.string().optional(),
+    address: addressSchema.optional(),
+
+    // ---------------------------------------------------
+    // GeoJSON location auto-set for backend $geoNear
+    // ---------------------------------------------------
+    location: z
+      .object({
+        type: z.literal('Point').optional().default('Point'),
+        coordinates: z
+          .tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)])
+          .optional(),
+      })
+      .optional(),
 
     // Personal Information
     personalInfo: z
       .object({
-        name: z
-          .object({
-            firstName: z.string().optional(),
-            lastName: z.string().optional(),
-          })
-          .optional(),
-
         dateOfBirth: z.string().optional(),
         gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
         nationality: z.string().optional(),
@@ -27,9 +39,6 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
         passportNumber: z.string().optional(),
 
         idExpiryDate: z.string().optional(),
-
-        address: addressSchema.optional(),
-        contactNumber: z.string().optional(),
       })
       .optional(),
 

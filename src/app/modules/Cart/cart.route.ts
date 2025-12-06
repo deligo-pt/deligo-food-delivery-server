@@ -21,6 +21,21 @@ router.patch(
   CartControllers.activateItem
 );
 
+// update cart item quantity
+router.patch(
+  '/update-quantity',
+  auth('CUSTOMER'),
+  validateRequest(CartValidation.updateCartItemQuantityValidationSchema),
+  CartControllers.updateCartItemQuantity
+);
+
+// delete cart item
+router.delete(
+  '/delete-item',
+  auth('CUSTOMER'),
+  validateRequest(CartValidation.deleteCartItemValidationSchema),
+  CartControllers.deleteCartItem
+);
 // view cart
 router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
 

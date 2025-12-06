@@ -33,7 +33,7 @@ const loginCustomerValidationSchema = z.object({
         required_error: 'Email is required',
       })
       .optional(),
-    mobileNumber: z
+    contactNumber: z
       .string({
         required_error: 'Mobile number is required',
       })
@@ -84,7 +84,11 @@ const refreshTokenValidationSchema = z.object({
 // Approve or Reject User Validation Schema
 const approvedOrRejectedUserValidationSchema = z.object({
   body: z.object({
-    status: z.nativeEnum(USER_STATUS),
+    status: z.enum([
+      USER_STATUS.APPROVED,
+      USER_STATUS.REJECTED,
+      USER_STATUS.BLOCKED,
+    ]),
     approvedBy: z.string().optional(),
     rejectedBy: z.string().optional(),
     remarks: z.string().optional(),
@@ -94,21 +98,37 @@ const approvedOrRejectedUserValidationSchema = z.object({
 // Verify OTP Validation Schema
 const verifyOtpValidationSchema = z.object({
   body: z.object({
-    email: z.string({
-      required_error: 'Email is required',
-    }),
-    otp: z.string({
-      required_error: 'OTP is required',
-    }),
+    email: z
+      .string({
+        required_error: 'Email is required',
+      })
+      .optional(),
+    contactNumber: z
+      .string({
+        required_error: 'Mobile number is required',
+      })
+      .optional(),
+    otp: z
+      .string({
+        required_error: 'OTP is required',
+      })
+      .optional(),
   }),
 });
 
 // Resend OTP Validation Schema
 const resendOtpValidationSchema = z.object({
   body: z.object({
-    email: z.string({
-      required_error: 'Email is required',
-    }),
+    email: z
+      .string({
+        required_error: 'Email is required',
+      })
+      .optional(),
+    contactNumber: z
+      .string({
+        required_error: 'Mobile number is required',
+      })
+      .optional(),
   }),
 });
 

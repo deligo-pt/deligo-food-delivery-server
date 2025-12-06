@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { USER_STATUS } from '../../constant/user.constant';
 import { IUserModel } from '../../interfaces/user.interface';
 import { Admin } from '../Admin/admin.model';
 import { Customer } from '../Customer/customer.model';
@@ -28,7 +27,7 @@ export const USER_MODEL_MAP = {
 } as const;
 
 export type TApprovedRejectsPayload = {
-  status: keyof typeof USER_STATUS;
+  status: 'APPROVED' | 'REJECTED' | 'BLOCKED';
   approvedBy?: string;
   rejectedBy?: string;
   remarks?: string;

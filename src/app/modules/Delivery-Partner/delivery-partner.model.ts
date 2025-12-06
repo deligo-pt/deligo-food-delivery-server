@@ -65,7 +65,7 @@ const deliveryPartnerSchema = new Schema<
     passwordChangedAt: { type: Date },
 
     //-------------------------------------------------
-    // 1) Personal Information
+    // Personal Information
     //-------------------------------------------------
     name: {
       firstName: { type: String, default: '' },
@@ -84,6 +84,14 @@ const deliveryPartnerSchema = new Schema<
       geoAccuracy: { type: Number },
     },
 
+    //-------------------------------------------------
+    //  Required for geo search and nearest partner match
+    //-------------------------------------------------
+    location: {
+      type: { type: String, enum: ['Point'], default: 'Point', required: true },
+      coordinates: { type: [Number], required: true },
+    },
+
     personalInfo: {
       dateOfBirth: { type: Date },
       gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'] },
@@ -96,7 +104,7 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // 2) Legal Status
+    // Legal Status
     //-------------------------------------------------
     legalStatus: {
       residencePermitType: { type: String, default: '' },
@@ -105,7 +113,7 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // 3) Banking Details
+    // Banking Details
     //-------------------------------------------------
     bankDetails: {
       bankName: { type: String, default: '' },
@@ -115,8 +123,8 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // 4) Vehicle Information
-    // ─────────────────────────────
+    // Vehicle Information
+    //-------------------------------------------------
     vehicleInfo: {
       vehicleType: {
         type: String,
@@ -134,7 +142,7 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // 5) Criminal Background
+    // Criminal Background
     //-------------------------------------------------
     criminalRecord: {
       certificate: { type: Boolean },
@@ -142,7 +150,7 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // 6) Work Preferences
+    // Work Preferences
     //-------------------------------------------------
     workPreferences: {
       preferredZones: { type: [String], default: [] },
@@ -217,7 +225,7 @@ const deliveryPartnerSchema = new Schema<
     virtuals: true,
   }
 );
-
+deliveryPartnerSchema.index({ location: '2dsphere' });
 deliveryPartnerSchema.plugin(passwordPlugin);
 
 export const DeliveryPartner = model<

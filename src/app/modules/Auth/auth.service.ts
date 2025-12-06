@@ -20,6 +20,9 @@ import crypto from 'crypto';
 import config from '../../config';
 import { Customer } from '../Customer/customer.model';
 import { v4 as uuidv4 } from 'uuid';
+import { sendMobileOtp } from '../../utils/sendMobileOtp';
+import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
+import { resendMobileOtp } from '../../utils/resendMobileOtp';
 
 // Register User
 const registerUser = async <
@@ -229,59 +232,118 @@ const loginUser = async (payload: TLoginUser) => {
 
 // login customer
 const loginCustomer = async (payload: TLoginCustomer) => {
-  if (!payload?.email && !payload?.mobileNumber) {
+  // -----------------------------------------------------
+  // Validate input
+  // -----------------------------------------------------
+  if (!payload?.email && !payload?.contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Email or mobile number is required'
+      'Email or contact number is required'
     );
   }
-  const existingUserWithEmail = await Customer.findOne({
-    email: payload.email,
-  });
-  const { otp, otpExpires } = generateOtp();
 
-  // Prepare & send verification email
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      otp,
-      userEmail: payload.email,
-      currentYear: new Date().getFullYear(),
-      date: new Date().toDateString(),
-      user: existingUserWithEmail?.name?.firstName || 'Customer',
-    },
-    'verify-email'
-  );
-  if (payload?.email) {
-    if (existingUserWithEmail) {
-      existingUserWithEmail.otp = otp;
-      existingUserWithEmail.isOtpExpired = otpExpires;
-      existingUserWithEmail.isOtpVerified = false;
-      existingUserWithEmail.requiresOtpVerification = true;
-      await existingUserWithEmail.save();
+  // -----------------------------------------------------
+  // Email Login Logic
+  // -----------------------------------------------------
+  if (payload.email) {
+    // Check if email exists in other user models
+    const checkModels = ALL_USER_MODELS.map((M: any) =>
+      M.isUserExistsByEmail(payload.email).catch(() => null)
+    );
+    const checkUser = await Promise.all(checkModels);
+    const user = checkUser.find((u) => u);
+
+    if (user && user.role !== 'CUSTOMER') {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This email is already registered as a different role'
+      );
+    }
+
+    // Fetch existing customer by email
+    const existingUser = await Customer.findOne({ email: payload.email });
+
+    // Generate OTP
+    const { otp, otpExpires } = generateOtp();
+
+    if (existingUser) {
+      Object.assign(existingUser, {
+        otp,
+        isOtpExpired: otpExpires,
+        isOtpVerified: false,
+        requiresOtpVerification: true,
+      });
+      await existingUser.save();
     } else {
       const userId = `C-${uuidv4().split('-')[0]}`;
       await Customer.create({
         userId,
         role: 'CUSTOMER',
         email: payload.email,
-        mobileNumber: payload?.mobileNumber,
         otp,
         isOtpExpired: otpExpires,
+        requiresOtpVerification: true,
       });
     }
-    // send email
-    EmailHelper.sendEmail(
-      payload?.email,
+
+    // Prepare email content and send
+    const emailHtml = await EmailHelper.createEmailContent(
+      {
+        otp,
+        userEmail: payload.email,
+        currentYear: new Date().getFullYear(),
+        date: new Date().toDateString(),
+        user: existingUser?.name?.firstName || 'Customer',
+      },
+      'verify-email'
+    );
+
+    await EmailHelper.sendEmail(
+      payload.email,
       emailHtml,
       'Verify your email for DeliGo'
     ).catch((err) => {
       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
     });
+
+    return { message: 'OTP sent to your email. Please verify to login.' };
   }
 
-  return {
-    message: 'OTP sent to your email. Please verify to login.',
-  };
+  // -----------------------------------------------------
+  // Mobile Login Logic
+  // -----------------------------------------------------
+  if (payload.contactNumber) {
+    // Fetch existing customer by mobile number
+    const existingUser = await Customer.findOne({
+      contactNumber: payload.contactNumber,
+    });
+
+    // Send mobile OTP
+    const res = await sendMobileOtp(payload.contactNumber);
+    const mobileOtpId = res?.data?.id;
+
+    if (existingUser) {
+      Object.assign(existingUser, {
+        mobileOtpId,
+        isOtpVerified: false,
+        requiresOtpVerification: true,
+      });
+      await existingUser.save();
+    } else {
+      const userId = `C-${uuidv4().split('-')[0]}`;
+      await Customer.create({
+        userId,
+        role: 'CUSTOMER',
+        contactNumber: payload.contactNumber,
+        mobileOtpId,
+        requiresOtpVerification: true,
+      });
+    }
+
+    return {
+      message: 'OTP sent to your mobile number. Please verify to login.',
+    };
+  }
 };
 
 //save FCM Token
@@ -579,6 +641,12 @@ const refreshToken = async (token: string) => {
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const existingUser = result?.user;
+  if (currentUser?.role === 'DELIVERY_PARTNER') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You can't submit approval request."
+    );
+  }
 
   if (existingUser?.status === 'SUBMITTED') {
     throw new AppError(
@@ -614,6 +682,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
 
   existingUser.status = 'SUBMITTED';
   existingUser.submittedForApprovalAt = new Date();
+  existingUser.isUpdateLocked = true;
   await existingUser.save();
 
   // Prepare & send email to admin for user approval
@@ -681,6 +750,7 @@ const approvedOrRejectedUser = async (
       );
     }
     existingUser.remarks = payload.remarks;
+    existingUser.isUpdateLocked = false;
   } else if (payload.status === 'BLOCKED') {
     existingUser.blockedBy = currentUser.id;
     existingUser.approvedOrRejectedOrBlockedAt = new Date();
@@ -729,45 +799,71 @@ const approvedOrRejectedUser = async (
 };
 
 // Verify OTP
-const verifyOtp = async (email: string, otp: string) => {
-  const result = await findUserByEmailOrId({ email, isDeleted: false });
-  const user = result?.user;
+const verifyOtp = async (
+  email?: string,
+  contactNumber?: string,
+  otp?: string
+) => {
+  if (!email && !contactNumber) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Email or contact number is required for OTP verification'
+    );
+  }
+  let user: any;
 
-  if (user?.isEmailVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'User is already verified. Please log in.'
+  if (email) {
+    const result = await findUserByEmailOrId({ email, isDeleted: false });
+    user = result?.user;
+    if (!user)
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'User not found. Please register.'
+      );
+    if (user.otp !== otp)
+      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
+    if (user.isOtpExpired && user.isOtpExpired < new Date())
+      throw new AppError(httpStatus.UNAUTHORIZED, 'OTP has expired');
+
+    user.isEmailVerified = true;
+    user.otp = undefined;
+    user.isOtpExpired = undefined;
+    if (user.role === 'CUSTOMER') {
+      user.requiresOtpVerification = false;
+      user.isOtpVerified = true;
+    }
+  }
+
+  if (contactNumber) {
+    user = await Customer.findOne({ contactNumber, isDeleted: false });
+    if (!user)
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'User not found. Please register.'
+      );
+
+    const res = await verifyMobileOtp(
+      user.mobileOtpId as string,
+      otp as string
     );
-  }
-  if (user?.isOtpVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'User is already verified. Please log in.'
-    );
-  }
-  if (user.otp !== otp) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
-  }
-  if (user.isOtpExpired && user.isOtpExpired < new Date()) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'OTP has expired');
-  }
-  user.isEmailVerified = true;
-  user.otp = undefined;
-  user.isOtpExpired = undefined;
-  if (user.role === 'CUSTOMER') {
-    user.requiresOtpVerification = false;
+    if (!res?.data?.verified) {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+    }
+
     user.isOtpVerified = true;
+    user.requiresOtpVerification = false;
+    user.mobileOtpId = undefined;
   }
+
   await user.save();
 
-  // Generate JWT token after successful verification
   const jwtPayload = {
-    id: user?.userId,
-    name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
-    email: user?.email,
-    contactNumber: user?.contactNumber,
-    role: user?.role,
-    status: user?.status,
+    id: user.userId,
+    name: `${user.name?.firstName || ''} ${user.name?.lastName || ''}`.trim(),
+    email: user.email,
+    contactNumber: user.contactNumber,
+    role: user.role,
+    status: user.status,
   };
 
   const accessToken = createToken(
@@ -775,7 +871,6 @@ const verifyOtp = async (email: string, otp: string) => {
     config.jwt_access_secret as string,
     config.jwt_access_expires_in as string
   );
-
   const refreshToken = createToken(
     jwtPayload,
     config.jwt_refresh_secret as string,
@@ -783,42 +878,78 @@ const verifyOtp = async (email: string, otp: string) => {
   );
 
   return {
-    message: `${user?.role} Email verified successfully`,
+    message: email
+      ? `${user.role} Email verified successfully`
+      : 'Customer contact number verified successfully',
     accessToken,
     refreshToken,
   };
 };
 
 // Resend OTP
-const resendOtp = async (email: string) => {
-  const result = await findUserByEmailOrId({ email, isDeleted: false });
-  const user = result?.user;
-  if (user?.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'User is already verified');
+const resendOtp = async (email?: string, contactNumber?: string) => {
+  if (!email && !contactNumber) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Email or contact number is required to resend OTP'
+    );
   }
-  const { otp, otpExpires } = generateOtp();
-  user.otp = otp;
-  user.isOtpExpired = otpExpires;
-  await user.save();
-
-  // Prepare email template content
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      otp,
-      userEmail: user?.email,
-      currentYear: new Date().getFullYear(),
-      date: new Date().toDateString(),
-      user: user?.name?.firstName || user?.role.toLocaleLowerCase(),
-    },
-    'verify-email'
-  );
-
-  // Send verification email
-  EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo').catch(
-    (err) => {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+  let user;
+  if (contactNumber) {
+    user = await Customer.findOne({ contactNumber, isDeleted: false });
+    if (!user) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'User not found. Please register.'
+      );
     }
-  );
+    const id = user.mobileOtpId;
+    if (!id) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'No OTP found to resend. Please request a new OTP.'
+      );
+    }
+    await resendMobileOtp(id as string);
+    user.isOtpVerified = false;
+    user.requiresOtpVerification = true;
+    await user.save();
+  }
+  if (email) {
+    const result = await findUserByEmailOrId({ email, isDeleted: false });
+    user = result?.user;
+    if (user?.isEmailVerified) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'User is already verified. Please login.'
+      );
+    }
+    const { otp, otpExpires } = generateOtp();
+    user.otp = otp;
+    user.isOtpExpired = otpExpires;
+    await user.save();
+
+    // Prepare email template content
+    const emailHtml = await EmailHelper.createEmailContent(
+      {
+        otp,
+        userEmail: user?.email,
+        currentYear: new Date().getFullYear(),
+        date: new Date().toDateString(),
+        user: user?.name?.firstName || user?.role.toLocaleLowerCase(),
+      },
+      'verify-email'
+    );
+
+    // Send verification email
+    EmailHelper.sendEmail(
+      email,
+      emailHtml,
+      'Verify your email for DeliGo'
+    ).catch((err) => {
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    });
+  }
   return {
     message: 'OTP resent successfully. Please check your email.',
   };
