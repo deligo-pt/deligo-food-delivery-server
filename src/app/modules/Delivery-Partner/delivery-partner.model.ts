@@ -4,6 +4,34 @@ import { TDeliveryPartner } from './delivery-partner.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
+import { currentStatusOptions } from './delivery-partner.constant';
+
+// --- Sub-Schemas for Operational Data ---
+const operationalInfoSchema = new Schema(
+  {
+    currentStatus: {
+      type: String,
+      enum: Object.keys(currentStatusOptions),
+      default: 'OFFLINE',
+      required: true,
+    },
+    currentZoneId: { type: String }, // DeliGo Zone ID
+    currentOrderIds: { type: [String], default: [] }, // List of active order IDs
+    capacity: { type: Number, required: true, default: 1 }, // Max number of orders the driver can carry
+    isWorking: { type: Boolean, default: false }, // Clocked in/out status
+  },
+  { _id: false }
+);
+
+const locationSchema = new Schema(
+  {
+    type: { type: String, enum: ['Point'], default: 'Point', required: true },
+    coordinates: { type: [Number], required: true }, // [longitude, latitude]
+    accuracy: { type: Number }, // GPS Accuracy in meters
+    lastLocationUpdate: { type: Date, default: Date.now, required: true }, // Data Freshness Timestamp
+  },
+  { _id: false }
+);
 
 const deliveryPartnerSchema = new Schema<
   TDeliveryPartner,
@@ -50,6 +78,16 @@ const deliveryPartnerSchema = new Schema<
     isUpdateLocked: { type: Boolean, default: false },
 
     //-------------------------------------------------
+    // Operational & Real-Time Data (NEW)
+    //-------------------------------------------------
+    operationalInfo: { type: operationalInfoSchema, required: true },
+
+    //-------------------------------------------------
+    // Live Location (UPDATED for Geo-Search)
+    //-------------------------------------------------
+    location: { type: locationSchema, required: true },
+
+    //-------------------------------------------------
     // FCM Tokens
     //-------------------------------------------------
     fcmTokens: { type: [String], default: [] },
@@ -59,7 +97,6 @@ const deliveryPartnerSchema = new Schema<
     //-------------------------------------------------
     otp: { type: String },
     isOtpExpired: { type: Date },
-
     passwordResetToken: { type: String },
     passwordResetTokenExpiresAt: { type: Date },
     passwordChangedAt: { type: Date },
@@ -82,14 +119,6 @@ const deliveryPartnerSchema = new Schema<
       latitude: { type: Number },
       longitude: { type: Number },
       geoAccuracy: { type: Number },
-    },
-
-    //-------------------------------------------------
-    //  Required for geo search and nearest partner match
-    //-------------------------------------------------
-    location: {
-      type: { type: String, enum: ['Point'], default: 'Point', required: true },
-      coordinates: { type: [Number], required: true },
     },
 
     personalInfo: {
@@ -167,7 +196,7 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // Operational Data
+    // Operational Data (Statistics)
     //-------------------------------------------------
     operationalData: {
       totalDeliveries: { type: Number, default: 0 },
@@ -225,7 +254,9 @@ const deliveryPartnerSchema = new Schema<
     virtuals: true,
   }
 );
-deliveryPartnerSchema.index({ location: '2dsphere' });
+
+// --- Indexing and Plugins ---
+deliveryPartnerSchema.index({ 'location.coordinates': '2dsphere' });
 deliveryPartnerSchema.plugin(passwordPlugin);
 
 export const DeliveryPartner = model<

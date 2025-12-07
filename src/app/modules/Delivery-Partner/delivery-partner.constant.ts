@@ -1,3 +1,9 @@
+export const currentStatusOptions = {
+  AVAILABLE: 'AVAILABLE',
+  UNAVAILABLE: 'UNAVAILABLE',
+  ON_DELIVERY: 'ON_DELIVERY',
+} as const;
+
 export const DeliveryPartnerSearchableFields = [
   'status',
   'name',

@@ -18,6 +18,7 @@ import { RatingRoutes } from '../modules/Rating/rating.route';
 import { AnalyticsRoutes } from '../modules/Analytics/analytics.route';
 import { CheckoutRoutes } from '../modules/Checkout/checkout.route';
 import { SupportRoutes } from '../modules/Support/support.route';
+import { ZoneRoutes } from '../modules/Zone/zone.route';
 
 const router = express.Router();
 
@@ -97,6 +98,10 @@ const moduleRoutes = [
   {
     path: '/support',
     route: SupportRoutes,
+  },
+  {
+    path: '/zones',
+    route: ZoneRoutes,
   },
 ];
 

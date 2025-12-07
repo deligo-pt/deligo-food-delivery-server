@@ -1,8 +1,9 @@
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { currentStatusOptions } from './delivery-partner.constant';
 
 export type TDeliveryPartner = {
   // -------------------------------------------------
-  // Core Identifiers
+  // Core Identifiers & Credentials
   // -------------------------------------------------
   _id?: string;
   userId: string;
@@ -15,7 +16,7 @@ export type TDeliveryPartner = {
   isDeleted: boolean;
   isUpdateLocked: boolean;
 
-  // FCM tokens
+  // FCM tokens for push notifications
   fcmTokens?: string[];
 
   // ------------------------------------------------------
@@ -28,6 +29,27 @@ export type TDeliveryPartner = {
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
   passwordChangedAt?: Date;
+
+  // ------------------------------------------------------
+  // Operational & Real-Time Data
+  // ------------------------------------------------------
+  operationalInfo: {
+    currentStatus: keyof typeof currentStatusOptions; // Current working state (IDLE, ON_DELIVERY, OFFLINE)
+    currentZoneId?: string; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
+    currentOrderIds?: string[]; // List of active order IDs they are currently fulfilling
+    capacity: number; // Max number of orders the driver can carry (e.g., 2 or 3)
+    isWorking: boolean; // Simple flag: Clocked in/out
+  };
+
+  // -------------------------------------------------
+  // Live Location (Required for Geo-Search & Nearest Match)
+  // -------------------------------------------------
+  location: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+    accuracy?: number; // GPS Accuracy in meters (lower is better)
+    lastLocationUpdate: Date; // Timestamp for data freshness (Crucial for filtering stale data)
+  };
 
   // -------------------------------------------------
   // 1) Personal Information
@@ -48,20 +70,10 @@ export type TDeliveryPartner = {
     longitude?: number;
     geoAccuracy?: number;
   };
-
-  // -------------------------------------------------
-  // Required for geo search and nearest partner match
-  // -------------------------------------------------
-  location: {
-    type: 'Point';
-    coordinates: [number, number];
-  };
-
   personalInfo?: {
     dateOfBirth?: Date;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     nationality?: string;
-
     nifNumber?: string;
     citizenCardNumber?: string;
     passportNumber?: string;
@@ -95,10 +107,8 @@ export type TDeliveryPartner = {
     brand?: string;
     model?: string;
     licensePlate?: string;
-
     drivingLicenseNumber?: string;
     drivingLicenseExpiry?: Date;
-
     insurancePolicyNumber?: string;
     insuranceExpiry?: Date;
   };
@@ -181,7 +191,7 @@ export type TDeliveryPartner = {
   updatedAt?: Date;
 };
 
-// Document Upload Types
+// Document Upload Types (unchanged)
 export type TDeliveryPartnerImageDocuments = {
   docImageTitle:
     | 'idDocumentFront'
