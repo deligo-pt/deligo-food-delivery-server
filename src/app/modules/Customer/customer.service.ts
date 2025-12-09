@@ -12,112 +12,133 @@ const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
   currentUser: AuthUser,
-  profilePhoto: string | undefined
+  profilePhoto?: string
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  // ----------------------------------------------------------------------
+  // Authorization
+  // ----------------------------------------------------------------------
+  const userRecord = await findUserByEmailOrId({
     userId: currentUser?.id,
     isDeleted: false,
   });
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  if (userRecord.user.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update a customer. Your account is ${existingCurrentUser.user.status}`
+      `You cannot update profile. Status: ${userRecord.user.status}`
     );
   }
 
-  const existingCustomer = await Customer.isUserExistsByUserId(
-    customerId,
-    false
-  );
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
-  }
-  if (!existingCustomer?.isOtpVerified) {
+  const customer = await Customer.isUserExistsByUserId(customerId, false);
+  if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  if (!customer.isOtpVerified)
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
-  }
-  if (
-    currentUser?.role === 'CUSTOMER' &&
-    currentUser?.id !== existingCustomer?.userId
-  ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for update'
-    );
-  }
-  if (payload.profilePhoto) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Profile photo should be in file!'
-    );
-  }
-  if (profilePhoto) {
-    payload.profilePhoto = profilePhoto;
+
+  if (currentUser.role === 'CUSTOMER' && currentUser.id !== customer.userId) {
+    throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized update');
   }
 
-  if (payload?.address && !payload?.deliveryAddresses) {
-    if (!existingCustomer.deliveryAddresses) {
-      existingCustomer.deliveryAddresses = [];
+  // ----------------------------------------------------------------------
+  // Photo update
+  // ----------------------------------------------------------------------
+  if (payload.profilePhoto)
+    throw new AppError(httpStatus.BAD_REQUEST, 'Photo must be a file upload');
+
+  if (profilePhoto) payload.profilePhoto = profilePhoto;
+
+  // ----------------------------------------------------------------------
+  // User sends a single address
+  // ----------------------------------------------------------------------
+  let updatedDeliveryAddresses = customer.deliveryAddresses;
+
+  if (payload.address) {
+    const { latitude, longitude, geoAccuracy } = payload.address;
+
+    // Auto-update location if coords provided
+    if (latitude != null && longitude != null) {
+      payload.currentSessionLocation = {
+        type: 'Point',
+        coordinates: [longitude, latitude],
+        accuracy: geoAccuracy ?? 0,
+        lastUpdate: new Date(),
+        isSharingActive: false,
+      };
     }
 
     const newAddress = {
-      street: payload.address.street || '',
-      city: payload.address.city || '',
-      state: payload.address.state || '',
-      country: payload.address.country || '',
-      postalCode: payload.address.postalCode || '',
-      latitude: payload.address.latitude || 0,
-      longitude: payload.address.longitude || 0,
-      geoAccuracy: payload.address.geoAccuracy || 0,
+      ...payload.address,
+      isActive: true,
     };
 
-    // ------------------------------------------
-    // Check if same address already exists
-    // ------------------------------------------
-    const isSameAddress = existingCustomer.deliveryAddresses.some(
+    // Check if this address already exists
+    const exists = customer?.deliveryAddresses?.some(
       (addr) =>
-        addr.street === newAddress.street &&
-        addr.city === newAddress.city &&
-        addr.state === newAddress.state &&
-        addr.country === newAddress.country &&
-        addr.postalCode === newAddress.postalCode
+        addr.latitude === newAddress.latitude &&
+        addr.longitude === newAddress.longitude
     );
 
-    if (isSameAddress) {
-      // ----------------------------------------------------
-      // Do nothing if the address already exists
-      // ----------------------------------------------------
-      payload.deliveryAddresses = existingCustomer.deliveryAddresses;
-    } else {
-      // ----------------------------------------------------
-      //  Deactivate previously active address
-      // ----------------------------------------------------
-      existingCustomer.deliveryAddresses =
-        existingCustomer.deliveryAddresses.map((addr) => ({
-          ...addr,
-          isActive: false,
-        }));
+    if (!exists) {
+      // Deactivate all previous addresses
+      updatedDeliveryAddresses = customer?.deliveryAddresses?.map((addr) => ({
+        ...addr,
+        isActive: false,
+      }));
 
-      // ----------------------------------------------
-      // Push new address with isActive = true
-      // ----------------------------------------------
-      existingCustomer.deliveryAddresses.push({
-        ...newAddress,
-        isActive: true,
-      });
+      // Add new active address
+      updatedDeliveryAddresses?.push({ ...newAddress, addressType: 'HOME' });
+    }
 
-      payload.deliveryAddresses = existingCustomer.deliveryAddresses;
+    payload.deliveryAddresses = updatedDeliveryAddresses;
+  }
+
+  // ----------------------------------------------------------------------
+  //  Make sure only ONE active
+  // ----------------------------------------------------------------------
+  if (payload.deliveryAddresses && payload.deliveryAddresses.length > 0) {
+    // Set last item as active (or enforce one active)
+    payload.deliveryAddresses = payload.deliveryAddresses.map((addr, idx) => ({
+      ...addr,
+      isActive: idx === payload.deliveryAddresses!.length - 1,
+    }));
+
+    // Auto-update currentSessionLocation from active
+    const active = payload.deliveryAddresses.find((a) => a.isActive);
+
+    if (active?.longitude != null && active?.latitude != null) {
+      payload.currentSessionLocation = {
+        type: 'Point',
+        coordinates: [active.longitude, active.latitude],
+        accuracy: active.geoAccuracy ?? 0,
+        lastUpdate: new Date(),
+        isSharingActive: false,
+      };
     }
   }
 
-  const updateCustomer = await Customer.findOneAndUpdate(
+  // ----------------------------------------------------------------------
+  // Final Update
+  // ----------------------------------------------------------------------
+  const updated = await Customer.findOneAndUpdate(
     { userId: customerId },
-    { ...payload },
-    {
-      new: true,
-    }
+    { $set: payload },
+    { new: true }
   );
-  return updateCustomer;
+
+  return updated;
+};
+
+// delete delivery address
+const deleteDeliveryAddress = async (
+  addressId: string,
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const userId = currentUser.id;
+  await Customer.findOneAndUpdate(
+    { userId },
+    { $pull: { deliveryAddresses: { _id: addressId } } }
+  );
+  return null;
 };
 
 //get all customers
@@ -200,6 +221,7 @@ const getSingleCustomerFromDB = async (
 
 export const CustomerServices = {
   updateCustomer,
+  deleteDeliveryAddress,
   getAllCustomersFromDB,
   getSingleCustomerFromDB,
 };

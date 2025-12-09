@@ -6,3 +6,9 @@ export const CustomerSearchableFields = [
   'role',
   'status',
 ];
+
+export const AddressType = {
+  HOME: 'HOME',
+  OFFICE: 'OFFICE',
+  OTHER: 'OTHER',
+} as const;

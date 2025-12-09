@@ -22,6 +22,20 @@ const updateCustomer = catchAsync(async (req, res) => {
   });
 });
 
+// delete delivery address
+const deleteDeliveryAddress = catchAsync(async (req, res) => {
+  const result = await CustomerServices.deleteDeliveryAddress(
+    req.params.addressId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery address deleted successfully',
+    data: result,
+  });
+});
+
 // get all customers
 const getAllCustomers = catchAsync(async (req, res) => {
   const result = await CustomerServices.getAllCustomersFromDB(
@@ -55,6 +69,7 @@ const getSingleCustomer = catchAsync(async (req, res) => {
 
 export const CustomerControllers = {
   updateCustomer,
+  deleteDeliveryAddress,
   getAllCustomers,
   getSingleCustomer,
 };

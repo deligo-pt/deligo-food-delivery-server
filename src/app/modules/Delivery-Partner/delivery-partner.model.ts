@@ -15,10 +15,13 @@ const operationalInfoSchema = new Schema(
       default: 'OFFLINE',
       required: true,
     },
+    assignmentZoneId: { type: String },
     currentZoneId: { type: String }, // DeliGo Zone ID
     currentOrderIds: { type: [String], default: [] }, // List of active order IDs
     capacity: { type: Number, required: true, default: 1 }, // Max number of orders the driver can carry
     isWorking: { type: Boolean, default: false }, // Clocked in/out status
+
+    lastActivityAt: { type: Date },
   },
   { _id: false }
 );

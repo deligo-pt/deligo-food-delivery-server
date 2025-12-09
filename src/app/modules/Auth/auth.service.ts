@@ -95,7 +95,7 @@ const registerUser = async <
   if (existingUser && existingUser.isEmailVerified) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `${existingUser.email} already exists. Please Login!`
+      `${existingUser.email} already exists as ${existingUser.role}. Please Login!`
     );
   }
 

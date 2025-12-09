@@ -1,4 +1,5 @@
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { AddressType } from './customer.constant';
 
 export type TCustomer = {
   // ------------------------------------------------------
@@ -35,6 +36,7 @@ export type TCustomer = {
   contactNumber?: string;
   profilePhoto?: string;
 
+  // Primary/Billing Address (Can be simple)
   address?: {
     street?: string;
     city?: string;
@@ -46,7 +48,20 @@ export type TCustomer = {
     geoAccuracy?: number;
   };
 
-  // Multiple Saved Delivery Addresses
+  // ------------------------------------------------------
+  // Current/Real-Time Location Data (For live tracking during delivery)
+  // ------------------------------------------------------
+  currentSessionLocation?: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+    accuracy?: number; // GPS Accuracy in meters
+    lastUpdate: Date; // Timestamp for data freshness
+    isSharingActive: boolean; // Flag if the app is currently streaming location
+  };
+
+  // ------------------------------------------------------
+  // Multiple Saved Delivery Addresses (Includes Zone Integration)
+  // ------------------------------------------------------
   deliveryAddresses?: Array<{
     street?: string;
     city?: string;
@@ -57,16 +72,25 @@ export type TCustomer = {
     longitude?: number;
     geoAccuracy?: number;
     isActive: boolean;
+
+    // Zone Integration & Metadata
+    zoneId?: string; // CRITICAL: Links address to a defined delivery zone
+    addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
+    notes?: string; // Specific delivery instructions
   }>;
 
   // ------------------------------------------------------
-  // Orders & Activity
+  // Orders & Activity (Includes Analytics Metrics)
   // ------------------------------------------------------
   orders: {
     totalOrders?: number;
     totalSpent?: number;
     lastOrderDate?: Date;
     lastLoginAt?: Date;
+
+    // Analytics
+    avgOrderValue?: number;
+    referralsCount?: number;
   };
 
   // ------------------------------------------------------

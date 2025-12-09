@@ -35,10 +35,13 @@ export type TDeliveryPartner = {
   // ------------------------------------------------------
   operationalInfo: {
     currentStatus: keyof typeof currentStatusOptions; // Current working state (IDLE, ON_DELIVERY, OFFLINE)
+    assignmentZoneId: string;
     currentZoneId?: string; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
     currentOrderIds?: string[]; // List of active order IDs they are currently fulfilling
     capacity: number; // Max number of orders the driver can carry (e.g., 2 or 3)
     isWorking: boolean; // Simple flag: Clocked in/out
+
+    lastActivityAt?: Date;
   };
 
   // -------------------------------------------------

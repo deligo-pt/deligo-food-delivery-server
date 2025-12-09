@@ -15,13 +15,11 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       required: true,
       unique: true,
     },
-
     role: {
       type: String,
       enum: ['VENDOR'],
       required: true,
     },
-
     email: {
       type: String,
       required: true,
@@ -33,45 +31,33 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
         'Please enter a valid email address',
       ],
     },
-
     password: {
       type: String,
       required: true,
       select: false,
     },
-
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
-
     isEmailVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     isUpdateLocked: { type: Boolean, default: false },
 
     // -------------------------------------------------------
-    // Rating & Activity
+    // Save fcm tokens
     // -------------------------------------------------------
-    rating: {
-      average: { type: Number, default: 0 },
-      totalReviews: { type: Number, default: 0 },
-    },
-
-    totalOrders: { type: Number, default: 0 },
-    lastLoginAt: { type: Date, default: null },
-
-    // Push Notifications
     fcmTokens: { type: [String], default: [] },
 
     // ──────────────────────────────────────────────
-    // OTP & Password Reset
+    // OTP & Password Reset (UNCHANGED)
     // -------------------------------------------------------
     otp: { type: String, default: '' },
     isOtpExpired: { type: Date, default: null },
-
     passwordResetToken: { type: String, default: '' },
     passwordResetTokenExpiresAt: { type: Date, default: null },
+    passwordChangedAt: { type: Date, default: null },
 
     // -------------------------------------------------------
     // Personal Details
@@ -80,10 +66,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-
     contactNumber: { type: String, default: '' },
     profilePhoto: { type: String, default: '' },
-
     address: {
       street: { type: String, default: '' },
       city: { type: String, default: '' },
@@ -95,8 +79,6 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       geoAccuracy: { type: Number },
     },
 
-    passwordChangedAt: { type: Date, default: null },
-
     // -------------------------------------------------------
     // Business Details
     // -------------------------------------------------------
@@ -107,9 +89,19 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       NIF: { type: String, default: '' },
       totalBranches: { type: Number, default: 1 },
 
+      // Existing Timing Fields
       openingHours: { type: String, default: '' },
       closingHours: { type: String, default: '' },
       closingDays: { type: [String], default: [] },
+
+      // Operational Status
+      isOperational: { type: Boolean, default: true },
+
+      // Association (Crucial for pricing/assignment)
+      deliveryZoneId: { type: String, default: '' },
+
+      // Timing details
+      preparationTimeMinutes: { type: Number, default: 15 },
     },
 
     // -------------------------------------------------------
@@ -124,10 +116,22 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       latitude: { type: Number },
       longitude: { type: Number },
       geoAccuracy: { type: Number },
+
+      // GeoJSON Point (For 2dsphere indexing)
+      locationPoint: {
+        type: {
+          type: String,
+          enum: ['Point'],
+        },
+        coordinates: {
+          type: [Number], // [longitude, latitude]
+        },
+        _id: false,
+      },
     },
 
     // -------------------------------------------------------
-    // Bank Details
+    // Bank Details & payment information
     // -------------------------------------------------------
     bankDetails: {
       bankName: { type: String, default: '' },
@@ -137,7 +141,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     },
 
     // -------------------------------------------------------
-    // Documents
+    // Documents * verification
     // -------------------------------------------------------
     documents: {
       businessLicenseDoc: { type: String, default: '' },
@@ -151,11 +155,20 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // Security & Access
     // -------------------------------------------------------
     twoFactorEnabled: { type: Boolean, default: false },
-
     loginDevices: {
       type: [loginDeviceSchema],
       default: [],
     },
+
+    // -------------------------------------------------------
+    // Rating & Activity
+    // -------------------------------------------------------
+    rating: {
+      average: { type: Number, default: 0 },
+      totalReviews: { type: Number, default: 0 },
+    },
+    totalOrders: { type: Number, default: 0 },
+    lastLoginAt: { type: Date, default: null },
 
     // -------------------------------------------------------
     // Admin Workflow / Audit
@@ -163,10 +176,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     approvedBy: { type: String, default: '' },
     rejectedBy: { type: String, default: '' },
     blockedBy: { type: String, default: '' },
-
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
-
     remarks: { type: String, default: '' },
   },
   {
@@ -174,6 +185,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     virtuals: true,
   }
 );
+
+vendorSchema.index({ 'businessLocation.locationPoint': '2dsphere' });
 
 vendorSchema.plugin(passwordPlugin);
 

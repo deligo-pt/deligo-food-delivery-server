@@ -59,6 +59,24 @@ const vendorUpdate = async (
   }
 
   // -----------------------------------------
+  // Derive GeoJSON from latitude/longitude
+  // -----------------------------------------
+  if (payload.businessLocation) {
+    const { latitude, longitude } = payload.businessLocation;
+
+    const hasLat = typeof latitude === 'number';
+    const hasLng = typeof longitude === 'number';
+
+    if (hasLat && hasLng) {
+      payload.businessLocation.locationPoint = {
+        type: 'Point',
+        coordinates: [longitude, latitude],
+      };
+    } else {
+      delete (payload.businessLocation as any).locationPoint;
+    }
+  }
+  // -----------------------------------------
   // Update vendor
   // -----------------------------------------
   const updatedVendor = await Vendor.findOneAndUpdate(

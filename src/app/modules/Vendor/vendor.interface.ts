@@ -1,5 +1,12 @@
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
+// export type TVendorSchedule = {
+//   day: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
+//   open: string; // e.g., "09:00" (24-hour format is best for logic)
+//   close: string; // e.g., "23:00"
+//   isClosed: boolean;
+// };
+
 export type TVendor = {
   // --------------------------------------------------------
   // Core Identifiers
@@ -63,6 +70,18 @@ export type TVendor = {
     openingHours?: string; // "09:00 AM"
     closingHours?: string; // "11:00 PM"
     closingDays?: string[]; // ["Friday", "Holidays"]
+
+    // Operational Status
+    isOperational: boolean; // Simple ON/OFF switch for the vendor
+
+    // Zone Association
+    deliveryZoneId: string; // The primary zone for assignment and pricing
+
+    // Timing details
+    preparationTimeMinutes: number; // Avg time to prepare an order (e.g., 15)
+
+    // Detailed Schedule
+    // schedule: TVendorSchedule[]; // Use the detailed schedule interface
   };
 
   // --------------------------------------------------------
@@ -77,6 +96,11 @@ export type TVendor = {
     latitude?: number;
     longitude?: number;
     geoAccuracy?: number;
+
+    locationPoint: {
+      type: 'Point';
+      coordinates: [number, number]; // [longitude, latitude]
+    };
   };
 
   // --------------------------------------------------------

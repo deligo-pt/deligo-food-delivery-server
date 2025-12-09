@@ -18,6 +18,13 @@ router.patch(
   CustomerControllers.updateCustomer
 );
 
+// Delete delivery address
+router.delete(
+  '/:addressId',
+  auth('CUSTOMER'),
+  CustomerControllers.deleteDeliveryAddress
+);
+
 // Get all customers
 router.get(
   '/',
