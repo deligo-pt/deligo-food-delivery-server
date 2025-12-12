@@ -43,8 +43,20 @@ export type TCustomer = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
+    geoAccuracy?: number;
+  };
+
+  // Operational Address
+  operationalAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
   };
 
@@ -68,8 +80,8 @@ export type TCustomer = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
     isActive: boolean;
 

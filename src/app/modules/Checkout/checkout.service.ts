@@ -96,23 +96,23 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     userId: products[0].vendor.vendorId,
   });
 
-  const vendorLatitude = existingVendor?.businessLocation?.latitude;
   const vendorLongitude = existingVendor?.businessLocation?.longitude;
-  const customerLatitude = deliveryAddress?.latitude;
+  const vendorLatitude = existingVendor?.businessLocation?.latitude;
   const customerLongitude = deliveryAddress?.longitude;
+  const customerLatitude = deliveryAddress?.latitude;
   if (
-    !vendorLatitude ||
     !vendorLongitude ||
-    !customerLatitude ||
-    !customerLongitude
+    !vendorLatitude ||
+    !customerLongitude ||
+    !customerLatitude
   ) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Delivery address not found');
   }
   const deliveryDistance = calculateDistance(
-    vendorLatitude,
     vendorLongitude,
-    customerLatitude,
-    customerLongitude
+    vendorLatitude,
+    customerLongitude,
+    customerLatitude
   );
   const deliveryChargePerMeter = await GlobalSettingServices.getPerMeterRate();
 

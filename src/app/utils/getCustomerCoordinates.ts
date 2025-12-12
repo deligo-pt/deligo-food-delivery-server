@@ -20,17 +20,17 @@ export const getCustomerCoordinates = (
   const active = customer.deliveryAddresses?.find(
     (a) =>
       a.isActive &&
-      typeof a.latitude === 'number' &&
-      typeof a.longitude === 'number'
+      typeof a.longitude === 'number' &&
+      typeof a.latitude === 'number'
   );
-  if (active) return [active.latitude as number, active.longitude as number];
+  if (active) return [active.longitude as number, active.latitude as number];
 
   // 3) Primary address
   if (
-    typeof customer.address?.latitude === 'number' &&
-    typeof customer.address?.longitude === 'number'
+    typeof customer.address?.longitude === 'number' &&
+    typeof customer.address?.latitude === 'number'
   ) {
-    return [customer.address.latitude, customer.address.longitude];
+    return [customer.address.longitude, customer.address.latitude];
   }
 
   return null;

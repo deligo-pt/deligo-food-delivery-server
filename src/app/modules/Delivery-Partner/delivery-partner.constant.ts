@@ -1,6 +1,6 @@
 export const currentStatusOptions = {
-  AVAILABLE: 'AVAILABLE',
-  UNAVAILABLE: 'UNAVAILABLE',
+  IDLE: 'IDLE',
+  OFFLINE: 'OFFLINE',
   ON_DELIVERY: 'ON_DELIVERY',
 } as const;
 

@@ -8,6 +8,7 @@ export type TOrder = {
   customerId: string;
   vendorId: string;
   deliveryPartnerId?: string; // assigned after vendor accepts
+  deliveryPartnerCancelReason?: string;
 
   // Items
   items: {
@@ -22,6 +23,7 @@ export type TOrder = {
   totalItems: number;
   totalPrice: number;
   discount?: number;
+  deliveryCharge?: number;
   finalAmount: number;
   paymentMethod: 'CARD' | 'MOBILE';
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
@@ -42,8 +44,8 @@ export type TOrder = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     gooAccuracy?: number;
   };
 
@@ -54,13 +56,12 @@ export type TOrder = {
     state: string;
     country: string;
     postalCode: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number; // meters
   };
-
+  dispatchPartnerPool?: string[];
   // Delivery Details
-  deliveryCharge?: number;
   estimatedDeliveryTime?: string; // e.g., "30 mins"
   deliveredAt?: Date;
 

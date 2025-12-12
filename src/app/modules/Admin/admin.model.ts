@@ -82,8 +82,8 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number, default: null },
       longitude: { type: Number, default: null },
+      latitude: { type: Number, default: null },
       geoAccuracy: { type: Number, default: null },
     },
 

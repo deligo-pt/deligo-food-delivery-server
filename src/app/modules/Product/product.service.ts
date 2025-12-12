@@ -45,8 +45,8 @@ const createProduct = async (
     vendorName: existingUser?.businessDetails?.businessName || '',
     vendorType: vendorCategory || '',
     storePhoto: existingUser?.documents?.storePhoto || '',
-    latitude: existingUser?.businessLocation?.latitude || 0,
     longitude: existingUser?.businessLocation?.longitude || 0,
+    latitude: existingUser?.businessLocation?.latitude || 0,
     rating: existingUser?.rating?.average || 0,
   };
 
@@ -339,15 +339,15 @@ const getAllProducts = async (
     let sortedProducts: (TProduct & { distance?: number })[] = products;
 
     if (coords) {
-      const [custLat, custLng] = coords; // make sure getCustomerCoordinates returns [lat, lng]
+      const [custLng, custLat] = coords;
 
       sortedProducts = products
         .map((product) => {
-          const vLat = product.vendor?.latitude;
           const vLng = product.vendor?.longitude;
+          const vLat = product.vendor?.latitude;
 
-          if (typeof vLat === 'number' && typeof vLng === 'number') {
-            const { meters } = calculateDistance(custLat, custLng, vLat, vLng);
+          if (typeof vLng === 'number' && typeof vLat === 'number') {
+            const { meters } = calculateDistance(custLng, custLat, vLng, vLat);
             return { ...product, distance: meters };
           }
 

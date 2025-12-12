@@ -74,8 +74,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       geoAccuracy: { type: Number },
     },
 
@@ -113,8 +113,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       geoAccuracy: { type: Number },
 
       // GeoJSON Point (For 2dsphere indexing)

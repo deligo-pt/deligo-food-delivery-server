@@ -10,6 +10,15 @@ const acceptOrRejectOrderValidationSchema = z.object({
   }),
 });
 
+// update order status by delivery partner validation schema
+const updateOrderStatusByDeliveryPartnerValidationSchema = z.object({
+  body: z.object({
+    orderStatus: z.enum(['REASSIGNMENT_NEEDED', 'ON_THE_WAY', 'DELIVERED']),
+    reason: z.string().optional(),
+  }),
+});
+
 export const OrderValidation = {
   acceptOrRejectOrderValidationSchema,
+  updateOrderStatusByDeliveryPartnerValidationSchema,
 };

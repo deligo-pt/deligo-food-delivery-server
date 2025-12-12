@@ -52,8 +52,8 @@ export type TVendor = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
   };
 
@@ -93,8 +93,8 @@ export type TVendor = {
     state: string;
     country: string;
     postalCode: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
 
     locationPoint: {

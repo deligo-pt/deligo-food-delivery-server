@@ -14,8 +14,8 @@ export type TCheckoutAddress = {
   state?: string;
   country?: string;
   postalCode?: string;
-  latitude?: number;
   longitude?: number;
+  latitude?: number;
   geoAccuracy?: number;
   isActive?: boolean;
   _id?: string;

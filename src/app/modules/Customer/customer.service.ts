@@ -41,8 +41,9 @@ const updateCustomer = async (
   // ----------------------------------------------------------------------
   // Photo update
   // ----------------------------------------------------------------------
-  if (payload.profilePhoto)
+  if (payload.profilePhoto) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Photo must be a file upload');
+  }
 
   if (profilePhoto) payload.profilePhoto = profilePhoto;
 
@@ -52,10 +53,10 @@ const updateCustomer = async (
   let updatedDeliveryAddresses = customer.deliveryAddresses;
 
   if (payload.address) {
-    const { latitude, longitude, geoAccuracy } = payload.address;
+    const { longitude, latitude, geoAccuracy } = payload.address;
 
     // Auto-update location if coords provided
-    if (latitude != null && longitude != null) {
+    if (longitude != null && latitude != null) {
       payload.currentSessionLocation = {
         type: 'Point',
         coordinates: [longitude, latitude],
@@ -73,8 +74,8 @@ const updateCustomer = async (
     // Check if this address already exists
     const exists = customer?.deliveryAddresses?.some(
       (addr) =>
-        addr.latitude === newAddress.latitude &&
-        addr.longitude === newAddress.longitude
+        addr.longitude === newAddress.longitude &&
+        addr.latitude === newAddress.latitude
     );
 
     if (!exists) {
@@ -85,7 +86,7 @@ const updateCustomer = async (
       }));
 
       // Add new active address
-      updatedDeliveryAddresses?.push({ ...newAddress, addressType: 'HOME' });
+      updatedDeliveryAddresses?.push({ ...newAddress, addressType: 'PRIMARY' });
     }
 
     payload.deliveryAddresses = updatedDeliveryAddresses;
@@ -115,6 +116,33 @@ const updateCustomer = async (
     }
   }
 
+  // -----------------------------------------------------------------------
+  //  update operational address
+  // -----------------------------------------------------------------------
+
+  if (payload.operationalAddress) {
+    const { longitude, latitude, geoAccuracy } = payload.operationalAddress;
+    // Auto-update location if coords provided
+    if (longitude != null && latitude != null) {
+      payload.currentSessionLocation = {
+        type: 'Point',
+        coordinates: [longitude, latitude],
+        accuracy: geoAccuracy ?? 0,
+        lastUpdate: new Date(),
+        isSharingActive: false,
+      };
+    }
+    const newAddress = {
+      ...payload.operationalAddress,
+    };
+
+    await Customer.findOneAndUpdate(
+      { userId: customerId },
+      { $set: { operationalAddress: newAddress } },
+      { new: true }
+    );
+  }
+
   // ----------------------------------------------------------------------
   // Final Update
   // ----------------------------------------------------------------------
@@ -127,6 +155,10 @@ const updateCustomer = async (
   return updated;
 };
 
+// --------------------------------------------------------------
+// Delivery address service will be added here
+// --------------------------------------------------------------
+
 // delete delivery address
 const deleteDeliveryAddress = async (
   addressId: string,
@@ -134,7 +166,25 @@ const deleteDeliveryAddress = async (
 ) => {
   await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
   const userId = currentUser.id;
-  await Customer.findOneAndUpdate(
+  const result = await Customer.findOne(
+    { userId },
+    { deliveryAddresses: { $elemMatch: { _id: addressId } } }
+  );
+
+  if (result?.deliveryAddresses?.length === 0) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery address not found');
+  }
+  if (
+    result &&
+    result?.deliveryAddresses &&
+    result?.deliveryAddresses[0].addressType === 'PRIMARY'
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Primary address cannot be deleted'
+    );
+  }
+  await Customer.updateOne(
     { userId },
     { $pull: { deliveryAddresses: { _id: addressId } } }
   );

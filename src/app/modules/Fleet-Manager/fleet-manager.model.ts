@@ -77,8 +77,8 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       geoAccuracy: { type: Number },
     },
 
@@ -98,8 +98,8 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       geoAccuracy: { type: Number },
     },
 

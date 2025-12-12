@@ -42,8 +42,8 @@ const productSchema = new Schema<TProduct>(
       vendorName: { type: String },
       vendorType: { type: String },
       storePhoto: { type: String },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       rating: { type: Number },
     },
 

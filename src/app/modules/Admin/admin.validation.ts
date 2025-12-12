@@ -14,8 +14,8 @@ export const addressSchema = z.object({
   state: z.string().optional(),
   country: z.string().optional(),
   postalCode: z.string().optional(),
-  latitude: z.number().optional(),
   longitude: z.number().optional(),
+  latitude: z.number().optional(),
   geoAccuracy: z.number().optional(),
 });
 

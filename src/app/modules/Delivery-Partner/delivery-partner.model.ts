@@ -6,26 +6,6 @@ import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
 
-// --- Sub-Schemas for Operational Data ---
-const operationalInfoSchema = new Schema(
-  {
-    currentStatus: {
-      type: String,
-      enum: Object.keys(currentStatusOptions),
-      default: 'OFFLINE',
-      required: true,
-    },
-    assignmentZoneId: { type: String },
-    currentZoneId: { type: String }, // DeliGo Zone ID
-    currentOrderIds: { type: [String], default: [] }, // List of active order IDs
-    capacity: { type: Number, required: true, default: 1 }, // Max number of orders the driver can carry
-    isWorking: { type: Boolean, default: false }, // Clocked in/out status
-
-    lastActivityAt: { type: Date },
-  },
-  { _id: false }
-);
-
 const locationSchema = new Schema(
   {
     type: { type: String, enum: ['Point'], default: 'Point', required: true },
@@ -81,16 +61,6 @@ const deliveryPartnerSchema = new Schema<
     isUpdateLocked: { type: Boolean, default: false },
 
     //-------------------------------------------------
-    // Operational & Real-Time Data (NEW)
-    //-------------------------------------------------
-    operationalInfo: { type: operationalInfoSchema, required: true },
-
-    //-------------------------------------------------
-    // Live Location (UPDATED for Geo-Search)
-    //-------------------------------------------------
-    location: { type: locationSchema, required: true },
-
-    //-------------------------------------------------
     // FCM Tokens
     //-------------------------------------------------
     fcmTokens: { type: [String], default: [] },
@@ -119,10 +89,14 @@ const deliveryPartnerSchema = new Schema<
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       geoAccuracy: { type: Number },
     },
+    //-------------------------------------------------
+    // Live Location (UPDATED for Geo-Search)
+    //-------------------------------------------------
+    currentSessionLocation: { type: locationSchema, required: true },
 
     personalInfo: {
       dateOfBirth: { type: Date },
@@ -209,6 +183,19 @@ const deliveryPartnerSchema = new Schema<
         average: { type: Number, default: 0 },
         totalReviews: { type: Number, default: 0 },
       },
+      currentStatus: {
+        type: String,
+        enum: Object.keys(currentStatusOptions),
+        default: 'OFFLINE',
+        required: true,
+      },
+      assignmentZoneId: { type: String, default: '' },
+      currentZoneId: { type: String, default: '' }, // DeliGo Zone ID
+      currentOrderIds: { type: String, default: '' }, // List of active order IDs
+      capacity: { type: Number, required: true, default: 1 }, // Max number of orders the driver can carry
+      isWorking: { type: Boolean, default: false }, // Clocked in/out status
+
+      lastActivityAt: { type: Date },
     },
 
     //-------------------------------------------------
@@ -259,7 +246,9 @@ const deliveryPartnerSchema = new Schema<
 );
 
 // --- Indexing and Plugins ---
-deliveryPartnerSchema.index({ 'location.coordinates': '2dsphere' });
+deliveryPartnerSchema.index({
+  currentSessionLocation: '2dsphere',
+});
 deliveryPartnerSchema.plugin(passwordPlugin);
 
 export const DeliveryPartner = model<

@@ -67,8 +67,8 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       geoAccuracy: { type: Number },
     },
 
@@ -91,6 +91,19 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     },
 
     // ----------------------------------------------------------------
+    // PAYMENT METHODS
+    // ----------------------------------------------------------------
+    operationalAddress: {
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+      geoAccuracy: { type: Number },
+    },
+    // ----------------------------------------------------------------
     // MULTIPLE SAVED ADDRESSES
     // ----------------------------------------------------------------
     deliveryAddresses: [
@@ -100,8 +113,8 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         state: { type: String, default: '' },
         country: { type: String, default: '' },
         postalCode: { type: String, default: '' },
-        latitude: { type: Number },
         longitude: { type: Number },
+        latitude: { type: Number },
         geoAccuracy: { type: Number },
         isActive: { type: Boolean, default: true },
 

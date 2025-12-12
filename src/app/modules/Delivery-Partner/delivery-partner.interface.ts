@@ -30,30 +30,6 @@ export type TDeliveryPartner = {
   passwordResetTokenExpiresAt?: Date;
   passwordChangedAt?: Date;
 
-  // ------------------------------------------------------
-  // Operational & Real-Time Data
-  // ------------------------------------------------------
-  operationalInfo: {
-    currentStatus: keyof typeof currentStatusOptions; // Current working state (IDLE, ON_DELIVERY, OFFLINE)
-    assignmentZoneId: string;
-    currentZoneId?: string; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
-    currentOrderIds?: string[]; // List of active order IDs they are currently fulfilling
-    capacity: number; // Max number of orders the driver can carry (e.g., 2 or 3)
-    isWorking: boolean; // Simple flag: Clocked in/out
-
-    lastActivityAt?: Date;
-  };
-
-  // -------------------------------------------------
-  // Live Location (Required for Geo-Search & Nearest Match)
-  // -------------------------------------------------
-  location: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-    accuracy?: number; // GPS Accuracy in meters (lower is better)
-    lastLocationUpdate: Date; // Timestamp for data freshness (Crucial for filtering stale data)
-  };
-
   // -------------------------------------------------
   // 1) Personal Information
   // -------------------------------------------------
@@ -69,9 +45,18 @@ export type TDeliveryPartner = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
+  };
+  // -------------------------------------------------
+  // Live Location (Required for Geo-Search & Nearest Match)
+  // -------------------------------------------------
+  currentSessionLocation: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+    accuracy?: number; // GPS Accuracy in meters (lower is better)
+    lastLocationUpdate: Date; // Timestamp for data freshness (Crucial for filtering stale data)
   };
   personalInfo?: {
     dateOfBirth?: Date;
@@ -150,6 +135,14 @@ export type TDeliveryPartner = {
       average: number;
       totalReviews: number;
     };
+    currentStatus: keyof typeof currentStatusOptions; // Current working state (IDLE, ON_DELIVERY, OFFLINE)
+    assignmentZoneId: string;
+    currentZoneId?: string; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
+    currentOrderId?: string; // List of active order IDs they are currently fulfilling
+    capacity: number; // Max number of orders the driver can carry (e.g., 2 or 3)
+    isWorking: boolean; // Simple flag: Clocked in/out
+
+    lastActivityAt?: Date;
   };
 
   // -------------------------------------------------

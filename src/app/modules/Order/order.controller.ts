@@ -65,9 +65,23 @@ const acceptOrRejectOrderByVendor = catchAsync(async (req, res) => {
   });
 });
 
+// broadcast order controller
+const broadcastOrderToPartners = catchAsync(async (req, res) => {
+  const result = await OrderServices.broadcastOrderToPartners(
+    req.params.orderId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 // assign delivery partner to order controller
-const assignDeliveryPartner = catchAsync(async (req, res) => {
-  const result = await OrderServices.assignDeliveryPartner(
+const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
+  const result = await OrderServices.partnerAcceptsDispatchedOrder(
     req.user as AuthUser,
     req.params.orderId
   );
@@ -80,10 +94,44 @@ const assignDeliveryPartner = catchAsync(async (req, res) => {
   });
 });
 
+// otp verification by vendor controller
+const otpVerificationByVendor = catchAsync(async (req, res) => {
+  const result = await OrderServices.otpVerificationByVendor(
+    req.params.orderId,
+    req.body.otp,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
+// update order status by delivery partner controller
+const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
+  const result = await OrderServices.updateOrderStatusByDeliveryPartner(
+    req.params.orderId,
+    req.body,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Order status updated successfully',
+    data: result,
+  });
+});
+
 export const OrderControllers = {
   createOrderAfterPayment,
   getAllOrders,
   getSingleOrder,
   acceptOrRejectOrderByVendor,
-  assignDeliveryPartner,
+  broadcastOrderToPartners,
+  partnerAcceptsDispatchedOrder,
+  otpVerificationByVendor,
+  updateOrderStatusByDeliveryPartner,
 };

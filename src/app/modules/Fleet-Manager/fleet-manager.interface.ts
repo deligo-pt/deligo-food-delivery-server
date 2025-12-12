@@ -45,8 +45,8 @@ export type TFleetManager = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
   };
 

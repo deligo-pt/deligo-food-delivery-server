@@ -11,8 +11,8 @@ export type TUserProfileUpdate = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
   };
 };
