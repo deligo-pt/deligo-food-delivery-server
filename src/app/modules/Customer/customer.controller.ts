@@ -22,6 +22,35 @@ const updateCustomer = catchAsync(async (req, res) => {
   });
 });
 
+// add delivery address
+const addDeliveryAddress = catchAsync(async (req, res) => {
+  const { deliveryAddress } = req.body;
+  const result = await CustomerServices.addDeliveryAddress(
+    deliveryAddress,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery address added successfully',
+    data: result,
+  });
+});
+
+// toggle delivery address status
+const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
+  const result = await CustomerServices.toggleDeliveryAddressStatus(
+    req.params.addressId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 // delete delivery address
 const deleteDeliveryAddress = catchAsync(async (req, res) => {
   const result = await CustomerServices.deleteDeliveryAddress(
@@ -69,6 +98,8 @@ const getSingleCustomer = catchAsync(async (req, res) => {
 
 export const CustomerControllers = {
   updateCustomer,
+  addDeliveryAddress,
+  toggleDeliveryAddressStatus,
   deleteDeliveryAddress,
   getAllCustomers,
   getSingleCustomer,

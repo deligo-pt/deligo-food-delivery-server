@@ -20,6 +20,7 @@ import { Product } from '../Product/product.model';
 import generateOtp from '../../utils/generateOtp';
 import mongoose from 'mongoose';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
+import { NotificationService } from '../Notification/notification.service';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -407,6 +408,18 @@ const acceptOrRejectOrderByVendor = async (
           'Stock check failed. One or more products are out of stock or inventory was insufficient.'
         );
       }
+      const notificationPayload = {
+        title: 'Order Accepted',
+        body: `Your order has been accepted by ${loggedInUser.businessName}.Please wait for your order to be picked up.`,
+        data: { orderId: order._id.toString() },
+      };
+      await NotificationService.sendToUser(
+        order.customerId,
+        notificationPayload.title,
+        notificationPayload.body,
+        notificationPayload.data,
+        'ORDER'
+      );
     }
 
     // ---------------------------------------------------------
@@ -432,6 +445,18 @@ const acceptOrRejectOrderByVendor = async (
         },
       }));
       await Product.bulkWrite(stockOperations, { session });
+      const notificationPayload = {
+        title: 'Order Canceled',
+        body: `Your order has been canceled for ${action.reason}`,
+        data: { orderId: order._id.toString() },
+      };
+      await NotificationService.sendToUser(
+        order.customerId,
+        notificationPayload.title,
+        notificationPayload.body,
+        notificationPayload.data,
+        'ORDER'
+      );
     }
 
     // ---------------------------------------------------------

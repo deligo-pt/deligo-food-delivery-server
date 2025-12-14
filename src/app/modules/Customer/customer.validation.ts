@@ -32,8 +32,24 @@ const updateCustomerDataValidationSchema = z.object({
 });
 
 // ---------------------------------------------
+//  add Delivery Address Validation Schema
+// ---------------------------------------------
+const addDeliveryAddressValidationSchema = z.object({
+  body: z.object({
+    deliveryAddress: addressSchema.extend({
+      isActive: z.boolean().optional(),
+
+      zoneId: z.string().optional(),
+      addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
+      notes: z.string().optional(),
+    }),
+  }),
+});
+
+// ---------------------------------------------
 // Export
 // ---------------------------------------------
 export const CustomerValidation = {
   updateCustomerDataValidationSchema,
+  addDeliveryAddressValidationSchema,
 };

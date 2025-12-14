@@ -108,20 +108,20 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // ----------------------------------------------------------------
     deliveryAddresses: [
       {
-        street: { type: String, default: '' },
-        city: { type: String, default: '' },
-        state: { type: String, default: '' },
-        country: { type: String, default: '' },
-        postalCode: { type: String, default: '' },
+        street: { type: String },
+        city: { type: String },
+        state: { type: String },
+        country: { type: String },
+        postalCode: { type: String },
         longitude: { type: Number },
         latitude: { type: Number },
         geoAccuracy: { type: Number },
-        isActive: { type: Boolean, default: true },
+        isActive: { type: Boolean, default: false },
 
         // NEW FIELDS
         zoneId: { type: String, default: null },
         addressType: { type: String, enum: Object.keys(AddressType) },
-        notes: { type: String, default: '' },
+        notes: { type: String },
       },
     ],
 

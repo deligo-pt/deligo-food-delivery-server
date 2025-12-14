@@ -6,6 +6,7 @@ import { TCustomer } from './customer.interface';
 import { Customer } from './customer.model';
 import { CustomerSearchableFields } from './customer.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { TDeliveryAddress } from '../../constant/address.constant';
 
 // update customer service
 const updateCustomer = async (
@@ -92,34 +93,9 @@ const updateCustomer = async (
     payload.deliveryAddresses = updatedDeliveryAddresses;
   }
 
-  // ----------------------------------------------------------------------
-  //  Make sure only ONE active
-  // ----------------------------------------------------------------------
-  if (payload.deliveryAddresses && payload.deliveryAddresses.length > 0) {
-    // Set last item as active (or enforce one active)
-    payload.deliveryAddresses = payload.deliveryAddresses.map((addr, idx) => ({
-      ...addr,
-      isActive: idx === payload.deliveryAddresses!.length - 1,
-    }));
-
-    // Auto-update currentSessionLocation from active
-    const active = payload.deliveryAddresses.find((a) => a.isActive);
-
-    if (active?.longitude != null && active?.latitude != null) {
-      payload.currentSessionLocation = {
-        type: 'Point',
-        coordinates: [active.longitude, active.latitude],
-        accuracy: active.geoAccuracy ?? 0,
-        lastUpdate: new Date(),
-        isSharingActive: false,
-      };
-    }
-  }
-
   // -----------------------------------------------------------------------
   //  update operational address
   // -----------------------------------------------------------------------
-
   if (payload.operationalAddress) {
     const { longitude, latitude, geoAccuracy } = payload.operationalAddress;
     // Auto-update location if coords provided
@@ -158,6 +134,151 @@ const updateCustomer = async (
 // --------------------------------------------------------------
 // Delivery address service will be added here
 // --------------------------------------------------------------
+const addDeliveryAddress = async (
+  deliveryAddress: TDeliveryAddress,
+  currentUser: AuthUser
+) => {
+  // --------------------------------------------------
+  // Authorization
+  // --------------------------------------------------
+  await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  const userId = currentUser.id;
+
+  // --------------------------------------------------
+  // Validate payload
+  // --------------------------------------------------
+  if (
+    !deliveryAddress.street?.trim() ||
+    !deliveryAddress.city?.trim() ||
+    !deliveryAddress.country?.trim()
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Street, city and country are required'
+    );
+  }
+
+  const customer = await Customer.findOne({ userId }, { deliveryAddresses: 1 });
+
+  if (!customer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
+
+  // --------------------------------------------------
+  // Prevent duplicate address
+  // --------------------------------------------------
+  const normalize = (value?: string) => value?.trim().toLowerCase() ?? '';
+  const isClose = (a?: number, b?: number, tolerance = 0.0001) => {
+    if (a == null || b == null) return false;
+    return Math.abs(a - b) <= tolerance;
+  };
+  const isDuplicate = customer.deliveryAddresses?.some((addr) => {
+    const textMatch =
+      normalize(addr.street) === normalize(deliveryAddress.street) &&
+      normalize(addr.city) === normalize(deliveryAddress.city) &&
+      normalize(addr.country) === normalize(deliveryAddress.country) &&
+      normalize(addr.postalCode) === normalize(deliveryAddress.postalCode);
+
+    const geoMatch =
+      isClose(addr.latitude, deliveryAddress.latitude) &&
+      isClose(addr.longitude, deliveryAddress.longitude);
+
+    return textMatch || geoMatch;
+  });
+
+  if (isDuplicate) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      'This delivery address already exists'
+    );
+  }
+
+  const hasAnyAddress = (customer.deliveryAddresses?.length ?? 0) > 0;
+
+  // --------------------------------------------------
+  // Deactivate previous addresses
+  // --------------------------------------------------
+  await Customer.updateOne(
+    { userId },
+    { $set: { 'deliveryAddresses.$[].isActive': false } }
+  );
+
+  // --------------------------------------------------
+  // Create new active address
+  // --------------------------------------------------
+  const newDeliveryAddress: TDeliveryAddress = {
+    street: deliveryAddress.street.trim(),
+    city: deliveryAddress.city.trim(),
+    state: deliveryAddress.state?.trim(),
+    country: deliveryAddress.country.trim(),
+    postalCode: deliveryAddress.postalCode?.trim(),
+
+    longitude: deliveryAddress.longitude,
+    latitude: deliveryAddress.latitude,
+    geoAccuracy: deliveryAddress.geoAccuracy,
+
+    zoneId: deliveryAddress.zoneId ?? '',
+    notes: deliveryAddress.notes?.trim(),
+
+    isActive: true,
+    addressType: hasAnyAddress ? 'OTHER' : 'PRIMARY',
+  };
+
+  // --------------------------------------------------
+  // Push address
+  // --------------------------------------------------
+  await Customer.updateOne(
+    { userId },
+    { $push: { deliveryAddresses: newDeliveryAddress } }
+  );
+
+  const { longitude, latitude, geoAccuracy } = newDeliveryAddress;
+
+  // Auto-update location if coords provided
+  if (longitude != null && latitude != null) {
+    customer.currentSessionLocation = {
+      type: 'Point',
+      coordinates: [longitude, latitude],
+      accuracy: geoAccuracy ?? 0,
+      lastUpdate: new Date(),
+      isSharingActive: false,
+    };
+  }
+  await customer.save();
+
+  return {
+    message: 'Delivery address added successfully',
+    activeAddress: newDeliveryAddress,
+  };
+};
+
+// Active or deactivate delivery address
+const toggleDeliveryAddressStatus = async (
+  addressId: string,
+  currentUser: AuthUser
+) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const user = result?.user;
+  await Customer.updateOne(
+    { userId: user.userId },
+    { $set: { 'deliveryAddresses.$[].isActive': false } }
+  );
+  await Customer.updateOne(
+    { userId: user.userId, 'deliveryAddresses._id': addressId },
+    { $set: { 'deliveryAddresses.$.isActive': true } }
+  );
+
+  return {
+    message: 'Delivery address status updated successfully',
+  };
+};
 
 // delete delivery address
 const deleteDeliveryAddress = async (
@@ -271,6 +392,8 @@ const getSingleCustomerFromDB = async (
 
 export const CustomerServices = {
   updateCustomer,
+  addDeliveryAddress,
+  toggleDeliveryAddressStatus,
   deleteDeliveryAddress,
   getAllCustomersFromDB,
   getSingleCustomerFromDB,
