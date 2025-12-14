@@ -35,7 +35,7 @@ router.patch(
 
 // Delete delivery address
 router.delete(
-  '/:addressId',
+  '/delete-delivery-address/:addressId',
   auth('CUSTOMER'),
   CustomerControllers.deleteDeliveryAddress
 );
