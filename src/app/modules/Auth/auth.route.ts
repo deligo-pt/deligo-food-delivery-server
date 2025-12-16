@@ -21,6 +21,15 @@ router.post(
   validateRequest(AuthValidation.registerValidationSchema),
   AuthControllers.registerUser
 );
+
+// Register Sub Vendor Route
+router.post(
+  [UrlPath.SUB_VENDOR],
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+  validateRequest(AuthValidation.registerValidationSchema),
+  AuthControllers.registerUser
+);
+
 // Login User Route
 router.post(
   '/login',

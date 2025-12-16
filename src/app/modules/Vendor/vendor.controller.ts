@@ -34,13 +34,45 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: result?.existingVendor,
+    data: result?.data,
+  });
+});
+
+// vendor business location update controller
+const vendorBusinessLocationUpdate = catchAsync(async (req, res) => {
+  const result = await VendorServices.vendorBusinessLocationUpdate(
+    req.body,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
+// toggle vendor store open/close controller
+const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
+  const result = await VendorServices.toggleVendorStoreOpenClose(
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
   });
 });
 
 // get all vendors
 const getAllVendors = catchAsync(async (req, res) => {
-  const result = await VendorServices.getAllVendors(req.query);
+  const result = await VendorServices.getAllVendors(
+    req.query,
+    req.user as AuthUser
+  );
 
   sendResponse(res, {
     success: true,
@@ -69,6 +101,8 @@ const getSingleVendor = catchAsync(async (req, res) => {
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
+  vendorBusinessLocationUpdate,
+  toggleVendorStoreOpenClose,
   getAllVendors,
   getSingleVendor,
 };

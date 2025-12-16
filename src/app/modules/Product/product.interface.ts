@@ -1,12 +1,16 @@
+import mongoose from 'mongoose';
+
 export type TProduct = {
   _id?: string;
   productId: string;
+  vendorId: mongoose.Types.ObjectId;
   sku: string;
   name: string;
   slug: string;
   description: string;
   isDeleted: boolean;
   isApproved: boolean;
+  approvedBy?: mongoose.Types.ObjectId;
   remarks?: string;
 
   category: string;
@@ -29,15 +33,14 @@ export type TProduct = {
 
   images: string[];
 
-  vendor: {
-    vendorId: string;
-    vendorName: string;
-    vendorType: string;
-    storePhoto: string;
-    longitude: number;
-    latitude: number;
-    rating?: number;
-  };
+  // vendor: {
+  //   // vendorName: string;
+  //   // vendorType: string;
+  //   // storePhoto: string;
+  //   // longitude: number;
+  //   // latitude: number;
+  //   // rating?: number;
+  // };
 
   tags?: string[];
   attributes?: Record<string, string | number | boolean | string[] | null>;

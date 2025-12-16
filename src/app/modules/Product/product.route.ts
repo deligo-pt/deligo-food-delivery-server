@@ -21,7 +21,7 @@ router.post(
 // Product update
 router.patch(
   '/:productId',
-  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR'),
   multerUpload.array('files', 5),
   parseBody,
   validateRequest(ProductValidation.updateProductValidationSchema),

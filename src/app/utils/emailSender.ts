@@ -6,6 +6,9 @@ import nodemailer from 'nodemailer';
 import config from '../config';
 import AppError from '../errors/AppError';
 import httpStatus from 'http-status';
+Handlebars.registerHelper('eq', (a, b) => a === b);
+
+// rest of your emailSender code below
 
 const ReadFile = promisify(fs.readFile);
 

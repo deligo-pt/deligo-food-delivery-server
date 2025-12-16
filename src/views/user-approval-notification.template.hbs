@@ -26,7 +26,7 @@
       1px solid #e4e4e4; background: #fae0ea; } @media only screen and
       (max-width: 480px) { .header-left img { width: 42px !important; }
       .header-date { font-size: 14px !important; text-align: right; padding-top:
-      6px; } .title { font-size: 22px !important; padding: 22px 0 12px; }
+      6px; } .title { font-size: 20px !important; padding: 22px 0 12px; }
       .remarks-box { font-size: 15px !important; padding: 16px !important; }
       .content { padding: 0 20px 25px 20px !important; font-size: 16px
       !important; } .social-section img { width: 30px !important; } .footer {
@@ -64,19 +64,40 @@
 
         <div class='content'>
           <strong>Dear {{userName}},</strong>
-          <br /><br />
+          <br />
 
           We are pleased to inform you that your application to become a
           <strong>{{userRole}}</strong>
           has been
-          <strong>{{#if isApproved}}approved{{else}}rejected{{/if}}</strong>.
-          <br /><br />
+          <strong>
+            {{#if (eq status 'APPROVED')}}
+              approved
+            {{else if (eq status 'BLOCKED')}}
+              blocked
+            {{else}}
+              rejected
+            {{/if}}
+          </strong>
 
-          {{#if isApproved}}
+          <br /><br />
+          {{#if (eq status 'APPROVED')}}
             <div class='remarks-box'>
               “Remarks:
               {{remarks}}”
             </div>
+
+          {{else if (eq status 'BLOCKED')}}
+            We regret to inform you that your account has been
+            <strong>blocked</strong>
+            due to policy or compliance reasons.
+            {{#if remarks}}
+              <div class='remarks-box'>
+                “Remarks:
+                {{remarks}}”
+              </div>
+            {{/if}}
+            Please contact support for further assistance.
+
           {{else}}
             We regret to inform you that your application did not meet our
             criteria at this time.
@@ -87,7 +108,6 @@
               </div>
             {{/if}}
             Please contact support for more details.
-            <br /><br />
           {{/if}}
 
           Thank you for your interest in partnering with DeliGo!

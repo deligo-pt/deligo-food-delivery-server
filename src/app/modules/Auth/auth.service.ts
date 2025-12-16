@@ -23,6 +23,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import { resendMobileOtp } from '../../utils/resendMobileOtp';
+import { Admin } from '../Admin/admin.model';
+import { NotificationService } from '../Notification/notification.service';
 
 // Register User
 const registerUser = async <
@@ -70,6 +72,36 @@ const registerUser = async <
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to register a Delivery Partner'
+      );
+    }
+
+    registeredBy = allowedUser.user.userId;
+  }
+
+  // Restrict sub vendor registration
+  if (userType === '/create-sub-vendor') {
+    const allowedRoles: (keyof typeof USER_ROLE)[] = [
+      'ADMIN',
+      'SUPER_ADMIN',
+      'VENDOR',
+    ];
+    const allowedUser = await findUserByEmailOrId({
+      userId: currentUser?.id,
+      isDeleted: false,
+    });
+    if (!allowedUser?.user) {
+      throw new AppError(httpStatus.FORBIDDEN, 'Permission check failed');
+    }
+    if (allowedUser.user.status !== 'APPROVED') {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        `You are not approved to register a Sub Vendor. Your account is ${allowedUser.user.status}`
+      );
+    }
+    if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to register a Sub Vendor'
       );
     }
 
@@ -716,9 +748,9 @@ const approvedOrRejectedUser = async (
   payload: TApprovedRejectsPayload,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const existingUser = result?.user;
-
+  // --------------------------------------------------------------
+  // Authorization & Validation
+  // --------------------------------------------------------------
   if (userId === currentUser.id) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -726,75 +758,111 @@ const approvedOrRejectedUser = async (
     );
   }
 
-  if (existingUser.status === payload.status) {
+  const admin = await Admin.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  if (!admin) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Admin not found');
+  }
+
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
+  const user = result?.user;
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  if (user.status === payload.status) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       `User is already ${payload.status.toLowerCase()}`
     );
   }
 
-  existingUser.status = payload.status;
-  if (payload.status === 'APPROVED') {
-    existingUser.approvedBy = currentUser.id;
-    existingUser.approvedOrRejectedOrBlockedAt = new Date();
-    existingUser.remarks =
-      payload.remarks ||
-      'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board. Our team will reach out shortly with the next steps to help you get started and make the most of your role on our platform.';
-  } else if (payload.status === 'REJECTED') {
-    existingUser.rejectedBy = currentUser.id;
-    existingUser.approvedOrRejectedOrBlockedAt = new Date();
-    if (!payload.remarks) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Remarks are required for rejection'
-      );
-    }
-    existingUser.remarks = payload.remarks;
-    existingUser.isUpdateLocked = false;
-  } else if (payload.status === 'BLOCKED') {
-    existingUser.blockedBy = currentUser.id;
-    existingUser.approvedOrRejectedOrBlockedAt = new Date();
-    if (!payload.remarks) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Remarks are required for blocking'
-      );
-    }
-    existingUser.remarks = payload.remarks;
+  // --------------------------------------------------------------
+  // Status Transition Rules
+  // --------------------------------------------------------------
+  if (
+    (payload.status === 'REJECTED' || payload.status === 'BLOCKED') &&
+    !payload.remarks
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Remarks are required for ${payload.status.toLowerCase()}`
+    );
   }
-  await existingUser.save();
 
-  // Prepare email content
-  const emailData = {
-    userName: existingUser.name?.firstName || 'User',
-    userRole: existingUser.role,
-    currentYear: new Date().getFullYear(),
-    remarks: existingUser.remarks || '',
-    date: new Date().toDateString(),
-    isApproved: payload.status === 'APPROVED',
+  // --------------------------------------------------------------
+  // Apply Status Changes
+  // --------------------------------------------------------------
+  user.status = payload.status;
+  user.approvedOrRejectedOrBlockedAt = new Date();
+
+  switch (payload.status) {
+    case 'APPROVED':
+      user.approvedBy = admin._id;
+      user.remarks =
+        payload.remarks ||
+        'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.';
+      break;
+
+    case 'REJECTED':
+      user.rejectedBy = admin._id;
+      user.remarks = payload.remarks!;
+      user.isUpdateLocked = false;
+      break;
+
+    case 'BLOCKED':
+      user.blockedBy = admin._id;
+      user.remarks = payload.remarks!;
+      break;
+  }
+
+  await user.save();
+
+  // --------------------------------------------------------------
+  // Push Notification (Non-blocking)
+  // --------------------------------------------------------------
+  const notificationTitleMap: Record<string, string> = {
+    APPROVED: 'Your account has been approved',
+    REJECTED: 'Your account has been rejected',
+    BLOCKED: 'Your account has been blocked',
   };
 
+  NotificationService.sendToUser(
+    user.userId,
+    notificationTitleMap[payload.status],
+    user.remarks || '',
+    {
+      role: user.role,
+      userId: user.userId,
+    },
+    'ACCOUNT'
+  );
+
+  // --------------------------------------------------------------
+  // Email Notification (Non-blocking)
+  // --------------------------------------------------------------
   const emailHtml = await EmailHelper.createEmailContent(
-    emailData,
+    {
+      userName: user.name?.firstName || 'User',
+      userRole: user.role,
+      currentYear: new Date().getFullYear(),
+      remarks: user.remarks || '',
+      date: new Date().toDateString(),
+      status: payload.status,
+    },
     'user-approval-notification'
   );
 
-  const emailSubject =
-    payload.status === 'APPROVED'
-      ? `Your ${existingUser?.role} Application has been Approved`
-      : `Your ${existingUser?.role} Application has been Rejected`;
+  const emailSubject = `Your ${
+    user.role
+  } Application has been ${payload.status.toLowerCase()}`;
 
-  // Send email
-  EmailHelper.sendEmail(existingUser.email, emailHtml, emailSubject).catch(
-    (err) => {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-    }
-  );
+  EmailHelper.sendEmail(user.email, emailHtml, emailSubject);
 
   return {
-    message: `${
-      existingUser?.role
-    } ${payload.status.toLowerCase()} successfully`,
+    message: `${user.role} ${payload.status.toLowerCase()} successfully`,
   };
 };
 

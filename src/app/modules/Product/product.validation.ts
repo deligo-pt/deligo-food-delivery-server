@@ -26,7 +26,7 @@ const createProductValidationSchema = z.object({
         .default('In Stock'),
     }),
 
-    images: z.array(z.string()).nonempty('At least one image is required'),
+    // images: z.array(z.string()).nonempty('At least one image is required'),
 
     vendor: z
       .object({

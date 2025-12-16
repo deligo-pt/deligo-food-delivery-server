@@ -54,7 +54,15 @@ const ratingSchema = new Schema(
 const orderSchema = new Schema<TOrder>(
   {
     orderId: { type: String, required: true, unique: true },
-    customerId: { type: String, required: true },
+    customerId: {
+      type: String,
+      required: true,
+    },
+    customerObjectId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Customer',
+    },
     vendorId: { type: String, required: true },
     deliveryPartnerId: { type: String, default: null },
     deliveryPartnerCancelReason: { type: String, default: null },
@@ -80,6 +88,7 @@ const orderSchema = new Schema<TOrder>(
       default: 'PENDING',
     },
     cancelReason: { type: String },
+    rejectReason: { type: String },
 
     remarks: { type: String, default: '' },
 

@@ -17,7 +17,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     },
     role: {
       type: String,
-      enum: ['VENDOR'],
+      enum: ['VENDOR', 'SUB_VENDOR'],
       required: true,
     },
     email: {
@@ -95,7 +95,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       closingDays: { type: [String], default: [] },
 
       // Operational Status
-      isOperational: { type: Boolean, default: true },
+      isStoreOpen: { type: Boolean, default: true },
+      storeClosedAt: { type: Date, default: null },
 
       // Association (Crucial for pricing/assignment)
       deliveryZoneId: { type: String, default: '' },
@@ -173,9 +174,9 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // -------------------------------------------------------
     // Admin Workflow / Audit
     // -------------------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },

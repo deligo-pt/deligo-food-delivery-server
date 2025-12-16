@@ -221,14 +221,25 @@ const getCheckoutSummary = async (
   checkoutSummaryId: string,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const loggedInUser = result.user;
+
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view the order. Your account is ${loggedInUser.status}`
+    );
+  }
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
   if (!summary) {
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
   }
 
-  if (summary.customerId !== currentUser.id) {
+  if (summary.customerId !== loggedInUser._id) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'You are not authorized to view'

@@ -119,7 +119,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         isActive: { type: Boolean, default: false },
 
         // NEW FIELDS
-        zoneId: { type: String, default: null },
+        zoneId: { type: Schema.Types.ObjectId, default: null, ref: 'Zone' },
         addressType: { type: String, enum: Object.keys(AddressType) },
         notes: { type: String },
       },
@@ -152,9 +152,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // ----------------------------------------------------------------
     // Admin Workflow / Audit
     // ----------------------------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },
 

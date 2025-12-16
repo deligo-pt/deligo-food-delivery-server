@@ -2,7 +2,7 @@ import { USER_ROLE } from '../../constant/user.constant';
 
 export type TNotification = {
   _id?: string;
-  receiverId: string; // userId of who received it
+  receiverId: string;
   receiverRole: keyof typeof USER_ROLE;
   title: string;
   message: string;

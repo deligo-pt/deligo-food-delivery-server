@@ -7,6 +7,7 @@ export const USER_ROLE = {
   CUSTOMER: 'CUSTOMER',
   FLEET_MANAGER: 'FLEET_MANAGER',
   VENDOR: 'VENDOR',
+  SUB_VENDOR: 'SUB_VENDOR',
   DELIVERY_PARTNER: 'DELIVERY_PARTNER',
 } as const;
 
@@ -23,6 +24,7 @@ export const UrlPath = {
   CUSTOMER: '/register/create-customer',
   FLEET_MANAGER: '/register/create-fleet-manager',
   VENDOR: '/register/create-vendor',
+  SUB_VENDOR: '/register/create-sub-vendor',
   DELIVERY_PARTNER: '/register/create-delivery-partner',
   ADMIN: '/register/create-admin',
 } as const;

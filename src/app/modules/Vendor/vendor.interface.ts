@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
 // export type TVendorSchedule = {
@@ -13,7 +14,7 @@ export type TVendor = {
   // --------------------------------------------------------
   _id?: string;
   userId: string;
-  role: 'VENDOR';
+  role: 'VENDOR' | 'SUB_VENDOR';
   email: string;
   password: string;
 
@@ -72,7 +73,8 @@ export type TVendor = {
     closingDays?: string[]; // ["Friday", "Holidays"]
 
     // Operational Status
-    isOperational: boolean; // Simple ON/OFF switch for the vendor
+    isStoreOpen: boolean; // Simple ON/OFF switch for the vendor
+    storeClosedAt?: Date;
 
     // Zone Association
     deliveryZoneId: string; // The primary zone for assignment and pricing
@@ -144,9 +146,9 @@ export type TVendor = {
   // --------------------------------------------------------
   // Admin Workflow / Audit
   // --------------------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
 
   submittedForApprovalAt?: Date;
   approvedOrRejectedOrBlockedAt?: Date;

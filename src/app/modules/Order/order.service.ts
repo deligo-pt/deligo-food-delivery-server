@@ -79,6 +79,7 @@ const createOrderAfterPayment = async (
     const orderData = {
       orderId: `ORD-${crypto.randomUUID()}`,
       customerId: summary.customerId,
+      customerObjectId: loggedInUser._id,
       vendorId: summary.vendorId,
       items: summary.items.map((i) => ({
         productId: i.productId,
@@ -140,6 +141,37 @@ const getAllOrders = async (
     );
   }
 
+  /**
+   * Role-based populate config
+   */
+  const getPopulateOptions = (role: string) => {
+    switch (role) {
+      case 'VENDOR':
+        return [
+          {
+            path: 'customerObjectId',
+            select: 'name userId',
+          },
+        ];
+
+      case 'ADMIN':
+      case 'SUPER_ADMIN':
+        return [
+          {
+            path: 'customerObjectId',
+            select: 'name email phone',
+          },
+          {
+            path: 'vendorId',
+            select: 'storeName',
+          },
+        ];
+
+      default:
+        return [];
+    }
+  };
+
   // -----------------------------
   // Create a SAFE query object
   // -----------------------------
@@ -178,6 +210,12 @@ const getAllOrders = async (
     .fields()
     .paginate()
     .search(OrderSearchableFields);
+
+  const populateOptions = getPopulateOptions(loggedInUser?.role);
+
+  populateOptions.forEach((option) => {
+    builder.modelQuery = builder.modelQuery.populate(option);
+  });
 
   const meta = await builder.countTotal();
   const data = await builder.modelQuery;
@@ -410,7 +448,7 @@ const acceptOrRejectOrderByVendor = async (
       }
       const notificationPayload = {
         title: 'Order Accepted',
-        body: `Your order has been accepted by ${loggedInUser.businessName}.Please wait for your order to be picked up.`,
+        body: `Your order has been accepted by ${loggedInUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,
         data: { orderId: order._id.toString() },
       };
       await NotificationService.sendToUser(
@@ -448,6 +486,41 @@ const acceptOrRejectOrderByVendor = async (
       const notificationPayload = {
         title: 'Order Canceled',
         body: `Your order has been canceled for ${action.reason}`,
+        data: { orderId: order._id.toString() },
+      };
+      if (order.deliveryPartnerId) {
+        await NotificationService.sendToUser(
+          order.deliveryPartnerId,
+          notificationPayload.title,
+          notificationPayload.body,
+          notificationPayload.data,
+          'ORDER'
+        );
+      }
+      await NotificationService.sendToUser(
+        order.customerId,
+        notificationPayload.title,
+        notificationPayload.body,
+        notificationPayload.data,
+        'ORDER'
+      );
+    }
+
+    // ---------------------------------------------------------
+    // If REJECTED → add reject reason
+    // ---------------------------------------------------------
+    if (action.type === 'REJECTED') {
+      if (!action.reason) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'Reject reason is required.'
+        );
+      }
+      order.rejectReason = action.reason;
+
+      const notificationPayload = {
+        title: 'Order Rejected',
+        body: `Your order has been rejected for ${action.reason}`,
         data: { orderId: order._id.toString() },
       };
       await NotificationService.sendToUser(

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { ORDER_STATUS } from './order.constant';
 
 export type TOrder = {
@@ -6,6 +7,7 @@ export type TOrder = {
   // Relationships
   orderId: string;
   customerId: string;
+  customerObjectId: mongoose.Types.ObjectId;
   vendorId: string;
   deliveryPartnerId?: string; // assigned after vendor accepts
   deliveryPartnerCancelReason?: string;
@@ -31,6 +33,7 @@ export type TOrder = {
   // Order Lifecycle
   orderStatus: keyof typeof ORDER_STATUS;
   cancelReason?: string;
+  rejectReason?: string;
 
   remarks?: string;
   // OTP Verification
