@@ -8,16 +8,13 @@ import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { GlobalSettingServices } from '../GlobalSetting/globalSetting.service';
 import { calculateDistance } from '../../utils/calculateDistance';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { TCheckoutPayload } from './checkout.interface';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
-  const customerId = currentUser?.id;
-
   // ---------- Find Customer ----------
   const customer = await Customer.findOne({
-    userId: customerId,
+    userId: currentUser.id,
     isDeleted: false,
   });
   if (!customer) {
@@ -38,6 +35,8 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       httpStatus.BAD_REQUEST,
       'Please complete your profile before checking out'
     );
+
+  const customerId = customer._id.toString();
 
   // ---------- Get items ----------
   let selectedItems = [];
@@ -87,19 +86,20 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   }
 
   // ---------- Check Product Stock ----------
-  const productIds = selectedItems.map((i) => i.productId);
-  const products = await Product.find({ productId: { $in: productIds } });
+  const productIds = selectedItems.map((i) => i.productId.toString());
+  const products = await Product.find({ _id: { $in: productIds } });
   const deliveryAddress = customer?.deliveryAddresses?.find(
     (i) => i.isActive === true
   );
   const existingVendor = await Vendor.findOne({
-    userId: products[0].vendor.vendorId,
+    _id: products[0].vendorId,
   });
 
   const vendorLongitude = existingVendor?.businessLocation?.longitude;
   const vendorLatitude = existingVendor?.businessLocation?.latitude;
   const customerLongitude = deliveryAddress?.longitude;
   const customerLatitude = deliveryAddress?.latitude;
+
   if (
     !vendorLongitude ||
     !vendorLatitude ||
@@ -119,8 +119,9 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   const deliveryCharge = deliveryDistance.meters * deliveryChargePerMeter;
 
   const orderItems = selectedItems.map((item) => {
-    const product = products.find((p) => p.productId === item.productId);
-
+    const product = products.find(
+      (p) => p._id.toString() === item.productId.toString()
+    );
     if (!product)
       throw new AppError(
         httpStatus.NOT_FOUND,
@@ -134,12 +135,11 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       );
 
     return {
-      productId: product.productId,
-      name: product.name,
+      productId: product._id,
       quantity: item.quantity,
       price: product.pricing.finalPrice,
       subtotal: product.pricing.finalPrice * item.quantity,
-      vendorId: product.vendor.vendorId,
+      vendorId: product.vendorId,
       estimatedDeliveryTime: payload?.estimatedDeliveryTime || 'N/A',
     };
   });
@@ -173,7 +173,6 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   }
   const summaryData = {
     customerId,
-    customerEmail: customer?.email,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
     discount: discount,
@@ -221,16 +220,18 @@ const getCheckoutSummary = async (
   checkoutSummaryId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
+  const existingCustomer = await Customer.findOne({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const loggedInUser = result.user;
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
 
-  if (loggedInUser.status !== 'APPROVED') {
+  if (existingCustomer.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${loggedInUser.status}`
+      `You are not approved to view the order. Your account is ${existingCustomer.status}`
     );
   }
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
@@ -239,7 +240,7 @@ const getCheckoutSummary = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
   }
 
-  if (summary.customerId !== loggedInUser._id) {
+  if (summary.customerId.toString() !== existingCustomer._id.toString()) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'You are not authorized to view'

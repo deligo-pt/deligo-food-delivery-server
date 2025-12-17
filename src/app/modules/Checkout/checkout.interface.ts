@@ -1,10 +1,12 @@
+import mongoose from 'mongoose';
+
 export type TCheckoutItem = {
-  productId: string;
+  productId: mongoose.Types.ObjectId;
   name: string;
   quantity: number;
   price: number;
   subtotal: number;
-  vendorId: string;
+  vendorId: mongoose.Types.ObjectId;
   estimatedDeliveryTime?: string;
 };
 
@@ -24,9 +26,8 @@ export type TCheckoutAddress = {
 export type TCheckoutSummary = {
   _id?: string;
 
-  customerId: string;
-  customerEmail: string;
-  vendorId: string;
+  customerId: mongoose.Types.ObjectId;
+  vendorId: mongoose.Types.ObjectId;
 
   items: TCheckoutItem[];
 
@@ -35,7 +36,7 @@ export type TCheckoutSummary = {
   discount: number;
   deliveryCharge: number;
   finalAmount: number;
-  couponCode?: string;
+  couponId?: mongoose.Types.ObjectId;
   estimatedDeliveryTime: string;
 
   deliveryAddress: TCheckoutAddress;
@@ -43,7 +44,7 @@ export type TCheckoutSummary = {
   paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
   paymentMethod?: 'CARD' | 'MOBILE';
   transactionId?: string; // Stripe PaymentIntent ID
-  orderId?: string; // Linked Order ID
+  orderId?: mongoose.Types.ObjectId; // Linked Order ID
 
   isConvertedToOrder?: boolean;
 
@@ -57,7 +58,7 @@ export type TCheckoutPayload = {
   useCart?: boolean;
 
   items?: {
-    productId: string;
+    productId: mongoose.Types.ObjectId;
     quantity: number;
   }[];
 
