@@ -18,9 +18,10 @@ const addToCart = catchAsync(async (req, res) => {
 
 // activate item Controller
 const activateItem = catchAsync(async (req, res) => {
+  const { productId } = req.params;
   const result = await CartServices.activateItem(
     req.user as AuthUser,
-    req.params.productId
+    productId
   );
   sendResponse(res, {
     success: true,

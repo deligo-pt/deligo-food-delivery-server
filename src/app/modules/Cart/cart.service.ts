@@ -5,8 +5,9 @@ import { Product } from '../Product/product.model';
 import { TCart } from './cart.interface';
 import { Cart } from './cart.model';
 import { Customer } from '../Customer/customer.model';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { Coupon } from '../Coupon/coupon.model';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import mongoose from 'mongoose';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
@@ -18,21 +19,19 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   if (!existingCustomer)
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
 
-  const customerId = currentUser.id;
+  const customerId = existingCustomer._id;
 
   // Product validation
   const { productId, quantity } = payload.items[0];
-  const existingProduct = await Product.findOne({ productId });
-
+  const existingProduct = await Product.findOne({ _id: productId });
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
   const newItem = {
     productId,
-    vendorId: existingProduct.vendor.vendorId,
-    quantity,
+    vendorId: existingProduct.vendorId,
     price: existingProduct.pricing.finalPrice,
-    name: existingProduct.name,
+    quantity,
     subtotal: existingProduct.pricing.finalPrice * quantity,
     isActive: true,
   };
@@ -50,7 +49,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       totalItems: quantity,
       totalPrice: newItem.subtotal,
       discount: 0,
-      couponCode: '',
+      couponId: null,
     });
 
     await cart.save();
@@ -59,7 +58,9 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
   // Update or push item
   const activeItem = cart.items.find((i) => i.isActive === true);
-  const itemIndex = cart.items.findIndex((i) => i.productId === productId);
+  const itemIndex = cart.items.findIndex(
+    (i) => i.productId.toString() === productId.toString()
+  );
 
   if (itemIndex > -1) {
     const currentItem = cart.items[itemIndex];
@@ -70,7 +71,10 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     currentItem.quantity += quantity;
     currentItem.subtotal = currentItem.quantity * currentItem.price;
   } else {
-    if (activeItem && activeItem.vendorId !== newItem.vendorId) {
+    if (
+      activeItem &&
+      activeItem.vendorId.toString() !== newItem.vendorId.toString()
+    ) {
       newItem.isActive = false;
     }
     cart.items.push(newItem);
@@ -86,11 +90,9 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   cart.totalPrice = parseFloat(activeSubtotal.toFixed(2));
 
   //  auto re-apply coupon if exists
-  if (cart.couponCode && cart.couponCode.trim() !== '') {
-    const couponCode = cart.couponCode.trim().toUpperCase();
-
+  if (cart.couponId) {
     const coupon = await Coupon.findOne({
-      code: couponCode,
+      _id: cart.couponId,
       isActive: true,
       isDeleted: false,
     });
@@ -98,7 +100,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     // Coupon removed or invalid
     if (!coupon) {
       cart.discount = 0;
-      cart.couponCode = '';
+      cart.couponId = null;
     } else {
       const now = new Date();
 
@@ -108,12 +110,12 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
         (coupon.expiresAt && now > coupon.expiresAt)
       ) {
         cart.discount = 0;
-        cart.couponCode = '';
+        cart.couponId = null;
       } else {
         // category validation
         const productIds = activeItems.map((i) => i.productId);
         const products = await Product.find({
-          productId: { $in: productIds },
+          _id: { $in: productIds },
         }).select('productId category');
 
         const cartCategories = products.map((p) => p.category.toLowerCase());
@@ -127,7 +129,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
         ) {
           // Category mismatch → auto remove coupon
           cart.discount = 0;
-          cart.couponCode = '';
+          cart.couponId = null;
         } else {
           // min purchase check (on active total)
           if (coupon.minPurchase && cart.totalPrice < coupon.minPurchase) {
@@ -146,7 +148,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
             }
 
             cart.discount = parseFloat(discount.toFixed(2));
-            cart.couponCode = couponCode;
+            cart.couponId = new mongoose.Types.ObjectId(coupon._id);
           }
         }
       }
@@ -160,14 +162,25 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
 // active item Service
 const activateItem = async (currentUser: AuthUser, productId: string) => {
-  const customerId = currentUser.id;
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
+
+  const customerId = existingCustomer._id;
 
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
   // Item to activate
-  const itemToActivate = cart.items.find((i) => i.productId === productId);
+  const itemToActivate = cart.items.find(
+    (i) => i.productId.toString() === productId
+  );
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
@@ -211,18 +224,28 @@ const updateCartItemQuantity = async (
     action: 'increment' | 'decrement';
   }
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
-  const customerId = currentUser.id;
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
+
+  const customerId = existingCustomer._id;
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
   const { productId, quantity, action } = payload;
-  const itemIndex = cart.items.findIndex((i) => i.productId === productId);
+  const itemIndex = cart.items.findIndex(
+    (i) => i.productId.toString() === productId
+  );
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
-  const product = await Product.findOne({ productId });
+  const product = await Product.findById(productId);
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
@@ -248,14 +271,22 @@ const updateCartItemQuantity = async (
 
 // delete cart item
 const deleteCartItem = async (currentUser: AuthUser, productId: string[]) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
-  const customerId = currentUser.id;
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
+
+  const customerId = existingCustomer._id;
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
   const filteredItems = cart.items.filter(
-    (item) => !productId.includes(item.productId)
+    (item) => !productId.includes(item.productId.toString())
   );
   if (filteredItems.length === cart.items.length) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
@@ -267,12 +298,28 @@ const deleteCartItem = async (currentUser: AuthUser, productId: string[]) => {
 };
 
 // view cart Service
-const viewCart = async (user: AuthUser) => {
-  const customerId = user.id;
-  const cart = await Cart.findOne({ customerId });
+const viewCart = async (currentUser: AuthUser) => {
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const customerId = existingCustomer?._id;
+  const query = Cart.findOne({ customerId });
+
+  const populateOptions = getPopulateOptions('CUSTOMER', {
+    // customer: 'name',
+    itemVendor: 'name userId',
+    product: 'productId name',
+  });
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const cart = await query;
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
+
   return cart;
 };
 

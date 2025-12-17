@@ -18,6 +18,8 @@ type PopulateInput = {
   approvedBy?: string;
   rejectedBy?: string;
   blockedBy?: string;
+  itemVendor?: string;
+  product?: string;
 };
 
 export const getPopulateOptions = (
@@ -27,7 +29,7 @@ export const getPopulateOptions = (
   const options: PopulateOptions[] = [];
 
   // ---------------- Customer ----------------
-  if (fields.customer && role !== 'CUSTOMER') {
+  if (fields.customer) {
     options.push({
       path: 'customerId',
       select: fields.customer,
@@ -42,6 +44,13 @@ export const getPopulateOptions = (
     options.push({
       path: 'vendorId',
       select: fields.vendor,
+    });
+  }
+
+  if (fields.itemVendor) {
+    options.push({
+      path: 'items.vendorId',
+      select: fields.itemVendor,
     });
   }
 
@@ -98,6 +107,14 @@ export const getPopulateOptions = (
     options.push({
       path: 'blockedBy',
       select: fields.blockedBy,
+    });
+  }
+
+  // ---------------- Product ----------------
+  if (fields.product) {
+    options.push({
+      path: 'items.productId',
+      select: fields.product,
     });
   }
 

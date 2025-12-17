@@ -1,21 +1,22 @@
+import mongoose from 'mongoose';
+
 export type TCartItem = {
-  productId: string;
-  vendorId: string;
-  name: string;
-  price: number;
+  productId: mongoose.Types.ObjectId;
+  vendorId: mongoose.Types.ObjectId;
   quantity: number;
+  price: number;
   subtotal: number;
   isActive: boolean;
 };
 
 export type TCart = {
   _id?: string;
-  customerId: string;
+  customerId: mongoose.Types.ObjectId;
   items: TCartItem[];
   totalItems: number;
   discount?: number;
   totalPrice: number;
-  couponCode?: string;
+  couponId?: mongoose.Types.ObjectId | null;
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
