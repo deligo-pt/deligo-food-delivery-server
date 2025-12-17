@@ -13,8 +13,8 @@ const createCoupon = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Coupon created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -47,6 +47,21 @@ const applyCoupon = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     message: 'Coupon applied successfully',
     data: result,
+  });
+});
+
+// toggle coupon controller
+const toggleCouponStatus = catchAsync(async (req, res) => {
+  const { couponId } = req.params;
+  const result = await CouponServices.toggleCouponStatus(
+    couponId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
   });
 });
 
@@ -114,6 +129,7 @@ export const CouponControllers = {
   createCoupon,
   updateCoupon,
   applyCoupon,
+  toggleCouponStatus,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,

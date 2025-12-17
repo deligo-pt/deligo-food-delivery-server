@@ -9,7 +9,16 @@ const couponSchema = new Schema<TCoupon>(
       enum: ['PERCENT', 'FLAT'],
       required: true,
     },
-    createdBy: { type: String, required: true },
+    adminId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Admin',
+      default: null,
+    },
+    vendorId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Vendor',
+      default: null,
+    },
     discountValue: { type: Number, required: true },
 
     minPurchase: { type: Number, default: 0 },
