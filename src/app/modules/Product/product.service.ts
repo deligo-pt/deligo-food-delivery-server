@@ -293,7 +293,6 @@ const getAllProducts = async (
     userId: currentUser.id,
     isDeleted: false,
   });
-
   const loggedInUser = result.user;
 
   if (loggedInUser.status !== 'APPROVED') {
@@ -324,7 +323,7 @@ const getAllProducts = async (
       Product.find().populate({
         path: 'vendorId',
         select:
-          'userId businessDetails.name businessDetails.businessType businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
+          'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
       }),
       query
     )
@@ -474,8 +473,8 @@ const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
   }
 
   const product = await Product.findOne({ productId });
-  if (loggedInUser.role === 'VENDOR') {
-    if (loggedInUser._id !== product?.vendorId) {
+  if (loggedInUser.role === 'VENDOR' || loggedInUser.role === 'SUB_VENDOR') {
+    if (loggedInUser._id.toString() !== product?.vendorId.toString()) {
       throw new AppError(
         httpStatus.NOT_FOUND,
         'You are not authorized to delete this product'
@@ -490,6 +489,10 @@ const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
+
+  // --------------------------------------------------------------------------
+  // TODO: check if product in order or not. if in order, throw error will be added
+  // --------------------------------------------------------------------------
   product.isDeleted = true;
   await product.save();
   return {

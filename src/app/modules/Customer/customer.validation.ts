@@ -39,7 +39,7 @@ const addDeliveryAddressValidationSchema = z.object({
     deliveryAddress: addressSchema.extend({
       isActive: z.boolean().optional(),
 
-      zoneId: z.string().optional(),
+      // zoneId: z.string().optional(),
       addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
       notes: z.string().optional(),
     }),

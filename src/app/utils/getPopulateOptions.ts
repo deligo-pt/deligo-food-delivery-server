@@ -35,7 +35,10 @@ export const getPopulateOptions = (
   }
 
   // ---------------- Vendor ----------------
-  if (fields.vendor && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
+  if (
+    fields.vendor &&
+    (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'CUSTOMER')
+  ) {
     options.push({
       path: 'vendorId',
       select: fields.vendor,
