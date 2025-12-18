@@ -8,6 +8,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       required: true,
       ref: 'Customer',
     },
+    customerEmail: { type: String, required: true },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
 
     items: [

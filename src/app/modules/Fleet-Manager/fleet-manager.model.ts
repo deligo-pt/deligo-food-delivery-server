@@ -147,9 +147,9 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // ------------------------------------------
     // Admin Workflow / Audit
     // ------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
 
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },

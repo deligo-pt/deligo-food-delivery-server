@@ -21,6 +21,9 @@ import generateOtp from '../../utils/generateOtp';
 import mongoose from 'mongoose';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { NotificationService } from '../Notification/notification.service';
+import { Customer } from '../Customer/customer.model';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { Vendor } from '../Vendor/vendor.model';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -28,11 +31,14 @@ const createOrderAfterPayment = async (
   currentUser: AuthUser
 ) => {
   // --- Authorization ---
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
     isDeleted: false,
   });
-  const loggedInUser = result.user;
+
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
 
   const { checkoutSummaryId, paymentIntentId } = payload;
 
@@ -40,7 +46,7 @@ const createOrderAfterPayment = async (
   if (!summary)
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
 
-  if (summary.customerId !== loggedInUser.userId)
+  if (summary.customerId.toString() !== existingCustomer._id.toString())
     throw new AppError(httpStatus.FORBIDDEN, 'Not authorized');
 
   if (summary.isConvertedToOrder)
@@ -79,11 +85,9 @@ const createOrderAfterPayment = async (
     const orderData = {
       orderId: `ORD-${crypto.randomUUID()}`,
       customerId: summary.customerId,
-      customerObjectId: loggedInUser._id,
       vendorId: summary.vendorId,
       items: summary.items.map((i) => ({
         productId: i.productId,
-        name: i.name,
         quantity: i.quantity,
         price: i.price,
         subtotal: i.subtotal,
@@ -106,7 +110,7 @@ const createOrderAfterPayment = async (
     summary.isConvertedToOrder = true;
     summary.paymentStatus = 'PAID';
     summary.transactionId = paymentIntentId;
-    summary.orderId = order.orderId;
+    summary.orderId = new mongoose.Types.ObjectId(order._id);
     await summary.save({ session });
 
     await session.commitTransaction();
@@ -141,37 +145,6 @@ const getAllOrders = async (
     );
   }
 
-  /**
-   * Role-based populate config
-   */
-  const getPopulateOptions = (role: string) => {
-    switch (role) {
-      case 'VENDOR':
-        return [
-          {
-            path: 'customerObjectId',
-            select: 'name userId',
-          },
-        ];
-
-      case 'ADMIN':
-      case 'SUPER_ADMIN':
-        return [
-          {
-            path: 'customerObjectId',
-            select: 'name email phone',
-          },
-          {
-            path: 'vendorId',
-            select: 'storeName',
-          },
-        ];
-
-      default:
-        return [];
-    }
-  };
-
   // -----------------------------
   // Create a SAFE query object
   // -----------------------------
@@ -182,15 +155,15 @@ const getAllOrders = async (
   // -----------------------------
   switch (loggedInUser.role) {
     case 'VENDOR':
-      query.vendorId = loggedInUser.userId;
+      query.vendorId = loggedInUser._id;
       break;
 
     case 'CUSTOMER':
-      query.customerId = loggedInUser.userId;
+      query.customerId = loggedInUser._id;
       break;
 
     case 'DELIVERY_PARTNER':
-      query.deliveryPartnerId = loggedInUser.userId;
+      query.deliveryPartnerId = loggedInUser._id;
       break;
 
     case 'ADMIN':
@@ -211,7 +184,12 @@ const getAllOrders = async (
     .paginate()
     .search(OrderSearchableFields);
 
-  const populateOptions = getPopulateOptions(loggedInUser?.role);
+  const populateOptions = getPopulateOptions(loggedInUser?.role, {
+    customer: 'name userId role',
+    vendor: 'name userId role',
+    deliveryPartner: 'name userId role',
+    product: 'productId name',
+  });
 
   populateOptions.forEach((option) => {
     builder.modelQuery = builder.modelQuery.populate(option);
@@ -242,7 +220,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
     );
   }
 
-  const userId = loggedInUser.userId;
+  const userId = loggedInUser._id;
 
   // ------------------------------------------------------
   // Build role-based query filter securely
@@ -277,7 +255,20 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   // ------------------------------------------------------
   // Fetch order using secure filter
   // ------------------------------------------------------
-  const order = await Order.findOne({ orderId, ...filter });
+  const query = Order.findOne({ orderId, ...filter });
+
+  const populateOptions = getPopulateOptions(loggedInUser?.role, {
+    customer: 'name userId role',
+    vendor: 'name userId role',
+    deliveryPartner: 'name userId role',
+    product: 'productId name',
+  });
+
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const order = await query;
 
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
@@ -326,7 +317,7 @@ const acceptOrRejectOrderByVendor = async (
     const order = await Order.findOne(
       {
         orderId,
-        vendorId: loggedInUser.userId,
+        vendorId: loggedInUser._id,
         isDeleted: false,
       },
       null,
@@ -336,6 +327,19 @@ const acceptOrRejectOrderByVendor = async (
     if (!order) {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
     }
+
+    // find user
+    const customer = await Customer.findById(order.customerId, null, {
+      session,
+    });
+    const customerId = customer?.userId;
+
+    const deliveryPartner = await DeliveryPartner.findById(
+      order.deliveryPartnerId,
+      null,
+      { session }
+    );
+    const deliveryPartnerId = deliveryPartner?.userId;
 
     // ---------------------------------------------------------
     // Prevent duplicate status
@@ -357,7 +361,7 @@ const acceptOrRejectOrderByVendor = async (
       );
     }
 
-    if (loggedInUser.userId !== order.vendorId) {
+    if (loggedInUser._id.toString() !== order.vendorId.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to accept or reject orders.'
@@ -429,7 +433,7 @@ const acceptOrRejectOrderByVendor = async (
       const stockOperations = order.items.map((item) => ({
         updateOne: {
           filter: {
-            productId: item.productId,
+            _id: item.productId.toString(),
             'stock.quantity': { $gte: item.quantity },
           },
           update: {
@@ -439,8 +443,6 @@ const acceptOrRejectOrderByVendor = async (
       }));
       const stockResult = await Product.bulkWrite(stockOperations, { session });
       if (stockResult.modifiedCount !== order.items.length) {
-        await session.abortTransaction();
-        session.endSession();
         throw new AppError(
           httpStatus.BAD_REQUEST,
           'Stock check failed. One or more products are out of stock or inventory was insufficient.'
@@ -452,7 +454,7 @@ const acceptOrRejectOrderByVendor = async (
         data: { orderId: order._id.toString() },
       };
       await NotificationService.sendToUser(
-        order.customerId,
+        customerId!,
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
@@ -490,7 +492,7 @@ const acceptOrRejectOrderByVendor = async (
       };
       if (order.deliveryPartnerId) {
         await NotificationService.sendToUser(
-          order.deliveryPartnerId,
+          deliveryPartnerId!,
           notificationPayload.title,
           notificationPayload.body,
           notificationPayload.data,
@@ -498,7 +500,7 @@ const acceptOrRejectOrderByVendor = async (
         );
       }
       await NotificationService.sendToUser(
-        order.customerId,
+        customerId!,
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
@@ -524,7 +526,7 @@ const acceptOrRejectOrderByVendor = async (
         data: { orderId: order._id.toString() },
       };
       await NotificationService.sendToUser(
-        order.customerId,
+        customerId!,
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
@@ -586,7 +588,7 @@ const broadcastOrderToPartners = async (
   // Fetch order AND ensure this vendor owns it
   const order = await Order.findOne({
     orderId,
-    vendorId: loggedInUser.userId,
+    vendorId: loggedInUser._id.toString(),
     isDeleted: false,
   });
   if (
@@ -646,10 +648,11 @@ const broadcastOrderToPartners = async (
   }
 
   const partnerIds = eligiblePartners.map((p) => p.userId);
+  console.log(partnerIds);
 
   // Safe atomic update using $addToSet and status update
   await Order.updateOne(
-    { orderId, vendorId: loggedInUser.userId, isDeleted: false },
+    { orderId, vendorId: loggedInUser._id.toString(), isDeleted: false },
     {
       $set: { orderStatus: ORDER_STATUS.DISPATCHING },
       $addToSet: { dispatchPartnerPool: { $each: partnerIds } },
@@ -695,7 +698,7 @@ const partnerAcceptsDispatchedOrder = async (
     },
     {
       $set: {
-        deliveryPartnerId: partner.userId,
+        deliveryPartnerId: partner._id.toString(),
         orderStatus: ORDER_STATUS.ASSIGNED,
         dispatchPartnerPool: [],
       },
@@ -716,7 +719,7 @@ const partnerAcceptsDispatchedOrder = async (
     { userId: partner.userId },
     {
       $set: {
-        'operationalData.currentOrderIds': orderId,
+        'operationalData.currentOrderId': claimedOrder._id.toString(),
         'operationalData.currentStatus': 'ON_DELIVERY',
       },
     }
@@ -731,27 +734,30 @@ const otpVerificationByVendor = async (
   otp: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
+  const existingVendor = await Vendor.findOne({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const loggedInUser = result.user;
 
-  if (loggedInUser.status !== 'APPROVED') {
+  if (!existingVendor) {
+    throw new AppError(httpStatus.FORBIDDEN, 'Vendor not found.');
+  }
+
+  if (existingVendor.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${loggedInUser.status}`
+      `You are not approved to view the order. Your account is ${existingVendor.status}`
     );
   }
 
-  if (!otp) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'OTP is required.');
+  if (!otp || typeof otp !== 'string') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Valid OTP is required.');
   }
 
   const updatedOrder = await Order.findOneAndUpdate(
     {
       orderId,
-      vendorId: loggedInUser.userId,
+      vendorId: existingVendor._id.toString(),
       orderStatus: ORDER_STATUS.ASSIGNED,
       isOtpVerified: false,
       deliveryOtp: otp,
@@ -772,7 +778,7 @@ const otpVerificationByVendor = async (
   if (!updatedOrder) {
     const orderCheck = await Order.findOne({
       orderId,
-      vendorId: loggedInUser.userId,
+      vendorId: existingVendor._id.toString(),
     });
 
     if (!orderCheck) {
@@ -784,7 +790,7 @@ const otpVerificationByVendor = async (
     if (orderCheck.isOtpVerified) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'OTP already verified and order picked up.'
+        `OTP is already verified. Order status is ${orderCheck.orderStatus}`
       );
     }
     if (orderCheck.orderStatus !== ORDER_STATUS.ASSIGNED) {
@@ -803,7 +809,7 @@ const otpVerificationByVendor = async (
   // TODO: Notify Customer & Delivery Partner (Order is now PICKED_UP)
 
   return {
-    message: 'OTP verified successfully. Order is now PICKED_UP',
+    message: `OTP is verified. Order status is ${updatedOrder.orderStatus}`,
     data: updatedOrder,
   };
 };
@@ -857,7 +863,7 @@ const updateOrderStatusByDeliveryPartner = async (
   const updatedOrder = await Order.findOneAndUpdate(
     {
       orderId,
-      deliveryPartnerId: partner.userId,
+      deliveryPartnerId: partner._id.toString(),
       orderStatus: requiredCurrentStatus,
       isDeleted: false,
     },

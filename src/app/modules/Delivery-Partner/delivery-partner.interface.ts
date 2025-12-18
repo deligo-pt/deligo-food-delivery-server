@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
 
@@ -7,7 +8,7 @@ export type TDeliveryPartner = {
   // -------------------------------------------------
   _id?: string;
   userId: string;
-  registeredBy?: string;
+  registeredBy?: mongoose.Types.ObjectId;
   role: 'DELIVERY_PARTNER';
   email: string;
   password: string;
@@ -49,6 +50,19 @@ export type TDeliveryPartner = {
     latitude?: number;
     geoAccuracy?: number;
   };
+
+  // operational address
+  operationalAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    longitude?: number;
+    latitude?: number;
+    geoAccuracy?: number;
+  };
+
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)
   // -------------------------------------------------
@@ -136,9 +150,9 @@ export type TDeliveryPartner = {
       totalReviews: number;
     };
     currentStatus: keyof typeof currentStatusOptions; // Current working state (IDLE, ON_DELIVERY, OFFLINE)
-    assignmentZoneId: string;
-    currentZoneId?: string; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
-    currentOrderId?: string; // List of active order IDs they are currently fulfilling
+    assignmentZoneId: mongoose.Types.ObjectId;
+    currentZoneId?: mongoose.Types.ObjectId; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
+    currentOrderId?: mongoose.Types.ObjectId; // List of active order IDs they are currently fulfilling
     capacity: number; // Max number of orders the driver can carry (e.g., 2 or 3)
     isWorking: boolean; // Simple flag: Clocked in/out
 
@@ -173,9 +187,9 @@ export type TDeliveryPartner = {
   // -------------------------------------------------
   // 11) Admin Workflow (Approval System)
   // -------------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
   submittedForApprovalAt?: Date;
   approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;

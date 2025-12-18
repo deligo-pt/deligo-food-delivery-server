@@ -4,8 +4,7 @@ import { ORDER_STATUS } from './order.constant';
 
 const orderItemSchema = new Schema(
   {
-    productId: { type: String, required: true },
-    name: { type: String, required: true },
+    productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
     subtotal: { type: Number, required: true },
@@ -55,16 +54,16 @@ const orderSchema = new Schema<TOrder>(
   {
     orderId: { type: String, required: true, unique: true },
     customerId: {
-      type: String,
-      required: true,
-    },
-    customerObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       ref: 'Customer',
     },
-    vendorId: { type: String, required: true },
-    deliveryPartnerId: { type: String, default: null },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
+    deliveryPartnerId: {
+      type: Schema.Types.ObjectId,
+      default: null,
+      ref: 'DeliveryPartner',
+    },
     deliveryPartnerCancelReason: { type: String, default: null },
 
     items: { type: [orderItemSchema], required: true },

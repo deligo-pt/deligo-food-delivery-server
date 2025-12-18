@@ -173,12 +173,13 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   }
   const summaryData = {
     customerId,
+    customerEmail: customer.email,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
     discount: discount,
     totalItems,
     totalPrice,
-    deliveryCharge,
+    deliveryCharge: deliveryCharge.toFixed(2),
     finalAmount,
     estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
     deliveryAddress: activeAddress,

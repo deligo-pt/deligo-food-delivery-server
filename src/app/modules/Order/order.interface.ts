@@ -6,16 +6,14 @@ export type TOrder = {
 
   // Relationships
   orderId: string;
-  customerId: string;
-  customerObjectId: mongoose.Types.ObjectId;
-  vendorId: string;
-  deliveryPartnerId?: string; // assigned after vendor accepts
+  customerId: mongoose.Types.ObjectId;
+  vendorId: mongoose.Types.ObjectId;
+  deliveryPartnerId?: mongoose.Types.ObjectId; // assigned after vendor accepts
   deliveryPartnerCancelReason?: string;
 
   // Items
   items: {
-    productId: string;
-    name: string;
+    productId: mongoose.Types.ObjectId;
     quantity: number;
     price: number;
     subtotal: number;

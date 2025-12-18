@@ -46,10 +46,10 @@ const sendToUser = async (
   const result = await findUserByEmailOrId({ userId, isDeleted: false });
   const user = result?.user;
 
-  if (!user || !user.fcmTokens?.length) {
+  if (!user) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      `No tokens found for userId: ${userId}`
+      `No user found for userId: ${userId}`
     );
   }
 

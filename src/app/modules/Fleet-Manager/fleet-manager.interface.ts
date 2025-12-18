@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
 export type TFleetManager = {
@@ -109,9 +110,9 @@ export type TFleetManager = {
   // ---------------------------------------------
   // Admin Workflow / Audit
   // ---------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
 
   submittedForApprovalAt?: Date;
   approvedOrRejectedOrBlockedAt?: Date;

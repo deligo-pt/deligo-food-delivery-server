@@ -75,8 +75,9 @@ const updateDeliveryPartner = async (
 
   // Admin/SuperAdmin updating a partner they registered
   if (
-    currentUser.role !== 'DELIVERY_PARTNER' &&
-    existingDeliveryPartner.registeredBy !== loggedInUser?.userId
+    currentUser.role === 'FLEET_MANAGER' &&
+    existingDeliveryPartner.registeredBy?.toString() !==
+      loggedInUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -87,12 +88,17 @@ const updateDeliveryPartner = async (
   // ---------------------------------------------------------
   // GeoJSON location updates if lat/lng is provided
   // ---------------------------------------------------------
-  // if (payload.address?.latitude && payload.address?.longitude) {
-  //   payload.location = {
-  //     type: 'Point',
-  //     coordinates: [payload.address.longitude, payload.address.latitude],
-  //   };
-  // }
+  if (payload.operationalAddress) {
+    const { longitude, latitude, geoAccuracy } = payload.operationalAddress;
+    if (longitude && latitude && geoAccuracy) {
+      payload.currentSessionLocation = {
+        type: 'Point',
+        coordinates: [longitude, latitude],
+        accuracy: geoAccuracy,
+        lastLocationUpdate: new Date(),
+      };
+    }
+  }
   payload.status = 'PENDING';
   // ---------------------------------------------------------
   // Update the delivery partner

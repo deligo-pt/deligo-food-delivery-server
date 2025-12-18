@@ -74,8 +74,8 @@ const registerUser = async <
         'You do not have permission to register a Delivery Partner'
       );
     }
-
-    registeredBy = allowedUser.user.userId;
+    console.log(currentUser);
+    registeredBy = allowedUser.user._id.toString();
   }
 
   // Restrict sub vendor registration
@@ -671,74 +671,85 @@ const refreshToken = async (token: string) => {
 
 // submit approval request service
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const existingUser = result?.user;
-  if (currentUser?.role === 'DELIVERY_PARTNER') {
+  const result = await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const loggedInUser = result?.user;
+  const result2 = await findUserByEmailOrId({
+    userId,
+    isDeleted: false,
+  });
+  const submittedUser = result2?.user;
+  if (!submittedUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  if (loggedInUser?.role === 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       "You can't submit approval request."
     );
   }
 
-  if (existingUser?.status === 'SUBMITTED') {
+  if (submittedUser?.status === 'SUBMITTED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You have already submitted the approval request. Please wait for admin approval.'
     );
   }
-  if (existingUser?.status === 'APPROVED') {
+  if (submittedUser?.status === 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Your account is already approved.'
     );
   }
 
-  if (existingUser?.role === 'DELIVERY_PARTNER') {
+  if (submittedUser?.role === 'DELIVERY_PARTNER') {
     if (
-      currentUser?.role === 'FLEET_MANAGER' &&
-      existingUser?.registeredBy !== currentUser.id
+      loggedInUser?.role === 'FLEET_MANAGER' &&
+      submittedUser?.registeredBy.toString() !== loggedInUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user'
+        'You do not have permission to submit approval request for this user1'
       );
     }
   } else {
-    if (existingUser.userId !== currentUser.id) {
+    if (submittedUser.userId !== loggedInUser.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user'
+        'You do not have permission to submit approval request for this user2'
       );
     }
   }
 
-  existingUser.status = 'SUBMITTED';
-  existingUser.submittedForApprovalAt = new Date();
-  existingUser.isUpdateLocked = true;
-  await existingUser.save();
+  submittedUser.status = 'SUBMITTED';
+  submittedUser.submittedForApprovalAt = new Date();
+  submittedUser.isUpdateLocked = true;
+  await submittedUser.save();
 
   // Prepare & send email to admin for user approval
   const emailHtml = await EmailHelper.createEmailContent(
     {
-      userName: existingUser.name?.firstName || 'User',
-      userId: existingUser.userId,
+      userName: submittedUser.name?.firstName || 'User',
+      userId: submittedUser.userId,
       currentYear: new Date().getFullYear(),
-      userRole: existingUser.role,
+      userRole: submittedUser.role,
       date: new Date().toDateString(),
     },
     'user-approval-submission-notification'
   );
 
   EmailHelper.sendEmail(
-    existingUser?.email,
+    submittedUser?.email,
     emailHtml,
-    `New ${existingUser?.role} Submission for Approval`
+    `New ${submittedUser?.role} Submission for Approval`
   ).catch((err) => {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
   });
 
   return {
-    message: `${existingUser?.role} submitted for approval successfully`,
+    message: `${submittedUser?.role} submitted for approval successfully`,
   };
 };
 

@@ -25,7 +25,11 @@ const deliveryPartnerSchema = new Schema<
     // Core Identifiers
     //-------------------------------------------------
     userId: { type: String, required: true, unique: true },
-    registeredBy: { type: String },
+    registeredBy: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'FleetManager',
+    },
 
     role: {
       type: String,
@@ -93,10 +97,22 @@ const deliveryPartnerSchema = new Schema<
       latitude: { type: Number },
       geoAccuracy: { type: Number },
     },
+
+    // operational address
+    operationalAddress: {
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+      geoAccuracy: { type: Number },
+    },
     //-------------------------------------------------
     // Live Location (UPDATED for Geo-Search)
     //-------------------------------------------------
-    currentSessionLocation: { type: locationSchema, required: true },
+    currentSessionLocation: { type: locationSchema },
 
     personalInfo: {
       dateOfBirth: { type: Date },
@@ -189,9 +205,21 @@ const deliveryPartnerSchema = new Schema<
         default: 'OFFLINE',
         required: true,
       },
-      assignmentZoneId: { type: String, default: '' },
-      currentZoneId: { type: String, default: '' }, // DeliGo Zone ID
-      currentOrderIds: { type: String, default: '' }, // List of active order IDs
+      assignmentZoneId: {
+        type: Schema.Types.ObjectId,
+        default: null,
+        ref: 'Zone',
+      },
+      currentZoneId: {
+        type: Schema.Types.ObjectId,
+        default: null,
+        ref: 'Zone',
+      }, // DeliGo Zone ID
+      currentOrderId: {
+        type: Schema.Types.ObjectId,
+        default: null,
+        ref: 'Order',
+      }, // List of active order IDs
       capacity: { type: Number, required: true, default: 1 }, // Max number of orders the driver can carry
       isWorking: { type: Boolean, default: false }, // Clocked in/out status
 
@@ -230,9 +258,9 @@ const deliveryPartnerSchema = new Schema<
     //-------------------------------------------------
     // Admin Workflow / Audit
     //-------------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
 
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },

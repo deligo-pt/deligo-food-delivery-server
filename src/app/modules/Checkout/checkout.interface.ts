@@ -27,6 +27,7 @@ export type TCheckoutSummary = {
   _id?: string;
 
   customerId: mongoose.Types.ObjectId;
+  customerEmail: string;
   vendorId: mongoose.Types.ObjectId;
 
   items: TCheckoutItem[];
