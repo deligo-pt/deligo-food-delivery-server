@@ -164,10 +164,17 @@ const getSingleFleetManagerFromDB = async (
   }
   let existingFleetManager;
 
-  const existingFleetManager = await FleetManager.findOne({
-    fleetManagerId,
-    isDeleted: false,
-  });
+  if (user?.role === 'FLEET_MANAGER') {
+    existingFleetManager = await FleetManager.findOne({
+      userId: user?.userId,
+      isDeleted: false,
+    });
+  } else {
+    existingFleetManager = await FleetManager.findOne({
+      userId: fleetManagerId,
+    });
+  }
+
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
   }
