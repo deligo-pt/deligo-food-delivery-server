@@ -13,7 +13,6 @@ const createPaymentIntent = async (checkoutSummaryId: string) => {
   }
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
-
   if (!summary) {
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
   }
@@ -30,9 +29,6 @@ const createPaymentIntent = async (checkoutSummaryId: string) => {
     },
     receipt_email: summary.customerEmail,
     payment_method_types: ['card'],
-    // automatic_payment_methods: {
-    //   enabled: true,
-    // },
   });
 
   return {

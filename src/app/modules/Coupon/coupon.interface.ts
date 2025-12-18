@@ -1,7 +1,10 @@
+import mongoose from 'mongoose';
+
 export type TCoupon = {
   _id?: string;
   code: string; // Unique coupon code (e.g. SAVE10)
-  createdBy: string; // User ID of creator
+  adminId: mongoose.Types.ObjectId; // User ID of creator
+  vendorId: mongoose.Types.ObjectId;
   discountType: 'PERCENT' | 'FLAT'; // Type of discount
   discountValue: number; // % or amount
   minPurchase?: number; // Minimum purchase required

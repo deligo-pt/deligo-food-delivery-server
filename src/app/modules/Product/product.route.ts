@@ -21,7 +21,7 @@ router.post(
 // Product update
 router.patch(
   '/:productId',
-  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR'),
   multerUpload.array('files', 5),
   parseBody,
   validateRequest(ProductValidation.updateProductValidationSchema),
@@ -52,7 +52,8 @@ router.get(
     'SUPER_ADMIN',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-    'VENDOR'
+    'VENDOR',
+    'SUB_VENDOR'
   ),
   ProductControllers.getAllProducts
 );
@@ -66,7 +67,8 @@ router.get(
     'SUPER_ADMIN',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-    'VENDOR'
+    'VENDOR',
+    'SUB_VENDOR'
   ),
   ProductControllers.getSingleProduct
 );
@@ -74,7 +76,7 @@ router.get(
 // Soft delete product
 router.delete(
   '/soft-delete/:productId',
-  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   ProductControllers.softDeleteProduct
 );
 

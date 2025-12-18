@@ -14,16 +14,19 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       .optional(),
     contactNumber: z.string().optional(),
     address: addressSchema.optional(),
+    operationalAddress: addressSchema.optional(),
 
     // ---------------------------------------------------
     // GeoJSON location auto-set for backend $geoNear
     // ---------------------------------------------------
-    location: z
+    currentSessionLocation: z
       .object({
         type: z.literal('Point').optional().default('Point'),
         coordinates: z
           .tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)])
           .optional(),
+        accuracy: z.number().optional(),
+        lastLocationUpdate: z.date().optional(),
       })
       .optional(),
 

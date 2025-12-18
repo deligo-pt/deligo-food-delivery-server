@@ -30,16 +30,40 @@ router.get(
 // Accept / Reject / Cancel order
 router.patch(
   '/:orderId/accept-reject',
-  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR'),
   validateRequest(OrderValidation.acceptOrRejectOrderValidationSchema),
   OrderControllers.acceptOrRejectOrderByVendor
 );
 
-// Assign delivery partner to order (delivery partner)
+// Assign delivery partner to order (vendor)
 router.patch(
-  '/:orderId/assign-delivery-partner',
+  '/:orderId/broadcast-order',
+  auth('VENDOR'),
+  OrderControllers.broadcastOrderToPartners
+);
+
+// Delivery partner accepts dispatched order
+router.patch(
+  '/:orderId/accept-dispatch-order',
   auth('DELIVERY_PARTNER'),
-  OrderControllers.assignDeliveryPartner
+  OrderControllers.partnerAcceptsDispatchedOrder
+);
+
+// verify otp by vendor
+router.patch(
+  '/:orderId/verify-otp',
+  auth('VENDOR'),
+  OrderControllers.otpVerificationByVendor
+);
+
+// update order status by delivery partner
+router.patch(
+  '/:orderId/update-order-status',
+  auth('DELIVERY_PARTNER'),
+  validateRequest(
+    OrderValidation.updateOrderStatusByDeliveryPartnerValidationSchema
+  ),
+  OrderControllers.updateOrderStatusByDeliveryPartner
 );
 
 export const OrderRoutes = router;

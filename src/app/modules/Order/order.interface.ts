@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { ORDER_STATUS } from './order.constant';
 
 export type TOrder = {
@@ -5,14 +6,14 @@ export type TOrder = {
 
   // Relationships
   orderId: string;
-  customerId: string;
-  vendorId: string;
-  deliveryPartnerId?: string; // assigned after vendor accepts
+  customerId: mongoose.Types.ObjectId;
+  vendorId: mongoose.Types.ObjectId;
+  deliveryPartnerId?: mongoose.Types.ObjectId; // assigned after vendor accepts
+  deliveryPartnerCancelReason?: string;
 
   // Items
   items: {
-    productId: string;
-    name: string;
+    productId: mongoose.Types.ObjectId;
     quantity: number;
     price: number;
     subtotal: number;
@@ -22,6 +23,7 @@ export type TOrder = {
   totalItems: number;
   totalPrice: number;
   discount?: number;
+  deliveryCharge?: number;
   finalAmount: number;
   paymentMethod: 'CARD' | 'MOBILE';
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
@@ -29,6 +31,7 @@ export type TOrder = {
   // Order Lifecycle
   orderStatus: keyof typeof ORDER_STATUS;
   cancelReason?: string;
+  rejectReason?: string;
 
   remarks?: string;
   // OTP Verification
@@ -42,8 +45,8 @@ export type TOrder = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     gooAccuracy?: number;
   };
 
@@ -54,13 +57,12 @@ export type TOrder = {
     state: string;
     country: string;
     postalCode: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number; // meters
   };
-
+  dispatchPartnerPool?: string[];
   // Delivery Details
-  deliveryCharge?: number;
   estimatedDeliveryTime?: string; // e.g., "30 mins"
   deliveredAt?: Date;
 

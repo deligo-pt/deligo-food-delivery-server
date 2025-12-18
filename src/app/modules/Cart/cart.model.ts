@@ -3,11 +3,10 @@ import { TCart } from './cart.interface';
 
 const cartItemSchema = new Schema(
   {
-    productId: { type: String, required: true, ref: 'Product' },
-    vendorId: { type: String, required: true, ref: 'Vendor' },
-    name: { type: String, required: true },
-    price: { type: Number, required: true },
+    productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     quantity: { type: Number, required: true },
+    price: { type: Number, required: true },
     subtotal: { type: Number, required: true },
     isActive: { type: Boolean, default: true },
   },
@@ -17,7 +16,7 @@ const cartItemSchema = new Schema(
 const cartSchema = new Schema<TCart>(
   {
     customerId: {
-      type: String,
+      type: Schema.Types.ObjectId,
       required: true,
       ref: 'Customer',
     },
@@ -27,7 +26,7 @@ const cartSchema = new Schema<TCart>(
     discount: { type: Number, default: 0 },
     totalPrice: { type: Number, default: 0 },
 
-    couponCode: { type: String, default: '' },
+    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
     isDeleted: { type: Boolean, default: false },
   },

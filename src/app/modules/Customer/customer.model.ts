@@ -4,6 +4,7 @@ import { TCustomer } from './customer.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
+import { AddressType } from './customer.constant';
 
 const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {
@@ -66,34 +67,76 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       geoAccuracy: { type: Number },
     },
 
-    // Multiple Saved Addresses
+    // ----------------------------------------------------------------
+    // CURRENT SESSION LIVE LOCATION
+    // ----------------------------------------------------------------
+    currentSessionLocation: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [0, 0],
+      },
+      accuracy: { type: Number },
+      lastUpdate: { type: Date, default: null },
+      isSharingActive: { type: Boolean, default: false },
+    },
+
+    // ----------------------------------------------------------------
+    // PAYMENT METHODS
+    // ----------------------------------------------------------------
+    operationalAddress: {
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+      geoAccuracy: { type: Number },
+    },
+    // ----------------------------------------------------------------
+    // MULTIPLE SAVED ADDRESSES
+    // ----------------------------------------------------------------
     deliveryAddresses: [
       {
-        street: { type: String, default: '' },
-        city: { type: String, default: '' },
-        state: { type: String, default: '' },
-        country: { type: String, default: '' },
-        postalCode: { type: String, default: '' },
-        latitude: { type: Number },
+        street: { type: String },
+        city: { type: String },
+        state: { type: String },
+        country: { type: String },
+        postalCode: { type: String },
         longitude: { type: Number },
+        latitude: { type: Number },
         geoAccuracy: { type: Number },
-        isActive: { type: Boolean, default: true },
+        isActive: { type: Boolean, default: false },
+
+        // NEW FIELDS
+        zoneId: { type: Schema.Types.ObjectId, default: null, ref: 'Zone' },
+        addressType: { type: String, enum: Object.keys(AddressType) },
+        notes: { type: String },
       },
     ],
 
     // ----------------------------------------------------------------
-    // Order & Activity Details
+    // ORDER & ACTIVITY DETAILS
     // ----------------------------------------------------------------
     orders: {
       totalOrders: { type: Number, default: 0 },
       totalSpent: { type: Number, default: 0 },
       lastOrderDate: { type: Date, default: null },
       lastLoginAt: { type: Date, default: null },
+
+      // NEW ANALYTICS FIELDS
+      avgOrderValue: { type: Number, default: 0 },
+      referralsCount: { type: Number, default: 0 },
     },
 
     // ----------------------------------------------------------------
@@ -109,9 +152,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // ----------------------------------------------------------------
     // Admin Workflow / Audit
     // ----------------------------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },
 
@@ -138,6 +181,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     virtuals: true,
   }
 );
+
+// GEO INDEX FOR REAL-TIME LOCATION
+customerSchema.index({ currentSessionLocation: '2dsphere' });
 
 customerSchema.plugin(passwordPlugin);
 

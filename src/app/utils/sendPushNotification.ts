@@ -10,7 +10,6 @@ export const sendPushNotification = async (
   token: string,
   payload: TPushNotificationPayload
 ) => {
-  console.log({ token, payload });
   try {
     const message = {
       token,

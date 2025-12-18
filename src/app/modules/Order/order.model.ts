@@ -4,8 +4,7 @@ import { ORDER_STATUS } from './order.constant';
 
 const orderItemSchema = new Schema(
   {
-    productId: { type: String, required: true },
-    name: { type: String, required: true },
+    productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
     subtotal: { type: Number, required: true },
@@ -21,8 +20,8 @@ const deliveryAddressSchema = new Schema(
     country: { type: String, default: '' },
     postalCode: { type: String, default: '' },
 
-    latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
+    latitude: { type: Number, default: null },
 
     geoAccuracy: { type: Number, default: null },
   },
@@ -36,8 +35,8 @@ const pickupAddressSchema = new Schema(
     state: { type: String, default: '' },
     country: { type: String, default: '' },
     postalCode: { type: String, default: '' },
-    latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
+    latitude: { type: Number, default: null },
     geoAccuracy: { type: Number, default: null },
   },
   { _id: false }
@@ -54,15 +53,25 @@ const ratingSchema = new Schema(
 const orderSchema = new Schema<TOrder>(
   {
     orderId: { type: String, required: true, unique: true },
-    customerId: { type: String, required: true },
-    vendorId: { type: String, required: true },
-    deliveryPartnerId: { type: String },
+    customerId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Customer',
+    },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
+    deliveryPartnerId: {
+      type: Schema.Types.ObjectId,
+      default: null,
+      ref: 'DeliveryPartner',
+    },
+    deliveryPartnerCancelReason: { type: String, default: null },
 
     items: { type: [orderItemSchema], required: true },
 
     totalItems: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
     discount: { type: Number, default: 0 },
+    deliveryCharge: { type: Number, default: 0 },
     finalAmount: { type: Number, required: true },
 
     paymentMethod: { type: String, enum: ['CARD', 'MOBILE'], required: true },
@@ -78,6 +87,7 @@ const orderSchema = new Schema<TOrder>(
       default: 'PENDING',
     },
     cancelReason: { type: String },
+    rejectReason: { type: String },
 
     remarks: { type: String, default: '' },
 
@@ -86,8 +96,8 @@ const orderSchema = new Schema<TOrder>(
 
     deliveryAddress: { type: deliveryAddressSchema, required: true },
     pickupAddress: { type: pickupAddressSchema },
+    dispatchPartnerPool: { type: [String], default: [] },
 
-    deliveryCharge: { type: Number, default: 0 },
     estimatedDeliveryTime: { type: String },
     deliveredAt: { type: Date },
 

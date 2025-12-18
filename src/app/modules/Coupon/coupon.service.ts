@@ -8,6 +8,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
 
 // create coupon service
 const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
@@ -58,12 +59,19 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Coupon already exists');
 
   // Set creator
-  payload.createdBy = loggedInUser.userId;
+  if (loggedInUser.role === 'ADMIN' || loggedInUser.role === 'SUPER_ADMIN') {
+    payload.adminId = loggedInUser._id;
+  } else if (loggedInUser.role === 'VENDOR') {
+    payload.vendorId = loggedInUser._id;
+  }
 
   // Create coupon
   const newCoupon = await Coupon.create(payload);
 
-  return newCoupon;
+  return {
+    message: `Coupon created successfully by ${loggedInUser.role}`,
+    data: newCoupon,
+  };
 };
 
 // update coupon service
@@ -78,7 +86,6 @@ const updateCoupon = async (
     isDeleted: false,
   });
   const loggedInUser = result.user;
-
   if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -93,14 +100,31 @@ const updateCoupon = async (
   if (existingCoupon.isDeleted)
     throw new AppError(httpStatus.BAD_REQUEST, 'Cannot update deleted coupon');
 
-  if (
-    loggedInUser.role === 'VENDOR' &&
-    existingCoupon.createdBy !== loggedInUser.userId
-  ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Vendors can only update their own coupons'
-    );
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role);
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(loggedInUser.role);
+
+  if (isVendor) {
+    if (
+      !existingCoupon.vendorId ||
+      existingCoupon.vendorId.toString() !== loggedInUser._id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'Vendors can only update their own coupons'
+      );
+    }
+  }
+
+  if (isAdmin) {
+    if (
+      !existingCoupon.adminId ||
+      existingCoupon.adminId.toString() !== loggedInUser._id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'Admins can only update their own coupons'
+      );
+    }
   }
 
   // Normalize code
@@ -218,9 +242,9 @@ const applyCoupon = async (
     }).select('productId category');
 
     // vendor validation
-    if (coupon.createdBy?.startsWith('V-')) {
+    if (coupon.vendorId) {
       const isVendorProductMatched = products.some(
-        (p) => p.vendor?.vendorId === coupon.createdBy
+        (p) => p.vendorId.toString() === coupon.vendorId.toString()
       );
 
       if (!isVendorProductMatched) {
@@ -347,19 +371,56 @@ const applyCoupon = async (
   return null;
 };
 
+// toggle coupon status service
+const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update coupons. Your account is ${loggedInUser.status}`
+    );
+  }
+  const coupon = await Coupon.findById(couponId);
+  if (!coupon) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+  if (
+    (loggedInUser.role === 'VENDOR' || loggedInUser.role === 'SUB_VENDOR') &&
+    coupon.vendorId.toString() !== loggedInUser._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this coupon'
+    );
+  }
+
+  coupon.isActive = !coupon.isActive;
+  await coupon.save();
+  return {
+    message: `Coupon status updated to ${
+      coupon.isActive ? 'active' : 'inactive'
+    } `,
+  };
+};
+
 // get all coupons service
 const getAllCoupons = async (
   currentUser: AuthUser,
   query: Record<string, unknown>
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view coupons. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to view coupons. Your account is ${loggedInUser.status}`
     );
   }
 
@@ -369,6 +430,15 @@ const getAllCoupons = async (
     .paginate()
     .fields()
     .search(['code', 'description']);
+
+  const populateOptions = getPopulateOptions(loggedInUser.role, {
+    vendor: 'name userId role',
+    admin: 'name userId role',
+  });
+  populateOptions.forEach((option) => {
+    coupons.modelQuery = coupons.modelQuery.populate(option);
+  });
+
   const meta = await coupons.countTotal();
   const data = await coupons.modelQuery;
 
@@ -381,38 +451,64 @@ const getSingleCoupon = async (couponId: string, currentUser: AuthUser) => {
     userId: currentUser.id,
     isDeleted: false,
   });
-
-  if (result.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view a coupon. Your account is ${result.user.status}`
+      `You are not approved to view a coupon. Your account is ${loggedInUser.status}`
     );
   }
 
-  const existingCoupon = await Coupon.findById(couponId);
+  const query = Coupon.findById(couponId);
+
+  const populateOptions = getPopulateOptions(loggedInUser.role, {
+    vendor: 'name userId role',
+    admin: 'name userId role',
+  });
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const existingCoupon = await query;
   if (!existingCoupon) {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
+
   return existingCoupon;
 };
 
 // coupon soft delete service
 const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a coupon. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to delete a coupon. Your account is ${loggedInUser.status}`
     );
   }
 
   const existingCoupon = await Coupon.findById(couponId);
   if (!existingCoupon) {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+
+  if (loggedInUser.role !== 'ADMIN' && loggedInUser.role !== 'SUPER_ADMIN') {
+    if (existingCoupon.vendorId !== loggedInUser._id) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to delete this coupon'
+      );
+    }
+  }
+
+  if (existingCoupon?.isDeleted === true) {
+    throw new AppError(httpStatus.CONFLICT, 'Coupon already deleted');
   }
 
   if (existingCoupon.isActive) {
@@ -434,15 +530,17 @@ const permanentDeleteCoupon = async (
   couponId: string,
   currentUser: AuthUser
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a coupon. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to delete a coupon. Your account is ${loggedInUser.status}`
     );
   }
   const existingCoupon = await Coupon.findById(couponId);
@@ -464,6 +562,7 @@ export const CouponServices = {
   createCoupon,
   updateCoupon,
   applyCoupon,
+  toggleCouponStatus,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,

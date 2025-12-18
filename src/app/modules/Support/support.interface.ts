@@ -1,7 +1,7 @@
-import { Types } from 'mongoose';
+import mongoose from 'mongoose';
 
 export type TSupportConversation = {
-  _id?: Types.ObjectId;
+  _id?: mongoose.Types.ObjectId;
   room: string;
   userId: string;
   userName: string;
@@ -25,7 +25,7 @@ export type TSupportConversation = {
 };
 
 export type TSupportMessage = {
-  _id?: Types.ObjectId;
+  _id?: mongoose.Types.ObjectId;
   room: string;
   senderId: string;
   senderRole:
@@ -43,7 +43,7 @@ export type TSupportMessage = {
   isEdited?: boolean;
   editedAt?: Date | null;
   isDeleted?: boolean;
-  replyTo?: Types.ObjectId | null;
+  replyTo?: mongoose.Types.ObjectId | null;
 
   createdAt?: Date;
   updatedAt?: Date;

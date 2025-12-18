@@ -4,6 +4,17 @@ import { TDeliveryPartner } from './delivery-partner.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
+import { currentStatusOptions } from './delivery-partner.constant';
+
+const locationSchema = new Schema(
+  {
+    type: { type: String, enum: ['Point'], default: 'Point', required: true },
+    coordinates: { type: [Number], required: true }, // [longitude, latitude]
+    accuracy: { type: Number }, // GPS Accuracy in meters
+    lastLocationUpdate: { type: Date, default: Date.now, required: true }, // Data Freshness Timestamp
+  },
+  { _id: false }
+);
 
 const deliveryPartnerSchema = new Schema<
   TDeliveryPartner,
@@ -14,7 +25,11 @@ const deliveryPartnerSchema = new Schema<
     // Core Identifiers
     //-------------------------------------------------
     userId: { type: String, required: true, unique: true },
-    registeredBy: { type: String },
+    registeredBy: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'FleetManager',
+    },
 
     role: {
       type: String,
@@ -59,7 +74,6 @@ const deliveryPartnerSchema = new Schema<
     //-------------------------------------------------
     otp: { type: String },
     isOtpExpired: { type: Date },
-
     passwordResetToken: { type: String },
     passwordResetTokenExpiresAt: { type: Date },
     passwordChangedAt: { type: Date },
@@ -79,18 +93,26 @@ const deliveryPartnerSchema = new Schema<
       state: { type: String, default: '' },
       country: { type: String, default: '' },
       postalCode: { type: String, default: '' },
-      latitude: { type: Number },
       longitude: { type: Number },
+      latitude: { type: Number },
       geoAccuracy: { type: Number },
     },
 
-    //-------------------------------------------------
-    //  Required for geo search and nearest partner match
-    //-------------------------------------------------
-    location: {
-      type: { type: String, enum: ['Point'], default: 'Point', required: true },
-      coordinates: { type: [Number], required: true },
+    // operational address
+    operationalAddress: {
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+      geoAccuracy: { type: Number },
     },
+    //-------------------------------------------------
+    // Live Location (UPDATED for Geo-Search)
+    //-------------------------------------------------
+    currentSessionLocation: { type: locationSchema },
 
     personalInfo: {
       dateOfBirth: { type: Date },
@@ -167,7 +189,7 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // Operational Data
+    // Operational Data (Statistics)
     //-------------------------------------------------
     operationalData: {
       totalDeliveries: { type: Number, default: 0 },
@@ -177,6 +199,31 @@ const deliveryPartnerSchema = new Schema<
         average: { type: Number, default: 0 },
         totalReviews: { type: Number, default: 0 },
       },
+      currentStatus: {
+        type: String,
+        enum: Object.keys(currentStatusOptions),
+        default: 'OFFLINE',
+        required: true,
+      },
+      assignmentZoneId: {
+        type: Schema.Types.ObjectId,
+        default: null,
+        ref: 'Zone',
+      },
+      currentZoneId: {
+        type: Schema.Types.ObjectId,
+        default: null,
+        ref: 'Zone',
+      }, // DeliGo Zone ID
+      currentOrderId: {
+        type: Schema.Types.ObjectId,
+        default: null,
+        ref: 'Order',
+      }, // List of active order IDs
+      capacity: { type: Number, required: true, default: 1 }, // Max number of orders the driver can carry
+      isWorking: { type: Boolean, default: false }, // Clocked in/out status
+
+      lastActivityAt: { type: Date },
     },
 
     //-------------------------------------------------
@@ -211,9 +258,9 @@ const deliveryPartnerSchema = new Schema<
     //-------------------------------------------------
     // Admin Workflow / Audit
     //-------------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
 
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
@@ -225,7 +272,11 @@ const deliveryPartnerSchema = new Schema<
     virtuals: true,
   }
 );
-deliveryPartnerSchema.index({ location: '2dsphere' });
+
+// --- Indexing and Plugins ---
+deliveryPartnerSchema.index({
+  currentSessionLocation: '2dsphere',
+});
 deliveryPartnerSchema.plugin(passwordPlugin);
 
 export const DeliveryPartner = model<

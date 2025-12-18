@@ -1,4 +1,12 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+
+// export type TVendorSchedule = {
+//   day: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
+//   open: string; // e.g., "09:00" (24-hour format is best for logic)
+//   close: string; // e.g., "23:00"
+//   isClosed: boolean;
+// };
 
 export type TVendor = {
   // --------------------------------------------------------
@@ -6,7 +14,7 @@ export type TVendor = {
   // --------------------------------------------------------
   _id?: string;
   userId: string;
-  role: 'VENDOR';
+  role: 'VENDOR' | 'SUB_VENDOR';
   email: string;
   password: string;
 
@@ -45,8 +53,8 @@ export type TVendor = {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
   };
 
@@ -63,6 +71,19 @@ export type TVendor = {
     openingHours?: string; // "09:00 AM"
     closingHours?: string; // "11:00 PM"
     closingDays?: string[]; // ["Friday", "Holidays"]
+
+    // Operational Status
+    isStoreOpen: boolean; // Simple ON/OFF switch for the vendor
+    storeClosedAt?: Date;
+
+    // Zone Association
+    deliveryZoneId: string; // The primary zone for assignment and pricing
+
+    // Timing details
+    preparationTimeMinutes: number; // Avg time to prepare an order (e.g., 15)
+
+    // Detailed Schedule
+    // schedule: TVendorSchedule[]; // Use the detailed schedule interface
   };
 
   // --------------------------------------------------------
@@ -74,9 +95,14 @@ export type TVendor = {
     state: string;
     country: string;
     postalCode: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
+
+    locationPoint: {
+      type: 'Point';
+      coordinates: [number, number]; // [longitude, latitude]
+    };
   };
 
   // --------------------------------------------------------
@@ -120,9 +146,9 @@ export type TVendor = {
   // --------------------------------------------------------
   // Admin Workflow / Audit
   // --------------------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
 
   submittedForApprovalAt?: Date;
   approvedOrRejectedOrBlockedAt?: Date;

@@ -3,18 +3,29 @@ import { TCheckoutSummary } from './checkout.interface';
 
 const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
   {
-    customerId: { type: String, required: true },
+    customerId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Customer',
+    },
     customerEmail: { type: String, required: true },
-    vendorId: { type: String, required: true },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
 
     items: [
       {
-        productId: { type: String, required: true },
-        name: { type: String, required: true },
+        productId: {
+          type: Schema.Types.ObjectId,
+          required: true,
+          ref: 'Product',
+        },
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
         subtotal: { type: Number, required: true },
-        vendorId: { type: String, required: true },
+        vendorId: {
+          type: Schema.Types.ObjectId,
+          required: true,
+          ref: 'Vendor',
+        },
         estimatedDeliveryTime: { type: String, default: 'N/A' },
       },
     ],
@@ -25,7 +36,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     deliveryCharge: { type: Number, required: true },
     finalAmount: { type: Number, required: true },
     estimatedDeliveryTime: { type: String, default: 'N/A' },
-    couponCode: { type: String, default: undefined },
+    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
     deliveryAddress: {
       street: String,
@@ -33,8 +44,8 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       state: String,
       country: String,
       postalCode: String,
-      latitude: Number,
       longitude: Number,
+      latitude: Number,
       geoAccuracy: Number,
       isActive: Boolean,
       _id: String,
@@ -53,7 +64,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
 
     transactionId: { type: String, default: undefined },
 
-    orderId: { type: String, default: undefined },
+    orderId: { type: Schema.Types.ObjectId, default: null, ref: 'Order' },
 
     isConvertedToOrder: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },

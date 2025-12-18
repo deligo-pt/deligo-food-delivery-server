@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { AddressType } from './customer.constant';
 
 export type TCustomer = {
   // ------------------------------------------------------
@@ -35,38 +37,73 @@ export type TCustomer = {
   contactNumber?: string;
   profilePhoto?: string;
 
+  // Primary/Billing Address (Can be simple)
   address?: {
     street?: string;
     city?: string;
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
   };
 
-  // Multiple Saved Delivery Addresses
+  // Operational Address
+  operationalAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    longitude?: number;
+    latitude?: number;
+    geoAccuracy?: number;
+  };
+
+  // ------------------------------------------------------
+  // Current/Real-Time Location Data (For live tracking during delivery)
+  // ------------------------------------------------------
+  currentSessionLocation?: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+    accuracy?: number; // GPS Accuracy in meters
+    lastUpdate: Date; // Timestamp for data freshness
+    isSharingActive: boolean; // Flag if the app is currently streaming location
+  };
+
+  // ------------------------------------------------------
+  // Multiple Saved Delivery Addresses (Includes Zone Integration)
+  // ------------------------------------------------------
   deliveryAddresses?: Array<{
     street?: string;
     city?: string;
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: number;
     longitude?: number;
+    latitude?: number;
     geoAccuracy?: number;
     isActive: boolean;
+
+    // Zone Integration & Metadata
+    zoneId?: mongoose.Types.ObjectId; // CRITICAL: Links address to a defined delivery zone
+    addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
+    notes?: string; // Specific delivery instructions
   }>;
 
   // ------------------------------------------------------
-  // Orders & Activity
+  // Orders & Activity (Includes Analytics Metrics)
   // ------------------------------------------------------
   orders: {
     totalOrders?: number;
     totalSpent?: number;
     lastOrderDate?: Date;
     lastLoginAt?: Date;
+
+    // Analytics
+    avgOrderValue?: number;
+    referralsCount?: number;
   };
 
   // ------------------------------------------------------
@@ -84,9 +121,9 @@ export type TCustomer = {
   // ------------------------------------------------------
   // Admin Workflow / Audit
   // ------------------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
   approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;
 

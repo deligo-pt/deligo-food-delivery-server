@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import mongoose from 'mongoose';
 
 export type TBusinessCategory = {
   _id?: string;
@@ -16,7 +16,7 @@ export type TProductCategory = {
   name: string; // e.g. "Pizza", "Burger", "Medicine"
   slug: string;
   description?: string;
-  businessCategoryId: Types.ObjectId | string; // reference to BusinessCategory
+  businessCategoryId: mongoose.Types.ObjectId | string; // reference to BusinessCategory
   isActive: boolean;
   isDeleted: boolean;
   createdAt?: Date;

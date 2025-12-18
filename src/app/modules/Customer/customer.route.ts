@@ -18,6 +18,28 @@ router.patch(
   CustomerControllers.updateCustomer
 );
 
+// add delivery address
+router.post(
+  '/add-delivery-address',
+  auth('CUSTOMER'),
+  validateRequest(CustomerValidation.addDeliveryAddressValidationSchema),
+  CustomerControllers.addDeliveryAddress
+);
+
+// toggle delivery address status
+router.patch(
+  '/toggle-delivery-address-status/:addressId',
+  auth('CUSTOMER'),
+  CustomerControllers.toggleDeliveryAddressStatus
+);
+
+// Delete delivery address
+router.delete(
+  '/delete-delivery-address/:addressId',
+  auth('CUSTOMER'),
+  CustomerControllers.deleteDeliveryAddress
+);
+
 // Get all customers
 router.get(
   '/',

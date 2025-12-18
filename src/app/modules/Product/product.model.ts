@@ -5,12 +5,14 @@ import { TProduct } from './product.interface';
 const productSchema = new Schema<TProduct>(
   {
     productId: { type: String, required: true, unique: true },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     sku: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     slug: { type: String, required: true },
     description: { type: String },
     isDeleted: { type: Boolean, default: false },
     isApproved: { type: Boolean, default: true },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     remarks: { type: String },
 
     category: { type: String, required: true },
@@ -36,16 +38,6 @@ const productSchema = new Schema<TProduct>(
     },
 
     images: [{ type: String }],
-
-    vendor: {
-      vendorId: { type: String, required: true },
-      vendorName: { type: String },
-      vendorType: { type: String },
-      storePhoto: { type: String },
-      latitude: { type: Number },
-      longitude: { type: Number },
-      rating: { type: Number },
-    },
 
     tags: [{ type: String }],
 

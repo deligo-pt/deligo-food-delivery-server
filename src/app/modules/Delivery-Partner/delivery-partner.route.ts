@@ -11,7 +11,7 @@ const router = Router();
 // Delivery Partner Update Route
 router.patch(
   '/:deliveryPartnerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
   validateRequest(
     DeliveryPartnerValidation.updateDeliveryPartnerDataValidationSchema
   ),
@@ -21,7 +21,7 @@ router.patch(
 // Delivery Partner Doc Image Upload Route
 router.patch(
   '/:deliveryPartnerId/docImage',
-  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
   multerUpload.single('file'),
   parseBody,
   validateRequest(
