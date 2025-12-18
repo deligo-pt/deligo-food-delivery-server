@@ -648,7 +648,6 @@ const broadcastOrderToPartners = async (
   }
 
   const partnerIds = eligiblePartners.map((p) => p.userId);
-  console.log(partnerIds);
 
   // Safe atomic update using $addToSet and status update
   await Order.updateOne(
@@ -807,6 +806,21 @@ const otpVerificationByVendor = async (
   }
 
   // TODO: Notify Customer & Delivery Partner (Order is now PICKED_UP)
+  const notificationPayload = {
+    title: 'Order is now PICKED_UP',
+    body: `Your order ${orderId} is now PICKED_UP.`,
+    data: {
+      orderId,
+      orderStatus: ORDER_STATUS.PICKED_UP,
+    },
+  };
+  NotificationService.sendToUser(
+    updatedOrder.customerId!.toString(),
+    notificationPayload.title,
+    notificationPayload.body,
+    notificationPayload.data,
+    'ORDER'
+  );
 
   return {
     message: `OTP is verified. Order status is ${updatedOrder.orderStatus}`,
@@ -905,6 +919,33 @@ const updateOrderStatusByDeliveryPartner = async (
       }
     );
   }
+
+  //
+
+  // TODO: Notify Customer (Order is now ON_THE_WAY)
+  const customer = await Customer.findById(updatedOrder.customerId).lean();
+  const customerId = customer?.userId;
+  const notificationPayload = {
+    title: `Order is now ${payload.orderStatus}`,
+    body: `${
+      payload.orderStatus === 'ON_THE_WAY'
+        ? `Your order ${orderId} is now ON_THE_WAY.`
+        : payload.orderStatus === 'DELIVERED'
+        ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
+        : `Your order ${orderId} is  ${payload.orderStatus}.`
+    } `,
+    data: {
+      orderId,
+      orderStatus: payload.orderStatus,
+    },
+  };
+  NotificationService.sendToUser(
+    customerId!,
+    notificationPayload.title,
+    notificationPayload.body,
+    notificationPayload.data,
+    'ORDER'
+  );
 
   return {
     message: 'Order status updated successfully.',
