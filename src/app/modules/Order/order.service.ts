@@ -806,6 +806,12 @@ const otpVerificationByVendor = async (
   }
 
   // TODO: Notify Customer & Delivery Partner (Order is now PICKED_UP)
+  const customer = await Customer.findById(updatedOrder.customerId).lean();
+  const customerId = customer?.userId;
+  const deliveryPartner = await DeliveryPartner.findById(
+    updatedOrder.deliveryPartnerId
+  ).lean();
+  const deliveryPartnerId = deliveryPartner?.userId;
   const notificationPayload = {
     title: 'Order is now PICKED_UP',
     body: `Your order ${orderId} is now PICKED_UP.`,
@@ -814,13 +820,24 @@ const otpVerificationByVendor = async (
       orderStatus: ORDER_STATUS.PICKED_UP,
     },
   };
-  NotificationService.sendToUser(
-    updatedOrder.customerId!.toString(),
-    notificationPayload.title,
-    notificationPayload.body,
-    notificationPayload.data,
-    'ORDER'
-  );
+  if (customerId) {
+    NotificationService.sendToUser(
+      customerId!,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'ORDER'
+    );
+  }
+  if (deliveryPartnerId) {
+    NotificationService.sendToUser(
+      deliveryPartnerId!,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'ORDER'
+    );
+  }
 
   return {
     message: `OTP is verified. Order status is ${updatedOrder.orderStatus}`,
