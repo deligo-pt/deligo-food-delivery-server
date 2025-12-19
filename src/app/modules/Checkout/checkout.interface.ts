@@ -36,7 +36,7 @@ export type TCheckoutSummary = {
   totalPrice: number;
   discount: number;
   deliveryCharge: number;
-  finalAmount: number;
+  subTotal: number;
   couponId?: mongoose.Types.ObjectId;
   estimatedDeliveryTime: string;
 

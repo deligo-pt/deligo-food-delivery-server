@@ -7,12 +7,24 @@ import globalErrorHandler from './app/middlewares/globalErrorHandler';
 import routes from './app/routes';
 import cookieParser from 'cookie-parser';
 import notFound from './app/middlewares/notFound';
+import config from './app/config';
 
 const app: Application = express();
 
-app.use(cors({
-  origin :["http://localhost:3000" , "http://localhost:3001"] , credentials : true,
-}));
+const allowedOrigins = config.origins?.split(',') ?? [];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(cookieParser());
 
 //parser
@@ -29,10 +41,10 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-//global error handler
-app.use(globalErrorHandler);
-
 //handle not found
 app.use(notFound);
+
+//global error handler
+app.use(globalErrorHandler);
 
 export default app;

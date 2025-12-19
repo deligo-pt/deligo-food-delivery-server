@@ -36,9 +36,9 @@ const updateCoupon = catchAsync(async (req, res) => {
 
 // apply coupon controller
 const applyCoupon = catchAsync(async (req, res) => {
-  const { code, type } = req.body;
+  const { couponId, type } = req.body;
   const result = await CouponServices.applyCoupon(
-    code,
+    couponId,
     req.user as AuthUser,
     type
   );

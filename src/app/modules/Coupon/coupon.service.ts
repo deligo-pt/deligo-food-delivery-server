@@ -9,6 +9,8 @@ import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { Types } from 'mongoose';
+import { Customer } from '../Customer/customer.model';
 
 // create coupon service
 const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
@@ -176,18 +178,22 @@ const updateCoupon = async (
 
 // apply coupon service
 const applyCoupon = async (
-  code: string,
+  couponId: string,
   currentUser: AuthUser,
   type: 'CART' | 'CHECKOUT'
 ) => {
-  // Ensure user exists
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
 
-  code = code.trim().toUpperCase();
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
 
   // Find coupon
   const coupon = await Coupon.findOne({
-    code,
+    _id: couponId,
     isActive: true,
     isDeleted: false,
   });
@@ -207,14 +213,13 @@ const applyCoupon = async (
   // cart flow — active items only
   if (type === 'CART') {
     const cart = await Cart.findOne({
-      customerId: currentUser.id,
+      customerId: existingCustomer._id,
       isDeleted: false,
     });
-
     if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
     // Prevent duplicate apply
-    if (cart.couponCode === code) {
+    if (cart.couponId?.toString() === couponId.toString()) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'This coupon is already applied'
@@ -236,9 +241,9 @@ const applyCoupon = async (
     const finalActiveSubtotal = parseFloat(activeSubtotal.toFixed(2));
 
     //  category validation from db
-    const productIds = activeItems.map((i) => i.productId);
+    const productIds = activeItems.map((i) => i.productId.toString());
     const products = await Product.find({
-      productId: { $in: productIds },
+      _id: { $in: productIds },
     }).select('productId category');
 
     // vendor validation
@@ -291,8 +296,8 @@ const applyCoupon = async (
 
     // save final values
     cart.discount = parseFloat(discount.toFixed(2));
-    cart.couponCode = code;
-    cart.totalPrice = finalActiveSubtotal;
+    cart.couponId = new Types.ObjectId(couponId);
+    cart.subtotal = finalActiveSubtotal;
     await cart.save();
 
     return null;
@@ -301,16 +306,16 @@ const applyCoupon = async (
   // checkout flow — active items only
   if (type === 'CHECKOUT') {
     const checkout = await CheckoutSummary.findOne({
-      customerId: currentUser.id,
+      customerId: existingCustomer._id,
       isConvertedToOrder: false,
       isDeleted: false,
-    });
+    }).sort({ createdAt: -1 });
 
     if (!checkout) {
       throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
     }
 
-    if (checkout.couponCode === code) {
+    if (checkout.couponId?.toString() === couponId.toString()) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'This coupon is already applied'
@@ -318,10 +323,10 @@ const applyCoupon = async (
     }
 
     const products = await Product.find({
-      productId: { $in: checkout.items.map((i) => i.productId) },
+      _id: { $in: checkout.items.map((i) => i.productId) },
     }).select('productId category');
-
     const cartCategories = products.map((p) => p.category.toLowerCase());
+
     const couponCategories =
       coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
 
@@ -356,13 +361,13 @@ const applyCoupon = async (
       discount = coupon.discountValue;
     }
 
-    const finalAmount = checkOutTotalPrice - discount + checkout.deliveryCharge;
+    const subTotal = checkOutTotalPrice - discount + checkout.deliveryCharge;
 
     // final save
     checkout.totalPrice = checkOutTotalPrice;
     checkout.discount = parseFloat(discount.toFixed(2));
-    checkout.couponCode = code;
-    checkout.finalAmount = parseFloat(finalAmount.toFixed(2));
+    checkout.couponId = new Types.ObjectId(couponId);
+    checkout.subTotal = parseFloat(subTotal.toFixed(2));
     await checkout.save();
 
     return null;

@@ -45,8 +45,8 @@ export const updateCouponValidationSchema = z.object({
 // apply coupon validation schema
 const applyCouponValidationSchema = z.object({
   body: z.object({
-    code: z
-      .string({ required_error: 'Coupon code is required' })
+    couponId: z
+      .string({ required_error: 'Coupon id is required' })
       .min(1, 'Please provide a valid coupon code'),
     type: z.enum(['CART', 'CHECKOUT'], {
       required_error: 'Type is required',

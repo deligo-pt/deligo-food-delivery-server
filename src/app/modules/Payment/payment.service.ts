@@ -19,7 +19,7 @@ const createPaymentIntent = async (checkoutSummaryId: string) => {
 
   // Create PaymentIntent
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(summary.finalAmount * 100),
+    amount: Math.round(summary.subTotal * 100),
     currency: 'eur',
     description: 'Order Payment',
     metadata: {

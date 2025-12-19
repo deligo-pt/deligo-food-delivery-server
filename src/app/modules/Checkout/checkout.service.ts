@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { CheckoutSummary } from './checkout.model';
@@ -41,14 +42,11 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   // ---------- Get items ----------
   let selectedItems = [];
 
+  const cart = await Cart.findOne({ customerId, isDeleted: false });
+  if (!cart || cart.items.length === 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
+  }
   if (payload.useCart === true) {
-    // ====== Checkout using CART ======
-    const cart = await Cart.findOne({ customerId, isDeleted: false });
-
-    if (!cart || cart.items.length === 0) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
-    }
-
     const activeItems = cart.items.filter((i) => i.isActive === true);
 
     if (activeItems.length === 0) {
@@ -59,6 +57,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     }
 
     selectedItems = activeItems;
+    payload.discount = cart.discount;
   } else {
     // ====== DIRECT CHECKOUT ======
     if (!payload.items || payload.items.length === 0) {
@@ -92,7 +91,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     (i) => i.isActive === true
   );
   const existingVendor = await Vendor.findOne({
-    _id: products[0].vendorId,
+    _id: products[0].vendorId.toString(),
   });
 
   const vendorLongitude = existingVendor?.businessLocation?.longitude;
@@ -150,12 +149,12 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   const totalPrice = parseFloat(rawTotalPrice.toFixed(2));
   const discount = Number(payload.discount || 0);
 
-  const finalAmount = parseFloat(
+  const subTotal = parseFloat(
     (totalPrice + deliveryCharge - discount).toFixed(2)
   );
 
   // Vendor check
-  const vendorIds = orderItems.map((i) => i.vendorId);
+  const vendorIds = orderItems.map((i) => i.vendorId.toString());
   if (new Set(vendorIds).size > 1) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -180,26 +179,26 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     totalItems,
     totalPrice,
     deliveryCharge: deliveryCharge.toFixed(2),
-    finalAmount,
+    subTotal,
     estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
     deliveryAddress: activeAddress,
+    couponId: cart.couponId,
   };
-
   // -----------------------------------------------------------
   //  Prevent Duplicate Checkout Summary
   // -----------------------------------------------------------
   const existingSummary = await CheckoutSummary.findOne({
     customerId,
-    vendorId: orderItems[0].vendorId,
-    'items.productId': { $all: orderItems.map((i) => i.productId) },
-    finalAmount: finalAmount,
+    vendorId: orderItems[0].vendorId.toString(),
+    'items.productId': { $all: orderItems.map((i) => i.productId.toString()) },
+    subTotal,
     isConvertedToOrder: false,
   });
 
   if (existingSummary) {
     return {
       CheckoutSummaryId: existingSummary._id,
-      finalAmount: existingSummary.finalAmount,
+      subTotal: existingSummary.subTotal,
       items: existingSummary.items,
       vendorId: existingSummary.vendorId,
       reused: true,
@@ -210,7 +209,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 
   return {
     CheckoutSummaryId: summary._id,
-    finalAmount: summary.finalAmount,
+    subTotal: summary.subTotal,
     items: summary.items,
     vendorId: summary.vendorId,
   };
