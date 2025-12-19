@@ -24,6 +24,7 @@ import { NotificationService } from '../Notification/notification.service';
 import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
+import { Coupon } from '../Coupon/coupon.model';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -72,12 +73,13 @@ const createOrderAfterPayment = async (
       { customerId: summary.customerId },
       {
         $pull: {
-          items: { productId: { $in: summary.items.map((i) => i.productId) } },
+          items: {
+            productId: {
+              $in: summary.items.map((i) => i.productId.toString()),
+            },
+          },
         },
-        $inc: {
-          totalItems: -summary.totalItems,
-          totalPrice: -summary.totalPrice,
-        },
+        $set: { couponId: null, discount: 0, totalItems: 0, totalPrice: 0 },
       },
       { session }
     );
@@ -95,7 +97,8 @@ const createOrderAfterPayment = async (
       totalItems: summary.totalItems,
       totalPrice: summary.totalPrice,
       discount: summary.discount,
-      finalAmount: summary.finalAmount,
+      subTotal: summary.subTotal,
+      couponId: summary.couponId,
       paymentMethod: 'CARD',
       paymentStatus: 'COMPLETED',
       isPaid: true,
@@ -111,6 +114,7 @@ const createOrderAfterPayment = async (
     summary.paymentStatus = 'PAID';
     summary.transactionId = paymentIntentId;
     summary.orderId = new mongoose.Types.ObjectId(order._id);
+
     await summary.save({ session });
 
     await session.commitTransaction();
@@ -448,6 +452,16 @@ const acceptOrRejectOrderByVendor = async (
           'Stock check failed. One or more products are out of stock or inventory was insufficient.'
         );
       }
+
+      // used coupon count add
+      if (order.couponId) {
+        await Coupon.updateOne(
+          { _id: order.couponId },
+          { $inc: { usedCount: +1 } },
+          { session }
+        );
+      }
+
       const notificationPayload = {
         title: 'Order Accepted',
         body: `Your order has been accepted by ${loggedInUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,

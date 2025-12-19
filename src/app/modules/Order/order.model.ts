@@ -72,7 +72,8 @@ const orderSchema = new Schema<TOrder>(
     totalPrice: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     deliveryCharge: { type: Number, default: 0 },
-    finalAmount: { type: Number, required: true },
+    subTotal: { type: Number, required: true },
+    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
     paymentMethod: { type: String, enum: ['CARD', 'MOBILE'], required: true },
     paymentStatus: {

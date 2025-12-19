@@ -5,9 +5,8 @@ import { Product } from '../Product/product.model';
 import { TCart } from './cart.interface';
 import { Cart } from './cart.model';
 import { Customer } from '../Customer/customer.model';
-import { Coupon } from '../Coupon/coupon.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import mongoose from 'mongoose';
+import { recalculateCartTotals } from './cart.constant';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
@@ -49,6 +48,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       totalItems: quantity,
       totalPrice: newItem.subtotal,
       discount: 0,
+      subtotal: newItem.subtotal,
       couponId: null,
     });
 
@@ -81,80 +81,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   }
 
   // always re-calculate active total (real-time)
-
-  const activeItems = cart.items.filter((i) => i.isActive === true);
-
-  const activeSubtotal = activeItems.reduce((sum, i) => sum + i.subtotal, 0);
-
-  cart.totalItems = activeItems.reduce((sum, i) => sum + i.quantity, 0);
-  cart.totalPrice = parseFloat(activeSubtotal.toFixed(2));
-
-  //  auto re-apply coupon if exists
-  if (cart.couponId) {
-    const coupon = await Coupon.findOne({
-      _id: cart.couponId,
-      isActive: true,
-      isDeleted: false,
-    });
-
-    // Coupon removed or invalid
-    if (!coupon) {
-      cart.discount = 0;
-      cart.couponId = null;
-    } else {
-      const now = new Date();
-
-      // Expired coupon
-      if (
-        (coupon.validFrom && now < coupon.validFrom) ||
-        (coupon.expiresAt && now > coupon.expiresAt)
-      ) {
-        cart.discount = 0;
-        cart.couponId = null;
-      } else {
-        // category validation
-        const productIds = activeItems.map((i) => i.productId);
-        const products = await Product.find({
-          _id: { $in: productIds },
-        }).select('productId category');
-
-        const cartCategories = products.map((p) => p.category.toLowerCase());
-
-        const couponCategories =
-          coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
-
-        if (
-          couponCategories.length &&
-          !cartCategories.some((cat) => couponCategories.includes(cat))
-        ) {
-          // Category mismatch → auto remove coupon
-          cart.discount = 0;
-          cart.couponId = null;
-        } else {
-          // min purchase check (on active total)
-          if (coupon.minPurchase && cart.totalPrice < coupon.minPurchase) {
-            cart.discount = 0;
-          } else {
-            // final discount calculation
-            let discount = 0;
-
-            if (coupon.discountType === 'PERCENT') {
-              discount = (cart.totalPrice * coupon.discountValue) / 100;
-
-              if (coupon.maxDiscount)
-                discount = Math.min(discount, coupon.maxDiscount);
-            } else {
-              discount = coupon.discountValue;
-            }
-
-            cart.discount = parseFloat(discount.toFixed(2));
-            cart.couponId = new mongoose.Types.ObjectId(coupon._id);
-          }
-        }
-      }
-    }
-  }
-
+  await recalculateCartTotals(cart);
   cart.markModified('items');
   await cart.save();
   return cart;
@@ -179,13 +106,13 @@ const activateItem = async (currentUser: AuthUser, productId: string) => {
   }
   // Item to activate
   const itemToActivate = cart.items.find(
-    (i) => i.productId.toString() === productId
+    (i) => i.productId.toString() === productId.toString()
   );
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
 
-  const selectedVendorId = itemToActivate.vendorId;
+  const selectedVendorId = itemToActivate.vendorId.toString();
 
   // // Get existing active items
   const activeItems = cart.items.filter((i) => i.isActive === true);
@@ -194,7 +121,7 @@ const activateItem = async (currentUser: AuthUser, productId: string) => {
   if (activeItems.length > 0) {
     const activeVendorId = activeItems[0].vendorId;
 
-    if (activeVendorId !== selectedVendorId) {
+    if (activeVendorId.toString() !== selectedVendorId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'You can only select items from the same vendor'
@@ -208,6 +135,10 @@ const activateItem = async (currentUser: AuthUser, productId: string) => {
   } else {
     itemToActivate.isActive = false;
   }
+
+  // re-calculate active total
+  await recalculateCartTotals(cart);
+
   cart.markModified('items');
   await cart.save();
   const freshCart = await Cart.findOne({ customerId });
@@ -265,6 +196,11 @@ const updateCartItemQuantity = async (
     cart.items[itemIndex].quantity -= quantity;
     cart.items[itemIndex].subtotal -= cart.items[itemIndex].price * quantity;
   }
+
+  // re-calculate active total
+  await recalculateCartTotals(cart);
+
+  cart.markModified('items');
   await cart.save();
   return cart;
 };
@@ -293,6 +229,11 @@ const deleteCartItem = async (currentUser: AuthUser, productId: string[]) => {
   }
 
   cart.items = filteredItems;
+
+  // re-calculate active total
+  await recalculateCartTotals(cart);
+
+  cart.markModified('items');
   await cart.save();
   return cart;
 };

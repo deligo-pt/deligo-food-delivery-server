@@ -14,8 +14,9 @@ export type TCart = {
   customerId: mongoose.Types.ObjectId;
   items: TCartItem[];
   totalItems: number;
-  discount?: number;
   totalPrice: number;
+  discount?: number;
+  subtotal: number;
   couponId?: mongoose.Types.ObjectId | null;
   isDeleted: boolean;
   createdAt: Date;

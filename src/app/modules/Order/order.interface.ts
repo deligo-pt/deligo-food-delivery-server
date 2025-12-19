@@ -24,7 +24,8 @@ export type TOrder = {
   totalPrice: number;
   discount?: number;
   deliveryCharge?: number;
-  finalAmount: number;
+  subTotal: number;
+  couponId?: mongoose.Types.ObjectId;
   paymentMethod: 'CARD' | 'MOBILE';
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 

@@ -34,7 +34,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     totalPrice: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     deliveryCharge: { type: Number, required: true },
-    finalAmount: { type: Number, required: true },
+    subTotal: { type: Number, required: true },
     estimatedDeliveryTime: { type: String, default: 'N/A' },
     couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
