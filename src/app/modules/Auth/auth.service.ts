@@ -813,20 +813,20 @@ const approvedOrRejectedUser = async (
 
   switch (payload.status) {
     case 'APPROVED':
-      user.approvedBy = admin._id.toString();
+      user.approvedBy = admin._id;
       user.remarks =
         payload.remarks ||
         'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.';
       break;
 
     case 'REJECTED':
-      user.rejectedBy = admin._id.toString();
+      user.rejectedBy = admin._id;
       user.remarks = payload.remarks!;
       user.isUpdateLocked = false;
       break;
 
     case 'BLOCKED':
-      user.blockedBy = admin._id.toString();
+      user.blockedBy = admin._id;
       user.remarks = payload.remarks!;
       break;
   }
@@ -842,7 +842,7 @@ const approvedOrRejectedUser = async (
     BLOCKED: 'Your account has been blocked',
   };
 
-  NotificationService.sendToUser(
+  await NotificationService.sendToUser(
     user.userId,
     notificationTitleMap[payload.status],
     user.remarks || '',
@@ -872,10 +872,22 @@ const approvedOrRejectedUser = async (
     user.role
   } Application has been ${payload.status.toLowerCase()}`;
 
-  try {
-    await EmailHelper.sendEmail(user.email, emailHtml, emailSubject);
-  } catch (err: any) {
-    console.error('Email sending failed:', err);
+  if (
+    [
+      'ADMIN',
+      'SUPER_ADMIN',
+      'FLEET_MANAGER',
+      'VENDOR',
+      'DELIVERY_PARTNER',
+      'SUB_VENDOR',
+    ].includes(user.role) ||
+    (user.role === 'CUSTOMER' && user.email)
+  ) {
+    try {
+      await EmailHelper.sendEmail(user.email, emailHtml, emailSubject);
+    } catch (err: any) {
+      console.error('Email sending failed:', err);
+    }
   }
 
   return {

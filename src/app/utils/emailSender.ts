@@ -47,8 +47,6 @@ const createEmailContent = async (data: object, templateType: string) => {
       `${templateType}.template.hbs`
     );
 
-    console.log('Looking for email template at:', templatePath);
-
     if (!fs.existsSync(templatePath)) {
       console.error(`Template not found at: ${templatePath}`);
       throw new Error(
