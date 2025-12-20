@@ -74,7 +74,6 @@ const registerUser = async <
         'You do not have permission to register a Delivery Partner'
       );
     }
-    console.log(currentUser);
     registeredBy = allowedUser.user._id.toString();
   }
 
@@ -183,13 +182,15 @@ const registerUser = async <
   );
 
   // send email
-  EmailHelper.sendEmail(
-    payload?.email,
-    emailHtml,
-    'Verify your email for DeliGo'
-  ).catch((err) => {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-  });
+  try {
+    await EmailHelper.sendEmail(
+      payload?.email,
+      emailHtml,
+      'Verify your email for DeliGo'
+    );
+  } catch (err: any) {
+    console.error('Email sending failed:', err);
+  }
 
   return {
     message: `${payload.role} registered successfully. Please check your email for verification.`,
@@ -329,14 +330,15 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       },
       'verify-email'
     );
-
-    await EmailHelper.sendEmail(
-      payload.email,
-      emailHtml,
-      'Verify your email for DeliGo'
-    ).catch((err) => {
+    try {
+      await EmailHelper.sendEmail(
+        payload.email,
+        emailHtml,
+        'Verify your email for DeliGo'
+      );
+    } catch (err: any) {
       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-    });
+    }
 
     return { message: 'OTP sent to your email. Please verify to login.' };
   }
@@ -526,13 +528,11 @@ const forgotPassword = async (email: string) => {
   );
 
   // send email
-  EmailHelper.sendEmail(
-    email,
-    emailHtml,
-    'Reset your password for DeliGo'
-  ).catch((err) => {
+  try {
+    EmailHelper.sendEmail(email, emailHtml, 'Reset your password for DeliGo');
+  } catch (err: any) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-  });
+  }
 
   return {
     message: 'Password reset link sent to your email address successfully',
@@ -740,13 +740,15 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     'user-approval-submission-notification'
   );
 
-  EmailHelper.sendEmail(
-    submittedUser?.email,
-    emailHtml,
-    `New ${submittedUser?.role} Submission for Approval`
-  ).catch((err) => {
+  try {
+    EmailHelper.sendEmail(
+      submittedUser?.email,
+      emailHtml,
+      `New ${submittedUser?.role} Submission for Approval`
+    );
+  } catch (err: any) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-  });
+  }
 
   return {
     message: `${submittedUser?.role} submitted for approval successfully`,
@@ -811,20 +813,20 @@ const approvedOrRejectedUser = async (
 
   switch (payload.status) {
     case 'APPROVED':
-      user.approvedBy = admin._id;
+      user.approvedBy = admin._id.toString();
       user.remarks =
         payload.remarks ||
         'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.';
       break;
 
     case 'REJECTED':
-      user.rejectedBy = admin._id;
+      user.rejectedBy = admin._id.toString();
       user.remarks = payload.remarks!;
       user.isUpdateLocked = false;
       break;
 
     case 'BLOCKED':
-      user.blockedBy = admin._id;
+      user.blockedBy = admin._id.toString();
       user.remarks = payload.remarks!;
       break;
   }
@@ -870,7 +872,11 @@ const approvedOrRejectedUser = async (
     user.role
   } Application has been ${payload.status.toLowerCase()}`;
 
-  EmailHelper.sendEmail(user.email, emailHtml, emailSubject);
+  try {
+    await EmailHelper.sendEmail(user.email, emailHtml, emailSubject);
+  } catch (err: any) {
+    console.error('Email sending failed:', err);
+  }
 
   return {
     message: `${user.role} ${payload.status.toLowerCase()} successfully`,
@@ -1021,13 +1027,11 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
     );
 
     // Send verification email
-    EmailHelper.sendEmail(
-      email,
-      emailHtml,
-      'Verify your email for DeliGo'
-    ).catch((err) => {
+    try {
+      EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo');
+    } catch (err: any) {
       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-    });
+    }
   }
   return {
     message: 'OTP resent successfully. Please check your email.',
