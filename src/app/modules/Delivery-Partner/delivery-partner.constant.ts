@@ -6,7 +6,8 @@ export const currentStatusOptions = {
 
 export const DeliveryPartnerSearchableFields = [
   'status',
-  'name',
+  'name.firstName',
+  'name.lastName',
   'email',
   'phoneNumber',
   'address.city',
