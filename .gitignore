@@ -4,3 +4,4 @@ dist
 .vercel
 
 /src/app/data
+.env*.local
