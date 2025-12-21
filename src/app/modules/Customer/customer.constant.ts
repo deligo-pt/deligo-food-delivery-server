@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Searchable fields for Customer
 export const CustomerSearchableFields = [
-  'name',
+  'name.firstName',
+  'name.lastName',
   'email',
-  'phone',
-  'role',
+  'contactNumber',
   'status',
 ];
 
