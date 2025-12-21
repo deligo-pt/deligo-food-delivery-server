@@ -155,8 +155,9 @@ const getSingleFleetManagerFromDB = async (
     userId: currentUser?.id,
     isDeleted: false,
   });
-  const user = result?.user;
-  if (user?.role === 'FLEET_MANAGER' && user?.id !== fleetManagerId) {
+  const loggedInUser = result?.user;
+  const userId = loggedInUser?.userId;
+  if (loggedInUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this fleet manager!'
@@ -164,9 +165,9 @@ const getSingleFleetManagerFromDB = async (
   }
   let existingFleetManager;
 
-  if (user?.role === 'FLEET_MANAGER') {
+  if (loggedInUser?.role === 'FLEET_MANAGER') {
     existingFleetManager = await FleetManager.findOne({
-      userId: user?.userId,
+      userId,
       isDeleted: false,
     });
   } else {
