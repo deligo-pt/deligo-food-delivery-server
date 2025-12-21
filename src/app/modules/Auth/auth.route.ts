@@ -1,5 +1,6 @@
 import { UrlPath } from '../../constant/user.constant';
 import auth from '../../middlewares/auth';
+import { rateLimiter } from '../../middlewares/rateLimiter';
 import validateRequest, {
   validateRequestCookies,
 } from '../../middlewares/validateRequest';
@@ -12,6 +13,7 @@ const router = Router();
 router.post(
   [UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
   validateRequest(AuthValidation.registerValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.registerUser
 );
 // Register Delivery Partner Route
@@ -19,6 +21,7 @@ router.post(
   [UrlPath.DELIVERY_PARTNER],
   auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.registerValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.registerUser
 );
 
@@ -27,6 +30,7 @@ router.post(
   [UrlPath.SUB_VENDOR],
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
   validateRequest(AuthValidation.registerValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.registerUser
 );
 
@@ -34,6 +38,7 @@ router.post(
 router.post(
   '/login',
   validateRequest(AuthValidation.loginValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.loginUser
 );
 
@@ -41,6 +46,7 @@ router.post(
 router.post(
   '/login-customer',
   validateRequest(AuthValidation.loginCustomerValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.loginCustomer
 );
 
@@ -83,6 +89,7 @@ router.post(
     'FLEET_MANAGER'
   ),
   validateRequest(AuthValidation.changePasswordValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.changePassword
 );
 
@@ -90,6 +97,7 @@ router.post(
 router.post(
   '/forgot-password',
   validateRequest(AuthValidation.forgotPasswordValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.forgotPassword
 );
 
@@ -97,6 +105,7 @@ router.post(
 router.post(
   '/reset-password',
   validateRequest(AuthValidation.resetPasswordValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.resetPassword
 );
 
@@ -104,6 +113,7 @@ router.post(
 router.post(
   '/refresh-token',
   validateRequestCookies(AuthValidation.refreshTokenValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.refreshToken
 );
 
