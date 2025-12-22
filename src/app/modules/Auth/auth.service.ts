@@ -741,7 +741,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   );
 
   try {
-    EmailHelper.sendEmail(
+    await EmailHelper.sendEmail(
       submittedUser?.email,
       emailHtml,
       `New ${submittedUser?.role} Submission for Approval`

@@ -45,7 +45,10 @@ const updateDeliveryPartner = async (
   // ---------------------------------------------------------
   // Check if update is locked
   // ---------------------------------------------------------
-  if (existingDeliveryPartner.isUpdateLocked) {
+  if (
+    loggedInUser.role === 'FLEET_MANAGER' &&
+    existingDeliveryPartner.isUpdateLocked
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Delivery Partner update is locked. Please contact support.'
@@ -126,6 +129,11 @@ const deliverPartnerDocImageUpload = async (
   currentUser: AuthUser,
   deliveryPartnerId: string
 ) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const loggedInUser = result?.user;
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
   });
@@ -133,8 +141,11 @@ const deliverPartnerDocImageUpload = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (currentUser?.role === 'DELIVERY_PARTNER') {
-    if (currentUser?.id !== existingDeliveryPartner?.userId) {
+  if (loggedInUser?.role === 'FLEET_MANAGER') {
+    if (
+      loggedInUser?._id.toString() !==
+      existingDeliveryPartner?.registeredBy?.toString()
+    ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'You are not authorize to upload document image!'
@@ -171,8 +182,13 @@ const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const loggedInUser = result?.user;
   if (currentUser?.role === 'FLEET_MANAGER') {
-    query.registeredBy = currentUser?.id;
+    query.registeredBy = loggedInUser?._id;
   }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
@@ -192,7 +208,7 @@ const getAllDeliveryPartnersFromDB = async (
   };
 };
 
-// get single delivery partner
+// get single delivery partner from db
 const getSingleDeliveryPartnerFromDB = async (
   deliveryPartnerId: string,
   currentUser: AuthUser
@@ -201,9 +217,9 @@ const getSingleDeliveryPartnerFromDB = async (
     userId: currentUser?.id,
     isDeleted: false,
   });
-  const user = result?.user;
+  const loggedInUser = result?.user;
   if (
-    user?.role === 'DELIVERY_PARTNER' &&
+    loggedInUser?.role === 'DELIVERY_PARTNER' &&
     currentUser?.id !== deliveryPartnerId
   ) {
     throw new AppError(
@@ -214,7 +230,7 @@ const getSingleDeliveryPartnerFromDB = async (
 
   let existingDeliveryPartner;
 
-  if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
+  if (loggedInUser?.role !== 'ADMIN' && loggedInUser?.role !== 'SUPER_ADMIN') {
     existingDeliveryPartner = await DeliveryPartner.findOne({
       userId: deliveryPartnerId,
       isDeleted: false,
@@ -230,8 +246,8 @@ const getSingleDeliveryPartnerFromDB = async (
   }
 
   if (
-    user?.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner?.registeredBy !== user?.userId
+    loggedInUser?.role === 'FLEET_MANAGER' &&
+    existingDeliveryPartner?.registeredBy !== loggedInUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
