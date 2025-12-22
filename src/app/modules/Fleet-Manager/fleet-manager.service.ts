@@ -57,7 +57,10 @@ const fleetManagerUpdate = async (
   // ---------------------------------------------------------
   // Check if update is locked
   // ---------------------------------------------------------
-  if (existingFleetManager.isUpdateLocked) {
+  if (
+    currentUser.role === 'FLEET_MANAGER' &&
+    existingFleetManager.isUpdateLocked
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Fleet Manager update is locked. Please contact support.'
@@ -90,6 +93,7 @@ const fleetManagerDocImageUpload = async (
   currentUser: AuthUser,
   fleetManagerId: string
 ) => {
+  await findUserByEmailOrId({ userId: currentUser?.id, isDeleted: false });
   const existingFleetManager = await FleetManager.findOne({
     userId: fleetManagerId,
     isDeleted: false,
@@ -98,10 +102,30 @@ const fleetManagerDocImageUpload = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (currentUser?.id !== fleetManagerId) {
+  // ---------------------------------------------------------
+  // Only the Fleet Manager can update their own profile
+  // ---------------------------------------------------------
+  const isSelf =
+    currentUser.role === 'FLEET_MANAGER' &&
+    currentUser.id === existingFleetManager.userId;
+
+  if (!isSelf) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this Fleet Manager.'
+    );
+  }
+
+  // ---------------------------------------------------------
+  // Check if update is locked
+  // ---------------------------------------------------------
+  if (
+    currentUser.role === 'FLEET_MANAGER' &&
+    existingFleetManager.isUpdateLocked
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to upload document image!'
+      'Fleet Manager update is locked. Please contact support.'
     );
   }
 

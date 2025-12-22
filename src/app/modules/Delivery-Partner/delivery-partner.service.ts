@@ -171,8 +171,13 @@ const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const loggedInUser = result?.user;
   if (currentUser?.role === 'FLEET_MANAGER') {
-    query.registeredBy = currentUser?.id;
+    query.registeredBy = loggedInUser?._id;
   }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
