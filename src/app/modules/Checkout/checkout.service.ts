@@ -37,6 +37,13 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       'Please complete your profile before checking out'
     );
 
+  if (!customer.email && !customer.contactNumber) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please add email or contact number before checking out'
+    );
+  }
+
   const customerId = customer._id.toString();
 
   // ---------- Get items ----------
@@ -172,7 +179,8 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   }
   const summaryData = {
     customerId,
-    customerEmail: customer.email,
+    customerEmail: customer?.email,
+    contactNumber: customer?.contactNumber,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
     discount: discount,
