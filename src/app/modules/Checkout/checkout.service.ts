@@ -43,10 +43,10 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   let selectedItems = [];
 
   const cart = await Cart.findOne({ customerId, isDeleted: false });
-  if (!cart || cart.items.length === 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
-  }
   if (payload.useCart === true) {
+    if (!cart || cart.items.length === 0) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
+    }
     const activeItems = cart.items.filter((i) => i.isActive === true);
 
     if (activeItems.length === 0) {
@@ -182,7 +182,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     subTotal,
     estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
     deliveryAddress: activeAddress,
-    couponId: cart.couponId,
+    couponId: cart?.couponId,
   };
   // -----------------------------------------------------------
   //  Prevent Duplicate Checkout Summary
