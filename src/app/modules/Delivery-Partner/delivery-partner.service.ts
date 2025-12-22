@@ -217,9 +217,9 @@ const getSingleDeliveryPartnerFromDB = async (
     userId: currentUser?.id,
     isDeleted: false,
   });
-  const user = result?.user;
+  const loggedInUser = result?.user;
   if (
-    user?.role === 'DELIVERY_PARTNER' &&
+    loggedInUser?.role === 'DELIVERY_PARTNER' &&
     currentUser?.id !== deliveryPartnerId
   ) {
     throw new AppError(
@@ -230,7 +230,7 @@ const getSingleDeliveryPartnerFromDB = async (
 
   let existingDeliveryPartner;
 
-  if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
+  if (loggedInUser?.role !== 'ADMIN' && loggedInUser?.role !== 'SUPER_ADMIN') {
     existingDeliveryPartner = await DeliveryPartner.findOne({
       userId: deliveryPartnerId,
       isDeleted: false,
@@ -246,8 +246,8 @@ const getSingleDeliveryPartnerFromDB = async (
   }
 
   if (
-    user?.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner?.registeredBy !== user?.userId
+    loggedInUser?.role === 'FLEET_MANAGER' &&
+    existingDeliveryPartner?.registeredBy !== loggedInUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
