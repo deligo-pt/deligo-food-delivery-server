@@ -208,7 +208,7 @@ const getAllDeliveryPartnersFromDB = async (
   };
 };
 
-// get single delivery partner
+// get single delivery partner from db
 const getSingleDeliveryPartnerFromDB = async (
   deliveryPartnerId: string,
   currentUser: AuthUser
