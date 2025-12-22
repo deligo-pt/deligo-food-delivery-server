@@ -45,7 +45,10 @@ const updateDeliveryPartner = async (
   // ---------------------------------------------------------
   // Check if update is locked
   // ---------------------------------------------------------
-  if (existingDeliveryPartner.isUpdateLocked) {
+  if (
+    loggedInUser.role === 'FLEET_MANAGER' &&
+    existingDeliveryPartner.isUpdateLocked
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Delivery Partner update is locked. Please contact support.'
@@ -126,6 +129,11 @@ const deliverPartnerDocImageUpload = async (
   currentUser: AuthUser,
   deliveryPartnerId: string
 ) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const loggedInUser = result?.user;
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
   });
@@ -133,8 +141,11 @@ const deliverPartnerDocImageUpload = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (currentUser?.role === 'DELIVERY_PARTNER') {
-    if (currentUser?.id !== existingDeliveryPartner?.userId) {
+  if (loggedInUser?.role === 'FLEET_MANAGER') {
+    if (
+      loggedInUser?._id.toString() !==
+      existingDeliveryPartner?.registeredBy?.toString()
+    ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'You are not authorize to upload document image!'
