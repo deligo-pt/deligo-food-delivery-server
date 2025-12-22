@@ -529,7 +529,11 @@ const forgotPassword = async (email: string) => {
 
   // send email
   try {
-    EmailHelper.sendEmail(email, emailHtml, 'Reset your password for DeliGo');
+    await EmailHelper.sendEmail(
+      email,
+      emailHtml,
+      'Reset your password for DeliGo'
+    );
   } catch (err: any) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
   }
@@ -1040,7 +1044,11 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
 
     // Send verification email
     try {
-      EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo');
+      await EmailHelper.sendEmail(
+        email,
+        emailHtml,
+        'Verify your email for DeliGo'
+      );
     } catch (err: any) {
       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
     }
