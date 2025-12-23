@@ -59,6 +59,12 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     },
 
     // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
+    // --------------------------------------------------------
     // OTP & Password Reset
     // --------------------------------------------------------
     otp: { type: String },

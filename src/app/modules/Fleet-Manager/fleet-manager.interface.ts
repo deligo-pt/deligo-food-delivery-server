@@ -19,6 +19,12 @@ export type TFleetManager = {
   // Push notifications
   fcmTokens?: string[];
 
+  // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
+
   // ---------------------------------------------
   // OTP & Password Reset
   // ---------------------------------------------

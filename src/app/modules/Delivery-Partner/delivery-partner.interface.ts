@@ -20,6 +20,12 @@ export type TDeliveryPartner = {
   // FCM tokens for push notifications
   fcmTokens?: string[];
 
+  // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
+
   // ------------------------------------------------------
   // OTP & Password Reset
   // ------------------------------------------------------

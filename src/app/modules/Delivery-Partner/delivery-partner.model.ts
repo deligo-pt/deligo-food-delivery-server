@@ -69,6 +69,12 @@ const deliveryPartnerSchema = new Schema<
     //-------------------------------------------------
     fcmTokens: { type: [String], default: [] },
 
+    // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
     //-------------------------------------------------
     // OTP & Password Reset
     //-------------------------------------------------

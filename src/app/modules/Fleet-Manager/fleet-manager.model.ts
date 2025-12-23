@@ -51,6 +51,12 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // ------------------------------------------
     fcmTokens: { type: [String], default: [] },
 
+    // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
     // ------------------------------------------
     // OTP & Password Reset
     // ------------------------------------------

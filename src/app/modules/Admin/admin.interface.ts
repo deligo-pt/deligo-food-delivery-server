@@ -17,6 +17,12 @@ export type TAdmin = {
   // Push notifications
   fcmTokens?: string[];
 
+  // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
+
   // ------------------------------------------------------
   // OTP & Password Reset
   // ------------------------------------------------------

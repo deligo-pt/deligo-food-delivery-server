@@ -50,7 +50,13 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // -------------------------------------------------------
     fcmTokens: { type: [String], default: [] },
 
-    // ──────────────────────────────────────────────
+    // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
+    // -------------------------------------------------------
     // OTP & Password Reset (UNCHANGED)
     // -------------------------------------------------------
     otp: { type: String, default: '' },

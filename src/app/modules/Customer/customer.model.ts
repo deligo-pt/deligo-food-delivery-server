@@ -41,6 +41,12 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // ----------------------------------------------------------------
     fcmTokens: { type: [String], default: [] },
 
+    // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
     // ----------------------------------------------------------------
     // OTP
     // ----------------------------------------------------------------
