@@ -53,7 +53,7 @@ export type TProduct = {
   meta: {
     isFeatured?: boolean;
     isAvailableForPreOrder?: boolean;
-    status: 'Active' | 'Inactive';
+    status: 'ACTIVE' | 'INACTIVE';
     origin?: string;
     createdAt: Date;
     updatedAt: Date;

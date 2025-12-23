@@ -51,7 +51,7 @@ const productSchema = new Schema<TProduct>(
     meta: {
       isFeatured: { type: Boolean, default: false },
       isAvailableForPreOrder: { type: Boolean, default: false },
-      status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+      status: { type: String, enum: ['ACTIVE', 'INACTIVE'], default: 'ACTIVE' },
       origin: { type: String },
       createdAt: { type: Date, default: Date.now },
       updatedAt: { type: Date, default: Date.now },
