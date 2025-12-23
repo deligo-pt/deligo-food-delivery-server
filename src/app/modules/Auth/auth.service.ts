@@ -754,6 +754,16 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
   }
 
+  // send push notification to all admin
+  await NotificationService.sendToRole(
+    'Admin',
+    ['ADMIN', 'SUPER_ADMIN'],
+    'New User Submission for Approval',
+    `New ${submittedUser?.role} Submission for Approval`,
+    { userId: submittedUser?._id.toString(), role: submittedUser?.role },
+    'ACCOUNT'
+  );
+
   return {
     message: `${submittedUser?.role} submitted for approval successfully`,
   };
@@ -851,8 +861,8 @@ const approvedOrRejectedUser = async (
     notificationTitleMap[payload.status],
     user.remarks || '',
     {
+      userId: user._id.toString(),
       role: user.role,
-      userId: user.userId,
     },
     'ACCOUNT'
   );
