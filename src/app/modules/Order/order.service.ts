@@ -25,6 +25,7 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { Coupon } from '../Coupon/coupon.model';
+import { getIO } from '../../lib/socket';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -598,7 +599,7 @@ const broadcastOrderToPartners = async (
   }
 
   const vendorCoordinates: [number, number] = [loc.longitude, loc.latitude];
-
+  const io = getIO();
   // Fetch order AND ensure this vendor owns it
   const order = await Order.findOne({
     orderId,
@@ -672,9 +673,37 @@ const broadcastOrderToPartners = async (
     }
   );
 
+  // show popup to delivery partner
+  const orderDataForPopup = {
+    orderId: order.orderId,
+    deliveryAddress: order.deliveryAddress,
+    vendorName: loggedInUser.businessDetails.businessName,
+    timer: 60, // 60 seconds
+  };
+
+  partnerIds.forEach((id) => {
+    io.to(`user_${id}`).emit('NEW_ORDER_AVAILABLE', orderDataForPopup);
+  });
+
+  // send push notification to delivery partner
+  const notificationPayload = {
+    title: 'New Order Available',
+    body: 'A new order is available for you.',
+    data: { orderId: order._id.toString() },
+  };
+  partnerIds.forEach(async (id) => {
+    await NotificationService.sendToUser(
+      id,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'ORDER'
+    );
+  });
+
   return {
-    message: `Order dispatched to ${partnerIds.length} delivery partners. The partner IDs are [ ${partnerIds} ].`,
-    partnerIds,
+    message: `Order dispatched to ${partnerIds.length} delivery partners.`,
+    data: orderDataForPopup,
   };
 };
 
@@ -700,6 +729,10 @@ const partnerAcceptsDispatchedOrder = async (
       'You already have an assigned order.'
     );
   }
+  const orderBeforeUpdate = await Order.findOne({ orderId }).select(
+    'dispatchPartnerPool'
+  );
+  const notifiedPartnerIds = orderBeforeUpdate?.dispatchPartnerPool || [];
 
   // atomic first-come-first-served claim
   const claimedOrder = await Order.findOneAndUpdate(
@@ -726,6 +759,13 @@ const partnerAcceptsDispatchedOrder = async (
       'Too late! Another partner already accepted this order.'
     );
   }
+
+  const io = getIO();
+  notifiedPartnerIds.forEach((id) => {
+    if (id !== partner.userId) {
+      io.to(`user_${id}`).emit('REMOVE_ORDER_POPUP', { orderId });
+    }
+  });
 
   // Update partner state
   await DeliveryPartner.updateOne(

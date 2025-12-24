@@ -299,7 +299,7 @@ const updateEmailOrContactNumber = async (
   return {
     message: `${
       loggedInUser.pendingEmail ? 'Email' : 'Contact number'
-    } updated successfully. Please login again to continue.`,
+    } updated successfully.`,
   };
 };
 

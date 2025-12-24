@@ -416,7 +416,7 @@ const logoutUser = async (email: string) => {
     message:
       user.role === 'CUSTOMER'
         ? 'Customer logged out and email verification reset'
-        : 'User logged out successfully',
+        : `${user?.role} logged out successfully!`,
   };
 };
 // Change Password
