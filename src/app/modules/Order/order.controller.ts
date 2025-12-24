@@ -75,7 +75,7 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 

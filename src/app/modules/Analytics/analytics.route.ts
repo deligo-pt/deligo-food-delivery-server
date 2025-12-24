@@ -4,32 +4,18 @@ import auth from '../../middlewares/auth';
 
 const router = Router();
 
-// analytics overview route
+// get admin dashboard analytics
 router.get(
-  '/overview',
+  '/admin-dashboard-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.overview
+  AnalyticsControllers.getAdminDashboardAnalytics
 );
 
-// analytics monthly orders route
+// get vendor dashboard analytics
 router.get(
-  '/monthly-orders',
-  auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.monthlyOrders
+  '/vendor-dashboard-analytics',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getVendorDashboardAnalytics
 );
-
-router.get(
-  '/vendor-stats',
-  auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.vendorStats
-);
-
-router.get(
-  '/fleet-manager',
-  auth('FLEET_MANAGER'),
-  AnalyticsControllers.fleetManagerAnalytics
-);
-
-router.get('/vendor', auth('VENDOR'), AnalyticsControllers.vendorAnalytics);
 
 export const AnalyticsRoutes = router;

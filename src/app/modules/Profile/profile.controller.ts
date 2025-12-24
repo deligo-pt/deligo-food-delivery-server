@@ -35,7 +35,34 @@ const updateMyProfile = catchAsync(async (req, res) => {
   });
 });
 
+// send otp controller
+const sendOtp = catchAsync(async (req, res) => {
+  const result = await ProfileServices.sendOtp(req.user as AuthUser, req.body);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// update email or contact number controller
+const updateEmailOrContactNumber = catchAsync(async (req, res) => {
+  const result = await ProfileServices.updateEmailOrContactNumber(
+    req.user as AuthUser,
+    req.body.otp
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 export const ProfileController = {
   getMyProfile,
   updateMyProfile,
+  sendOtp,
+  updateEmailOrContactNumber,
 };

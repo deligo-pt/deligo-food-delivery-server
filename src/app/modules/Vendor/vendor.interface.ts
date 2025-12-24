@@ -27,6 +27,12 @@ export type TVendor = {
   fcmTokens?: string[];
 
   // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
+
+  // --------------------------------------------------------
   // OTP & Password Reset
   // --------------------------------------------------------
   otp?: string;

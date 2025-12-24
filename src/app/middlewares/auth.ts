@@ -14,7 +14,7 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
 
     // checking if the token is missing
     if (!token) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!1');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const decoded = verifyToken(
@@ -45,11 +45,11 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
         iat as number
       )
     ) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!3');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     if (requiredRoles && !requiredRoles.includes(role)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!4');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     req.user = decoded as JwtPayload;

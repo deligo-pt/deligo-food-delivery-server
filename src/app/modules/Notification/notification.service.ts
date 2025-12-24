@@ -76,18 +76,19 @@ const sendToUser = async (
 
 //  Send to role (bulk)
 const sendToRole = async (
-  role: keyof typeof USER_ROLE,
+  modelName: string,
+  roles: (keyof typeof USER_ROLE)[],
   title: string,
   message: string,
   data?: Record<string, string>,
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER'
 ) => {
-  const Model = ALL_USER_MODELS.find((m: any) => m.modelName === role);
+  const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
   if (!Model) return;
-
   const users = await Model.find({
     isDeleted: false,
     fcmTokens: { $exists: true, $ne: [] },
+    role: { $in: roles },
   });
   for (const user of users) {
     for (const token of user.fcmTokens) {

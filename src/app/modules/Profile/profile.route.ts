@@ -39,4 +39,35 @@ router.patch(
   ProfileController.updateMyProfile
 );
 
+// send otp route
+router.patch(
+  '/send-otp',
+  auth(
+    'ADMIN',
+    'CUSTOMER',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'SUPER_ADMIN'
+  ),
+  validateRequest(ProfileValidation.updateContactNumberValidationSchema),
+  ProfileController.sendOtp
+);
+
+// update email or contact number route
+router.patch(
+  '/update-email-or-contact-number',
+  auth(
+    'ADMIN',
+    'CUSTOMER',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'SUPER_ADMIN'
+  ),
+  ProfileController.updateEmailOrContactNumber
+);
+
 export const ProfileRoutes = router;

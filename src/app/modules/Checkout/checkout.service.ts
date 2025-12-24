@@ -37,16 +37,23 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       'Please complete your profile before checking out'
     );
 
+  if (!customer.email && !customer.contactNumber) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please add email or contact number before checking out'
+    );
+  }
+
   const customerId = customer._id.toString();
 
   // ---------- Get items ----------
   let selectedItems = [];
 
   const cart = await Cart.findOne({ customerId, isDeleted: false });
-  if (!cart || cart.items.length === 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
-  }
   if (payload.useCart === true) {
+    if (!cart || cart.items.length === 0) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
+    }
     const activeItems = cart.items.filter((i) => i.isActive === true);
 
     if (activeItems.length === 0) {
@@ -172,7 +179,8 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   }
   const summaryData = {
     customerId,
-    customerEmail: customer.email,
+    customerEmail: customer?.email,
+    contactNumber: customer?.contactNumber,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
     discount: discount,
@@ -182,7 +190,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     subTotal,
     estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
     deliveryAddress: activeAddress,
-    couponId: cart.couponId,
+    couponId: cart?.couponId,
   };
   // -----------------------------------------------------------
   //  Prevent Duplicate Checkout Summary

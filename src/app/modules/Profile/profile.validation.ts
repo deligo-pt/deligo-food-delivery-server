@@ -29,6 +29,21 @@ const userProfileUpdateValidationSchema = z.object({
   }),
 });
 
+// ---------------------------------------------
+// Update Contact Number Validation
+// ---------------------------------------------
+const updateContactNumberValidationSchema = z.object({
+  body: z.object({
+    contactNumber: z
+      .string({
+        required_error: 'Contact number is required',
+      })
+      .optional(),
+    email: z.string({ required_error: 'Email is required' }).optional(),
+  }),
+});
+
 export const ProfileValidation = {
   userProfileUpdateValidationSchema,
+  updateContactNumberValidationSchema,
 };
