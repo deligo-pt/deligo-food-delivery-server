@@ -61,7 +61,7 @@ const createProductValidationSchema = z.object({
       .object({
         isFeatured: z.boolean().default(false),
         isAvailableForPreOrder: z.boolean().default(false),
-        status: z.enum(['Active', 'Inactive']).default('Active'),
+        status: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
         origin: z.string().optional(),
       })
       .optional(),
@@ -118,7 +118,7 @@ const updateProductValidationSchema = z.object({
       .object({
         isFeatured: z.boolean().optional(),
         isAvailableForPreOrder: z.boolean().optional(),
-        status: z.enum(['Active', 'Inactive']).optional(),
+        status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
         origin: z.string().optional(),
       })
       .optional(),
