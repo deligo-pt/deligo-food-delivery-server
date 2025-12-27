@@ -282,8 +282,8 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   return order;
 };
 
-// accept or reject order by vendor service
-const acceptOrRejectOrderByVendor = async (
+// update order status by vendor (accept / reject / preparing / cancel)
+const updateOrderStatusByVendor = async (
   currentUser: AuthUser,
   orderId: string,
   action: { type: keyof typeof ORDER_STATUS; reason?: string }
@@ -291,12 +291,11 @@ const acceptOrRejectOrderByVendor = async (
   // ---------------------------------------------------------
   // Ensure current user is an approved vendor
   // ---------------------------------------------------------
-  const result = await findUserByEmailOrId({
+  const { user: loggedInUser } = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
 
-  const loggedInUser = result.user;
   if (!loggedInUser || loggedInUser.role !== 'VENDOR') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -308,6 +307,23 @@ const acceptOrRejectOrderByVendor = async (
     throw new AppError(
       httpStatus.FORBIDDEN,
       `You are not approved to accept or reject orders. Your account is ${loggedInUser.status}`
+    );
+  }
+
+  // --------------------------------------------------------
+  // Allowed vendor actions
+  // --------------------------------------------------------
+  const ALLOWED_VENDOR_ACTIONS: (keyof typeof ORDER_STATUS)[] = [
+    'ACCEPTED',
+    'REJECTED',
+    'PREPARING',
+    'CANCELED',
+  ];
+
+  if (!ALLOWED_VENDOR_ACTIONS.includes(action.type)) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not allowed to change order status to ${action.type}`
     );
   }
 
@@ -332,19 +348,15 @@ const acceptOrRejectOrderByVendor = async (
     if (!order) {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
     }
-
-    // find user
-    const customer = await Customer.findById(order.customerId, null, {
-      session,
-    });
-    const customerId = customer?.userId;
-
-    const deliveryPartner = await DeliveryPartner.findById(
-      order.deliveryPartnerId,
-      null,
-      { session }
-    );
-    const deliveryPartnerId = deliveryPartner?.userId;
+    // ---------------------------------------------------------
+    // Only paid orders can be processed
+    // ---------------------------------------------------------
+    if (!order.isPaid) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Only paid orders can be accepted or rejected.'
+      );
+    }
 
     // ---------------------------------------------------------
     // Prevent duplicate status
@@ -357,33 +369,53 @@ const acceptOrRejectOrderByVendor = async (
     }
 
     // ---------------------------------------------------------
-    // Only paid orders can be processed
+    // Find related users
     // ---------------------------------------------------------
-    if (!order.isPaid) {
+    const customer = await Customer.findById(order.customerId, null, {
+      session,
+    });
+    const customerId = customer?.userId;
+
+    const deliveryPartner = order.deliveryPartnerId
+      ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
+          session,
+        })
+      : null;
+    const deliveryPartnerId = deliveryPartner?.userId;
+
+    // ---------------------------------------------------------
+    // Only pending orders are allowed to be accepted/rejected
+    // ---------------------------------------------------------
+    if (action.type === 'ACCEPTED' && order.orderStatus !== 'PENDING') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Only paid orders can be accepted or rejected.'
-      );
-    }
-
-    if (loggedInUser._id.toString() !== order.vendorId.toString()) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You are not authorized to accept or reject orders.'
+        `Order must be PENDING to be accepted. Current status is ${order.orderStatus}.`
       );
     }
 
     // ---------------------------------------------------------
-    // Prevent vendor from if action type are not accepted, rejected, or canceled
+    // Only accepted orders are allowed to be prepared
     // ---------------------------------------------------------
     if (
-      action.type !== 'ACCEPTED' &&
-      action.type !== 'REJECTED' &&
-      action.type !== 'CANCELED'
+      action.type === ORDER_STATUS.PREPARING &&
+      order.orderStatus !== ORDER_STATUS.ACCEPTED
     ) {
       throw new AppError(
-        httpStatus.FORBIDDEN,
-        `You are not authorized to change order status to ${action.type.toLowerCase()}. Please contact support.`
+        httpStatus.BAD_REQUEST,
+        `Order must be ACCEPTED before PREPARING`
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Only prepared orders are allowed to be ready for pickup
+    // ---------------------------------------------------------
+    if (
+      action.type === ORDER_STATUS.READY_FOR_PICKUP &&
+      order.orderStatus !== ORDER_STATUS.PREPARING
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Order must be PREPARING before READY_FOR_PICKUP`
       );
     }
 
@@ -396,19 +428,17 @@ const acceptOrRejectOrderByVendor = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Cannot cancel or reject an order that is already assigned, picked up, on the way, or delivered. Please contact support if you need to cancel the order'
+        'Order cannot be canceled or rejected at this stage'
       );
     }
 
-    // ---------------------------------------------------------
-    // Only pending orders are allowed to be accepted/rejected
-    // ---------------------------------------------------------
-    if (action.type === 'ACCEPTED' && order.orderStatus !== 'PENDING') {
+    if (loggedInUser._id.toString() !== order.vendorId.toString()) {
       throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Order must be PENDING to be accepted. Current status is ${order.orderStatus}.`
+        httpStatus.FORBIDDEN,
+        'You are not authorized to accept or reject orders.'
       );
     }
+
     // ---------------------------------------------------------
     // If ACCEPTED → set pickup address from vendor location and reduce product stock
     // ---------------------------------------------------------
@@ -468,11 +498,39 @@ const acceptOrRejectOrderByVendor = async (
         body: `Your order has been accepted by ${loggedInUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,
         data: { orderId: order._id.toString() },
       };
-      await NotificationService.sendToUser(
+      NotificationService.sendToUser(
         customerId!,
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
+        'ORDER'
+      );
+    }
+    // ---------------------------------------------------------
+    // PREPARING logic
+    // ---------------------------------------------------------
+    if (action.type === ORDER_STATUS.PREPARING) {
+      NotificationService.sendToUser(
+        customerId!,
+        'Order is being prepared',
+        `Your order is now being prepared by ${loggedInUser.businessDetails?.businessName}.`,
+        { orderId: order._id.toString(), status: ORDER_STATUS.PREPARING },
+        'ORDER'
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Ready for pickup logic
+    // ---------------------------------------------------------
+    if (action.type === ORDER_STATUS.READY_FOR_PICKUP) {
+      NotificationService.sendToUser(
+        customerId!,
+        'Order is ready for pickup',
+        `Your order is now ready for pickup by ${loggedInUser.businessDetails?.businessName}.`,
+        {
+          orderId: order._id.toString(),
+          status: ORDER_STATUS.READY_FOR_PICKUP,
+        },
         'ORDER'
       );
     }
@@ -506,7 +564,7 @@ const acceptOrRejectOrderByVendor = async (
         data: { orderId: order._id.toString() },
       };
       if (order.deliveryPartnerId) {
-        await NotificationService.sendToUser(
+        NotificationService.sendToUser(
           deliveryPartnerId!,
           notificationPayload.title,
           notificationPayload.body,
@@ -514,7 +572,7 @@ const acceptOrRejectOrderByVendor = async (
           'ORDER'
         );
       }
-      await NotificationService.sendToUser(
+      NotificationService.sendToUser(
         customerId!,
         notificationPayload.title,
         notificationPayload.body,
@@ -540,7 +598,7 @@ const acceptOrRejectOrderByVendor = async (
         body: `Your order has been rejected for ${action.reason}`,
         data: { orderId: order._id.toString() },
       };
-      await NotificationService.sendToUser(
+      NotificationService.sendToUser(
         customerId!,
         notificationPayload.title,
         notificationPayload.body,
@@ -692,7 +750,7 @@ const broadcastOrderToPartners = async (
     data: { orderId: order._id.toString() },
   };
   partnerIds.forEach(async (id) => {
-    await NotificationService.sendToUser(
+    NotificationService.sendToUser(
       id,
       notificationPayload.title,
       notificationPayload.body,
@@ -1028,7 +1086,7 @@ export const OrderServices = {
   createOrderAfterPayment,
   getAllOrders,
   getSingleOrder,
-  acceptOrRejectOrderByVendor,
+  updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
   otpVerificationByVendor,

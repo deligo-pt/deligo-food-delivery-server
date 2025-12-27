@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser, USER_ROLE } from '../../constant/user.constant';
+import { AuthUser, TUserRole } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { sendPushNotification } from '../../utils/sendPushNotification';
@@ -35,84 +35,115 @@ const logNotification = async ({
   });
 };
 
+//  Helper: Send Push Notification
+const sendPushSafely = async (
+  tokens: string[],
+  payload: { title: string; body: string; data?: Record<string, string> }
+) => {
+  if (!tokens.length) return;
+
+  await Promise.allSettled(
+    tokens.map((token) =>
+      sendPushNotification(token, payload).catch((err) => {
+        console.error('Push send failed:', err);
+      })
+    )
+  );
+};
+
 //  Send to one user
-const sendToUser = async (
+const sendToUser = (
   userId: string,
   title: string,
   message: string,
   data?: Record<string, string>,
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER'
 ) => {
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const user = result?.user;
+  // 🔥 Detach from request lifecycle
+  setImmediate(async () => {
+    try {
+      const result = await findUserByEmailOrId({
+        userId,
+        isDeleted: false,
+      });
 
-  if (!user) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `No user found for userId: ${userId}`
-    );
-  }
+      const user = result?.user;
+      if (!user) return;
 
-  const uniqueTokens = [...new Set(user.fcmTokens as string[])];
-  // Push notification
-  for (const token of uniqueTokens) {
-    await sendPushNotification(token, {
-      title,
-      body: message,
-      data,
-    });
-  }
+      const uniqueTokens = [...new Set((user.fcmTokens as string[]) || [])];
 
-  // Log in DB
-  await logNotification({
-    receiverId: user.userId,
-    receiverRole: user.role,
-    title,
-    message,
-    data,
-    type,
+      // Push notification (parallel)
+      await sendPushSafely(uniqueTokens, {
+        title,
+        body: message,
+        data,
+      });
+
+      // Save log (DB)
+      await logNotification({
+        receiverId: user.userId,
+        receiverRole: user.role,
+        title,
+        message,
+        data,
+        type,
+      });
+    } catch (err) {
+      console.error('sendToUser notification failed:', err);
+    }
   });
 };
 
 //  Send to role (bulk)
-const sendToRole = async (
+const sendToRole = (
   modelName: string,
-  roles: (keyof typeof USER_ROLE)[],
+  roles: TUserRole[],
   title: string,
   message: string,
   data?: Record<string, string>,
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER'
 ) => {
-  const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
-  if (!Model) return;
-  const users = await Model.find({
-    isDeleted: false,
-    fcmTokens: { $exists: true, $ne: [] },
-    role: { $in: roles },
-  });
-  for (const user of users) {
-    for (const token of user.fcmTokens) {
-      await sendPushNotification(token, { title, body: message, data });
-    }
+  setImmediate(async () => {
+    try {
+      const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
+      if (!Model) return;
 
-    await logNotification({
-      receiverId: user.userId,
-      receiverRole: user.role,
-      title,
-      message,
-      data,
-      type,
-    });
-  }
+      const users = await Model.find({
+        isDeleted: false,
+        fcmTokens: { $exists: true, $ne: [] },
+        role: { $in: roles },
+      });
+
+      for (const user of users) {
+        const uniqueTokens = [...new Set((user.fcmTokens as string[]) || [])];
+
+        await sendPushSafely(uniqueTokens, {
+          title,
+          body: message,
+          data,
+        });
+
+        await logNotification({
+          receiverId: user.userId,
+          receiverRole: user.role,
+          title,
+          message,
+          data,
+          type,
+        });
+      }
+    } catch (err) {
+      console.error('sendToRole notification failed:', err);
+    }
+  });
 };
 
 // mark as read (one)
 const markAsRead = async (id: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
+  const { user } = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const user = result?.user;
 
   const notification = await Notification.findById(id);
   if (!notification) {
@@ -132,11 +163,10 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
 
 // mark as read (all)
 const markAllAsRead = async (currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
+  const { user } = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const user = result?.user;
   await Notification.updateMany({ receiverId: user.userId }, { isRead: true });
   return null;
 };

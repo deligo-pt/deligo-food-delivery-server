@@ -1,48 +1,56 @@
 import mongoose from 'mongoose';
+import { TUserRole } from '../../constant/user.constant';
+
+export type TConversationType = 'SUPPORT' | 'ORDER' | 'DIRECT';
 
 export type TSupportConversation = {
   _id?: mongoose.Types.ObjectId;
   room: string;
+
   userId: string;
   userName: string;
-  userRole:
-    | 'VENDOR'
-    | 'CUSTOMER'
-    | 'FLEET_MANAGER'
-    | 'DELIVERY_PARTNER'
-    | 'ADMIN'
-    | 'SUPER_ADMIN';
+  userRole: TUserRole;
 
-  assignedAdmin?: string | null;
+  receiverId: string | null;
+  receiverName?: string;
+  receiverRole: TUserRole;
+
   lastMessage?: string;
   lastMessageTime?: Date;
-  isDeleted?: boolean;
-  unreadUserCount?: number;
-  unreadAdminCount?: number;
 
+  unreadCount: {
+    user: number;
+    receiver: number;
+  };
+
+  type: TConversationType;
+
+  isActive?: boolean;
+  isDeleted?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };
 
 export type TSupportMessage = {
   _id?: mongoose.Types.ObjectId;
+
   room: string;
+
   senderId: string;
-  senderRole:
-    | 'VENDOR'
-    | 'CUSTOMER'
-    | 'FLEET_MANAGER'
-    | 'DELIVERY_PARTNER'
-    | 'ADMIN'
-    | 'SUPER_ADMIN';
+  senderRole: TUserRole;
 
   message: string;
   attachments?: string[];
-  readByAdmin?: boolean;
-  readByUser?: boolean;
+
+  readBy: {
+    sender: boolean;
+    receiver: boolean;
+  };
+
   isEdited?: boolean;
   editedAt?: Date | null;
   isDeleted?: boolean;
+
   replyTo?: mongoose.Types.ObjectId | null;
 
   createdAt?: Date;

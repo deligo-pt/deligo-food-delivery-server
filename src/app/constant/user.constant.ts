@@ -11,6 +11,8 @@ export const USER_ROLE = {
   DELIVERY_PARTNER: 'DELIVERY_PARTNER',
 } as const;
 
+export type TUserRole = keyof typeof USER_ROLE;
+
 // User Status constant
 export const USER_STATUS = {
   PENDING: 'PENDING',
@@ -32,7 +34,7 @@ export const UrlPath = {
 export type AuthUser = {
   id: string;
   name: string;
-  role: keyof typeof USER_ROLE;
+  role: TUserRole;
   status: keyof typeof USER_STATUS;
   iat: number;
   exp: number;

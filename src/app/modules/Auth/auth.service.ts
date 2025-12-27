@@ -10,7 +10,12 @@ import {
   TApprovedRejectsPayload,
   USER_MODEL_MAP,
 } from './auth.constant';
-import { AuthUser, USER_ROLE, USER_STATUS } from '../../constant/user.constant';
+import {
+  AuthUser,
+  TUserRole,
+  USER_ROLE,
+  USER_STATUS,
+} from '../../constant/user.constant';
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginCustomer, TLoginUser } from './auth.interface';
@@ -30,7 +35,7 @@ import { NotificationService } from '../Notification/notification.service';
 const registerUser = async <
   T extends {
     email: string;
-    role: keyof typeof USER_ROLE;
+    role: TUserRole;
     isEmailVerified?: boolean;
     registeredBy?: string;
   }
@@ -49,11 +54,7 @@ const registerUser = async <
   let registeredBy: string | undefined;
   // Restrict Delivery Partner registration
   if (userType === '/create-delivery-partner') {
-    const allowedRoles: (keyof typeof USER_ROLE)[] = [
-      'ADMIN',
-      'SUPER_ADMIN',
-      'FLEET_MANAGER',
-    ];
+    const allowedRoles: TUserRole[] = ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'];
     const allowedUser = await findUserByEmailOrId({
       userId: currentUser?.id,
       isDeleted: false,
@@ -79,11 +80,7 @@ const registerUser = async <
 
   // Restrict sub vendor registration
   if (userType === '/create-sub-vendor') {
-    const allowedRoles: (keyof typeof USER_ROLE)[] = [
-      'ADMIN',
-      'SUPER_ADMIN',
-      'VENDOR',
-    ];
+    const allowedRoles: TUserRole[] = ['ADMIN', 'SUPER_ADMIN', 'VENDOR'];
     const allowedUser = await findUserByEmailOrId({
       userId: currentUser?.id,
       isDeleted: false,
@@ -755,7 +752,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   }
 
   // send push notification to all admin
-  await NotificationService.sendToRole(
+  NotificationService.sendToRole(
     'Admin',
     ['ADMIN', 'SUPER_ADMIN'],
     'New User Submission for Approval',
@@ -856,7 +853,7 @@ const approvedOrRejectedUser = async (
     BLOCKED: 'Your account has been blocked',
   };
 
-  await NotificationService.sendToUser(
+  NotificationService.sendToUser(
     user.userId,
     notificationTitleMap[payload.status],
     user.remarks || '',

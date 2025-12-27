@@ -110,4 +110,16 @@ const orderSchema = new Schema<TOrder>(
   { timestamps: true }
 );
 
+orderSchema.index({ orderId: 1 }, { unique: true });
+
+// 2. The "Dispatching" Engine (Critical for partnerAcceptsDispatchedOrder)
+orderSchema.index({
+  orderStatus: 1,
+  deliveryPartnerId: 1,
+  dispatchPartnerPool: 1,
+});
+
+// 3. Customer History (Optimized for the "My Orders" tab)
+orderSchema.index({ customerId: 1, createdAt: -1 });
+
 export const Order = model<TOrder>('Order', orderSchema);

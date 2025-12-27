@@ -5,10 +5,10 @@ import config from '../config';
 import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
-import { USER_ROLE, USER_STATUS } from '../constant/user.constant';
+import { TUserRole, USER_STATUS } from '../constant/user.constant';
 import { findUserByEmailOrId } from '../utils/findUserByEmailOrId';
 
-const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
+const auth = (...requiredRoles: TUserRole[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
 

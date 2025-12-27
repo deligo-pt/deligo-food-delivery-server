@@ -28,7 +28,7 @@ router.patch(
   ProductControllers.updateProduct
 );
 
-// Approved product
+// Approved product by Admin
 router.patch(
   '/approveOrReject/:productId',
   auth('ADMIN', 'SUPER_ADMIN'),

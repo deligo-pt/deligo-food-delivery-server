@@ -12,6 +12,10 @@ const updateAdmin = async (
   adminId: string,
   currentUser: AuthUser
 ) => {
+  const { user: loggedInUser } = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
   // -----------------------------------------
   // Check if admin exists
   // -----------------------------------------
@@ -41,7 +45,7 @@ const updateAdmin = async (
   // -----------------------------------------
   // Authorization check
   // -----------------------------------------
-  if (currentUser.id !== existingAdmin.userId) {
+  if (loggedInUser === 'ADMIN' && currentUser.id !== existingAdmin.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to update this admin account.'
