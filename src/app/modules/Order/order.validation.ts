@@ -1,16 +1,19 @@
 import { z } from 'zod';
 
-// accept or reject order validation schema
-const acceptOrRejectOrderValidationSchema = z.object({
+// update order status by vendor validation (accepted, rejected, preparing, ready for pickup, canceled)
+const updateOrderStatusByVendorValidationSchema = z.object({
   body: z.object({
-    type: z.enum(['ACCEPTED', 'REJECTED', 'CANCELED'], {
-      required_error: 'Action type is required',
-    }),
+    type: z.enum(
+      ['ACCEPTED', 'REJECTED', 'PREPARING', 'READY_FOR_PICKUP', 'CANCELED'],
+      {
+        required_error: 'Action type is required',
+      }
+    ),
     reason: z.string().optional(),
   }),
 });
 
-// update order status by delivery partner validation schema
+// update order status by delivery partner validation schema (reassignment needed, on the way, delivered)
 const updateOrderStatusByDeliveryPartnerValidationSchema = z.object({
   body: z.object({
     orderStatus: z.enum(['REASSIGNMENT_NEEDED', 'ON_THE_WAY', 'DELIVERED']),
@@ -19,6 +22,6 @@ const updateOrderStatusByDeliveryPartnerValidationSchema = z.object({
 });
 
 export const OrderValidation = {
-  acceptOrRejectOrderValidationSchema,
+  updateOrderStatusByVendorValidationSchema,
   updateOrderStatusByDeliveryPartnerValidationSchema,
 };

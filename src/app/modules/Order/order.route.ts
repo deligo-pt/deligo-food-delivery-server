@@ -27,12 +27,13 @@ router.get(
   OrderControllers.getSingleOrder
 );
 
-// Accept / Reject / Cancel order
+// Accept / Reject / Preparing / Ready for pickup/ Cancel order
 router.patch(
-  '/:orderId/accept-reject',
+  // '/:orderId/accept-reject',
+  '/:orderId/status',
   auth('VENDOR'),
-  validateRequest(OrderValidation.acceptOrRejectOrderValidationSchema),
-  OrderControllers.acceptOrRejectOrderByVendor
+  validateRequest(OrderValidation.updateOrderStatusByVendorValidationSchema),
+  OrderControllers.updateOrderStatusByVendor
 );
 
 // Assign delivery partner to order (vendor)

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 import AppError from '../errors/AppError';
-import { USER_ROLE, USER_STATUS } from '../constant/user.constant';
+import { TUserRole, USER_STATUS } from '../constant/user.constant';
 
 export const createToken = (
   jwtPayload: {
@@ -10,7 +10,7 @@ export const createToken = (
     name?: string;
     email: string;
     contactNumber?: string;
-    role: keyof typeof USER_ROLE;
+    role: TUserRole;
     status: keyof typeof USER_STATUS;
   },
   secret: string,

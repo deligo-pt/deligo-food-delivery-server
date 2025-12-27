@@ -13,7 +13,6 @@ const allowedOrigins = config.origins?.split(',') ?? [];
 
 export const initializeSocket = async (httpServer: HTTPServer) => {
   try {
-    // Initialize Socket.IO
     io = new SocketServer(httpServer, {
       cors: {
         origin: (origin, callback) => {
@@ -27,7 +26,7 @@ export const initializeSocket = async (httpServer: HTTPServer) => {
       },
     });
 
-    // Middleware to authenticate socket connection
+    // Authentication Middleware
     io.use((socket, next) => {
       const token = socket.handshake.auth?.token;
       if (!token) {
@@ -37,19 +36,24 @@ export const initializeSocket = async (httpServer: HTTPServer) => {
       }
 
       try {
-        // Verify token
-        const decoded = jwt.verify(token, config.jwt_access_secret as string);
-
-        // Attach user to socket
+        const decoded = jwt.verify(
+          token,
+          config.jwt_access_secret as string
+        ) as AuthUser;
         socket.data.user = decoded;
-
-        const userId = (decoded as AuthUser).id;
+        const userId = decoded.id;
+        const role = decoded.role;
 
         if (userId) {
           socket.join(`user_${userId}`);
-          console.log(`User joined room: user_${userId}`);
-        }
 
+          if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+            socket.join('admins_room');
+            console.log(
+              `Admin ${userId} joined the broadcast room: admins_room`
+            );
+          }
+        }
         next();
       } catch (err) {
         return next(
@@ -59,25 +63,80 @@ export const initializeSocket = async (httpServer: HTTPServer) => {
     });
 
     io.on('connection', (socket) => {
-      console.log('Socket connected', socket.data.user.id);
+      const user = socket.data.user as AuthUser;
+      const userId = user.id;
+
+      socket.on('join-support-chat', () => {
+        const supportRoom = `support_chat_${userId}`;
+        socket.join(supportRoom);
+
+        console.log(
+          `Vendor ${userId} joined Support Chat Room: ${supportRoom}`
+        );
+
+        socket.emit('support-message', {
+          _id: 'system_welcome',
+          message: 'Welcome to Deligo support! An admin will respond shortly.',
+          senderId: 'system',
+          senderRole: 'SYSTEM',
+          createdAt: new Date(),
+        });
+      });
+
+      socket.on('join-support-chat-as-admin', ({ userId: vendorId }) => {
+        const supportRoom = `support_chat_${vendorId}`;
+        socket.join(supportRoom);
+        console.log(`Admin ${userId} is now monitoring: ${supportRoom}`);
+      });
 
       socket.on('message', (data) => {
-        console.log('Message event:', data);
-      });
-      socket.on('join-room', ({ room }) => {
-        socket.join(room);
+        const senderId = user.id;
+        const role = user.role;
+
+        if (role === 'VENDOR') {
+          const supportRoom = `support_chat_${senderId}`;
+          const messagePayload = {
+            _id: new Date().getTime().toString(),
+            message: data.text,
+            senderId: senderId,
+            senderRole: role,
+            createdAt: new Date(),
+          };
+
+          io.to(supportRoom).emit('support-message', messagePayload);
+
+          io.to('admins_room').emit('support-message', messagePayload);
+
+          console.log(
+            `Message from Vendor ${senderId} broadcasted to all admins.`
+          );
+        } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+          const targetVendorId = data.receiverId;
+          if (!targetVendorId) return;
+
+          const supportRoom = `support_chat_${targetVendorId}`;
+          const messagePayload = {
+            _id: new Date().getTime().toString(),
+            message: data.text,
+            senderId: senderId,
+            senderRole: role,
+            createdAt: new Date(),
+          };
+
+          io.to(supportRoom).emit('support-message', messagePayload);
+
+          console.log(`Admin ${senderId} replied to Vendor ${targetVendorId}`);
+        }
       });
 
-      socket.emit('support-message', {
-        message: 'Welcome to the support chat!',
-        senderId: 'system',
-        senderRole: 'SYSTEM',
-        attachments: [],
-        createdAt: new Date(),
+      socket.on('leave-support-chat', () => {
+        const supportRoom = `support_chat_${userId}`;
+        socket.leave(supportRoom);
+        console.log(`User ${userId} left Support Chat`);
       });
 
       socket.on('disconnect', () => {
-        console.log('Socket disconnected', socket.id);
+        console.log(`User ${userId} disconnected`);
       });
     });
   } catch (err) {
@@ -86,7 +145,6 @@ export const initializeSocket = async (httpServer: HTTPServer) => {
   }
 };
 
-// export io to use in other files
 export const getIO = () => {
   if (!io) {
     throw new AppError(

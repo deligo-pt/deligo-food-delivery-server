@@ -3,14 +3,16 @@ import { TSupportConversation, TSupportMessage } from './support.interface';
 
 const supportConversationSchema = new Schema<TSupportConversation>(
   {
-    room: { type: String, required: true, unique: true },
+    room: { type: String, required: true, unique: true, index: true },
 
-    userId: { type: String, required: true },
+    // Sender Details
+    userId: { type: String, required: true, index: true },
     userName: { type: String, required: true },
     userRole: {
       type: String,
       enum: [
         'VENDOR',
+        'SUB_VENDOR',
         'CUSTOMER',
         'FLEET_MANAGER',
         'DELIVERY_PARTNER',
@@ -20,31 +22,51 @@ const supportConversationSchema = new Schema<TSupportConversation>(
       required: true,
     },
 
-    assignedAdmin: { type: String, default: null },
+    // Receiver Details
+    receiverId: { type: String, default: null, index: true },
+    receiverName: { type: String },
+    receiverRole: {
+      type: String,
+      enum: [
+        'VENDOR',
+        'SUB_VENDOR',
+        'CUSTOMER',
+        'FLEET_MANAGER',
+        'DELIVERY_PARTNER',
+        'ADMIN',
+        'SUPER_ADMIN',
+      ],
+      default: 'ADMIN',
+    },
 
     lastMessage: { type: String, default: '' },
     lastMessageTime: { type: Date, default: Date.now },
 
     unreadUserCount: { type: Number, default: 0, min: 0 },
-    unreadAdminCount: { type: Number, default: 0, min: 0 },
+    unreadReceiverCount: { type: Number, default: 0, min: 0 },
+
+    type: {
+      type: String,
+      enum: ['SUPPORT', 'ORDER', 'DIRECT'],
+      default: 'SUPPORT',
+    },
 
     isDeleted: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );
 
-// Index to sort conversations faster
 supportConversationSchema.index({ lastMessageTime: -1 });
 
 const supportMessageSchema = new Schema<TSupportMessage>(
   {
     room: { type: String, required: true, index: true },
-
-    senderId: { type: String, required: true },
+    senderId: { type: String, required: true, index: true },
     senderRole: {
       type: String,
       enum: [
         'VENDOR',
+        'SUB_VENDOR',
         'CUSTOMER',
         'FLEET_MANAGER',
         'DELIVERY_PARTNER',
@@ -53,13 +75,11 @@ const supportMessageSchema = new Schema<TSupportMessage>(
       ],
       required: true,
     },
-
     message: { type: String, required: true },
-
     attachments: { type: [String], default: [] },
 
-    readByAdmin: { type: Boolean, default: false, index: true },
-    readByUser: { type: Boolean, default: false, index: true },
+    readByReceiver: { type: Boolean, default: false, index: true },
+    readBySender: { type: Boolean, default: true },
 
     isEdited: { type: Boolean, default: false },
     editedAt: { type: Date, default: null },
@@ -74,7 +94,6 @@ const supportMessageSchema = new Schema<TSupportMessage>(
   { timestamps: true }
 );
 
-// Index to fetch latest chats faster
 supportMessageSchema.index({ createdAt: -1 });
 
 supportMessageSchema.pre('save', function (next) {
@@ -88,7 +107,6 @@ export const SupportConversation = model<TSupportConversation>(
   'SupportConversation',
   supportConversationSchema
 );
-
 export const SupportMessage = model<TSupportMessage>(
   'SupportMessage',
   supportMessageSchema

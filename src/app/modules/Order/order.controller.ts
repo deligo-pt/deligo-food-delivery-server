@@ -49,9 +49,9 @@ const getSingleOrder = catchAsync(async (req, res) => {
   });
 });
 
-// accept or reject order by vendor controller
-const acceptOrRejectOrderByVendor = catchAsync(async (req, res) => {
-  const result = await OrderServices.acceptOrRejectOrderByVendor(
+// update order status by vendor controller (accept/reject/preparing/cancel)
+const updateOrderStatusByVendor = catchAsync(async (req, res) => {
+  const result = await OrderServices.updateOrderStatusByVendor(
     req.user as AuthUser,
     req.params.orderId,
     req.body
@@ -129,7 +129,7 @@ export const OrderControllers = {
   createOrderAfterPayment,
   getAllOrders,
   getSingleOrder,
-  acceptOrRejectOrderByVendor,
+  updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
   otpVerificationByVendor,
