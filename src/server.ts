@@ -4,7 +4,7 @@ import app from './app';
 import config from './app/config';
 import { seed } from './app/utils/seeding';
 import http from 'http';
-import { initializeSocket } from './app/lib/socket';
+import { initializeSocket } from './app/lib/Socket';
 
 const server = http.createServer(app);
 
@@ -38,7 +38,7 @@ async function bootstrap() {
     console.log('DB Seed complete');
 
     // Initialize Socket.IO
-    await initializeSocket(server);
+    initializeSocket(server);
 
     server.listen(config.port, () => {
       console.log(`Application is running on port ${config.port}`);

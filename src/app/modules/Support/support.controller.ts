@@ -4,49 +4,47 @@ import sendResponse from '../../utils/sendResponse';
 import { SupportService } from './support.service';
 import { AuthUser } from '../../constant/user.constant';
 
+// ------------------------------------------------------
+//  Open or Create Conversation
+// ------------------------------------------------------
 const openOrCreateConversationController = catchAsync(async (req, res) => {
   const conversation = await SupportService.openOrCreateConversation(
+    req.user as AuthUser,
+    req.body
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Conversation opened successfully',
+    data: conversation,
+  });
+});
+
+// ------------------------------------------------------
+//  Get Conversations (Generic)
+// ------------------------------------------------------
+const getAllSupportConversationsController = catchAsync(async (req, res) => {
+  const { meta, data } = await SupportService.getAllSupportConversations(
+    req.query,
     req.user as AuthUser
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Support conversation opened successfully',
-    data: conversation,
-  });
-});
-
-const getAllSupportConversationsController = catchAsync(async (req, res) => {
-  const { meta, data } = await SupportService.getAllSupportConversations(
-    req.query
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Support conversations retrieved successfully',
+    message: 'Conversations retrieved successfully',
     meta,
     data,
   });
 });
 
-const storeSupportMessageController = catchAsync(async (req, res) => {
-  const message = await SupportService.storeSupportMessage(
-    req.body,
-    req.user as AuthUser
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Support message stored successfully',
-    data: message,
-  });
-});
-
+// ------------------------------------------------------
+//  Get Messages by Room
+// ------------------------------------------------------
 const getMessagesByRoomController = catchAsync(async (req, res) => {
   const { room } = req.params;
+
   const result = await SupportService.getMessagesByRoom(
     req.query,
     room,
@@ -56,14 +54,18 @@ const getMessagesByRoomController = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Support messages retrieved successfully',
+    message: 'Messages retrieved successfully',
     meta: result.meta,
     data: result.data,
   });
 });
 
+// ------------------------------------------------------
+//  Mark Messages as Read
+// ------------------------------------------------------
 const markReadByAdminOrUserController = catchAsync(async (req, res) => {
   const { room } = req.params;
+
   const result = await SupportService.markReadByAdminOrUser(
     room,
     req.user as AuthUser
@@ -77,10 +79,29 @@ const markReadByAdminOrUserController = catchAsync(async (req, res) => {
   });
 });
 
+// ------------------------------------------------------
+//  Close Conversation (Generic Lock Release)
+// ------------------------------------------------------
+const closeConversationController = catchAsync(async (req, res) => {
+  const { room } = req.params;
+
+  const result = await SupportService.closeConversation(
+    room,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Conversation closed successfully',
+    data: result,
+  });
+});
+
 export const SupportControllers = {
   openOrCreateConversationController,
   getAllSupportConversationsController,
-  storeSupportMessageController,
   getMessagesByRoomController,
   markReadByAdminOrUserController,
+  closeConversationController,
 };

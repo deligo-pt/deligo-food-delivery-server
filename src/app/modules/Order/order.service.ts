@@ -25,7 +25,7 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { Coupon } from '../Coupon/coupon.model';
-import { getIO } from '../../lib/socket';
+import { getIO } from '../../lib/Socket';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -317,6 +317,7 @@ const updateOrderStatusByVendor = async (
     'ACCEPTED',
     'REJECTED',
     'PREPARING',
+    'READY_FOR_PICKUP',
     'CANCELED',
   ];
 
@@ -398,11 +399,11 @@ const updateOrderStatusByVendor = async (
     // ---------------------------------------------------------
     if (
       action.type === ORDER_STATUS.PREPARING &&
-      order.orderStatus !== ORDER_STATUS.ACCEPTED
+      order.orderStatus !== ORDER_STATUS.ASSIGNED
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Order must be ACCEPTED before PREPARING`
+        `Order must be ASSIGNED before PREPARING`
       );
     }
 

@@ -323,7 +323,7 @@ const getAllProducts = async (
       Product.find().populate({
         path: 'vendorId',
         select:
-          'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
+          'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
       }),
       query
     )
