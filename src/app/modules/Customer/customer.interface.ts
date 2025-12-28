@@ -55,6 +55,8 @@ export type TCustomer = {
     geoAccuracy?: number;
   };
 
+  NIF?: string;
+
   // Operational Address
   operationalAddress?: {
     street?: string;

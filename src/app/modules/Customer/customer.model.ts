@@ -25,6 +25,10 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       lowercase: true,
       trim: true,
       sparse: true,
+      match: [
+        /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
+        'Please fill a valid email address',
+      ],
     },
 
     status: {
@@ -78,8 +82,25 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       geoAccuracy: { type: Number },
     },
 
+    NIF: { type: String, default: '' },
+
     // ----------------------------------------------------------------
-    // CURRENT SESSION LIVE LOCATION
+    // Operational Address
+    // ----------------------------------------------------------------
+
+    operationalAddress: {
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+      geoAccuracy: { type: Number },
+    },
+
+    // ----------------------------------------------------------------
+    // Current/Real-Time Location Data (For live tracking during delivery)
     // ----------------------------------------------------------------
     currentSessionLocation: {
       type: {
@@ -97,19 +118,6 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     },
 
     // ----------------------------------------------------------------
-    // PAYMENT METHODS
-    // ----------------------------------------------------------------
-    operationalAddress: {
-      street: { type: String, default: '' },
-      city: { type: String, default: '' },
-      state: { type: String, default: '' },
-      country: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
-      longitude: { type: Number },
-      latitude: { type: Number },
-      geoAccuracy: { type: Number },
-    },
-    // ----------------------------------------------------------------
     // MULTIPLE SAVED ADDRESSES
     // ----------------------------------------------------------------
     deliveryAddresses: [
@@ -124,7 +132,6 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         geoAccuracy: { type: Number },
         isActive: { type: Boolean, default: false },
 
-        // NEW FIELDS
         zoneId: { type: Schema.Types.ObjectId, default: null, ref: 'Zone' },
         addressType: { type: String, enum: Object.keys(AddressType) },
         notes: { type: String },
@@ -156,6 +163,12 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     },
 
     // ----------------------------------------------------------------
+    // Referral & Loyalty
+    // ----------------------------------------------------------------
+    referralCode: { type: String, default: '' },
+    loyaltyPoints: { type: Number, default: 0 },
+
+    // ----------------------------------------------------------------
     // Admin Workflow / Audit
     // ----------------------------------------------------------------
     approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
@@ -163,12 +176,6 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },
-
-    // ----------------------------------------------------------------
-    // Referral & Loyalty
-    // ----------------------------------------------------------------
-    referralCode: { type: String, default: '' },
-    loyaltyPoints: { type: Number, default: 0 },
 
     // ----------------------------------------------------------------
     // Payment Methods

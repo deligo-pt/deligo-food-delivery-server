@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
 export type TAdmin = {
@@ -6,6 +7,7 @@ export type TAdmin = {
   // ------------------------------------------------------------------
   _id: string;
   userId: string;
+  registeredBy: mongoose.Types.ObjectId;
   role: 'ADMIN' | 'SUPER_ADMIN';
   email: string;
   password: string;
@@ -55,6 +57,16 @@ export type TAdmin = {
     geoAccuracy?: number;
   };
 
+  NIF?: string;
+
+  // ---------------------------------------------
+  // Documents & Verification
+  // ---------------------------------------------
+  documents?: {
+    idProofFront?: string;
+    idProofBack?: string;
+  };
+
   // ------------------------------------------------------------------
   // Security & Authentication
   // ------------------------------------------------------------------
@@ -70,9 +82,9 @@ export type TAdmin = {
   // ------------------------------------------------------------------
   // Admin Workflow & Audit Logs
   // ------------------------------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
 
   submittedForApprovalAt?: Date;
   approvedOrRejectedOrBlockedAt?: Date;

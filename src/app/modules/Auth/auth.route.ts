@@ -16,9 +16,15 @@ router.post(
   rateLimiter('auth'),
   AuthControllers.registerUser
 );
-// Register Delivery Partner Route
+// Register Delivery Partner Route (Registered by Fleet Manager, Admin, Super Admin)
 router.post(
-  [UrlPath.DELIVERY_PARTNER],
+  [
+    UrlPath.DELIVERY_PARTNER,
+    UrlPath.VENDOR,
+    UrlPath.FLEET_MANAGER,
+    UrlPath.ADMIN,
+    UrlPath.SUB_VENDOR,
+  ],
   auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),

@@ -2,10 +2,11 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import { TAdmin } from './admin.interface';
-import { Admin } from './admin.model';
+import { Admin, TAdminImageDocuments } from './admin.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
@@ -71,6 +72,60 @@ const updateAdmin = async (
   return updatedAdmin;
 };
 
+// admin doc image upload service
+const adminDocImageUpload = async (
+  file: string | undefined,
+  data: TAdminImageDocuments,
+  currentUser: AuthUser,
+  adminId: string
+) => {
+  await findUserByEmailOrId({
+    userId: currentUser?.id,
+    isDeleted: false,
+  });
+  const existingAdmin = await Admin.findOne({ userId: adminId });
+
+  if (!existingAdmin) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
+  }
+
+  if (currentUser.role === 'ADMIN' && existingAdmin.isUpdateLocked) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Admin update is locked. Please contact support.'
+    );
+  }
+
+  if (currentUser.role === 'ADMIN' && existingAdmin.userId !== adminId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this admin account.'
+    );
+  }
+  // delete previous image if exists
+  const docTitle = data?.docImageTitle;
+
+  if (docTitle && existingAdmin?.documents?.[docTitle]) {
+    const oldImage = existingAdmin?.documents?.[docTitle];
+    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
+      throw new AppError(httpStatus.BAD_REQUEST, err.message);
+    });
+  }
+
+  if (data.docImageTitle && file) {
+    existingAdmin.documents = {
+      ...existingAdmin.documents,
+      [data.docImageTitle]: file,
+    };
+    await existingAdmin.save();
+  }
+
+  return {
+    message: 'Admin document updated successfully.',
+    data: existingAdmin,
+  };
+};
+
 // get all admin service
 const getAllAdmins = async (query: Record<string, unknown>) => {
   const admins = new QueryBuilder(Admin.find(), query)
@@ -129,6 +184,7 @@ const getSingleAdmin = async (adminId: string, currentUser: AuthUser) => {
 
 export const AdminServices = {
   updateAdmin,
+  adminDocImageUpload,
   getAllAdmins,
   getSingleAdmin,
 };

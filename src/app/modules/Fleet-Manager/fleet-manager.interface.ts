@@ -7,6 +7,7 @@ export type TFleetManager = {
   // ---------------------------------------------
   _id?: string;
   userId: string;
+  registeredBy?: mongoose.Types.ObjectId;
   role: 'FLEET_MANAGER';
   email: string;
   password: string;
@@ -63,6 +64,8 @@ export type TFleetManager = {
   businessDetails?: {
     businessName: string;
     businessLicenseNumber?: string;
+    NIF?: string;
+    totalBranches?: number;
   };
 
   businessLocation?: {
@@ -90,7 +93,8 @@ export type TFleetManager = {
   // Documents & Verification
   // ---------------------------------------------
   documents?: {
-    idProof?: string;
+    idProofFront?: string;
+    idProofBack?: string;
     businessLicense?: string;
   };
 
@@ -133,5 +137,5 @@ export type TFleetManager = {
 };
 
 export type TFleetManagerImageDocuments = {
-  docImageTitle: 'idProof' | 'businessLicense';
+  docImageTitle: 'idProofFront' | 'idProofBack' | 'businessLicense';
 };

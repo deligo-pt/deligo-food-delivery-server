@@ -15,6 +15,23 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       required: true,
       unique: true,
     },
+    registeredBy: {
+      userId: {
+        type: Schema.Types.ObjectId,
+        required: true,
+        refPath: 'registeredBy.model',
+      },
+      model: {
+        type: String,
+        required: true,
+        enum: ['Admin', 'Vendor'],
+      },
+      role: {
+        type: String,
+        required: true,
+        enum: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
+      },
+    },
     role: {
       type: String,
       enum: ['VENDOR', 'SUB_VENDOR'],
@@ -153,7 +170,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     documents: {
       businessLicenseDoc: { type: String, default: '' },
       taxDoc: { type: String, default: '' },
-      idProof: { type: String, default: '' },
+      idProofFront: { type: String, default: '' },
+      idProofBack: { type: String, default: '' },
       storePhoto: { type: String, default: '' },
       menuUpload: { type: String, default: '' },
     },

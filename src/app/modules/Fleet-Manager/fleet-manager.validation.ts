@@ -4,7 +4,7 @@ import { addressSchema } from '../Admin/admin.validation';
 // ----------------------------------------------------
 // Fleet Manager Update Validation
 // ----------------------------------------------------
-export const fleetManagerUpdateValidationSchema = z.object({
+const fleetManagerUpdateValidationSchema = z.object({
   body: z.object({
     // Personal Details
     name: z
@@ -61,9 +61,9 @@ export const fleetManagerUpdateValidationSchema = z.object({
 // ----------------------------------------------------
 // Document Upload Validation
 // ----------------------------------------------------
-export const fleetManagerDocImageValidationSchema = z.object({
+const fleetManagerDocImageValidationSchema = z.object({
   body: z.object({
-    docImageTitle: z.enum(['idProof', 'businessLicense'], {
+    docImageTitle: z.enum(['idProofFront', 'idProofBack', 'businessLicense'], {
       required_error: 'Document title is required',
     }),
   }),

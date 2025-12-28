@@ -125,7 +125,7 @@ const deliveryPartnerSchema = new Schema<
       gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'] },
       nationality: { type: String, default: '' },
 
-      nifNumber: { type: String, default: '' },
+      NIF: { type: String, default: '' },
       citizenCardNumber: { type: String, default: '' },
       passportNumber: { type: String, default: '' },
       idExpiryDate: { type: Date },
@@ -244,9 +244,10 @@ const deliveryPartnerSchema = new Schema<
     // Documents
     //-------------------------------------------------
     documents: {
-      idDocumentFront: { type: String, default: '' },
-      idDocumentBack: { type: String, default: '' },
-      drivingLicense: { type: String, default: '' },
+      idProofFront: { type: String, default: '' },
+      idProofBack: { type: String, default: '' },
+      drivingLicenseFront: { type: String, default: '' },
+      drivingLicenseBack: { type: String, default: '' },
       vehicleRegistration: { type: String, default: '' },
       criminalRecordCertificate: { type: String, default: '' },
     },

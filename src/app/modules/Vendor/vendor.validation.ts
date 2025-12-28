@@ -54,7 +54,14 @@ export const vendorUpdateValidationSchema = z.object({
 export const vendorDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z.enum(
-      ['businessLicenseDoc', 'taxDoc', 'idProof', 'storePhoto', 'menuUpload'],
+      [
+        'businessLicenseDoc',
+        'taxDoc',
+        'idProofFront',
+        'idProofBack',
+        'storePhoto',
+        'menuUpload',
+      ],
       { required_error: 'Document title is required' }
     ),
   }),

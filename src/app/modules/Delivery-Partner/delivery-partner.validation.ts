@@ -115,9 +115,10 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
 const deliveryPartnerDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z.enum([
-      'idDocumentFront',
-      'idDocumentBack',
-      'drivingLicense',
+      'idProofFront',
+      'idProofBack',
+      'drivingLicenseFront',
+      'drivingLicenseBack',
       'vehicleRegistration',
       'criminalRecordCertificate',
     ]),

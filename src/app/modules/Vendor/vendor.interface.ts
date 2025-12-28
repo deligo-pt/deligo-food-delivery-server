@@ -8,12 +8,19 @@ import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 //   isClosed: boolean;
 // };
 
+export type TRegisteredByModel = 'Admin' | 'Vendor';
+
 export type TVendor = {
   // --------------------------------------------------------
   // Core Identifiers
   // --------------------------------------------------------
   _id?: string;
   userId: string;
+  registeredBy: {
+    id: mongoose.Types.ObjectId;
+    model: TRegisteredByModel;
+    role: 'ADMIN' | 'SUPER_ADMIN' | 'VENDOR';
+  };
   role: 'VENDOR' | 'SUB_VENDOR';
   email: string;
   password: string;
@@ -127,7 +134,8 @@ export type TVendor = {
   documents?: {
     businessLicenseDoc?: string;
     taxDoc?: string;
-    idProof?: string;
+    idProofFront?: string;
+    idProofBack?: string;
     storePhoto?: string;
     menuUpload?: string;
   };
@@ -172,7 +180,8 @@ export type TVendorImageDocuments = {
   docImageTitle:
     | 'businessLicenseDoc'
     | 'taxDoc'
-    | 'idProof'
+    | 'idProofFront'
+    | 'idProofBack'
     | 'storePhoto'
     | 'menuUpload';
 };

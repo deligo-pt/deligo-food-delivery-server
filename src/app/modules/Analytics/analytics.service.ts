@@ -111,69 +111,128 @@ const getAdminDashboardAnalytics = async (currentUser: AuthUser) => {
 
 // get vendor dashboard analytics
 const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
+  // --------------------------------------------------
+  // Validate Vendor
+  // --------------------------------------------------
   const existingVendor = await Vendor.findOne({ userId: currentUser.id });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
   const vendorId = existingVendor._id;
+
+  // --------------------------------------------------
+  // Get Vendor Products
+  // --------------------------------------------------
   const products = await Product.find(
-    { vendorId: vendorId },
-    '_id category status rating.average images totalOrders name meta.status'
+    { vendorId },
+    '_id category rating meta.status'
   );
+
   const productIds = products.map((p) => p._id);
 
+  // --------------------------------------------------
+  // Order Counts
+  // --------------------------------------------------
   const [totalOrders, pendingOrders, completedOrders, cancelledOrders] =
     await Promise.all([
-      Order.countDocuments(),
-      Order.countDocuments({
-        'items.productId': { $in: productIds },
-        orderStatus: 'PENDING',
-      }),
-      Order.countDocuments({
-        'items.productId': { $in: productIds },
-        orderStatus: 'DELIVERED',
-      }),
-      Order.countDocuments({
-        'items.productId': { $in: productIds },
-        orderStatus: 'CANCELED',
-      }),
+      Order.countDocuments({ vendorId }),
+      Order.countDocuments({ vendorId, orderStatus: 'PENDING' }),
+      Order.countDocuments({ vendorId, orderStatus: 'DELIVERED' }),
+      Order.countDocuments({ vendorId, orderStatus: 'CANCELED' }),
     ]);
 
-  const popularCategories = await Order.aggregate([
-    { $match: { 'items.productId': { $in: productIds } } },
-    { $unwind: '$items' },
-    {
-      $lookup: {
-        from: 'products',
-        localField: 'items.productId',
-        foreignField: '_id',
-        as: 'product',
-      },
-    },
-    { $unwind: '$product' },
-    {
-      $group: {
-        _id: '$product.category',
-        total: { $sum: 1 },
-      },
-    },
-    { $sort: { total: -1 } },
-    { $limit: 5 },
-    {
-      $project: {
-        name: '$_id',
-        percentage: {
-          $round: [
-            { $multiply: [{ $divide: ['$total', totalOrders] }, 100] },
-            2,
-          ],
-        },
-      },
-    },
-  ]);
+  // --------------------------------------------------
+  // Popular Categories (Order-based – FIXED)
+  // --------------------------------------------------
+  const popularCategories =
+    totalOrders === 0
+      ? []
+      : await Order.aggregate([
+          // Vendor filter
+          {
+            $match: {
+              vendorId,
+              isDeleted: false,
+            },
+          },
 
+          // Unwind items
+          { $unwind: '$items' },
+
+          // Join products to get category
+          {
+            $lookup: {
+              from: 'products',
+              localField: 'items.productId',
+              foreignField: '_id',
+              as: 'product',
+            },
+          },
+          { $unwind: '$product' },
+
+          // One order = one count per category
+          {
+            $group: {
+              _id: {
+                category: '$product.category',
+                orderId: '$_id',
+              },
+            },
+          },
+
+          // Count orders per category
+          {
+            $group: {
+              _id: '$_id.category',
+              orderCount: { $sum: 1 },
+            },
+          },
+
+          // Calculate TOTAL of all category orders
+          {
+            $group: {
+              _id: null,
+              totalCategoryOrders: { $sum: '$orderCount' },
+              categories: { $push: '$$ROOT' },
+            },
+          },
+
+          // Calculate percentage (SUM = 100%)
+          { $unwind: '$categories' },
+          {
+            $project: {
+              _id: 0,
+              name: '$categories._id',
+              totalOrders: '$categories.orderCount',
+              percentage: {
+                $round: [
+                  {
+                    $multiply: [
+                      {
+                        $divide: [
+                          '$categories.orderCount',
+                          '$totalCategoryOrders',
+                        ],
+                      },
+                      100,
+                    ],
+                  },
+                  2,
+                ],
+              },
+            },
+          },
+
+          // Top category first
+          { $sort: { percentage: -1 } },
+        ]);
+
+  // --------------------------------------------------
+  // Recent Orders
+  // --------------------------------------------------
   const recentOrders = await Order.find({
+    vendorId,
     'items.productId': { $in: productIds },
   })
     .sort({ createdAt: -1 })
@@ -181,11 +240,17 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     .populate('customerId', 'name')
     .select('orderId orderStatus createdAt');
 
+  // --------------------------------------------------
+  // Top Rated Items
+  // --------------------------------------------------
   const topRatedItems = products
-    .filter((p) => p.rating?.average !== undefined && p.rating.average >= 4)
+    .filter((p) => p.rating?.average && p.rating.average >= 4)
     .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0))
     .slice(0, 4);
 
+  // --------------------------------------------------
+  // Final Response
+  // --------------------------------------------------
   return {
     products: {
       total: products.length,

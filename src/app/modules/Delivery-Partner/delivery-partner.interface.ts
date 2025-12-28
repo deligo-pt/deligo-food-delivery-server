@@ -82,7 +82,7 @@ export type TDeliveryPartner = {
     dateOfBirth?: Date;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     nationality?: string;
-    nifNumber?: string;
+    NIF?: string;
     citizenCardNumber?: string;
     passportNumber?: string;
     idExpiryDate?: Date;
@@ -177,9 +177,10 @@ export type TDeliveryPartner = {
   // 9) Documents
   // -------------------------------------------------
   documents?: {
-    idDocumentFront?: string;
-    idDocumentBack?: string;
-    drivingLicense?: string;
+    idProofFront?: string;
+    idProofBack?: string;
+    drivingLicenseFront?: string;
+    drivingLicenseBack?: string;
     vehicleRegistration?: string;
     criminalRecordCertificate?: string;
   };
@@ -210,9 +211,10 @@ export type TDeliveryPartner = {
 // Document Upload Types (unchanged)
 export type TDeliveryPartnerImageDocuments = {
   docImageTitle:
-    | 'idDocumentFront'
-    | 'idDocumentBack'
-    | 'drivingLicense'
+    | 'idProofFront'
+    | 'idProofBack'
+    | 'drivingLicenseFront'
+    | 'drivingLicenseBack'
     | 'vehicleRegistration'
     | 'criminalRecordCertificate';
 };
