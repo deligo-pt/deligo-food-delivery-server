@@ -7,6 +7,7 @@ import { Cart } from './cart.model';
 import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { recalculateCartTotals } from './cart.constant';
+import { Vendor } from '../Vendor/vendor.model';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
@@ -23,9 +24,21 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   // Product validation
   const { productId, quantity } = payload.items[0];
   const existingProduct = await Product.findOne({ _id: productId });
-  if (!existingProduct)
+  if (!existingProduct) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-
+  }
+  if (existingProduct && existingProduct.vendorId) {
+    const existingVendor = await Vendor.findOne({
+      _id: existingProduct.vendorId,
+      isDeleted: false,
+    });
+    if (!existingVendor) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    }
+    if (existingVendor?.businessDetails?.isStoreOpen === false) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Store is closed');
+    }
+  }
   const newItem = {
     productId,
     vendorId: existingProduct.vendorId,

@@ -88,6 +88,23 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       );
     }
 
+    const existingProduct = await Product.findOne({
+      _id: payload.items[0].productId,
+    });
+    if (!existingProduct) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Product not found');
+    }
+    const existingVendor = await Vendor.findOne({
+      _id: existingProduct.vendorId,
+      isDeleted: false,
+    });
+    if (!existingVendor) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Vendor not found');
+    }
+    if (existingVendor?.businessDetails?.isStoreOpen === false) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Store is closed');
+    }
+
     selectedItems = payload.items;
   }
 
