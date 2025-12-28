@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 export type TOffer = {
   _id?: string;
   title: string;
@@ -20,7 +22,7 @@ export type TOffer = {
   endDate: Date;
 
   // Eligibility
-  vendorId?: string | null; // null = global offer
+  vendorId?: mongoose.Types.ObjectId | null; // null = global offer
   minOrderAmount?: number;
 
   // Auto apply or manual code (optional)

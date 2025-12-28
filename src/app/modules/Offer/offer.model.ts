@@ -29,7 +29,7 @@ const offerSchema = new Schema<TOffer>(
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
 
-    vendorId: { type: String, default: null },
+    vendorId: { type: Schema.Types.ObjectId, default: null, ref: 'Vendor' },
     minOrderAmount: { type: Number },
 
     isAutoApply: { type: Boolean, required: true },

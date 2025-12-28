@@ -18,6 +18,21 @@ const createOffer = catchAsync(async (req, res) => {
   });
 });
 
+// get all offers controller
+const getAllOffers = catchAsync(async (req, res) => {
+  const result = await OfferServices.getAllOffers(
+    req.user as AuthUser,
+    req.query
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Offers fetched successfully',
+    data: result,
+  });
+});
+
 export const OfferControllers = {
   createOffer,
+  getAllOffers,
 };

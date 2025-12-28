@@ -14,4 +14,11 @@ router.post(
   OfferControllers.createOffer
 );
 
+// Get All Offers
+router.get(
+  '/',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+  OfferControllers.getAllOffers
+);
+
 export const OfferRoutes = router;

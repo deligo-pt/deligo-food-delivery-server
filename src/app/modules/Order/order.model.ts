@@ -110,8 +110,6 @@ const orderSchema = new Schema<TOrder>(
   { timestamps: true }
 );
 
-orderSchema.index({ orderId: 1 }, { unique: true });
-
 // 2. The "Dispatching" Engine (Critical for partnerAcceptsDispatchedOrder)
 orderSchema.index({
   orderStatus: 1,
