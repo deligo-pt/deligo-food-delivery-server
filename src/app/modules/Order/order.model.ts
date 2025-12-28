@@ -110,14 +110,30 @@ const orderSchema = new Schema<TOrder>(
   { timestamps: true }
 );
 
-// 2. The "Dispatching" Engine (Critical for partnerAcceptsDispatchedOrder)
+// The "Dispatching" Engine (Critical for partnerAcceptsDispatchedOrder)
 orderSchema.index({
   orderStatus: 1,
   deliveryPartnerId: 1,
   dispatchPartnerPool: 1,
 });
 
-// 3. Customer History (Optimized for the "My Orders" tab)
+// Customer History (Optimized for the "My Orders" tab)
 orderSchema.index({ customerId: 1, createdAt: -1 });
+
+// Coupon analytics main index
+orderSchema.index({
+  couponId: 1,
+  vendorId: 1,
+  paymentStatus: 1,
+  isDeleted: 1,
+  createdAt: -1,
+});
+
+// For top items aggregation
+orderSchema.index({
+  couponId: 1,
+  vendorId: 1,
+  'items.productId': 1,
+});
 
 export const Order = model<TOrder>('Order', orderSchema);

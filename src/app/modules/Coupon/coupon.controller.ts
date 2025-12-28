@@ -65,6 +65,40 @@ const toggleCouponStatus = catchAsync(async (req, res) => {
   });
 });
 
+// get coupon analytics controller
+const getCouponAnalytics = catchAsync(async (req, res) => {
+  const { couponId } = req.params;
+
+  const result = await CouponServices.getCouponAnalytics(
+    couponId,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Coupon analytics retrieved successfully',
+    data: result,
+  });
+});
+
+// get coupon monthly analytics controller
+const getCouponMonthlyAnalytics = catchAsync(async (req, res) => {
+  const { couponId } = req.params;
+
+  const result = await CouponServices.getCouponMonthlyAnalytics(
+    couponId,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Monthly coupon analytics retrieved successfully',
+    data: result,
+  });
+});
+
 // get all coupons controller
 const getAllCoupons = catchAsync(async (req, res) => {
   const result = await CouponServices.getAllCoupons(
@@ -130,6 +164,8 @@ export const CouponControllers = {
   updateCoupon,
   applyCoupon,
   toggleCouponStatus,
+  getCouponAnalytics,
+  getCouponMonthlyAnalytics,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,

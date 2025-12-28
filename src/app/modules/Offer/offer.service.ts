@@ -19,6 +19,19 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   return offer;
 };
 
+// update offer service
+const updateOffer = async (
+  id: string,
+  payload: TOffer,
+  currentUser: AuthUser
+) => {
+  await findUserByEmailOrId({ userId: currentUser?.id, isDeleted: false });
+  const offer = await Offer.findOneAndUpdate({ _id: id }, payload, {
+    new: true,
+  });
+  return offer;
+};
+
 // get all offers service
 const getAllOffers = async (
   currentUser: AuthUser,
@@ -48,5 +61,6 @@ const getAllOffers = async (
 
 export const OfferServices = {
   createOffer,
+  updateOffer,
   getAllOffers,
 };

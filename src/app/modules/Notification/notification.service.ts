@@ -59,7 +59,7 @@ const sendToUser = (
   data?: Record<string, string>,
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER'
 ) => {
-  // 🔥 Detach from request lifecycle
+  //  Detach from request lifecycle
   setImmediate(async () => {
     try {
       const result = await findUserByEmailOrId({

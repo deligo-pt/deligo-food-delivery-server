@@ -48,6 +48,14 @@ const createOrderAfterPayment = async (
   if (!summary)
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
 
+  const existingVendor = await Vendor.findOne({
+    userId: summary.vendorId,
+    isDeleted: false,
+  });
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
   if (summary.customerId.toString() !== existingCustomer._id.toString())
     throw new AppError(httpStatus.FORBIDDEN, 'Not authorized');
 
@@ -119,6 +127,23 @@ const createOrderAfterPayment = async (
     await summary.save({ session });
 
     await session.commitTransaction();
+
+    const notificationPayload = {
+      title: 'You have a new order',
+      body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
+      data: {
+        orderId: order._id,
+      },
+    };
+
+    NotificationService.sendToUser(
+      existingVendor.userId,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'ORDER'
+    );
+
     return order;
   } catch (err) {
     await session.abortTransaction();

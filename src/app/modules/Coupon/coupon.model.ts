@@ -27,7 +27,7 @@ const couponSchema = new Schema<TCoupon>(
     usageLimit: { type: Number, default: 1 },
     usedCount: { type: Number, default: 0 },
 
-    validFrom: { type: Date, default: Date.now },
+    validFrom: { type: Date, default: Date.now() },
     expiresAt: { type: Date },
 
     applicableCategories: { type: [String], default: [] },

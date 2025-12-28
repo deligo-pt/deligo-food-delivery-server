@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { TCoupon } from './coupon.interface';
@@ -11,6 +12,7 @@ import { Product } from '../Product/product.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Types } from 'mongoose';
 import { Customer } from '../Customer/customer.model';
+import { Order } from '../Order/order.model';
 
 // create coupon service
 const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
@@ -412,6 +414,221 @@ const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
   };
 };
 
+// get coupon analytics service
+const getCouponAnalytics = async (couponId: string, currentUser: AuthUser) => {
+  // --------------------------------------------------
+  // Validate user
+  // --------------------------------------------------
+  const { user: loggedInUser } = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved. Status: ${loggedInUser.status}`
+    );
+  }
+
+  // --------------------------------------------------
+  // Validate coupon
+  // --------------------------------------------------
+  const coupon = await Coupon.findById(couponId).lean();
+  if (!coupon) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+
+  const couponObjectId = new Types.ObjectId(couponId);
+
+  // --------------------------------------------------
+  // Base match (vendor-aware)
+  // --------------------------------------------------
+  const orderMatch: any = {
+    couponId: couponObjectId,
+    paymentStatus: 'COMPLETED',
+    isDeleted: false,
+  };
+
+  if (['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role)) {
+    orderMatch.vendorId = loggedInUser._id;
+  }
+
+  // --------------------------------------------------
+  // Date ranges
+  // --------------------------------------------------
+  const now = new Date();
+
+  const currentStart = new Date(now);
+  currentStart.setDate(now.getDate() - 7);
+
+  const previousStart = new Date(currentStart);
+  previousStart.setDate(currentStart.getDate() - 7);
+
+  // --------------------------------------------------
+  // Usage + Revenue + Boost in ONE query
+  // --------------------------------------------------
+  const statsAgg = await Order.aggregate([
+    { $match: orderMatch },
+    {
+      $facet: {
+        total: [
+          {
+            $group: {
+              _id: null,
+              usage: { $sum: 1 },
+              revenueImpact: { $sum: '$discount' },
+            },
+          },
+        ],
+        current: [
+          { $match: { createdAt: { $gte: currentStart } } },
+          { $count: 'count' },
+        ],
+        previous: [
+          {
+            $match: {
+              createdAt: { $gte: previousStart, $lt: currentStart },
+            },
+          },
+          { $count: 'count' },
+        ],
+      },
+    },
+  ]);
+
+  const usage = statsAgg[0]?.total[0]?.usage || 0;
+  const revenueImpact = Number(
+    (statsAgg[0]?.total[0]?.revenueImpact || 0).toFixed(2)
+  );
+
+  const currentUsage = statsAgg[0]?.current[0]?.count || 0;
+  const previousUsage = statsAgg[0]?.previous[0]?.count || 0;
+
+  let boost = 0;
+  if (previousUsage === 0 && currentUsage > 0) boost = 100;
+  else if (previousUsage > 0 && currentUsage === 0) boost = -100;
+  else if (previousUsage > 0)
+    boost = Math.round(((currentUsage - previousUsage) / previousUsage) * 100);
+
+  // --------------------------------------------------
+  // Top items (separate but indexed)
+  // --------------------------------------------------
+  const topItemsAgg = await Order.aggregate([
+    { $match: orderMatch },
+    { $unwind: '$items' },
+    {
+      $group: {
+        _id: '$items.productId',
+        quantity: { $sum: '$items.quantity' },
+      },
+    },
+    { $sort: { quantity: -1 } },
+    { $limit: 3 },
+  ]);
+
+  const productIds = topItemsAgg.map((i) => i._id);
+
+  const products = await Product.find({
+    _id: { $in: productIds },
+  })
+    .select('name')
+    .lean();
+
+  const productMap = new Map(products.map((p) => [p._id.toString(), p.name]));
+
+  const topItems = topItemsAgg.map((i) => ({
+    productId: i._id,
+    name: productMap.get(i._id.toString()) || 'Unknown',
+    quantity: i.quantity,
+  }));
+
+  // --------------------------------------------------
+  // Final response
+  // --------------------------------------------------
+  return {
+    couponId,
+    couponCode: coupon.code,
+    usage,
+    boost,
+    revenueImpact,
+    topItems,
+  };
+};
+
+// get coupon monthly analytics service
+const getCouponMonthlyAnalytics = async (
+  couponId: string,
+  currentUser: AuthUser
+) => {
+  const { user: loggedInUser } = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(httpStatus.FORBIDDEN, 'Not approved');
+  }
+
+  const coupon = await Coupon.findById(couponId);
+  if (!coupon) throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+
+  const match: any = {
+    couponId: new Types.ObjectId(couponId),
+    paymentStatus: 'COMPLETED',
+    isDeleted: false,
+  };
+
+  // Vendor-only data
+  if (['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role)) {
+    match.vendorId = loggedInUser._id;
+  }
+
+  // Last 12 months
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - 11);
+  startDate.setDate(1);
+
+  const monthlyData = await Order.aggregate([
+    {
+      $match: {
+        ...match,
+        createdAt: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+        },
+        usage: { $sum: 1 },
+        revenueImpact: { $sum: '$discount' },
+      },
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1 } },
+  ]);
+
+  // Format for frontend
+  const formatted = monthlyData.map((item) => {
+    const date = new Date(item._id.year, item._id.month - 1);
+    return {
+      month: date.toLocaleString('en-US', {
+        month: 'short',
+        year: 'numeric',
+      }),
+      usage: item.usage,
+      revenueImpact: Number(item.revenueImpact.toFixed(2)),
+    };
+  });
+
+  return {
+    couponId,
+    couponCode: coupon.code,
+    monthlyAnalytics: formatted,
+  };
+};
+
 // get all coupons service
 const getAllCoupons = async (
   currentUser: AuthUser,
@@ -568,6 +785,8 @@ export const CouponServices = {
   updateCoupon,
   applyCoupon,
   toggleCouponStatus,
+  getCouponAnalytics,
+  getCouponMonthlyAnalytics,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,
