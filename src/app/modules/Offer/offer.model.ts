@@ -40,6 +40,8 @@ const offerSchema = new Schema<TOffer>(
     limitPerUser: { type: Number },
 
     isActive: { type: Boolean, default: true },
+
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

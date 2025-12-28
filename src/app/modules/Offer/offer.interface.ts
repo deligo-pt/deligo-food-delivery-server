@@ -37,6 +37,7 @@ export type TOffer = {
   // Status
   isActive: boolean;
 
+  isDeleted: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };

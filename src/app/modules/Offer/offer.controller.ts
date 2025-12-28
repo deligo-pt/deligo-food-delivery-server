@@ -18,6 +18,22 @@ const createOffer = catchAsync(async (req, res) => {
   });
 });
 
+// update offer controller
+const updateOffer = catchAsync(async (req, res) => {
+  const { offerId } = req.params;
+  const result = await OfferServices.updateOffer(
+    offerId,
+    req.body,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Offer updated successfully',
+    data: result,
+  });
+});
+
 // get all offers controller
 const getAllOffers = catchAsync(async (req, res) => {
   const result = await OfferServices.getAllOffers(
@@ -32,7 +48,56 @@ const getAllOffers = catchAsync(async (req, res) => {
   });
 });
 
+// get single offer controller
+const getSingleOffer = catchAsync(async (req, res) => {
+  const { offerId } = req.params;
+  const result = await OfferServices.getSingleOffer(
+    offerId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Offer fetched successfully',
+    data: result,
+  });
+});
+
+// soft delete offer controller
+const softDeleteOffer = catchAsync(async (req, res) => {
+  const { offerId } = req.params;
+  const result = await OfferServices.softDeleteOffer(
+    offerId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// permanently delete offer controller
+const permanentDeleteOffer = catchAsync(async (req, res) => {
+  const { offerId } = req.params;
+  const result = await OfferServices.permanentDeleteOffer(
+    offerId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 export const OfferControllers = {
   createOffer,
+  updateOffer,
   getAllOffers,
+  getSingleOffer,
+  softDeleteOffer,
+  permanentDeleteOffer,
 };
