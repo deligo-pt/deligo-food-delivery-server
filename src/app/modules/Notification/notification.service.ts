@@ -402,4 +402,10 @@ export const NotificationService = {
   markAsRead,
   markAllAsRead,
   getAllNotifications,
+  softDeleteSingleNotification,
+  softDeleteMultipleNotifications,
+  softDeleteAllNotifications,
+  permanentDeleteSingleNotification,
+  permanentDeleteMultipleNotifications,
+  permanentDeleteAllNotifications,
 };
