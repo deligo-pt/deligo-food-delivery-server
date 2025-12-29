@@ -20,6 +20,21 @@ const updateDeliveryPartner = catchAsync(async (req, res) => {
   });
 });
 
+// delivery partner live location update
+const updateDeliveryPartnerLiveLocation = catchAsync(async (req, res) => {
+  const result =
+    await DeliveryPartnerServices.updateDeliveryPartnerLiveLocation(
+      req.body,
+      req.user as AuthUser
+    );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: result?.location,
+  });
+});
+
 // delivery partner doc image upload
 const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
   const file = req.file;
@@ -70,6 +85,7 @@ const getSingleDeliveryPartner = catchAsync(async (req, res) => {
 
 export const DeliveryPartnerControllers = {
   updateDeliveryPartner,
+  updateDeliveryPartnerLiveLocation,
   deliveryPartnerDocImageUpload,
   getAllDeliveryPartners,
   getSingleDeliveryPartner,

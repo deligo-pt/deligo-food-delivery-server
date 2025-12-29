@@ -208,6 +208,12 @@ export type TDeliveryPartner = {
   updatedAt?: Date;
 };
 
+export type TLiveLocationPayload = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+};
+
 // Document Upload Types (unchanged)
 export type TDeliveryPartnerImageDocuments = {
   docImageTitle:

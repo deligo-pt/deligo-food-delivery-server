@@ -9,6 +9,7 @@ export type TNotification = {
   data?: Record<string, string>; // optional metadata
   type?: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER';
   isRead: boolean;
+  isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

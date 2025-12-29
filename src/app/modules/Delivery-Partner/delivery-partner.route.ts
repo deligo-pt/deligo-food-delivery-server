@@ -18,6 +18,16 @@ router.patch(
   DeliveryPartnerControllers.updateDeliveryPartner
 );
 
+// update delivery partner live location
+router.patch(
+  '/:deliveryPartnerId/liveLocation',
+  auth('DELIVERY_PARTNER'),
+  validateRequest(
+    DeliveryPartnerValidation.updateDeliveryPartnerLiveLocationValidationSchema
+  ),
+  DeliveryPartnerControllers.updateDeliveryPartnerLiveLocation
+);
+
 // Delivery Partner Doc Image Upload Route
 router.patch(
   '/:deliveryPartnerId/docImage',

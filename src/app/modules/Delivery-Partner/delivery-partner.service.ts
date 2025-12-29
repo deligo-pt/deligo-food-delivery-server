@@ -5,6 +5,7 @@ import { AuthUser } from '../../constant/user.constant';
 import {
   TDeliveryPartner,
   TDeliveryPartnerImageDocuments,
+  TLiveLocationPayload,
 } from './delivery-partner.interface';
 import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
@@ -88,20 +89,6 @@ const updateDeliveryPartner = async (
     );
   }
 
-  // ---------------------------------------------------------
-  // GeoJSON location updates if lat/lng is provided
-  // ---------------------------------------------------------
-  if (payload.operationalAddress) {
-    const { longitude, latitude, geoAccuracy } = payload.operationalAddress;
-    if (longitude && latitude && geoAccuracy) {
-      payload.currentSessionLocation = {
-        type: 'Point',
-        coordinates: [longitude, latitude],
-        accuracy: geoAccuracy,
-        lastLocationUpdate: new Date(),
-      };
-    }
-  }
   payload.status = 'PENDING';
   // ---------------------------------------------------------
   // Update the delivery partner
@@ -120,6 +107,64 @@ const updateDeliveryPartner = async (
   }
 
   return updatedDeliveryPartner;
+};
+
+// update delivery partner live location
+const updateDeliveryPartnerLiveLocation = async (
+  payload: TLiveLocationPayload,
+  currentUser: AuthUser
+) => {
+  // ------------------------------------
+  // Role check
+  // ------------------------------------
+  if (currentUser.role !== 'DELIVERY_PARTNER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only delivery partners can update live location'
+    );
+  }
+
+  const { latitude, longitude, accuracy = 0 } = payload;
+
+  // ------------------------------------
+  // Basic GPS validation
+  // ------------------------------------
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid GPS coordinates');
+  }
+
+  if (accuracy > 100) {
+    // Ignore bad GPS (fake / weak signal)
+    return { skipped: true, reason: 'Low GPS accuracy' };
+  }
+
+  // ------------------------------------
+  // Update only location fields
+  // ------------------------------------
+  const updated = await DeliveryPartner.findOneAndUpdate(
+    { userId: currentUser.id, isDeleted: false },
+    {
+      $set: {
+        currentSessionLocation: {
+          type: 'Point',
+          coordinates: [longitude, latitude],
+          accuracy,
+          lastLocationUpdate: new Date(),
+        },
+        'operationalData.lastActivityAt': new Date(),
+      },
+    },
+    { new: true, projection: { currentSessionLocation: 1 } }
+  );
+
+  if (!updated) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found');
+  }
+
+  return {
+    message: 'Live location updated',
+    location: updated.currentSessionLocation,
+  };
 };
 
 // update doc image
@@ -260,6 +305,7 @@ const getSingleDeliveryPartnerFromDB = async (
 
 export const DeliveryPartnerServices = {
   updateDeliveryPartner,
+  updateDeliveryPartnerLiveLocation,
   deliverPartnerDocImageUpload,
   getAllDeliveryPartnersFromDB,
   getSingleDeliveryPartnerFromDB,

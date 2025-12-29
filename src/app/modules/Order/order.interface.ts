@@ -48,7 +48,7 @@ export type TOrder = {
     postalCode?: string;
     longitude?: number;
     latitude?: number;
-    gooAccuracy?: number;
+    geoAccuracy?: number;
   };
 
   pickupAddress?: {

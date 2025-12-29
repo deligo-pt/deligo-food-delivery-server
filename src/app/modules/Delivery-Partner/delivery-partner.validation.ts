@@ -109,6 +109,14 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
   }),
 });
 
+const updateDeliveryPartnerLiveLocationValidationSchema = z.object({
+  body: z.object({
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+    accuracy: z.number().optional(),
+  }),
+});
+
 // ---------------------------------------------
 // Document Upload Validation Schema
 // ---------------------------------------------
@@ -128,5 +136,6 @@ const deliveryPartnerDocImageValidationSchema = z.object({
 // ---------------------------------------------
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
+  updateDeliveryPartnerLiveLocationValidationSchema,
   deliveryPartnerDocImageValidationSchema,
 };

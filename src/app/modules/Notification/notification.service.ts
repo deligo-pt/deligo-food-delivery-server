@@ -197,6 +197,205 @@ const getAllNotifications = async (
   return { meta, data };
 };
 
+// soft delete single notification
+const softDeleteSingleNotification = async (
+  id: string,
+  currentUser: AuthUser
+) => {
+  // --------------------------------------------------
+  // Build query condition
+  // --------------------------------------------------
+  const query: any = {
+    _id: id,
+    isDeleted: false,
+  };
+
+  // If NOT super admin, restrict to own notification
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    query.receiverId = currentUser.id;
+  }
+
+  // --------------------------------------------------
+  // Find notification
+  // --------------------------------------------------
+  const notification = await Notification.findOne(query);
+
+  if (!notification) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Notification not found or access denied'
+    );
+  }
+
+  // --------------------------------------------------
+  // Soft delete
+  // --------------------------------------------------
+  notification.isDeleted = true;
+  await notification.save();
+
+  return {
+    message: 'Notification deleted successfully',
+  };
+};
+
+// soft delete multiple notifications
+const softDeleteMultipleNotifications = async (
+  notificationIds: string[],
+  currentUser: AuthUser
+) => {
+  if (!notificationIds.length) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
+  }
+
+  // --------------------------------------------------
+  // Build delete condition
+  // --------------------------------------------------
+  const query: any = {
+    _id: { $in: notificationIds },
+    isDeleted: false,
+  };
+
+  // Restrict only if NOT super admin
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    query.receiverId = currentUser.id;
+  }
+
+  // --------------------------------------------------
+  // Bulk soft delete
+  // --------------------------------------------------
+  const result = await Notification.updateMany(query, {
+    $set: { isDeleted: true },
+  });
+
+  return {
+    message: `${result.modifiedCount} notifications deleted successfully`,
+  };
+};
+
+// soft delete all notifications
+const softDeleteAllNotifications = async (currentUser: AuthUser) => {
+  // --------------------------------------------------
+  // Build query condition
+  // --------------------------------------------------
+  const query: any = {
+    isDeleted: false,
+  };
+
+  // Only restrict if NOT super admin
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    query.receiverId = currentUser.id;
+  }
+
+  // --------------------------------------------------
+  // Bulk soft delete
+  // --------------------------------------------------
+  const result = await Notification.updateMany(query, {
+    $set: { isDeleted: true },
+  });
+
+  return {
+    message: `${result.modifiedCount} notifications deleted successfully`,
+  };
+};
+
+// permanent delete single notification - only for super admin
+const permanentDeleteSingleNotification = async (
+  id: string,
+  currentUser: AuthUser
+) => {
+  // --------------------------------------------------
+  // Only SUPER_ADMIN allowed
+  // --------------------------------------------------
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only super admin can permanently delete notifications'
+    );
+  }
+
+  // --------------------------------------------------
+  // Must be soft deleted first
+  // --------------------------------------------------
+  const notification = await Notification.findOne({
+    _id: id,
+    isDeleted: true,
+  });
+
+  if (!notification) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Notification must be soft deleted before permanent delete'
+    );
+  }
+
+  await Notification.deleteOne({ _id: id });
+
+  return {
+    message: 'Notification permanently deleted successfully',
+  };
+};
+
+// permanent delete multiple notifications - only for super admin
+const permanentDeleteMultipleNotifications = async (
+  notificationIds: string[],
+  currentUser: AuthUser
+) => {
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only super admin can permanently delete notifications'
+    );
+  }
+
+  if (!notificationIds.length) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
+  }
+
+  // --------------------------------------------------
+  // Delete ONLY already soft-deleted notifications
+  // --------------------------------------------------
+  const result = await Notification.deleteMany({
+    _id: { $in: notificationIds },
+    isDeleted: true,
+  });
+
+  if (result.deletedCount === 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Selected notifications must be soft deleted first'
+    );
+  }
+
+  return {
+    message: `${result.deletedCount} notifications permanently deleted successfully`,
+  };
+};
+
+// permanent delete all notifications - only for super admin
+const permanentDeleteAllNotifications = async (currentUser: AuthUser) => {
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only super admin can permanently delete notifications'
+    );
+  }
+
+  const result = await Notification.deleteMany({
+    isDeleted: true,
+  });
+
+  if (result.deletedCount === 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'No soft-deleted notifications found to permanently delete'
+    );
+  }
+
+  return {
+    message: `${result.deletedCount} notifications permanently deleted successfully`,
+  };
+};
+
 export const NotificationService = {
   sendToUser,
   sendToRole,
