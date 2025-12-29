@@ -1,11 +1,12 @@
 import mongoose from 'mongoose';
+import { OfferType } from './offer.constant';
 
 export type TOffer = {
   _id?: string;
   title: string;
   description?: string;
   // Offer type
-  offerType: 'PERCENT' | 'FLAT' | 'FREE_DELIVERY' | 'BOGO';
+  offerType: OfferType;
   // Discount values
   discountValue?: number;
   maxDiscountAmount?: number;

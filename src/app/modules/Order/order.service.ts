@@ -11,6 +11,7 @@ import {
   DELIVERY_SEARCH_TIERS_METERS,
   ORDER_STATUS,
   OrderSearchableFields,
+  OrderStatus,
 } from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
@@ -311,7 +312,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 const updateOrderStatusByVendor = async (
   currentUser: AuthUser,
   orderId: string,
-  action: { type: keyof typeof ORDER_STATUS; reason?: string }
+  action: { type: OrderStatus; reason?: string }
 ) => {
   // ---------------------------------------------------------
   // Ensure current user is an approved vendor
@@ -986,7 +987,7 @@ const otpVerificationByVendor = async (
 // update order status by delivery partner service
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
-  payload: { orderStatus: keyof typeof ORDER_STATUS; reason?: string },
+  payload: { orderStatus: OrderStatus; reason?: string },
   currentUser: AuthUser
 ) => {
   // Validate partner

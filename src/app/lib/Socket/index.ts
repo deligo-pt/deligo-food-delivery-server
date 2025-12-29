@@ -5,6 +5,7 @@ import { socketAuthMiddleware } from './auth.middleware';
 import { registerSupportEvents } from './events/support.events';
 import config from '../../config';
 import AppError from '../../errors/AppError';
+import { registerDriverLiveLocationEvents } from './events/riderLiveLocation.events';
 
 let io: Server;
 
@@ -32,6 +33,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
     console.log(`Socket connected: ${user?.id}`);
 
     registerSupportEvents(io, socket);
+    registerDriverLiveLocationEvents(io, socket);
   });
 };
 

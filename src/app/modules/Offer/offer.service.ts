@@ -8,16 +8,101 @@ import { Offer } from './offer.model';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
+  // --------------------------------------------
+  //  Get logged-in user
+  // --------------------------------------------
   const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser?.id,
+    userId: currentUser.id,
     isDeleted: false,
   });
 
-  if (currentUser?.role === 'VENDOR') {
-    payload.vendorId = loggedInUser?._id;
+  if (!loggedInUser) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'User not found');
   }
 
-  const offer = await Offer.create(payload);
+  // --------------------------------------------
+  //  Role-based access control
+  // --------------------------------------------
+  if (currentUser.role === 'VENDOR') {
+    // Vendor can ONLY create vendor-specific offers
+    payload.vendorId = loggedInUser._id;
+  } else {
+    // Admin / Super Admin
+    payload.vendorId = payload.vendorId ?? null; // null = global offer
+  }
+
+  // --------------------------------------------
+  //  Offer type validation
+  // --------------------------------------------
+  switch (payload.offerType) {
+    case 'PERCENT':
+      if (!payload.discountValue) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'discountValue is required for PERCENT offer'
+        );
+      }
+      break;
+
+    case 'FLAT':
+      if (!payload.discountValue) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'discountValue is required for FLAT offer'
+        );
+      }
+      break;
+
+    case 'BOGO':
+      if (!payload.bogo?.buyQty || !payload.bogo?.getQty) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'BOGO offer requires buyQty and getQty'
+        );
+      }
+      break;
+
+    case 'FREE_DELIVERY':
+      break;
+
+    default:
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer type');
+  }
+
+  // --------------------------------------------
+  //  Code vs Auto apply validation
+  // --------------------------------------------
+  if (!payload.isAutoApply && !payload.code) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Offer code is required when auto apply is disabled'
+    );
+  }
+
+  if (payload.isAutoApply) {
+    payload.code = undefined;
+  }
+
+  // --------------------------------------------
+  //  Date validation
+  // --------------------------------------------
+  if (payload.endDate <= payload.startDate) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'End date must be after start date'
+    );
+  }
+
+  // --------------------------------------------
+  //  Create Offer
+  // --------------------------------------------
+  const offer = await Offer.create({
+    ...payload,
+    usageCount: 0,
+    isActive: true,
+    isDeleted: false,
+  });
+
   return offer;
 };
 

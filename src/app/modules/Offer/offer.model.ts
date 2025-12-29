@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { TOffer } from './offer.interface';
+import { OFFER_TYPE } from './offer.constant';
 
 const bogoSchema = new Schema(
   {
@@ -17,7 +18,7 @@ const offerSchema = new Schema<TOffer>(
 
     offerType: {
       type: String,
-      enum: ['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO'],
+      enum: Object.keys(OFFER_TYPE),
       required: true,
     },
 

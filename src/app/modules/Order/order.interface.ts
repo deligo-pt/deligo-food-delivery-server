@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ORDER_STATUS } from './order.constant';
+import { OrderStatus } from './order.constant';
 
 export type TOrder = {
   _id?: string;
@@ -30,7 +30,7 @@ export type TOrder = {
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
   // Order Lifecycle
-  orderStatus: keyof typeof ORDER_STATUS;
+  orderStatus: OrderStatus;
   cancelReason?: string;
   rejectReason?: string;
 

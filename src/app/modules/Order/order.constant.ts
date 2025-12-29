@@ -14,6 +14,8 @@ export const ORDER_STATUS = {
   CANCELED: 'CANCELED', // canceled (vendor/customer/admin)
 } as const;
 
+export type OrderStatus = keyof typeof ORDER_STATUS;
+
 export const BLOCKED_FOR_ORDER_CANCEL = [
   ORDER_STATUS.ASSIGNED,
   ORDER_STATUS.PICKED_UP,

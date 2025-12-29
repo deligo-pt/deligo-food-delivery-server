@@ -1,4 +1,14 @@
 import mongoose from 'mongoose';
+import { OfferType } from '../Offer/offer.constant';
+
+export type TAppliedOfferSnapshot = {
+  offerId: mongoose.Types.ObjectId;
+  title: string;
+  offerType: OfferType;
+  discountValue?: number;
+  maxDiscountAmount?: number;
+  code?: string;
+};
 
 export type TCheckoutItem = {
   productId: mongoose.Types.ObjectId;
@@ -38,7 +48,10 @@ export type TCheckoutSummary = {
   discount: number;
   deliveryCharge: number;
   subTotal: number;
+
+  offerApplied?: TAppliedOfferSnapshot;
   couponId?: mongoose.Types.ObjectId;
+
   estimatedDeliveryTime: string;
 
   deliveryAddress: TCheckoutAddress;
@@ -64,6 +77,6 @@ export type TCheckoutPayload = {
     quantity: number;
   }[];
 
+  offerCode?: string;
   estimatedDeliveryTime?: string;
-  discount?: number;
 };
