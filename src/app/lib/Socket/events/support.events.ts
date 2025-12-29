@@ -15,6 +15,10 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
   const userId = user.id;
   const userRole = user.role;
 
+  if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+    socket.join('admin-notifications-room');
+  }
+
   // --------------------------------------------
   //  Join conversation room
   //  --------------------------------------------
@@ -49,6 +53,13 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
 
       // Realtime emit to room
       io.to(room).emit('new-message', savedMessage);
+
+      if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+        io.to('admin-notifications-room').emit('new-support-ticket', {
+          room: payload.room,
+          message: savedMessage,
+        });
+      }
     } catch (error: any) {
       socket.emit('chat-error', {
         message: error?.message || 'Message send failed',

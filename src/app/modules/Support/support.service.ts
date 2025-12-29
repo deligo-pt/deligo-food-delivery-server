@@ -37,19 +37,25 @@ const ensureParticipant = (conversation: any, userId: string) => {
   }
 };
 
-const ensureConversationLock = async (conversation: any, userId: string) => {
+const ensureConversationLock = async (
+  conversation: any,
+  userId: string,
+  role: string
+) => {
   if (conversation.status === 'CLOSED') {
     throw new AppError(httpStatus.BAD_REQUEST, 'Conversation is closed');
   }
 
   if (conversation.handledBy && conversation.handledBy !== userId) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Conversation is handled by another user'
-    );
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'This conversation is locked by another admin'
+      );
+    }
   }
 
-  if (!conversation.handledBy) {
+  if ((!conversation.handledBy && role === 'ADMIN') || role === 'SUPER_ADMIN') {
     conversation.handledBy = userId;
     conversation.status = 'IN_PROGRESS';
     await conversation.save();
@@ -174,7 +180,7 @@ const createMessage = async ({
   }
 
   ensureParticipant(conversation, senderId);
-  await ensureConversationLock(conversation, senderId);
+  await ensureConversationLock(conversation, senderId, senderRole);
 
   // --------------------------------------------------
   //  Read map (DO NOT replace map)
