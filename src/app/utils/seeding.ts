@@ -4,21 +4,9 @@ import config from '../config';
 import { v4 as uuidv4 } from 'uuid';
 import { Admin } from '../modules/Admin/admin.model';
 import { USER_ROLE, USER_STATUS } from '../constant/user.constant';
-import { GlobalSettings } from '../modules/GlobalSetting/globalSetting.model';
 
 export const seed = async () => {
   try {
-    const globalSettings = await GlobalSettings.find();
-    if (!globalSettings.length) {
-      // global settings for the app
-      await GlobalSettings.create({
-        deliveryChargePerMeter: 0.05,
-        baseDeliveryCharge: 0,
-        minDeliveryCharge: 0,
-        freeDeliveryAbove: 0,
-      });
-    }
-
     // at first check if the super admin exist or not
     const superAdmin = await Admin.findOne({
       role: USER_ROLE.SUPER_ADMIN,

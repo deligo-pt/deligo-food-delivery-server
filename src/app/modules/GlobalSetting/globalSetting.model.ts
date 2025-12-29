@@ -1,24 +1,178 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model } from 'mongoose';
+import { TGlobalSettings } from './globalSetting.interface';
 
-export interface IGlobalSettings extends Document {
-  deliveryChargePerMeter: number;
-  baseDeliveryCharge?: number;
-  minDeliveryCharge?: number;
-  freeDeliveryAbove?: number;
-  updatedAt?: Date;
-}
-
-const GlobalSettingsSchema = new Schema<IGlobalSettings>(
+const GlobalSettingsSchema = new Schema<TGlobalSettings>(
   {
-    deliveryChargePerMeter: { type: Number, required: true, default: 0.05 },
-    baseDeliveryCharge: { type: Number, default: 0 },
-    minDeliveryCharge: { type: Number, default: 0 },
-    freeDeliveryAbove: { type: Number, default: 0 },
+    // --------------------------------------------------
+    // Delivery Pricing
+    // --------------------------------------------------
+    deliveryChargePerKm: {
+      type: Number,
+      required: true,
+      default: 20, // BDT per KM
+    },
+
+    baseDeliveryCharge: {
+      type: Number,
+      default: 0,
+    },
+
+    minDeliveryCharge: {
+      type: Number,
+      default: 50,
+    },
+
+    maxDeliveryCharge: {
+      type: Number,
+      default: 300,
+    },
+
+    freeDeliveryAbove: {
+      type: Number,
+      default: 0,
+    },
+
+    maxDeliveryDistanceKm: {
+      type: Number,
+      default: 15,
+    },
+
+    // --------------------------------------------------
+    // Platform Commission
+    // --------------------------------------------------
+    platformCommissionPercent: {
+      type: Number,
+      default: 10,
+      min: 0,
+      max: 100,
+    },
+
+    deliveryPartnerCommissionPercent: {
+      type: Number,
+      default: 80,
+      min: 0,
+      max: 100,
+    },
+
+    vendorVatPercent: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+
+    // --------------------------------------------------
+    // Order Rules
+    // --------------------------------------------------
+    minOrderAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    maxOrderAmount: {
+      type: Number,
+      default: null,
+    },
+
+    maxItemsPerOrder: {
+      type: Number,
+      default: null,
+    },
+
+    // --------------------------------------------------
+    // Cancellation & Refund
+    // --------------------------------------------------
+    cancelTimeLimitMinutes: {
+      type: Number,
+      default: 5,
+    },
+
+    refundProcessingDays: {
+      type: Number,
+      default: 7,
+    },
+
+    // --------------------------------------------------
+    // Coupons & Offers
+    // --------------------------------------------------
+    isCouponEnabled: {
+      type: Boolean,
+      default: true,
+    },
+
+    isOfferEnabled: {
+      type: Boolean,
+      default: true,
+    },
+
+    maxDiscountPercent: {
+      type: Number,
+      default: 50,
+      min: 0,
+      max: 100,
+    },
+
+    // --------------------------------------------------
+    // Order Automation
+    // --------------------------------------------------
+    autoCancelUnacceptedOrderMinutes: {
+      type: Number,
+      default: 10,
+    },
+
+    autoMarkDeliveredAfterMinutes: {
+      type: Number,
+      default: 180,
+    },
+
+    // --------------------------------------------------
+    // OTP & Security
+    // --------------------------------------------------
+    orderOtpEnabled: {
+      type: Boolean,
+      default: true,
+    },
+
+    otpLength: {
+      type: Number,
+      default: 4,
+    },
+
+    otpExpiryMinutes: {
+      type: Number,
+      default: 5,
+    },
+
+    // --------------------------------------------------
+    // Platform State
+    // --------------------------------------------------
+    isPlatformLive: {
+      type: Boolean,
+      default: true,
+    },
+
+    maintenanceMessage: {
+      type: String,
+      default: '',
+    },
+
+    // --------------------------------------------------
+    // Meta
+    // --------------------------------------------------
+    updatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'Admin',
+      default: null,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-export const GlobalSettings = model<IGlobalSettings>(
+GlobalSettingsSchema.index({}, { unique: true });
+
+export const GlobalSettings = model<TGlobalSettings>(
   'GlobalSettings',
   GlobalSettingsSchema
 );

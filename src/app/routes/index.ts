@@ -19,6 +19,7 @@ import { AnalyticsRoutes } from '../modules/Analytics/analytics.route';
 import { CheckoutRoutes } from '../modules/Checkout/checkout.route';
 import { SupportRoutes } from '../modules/Support/support.route';
 import { ZoneRoutes } from '../modules/Zone/zone.route';
+import { GlobalSettingRoutes } from '../modules/GlobalSetting/globalSetting.route';
 
 const router = express.Router();
 
@@ -102,6 +103,10 @@ const moduleRoutes = [
   {
     path: '/zones',
     route: ZoneRoutes,
+  },
+  {
+    path: '/globalSettings',
+    route: GlobalSettingRoutes,
   },
 ];
 

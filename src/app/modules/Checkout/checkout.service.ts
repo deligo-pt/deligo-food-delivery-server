@@ -7,9 +7,9 @@ import { Vendor } from '../Vendor/vendor.model';
 import { Product } from '../Product/product.model';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
-import { GlobalSettingServices } from '../GlobalSetting/globalSetting.service';
 import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
+import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
@@ -137,7 +137,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     customerLongitude,
     customerLatitude
   );
-  const deliveryChargePerMeter = await GlobalSettingServices.getPerMeterRate();
+  const deliveryChargePerMeter = await GlobalSettingsService.getPerMeterRate();
 
   const deliveryCharge = deliveryDistance.meters * deliveryChargePerMeter;
 
