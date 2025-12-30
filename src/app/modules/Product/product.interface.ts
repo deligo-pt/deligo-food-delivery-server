@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 
 export type TProduct = {
-  _id?: string;
   productId: string;
   vendorId: mongoose.Types.ObjectId;
   sku: string;
@@ -17,11 +16,22 @@ export type TProduct = {
   subCategory?: string;
   brand?: string;
 
+  variations?: {
+    name: string; // e.g., "Size"
+    options: {
+      label: string; // e.g., "Large"
+      price: number; // e.g., 500
+      sku?: string;
+    }[];
+  }[];
+
+  addonGroups?: mongoose.Types.ObjectId[];
+
   pricing: {
     price: number;
     discount?: number;
-    tax?: number;
-    finalPrice: number;
+    taxRate?: number;
+    finalPrice?: number;
     currency: string;
   };
 
@@ -32,15 +42,6 @@ export type TProduct = {
   };
 
   images: string[];
-
-  // vendor: {
-  //   // vendorName: string;
-  //   // vendorType: string;
-  //   // storePhoto: string;
-  //   // longitude: number;
-  //   // latitude: number;
-  //   // rating?: number;
-  // };
 
   tags?: string[];
   attributes?: Record<string, string | number | boolean | string[] | null>;
