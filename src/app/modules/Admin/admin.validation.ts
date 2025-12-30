@@ -8,7 +8,7 @@ const emailSchema = z
   .string({ required_error: 'Email is required' })
   .email('Invalid email address');
 
-export const addressSchema = z.object({
+export const addressValidationSchema = z.object({
   street: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -35,7 +35,7 @@ const updateAdminDataValidationSchema = z.object({
     contactNumber: z.string().optional(),
 
     // Address Details
-    address: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
   }),
 });
 

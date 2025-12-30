@@ -1,51 +1,25 @@
 import { model, Schema } from 'mongoose';
 import { TOrder } from './order.interface';
 import { ORDER_STATUS } from './order.constant';
+import { addressSchema } from '../../constant/address.constant';
 
 const orderItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
+    name: { type: String, required: true },
+    image: { type: String },
+    variantName: { type: String },
+    addons: [
+      {
+        name: { type: String },
+        price: { type: Number },
+        quantity: { type: Number },
+      },
+    ],
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
+    taxRate: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
-  },
-  { _id: false }
-);
-
-const deliveryAddressSchema = new Schema(
-  {
-    street: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    country: { type: String, default: '' },
-    postalCode: { type: String, default: '' },
-
-    longitude: { type: Number, default: null },
-    latitude: { type: Number, default: null },
-
-    geoAccuracy: { type: Number, default: null },
-  },
-  { _id: false }
-);
-
-const pickupAddressSchema = new Schema(
-  {
-    street: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    country: { type: String, default: '' },
-    postalCode: { type: String, default: '' },
-    longitude: { type: Number, default: null },
-    latitude: { type: Number, default: null },
-    geoAccuracy: { type: Number, default: null },
-  },
-  { _id: false }
-);
-
-const ratingSchema = new Schema(
-  {
-    vendorRating: { type: Number, min: 0, max: 5 },
-    deliveryRating: { type: Number, min: 0, max: 5 },
   },
   { _id: false }
 );
@@ -70,9 +44,11 @@ const orderSchema = new Schema<TOrder>(
 
     totalItems: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
-    discount: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
     deliveryCharge: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
     subTotal: { type: Number, required: true },
+
     couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
     paymentMethod: { type: String, enum: ['CARD', 'MOBILE'], required: true },
@@ -81,6 +57,8 @@ const orderSchema = new Schema<TOrder>(
       enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
     },
+    transactionId: { type: String },
+    isPaid: { type: Boolean, default: false },
 
     orderStatus: {
       type: String,
@@ -89,23 +67,25 @@ const orderSchema = new Schema<TOrder>(
     },
     cancelReason: { type: String },
     rejectReason: { type: String },
-
     remarks: { type: String, default: '' },
 
     deliveryOtp: { type: String },
     isOtpVerified: { type: Boolean, default: false },
-
-    deliveryAddress: { type: deliveryAddressSchema, required: true },
-    pickupAddress: { type: pickupAddressSchema },
     dispatchPartnerPool: { type: [String], default: [] },
+
+    deliveryAddress: { type: addressSchema, required: true },
+    pickupAddress: { type: addressSchema },
 
     estimatedDeliveryTime: { type: String },
     deliveredAt: { type: Date },
 
-    isPaid: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
 
-    rating: { type: ratingSchema },
+    rating: {
+      foodRating: { type: Number, default: 0 },
+      deliveryRating: { type: Number, default: 0 },
+      review: { type: String },
+    },
   },
   { timestamps: true }
 );

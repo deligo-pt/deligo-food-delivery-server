@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addressSchema } from '../Admin/admin.validation';
+import { addressValidationSchema } from '../Admin/admin.validation';
 
 // ----------------------------------------------------
 // Fleet Manager Update Validation
@@ -17,7 +17,7 @@ const fleetManagerUpdateValidationSchema = z.object({
     contactNumber: z.string().optional(),
 
     // Address
-    address: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
 
     // Business Details
     businessDetails: z
@@ -28,7 +28,7 @@ const fleetManagerUpdateValidationSchema = z.object({
       .optional(),
 
     // Business Location
-    businessLocation: addressSchema.optional(),
+    businessLocation: addressValidationSchema.optional(),
 
     // Bank & Payment Information
     bankDetails: z

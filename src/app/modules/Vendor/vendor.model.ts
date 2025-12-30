@@ -24,12 +24,12 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       model: {
         type: String,
         enum: ['Admin', 'Vendor'],
-        default: 'Admin',
+        default: null,
       },
       role: {
         type: String,
         enum: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
-        default: 'ADMIN',
+        default: null,
       },
     },
     role: {

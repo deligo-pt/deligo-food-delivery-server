@@ -186,11 +186,8 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       'You can only order products from ONE vendor at a time'
     );
   }
-  console.log({
-    vendorId: orderItems[0].vendorId.toString(),
-    subtotal: totalPrice,
-    offerCode: payload.offerCode,
-  });
+
+  // Apply offer
   const offer = await OfferServices.getApplicableOffer(
     {
       vendorId: orderItems[0].vendorId.toString(),
@@ -199,7 +196,13 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     },
     currentUser
   );
-  console.log({ offer });
+  console.log({ orderItems });
+  const offerResult = OfferServices.applyOffer({
+    offer,
+    items: orderItems,
+    subtotal: totalPrice,
+    deliveryCharge,
+  });
 
   // Delivery address
   const activeAddress = customer.deliveryAddresses?.find((a) => a.isActive);
