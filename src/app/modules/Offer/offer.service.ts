@@ -5,6 +5,13 @@ import AppError from '../../errors/AppError';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';
+import { TCheckoutItem } from '../Checkout/checkout.interface';
+
+type TApplyOfferPayload = {
+  vendorId: string;
+  subtotal: number;
+  offerCode?: string;
+};
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
@@ -247,6 +254,153 @@ const updateOffer = async (
   return updatedOffer;
 };
 
+// get applicable offer for checkout
+const getApplicableOffer = async (
+  { vendorId, subtotal, offerCode }: TApplyOfferPayload,
+  currentUser: AuthUser
+) => {
+  const now = new Date();
+
+  // --------------------------------------------
+  // Base query (vendor + global offers)
+  // --------------------------------------------
+  const baseQuery = {
+    isActive: true,
+    isDeleted: false,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+    $or: [{ vendorId }, { vendorId: { $eq: null } }],
+  };
+  let offer = null;
+
+  // --------------------------------------------
+  // Manual offer → code is REQUIRED
+  // --------------------------------------------
+  if (offerCode) {
+    offer = await Offer.findOne({
+      ...baseQuery,
+      code: offerCode,
+      isAutoApply: false,
+    }).sort({ vendorId: -1 });
+
+    if (!offer) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Invalid or expired offer code1'
+      );
+    }
+  }
+
+  // --------------------------------------------
+  // Auto-apply offer (only if NO code)
+  // --------------------------------------------
+  else {
+    offer = await Offer.findOne({
+      ...baseQuery,
+      isAutoApply: true,
+    }).sort({ vendorId: -1 });
+
+    // No auto-apply offer → OK, continue checkout
+    if (!offer) return null;
+  }
+
+  // --------------------------------------------
+  // Minimum order amount validation
+  // --------------------------------------------
+  if (offer.minOrderAmount && subtotal < offer.minOrderAmount) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Minimum order amount ${offer.minOrderAmount} required`
+    );
+  }
+
+  // --------------------------------------------
+  // Usage limit validation
+  // --------------------------------------------
+  const usageCount = offer.usageCount ?? 0;
+
+  if (offer.maxUsageCount !== undefined && usageCount >= offer.maxUsageCount) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Offer usage limit reached');
+  }
+
+  return offer;
+};
+
+// apply offer to checkout
+const applyOffer = ({
+  offer,
+  items,
+  subtotal,
+  deliveryCharge,
+}: {
+  offer: TOffer | null;
+  items: TCheckoutItem[];
+  subtotal: number;
+  deliveryCharge: number;
+}) => {
+  if (!offer) {
+    return {
+      discount: 0,
+      deliveryCharge,
+      subTotal: subtotal + deliveryCharge,
+      appliedOffer: null,
+    };
+  }
+
+  let discount = 0;
+  let finalDeliveryCharge = deliveryCharge;
+
+  switch (offer.offerType) {
+    case 'PERCENT': {
+      const percent = (subtotal * offer.discountValue!) / 100;
+      discount = offer.maxDiscountAmount
+        ? Math.min(percent, offer.maxDiscountAmount)
+        : percent;
+      break;
+    }
+
+    case 'FLAT': {
+      discount = offer.discountValue!;
+      break;
+    }
+
+    case 'FREE_DELIVERY': {
+      finalDeliveryCharge = 0;
+      break;
+    }
+
+    case 'BOGO': {
+      const bogo = offer.bogo!;
+      const item = items.find((i) => i.productId.toString() === bogo.itemId);
+
+      if (item) {
+        const group = bogo.buyQty + bogo.getQty;
+        const freeQty = Math.floor(item.quantity / group) * bogo.getQty;
+
+        discount = freeQty * item.price;
+      }
+      break;
+    }
+  }
+
+  discount = Math.max(0, Math.min(discount, subtotal));
+
+  return {
+    discount,
+    deliveryCharge: finalDeliveryCharge,
+    subTotal: subtotal - discount + finalDeliveryCharge,
+
+    appliedOffer: {
+      offerId: offer._id,
+      title: offer.title,
+      offerType: offer.offerType,
+      discountValue: offer.discountValue,
+      maxDiscountAmount: offer.maxDiscountAmount,
+      code: offer.code,
+    },
+  };
+};
+
 // get all offers service
 const getAllOffers = async (
   currentUser: AuthUser,
@@ -418,6 +572,7 @@ const permanentDeleteOffer = async (id: string, currentUser: AuthUser) => {
 export const OfferServices = {
   createOffer,
   updateOffer,
+  getApplicableOffer,
   getAllOffers,
   getSingleOffer,
   softDeleteOffer,

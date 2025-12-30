@@ -10,6 +10,7 @@ import { Customer } from '../Customer/customer.model';
 import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { OfferServices } from '../Offer/offer.service';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
@@ -185,6 +186,20 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       'You can only order products from ONE vendor at a time'
     );
   }
+  console.log({
+    vendorId: orderItems[0].vendorId.toString(),
+    subtotal: totalPrice,
+    offerCode: payload.offerCode,
+  });
+  const offer = await OfferServices.getApplicableOffer(
+    {
+      vendorId: orderItems[0].vendorId.toString(),
+      subtotal: totalPrice,
+      offerCode: payload.offerCode,
+    },
+    currentUser
+  );
+  console.log({ offer });
 
   // Delivery address
   const activeAddress = customer.deliveryAddresses?.find((a) => a.isActive);

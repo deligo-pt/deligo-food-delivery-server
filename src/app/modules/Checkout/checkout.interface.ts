@@ -12,7 +12,6 @@ export type TAppliedOfferSnapshot = {
 
 export type TCheckoutItem = {
   productId: mongoose.Types.ObjectId;
-  name: string;
   quantity: number;
   price: number;
   subtotal: number;
@@ -78,5 +77,6 @@ export type TCheckoutPayload = {
   }[];
 
   offerCode?: string;
+  discount?: number;
   estimatedDeliveryTime?: string;
 };

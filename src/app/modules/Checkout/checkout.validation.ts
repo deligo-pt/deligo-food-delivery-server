@@ -12,6 +12,7 @@ const checkoutValidationSchema = z.object({
       )
       .optional(),
 
+    offerCode: z.string().optional(),
     estimatedDeliveryTime: z.string().optional(),
     discount: z.number().optional(),
   }),
