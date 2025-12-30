@@ -191,6 +191,8 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     subtotal: totalPrice,
     offerCode: payload.offerCode,
   });
+
+  // Apply offer
   const offer = await OfferServices.getApplicableOffer(
     {
       vendorId: orderItems[0].vendorId.toString(),
@@ -292,10 +294,6 @@ const getCheckoutSummary = async (
       httpStatus.BAD_REQUEST,
       'Checkout summary already converted to order'
     );
-  }
-
-  if (summary.isDeleted) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Checkout summary deleted');
   }
 
   return summary;

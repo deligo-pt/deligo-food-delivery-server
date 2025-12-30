@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { OfferType } from '../Offer/offer.constant';
+import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
 
 export type TAppliedOfferSnapshot = {
   offerId: mongoose.Types.ObjectId;
@@ -33,36 +34,34 @@ export type TCheckoutAddress = {
 };
 
 export type TCheckoutSummary = {
-  _id?: string;
-
   customerId: mongoose.Types.ObjectId;
-  customerEmail?: string;
-  contactNumber?: string;
+
+  customerEmail?: string; // will check is it need?
+  contactNumber?: string; // will check is it need?
+
   vendorId: mongoose.Types.ObjectId;
 
-  items: TCheckoutItem[];
-
+  items: TOrderItemSnapshot[];
   totalItems: number;
+
   totalPrice: number;
   discount: number;
   deliveryCharge: number;
+  taxAmount: number;
   subTotal: number;
 
   offerApplied?: TAppliedOfferSnapshot;
   couponId?: mongoose.Types.ObjectId;
 
+  deliveryAddress: TAddress;
   estimatedDeliveryTime: string;
 
-  deliveryAddress: TCheckoutAddress;
-
-  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
   paymentMethod?: 'CARD' | 'MOBILE';
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
   transactionId?: string; // Stripe PaymentIntent ID
-  orderId?: mongoose.Types.ObjectId; // Linked Order ID
 
   isConvertedToOrder?: boolean;
-
-  isDeleted?: boolean;
+  orderId?: mongoose.Types.ObjectId; // Linked Order ID
 
   createdAt?: Date;
   updatedAt?: Date;

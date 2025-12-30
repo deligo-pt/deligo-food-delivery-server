@@ -133,7 +133,7 @@ const createOrderAfterPayment = async (
       title: 'You have a new order',
       body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
       data: {
-        orderId: order._id,
+        orderId: order._id.toString(),
       },
     };
 
