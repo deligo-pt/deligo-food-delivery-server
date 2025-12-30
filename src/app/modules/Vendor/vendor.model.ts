@@ -18,18 +18,18 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     registeredBy: {
       userId: {
         type: Schema.Types.ObjectId,
-        required: true,
         refPath: 'registeredBy.model',
+        default: null,
       },
       model: {
         type: String,
-        required: true,
         enum: ['Admin', 'Vendor'],
+        default: null,
       },
       role: {
         type: String,
-        required: true,
         enum: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
+        default: null,
       },
     },
     role: {

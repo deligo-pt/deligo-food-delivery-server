@@ -16,7 +16,7 @@ export type TVendor = {
   // --------------------------------------------------------
   _id?: string;
   userId: string;
-  registeredBy: {
+  registeredBy?: {
     id: mongoose.Types.ObjectId;
     model: TRegisteredByModel;
     role: 'ADMIN' | 'SUPER_ADMIN' | 'VENDOR';

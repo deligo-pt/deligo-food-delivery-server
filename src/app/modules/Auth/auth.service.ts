@@ -797,6 +797,7 @@ const approvedOrRejectedUser = async (
   }
 
   if (user.status === payload.status) {
+    //
     throw new AppError(
       httpStatus.BAD_REQUEST,
       `User is already ${payload.status.toLowerCase()}`

@@ -1,4 +1,11 @@
+import mongoose from 'mongoose';
 import { z } from 'zod';
+
+export const objectIdSchema = z
+  .string()
+  .refine((val) => mongoose.Types.ObjectId.isValid(val), {
+    message: 'Invalid ObjectId',
+  });
 
 // Create Offer Validation Schema
 const createOfferValidation = z.object({
@@ -69,7 +76,17 @@ const updateOfferValidation = z.object({
   }),
 });
 
+const getApplicableOfferValidation = z.object({
+  body: z.object({
+    vendorId: objectIdSchema,
+    subtotal: z.number().positive('Subtotal must be greater than 0'),
+
+    offerCode: z.string().trim().min(1).optional(),
+  }),
+});
+
 export const OfferValidation = {
   createOfferValidation,
   updateOfferValidation,
+  getApplicableOfferValidation,
 };

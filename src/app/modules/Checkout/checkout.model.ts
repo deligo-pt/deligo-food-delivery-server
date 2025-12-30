@@ -37,6 +37,19 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     deliveryCharge: { type: Number, required: true },
     subTotal: { type: Number, required: true },
     estimatedDeliveryTime: { type: String, default: 'N/A' },
+
+    offerApplied: {
+      offerId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Offer',
+      },
+      title: { type: String },
+      offerType: { type: String },
+      discountValue: { type: Number },
+      maxDiscountAmount: { type: Number },
+      code: { type: String },
+    },
+
     couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
     deliveryAddress: {

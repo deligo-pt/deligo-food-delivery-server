@@ -22,6 +22,14 @@ router.patch(
   OfferControllers.updateOffer
 );
 
+// getApplicableOffer
+router.post(
+  '/get-applicable-offer',
+  auth('CUSTOMER'),
+  validateRequest(OfferValidation.getApplicableOfferValidation),
+  OfferControllers.getApplicableOffer
+);
+
 // Get All Offers
 router.get(
   '/',
