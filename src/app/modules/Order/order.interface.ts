@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 import { OrderStatus } from './order.constant';
+import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
 
 export type TOrder = {
-  _id?: string;
+  _id?: mongoose.Types.ObjectId;
 
   // Relationships
   orderId: string;
@@ -12,69 +13,50 @@ export type TOrder = {
   deliveryPartnerCancelReason?: string;
 
   // Items
-  items: {
-    productId: mongoose.Types.ObjectId;
-    quantity: number;
-    price: number;
-    subtotal: number;
-  }[];
+  items: TOrderItemSnapshot[];
 
   // Pricing & Payment
   totalItems: number;
   totalPrice: number;
   discount?: number;
   deliveryCharge?: number;
+  taxAmount?: number;
   subTotal: number;
+
   couponId?: mongoose.Types.ObjectId;
+
   paymentMethod: 'CARD' | 'MOBILE';
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+  transactionId?: string;
+  isPaid: boolean;
+
+  // Address & Location
+  deliveryAddress: TAddress;
+  pickupAddress?: TAddress;
+
+  // OTP Verification
+  deliveryOtp?: string; // generated when vendor accepts
+  isOtpVerified?: boolean; // vendor verifies driver OTP
+  remarks?: string;
 
   // Order Lifecycle
   orderStatus: OrderStatus;
   cancelReason?: string;
   rejectReason?: string;
 
-  remarks?: string;
-  // OTP Verification
-  deliveryOtp?: string; // generated when vendor accepts
-  isOtpVerified?: boolean; // vendor verifies driver OTP
-
-  // Address & Location
-  deliveryAddress: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    longitude?: number;
-    latitude?: number;
-    geoAccuracy?: number;
-  };
-
-  pickupAddress?: {
-    // vendor’s location
-    street: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
-    longitude?: number;
-    latitude?: number;
-    geoAccuracy?: number; // meters
-  };
   dispatchPartnerPool?: string[];
   // Delivery Details
   estimatedDeliveryTime?: string; // e.g., "30 mins"
   deliveredAt?: Date;
 
   // Status Tracking
-  isPaid: boolean;
   isDeleted: boolean;
 
   // Ratings (optional, for later)
   rating?: {
-    vendorRating?: number;
+    foodRating?: number;
     deliveryRating?: number;
+    review?: string;
   };
   createdAt: Date;
   updatedAt: Date;

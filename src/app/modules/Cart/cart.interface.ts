@@ -1,23 +1,19 @@
 import mongoose from 'mongoose';
+import { TOrderItemSnapshot } from '../../constant/order.constant';
 
-export type TCartItem = {
-  productId: mongoose.Types.ObjectId;
-  vendorId: mongoose.Types.ObjectId;
-  quantity: number;
-  price: number;
-  subtotal: number;
+export type TCartItem = TOrderItemSnapshot & {
   isActive: boolean;
 };
 
 export type TCart = {
-  _id?: string;
   customerId: mongoose.Types.ObjectId;
   items: TCartItem[];
   totalItems: number;
   totalPrice: number;
   discount?: number;
-  subtotal: number;
   couponId?: mongoose.Types.ObjectId | null;
+  taxAmount?: number;
+  subtotal: number;
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;

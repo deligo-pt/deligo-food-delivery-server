@@ -19,24 +19,34 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           required: true,
           ref: 'Product',
         },
+        name: { type: String, required: true },
+        image: { type: String },
+        variantName: { type: String },
+        addons: [
+          {
+            name: { type: String },
+            price: { type: Number },
+            quantity: { type: Number },
+          },
+        ],
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
+        taxRate: { type: Number, default: 0 },
         subtotal: { type: Number, required: true },
         vendorId: {
           type: Schema.Types.ObjectId,
           required: true,
           ref: 'Vendor',
         },
-        estimatedDeliveryTime: { type: String, default: 'N/A' },
       },
     ],
 
     totalItems: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
-    discount: { type: Number, default: 0 },
+    taxAmount: { type: Number, required: true },
     deliveryCharge: { type: Number, required: true },
+    discount: { type: Number, default: 0 },
     subTotal: { type: Number, required: true },
-    estimatedDeliveryTime: { type: String, default: 'N/A' },
 
     offerApplied: {
       offerId: {
@@ -53,17 +63,17 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
     deliveryAddress: {
-      street: String,
-      city: String,
+      label: { type: String },
+      street: { type: String, required: true },
+      city: { type: String, required: true },
       state: String,
-      country: String,
       postalCode: String,
-      longitude: Number,
-      latitude: Number,
+      longitude: { type: Number, required: true },
+      latitude: { type: Number, required: true },
       geoAccuracy: Number,
-      isActive: Boolean,
-      _id: String,
     },
+
+    estimatedDeliveryTime: { type: String, default: 'N/A' },
 
     paymentStatus: {
       type: String,
@@ -81,7 +91,6 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     orderId: { type: Schema.Types.ObjectId, default: null, ref: 'Order' },
 
     isConvertedToOrder: { type: Boolean, default: false },
-    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
