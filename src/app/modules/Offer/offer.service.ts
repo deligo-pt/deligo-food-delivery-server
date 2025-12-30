@@ -5,7 +5,7 @@ import AppError from '../../errors/AppError';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';
-import { TCheckoutItem } from '../Checkout/checkout.interface';
+// import { TCheckoutItem } from '../Checkout/checkout.interface';
 
 type TApplyOfferPayload = {
   vendorId: string;
@@ -272,7 +272,7 @@ const getApplicableOffer = async (
     $or: [{ vendorId }, { vendorId: { $eq: null } }],
   };
   let offer = null;
-
+  console.log(currentUser);
   // --------------------------------------------
   // Manual offer → code is REQUIRED
   // --------------------------------------------
@@ -327,79 +327,79 @@ const getApplicableOffer = async (
 };
 
 // apply offer to checkout
-const applyOffer = ({
-  offer,
-  items,
-  subtotal,
-  deliveryCharge,
-}: {
-  offer: TOffer | null;
-  items: TCheckoutItem[];
-  subtotal: number;
-  deliveryCharge: number;
-}) => {
-  if (!offer) {
-    return {
-      discount: 0,
-      deliveryCharge,
-      subTotal: subtotal + deliveryCharge,
-      appliedOffer: null,
-    };
-  }
+// const applyOffer = ({
+//   offer,
+//   items,
+//   subtotal,
+//   deliveryCharge,
+// }: {
+//   offer: TOffer | null;
+//   items: TCheckoutItem[];
+//   subtotal: number;
+//   deliveryCharge: number;
+// }) => {
+//   if (!offer) {
+//     return {
+//       discount: 0,
+//       deliveryCharge,
+//       subTotal: subtotal + deliveryCharge,
+//       appliedOffer: null,
+//     };
+//   }
 
-  let discount = 0;
-  let finalDeliveryCharge = deliveryCharge;
+//   let discount = 0;
+//   let finalDeliveryCharge = deliveryCharge;
 
-  switch (offer.offerType) {
-    case 'PERCENT': {
-      const percent = (subtotal * offer.discountValue!) / 100;
-      discount = offer.maxDiscountAmount
-        ? Math.min(percent, offer.maxDiscountAmount)
-        : percent;
-      break;
-    }
+//   switch (offer.offerType) {
+//     case 'PERCENT': {
+//       const percent = (subtotal * offer.discountValue!) / 100;
+//       discount = offer.maxDiscountAmount
+//         ? Math.min(percent, offer.maxDiscountAmount)
+//         : percent;
+//       break;
+//     }
 
-    case 'FLAT': {
-      discount = offer.discountValue!;
-      break;
-    }
+//     case 'FLAT': {
+//       discount = offer.discountValue!;
+//       break;
+//     }
 
-    case 'FREE_DELIVERY': {
-      finalDeliveryCharge = 0;
-      break;
-    }
+//     case 'FREE_DELIVERY': {
+//       finalDeliveryCharge = 0;
+//       break;
+//     }
 
-    case 'BOGO': {
-      const bogo = offer.bogo!;
-      const item = items.find((i) => i.productId.toString() === bogo.itemId);
+//     case 'BOGO': {
+//       const bogo = offer.bogo!;
+//       const item = items.find((i) => i.productId.toString() === bogo.itemId);
 
-      if (item) {
-        const group = bogo.buyQty + bogo.getQty;
-        const freeQty = Math.floor(item.quantity / group) * bogo.getQty;
+//       if (item) {
+//         const group = bogo.buyQty + bogo.getQty;
+//         const freeQty = Math.floor(item.quantity / group) * bogo.getQty;
 
-        discount = freeQty * item.price;
-      }
-      break;
-    }
-  }
+//         discount = freeQty * item.price;
+//       }
+//       break;
+//     }
+//   }
 
-  discount = Math.max(0, Math.min(discount, subtotal));
+//   discount = Math.max(0, Math.min(discount, subtotal));
 
-  return {
-    discount,
-    deliveryCharge: finalDeliveryCharge,
-    subTotal: subtotal - discount + finalDeliveryCharge,
+//   return {
+//     discount,
+//     deliveryCharge: finalDeliveryCharge,
+//     subTotal: subtotal - discount + finalDeliveryCharge,
 
-    appliedOffer: {
-      offerId: offer._id,
-      title: offer.title,
-      offerType: offer.offerType,
-      discountValue: offer.discountValue,
-      maxDiscountAmount: offer.maxDiscountAmount,
-      code: offer.code,
-    },
-  };
-};
+//     appliedOffer: {
+//       offerId: offer._id,
+//       title: offer.title,
+//       offerType: offer.offerType,
+//       discountValue: offer.discountValue,
+//       maxDiscountAmount: offer.maxDiscountAmount,
+//       code: offer.code,
+//     },
+//   };
+// };
 
 // get all offers service
 const getAllOffers = async (
