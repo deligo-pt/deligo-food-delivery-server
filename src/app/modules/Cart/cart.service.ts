@@ -42,9 +42,13 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   const newItem = {
     productId,
     vendorId: existingProduct.vendorId,
-    price: existingProduct.pricing.finalPrice,
+    name: existingProduct.name,
+    image: existingProduct?.images[0] || '',
+    variantName: payload?.items[0]?.variantName || '',
     quantity,
+    price: existingProduct.pricing.finalPrice,
     subtotal: existingProduct.pricing.finalPrice * quantity,
+    taxRate: existingProduct.pricing.taxRate || 0,
     isActive: true,
   };
 
