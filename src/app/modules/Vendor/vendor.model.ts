@@ -15,23 +15,23 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       required: true,
       unique: true,
     },
-    registeredBy: {
-      userId: {
-        type: Schema.Types.ObjectId,
-        refPath: 'registeredBy.model',
-        default: null,
-      },
-      model: {
-        type: String,
-        enum: ['Admin', 'Vendor'],
-        default: null,
-      },
-      role: {
-        type: String,
-        enum: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
-        default: null,
-      },
-    },
+    // registeredBy: {
+    //   userId: {
+    //     type: Schema.Types.ObjectId,
+    //     refPath: 'registeredBy.model',
+    //     default: null,
+    //   },
+    //   model: {
+    //     type: String,
+    //     enum: ['Admin', 'Vendor'],
+    //     default: null,
+    //   },
+    //   role: {
+    //     type: String,
+    //     enum: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
+    //     default: null,
+    //   },
+    // },
     role: {
       type: String,
       enum: ['VENDOR', 'SUB_VENDOR'],
