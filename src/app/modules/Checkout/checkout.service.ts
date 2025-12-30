@@ -186,6 +186,20 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       'You can only order products from ONE vendor at a time'
     );
   }
+  console.log({
+    vendorId: orderItems[0].vendorId.toString(),
+    subtotal: totalPrice,
+    offerCode: payload.offerCode,
+  });
+  const offer = await OfferServices.getApplicableOffer(
+    {
+      vendorId: orderItems[0].vendorId.toString(),
+      subtotal: totalPrice,
+      offerCode: payload.offerCode,
+    },
+    currentUser
+  );
+  console.log({ offer });
 
   // Apply offer
   const offer = await OfferServices.getApplicableOffer(
