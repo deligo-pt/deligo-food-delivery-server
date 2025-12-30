@@ -1,6 +1,4 @@
 import mongoose from 'mongoose';
-import { OfferType } from '../Offer/offer.constant';
-import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
 
 export type TAppliedOfferSnapshot = {
   offerId: mongoose.Types.ObjectId;
