@@ -16,11 +16,11 @@ export type TVendor = {
   // --------------------------------------------------------
   _id?: string;
   userId: string;
-  registeredBy?: {
-    id: mongoose.Types.ObjectId;
-    model: TRegisteredByModel;
-    role: 'ADMIN' | 'SUPER_ADMIN' | 'VENDOR';
-  };
+  // registeredBy?: {
+  //   id: mongoose.Types.ObjectId;
+  //   model: TRegisteredByModel;
+  //   role: 'ADMIN' | 'SUPER_ADMIN' | 'VENDOR';
+  // };
   role: 'VENDOR' | 'SUB_VENDOR';
   email: string;
   password: string;
