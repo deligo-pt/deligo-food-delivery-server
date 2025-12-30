@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addressSchema } from '../Admin/admin.validation';
+import { addressValidationSchema } from '../Admin/admin.validation';
 
 // ---------------------------------------------
 // User Profile Update Validation
@@ -25,7 +25,7 @@ const userProfileUpdateValidationSchema = z.object({
 
     profilePhoto: z.string().nullable().optional(),
 
-    address: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
   }),
 });
 

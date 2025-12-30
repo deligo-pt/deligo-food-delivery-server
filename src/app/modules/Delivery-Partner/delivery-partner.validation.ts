@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addressSchema } from '../Admin/admin.validation';
+import { addressValidationSchema } from '../Admin/admin.validation';
 
 // ---------------------------------------------
 // Update Delivery Partner Data Validation Schema
@@ -13,8 +13,8 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
     contactNumber: z.string().optional(),
-    address: addressSchema.optional(),
-    operationalAddress: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
+    operationalAddress: addressValidationSchema.optional(),
 
     // ---------------------------------------------------
     // GeoJSON location auto-set for backend $geoNear
