@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
 export type TFleetManager = {
@@ -6,6 +7,7 @@ export type TFleetManager = {
   // ---------------------------------------------
   _id?: string;
   userId: string;
+  registeredBy?: mongoose.Types.ObjectId;
   role: 'FLEET_MANAGER';
   email: string;
   password: string;
@@ -17,6 +19,12 @@ export type TFleetManager = {
 
   // Push notifications
   fcmTokens?: string[];
+
+  // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
 
   // ---------------------------------------------
   // OTP & Password Reset
@@ -56,6 +64,8 @@ export type TFleetManager = {
   businessDetails?: {
     businessName: string;
     businessLicenseNumber?: string;
+    NIF?: string;
+    totalBranches?: number;
   };
 
   businessLocation?: {
@@ -83,7 +93,8 @@ export type TFleetManager = {
   // Documents & Verification
   // ---------------------------------------------
   documents?: {
-    idProof?: string;
+    idProofFront?: string;
+    idProofBack?: string;
     businessLicense?: string;
   };
 
@@ -109,9 +120,9 @@ export type TFleetManager = {
   // ---------------------------------------------
   // Admin Workflow / Audit
   // ---------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
 
   submittedForApprovalAt?: Date;
   approvedOrRejectedOrBlockedAt?: Date;
@@ -126,5 +137,5 @@ export type TFleetManager = {
 };
 
 export type TFleetManagerImageDocuments = {
-  docImageTitle: 'idProof' | 'businessLicense';
+  docImageTitle: 'idProofFront' | 'idProofBack' | 'businessLicense';
 };

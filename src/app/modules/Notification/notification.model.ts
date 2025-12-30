@@ -19,6 +19,7 @@ const notificationSchema = new Schema<TNotification>(
       default: 'OTHER',
     },
     isRead: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

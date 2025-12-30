@@ -15,9 +15,26 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       required: true,
       unique: true,
     },
+    registeredBy: {
+      userId: {
+        type: Schema.Types.ObjectId,
+        refPath: 'registeredBy.model',
+        default: null,
+      },
+      model: {
+        type: String,
+        enum: ['Admin', 'Vendor'],
+        default: null,
+      },
+      role: {
+        type: String,
+        enum: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
+        default: null,
+      },
+    },
     role: {
       type: String,
-      enum: ['VENDOR'],
+      enum: ['VENDOR', 'SUB_VENDOR'],
       required: true,
     },
     email: {
@@ -50,7 +67,13 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // -------------------------------------------------------
     fcmTokens: { type: [String], default: [] },
 
-    // ──────────────────────────────────────────────
+    // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
+    // -------------------------------------------------------
     // OTP & Password Reset (UNCHANGED)
     // -------------------------------------------------------
     otp: { type: String, default: '' },
@@ -95,7 +118,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       closingDays: { type: [String], default: [] },
 
       // Operational Status
-      isOperational: { type: Boolean, default: true },
+      isStoreOpen: { type: Boolean, default: true },
+      storeClosedAt: { type: Date, default: null },
 
       // Association (Crucial for pricing/assignment)
       deliveryZoneId: { type: String, default: '' },
@@ -146,7 +170,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     documents: {
       businessLicenseDoc: { type: String, default: '' },
       taxDoc: { type: String, default: '' },
-      idProof: { type: String, default: '' },
+      idProofFront: { type: String, default: '' },
+      idProofBack: { type: String, default: '' },
       storePhoto: { type: String, default: '' },
       menuUpload: { type: String, default: '' },
     },
@@ -173,9 +198,9 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // -------------------------------------------------------
     // Admin Workflow / Audit
     // -------------------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },

@@ -15,6 +15,8 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { Customer } from '../Customer/customer.model';
 import { getCustomerCoordinates } from '../../utils/getCustomerCoordinates';
 import { calculateDistance } from '../../utils/calculateDistance';
+import { Vendor } from '../Vendor/vendor.model';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
 
 // Product Create Service
 const createProduct = async (
@@ -39,19 +41,11 @@ const createProduct = async (
   const vendorCategoryExist = await BusinessCategory.findOne({
     name: vendorCategory,
   });
-
-  payload.vendor = {
-    vendorId: existingUser?.userId,
-    vendorName: existingUser?.businessDetails?.businessName || '',
-    vendorType: vendorCategory || '',
-    storePhoto: existingUser?.documents?.storePhoto || '',
-    longitude: existingUser?.businessLocation?.longitude || 0,
-    latitude: existingUser?.businessLocation?.latitude || 0,
-    rating: existingUser?.rating?.average || 0,
-  };
+  payload.vendorId = existingUser?._id;
 
   // check category
   if (payload?.category) {
+    payload.category = payload?.category?.toUpperCase();
     const category = await ProductCategory.findOne({ name: payload.category });
     if (!category) {
       throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
@@ -102,27 +96,32 @@ const updateProduct = async (
   currentUser: AuthUser,
   images: string[]
 ) => {
+  const existingVendor = await Vendor.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found...');
+  }
+
+  if (existingVendor.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to delete product images. Your account is ${existingVendor.status}`
+    );
+  }
+
   const existingProduct = await Product.findOne({
     productId,
-    ...(currentUser.role === 'VENDOR' && { 'vendor.vendorId': currentUser.id }),
+    ...(currentUser.role === 'VENDOR' && {
+      vendorId: existingVendor._id,
+    }),
   });
 
   if (!existingProduct) {
     throw new AppError(
       httpStatus.NOT_FOUND,
       'Product not found or you are not authorized to update this product'
-    );
-  }
-
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const existingUser = result.user;
-  if (existingUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to delete product images. Your account is ${existingUser.status}`
     );
   }
 
@@ -290,21 +289,22 @@ const getAllProducts = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
+  const loggedInUser = result.user;
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to view products. Your account is ${loggedInUser.status}`
     );
   }
-  const role = currentUser.role;
+  const role = loggedInUser.role;
 
   if (role === 'VENDOR') {
-    query['vendor.vendorId'] = currentUser.id;
+    query.vendorId = loggedInUser._id;
     query.isDeleted = false;
   }
 
@@ -319,7 +319,14 @@ const getAllProducts = async (
 
   if (role === 'CUSTOMER') {
     // Build base query WITH filter/search/fields but WITHOUT paginate/sort
-    const productsQB = new QueryBuilder(Product.find(), query)
+    const productsQB = new QueryBuilder(
+      Product.find().populate({
+        path: 'vendorId',
+        select:
+          'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
+      }),
+      query
+    )
       .fields()
       .filter()
       .search(ProductSearchableFields);
@@ -343,8 +350,8 @@ const getAllProducts = async (
 
       sortedProducts = products
         .map((product) => {
-          const vLng = product.vendor?.longitude;
-          const vLat = product.vendor?.latitude;
+          const vLng = (product as any).vendorId?.businessLocation?.longitude;
+          const vLat = (product as any).vendorId?.businessLocation?.latitude;
 
           if (typeof vLng === 'number' && typeof vLat === 'number') {
             const { meters } = calculateDistance(custLng, custLat, vLng, vLat);
@@ -383,6 +390,16 @@ const getAllProducts = async (
     .sort()
     .filter()
     .search(ProductSearchableFields);
+
+  const populateOptions = getPopulateOptions(role, {
+    vendor:
+      'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+  });
+
+  populateOptions.forEach((option) => {
+    products.modelQuery = products.modelQuery.populate(option);
+  });
+
   const meta = await products.countTotal();
   const data = await products.modelQuery;
   return {
@@ -393,38 +410,48 @@ const getAllProducts = async (
 
 // get single product service
 const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to view products. Your account is ${loggedInUser.status}`
     );
   }
 
-  let product;
+  let query;
   if (
-    currentUser.role === 'CUSTOMER' ||
-    currentUser.role === 'DELIVERY_PARTNER' ||
-    currentUser.role === 'FLEET_MANAGER'
+    loggedInUser.role === 'CUSTOMER' ||
+    loggedInUser.role === 'DELIVERY_PARTNER' ||
+    loggedInUser.role === 'FLEET_MANAGER'
   ) {
-    product = await Product.findOne({
+    query = Product.findOne({
       productId,
       isApproved: true,
       isDeleted: false,
     });
-  } else if (currentUser.role === 'VENDOR') {
-    product = await Product.findOne({
+  } else if (loggedInUser.role === 'VENDOR') {
+    query = Product.findOne({
       productId,
-      'vendor.vendorId': currentUser.id,
+      vendorId: loggedInUser._id,
     });
   } else {
-    product = await Product.findOne({ productId });
+    query = Product.findOne({ productId });
   }
+  const populateOptions = getPopulateOptions(loggedInUser.role, {
+    vendor:
+      'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+  });
 
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+  const product = await query;
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
@@ -433,20 +460,21 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
 
 // product soft delete service
 const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a product. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to delete a product. Your account is ${loggedInUser.status}`
     );
   }
 
   const product = await Product.findOne({ productId });
-  if (currentUser.role === 'VENDOR') {
-    if (currentUser.id !== product?.vendor.vendorId) {
+  if (loggedInUser.role === 'VENDOR' || loggedInUser.role === 'SUB_VENDOR') {
+    if (loggedInUser._id.toString() !== product?.vendorId.toString()) {
       throw new AppError(
         httpStatus.NOT_FOUND,
         'You are not authorized to delete this product'
@@ -461,6 +489,10 @@ const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
+
+  // --------------------------------------------------------------------------
+  // TODO: check if product in order or not. if in order, throw error will be added
+  // --------------------------------------------------------------------------
   product.isDeleted = true;
   await product.save();
   return {
@@ -473,14 +505,15 @@ const permanentDeleteProduct = async (
   productId: string,
   currentUser: AuthUser
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to permanently delete a product. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to permanently delete a product. Your account is ${loggedInUser.status}`
     );
   }
 

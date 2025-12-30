@@ -5,16 +5,16 @@ import config from '../config';
 import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
-import { USER_ROLE, USER_STATUS } from '../constant/user.constant';
+import { TUserRole, USER_STATUS } from '../constant/user.constant';
 import { findUserByEmailOrId } from '../utils/findUserByEmailOrId';
 
-const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
+const auth = (...requiredRoles: TUserRole[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
 
     // checking if the token is missing
     if (!token) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!1');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const decoded = verifyToken(
@@ -45,11 +45,11 @@ const auth = (...requiredRoles: (keyof typeof USER_ROLE)[]) => {
         iat as number
       )
     ) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!3');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     if (requiredRoles && !requiredRoles.includes(role)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!4');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     req.user = decoded as JwtPayload;

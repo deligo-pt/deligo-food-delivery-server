@@ -3,3 +3,5 @@ dist
 .env
 .vercel
 
+/src/app/data
+.env*.local

@@ -5,8 +5,9 @@ import { Product } from '../Product/product.model';
 import { TCart } from './cart.interface';
 import { Cart } from './cart.model';
 import { Customer } from '../Customer/customer.model';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
-import { Coupon } from '../Coupon/coupon.model';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { recalculateCartTotals } from './cart.constant';
+import { Vendor } from '../Vendor/vendor.model';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
@@ -18,21 +19,31 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   if (!existingCustomer)
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
 
-  const customerId = currentUser.id;
+  const customerId = existingCustomer._id;
 
   // Product validation
   const { productId, quantity } = payload.items[0];
-  const existingProduct = await Product.findOne({ productId });
-
-  if (!existingProduct)
+  const existingProduct = await Product.findOne({ _id: productId });
+  if (!existingProduct) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-
+  }
+  if (existingProduct && existingProduct.vendorId) {
+    const existingVendor = await Vendor.findOne({
+      _id: existingProduct.vendorId,
+      isDeleted: false,
+    });
+    if (!existingVendor) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    }
+    if (existingVendor?.businessDetails?.isStoreOpen === false) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Store is closed');
+    }
+  }
   const newItem = {
     productId,
-    vendorId: existingProduct.vendor.vendorId,
-    quantity,
+    vendorId: existingProduct.vendorId,
     price: existingProduct.pricing.finalPrice,
-    name: existingProduct.name,
+    quantity,
     subtotal: existingProduct.pricing.finalPrice * quantity,
     isActive: true,
   };
@@ -50,7 +61,8 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       totalItems: quantity,
       totalPrice: newItem.subtotal,
       discount: 0,
-      couponCode: '',
+      subtotal: newItem.subtotal,
+      couponId: null,
     });
 
     await cart.save();
@@ -59,7 +71,9 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
   // Update or push item
   const activeItem = cart.items.find((i) => i.isActive === true);
-  const itemIndex = cart.items.findIndex((i) => i.productId === productId);
+  const itemIndex = cart.items.findIndex(
+    (i) => i.productId.toString() === productId.toString()
+  );
 
   if (itemIndex > -1) {
     const currentItem = cart.items[itemIndex];
@@ -70,89 +84,17 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     currentItem.quantity += quantity;
     currentItem.subtotal = currentItem.quantity * currentItem.price;
   } else {
-    if (activeItem && activeItem.vendorId !== newItem.vendorId) {
+    if (
+      activeItem &&
+      activeItem.vendorId.toString() !== newItem.vendorId.toString()
+    ) {
       newItem.isActive = false;
     }
     cart.items.push(newItem);
   }
 
   // always re-calculate active total (real-time)
-
-  const activeItems = cart.items.filter((i) => i.isActive === true);
-
-  const activeSubtotal = activeItems.reduce((sum, i) => sum + i.subtotal, 0);
-
-  cart.totalItems = activeItems.reduce((sum, i) => sum + i.quantity, 0);
-  cart.totalPrice = parseFloat(activeSubtotal.toFixed(2));
-
-  //  auto re-apply coupon if exists
-  if (cart.couponCode && cart.couponCode.trim() !== '') {
-    const couponCode = cart.couponCode.trim().toUpperCase();
-
-    const coupon = await Coupon.findOne({
-      code: couponCode,
-      isActive: true,
-      isDeleted: false,
-    });
-
-    // Coupon removed or invalid
-    if (!coupon) {
-      cart.discount = 0;
-      cart.couponCode = '';
-    } else {
-      const now = new Date();
-
-      // Expired coupon
-      if (
-        (coupon.validFrom && now < coupon.validFrom) ||
-        (coupon.expiresAt && now > coupon.expiresAt)
-      ) {
-        cart.discount = 0;
-        cart.couponCode = '';
-      } else {
-        // category validation
-        const productIds = activeItems.map((i) => i.productId);
-        const products = await Product.find({
-          productId: { $in: productIds },
-        }).select('productId category');
-
-        const cartCategories = products.map((p) => p.category.toLowerCase());
-
-        const couponCategories =
-          coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
-
-        if (
-          couponCategories.length &&
-          !cartCategories.some((cat) => couponCategories.includes(cat))
-        ) {
-          // Category mismatch → auto remove coupon
-          cart.discount = 0;
-          cart.couponCode = '';
-        } else {
-          // min purchase check (on active total)
-          if (coupon.minPurchase && cart.totalPrice < coupon.minPurchase) {
-            cart.discount = 0;
-          } else {
-            // final discount calculation
-            let discount = 0;
-
-            if (coupon.discountType === 'PERCENT') {
-              discount = (cart.totalPrice * coupon.discountValue) / 100;
-
-              if (coupon.maxDiscount)
-                discount = Math.min(discount, coupon.maxDiscount);
-            } else {
-              discount = coupon.discountValue;
-            }
-
-            cart.discount = parseFloat(discount.toFixed(2));
-            cart.couponCode = couponCode;
-          }
-        }
-      }
-    }
-  }
-
+  await recalculateCartTotals(cart);
   cart.markModified('items');
   await cart.save();
   return cart;
@@ -160,19 +102,30 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
 // active item Service
 const activateItem = async (currentUser: AuthUser, productId: string) => {
-  const customerId = currentUser.id;
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
+
+  const customerId = existingCustomer._id;
 
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
   // Item to activate
-  const itemToActivate = cart.items.find((i) => i.productId === productId);
+  const itemToActivate = cart.items.find(
+    (i) => i.productId.toString() === productId.toString()
+  );
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
 
-  const selectedVendorId = itemToActivate.vendorId;
+  const selectedVendorId = itemToActivate.vendorId.toString();
 
   // // Get existing active items
   const activeItems = cart.items.filter((i) => i.isActive === true);
@@ -181,7 +134,7 @@ const activateItem = async (currentUser: AuthUser, productId: string) => {
   if (activeItems.length > 0) {
     const activeVendorId = activeItems[0].vendorId;
 
-    if (activeVendorId !== selectedVendorId) {
+    if (activeVendorId.toString() !== selectedVendorId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'You can only select items from the same vendor'
@@ -195,6 +148,10 @@ const activateItem = async (currentUser: AuthUser, productId: string) => {
   } else {
     itemToActivate.isActive = false;
   }
+
+  // re-calculate active total
+  await recalculateCartTotals(cart);
+
   cart.markModified('items');
   await cart.save();
   const freshCart = await Cart.findOne({ customerId });
@@ -211,18 +168,28 @@ const updateCartItemQuantity = async (
     action: 'increment' | 'decrement';
   }
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
-  const customerId = currentUser.id;
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
+
+  const customerId = existingCustomer._id;
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
   const { productId, quantity, action } = payload;
-  const itemIndex = cart.items.findIndex((i) => i.productId === productId);
+  const itemIndex = cart.items.findIndex(
+    (i) => i.productId.toString() === productId
+  );
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
-  const product = await Product.findOne({ productId });
+  const product = await Product.findById(productId);
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
@@ -242,37 +209,71 @@ const updateCartItemQuantity = async (
     cart.items[itemIndex].quantity -= quantity;
     cart.items[itemIndex].subtotal -= cart.items[itemIndex].price * quantity;
   }
+
+  // re-calculate active total
+  await recalculateCartTotals(cart);
+
+  cart.markModified('items');
   await cart.save();
   return cart;
 };
 
 // delete cart item
 const deleteCartItem = async (currentUser: AuthUser, productId: string[]) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
-  const customerId = currentUser.id;
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
+
+  const customerId = existingCustomer._id;
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
   const filteredItems = cart.items.filter(
-    (item) => !productId.includes(item.productId)
+    (item) => !productId.includes(item.productId.toString())
   );
   if (filteredItems.length === cart.items.length) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
 
   cart.items = filteredItems;
+
+  // re-calculate active total
+  await recalculateCartTotals(cart);
+
+  cart.markModified('items');
   await cart.save();
   return cart;
 };
 
 // view cart Service
-const viewCart = async (user: AuthUser) => {
-  const customerId = user.id;
-  const cart = await Cart.findOne({ customerId });
+const viewCart = async (currentUser: AuthUser) => {
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const customerId = existingCustomer?._id;
+  const query = Cart.findOne({ customerId });
+
+  const populateOptions = getPopulateOptions('CUSTOMER', {
+    // customer: 'name',
+    itemVendor: 'name userId',
+    product: 'productId name',
+  });
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const cart = await query;
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
+
   return cart;
 };
 

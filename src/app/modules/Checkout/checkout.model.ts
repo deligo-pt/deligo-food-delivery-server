@@ -3,42 +3,77 @@ import { TCheckoutSummary } from './checkout.interface';
 
 const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
   {
-    customerId: { type: String, required: true },
-    customerEmail: { type: String, required: true },
-    vendorId: { type: String, required: true },
+    customerId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Customer',
+    },
+    customerEmail: { type: String, default: '' },
+    contactNumber: { type: String, default: '' },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
 
     items: [
       {
-        productId: { type: String, required: true },
+        productId: {
+          type: Schema.Types.ObjectId,
+          required: true,
+          ref: 'Product',
+        },
         name: { type: String, required: true },
+        image: { type: String },
+        variantName: { type: String },
+        addons: [
+          {
+            name: { type: String },
+            price: { type: Number },
+            quantity: { type: Number },
+          },
+        ],
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
+        taxRate: { type: Number, default: 0 },
         subtotal: { type: Number, required: true },
-        vendorId: { type: String, required: true },
-        estimatedDeliveryTime: { type: String, default: 'N/A' },
+        vendorId: {
+          type: Schema.Types.ObjectId,
+          required: true,
+          ref: 'Vendor',
+        },
       },
     ],
 
     totalItems: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
-    discount: { type: Number, default: 0 },
+    taxAmount: { type: Number, required: true },
     deliveryCharge: { type: Number, required: true },
-    finalAmount: { type: Number, required: true },
-    estimatedDeliveryTime: { type: String, default: 'N/A' },
-    couponCode: { type: String, default: undefined },
+    discount: { type: Number, default: 0 },
+    subTotal: { type: Number, required: true },
+
+    offerApplied: {
+      offerId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Offer',
+      },
+      title: { type: String },
+      offerType: { type: String },
+      discountValue: { type: Number },
+      maxDiscountAmount: { type: Number },
+      code: { type: String },
+    },
+
+    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
     deliveryAddress: {
-      street: String,
-      city: String,
+      label: { type: String },
+      street: { type: String, required: true },
+      city: { type: String, required: true },
       state: String,
-      country: String,
       postalCode: String,
-      longitude: Number,
-      latitude: Number,
+      longitude: { type: Number, required: true },
+      latitude: { type: Number, required: true },
       geoAccuracy: Number,
-      isActive: Boolean,
-      _id: String,
     },
+
+    estimatedDeliveryTime: { type: String, default: 'N/A' },
 
     paymentStatus: {
       type: String,
@@ -53,10 +88,9 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
 
     transactionId: { type: String, default: undefined },
 
-    orderId: { type: String, default: undefined },
+    orderId: { type: Schema.Types.ObjectId, default: null, ref: 'Order' },
 
     isConvertedToOrder: { type: Boolean, default: false },
-    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

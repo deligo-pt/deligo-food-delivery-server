@@ -35,4 +35,6 @@ export default {
   stripe_secret_key: process.env.STRIPE_SECRET_KEY,
   stripe_webhook_secret: process.env.STRIPE_WEBHOOK_SECRET,
   firebase_service_account: process.env.FIREBASE_SERVICE_ACCOUNT,
+  upstash_redis_rest_url: process.env.UPSTASH_REDIS_REST_URL,
+  upstash_redis_rest_token: process.env.UPSTASH_REDIS_REST_TOKEN,
 };

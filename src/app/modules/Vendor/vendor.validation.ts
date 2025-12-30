@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addressSchema } from '../Admin/admin.validation';
+import { addressValidationSchema } from '../Admin/admin.validation';
 
 // --------------------------------------------------
 // Vendor Update Validation Schema
@@ -17,7 +17,7 @@ export const vendorUpdateValidationSchema = z.object({
     contactNumber: z.string().optional(),
 
     // Address
-    address: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
 
     // Business Details
     businessDetails: z
@@ -34,7 +34,7 @@ export const vendorUpdateValidationSchema = z.object({
       .optional(),
 
     // Business Location
-    businessLocation: addressSchema.optional(),
+    businessLocation: addressValidationSchema.optional(),
 
     // Bank & Payment Information
     bankDetails: z
@@ -54,9 +54,36 @@ export const vendorUpdateValidationSchema = z.object({
 export const vendorDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z.enum(
-      ['businessLicenseDoc', 'taxDoc', 'idProof', 'storePhoto', 'menuUpload'],
+      [
+        'businessLicenseDoc',
+        'taxDoc',
+        'idProofFront',
+        'idProofBack',
+        'storePhoto',
+        'menuUpload',
+      ],
       { required_error: 'Document title is required' }
     ),
+  }),
+});
+
+// --------------------------------------------------
+// Vendor business location update validation schema
+// --------------------------------------------------
+export const vendorBusinessLocationUpdateValidationSchema = z.object({
+  body: z.object({
+    businessLocation: z.object({
+      street: z.string({ required_error: 'Street is required' }).min(1),
+      city: z.string({ required_error: 'City is required' }).min(1),
+      state: z.string({ required_error: 'State is required' }).min(1),
+      country: z.string({ required_error: 'Country is required' }).min(1),
+      postalCode: z
+        .string({ required_error: 'Postal code is required' })
+        .min(1),
+      longitude: z.number({ required_error: 'Longitude is required' }).min(1),
+      latitude: z.number({ required_error: 'Latitude is required' }).min(1),
+      geoAccuracy: z.number().optional(),
+    }),
   }),
 });
 
@@ -64,4 +91,5 @@ export const vendorDocImageValidationSchema = z.object({
 export const VendorValidation = {
   vendorUpdateValidationSchema,
   vendorDocImageValidationSchema,
+  vendorBusinessLocationUpdateValidationSchema,
 };

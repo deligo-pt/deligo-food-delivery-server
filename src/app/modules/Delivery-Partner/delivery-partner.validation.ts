@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addressSchema } from '../Admin/admin.validation';
+import { addressValidationSchema } from '../Admin/admin.validation';
 
 // ---------------------------------------------
 // Update Delivery Partner Data Validation Schema
@@ -13,17 +13,20 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       })
       .optional(),
     contactNumber: z.string().optional(),
-    address: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
+    operationalAddress: addressValidationSchema.optional(),
 
     // ---------------------------------------------------
     // GeoJSON location auto-set for backend $geoNear
     // ---------------------------------------------------
-    location: z
+    currentSessionLocation: z
       .object({
         type: z.literal('Point').optional().default('Point'),
         coordinates: z
           .tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)])
           .optional(),
+        accuracy: z.number().optional(),
+        lastLocationUpdate: z.date().optional(),
       })
       .optional(),
 
@@ -106,15 +109,24 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
   }),
 });
 
+const updateDeliveryPartnerLiveLocationValidationSchema = z.object({
+  body: z.object({
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+    accuracy: z.number().optional(),
+  }),
+});
+
 // ---------------------------------------------
 // Document Upload Validation Schema
 // ---------------------------------------------
 const deliveryPartnerDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z.enum([
-      'idDocumentFront',
-      'idDocumentBack',
-      'drivingLicense',
+      'idProofFront',
+      'idProofBack',
+      'drivingLicenseFront',
+      'drivingLicenseBack',
       'vehicleRegistration',
       'criminalRecordCertificate',
     ]),
@@ -124,5 +136,6 @@ const deliveryPartnerDocImageValidationSchema = z.object({
 // ---------------------------------------------
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
+  updateDeliveryPartnerLiveLocationValidationSchema,
   deliveryPartnerDocImageValidationSchema,
 };

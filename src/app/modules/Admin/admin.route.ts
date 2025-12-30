@@ -4,6 +4,8 @@ import { Router } from 'express';
 import { AdminControllers } from './admin.controller';
 import { AdminValidation } from './admin.validation';
 import { GlobalSettingControllers } from '../GlobalSetting/globalSetting.controller';
+import { multerUpload } from '../../config/multer.config';
+import { parseBody } from '../../middlewares/bodyParser';
 
 const router = Router();
 
@@ -13,6 +15,16 @@ router.patch(
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AdminValidation.updateAdminDataValidationSchema),
   AdminControllers.updateAdmin
+);
+
+// admin doc image upload route
+router.patch(
+  '/:adminId/docImage',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  multerUpload.single('file'),
+  parseBody,
+  validateRequest(AdminValidation.adminDocImageValidationSchema),
+  AdminControllers.adminDocImageUpload
 );
 
 // get all admin route

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+// create coupon validation schema
 const createCouponValidationSchema = z.object({
   body: z.object({
     code: z
@@ -25,6 +26,7 @@ const createCouponValidationSchema = z.object({
   }),
 });
 
+// update coupon validation schema
 export const updateCouponValidationSchema = z.object({
   body: z.object({
     code: z.string().optional(),
@@ -36,7 +38,6 @@ export const updateCouponValidationSchema = z.object({
     validFrom: z.coerce.date().optional(),
     expiresAt: z.coerce.date().optional(),
     applicableCategories: z.array(z.string()).optional(),
-    isActive: z.boolean().optional(),
     isDeleted: z.boolean().optional(),
   }),
 });
@@ -44,8 +45,8 @@ export const updateCouponValidationSchema = z.object({
 // apply coupon validation schema
 const applyCouponValidationSchema = z.object({
   body: z.object({
-    code: z
-      .string({ required_error: 'Coupon code is required' })
+    couponId: z
+      .string({ required_error: 'Coupon id is required' })
       .min(1, 'Please provide a valid coupon code'),
     type: z.enum(['CART', 'CHECKOUT'], {
       required_error: 'Type is required',

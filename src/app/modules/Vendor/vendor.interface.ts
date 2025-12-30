@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 
 // export type TVendorSchedule = {
@@ -7,13 +8,20 @@ import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 //   isClosed: boolean;
 // };
 
+export type TRegisteredByModel = 'Admin' | 'Vendor';
+
 export type TVendor = {
   // --------------------------------------------------------
   // Core Identifiers
   // --------------------------------------------------------
   _id?: string;
   userId: string;
-  role: 'VENDOR';
+  registeredBy?: {
+    id: mongoose.Types.ObjectId;
+    model: TRegisteredByModel;
+    role: 'ADMIN' | 'SUPER_ADMIN' | 'VENDOR';
+  };
+  role: 'VENDOR' | 'SUB_VENDOR';
   email: string;
   password: string;
 
@@ -24,6 +32,12 @@ export type TVendor = {
 
   // Push notifications
   fcmTokens?: string[];
+
+  // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
 
   // --------------------------------------------------------
   // OTP & Password Reset
@@ -72,7 +86,8 @@ export type TVendor = {
     closingDays?: string[]; // ["Friday", "Holidays"]
 
     // Operational Status
-    isOperational: boolean; // Simple ON/OFF switch for the vendor
+    isStoreOpen: boolean; // Simple ON/OFF switch for the vendor
+    storeClosedAt?: Date;
 
     // Zone Association
     deliveryZoneId: string; // The primary zone for assignment and pricing
@@ -119,7 +134,8 @@ export type TVendor = {
   documents?: {
     businessLicenseDoc?: string;
     taxDoc?: string;
-    idProof?: string;
+    idProofFront?: string;
+    idProofBack?: string;
     storePhoto?: string;
     menuUpload?: string;
   };
@@ -144,9 +160,9 @@ export type TVendor = {
   // --------------------------------------------------------
   // Admin Workflow / Audit
   // --------------------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
 
   submittedForApprovalAt?: Date;
   approvedOrRejectedOrBlockedAt?: Date;
@@ -164,7 +180,8 @@ export type TVendorImageDocuments = {
   docImageTitle:
     | 'businessLicenseDoc'
     | 'taxDoc'
-    | 'idProof'
+    | 'idProofFront'
+    | 'idProofBack'
     | 'storePhoto'
     | 'menuUpload';
 };

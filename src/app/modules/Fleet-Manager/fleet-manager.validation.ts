@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { addressSchema } from '../Admin/admin.validation';
+import { addressValidationSchema } from '../Admin/admin.validation';
 
 // ----------------------------------------------------
 // Fleet Manager Update Validation
 // ----------------------------------------------------
-export const fleetManagerUpdateValidationSchema = z.object({
+const fleetManagerUpdateValidationSchema = z.object({
   body: z.object({
     // Personal Details
     name: z
@@ -17,7 +17,7 @@ export const fleetManagerUpdateValidationSchema = z.object({
     contactNumber: z.string().optional(),
 
     // Address
-    address: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
 
     // Business Details
     businessDetails: z
@@ -28,7 +28,7 @@ export const fleetManagerUpdateValidationSchema = z.object({
       .optional(),
 
     // Business Location
-    businessLocation: addressSchema.optional(),
+    businessLocation: addressValidationSchema.optional(),
 
     // Bank & Payment Information
     bankDetails: z
@@ -61,9 +61,9 @@ export const fleetManagerUpdateValidationSchema = z.object({
 // ----------------------------------------------------
 // Document Upload Validation
 // ----------------------------------------------------
-export const fleetManagerDocImageValidationSchema = z.object({
+const fleetManagerDocImageValidationSchema = z.object({
   body: z.object({
-    docImageTitle: z.enum(['idProof', 'businessLicense'], {
+    docImageTitle: z.enum(['idProofFront', 'idProofBack', 'businessLicense'], {
       required_error: 'Document title is required',
     }),
   }),

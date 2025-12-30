@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { CheckoutSummary } from './checkout.model';
@@ -6,18 +7,16 @@ import { Vendor } from '../Vendor/vendor.model';
 import { Product } from '../Product/product.model';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
-import { GlobalSettingServices } from '../GlobalSetting/globalSetting.service';
 import { calculateDistance } from '../../utils/calculateDistance';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { TCheckoutPayload } from './checkout.interface';
+import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { OfferServices } from '../Offer/offer.service';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
-  const customerId = currentUser?.id;
-
   // ---------- Find Customer ----------
   const customer = await Customer.findOne({
-    userId: customerId,
+    userId: currentUser.id,
     isDeleted: false,
   });
   if (!customer) {
@@ -39,17 +38,23 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       'Please complete your profile before checking out'
     );
 
+  if (!customer.email && !customer.contactNumber) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please add email or contact number before checking out'
+    );
+  }
+
+  const customerId = customer._id.toString();
+
   // ---------- Get items ----------
   let selectedItems = [];
 
+  const cart = await Cart.findOne({ customerId, isDeleted: false });
   if (payload.useCart === true) {
-    // ====== Checkout using CART ======
-    const cart = await Cart.findOne({ customerId, isDeleted: false });
-
     if (!cart || cart.items.length === 0) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
     }
-
     const activeItems = cart.items.filter((i) => i.isActive === true);
 
     if (activeItems.length === 0) {
@@ -60,6 +65,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     }
 
     selectedItems = activeItems;
+    payload.discount = cart.discount;
   } else {
     // ====== DIRECT CHECKOUT ======
     if (!payload.items || payload.items.length === 0) {
@@ -83,23 +89,41 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       );
     }
 
+    const existingProduct = await Product.findOne({
+      _id: payload.items[0].productId,
+    });
+    if (!existingProduct) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Product not found');
+    }
+    const existingVendor = await Vendor.findOne({
+      _id: existingProduct.vendorId,
+      isDeleted: false,
+    });
+    if (!existingVendor) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Vendor not found');
+    }
+    if (existingVendor?.businessDetails?.isStoreOpen === false) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Store is closed');
+    }
+
     selectedItems = payload.items;
   }
 
   // ---------- Check Product Stock ----------
-  const productIds = selectedItems.map((i) => i.productId);
-  const products = await Product.find({ productId: { $in: productIds } });
+  const productIds = selectedItems.map((i) => i.productId.toString());
+  const products = await Product.find({ _id: { $in: productIds } });
   const deliveryAddress = customer?.deliveryAddresses?.find(
     (i) => i.isActive === true
   );
   const existingVendor = await Vendor.findOne({
-    userId: products[0].vendor.vendorId,
+    _id: products[0].vendorId.toString(),
   });
 
   const vendorLongitude = existingVendor?.businessLocation?.longitude;
   const vendorLatitude = existingVendor?.businessLocation?.latitude;
   const customerLongitude = deliveryAddress?.longitude;
   const customerLatitude = deliveryAddress?.latitude;
+
   if (
     !vendorLongitude ||
     !vendorLatitude ||
@@ -114,13 +138,14 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     customerLongitude,
     customerLatitude
   );
-  const deliveryChargePerMeter = await GlobalSettingServices.getPerMeterRate();
+  const deliveryChargePerMeter = await GlobalSettingsService.getPerMeterRate();
 
   const deliveryCharge = deliveryDistance.meters * deliveryChargePerMeter;
 
   const orderItems = selectedItems.map((item) => {
-    const product = products.find((p) => p.productId === item.productId);
-
+    const product = products.find(
+      (p) => p._id.toString() === item.productId.toString()
+    );
     if (!product)
       throw new AppError(
         httpStatus.NOT_FOUND,
@@ -134,12 +159,11 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       );
 
     return {
-      productId: product.productId,
-      name: product.name,
+      productId: product._id,
       quantity: item.quantity,
       price: product.pricing.finalPrice,
       subtotal: product.pricing.finalPrice * item.quantity,
-      vendorId: product.vendor.vendorId,
+      vendorId: product.vendorId,
       estimatedDeliveryTime: payload?.estimatedDeliveryTime || 'N/A',
     };
   });
@@ -150,18 +174,35 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   const totalPrice = parseFloat(rawTotalPrice.toFixed(2));
   const discount = Number(payload.discount || 0);
 
-  const finalAmount = parseFloat(
+  const subTotal = parseFloat(
     (totalPrice + deliveryCharge - discount).toFixed(2)
   );
 
   // Vendor check
-  const vendorIds = orderItems.map((i) => i.vendorId);
+  const vendorIds = orderItems.map((i) => i.vendorId.toString());
   if (new Set(vendorIds).size > 1) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You can only order products from ONE vendor at a time'
     );
   }
+
+  // Apply offer
+  const offer = await OfferServices.getApplicableOffer(
+    {
+      vendorId: orderItems[0].vendorId.toString(),
+      subtotal: totalPrice,
+      offerCode: payload.offerCode,
+    },
+    currentUser
+  );
+  console.log({ orderItems });
+  const offerResult = OfferServices.applyOffer({
+    offer,
+    items: orderItems,
+    subtotal: totalPrice,
+    deliveryCharge,
+  });
 
   // Delivery address
   const activeAddress = customer.deliveryAddresses?.find((a) => a.isActive);
@@ -174,32 +215,33 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   const summaryData = {
     customerId,
     customerEmail: customer?.email,
+    contactNumber: customer?.contactNumber,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
     discount: discount,
     totalItems,
     totalPrice,
-    deliveryCharge,
-    finalAmount,
+    deliveryCharge: deliveryCharge.toFixed(2),
+    subTotal,
     estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
     deliveryAddress: activeAddress,
+    couponId: cart?.couponId,
   };
-
   // -----------------------------------------------------------
   //  Prevent Duplicate Checkout Summary
   // -----------------------------------------------------------
   const existingSummary = await CheckoutSummary.findOne({
     customerId,
-    vendorId: orderItems[0].vendorId,
-    'items.productId': { $all: orderItems.map((i) => i.productId) },
-    finalAmount: finalAmount,
+    vendorId: orderItems[0].vendorId.toString(),
+    'items.productId': { $all: orderItems.map((i) => i.productId.toString()) },
+    subTotal,
     isConvertedToOrder: false,
   });
 
   if (existingSummary) {
     return {
       CheckoutSummaryId: existingSummary._id,
-      finalAmount: existingSummary.finalAmount,
+      subTotal: existingSummary.subTotal,
       items: existingSummary.items,
       vendorId: existingSummary.vendorId,
       reused: true,
@@ -210,7 +252,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 
   return {
     CheckoutSummaryId: summary._id,
-    finalAmount: summary.finalAmount,
+    subTotal: summary.subTotal,
     items: summary.items,
     vendorId: summary.vendorId,
   };
@@ -221,14 +263,27 @@ const getCheckoutSummary = async (
   checkoutSummaryId: string,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
+
+  if (existingCustomer.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view the order. Your account is ${existingCustomer.status}`
+    );
+  }
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
   if (!summary) {
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
   }
 
-  if (summary.customerId !== currentUser.id) {
+  if (summary.customerId.toString() !== existingCustomer._id.toString()) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'You are not authorized to view'

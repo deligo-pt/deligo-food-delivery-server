@@ -6,11 +6,15 @@ export const ORDER_STATUS = {
   DISPATCHING: 'DISPATCHING',
   ASSIGNED: 'ASSIGNED',
   REASSIGNMENT_NEEDED: 'REASSIGNMENT_NEEDED',
+  PREPARING: 'PREPARING',
+  READY_FOR_PICKUP: 'READY_FOR_PICKUP',
   PICKED_UP: 'PICKED_UP',
   ON_THE_WAY: 'ON_THE_WAY',
   DELIVERED: 'DELIVERED',
   CANCELED: 'CANCELED', // canceled (vendor/customer/admin)
 } as const;
+
+export type OrderStatus = keyof typeof ORDER_STATUS;
 
 export const BLOCKED_FOR_ORDER_CANCEL = [
   ORDER_STATUS.ASSIGNED,
@@ -22,9 +26,6 @@ export const BLOCKED_FOR_ORDER_CANCEL = [
 export const DELIVERY_SEARCH_TIERS_METERS = [3000, 4000, 5000];
 
 export const OrderSearchableFields = [
-  'orderId',
-  'customerId',
-  'vendorId',
   'deliveryAddress.street',
   'deliveryAddress.city',
   'deliveryAddress.country',

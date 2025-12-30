@@ -20,6 +20,23 @@ const updateAdmin = catchAsync(async (req, res) => {
   });
 });
 
+// admin doc image upload controller
+const adminDocImageUpload = catchAsync(async (req, res) => {
+  const file = req.file;
+  const result = await AdminServices.adminDocImageUpload(
+    file?.path,
+    req.body,
+    req.user as AuthUser,
+    req.params.adminId
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
 // Get all Admin Controller
 const getAllAdmins = catchAsync(async (req, res) => {
   const result = await AdminServices.getAllAdmins(req.query);
@@ -49,6 +66,7 @@ const getSingleAdmin = catchAsync(async (req, res) => {
 
 export const AdminControllers = {
   updateAdmin,
+  adminDocImageUpload,
   getAllAdmins,
   getSingleAdmin,
 };

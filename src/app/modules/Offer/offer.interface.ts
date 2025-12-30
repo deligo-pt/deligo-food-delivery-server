@@ -1,9 +1,12 @@
+import mongoose from 'mongoose';
+import { OfferType } from './offer.constant';
+
 export type TOffer = {
   _id?: string;
   title: string;
   description?: string;
   // Offer type
-  offerType: 'PERCENT' | 'FLAT' | 'FREE_DELIVERY' | 'BOGO';
+  offerType: OfferType;
   // Discount values
   discountValue?: number;
   maxDiscountAmount?: number;
@@ -20,7 +23,7 @@ export type TOffer = {
   endDate: Date;
 
   // Eligibility
-  vendorId?: string | null; // null = global offer
+  vendorId?: mongoose.Types.ObjectId | null; // null = global offer
   minOrderAmount?: number;
 
   // Auto apply or manual code (optional)
@@ -35,6 +38,7 @@ export type TOffer = {
   // Status
   isActive: boolean;
 
+  isDeleted: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };

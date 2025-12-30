@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 import { AddressType } from './customer.constant';
 
@@ -16,6 +17,12 @@ export type TCustomer = {
 
   // Push notifications
   fcmTokens?: string[];
+
+  // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
 
   // ------------------------------------------------------
   // OTP
@@ -47,6 +54,8 @@ export type TCustomer = {
     latitude?: number;
     geoAccuracy?: number;
   };
+
+  NIF?: string;
 
   // Operational Address
   operationalAddress?: {
@@ -86,7 +95,7 @@ export type TCustomer = {
     isActive: boolean;
 
     // Zone Integration & Metadata
-    zoneId?: string; // CRITICAL: Links address to a defined delivery zone
+    zoneId?: mongoose.Types.ObjectId; // CRITICAL: Links address to a defined delivery zone
     addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
     notes?: string; // Specific delivery instructions
   }>;
@@ -120,9 +129,9 @@ export type TCustomer = {
   // ------------------------------------------------------
   // Admin Workflow / Audit
   // ------------------------------------------------------
-  approvedBy?: string;
-  rejectedBy?: string;
-  blockedBy?: string;
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
   approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;
 

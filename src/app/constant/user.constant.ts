@@ -7,8 +7,11 @@ export const USER_ROLE = {
   CUSTOMER: 'CUSTOMER',
   FLEET_MANAGER: 'FLEET_MANAGER',
   VENDOR: 'VENDOR',
+  SUB_VENDOR: 'SUB_VENDOR',
   DELIVERY_PARTNER: 'DELIVERY_PARTNER',
 } as const;
+
+export type TUserRole = keyof typeof USER_ROLE;
 
 // User Status constant
 export const USER_STATUS = {
@@ -23,6 +26,7 @@ export const UrlPath = {
   CUSTOMER: '/register/create-customer',
   FLEET_MANAGER: '/register/create-fleet-manager',
   VENDOR: '/register/create-vendor',
+  SUB_VENDOR: '/register/create-sub-vendor',
   DELIVERY_PARTNER: '/register/create-delivery-partner',
   ADMIN: '/register/create-admin',
 } as const;
@@ -30,7 +34,7 @@ export const UrlPath = {
 export type AuthUser = {
   id: string;
   name: string;
-  role: keyof typeof USER_ROLE;
+  role: TUserRole;
   status: keyof typeof USER_STATUS;
   iat: number;
   exp: number;

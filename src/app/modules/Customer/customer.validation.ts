@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addressSchema } from '../Admin/admin.validation';
+import { addressValidationSchema } from '../Admin/admin.validation';
 
 // ---------------------------------------------
 // Update Customer Data Validation Schema
@@ -18,12 +18,12 @@ const updateCustomerDataValidationSchema = z.object({
     profilePhoto: z.string().optional(),
 
     // Main Customer Address
-    address: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
 
     // Delivery Addresses (multiple saved addresses)
     deliveryAddresses: z
       .array(
-        addressSchema.extend({
+        addressValidationSchema.extend({
           isActive: z.boolean().optional(),
         })
       )
@@ -36,10 +36,10 @@ const updateCustomerDataValidationSchema = z.object({
 // ---------------------------------------------
 const addDeliveryAddressValidationSchema = z.object({
   body: z.object({
-    deliveryAddress: addressSchema.extend({
+    deliveryAddress: addressValidationSchema.extend({
       isActive: z.boolean().optional(),
 
-      zoneId: z.string().optional(),
+      // zoneId: z.string().optional(),
       addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
       notes: z.string().optional(),
     }),

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addressSchema } from '../Admin/admin.validation';
+import { addressValidationSchema } from '../Admin/admin.validation';
 
 // ---------------------------------------------
 // User Profile Update Validation
@@ -25,10 +25,25 @@ const userProfileUpdateValidationSchema = z.object({
 
     profilePhoto: z.string().nullable().optional(),
 
-    address: addressSchema.optional(),
+    address: addressValidationSchema.optional(),
+  }),
+});
+
+// ---------------------------------------------
+// Update Contact Number Validation
+// ---------------------------------------------
+const updateContactNumberValidationSchema = z.object({
+  body: z.object({
+    contactNumber: z
+      .string({
+        required_error: 'Contact number is required',
+      })
+      .optional(),
+    email: z.string({ required_error: 'Email is required' }).optional(),
   }),
 });
 
 export const ProfileValidation = {
   userProfileUpdateValidationSchema,
+  updateContactNumberValidationSchema,
 };

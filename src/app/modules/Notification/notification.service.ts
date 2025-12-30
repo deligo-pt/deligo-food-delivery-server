@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser, USER_ROLE } from '../../constant/user.constant';
+import { AuthUser, TUserRole } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { sendPushNotification } from '../../utils/sendPushNotification';
@@ -35,83 +35,115 @@ const logNotification = async ({
   });
 };
 
+//  Helper: Send Push Notification
+const sendPushSafely = async (
+  tokens: string[],
+  payload: { title: string; body: string; data?: Record<string, string> }
+) => {
+  if (!tokens.length) return;
+
+  await Promise.allSettled(
+    tokens.map((token) =>
+      sendPushNotification(token, payload).catch((err) => {
+        console.error('Push send failed:', err);
+      })
+    )
+  );
+};
+
 //  Send to one user
-const sendToUser = async (
+const sendToUser = (
   userId: string,
   title: string,
   message: string,
   data?: Record<string, string>,
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER'
 ) => {
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const user = result?.user;
+  //  Detach from request lifecycle
+  setImmediate(async () => {
+    try {
+      const result = await findUserByEmailOrId({
+        userId,
+        isDeleted: false,
+      });
 
-  if (!user || !user.fcmTokens?.length) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `No tokens found for userId: ${userId}`
-    );
-  }
+      const user = result?.user;
+      if (!user) return;
 
-  const uniqueTokens = [...new Set(user.fcmTokens as string[])];
-  // Push notification
-  for (const token of uniqueTokens) {
-    await sendPushNotification(token, {
-      title,
-      body: message,
-      data,
-    });
-  }
+      const uniqueTokens = [...new Set((user.fcmTokens as string[]) || [])];
 
-  // Log in DB
-  await logNotification({
-    receiverId: user.userId,
-    receiverRole: user.role,
-    title,
-    message,
-    data,
-    type,
+      // Push notification (parallel)
+      await sendPushSafely(uniqueTokens, {
+        title,
+        body: message,
+        data,
+      });
+
+      // Save log (DB)
+      await logNotification({
+        receiverId: user.userId,
+        receiverRole: user.role,
+        title,
+        message,
+        data,
+        type,
+      });
+    } catch (err) {
+      console.error('sendToUser notification failed:', err);
+    }
   });
 };
 
 //  Send to role (bulk)
-const sendToRole = async (
-  role: keyof typeof USER_ROLE,
+const sendToRole = (
+  modelName: string,
+  roles: TUserRole[],
   title: string,
   message: string,
   data?: Record<string, string>,
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER'
 ) => {
-  const Model = ALL_USER_MODELS.find((m: any) => m.modelName === role);
-  if (!Model) return;
+  setImmediate(async () => {
+    try {
+      const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
+      if (!Model) return;
 
-  const users = await Model.find({
-    isDeleted: false,
-    fcmTokens: { $exists: true, $ne: [] },
-  });
-  for (const user of users) {
-    for (const token of user.fcmTokens) {
-      await sendPushNotification(token, { title, body: message, data });
+      const users = await Model.find({
+        isDeleted: false,
+        fcmTokens: { $exists: true, $ne: [] },
+        role: { $in: roles },
+      });
+
+      for (const user of users) {
+        const uniqueTokens = [...new Set((user.fcmTokens as string[]) || [])];
+
+        await sendPushSafely(uniqueTokens, {
+          title,
+          body: message,
+          data,
+        });
+
+        await logNotification({
+          receiverId: user.userId,
+          receiverRole: user.role,
+          title,
+          message,
+          data,
+          type,
+        });
+      }
+    } catch (err) {
+      console.error('sendToRole notification failed:', err);
     }
-
-    await logNotification({
-      receiverId: user.userId,
-      receiverRole: user.role,
-      title,
-      message,
-      data,
-      type,
-    });
-  }
+  });
 };
 
 // mark as read (one)
 const markAsRead = async (id: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
+  const { user } = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const user = result?.user;
 
   const notification = await Notification.findById(id);
   if (!notification) {
@@ -131,11 +163,10 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
 
 // mark as read (all)
 const markAllAsRead = async (currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
+  const { user } = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const user = result?.user;
   await Notification.updateMany({ receiverId: user.userId }, { isRead: true });
   return null;
 };
@@ -166,10 +197,215 @@ const getAllNotifications = async (
   return { meta, data };
 };
 
+// soft delete single notification
+const softDeleteSingleNotification = async (
+  id: string,
+  currentUser: AuthUser
+) => {
+  // --------------------------------------------------
+  // Build query condition
+  // --------------------------------------------------
+  const query: any = {
+    _id: id,
+    isDeleted: false,
+  };
+
+  // If NOT super admin, restrict to own notification
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    query.receiverId = currentUser.id;
+  }
+
+  // --------------------------------------------------
+  // Find notification
+  // --------------------------------------------------
+  const notification = await Notification.findOne(query);
+
+  if (!notification) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Notification not found or access denied'
+    );
+  }
+
+  // --------------------------------------------------
+  // Soft delete
+  // --------------------------------------------------
+  notification.isDeleted = true;
+  await notification.save();
+
+  return {
+    message: 'Notification deleted successfully',
+  };
+};
+
+// soft delete multiple notifications
+const softDeleteMultipleNotifications = async (
+  notificationIds: string[],
+  currentUser: AuthUser
+) => {
+  if (!notificationIds.length) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
+  }
+
+  // --------------------------------------------------
+  // Build delete condition
+  // --------------------------------------------------
+  const query: any = {
+    _id: { $in: notificationIds },
+    isDeleted: false,
+  };
+
+  // Restrict only if NOT super admin
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    query.receiverId = currentUser.id;
+  }
+
+  // --------------------------------------------------
+  // Bulk soft delete
+  // --------------------------------------------------
+  const result = await Notification.updateMany(query, {
+    $set: { isDeleted: true },
+  });
+
+  return {
+    message: `${result.modifiedCount} notifications deleted successfully`,
+  };
+};
+
+// soft delete all notifications
+const softDeleteAllNotifications = async (currentUser: AuthUser) => {
+  // --------------------------------------------------
+  // Build query condition
+  // --------------------------------------------------
+  const query: any = {
+    isDeleted: false,
+  };
+
+  // Only restrict if NOT super admin
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    query.receiverId = currentUser.id;
+  }
+
+  // --------------------------------------------------
+  // Bulk soft delete
+  // --------------------------------------------------
+  const result = await Notification.updateMany(query, {
+    $set: { isDeleted: true },
+  });
+
+  return {
+    message: `${result.modifiedCount} notifications deleted successfully`,
+  };
+};
+
+// permanent delete single notification - only for super admin
+const permanentDeleteSingleNotification = async (
+  id: string,
+  currentUser: AuthUser
+) => {
+  // --------------------------------------------------
+  // Only SUPER_ADMIN allowed
+  // --------------------------------------------------
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only super admin can permanently delete notifications'
+    );
+  }
+
+  // --------------------------------------------------
+  // Must be soft deleted first
+  // --------------------------------------------------
+  const notification = await Notification.findOne({
+    _id: id,
+    isDeleted: true,
+  });
+
+  if (!notification) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Notification must be soft deleted before permanent delete'
+    );
+  }
+
+  await Notification.deleteOne({ _id: id });
+
+  return {
+    message: 'Notification permanently deleted successfully',
+  };
+};
+
+// permanent delete multiple notifications - only for super admin
+const permanentDeleteMultipleNotifications = async (
+  notificationIds: string[],
+  currentUser: AuthUser
+) => {
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only super admin can permanently delete notifications'
+    );
+  }
+
+  if (!notificationIds.length) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
+  }
+
+  // --------------------------------------------------
+  // Delete ONLY already soft-deleted notifications
+  // --------------------------------------------------
+  const result = await Notification.deleteMany({
+    _id: { $in: notificationIds },
+    isDeleted: true,
+  });
+
+  if (result.deletedCount === 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Selected notifications must be soft deleted first'
+    );
+  }
+
+  return {
+    message: `${result.deletedCount} notifications permanently deleted successfully`,
+  };
+};
+
+// permanent delete all notifications - only for super admin
+const permanentDeleteAllNotifications = async (currentUser: AuthUser) => {
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only super admin can permanently delete notifications'
+    );
+  }
+
+  const result = await Notification.deleteMany({
+    isDeleted: true,
+  });
+
+  if (result.deletedCount === 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'No soft-deleted notifications found to permanently delete'
+    );
+  }
+
+  return {
+    message: `${result.deletedCount} notifications permanently deleted successfully`,
+  };
+};
+
 export const NotificationService = {
   sendToUser,
   sendToRole,
   markAsRead,
   markAllAsRead,
   getAllNotifications,
+  softDeleteSingleNotification,
+  softDeleteMultipleNotifications,
+  softDeleteAllNotifications,
+  permanentDeleteSingleNotification,
+  permanentDeleteMultipleNotifications,
+  permanentDeleteAllNotifications,
 };

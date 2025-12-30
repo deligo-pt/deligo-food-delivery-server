@@ -17,6 +17,7 @@ const createBusinessCategory = async (
   if (exists) {
     throw new AppError(httpStatus.CONFLICT, 'Business category already exists');
   }
+  payload.name = payload.name.toUpperCase();
 
   // generate slug
   payload.slug = payload.name
@@ -164,7 +165,7 @@ const createProductCategory = async (
   if (exists) {
     throw new AppError(httpStatus.CONFLICT, 'Product category already exists');
   }
-
+  payload.name = payload.name.toUpperCase();
   payload.slug = payload.name
     .toLowerCase()
     .replace(/[^\w ]+/g, '')

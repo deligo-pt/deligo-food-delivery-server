@@ -17,6 +17,7 @@ export const ALL_USER_MODELS = [
 
 export const USER_MODEL_MAP = {
   '/create-vendor': { Model: Vendor, idField: 'userId' },
+  '/create-sub-vendor': { Model: Vendor, idField: 'userId' },
   '/create-fleet-manager': { Model: FleetManager, idField: 'userId' },
   '/create-customer': { Model: Customer, idField: 'userId' },
   '/create-admin': { Model: Admin, idField: 'userId' },

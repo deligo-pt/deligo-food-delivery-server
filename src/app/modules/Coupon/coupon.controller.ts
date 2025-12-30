@@ -13,8 +13,8 @@ const createCoupon = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Coupon created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -36,9 +36,9 @@ const updateCoupon = catchAsync(async (req, res) => {
 
 // apply coupon controller
 const applyCoupon = catchAsync(async (req, res) => {
-  const { code, type } = req.body;
+  const { couponId, type } = req.body;
   const result = await CouponServices.applyCoupon(
-    code,
+    couponId,
     req.user as AuthUser,
     type
   );
@@ -46,6 +46,55 @@ const applyCoupon = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Coupon applied successfully',
+    data: result,
+  });
+});
+
+// toggle coupon controller
+const toggleCouponStatus = catchAsync(async (req, res) => {
+  const { couponId } = req.params;
+  const result = await CouponServices.toggleCouponStatus(
+    couponId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// get coupon analytics controller
+const getCouponAnalytics = catchAsync(async (req, res) => {
+  const { couponId } = req.params;
+
+  const result = await CouponServices.getCouponAnalytics(
+    couponId,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Coupon analytics retrieved successfully',
+    data: result,
+  });
+});
+
+// get coupon monthly analytics controller
+const getCouponMonthlyAnalytics = catchAsync(async (req, res) => {
+  const { couponId } = req.params;
+
+  const result = await CouponServices.getCouponMonthlyAnalytics(
+    couponId,
+    req.user as AuthUser
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Monthly coupon analytics retrieved successfully',
     data: result,
   });
 });
@@ -114,6 +163,9 @@ export const CouponControllers = {
   createCoupon,
   updateCoupon,
   applyCoupon,
+  toggleCouponStatus,
+  getCouponAnalytics,
+  getCouponMonthlyAnalytics,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,

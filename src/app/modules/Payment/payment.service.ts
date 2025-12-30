@@ -13,14 +13,12 @@ const createPaymentIntent = async (checkoutSummaryId: string) => {
   }
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
-
   if (!summary) {
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
   }
 
-  // Create PaymentIntent
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(summary.finalAmount * 100),
+  const paymentIntentPayload: Stripe.PaymentIntentCreateParams = {
+    amount: Math.round(summary.subTotal * 100),
     currency: 'eur',
     description: 'Order Payment',
     metadata: {
@@ -28,12 +26,17 @@ const createPaymentIntent = async (checkoutSummaryId: string) => {
       customerId: summary.customerId.toString(),
       vendorId: summary.vendorId.toString(),
     },
-    receipt_email: summary.customerEmail,
     payment_method_types: ['card'],
-    // automatic_payment_methods: {
-    //   enabled: true,
-    // },
-  });
+  };
+
+  if (summary?.customerEmail) {
+    paymentIntentPayload.receipt_email = summary.customerEmail;
+  }
+
+  // Create PaymentIntent
+  const paymentIntent = await stripe.paymentIntents.create(
+    paymentIntentPayload
+  );
 
   return {
     clientSecret: paymentIntent.client_secret,

@@ -16,6 +16,11 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       required: true,
       unique: true,
     },
+    registeredBy: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Admin',
+    },
     role: {
       type: String,
       enum: ['ADMIN', 'SUPER_ADMIN'],
@@ -59,6 +64,12 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     },
 
     // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
+    // --------------------------------------------------------
     // OTP & Password Reset
     // --------------------------------------------------------
     otp: { type: String },
@@ -66,6 +77,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
 
     passwordResetToken: { type: String, default: null },
     passwordResetTokenExpiresAt: { type: Date, default: null },
+    passwordChangedAt: { type: Date, default: null },
 
     // --------------------------------------------------------
     // Personal Details
@@ -75,6 +87,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       lastName: { type: String, default: '' },
     },
     contactNumber: { type: String, default: '' },
+    profilePhoto: { type: String, default: '' },
 
     address: {
       street: { type: String, default: '' },
@@ -87,15 +100,14 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       geoAccuracy: { type: Number, default: null },
     },
 
-    profilePhoto: { type: String, default: '' },
-    passwordChangedAt: { type: Date, default: null },
+    NIF: { type: String, default: '' },
 
-    // --------------------------------------------------------
-    // Permissions
-    // --------------------------------------------------------
-    permissions: {
-      type: [String],
-      default: [],
+    // ---------------------------------------------
+    // Documents & Verification
+    // ---------------------------------------------
+    documents: {
+      idProofFront: { type: String, default: '' },
+      idProofBack: { type: String, default: '' },
     },
 
     // --------------------------------------------------------
@@ -111,11 +123,19 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     },
 
     // --------------------------------------------------------
+    // Permissions
+    // --------------------------------------------------------
+    permissions: {
+      type: [String],
+      default: [],
+    },
+
+    // --------------------------------------------------------
     // Admin Workflow & Audit
     // --------------------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
 
     submittedForApprovalAt: {
       type: Date,
@@ -141,3 +161,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
 adminSchema.plugin(passwordPlugin);
 
 export const Admin = model<TAdmin, IUserModel<TAdmin>>('Admin', adminSchema);
+
+export type TAdminImageDocuments = {
+  docImageTitle: 'idProofFront' | 'idProofBack';
+};

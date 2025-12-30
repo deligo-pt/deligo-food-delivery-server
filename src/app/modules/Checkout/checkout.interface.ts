@@ -1,53 +1,40 @@
-export type TCheckoutItem = {
-  productId: string;
-  name: string;
-  quantity: number;
-  price: number;
-  subtotal: number;
-  vendorId: string;
-  estimatedDeliveryTime?: string;
-};
+import mongoose from 'mongoose';
 
-export type TCheckoutAddress = {
-  street?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postalCode?: string;
-  longitude?: number;
-  latitude?: number;
-  geoAccuracy?: number;
-  isActive?: boolean;
-  _id?: string;
-};
+import {
+  TAddress,
+  TAppliedOfferSnapshot,
+  TOrderItemSnapshot,
+} from '../../constant/order.constant';
 
 export type TCheckoutSummary = {
-  _id?: string;
+  customerId: mongoose.Types.ObjectId;
 
-  customerId: string;
-  customerEmail: string;
-  vendorId: string;
+  customerEmail?: string; // will check is it need?
+  contactNumber?: string; // will check is it need?
 
-  items: TCheckoutItem[];
+  vendorId: mongoose.Types.ObjectId;
 
+  items: TOrderItemSnapshot[];
   totalItems: number;
+
   totalPrice: number;
   discount: number;
   deliveryCharge: number;
-  finalAmount: number;
-  couponCode?: string;
+  taxAmount: number;
+  subTotal: number;
+
+  offerApplied?: TAppliedOfferSnapshot;
+  couponId?: mongoose.Types.ObjectId;
+
+  deliveryAddress: TAddress;
   estimatedDeliveryTime: string;
 
-  deliveryAddress: TCheckoutAddress;
-
-  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
   paymentMethod?: 'CARD' | 'MOBILE';
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
   transactionId?: string; // Stripe PaymentIntent ID
-  orderId?: string; // Linked Order ID
 
   isConvertedToOrder?: boolean;
-
-  isDeleted?: boolean;
+  orderId?: mongoose.Types.ObjectId; // Linked Order ID
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -57,10 +44,11 @@ export type TCheckoutPayload = {
   useCart?: boolean;
 
   items?: {
-    productId: string;
+    productId: mongoose.Types.ObjectId;
     quantity: number;
   }[];
 
-  estimatedDeliveryTime?: string;
+  offerCode?: string;
   discount?: number;
+  estimatedDeliveryTime?: string;
 };

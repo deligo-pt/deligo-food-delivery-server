@@ -58,9 +58,101 @@ const getAllNotifications = catchAsync(async (req, res) => {
   });
 });
 
+// soft delete single notification controller
+const softDeleteSingleNotification = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const result = await NotificationService.softDeleteSingleNotification(
+    id,
+    req?.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// soft delete multiple notifications controller
+const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
+  const { notificationIds } = req.body;
+  const result = await NotificationService.softDeleteMultipleNotifications(
+    notificationIds,
+    req?.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// soft delete all notifications controller
+const softDeleteAllNotifications = catchAsync(async (req, res) => {
+  const result = await NotificationService.softDeleteAllNotifications(
+    req?.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// Permanent Delete Single Notification Controller
+const permanentDeleteSingleNotification = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const result = await NotificationService.permanentDeleteSingleNotification(
+    id,
+    req?.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// Permanent Delete Multiple Notification Controller
+const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
+  const { notificationIds } = req.body;
+  const result = await NotificationService.permanentDeleteMultipleNotifications(
+    notificationIds,
+    req?.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
+// Permanent Delete All Notification Controller
+const permanentDeleteAllNotifications = catchAsync(async (req, res) => {
+  const result = await NotificationService.permanentDeleteAllNotifications(
+    req?.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 export const NotificationControllers = {
   getMyNotifications,
   markAsRead,
   markAllAsRead,
   getAllNotifications,
+  softDeleteSingleNotification,
+  softDeleteMultipleNotifications,
+  softDeleteAllNotifications,
+  permanentDeleteSingleNotification,
+  permanentDeleteMultipleNotifications,
+  permanentDeleteAllNotifications,
 };

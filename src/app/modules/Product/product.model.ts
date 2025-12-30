@@ -5,12 +5,14 @@ import { TProduct } from './product.interface';
 const productSchema = new Schema<TProduct>(
   {
     productId: { type: String, required: true, unique: true },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     sku: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     slug: { type: String, required: true },
     description: { type: String },
     isDeleted: { type: Boolean, default: false },
     isApproved: { type: Boolean, default: true },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     remarks: { type: String },
 
     category: { type: String, required: true },
@@ -37,16 +39,6 @@ const productSchema = new Schema<TProduct>(
 
     images: [{ type: String }],
 
-    vendor: {
-      vendorId: { type: String, required: true },
-      vendorName: { type: String },
-      vendorType: { type: String },
-      storePhoto: { type: String },
-      longitude: { type: Number },
-      latitude: { type: Number },
-      rating: { type: Number },
-    },
-
     tags: [{ type: String }],
 
     attributes: { type: Schema.Types.Mixed, default: {} },
@@ -59,7 +51,7 @@ const productSchema = new Schema<TProduct>(
     meta: {
       isFeatured: { type: Boolean, default: false },
       isAvailableForPreOrder: { type: Boolean, default: false },
-      status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+      status: { type: String, enum: ['ACTIVE', 'INACTIVE'], default: 'ACTIVE' },
       origin: { type: String },
       createdAt: { type: Date, default: Date.now },
       updatedAt: { type: Date, default: Date.now },

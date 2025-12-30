@@ -25,6 +25,24 @@ router.patch(
   validateRequest(VendorValidation.vendorDocImageValidationSchema),
   VendorControllers.vendorDocImageUpload
 );
+
+// Vendor business location update route
+router.patch(
+  '/:vendorId/businessLocation',
+  auth('VENDOR'),
+  validateRequest(
+    VendorValidation.vendorBusinessLocationUpdateValidationSchema
+  ),
+  VendorControllers.vendorBusinessLocationUpdate
+);
+
+// Vendor toggle store open close route
+router.patch(
+  '/toggle/store-open-close',
+  auth('VENDOR'),
+  VendorControllers.toggleVendorStoreOpenClose
+);
+
 // get all vendors
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);
 // get single vendor

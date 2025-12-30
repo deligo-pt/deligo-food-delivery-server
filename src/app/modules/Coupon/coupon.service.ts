@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { TCoupon } from './coupon.interface';
@@ -8,6 +9,10 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { Types } from 'mongoose';
+import { Customer } from '../Customer/customer.model';
+import { Order } from '../Order/order.model';
 
 // create coupon service
 const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
@@ -58,12 +63,19 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Coupon already exists');
 
   // Set creator
-  payload.createdBy = loggedInUser.userId;
+  if (loggedInUser.role === 'ADMIN' || loggedInUser.role === 'SUPER_ADMIN') {
+    payload.adminId = loggedInUser._id;
+  } else if (loggedInUser.role === 'VENDOR') {
+    payload.vendorId = loggedInUser._id;
+  }
 
   // Create coupon
   const newCoupon = await Coupon.create(payload);
 
-  return newCoupon;
+  return {
+    message: `Coupon created successfully by ${loggedInUser.role}`,
+    data: newCoupon,
+  };
 };
 
 // update coupon service
@@ -78,7 +90,6 @@ const updateCoupon = async (
     isDeleted: false,
   });
   const loggedInUser = result.user;
-
   if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -93,14 +104,31 @@ const updateCoupon = async (
   if (existingCoupon.isDeleted)
     throw new AppError(httpStatus.BAD_REQUEST, 'Cannot update deleted coupon');
 
-  if (
-    loggedInUser.role === 'VENDOR' &&
-    existingCoupon.createdBy !== loggedInUser.userId
-  ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Vendors can only update their own coupons'
-    );
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role);
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(loggedInUser.role);
+
+  if (isVendor) {
+    if (
+      !existingCoupon.vendorId ||
+      existingCoupon.vendorId.toString() !== loggedInUser._id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'Vendors can only update their own coupons'
+      );
+    }
+  }
+
+  if (isAdmin) {
+    if (
+      !existingCoupon.adminId ||
+      existingCoupon.adminId.toString() !== loggedInUser._id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'Admins can only update their own coupons'
+      );
+    }
   }
 
   // Normalize code
@@ -152,18 +180,22 @@ const updateCoupon = async (
 
 // apply coupon service
 const applyCoupon = async (
-  code: string,
+  couponId: string,
   currentUser: AuthUser,
   type: 'CART' | 'CHECKOUT'
 ) => {
-  // Ensure user exists
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
 
-  code = code.trim().toUpperCase();
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
 
   // Find coupon
   const coupon = await Coupon.findOne({
-    code,
+    _id: couponId,
     isActive: true,
     isDeleted: false,
   });
@@ -183,14 +215,13 @@ const applyCoupon = async (
   // cart flow — active items only
   if (type === 'CART') {
     const cart = await Cart.findOne({
-      customerId: currentUser.id,
+      customerId: existingCustomer._id,
       isDeleted: false,
     });
-
     if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
     // Prevent duplicate apply
-    if (cart.couponCode === code) {
+    if (cart.couponId?.toString() === couponId.toString()) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'This coupon is already applied'
@@ -212,15 +243,15 @@ const applyCoupon = async (
     const finalActiveSubtotal = parseFloat(activeSubtotal.toFixed(2));
 
     //  category validation from db
-    const productIds = activeItems.map((i) => i.productId);
+    const productIds = activeItems.map((i) => i.productId.toString());
     const products = await Product.find({
-      productId: { $in: productIds },
+      _id: { $in: productIds },
     }).select('productId category');
 
     // vendor validation
-    if (coupon.createdBy?.startsWith('V-')) {
+    if (coupon.vendorId) {
       const isVendorProductMatched = products.some(
-        (p) => p.vendor?.vendorId === coupon.createdBy
+        (p) => p.vendorId.toString() === coupon.vendorId.toString()
       );
 
       if (!isVendorProductMatched) {
@@ -267,8 +298,8 @@ const applyCoupon = async (
 
     // save final values
     cart.discount = parseFloat(discount.toFixed(2));
-    cart.couponCode = code;
-    cart.totalPrice = finalActiveSubtotal;
+    cart.couponId = new Types.ObjectId(couponId);
+    cart.subtotal = finalActiveSubtotal;
     await cart.save();
 
     return null;
@@ -277,16 +308,16 @@ const applyCoupon = async (
   // checkout flow — active items only
   if (type === 'CHECKOUT') {
     const checkout = await CheckoutSummary.findOne({
-      customerId: currentUser.id,
+      customerId: existingCustomer._id,
       isConvertedToOrder: false,
       isDeleted: false,
-    });
+    }).sort({ createdAt: -1 });
 
     if (!checkout) {
       throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
     }
 
-    if (checkout.couponCode === code) {
+    if (checkout.couponId?.toString() === couponId.toString()) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'This coupon is already applied'
@@ -294,10 +325,10 @@ const applyCoupon = async (
     }
 
     const products = await Product.find({
-      productId: { $in: checkout.items.map((i) => i.productId) },
+      _id: { $in: checkout.items.map((i) => i.productId) },
     }).select('productId category');
-
     const cartCategories = products.map((p) => p.category.toLowerCase());
+
     const couponCategories =
       coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
 
@@ -332,13 +363,13 @@ const applyCoupon = async (
       discount = coupon.discountValue;
     }
 
-    const finalAmount = checkOutTotalPrice - discount + checkout.deliveryCharge;
+    const subTotal = checkOutTotalPrice - discount + checkout.deliveryCharge;
 
     // final save
     checkout.totalPrice = checkOutTotalPrice;
     checkout.discount = parseFloat(discount.toFixed(2));
-    checkout.couponCode = code;
-    checkout.finalAmount = parseFloat(finalAmount.toFixed(2));
+    checkout.couponId = new Types.ObjectId(couponId);
+    checkout.subTotal = parseFloat(subTotal.toFixed(2));
     await checkout.save();
 
     return null;
@@ -347,19 +378,271 @@ const applyCoupon = async (
   return null;
 };
 
+// toggle coupon status service
+const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
+  const result = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update coupons. Your account is ${loggedInUser.status}`
+    );
+  }
+  const coupon = await Coupon.findById(couponId);
+  if (!coupon) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+  if (
+    (loggedInUser.role === 'VENDOR' || loggedInUser.role === 'SUB_VENDOR') &&
+    coupon.vendorId.toString() !== loggedInUser._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this coupon'
+    );
+  }
+
+  coupon.isActive = !coupon.isActive;
+  await coupon.save();
+  return {
+    message: `Coupon status updated to ${
+      coupon.isActive ? 'active' : 'inactive'
+    } `,
+  };
+};
+
+// get coupon analytics service
+const getCouponAnalytics = async (couponId: string, currentUser: AuthUser) => {
+  // --------------------------------------------------
+  // Validate user
+  // --------------------------------------------------
+  const { user: loggedInUser } = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved. Status: ${loggedInUser.status}`
+    );
+  }
+
+  // --------------------------------------------------
+  // Validate coupon
+  // --------------------------------------------------
+  const coupon = await Coupon.findById(couponId).lean();
+  if (!coupon) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+
+  const couponObjectId = new Types.ObjectId(couponId);
+
+  // --------------------------------------------------
+  // Base match (vendor-aware)
+  // --------------------------------------------------
+  const orderMatch: any = {
+    couponId: couponObjectId,
+    paymentStatus: 'COMPLETED',
+    isDeleted: false,
+  };
+
+  if (['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role)) {
+    orderMatch.vendorId = loggedInUser._id;
+  }
+
+  // --------------------------------------------------
+  // Date ranges
+  // --------------------------------------------------
+  const now = new Date();
+
+  const currentStart = new Date(now);
+  currentStart.setDate(now.getDate() - 7);
+
+  const previousStart = new Date(currentStart);
+  previousStart.setDate(currentStart.getDate() - 7);
+
+  // --------------------------------------------------
+  // Usage + Revenue + Boost in ONE query
+  // --------------------------------------------------
+  const statsAgg = await Order.aggregate([
+    { $match: orderMatch },
+    {
+      $facet: {
+        total: [
+          {
+            $group: {
+              _id: null,
+              usage: { $sum: 1 },
+              revenueImpact: { $sum: '$discount' },
+            },
+          },
+        ],
+        current: [
+          { $match: { createdAt: { $gte: currentStart } } },
+          { $count: 'count' },
+        ],
+        previous: [
+          {
+            $match: {
+              createdAt: { $gte: previousStart, $lt: currentStart },
+            },
+          },
+          { $count: 'count' },
+        ],
+      },
+    },
+  ]);
+
+  const usage = statsAgg[0]?.total[0]?.usage || 0;
+  const revenueImpact = Number(
+    (statsAgg[0]?.total[0]?.revenueImpact || 0).toFixed(2)
+  );
+
+  const currentUsage = statsAgg[0]?.current[0]?.count || 0;
+  const previousUsage = statsAgg[0]?.previous[0]?.count || 0;
+
+  let boost = 0;
+  if (previousUsage === 0 && currentUsage > 0) boost = 100;
+  else if (previousUsage > 0 && currentUsage === 0) boost = -100;
+  else if (previousUsage > 0)
+    boost = Math.round(((currentUsage - previousUsage) / previousUsage) * 100);
+
+  // --------------------------------------------------
+  // Top items (separate but indexed)
+  // --------------------------------------------------
+  const topItemsAgg = await Order.aggregate([
+    { $match: orderMatch },
+    { $unwind: '$items' },
+    {
+      $group: {
+        _id: '$items.productId',
+        quantity: { $sum: '$items.quantity' },
+      },
+    },
+    { $sort: { quantity: -1 } },
+    { $limit: 3 },
+  ]);
+
+  const productIds = topItemsAgg.map((i) => i._id);
+
+  const products = await Product.find({
+    _id: { $in: productIds },
+  })
+    .select('name')
+    .lean();
+
+  const productMap = new Map(products.map((p) => [p._id.toString(), p.name]));
+
+  const topItems = topItemsAgg.map((i) => ({
+    productId: i._id,
+    name: productMap.get(i._id.toString()) || 'Unknown',
+    quantity: i.quantity,
+  }));
+
+  // --------------------------------------------------
+  // Final response
+  // --------------------------------------------------
+  return {
+    couponId,
+    couponCode: coupon.code,
+    usage,
+    boost,
+    revenueImpact,
+    topItems,
+  };
+};
+
+// get coupon monthly analytics service
+const getCouponMonthlyAnalytics = async (
+  couponId: string,
+  currentUser: AuthUser
+) => {
+  const { user: loggedInUser } = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(httpStatus.FORBIDDEN, 'Not approved');
+  }
+
+  const coupon = await Coupon.findById(couponId);
+  if (!coupon) throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+
+  const match: any = {
+    couponId: new Types.ObjectId(couponId),
+    paymentStatus: 'COMPLETED',
+    isDeleted: false,
+  };
+
+  // Vendor-only data
+  if (['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role)) {
+    match.vendorId = loggedInUser._id;
+  }
+
+  // Last 12 months
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - 11);
+  startDate.setDate(1);
+
+  const monthlyData = await Order.aggregate([
+    {
+      $match: {
+        ...match,
+        createdAt: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+        },
+        usage: { $sum: 1 },
+        revenueImpact: { $sum: '$discount' },
+      },
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1 } },
+  ]);
+
+  // Format for frontend
+  const formatted = monthlyData.map((item) => {
+    const date = new Date(item._id.year, item._id.month - 1);
+    return {
+      month: date.toLocaleString('en-US', {
+        month: 'short',
+        year: 'numeric',
+      }),
+      usage: item.usage,
+      revenueImpact: Number(item.revenueImpact.toFixed(2)),
+    };
+  });
+
+  return {
+    couponId,
+    couponCode: coupon.code,
+    monthlyAnalytics: formatted,
+  };
+};
+
 // get all coupons service
 const getAllCoupons = async (
   currentUser: AuthUser,
   query: Record<string, unknown>
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view coupons. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to view coupons. Your account is ${loggedInUser.status}`
     );
   }
 
@@ -369,6 +652,15 @@ const getAllCoupons = async (
     .paginate()
     .fields()
     .search(['code', 'description']);
+
+  const populateOptions = getPopulateOptions(loggedInUser.role, {
+    vendor: 'name userId role',
+    admin: 'name userId role',
+  });
+  populateOptions.forEach((option) => {
+    coupons.modelQuery = coupons.modelQuery.populate(option);
+  });
+
   const meta = await coupons.countTotal();
   const data = await coupons.modelQuery;
 
@@ -381,38 +673,64 @@ const getSingleCoupon = async (couponId: string, currentUser: AuthUser) => {
     userId: currentUser.id,
     isDeleted: false,
   });
-
-  if (result.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view a coupon. Your account is ${result.user.status}`
+      `You are not approved to view a coupon. Your account is ${loggedInUser.status}`
     );
   }
 
-  const existingCoupon = await Coupon.findById(couponId);
+  const query = Coupon.findById(couponId);
+
+  const populateOptions = getPopulateOptions(loggedInUser.role, {
+    vendor: 'name userId role',
+    admin: 'name userId role',
+  });
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const existingCoupon = await query;
   if (!existingCoupon) {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
+
   return existingCoupon;
 };
 
 // coupon soft delete service
 const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a coupon. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to delete a coupon. Your account is ${loggedInUser.status}`
     );
   }
 
   const existingCoupon = await Coupon.findById(couponId);
   if (!existingCoupon) {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+
+  if (loggedInUser.role !== 'ADMIN' && loggedInUser.role !== 'SUPER_ADMIN') {
+    if (existingCoupon.vendorId !== loggedInUser._id) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to delete this coupon'
+      );
+    }
+  }
+
+  if (existingCoupon?.isDeleted === true) {
+    throw new AppError(httpStatus.CONFLICT, 'Coupon already deleted');
   }
 
   if (existingCoupon.isActive) {
@@ -434,15 +752,17 @@ const permanentDeleteCoupon = async (
   couponId: string,
   currentUser: AuthUser
 ) => {
-  const existingCurrentUser = await findUserByEmailOrId({
+  const result = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
 
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  const loggedInUser = result.user;
+
+  if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a coupon. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to delete a coupon. Your account is ${loggedInUser.status}`
     );
   }
   const existingCoupon = await Coupon.findById(couponId);
@@ -464,6 +784,9 @@ export const CouponServices = {
   createCoupon,
   updateCoupon,
   applyCoupon,
+  toggleCouponStatus,
+  getCouponAnalytics,
+  getCouponMonthlyAnalytics,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,

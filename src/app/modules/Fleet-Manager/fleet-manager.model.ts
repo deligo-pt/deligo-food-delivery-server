@@ -16,6 +16,12 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       unique: true,
     },
 
+    registeredBy: {
+      type: Schema.Types.ObjectId,
+      default: null,
+      ref: 'Admin',
+    },
+
     role: {
       type: String,
       enum: ['FLEET_MANAGER'],
@@ -28,6 +34,10 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       unique: true,
       lowercase: true,
       trim: true,
+      match: [
+        /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
+        'Please fill a valid email address',
+      ],
     },
 
     password: {
@@ -51,6 +61,12 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // ------------------------------------------
     fcmTokens: { type: [String], default: [] },
 
+    // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
     // ------------------------------------------
     // OTP & Password Reset
     // ------------------------------------------
@@ -59,6 +75,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
 
     passwordResetToken: { type: String, default: '' },
     passwordResetTokenExpiresAt: { type: Date, default: null },
+    passwordChangedAt: { type: Date, default: null },
 
     // ------------------------------------------
     // Personal Details
@@ -82,14 +99,14 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       geoAccuracy: { type: Number },
     },
 
-    passwordChangedAt: { type: Date, default: null },
-
     // ------------------------------------------
     // Business Details
     // ------------------------------------------
     businessDetails: {
       businessName: { type: String, default: '' },
       businessLicenseNumber: { type: String, default: '' },
+      NIF: { type: String, default: '' },
+      totalBranches: { type: Number, default: 1 },
     },
 
     businessLocation: {
@@ -117,7 +134,8 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // Documents
     // ------------------------------------------
     documents: {
-      idProof: { type: String, default: '' },
+      idProofFront: { type: String, default: '' },
+      idProofBack: { type: String, default: '' },
       businessLicense: { type: String, default: '' },
     },
 
@@ -147,9 +165,9 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // ------------------------------------------
     // Admin Workflow / Audit
     // ------------------------------------------
-    approvedBy: { type: String, default: '' },
-    rejectedBy: { type: String, default: '' },
-    blockedBy: { type: String, default: '' },
+    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
 
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },

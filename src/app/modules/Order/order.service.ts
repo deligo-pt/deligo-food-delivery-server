@@ -11,6 +11,7 @@ import {
   DELIVERY_SEARCH_TIERS_METERS,
   ORDER_STATUS,
   OrderSearchableFields,
+  OrderStatus,
 } from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
@@ -21,6 +22,11 @@ import generateOtp from '../../utils/generateOtp';
 import mongoose from 'mongoose';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { NotificationService } from '../Notification/notification.service';
+import { Customer } from '../Customer/customer.model';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { Vendor } from '../Vendor/vendor.model';
+import { Coupon } from '../Coupon/coupon.model';
+import { getIO } from '../../lib/Socket';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -28,11 +34,14 @@ const createOrderAfterPayment = async (
   currentUser: AuthUser
 ) => {
   // --- Authorization ---
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
+  const existingCustomer = await Customer.findOne({
+    userId: currentUser.id,
     isDeleted: false,
   });
-  const loggedInUser = result.user;
+
+  if (!existingCustomer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
 
   const { checkoutSummaryId, paymentIntentId } = payload;
 
@@ -40,7 +49,15 @@ const createOrderAfterPayment = async (
   if (!summary)
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
 
-  if (summary.customerId !== loggedInUser.userId)
+  const existingVendor = await Vendor.findOne({
+    userId: summary.vendorId,
+    isDeleted: false,
+  });
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  if (summary.customerId.toString() !== existingCustomer._id.toString())
     throw new AppError(httpStatus.FORBIDDEN, 'Not authorized');
 
   if (summary.isConvertedToOrder)
@@ -66,12 +83,13 @@ const createOrderAfterPayment = async (
       { customerId: summary.customerId },
       {
         $pull: {
-          items: { productId: { $in: summary.items.map((i) => i.productId) } },
+          items: {
+            productId: {
+              $in: summary.items.map((i) => i.productId.toString()),
+            },
+          },
         },
-        $inc: {
-          totalItems: -summary.totalItems,
-          totalPrice: -summary.totalPrice,
-        },
+        $set: { couponId: null, discount: 0, totalItems: 0, totalPrice: 0 },
       },
       { session }
     );
@@ -82,7 +100,6 @@ const createOrderAfterPayment = async (
       vendorId: summary.vendorId,
       items: summary.items.map((i) => ({
         productId: i.productId,
-        name: i.name,
         quantity: i.quantity,
         price: i.price,
         subtotal: i.subtotal,
@@ -90,7 +107,8 @@ const createOrderAfterPayment = async (
       totalItems: summary.totalItems,
       totalPrice: summary.totalPrice,
       discount: summary.discount,
-      finalAmount: summary.finalAmount,
+      subTotal: summary.subTotal,
+      couponId: summary.couponId,
       paymentMethod: 'CARD',
       paymentStatus: 'COMPLETED',
       isPaid: true,
@@ -105,10 +123,28 @@ const createOrderAfterPayment = async (
     summary.isConvertedToOrder = true;
     summary.paymentStatus = 'PAID';
     summary.transactionId = paymentIntentId;
-    summary.orderId = order.orderId;
+    summary.orderId = new mongoose.Types.ObjectId(order._id);
+
     await summary.save({ session });
 
     await session.commitTransaction();
+
+    const notificationPayload = {
+      title: 'You have a new order',
+      body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
+      data: {
+        orderId: order._id,
+      },
+    };
+
+    NotificationService.sendToUser(
+      existingVendor.userId,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'ORDER'
+    );
+
     return order;
   } catch (err) {
     await session.abortTransaction();
@@ -150,15 +186,15 @@ const getAllOrders = async (
   // -----------------------------
   switch (loggedInUser.role) {
     case 'VENDOR':
-      query.vendorId = loggedInUser.userId;
+      query.vendorId = loggedInUser._id;
       break;
 
     case 'CUSTOMER':
-      query.customerId = loggedInUser.userId;
+      query.customerId = loggedInUser._id;
       break;
 
     case 'DELIVERY_PARTNER':
-      query.deliveryPartnerId = loggedInUser.userId;
+      query.deliveryPartnerId = loggedInUser._id;
       break;
 
     case 'ADMIN':
@@ -178,6 +214,17 @@ const getAllOrders = async (
     .fields()
     .paginate()
     .search(OrderSearchableFields);
+
+  const populateOptions = getPopulateOptions(loggedInUser?.role, {
+    customer: 'name userId role',
+    vendor: 'name userId role',
+    deliveryPartner: 'name userId role',
+    product: 'productId name',
+  });
+
+  populateOptions.forEach((option) => {
+    builder.modelQuery = builder.modelQuery.populate(option);
+  });
 
   const meta = await builder.countTotal();
   const data = await builder.modelQuery;
@@ -204,7 +251,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
     );
   }
 
-  const userId = loggedInUser.userId;
+  const userId = loggedInUser._id;
 
   // ------------------------------------------------------
   // Build role-based query filter securely
@@ -239,7 +286,20 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   // ------------------------------------------------------
   // Fetch order using secure filter
   // ------------------------------------------------------
-  const order = await Order.findOne({ orderId, ...filter });
+  const query = Order.findOne({ orderId, ...filter });
+
+  const populateOptions = getPopulateOptions(loggedInUser?.role, {
+    customer: 'name userId role',
+    vendor: 'name userId role',
+    deliveryPartner: 'name userId role',
+    product: 'productId name',
+  });
+
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const order = await query;
 
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
@@ -248,21 +308,20 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   return order;
 };
 
-// accept or reject order by vendor service
-const acceptOrRejectOrderByVendor = async (
+// update order status by vendor (accept / reject / preparing / cancel)
+const updateOrderStatusByVendor = async (
   currentUser: AuthUser,
   orderId: string,
-  action: { type: keyof typeof ORDER_STATUS; reason?: string }
+  action: { type: OrderStatus; reason?: string }
 ) => {
   // ---------------------------------------------------------
   // Ensure current user is an approved vendor
   // ---------------------------------------------------------
-  const result = await findUserByEmailOrId({
+  const { user: loggedInUser } = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
 
-  const loggedInUser = result.user;
   if (!loggedInUser || loggedInUser.role !== 'VENDOR') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -277,6 +336,24 @@ const acceptOrRejectOrderByVendor = async (
     );
   }
 
+  // --------------------------------------------------------
+  // Allowed vendor actions
+  // --------------------------------------------------------
+  const ALLOWED_VENDOR_ACTIONS: (keyof typeof ORDER_STATUS)[] = [
+    'ACCEPTED',
+    'REJECTED',
+    'PREPARING',
+    'READY_FOR_PICKUP',
+    'CANCELED',
+  ];
+
+  if (!ALLOWED_VENDOR_ACTIONS.includes(action.type)) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not allowed to change order status to ${action.type}`
+    );
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -288,7 +365,7 @@ const acceptOrRejectOrderByVendor = async (
     const order = await Order.findOne(
       {
         orderId,
-        vendorId: loggedInUser.userId,
+        vendorId: loggedInUser._id,
         isDeleted: false,
       },
       null,
@@ -297,6 +374,15 @@ const acceptOrRejectOrderByVendor = async (
 
     if (!order) {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+    }
+    // ---------------------------------------------------------
+    // Only paid orders can be processed
+    // ---------------------------------------------------------
+    if (!order.isPaid) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Only paid orders can be accepted or rejected.'
+      );
     }
 
     // ---------------------------------------------------------
@@ -310,33 +396,53 @@ const acceptOrRejectOrderByVendor = async (
     }
 
     // ---------------------------------------------------------
-    // Only paid orders can be processed
+    // Find related users
     // ---------------------------------------------------------
-    if (!order.isPaid) {
+    const customer = await Customer.findById(order.customerId, null, {
+      session,
+    });
+    const customerId = customer?.userId;
+
+    const deliveryPartner = order.deliveryPartnerId
+      ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
+          session,
+        })
+      : null;
+    const deliveryPartnerId = deliveryPartner?.userId;
+
+    // ---------------------------------------------------------
+    // Only pending orders are allowed to be accepted/rejected
+    // ---------------------------------------------------------
+    if (action.type === 'ACCEPTED' && order.orderStatus !== 'PENDING') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Only paid orders can be accepted or rejected.'
-      );
-    }
-
-    if (loggedInUser.userId !== order.vendorId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You are not authorized to accept or reject orders.'
+        `Order must be PENDING to be accepted. Current status is ${order.orderStatus}.`
       );
     }
 
     // ---------------------------------------------------------
-    // Prevent vendor from if action type are not accepted, rejected, or canceled
+    // Only accepted orders are allowed to be prepared
     // ---------------------------------------------------------
     if (
-      action.type !== 'ACCEPTED' &&
-      action.type !== 'REJECTED' &&
-      action.type !== 'CANCELED'
+      action.type === ORDER_STATUS.PREPARING &&
+      order.orderStatus !== ORDER_STATUS.ASSIGNED
     ) {
       throw new AppError(
-        httpStatus.FORBIDDEN,
-        `You are not authorized to change order status to ${action.type.toLowerCase()}. Please contact support.`
+        httpStatus.BAD_REQUEST,
+        `Order must be ASSIGNED before PREPARING`
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Only prepared orders are allowed to be ready for pickup
+    // ---------------------------------------------------------
+    if (
+      action.type === ORDER_STATUS.READY_FOR_PICKUP &&
+      order.orderStatus !== ORDER_STATUS.PREPARING
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Order must be PREPARING before READY_FOR_PICKUP`
       );
     }
 
@@ -349,19 +455,17 @@ const acceptOrRejectOrderByVendor = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Cannot cancel or reject an order that is already assigned, picked up, on the way, or delivered. Please contact support if you need to cancel the order'
+        'Order cannot be canceled or rejected at this stage'
       );
     }
 
-    // ---------------------------------------------------------
-    // Only pending orders are allowed to be accepted/rejected
-    // ---------------------------------------------------------
-    if (action.type === 'ACCEPTED' && order.orderStatus !== 'PENDING') {
+    if (loggedInUser._id.toString() !== order.vendorId.toString()) {
       throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Order must be PENDING to be accepted. Current status is ${order.orderStatus}.`
+        httpStatus.FORBIDDEN,
+        'You are not authorized to accept or reject orders.'
       );
     }
+
     // ---------------------------------------------------------
     // If ACCEPTED → set pickup address from vendor location and reduce product stock
     // ---------------------------------------------------------
@@ -391,7 +495,7 @@ const acceptOrRejectOrderByVendor = async (
       const stockOperations = order.items.map((item) => ({
         updateOne: {
           filter: {
-            productId: item.productId,
+            _id: item.productId.toString(),
             'stock.quantity': { $gte: item.quantity },
           },
           update: {
@@ -401,23 +505,59 @@ const acceptOrRejectOrderByVendor = async (
       }));
       const stockResult = await Product.bulkWrite(stockOperations, { session });
       if (stockResult.modifiedCount !== order.items.length) {
-        await session.abortTransaction();
-        session.endSession();
         throw new AppError(
           httpStatus.BAD_REQUEST,
           'Stock check failed. One or more products are out of stock or inventory was insufficient.'
         );
       }
+
+      // used coupon count add
+      if (order.couponId) {
+        await Coupon.updateOne(
+          { _id: order.couponId },
+          { $inc: { usedCount: +1 } },
+          { session }
+        );
+      }
+
       const notificationPayload = {
         title: 'Order Accepted',
-        body: `Your order has been accepted by ${loggedInUser.businessName}.Please wait for your order to be picked up.`,
+        body: `Your order has been accepted by ${loggedInUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,
         data: { orderId: order._id.toString() },
       };
-      await NotificationService.sendToUser(
-        order.customerId,
+      NotificationService.sendToUser(
+        customerId!,
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
+        'ORDER'
+      );
+    }
+    // ---------------------------------------------------------
+    // PREPARING logic
+    // ---------------------------------------------------------
+    if (action.type === ORDER_STATUS.PREPARING) {
+      NotificationService.sendToUser(
+        customerId!,
+        'Order is being prepared',
+        `Your order is now being prepared by ${loggedInUser.businessDetails?.businessName}.`,
+        { orderId: order._id.toString(), status: ORDER_STATUS.PREPARING },
+        'ORDER'
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Ready for pickup logic
+    // ---------------------------------------------------------
+    if (action.type === ORDER_STATUS.READY_FOR_PICKUP) {
+      NotificationService.sendToUser(
+        customerId!,
+        'Order is ready for pickup',
+        `Your order is now ready for pickup by ${loggedInUser.businessDetails?.businessName}.`,
+        {
+          orderId: order._id.toString(),
+          status: ORDER_STATUS.READY_FOR_PICKUP,
+        },
         'ORDER'
       );
     }
@@ -450,8 +590,43 @@ const acceptOrRejectOrderByVendor = async (
         body: `Your order has been canceled for ${action.reason}`,
         data: { orderId: order._id.toString() },
       };
-      await NotificationService.sendToUser(
-        order.customerId,
+      if (order.deliveryPartnerId) {
+        NotificationService.sendToUser(
+          deliveryPartnerId!,
+          notificationPayload.title,
+          notificationPayload.body,
+          notificationPayload.data,
+          'ORDER'
+        );
+      }
+      NotificationService.sendToUser(
+        customerId!,
+        notificationPayload.title,
+        notificationPayload.body,
+        notificationPayload.data,
+        'ORDER'
+      );
+    }
+
+    // ---------------------------------------------------------
+    // If REJECTED → add reject reason
+    // ---------------------------------------------------------
+    if (action.type === 'REJECTED') {
+      if (!action.reason) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'Reject reason is required.'
+        );
+      }
+      order.rejectReason = action.reason;
+
+      const notificationPayload = {
+        title: 'Order Rejected',
+        body: `Your order has been rejected for ${action.reason}`,
+        data: { orderId: order._id.toString() },
+      };
+      NotificationService.sendToUser(
+        customerId!,
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
@@ -509,11 +684,11 @@ const broadcastOrderToPartners = async (
   }
 
   const vendorCoordinates: [number, number] = [loc.longitude, loc.latitude];
-
+  const io = getIO();
   // Fetch order AND ensure this vendor owns it
   const order = await Order.findOne({
     orderId,
-    vendorId: loggedInUser.userId,
+    vendorId: loggedInUser._id.toString(),
     isDeleted: false,
   });
   if (
@@ -576,16 +751,44 @@ const broadcastOrderToPartners = async (
 
   // Safe atomic update using $addToSet and status update
   await Order.updateOne(
-    { orderId, vendorId: loggedInUser.userId, isDeleted: false },
+    { orderId, vendorId: loggedInUser._id.toString(), isDeleted: false },
     {
       $set: { orderStatus: ORDER_STATUS.DISPATCHING },
       $addToSet: { dispatchPartnerPool: { $each: partnerIds } },
     }
   );
 
+  // show popup to delivery partner
+  const orderDataForPopup = {
+    orderId: order.orderId,
+    deliveryAddress: order.deliveryAddress,
+    vendorName: loggedInUser.businessDetails.businessName,
+    timer: 60, // 60 seconds
+  };
+
+  partnerIds.forEach((id) => {
+    io.to(`user_${id}`).emit('NEW_ORDER_AVAILABLE', orderDataForPopup);
+  });
+
+  // send push notification to delivery partner
+  const notificationPayload = {
+    title: 'New Order Available',
+    body: 'A new order is available for you.',
+    data: { orderId: order._id.toString() },
+  };
+  partnerIds.forEach(async (id) => {
+    NotificationService.sendToUser(
+      id,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'ORDER'
+    );
+  });
+
   return {
-    message: `Order dispatched to ${partnerIds.length} delivery partners. The partner IDs are [ ${partnerIds} ].`,
-    partnerIds,
+    message: `Order dispatched to ${partnerIds.length} delivery partners.`,
+    data: orderDataForPopup,
   };
 };
 
@@ -611,6 +814,10 @@ const partnerAcceptsDispatchedOrder = async (
       'You already have an assigned order.'
     );
   }
+  const orderBeforeUpdate = await Order.findOne({ orderId }).select(
+    'dispatchPartnerPool'
+  );
+  const notifiedPartnerIds = orderBeforeUpdate?.dispatchPartnerPool || [];
 
   // atomic first-come-first-served claim
   const claimedOrder = await Order.findOneAndUpdate(
@@ -622,7 +829,7 @@ const partnerAcceptsDispatchedOrder = async (
     },
     {
       $set: {
-        deliveryPartnerId: partner.userId,
+        deliveryPartnerId: partner._id.toString(),
         orderStatus: ORDER_STATUS.ASSIGNED,
         dispatchPartnerPool: [],
       },
@@ -638,12 +845,19 @@ const partnerAcceptsDispatchedOrder = async (
     );
   }
 
+  const io = getIO();
+  notifiedPartnerIds.forEach((id) => {
+    if (id !== partner.userId) {
+      io.to(`user_${id}`).emit('REMOVE_ORDER_POPUP', { orderId });
+    }
+  });
+
   // Update partner state
   await DeliveryPartner.updateOne(
     { userId: partner.userId },
     {
       $set: {
-        'operationalData.currentOrderIds': orderId,
+        'operationalData.currentOrderId': claimedOrder._id.toString(),
         'operationalData.currentStatus': 'ON_DELIVERY',
       },
     }
@@ -658,27 +872,30 @@ const otpVerificationByVendor = async (
   otp: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
+  const existingVendor = await Vendor.findOne({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const loggedInUser = result.user;
 
-  if (loggedInUser.status !== 'APPROVED') {
+  if (!existingVendor) {
+    throw new AppError(httpStatus.FORBIDDEN, 'Vendor not found.');
+  }
+
+  if (existingVendor.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${loggedInUser.status}`
+      `You are not approved to view the order. Your account is ${existingVendor.status}`
     );
   }
 
-  if (!otp) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'OTP is required.');
+  if (!otp || typeof otp !== 'string') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Valid OTP is required.');
   }
 
   const updatedOrder = await Order.findOneAndUpdate(
     {
       orderId,
-      vendorId: loggedInUser.userId,
+      vendorId: existingVendor._id.toString(),
       orderStatus: ORDER_STATUS.ASSIGNED,
       isOtpVerified: false,
       deliveryOtp: otp,
@@ -699,7 +916,7 @@ const otpVerificationByVendor = async (
   if (!updatedOrder) {
     const orderCheck = await Order.findOne({
       orderId,
-      vendorId: loggedInUser.userId,
+      vendorId: existingVendor._id.toString(),
     });
 
     if (!orderCheck) {
@@ -711,7 +928,7 @@ const otpVerificationByVendor = async (
     if (orderCheck.isOtpVerified) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'OTP already verified and order picked up.'
+        `OTP is already verified. Order status is ${orderCheck.orderStatus}`
       );
     }
     if (orderCheck.orderStatus !== ORDER_STATUS.ASSIGNED) {
@@ -728,9 +945,41 @@ const otpVerificationByVendor = async (
   }
 
   // TODO: Notify Customer & Delivery Partner (Order is now PICKED_UP)
+  const customer = await Customer.findById(updatedOrder.customerId).lean();
+  const customerId = customer?.userId;
+  const deliveryPartner = await DeliveryPartner.findById(
+    updatedOrder.deliveryPartnerId
+  ).lean();
+  const deliveryPartnerId = deliveryPartner?.userId;
+  const notificationPayload = {
+    title: 'Order is now PICKED_UP',
+    body: `Your order ${orderId} is now PICKED_UP.`,
+    data: {
+      orderId,
+      orderStatus: ORDER_STATUS.PICKED_UP,
+    },
+  };
+  if (customerId) {
+    NotificationService.sendToUser(
+      customerId!,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'ORDER'
+    );
+  }
+  if (deliveryPartnerId) {
+    NotificationService.sendToUser(
+      deliveryPartnerId!,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'ORDER'
+    );
+  }
 
   return {
-    message: 'OTP verified successfully. Order is now PICKED_UP',
+    message: `OTP is verified. Order status is ${updatedOrder.orderStatus}`,
     data: updatedOrder,
   };
 };
@@ -738,7 +987,7 @@ const otpVerificationByVendor = async (
 // update order status by delivery partner service
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
-  payload: { orderStatus: keyof typeof ORDER_STATUS; reason?: string },
+  payload: { orderStatus: OrderStatus; reason?: string },
   currentUser: AuthUser
 ) => {
   // Validate partner
@@ -784,7 +1033,7 @@ const updateOrderStatusByDeliveryPartner = async (
   const updatedOrder = await Order.findOneAndUpdate(
     {
       orderId,
-      deliveryPartnerId: partner.userId,
+      deliveryPartnerId: partner._id.toString(),
       orderStatus: requiredCurrentStatus,
       isDeleted: false,
     },
@@ -827,6 +1076,33 @@ const updateOrderStatusByDeliveryPartner = async (
     );
   }
 
+  //
+
+  // TODO: Notify Customer (Order is now ON_THE_WAY)
+  const customer = await Customer.findById(updatedOrder.customerId).lean();
+  const customerId = customer?.userId;
+  const notificationPayload = {
+    title: `Order is now ${payload.orderStatus}`,
+    body: `${
+      payload.orderStatus === 'ON_THE_WAY'
+        ? `Your order ${orderId} is now ON_THE_WAY.`
+        : payload.orderStatus === 'DELIVERED'
+        ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
+        : `Your order ${orderId} is  ${payload.orderStatus}.`
+    } `,
+    data: {
+      orderId,
+      orderStatus: payload.orderStatus,
+    },
+  };
+  NotificationService.sendToUser(
+    customerId!,
+    notificationPayload.title,
+    notificationPayload.body,
+    notificationPayload.data,
+    'ORDER'
+  );
+
   return {
     message: 'Order status updated successfully.',
     data: updatedOrder,
@@ -837,7 +1113,7 @@ export const OrderServices = {
   createOrderAfterPayment,
   getAllOrders,
   getSingleOrder,
-  acceptOrRejectOrderByVendor,
+  updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
   otpVerificationByVendor,

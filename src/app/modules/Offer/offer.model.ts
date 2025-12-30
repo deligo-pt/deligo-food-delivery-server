@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { TOffer } from './offer.interface';
+import { OFFER_TYPE } from './offer.constant';
 
 const bogoSchema = new Schema(
   {
@@ -17,7 +18,7 @@ const offerSchema = new Schema<TOffer>(
 
     offerType: {
       type: String,
-      enum: ['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO'],
+      enum: Object.keys(OFFER_TYPE),
       required: true,
     },
 
@@ -29,7 +30,7 @@ const offerSchema = new Schema<TOffer>(
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
 
-    vendorId: { type: String, default: null },
+    vendorId: { type: Schema.Types.ObjectId, default: null, ref: 'Vendor' },
     minOrderAmount: { type: Number },
 
     isAutoApply: { type: Boolean, required: true },
@@ -40,6 +41,8 @@ const offerSchema = new Schema<TOffer>(
     limitPerUser: { type: Number },
 
     isActive: { type: Boolean, default: true },
+
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,
