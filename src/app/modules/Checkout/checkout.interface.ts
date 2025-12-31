@@ -71,6 +71,14 @@ export type TCheckoutPayload = {
   items?: {
     productId: mongoose.Types.ObjectId;
     quantity: number;
+    variantName?: string;
+    addons?: {
+      optionId: string;
+      quantity: number;
+    }[];
+    price?: number;
+    subtotal?: number;
+    taxRate?: number;
   }[];
 
   offerCode?: string;

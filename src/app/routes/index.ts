@@ -20,6 +20,7 @@ import { CheckoutRoutes } from '../modules/Checkout/checkout.route';
 import { SupportRoutes } from '../modules/Support/support.route';
 import { ZoneRoutes } from '../modules/Zone/zone.route';
 import { GlobalSettingRoutes } from '../modules/GlobalSetting/globalSetting.route';
+import { AddOnsRoutes } from '../modules/Add-Ons/addOns.route';
 
 const router = express.Router();
 
@@ -107,6 +108,10 @@ const moduleRoutes = [
   {
     path: '/globalSettings',
     route: GlobalSettingRoutes,
+  },
+  {
+    path: '/add-ons',
+    route: AddOnsRoutes,
   },
 ];
 

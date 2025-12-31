@@ -5,7 +5,6 @@ import AppError from '../../errors/AppError';
 import { Order } from './order.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
-import crypto from 'crypto';
 import {
   BLOCKED_FOR_ORDER_CANCEL,
   DELIVERY_SEARCH_TIERS_METERS,
@@ -50,7 +49,7 @@ const createOrderAfterPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
 
   const existingVendor = await Vendor.findOne({
-    userId: summary.vendorId,
+    _id: summary.vendorId.toString(),
     isDeleted: false,
   });
   if (!existingVendor) {
@@ -95,25 +94,32 @@ const createOrderAfterPayment = async (
     );
 
     const orderData = {
-      orderId: `ORD-${crypto.randomUUID()}`,
+      orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
       customerId: summary.customerId,
       vendorId: summary.vendorId,
       items: summary.items.map((i) => ({
         productId: i.productId,
+        name: i.name,
+        variantName: i.variantName,
+        addons: i.addons,
         quantity: i.quantity,
         price: i.price,
+        taxRate: i.taxRate,
+        taxAmount: i.taxAmount,
         subtotal: i.subtotal,
       })),
       totalItems: summary.totalItems,
       totalPrice: summary.totalPrice,
+      taxAmount: summary.taxAmount,
       discount: summary.discount,
+      deliveryCharge: summary.deliveryCharge,
       subTotal: summary.subTotal,
+
       couponId: summary.couponId,
       paymentMethod: 'CARD',
       paymentStatus: 'COMPLETED',
       isPaid: true,
       deliveryAddress: summary.deliveryAddress,
-      deliveryCharge: summary.deliveryCharge,
       estimatedDeliveryTime: summary.estimatedDeliveryTime,
       transactionId: paymentIntentId,
     };

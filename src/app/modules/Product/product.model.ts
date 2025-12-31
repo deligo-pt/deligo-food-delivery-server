@@ -2,6 +2,20 @@
 import { model, Schema } from 'mongoose';
 import { TProduct } from './product.interface';
 
+const variationSchema = new Schema(
+  {
+    name: { type: String, required: true }, // e.g., "Size"
+    options: [
+      {
+        label: { type: String, required: true }, // e.g., "Large"
+        price: { type: Number, required: true }, // e.g., 500
+        sku: { type: String },
+      },
+    ],
+  },
+  { _id: false }
+);
+
 const productSchema = new Schema<TProduct>(
   {
     productId: { type: String, required: true, unique: true },
@@ -19,10 +33,13 @@ const productSchema = new Schema<TProduct>(
     subCategory: { type: String },
     brand: { type: String },
 
+    variations: [variationSchema],
+    addonGroups: [{ type: Schema.Types.ObjectId, ref: 'AddonGroup' }],
+
     pricing: {
       price: { type: Number, required: true },
       discount: { type: Number, default: 0 },
-      tax: { type: Number, default: 0 },
+      taxRate: { type: Number, default: 0 },
       finalPrice: { type: Number },
       currency: { type: String, default: 'BDT' },
     },
@@ -63,29 +80,40 @@ const productSchema = new Schema<TProduct>(
 productSchema.pre('save', function (next) {
   const price = this.pricing?.price || 0;
   const discount = this.pricing?.discount || 0;
-  const tax = this.pricing?.tax || 0;
   const discountedPrice = price - (price * discount) / 100;
-  const taxedPrice = discountedPrice + (discountedPrice * tax) / 100;
-  this.pricing.finalPrice = parseFloat(taxedPrice.toFixed(2));
+
+  this.pricing.finalPrice = parseFloat(discountedPrice.toFixed(2));
   next();
 });
 
-productSchema.pre('findOneAndUpdate', function (next) {
+productSchema.pre('findOneAndUpdate', async function (next) {
   const update = this.getUpdate() as any;
-  const pricing = update?.pricing;
-  if (
-    pricing?.price !== undefined ||
-    pricing?.discount !== undefined ||
-    pricing?.tax !== undefined
-  ) {
-    const price = pricing.price ?? 0;
-    const discount = pricing.discount ?? 0;
-    const tax = pricing.tax ?? 0;
+  const pricing =
+    update?.pricing || update['pricing.price'] || update['pricing.discount'];
+  if (pricing) {
+    const currentDoc = (await this.model
+      .findOne(this.getQuery())
+      .lean()) as TProduct | null;
+    if (!currentDoc) return next();
 
-    const discounted = price - (price * discount) / 100;
-    const taxed = discounted + (discounted * tax) / 100;
+    const price =
+      update.pricing?.price ??
+      update['pricing.price'] ??
+      currentDoc.pricing.price ??
+      0;
+    const discount =
+      update.pricing?.discount ??
+      update['pricing.discount'] ??
+      currentDoc.pricing.discount ??
+      0;
 
-    update['pricing.finalPrice'] = parseFloat(taxed.toFixed(2));
+    const discountedPrice = price - (price * discount) / 100;
+
+    if (update.pricing) {
+      update.pricing.finalPrice = parseFloat(discountedPrice.toFixed(2));
+    } else {
+      update['pricing.finalPrice'] = parseFloat(discountedPrice.toFixed(2));
+    }
   }
   next();
 });

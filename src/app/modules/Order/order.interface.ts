@@ -19,8 +19,8 @@ export type TOrder = {
   totalItems: number;
   totalPrice: number;
   discount?: number;
-  deliveryCharge?: number;
   taxAmount?: number;
+  deliveryCharge?: number;
   subTotal: number;
 
   couponId?: mongoose.Types.ObjectId;
@@ -48,6 +48,7 @@ export type TOrder = {
   // Delivery Details
   estimatedDeliveryTime?: string; // e.g., "30 mins"
   deliveredAt?: Date;
+  preparationTime?: number;
 
   // Status Tracking
   isDeleted: boolean;
