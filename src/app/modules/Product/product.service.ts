@@ -18,6 +18,12 @@ import { calculateDistance } from '../../utils/calculateDistance';
 import { Vendor } from '../Vendor/vendor.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { AddonGroup } from '../Add-Ons/addOns.model';
+import { customAlphabet } from 'nanoid';
+
+const generateShortId = customAlphabet(
+  '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  6
+);
 
 // Product Create Service
 const createProduct = async (
@@ -69,24 +75,17 @@ const createProduct = async (
     }
 
     //  ------------ Generating productId ------------
-    const lastProduct = await Product.findOne().sort({ productId: -1 });
-    let newProductId = 'PROD-0001';
-    if (lastProduct) {
-      const lastProductIdNumber = parseInt(lastProduct.productId.split('-')[1]);
-      const newProductIdNumber = lastProductIdNumber + 1;
-      newProductId = `PROD-${String(newProductIdNumber).padStart(4, '0')}`;
-    }
-    payload.productId = newProductId;
+    const shortId = generateShortId();
+    payload.productId = `PROD-${shortId}`;
     //  ------------ Generating slug ------------
-    const newSlug = payload.name
+    payload.slug = payload.name
       .toLowerCase()
-      .replace(/ /g, '-')
-      .replace(/[^\w-]+/g, '');
-    payload.slug = newSlug;
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     //  ------------ Generating SKU ------------
-    const newSKU = `SKU-${payload?.category?.toUpperCase()}-${String(
-      newProductId
-    )
+    const newSKU = `SKU-${payload?.category?.toUpperCase()}-${String(shortId)
       .split('-')
       .pop()
       ?.padStart(4, '0')}`;
