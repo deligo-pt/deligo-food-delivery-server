@@ -34,8 +34,10 @@ async function bootstrap() {
     console.log('Database connected successfully');
 
     // Seed database
-    await seed();
-    console.log('DB Seed complete');
+    if (config.NODE_ENV === 'development') {
+      await seed();
+      console.log('DB Seed complete');
+    }
 
     // Initialize Socket.IO
     initializeSocket(server);
