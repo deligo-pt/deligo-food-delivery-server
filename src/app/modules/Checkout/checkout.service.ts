@@ -27,7 +27,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   if (
     !customer.name?.firstName ||
     !customer.name?.lastName ||
-    !customer.contactNumber ||
+    // !customer.contactNumber ||
     !customer.address?.state ||
     !customer.address?.city ||
     !customer.address?.country ||
