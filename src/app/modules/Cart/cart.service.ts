@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
@@ -22,10 +23,17 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   const customerId = existingCustomer._id;
 
   // Product validation
-  const { productId, quantity } = payload.items[0];
-  const existingProduct = await Product.findOne({ _id: productId });
+  const { productId, quantity, variantName } = payload.items[0];
+  const existingProduct = await Product.findOne({
+    _id: productId,
+    isDeleted: false,
+    isApproved: true,
+  }).populate('addonGroups');
   if (!existingProduct) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Product not found or unavailable'
+    );
   }
   if (existingProduct && existingProduct.vendorId) {
     const existingVendor = await Vendor.findOne({
@@ -39,16 +47,30 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       throw new AppError(httpStatus.BAD_REQUEST, 'Store is closed');
     }
   }
+
+  let itemPrice = existingProduct.pricing.finalPrice;
+
+  if (variantName) {
+    const variantOption = existingProduct.variations
+      ?.flatMap((v) => v.options)
+      .find((opt) => opt.label === variantName);
+
+    if (variantOption) {
+      itemPrice = variantOption.price;
+    }
+  }
+
+  const itemSubtotal = itemPrice! * quantity;
   const newItem = {
-    productId,
+    productId: existingProduct._id,
     vendorId: existingProduct.vendorId,
     name: existingProduct.name,
     image: existingProduct?.images[0] || '',
-    variantName: payload?.items[0]?.variantName || '',
+    variantName,
     quantity,
-    price: existingProduct.pricing.finalPrice,
-    subtotal: existingProduct.pricing.finalPrice * quantity,
-    taxRate: existingProduct.pricing.taxRate || 0,
+    price: itemPrice,
+    subtotal: itemSubtotal,
+    taxRate: existingProduct?.pricing?.taxRate || 0,
     isActive: true,
   };
 
@@ -94,7 +116,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     ) {
       newItem.isActive = false;
     }
-    cart.items.push(newItem);
+    cart.items.push(newItem as any);
   }
 
   // always re-calculate active total (real-time)
@@ -105,7 +127,11 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 };
 
 // active item Service
-const activateItem = async (currentUser: AuthUser, productId: string) => {
+const activateItem = async (
+  currentUser: AuthUser,
+  productId: string,
+  variantName?: string
+) => {
   const existingCustomer = await Customer.findOne({
     userId: currentUser.id,
     isDeleted: false,
@@ -123,7 +149,9 @@ const activateItem = async (currentUser: AuthUser, productId: string) => {
   }
   // Item to activate
   const itemToActivate = cart.items.find(
-    (i) => i.productId.toString() === productId.toString()
+    (i) =>
+      i.productId.toString() === productId.toString() &&
+      i.variantName === variantName
   );
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
@@ -168,6 +196,7 @@ const updateCartItemQuantity = async (
   currentUser: AuthUser,
   payload: {
     productId: string;
+    variantName?: string;
     quantity: number;
     action: 'increment' | 'decrement';
   }
@@ -186,9 +215,9 @@ const updateCartItemQuantity = async (
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
-  const { productId, quantity, action } = payload;
+  const { productId, variantName, quantity, action } = payload;
   const itemIndex = cart.items.findIndex(
-    (i) => i.productId.toString() === productId
+    (i) => i.productId.toString() === productId && i.variantName === variantName
   );
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
@@ -197,21 +226,22 @@ const updateCartItemQuantity = async (
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
+  const targetItem = cart.items[itemIndex];
   if (action === 'increment') {
-    if (cart.items[itemIndex].quantity + quantity > product.stock.quantity) {
+    if (targetItem.quantity + quantity > product.stock.quantity) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
     }
-    cart.items[itemIndex].quantity += quantity;
-    cart.items[itemIndex].subtotal += cart.items[itemIndex].price * quantity;
+    targetItem.quantity += quantity;
+    targetItem.subtotal += targetItem.price * quantity;
   } else if (action === 'decrement') {
-    if (cart.items[itemIndex].quantity - quantity < 1) {
+    if (targetItem.quantity - quantity < 1) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'Not allowed to decrement quantity below 1'
       );
     }
-    cart.items[itemIndex].quantity -= quantity;
-    cart.items[itemIndex].subtotal -= cart.items[itemIndex].price * quantity;
+    targetItem.quantity -= quantity;
+    targetItem.subtotal -= targetItem.price * quantity;
   }
 
   // re-calculate active total
@@ -255,6 +285,99 @@ const deleteCartItem = async (currentUser: AuthUser, productId: string[]) => {
   return cart;
 };
 
+const updateCartItemAddons = async (
+  currentUser: AuthUser,
+  payload: {
+    productId: string;
+    variantName?: string;
+    addons: { optionId: string; quantity: number }[];
+  }
+) => {
+  const existingCustomer = await Customer.findOne({ userId: currentUser.id });
+  if (!existingCustomer)
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+
+  const existingProduct = await Product.findOne({
+    _id: payload.productId,
+    isDeleted: false,
+  }).populate('addonGroups');
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  const allowedAddonsMap = new Map<string, { name: string; price: number }>();
+
+  ((existingProduct.addonGroups as any[]) || []).forEach((group) => {
+    if (group?.options) {
+      group.options.forEach((opt: any) => {
+        allowedAddonsMap.set(opt._id.toString(), {
+          name: opt.name,
+          price: opt.price,
+        });
+      });
+    }
+  });
+
+  const cart = await Cart.findOne({ customerId: existingCustomer._id });
+  if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+
+  const { productId, variantName, addons } = payload;
+
+  const itemIndex = cart.items.findIndex(
+    (i) =>
+      i.productId.toString() === productId &&
+      (variantName ? i.variantName === variantName : !i.variantName)
+  );
+
+  if (itemIndex === -1)
+    throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');
+
+  const targetItem = cart.items[itemIndex];
+  const currentItemAddons = [...(targetItem.addons || [])];
+
+  for (const newAddon of addons) {
+    if (!allowedAddonsMap.has(newAddon.optionId)) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Selected add-on is not valid for this product.`
+      );
+    }
+
+    const dbAddonData = allowedAddonsMap.get(newAddon.optionId)!;
+
+    const existingIndex = currentItemAddons.findIndex(
+      (a) => a.name === dbAddonData.name
+    );
+
+    if (existingIndex > -1) {
+      currentItemAddons[existingIndex].quantity += newAddon.quantity;
+      currentItemAddons[existingIndex].price = dbAddonData.price;
+    } else {
+      currentItemAddons.push({
+        name: dbAddonData.name,
+        price: dbAddonData.price,
+        quantity: newAddon.quantity,
+      });
+    }
+  }
+
+  targetItem.addons = currentItemAddons;
+  const addonsTotal = currentItemAddons.reduce(
+    (sum, a) => sum + a.price * a.quantity,
+    0
+  );
+
+  targetItem.subtotal = targetItem.price * targetItem.quantity + addonsTotal;
+
+  cart.items[itemIndex] = targetItem;
+
+  await recalculateCartTotals(cart);
+  cart.markModified('items');
+  await cart.save();
+
+  return cart;
+};
+
 // view cart Service
 const viewCart = async (currentUser: AuthUser) => {
   const existingCustomer = await Customer.findOne({
@@ -286,5 +409,6 @@ export const CartServices = {
   activateItem,
   updateCartItemQuantity,
   deleteCartItem,
+  updateCartItemAddons,
   viewCart,
 };

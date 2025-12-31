@@ -85,7 +85,7 @@ const updateProductValidationSchema = z.object({
       .object({
         price: z.number().min(0).optional(),
         discount: z.number().min(0).max(100).optional(),
-        taxRate: z.number().min(0).max(100).optional(), // Fixed from 'tax' to 'taxRate'
+        taxRate: z.number().min(0).max(100).optional(),
         finalPrice: z.number().optional(),
         currency: z.string().optional(),
       })

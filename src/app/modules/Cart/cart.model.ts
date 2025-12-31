@@ -5,7 +5,7 @@ const cartItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
-    name: { type: String, required: true }, // Snapshot of product name
+    name: { type: String }, // Snapshot of product name
     image: { type: String }, // Snapshot of product image
     variantName: { type: String }, // e.g., "Large" or "1:2"
     addons: [
@@ -21,8 +21,8 @@ const cartItemSchema = new Schema(
       min: [1, 'Quantity cannot be less than 1'],
     },
     price: { type: Number, required: true }, // Base Price + Variant Price
-    subtotal: { type: Number, required: true }, // (Price * Quantity) + Addons total
     taxRate: { type: Number, default: 0 },
+    subtotal: { type: Number, required: true }, // (Price * Quantity) + Addons total
     isActive: { type: Boolean, default: true },
   },
   { _id: false }

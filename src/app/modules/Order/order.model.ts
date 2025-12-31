@@ -19,6 +19,7 @@ const orderItemSchema = new Schema(
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
     taxRate: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
   },
   { _id: false }
@@ -62,7 +63,7 @@ const orderSchema = new Schema<TOrder>(
 
     orderStatus: {
       type: String,
-      enum: Object.keys(ORDER_STATUS),
+      enum: Object.values(ORDER_STATUS),
       default: 'PENDING',
     },
     cancelReason: { type: String },
@@ -78,6 +79,7 @@ const orderSchema = new Schema<TOrder>(
 
     estimatedDeliveryTime: { type: String },
     deliveredAt: { type: Date },
+    preparationTime: { type: Number, default: 0 },
 
     isDeleted: { type: Boolean, default: false },
 
