@@ -106,7 +106,7 @@ const createOrderAfterPayment = async (
         price: i.price,
         taxRate: i.taxRate,
         taxAmount: i.taxAmount,
-        subtotal: i.subtotal,
+        subtotal: (i.subtotal || 0) + (i.taxAmount || 0),
       })),
       totalItems: summary.totalItems,
       totalPrice: summary.totalPrice,
