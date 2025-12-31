@@ -24,19 +24,24 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   }
 
   // Validate address
-  if (
-    !customer.name?.firstName ||
-    !customer.name?.lastName ||
-    // !customer.contactNumber ||
-    !customer.address?.state ||
-    !customer.address?.city ||
-    !customer.address?.country ||
-    !customer.address?.postalCode
-  )
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please complete your profile before checking out'
-    );
+  const requiredFields = [
+    { field: customer.name?.firstName, label: 'First Name' },
+    { field: customer.name?.lastName, label: 'Last Name' },
+    { field: customer.contactNumber, label: 'Contact Number' },
+    { field: customer.address?.state, label: 'State' },
+    { field: customer.address?.city, label: 'City' },
+    { field: customer.address?.country, label: 'Country' },
+    { field: customer.address?.postalCode, label: 'Postal Code' },
+  ];
+
+  for (const item of requiredFields) {
+    if (!item.field) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Please provide your ${item.label} to complete your profile before checking out.`
+      );
+    }
+  }
 
   if (!customer.email && !customer.contactNumber) {
     throw new AppError(
