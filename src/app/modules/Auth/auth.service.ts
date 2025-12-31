@@ -24,7 +24,6 @@ import { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../../config';
 import { Customer } from '../Customer/customer.model';
-import { v4 as uuidv4 } from 'uuid';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import { resendMobileOtp } from '../../utils/resendMobileOtp';
@@ -305,7 +304,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       });
       await existingUser.save();
     } else {
-      const userId = `C-${uuidv4().split('-')[0]}`;
+      const userId = generateUserId('/create-customer');
       await Customer.create({
         userId,
         role: 'CUSTOMER',
@@ -361,7 +360,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       });
       await existingUser.save();
     } else {
-      const userId = `C-${uuidv4().split('-')[0]}`;
+      const userId = generateUserId('/create-customer');
       await Customer.create({
         userId,
         role: 'CUSTOMER',
