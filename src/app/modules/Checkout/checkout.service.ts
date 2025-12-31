@@ -217,23 +217,6 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   );
   console.log({ offer });
 
-  // Apply offer
-  const offer = await OfferServices.getApplicableOffer(
-    {
-      vendorId: orderItems[0].vendorId.toString(),
-      subtotal: totalPrice,
-      offerCode: payload.offerCode,
-    },
-    currentUser
-  );
-  console.log({ orderItems });
-  const offerResult = OfferServices.applyOffer({
-    offer,
-    items: orderItems,
-    subtotal: totalPrice,
-    deliveryCharge,
-  });
-
   // Delivery address
   const activeAddress = customer.deliveryAddresses?.find((a) => a.isActive);
   if (!activeAddress) {
