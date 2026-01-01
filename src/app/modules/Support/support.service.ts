@@ -248,7 +248,9 @@ const getMessagesByRoom = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
   }
 
-  ensureParticipant(conversation, currentUser.id);
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    ensureParticipant(conversation, currentUser.id);
+  }
 
   const qb = new QueryBuilder(
     SupportMessage.find({ room, isDeleted: false }),
