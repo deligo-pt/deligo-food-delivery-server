@@ -21,7 +21,6 @@ export type TOrder = {
   discount?: number;
   taxAmount?: number;
   deliveryCharge?: number;
-  taxAmount?: number;
   subTotal: number;
 
   couponId?: mongoose.Types.ObjectId;
