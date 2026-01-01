@@ -573,7 +573,6 @@ export const OfferServices = {
   createOffer,
   updateOffer,
   getApplicableOffer,
-  applyOffer,
   getAllOffers,
   getSingleOffer,
   softDeleteOffer,

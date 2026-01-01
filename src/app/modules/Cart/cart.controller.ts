@@ -21,7 +21,8 @@ const activateItem = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await CartServices.activateItem(
     req.user as AuthUser,
-    productId
+    productId,
+    req.body.variantName
   );
   sendResponse(res, {
     success: true,
@@ -59,6 +60,20 @@ const deleteCartItem = catchAsync(async (req, res) => {
   });
 });
 
+// update cart items add ons
+const updateCartItemAddons = catchAsync(async (req, res) => {
+  const result = await CartServices.updateCartItemAddons(
+    req.user as AuthUser,
+    req.body
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product addons updated successfully',
+    data: result,
+  });
+});
+
 // view cart Controller
 const viewCart = catchAsync(async (req, res) => {
   const result = await CartServices.viewCart(req.user as AuthUser);
@@ -76,5 +91,6 @@ export const CartControllers = {
   activateItem,
   updateCartItemQuantity,
   deleteCartItem,
+  updateCartItemAddons,
   viewCart,
 };

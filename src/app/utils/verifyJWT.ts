@@ -28,6 +28,6 @@ export const verifyToken = (
   try {
     return jwt.verify(token, secret) as JwtPayload;
   } catch (error: any) {
-    throw new AppError(401, 'You are not authorized!');
+    throw new AppError(401, 'You are not authorized!4');
   }
 };

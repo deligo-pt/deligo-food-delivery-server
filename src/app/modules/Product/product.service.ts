@@ -17,6 +17,13 @@ import { getCustomerCoordinates } from '../../utils/getCustomerCoordinates';
 import { calculateDistance } from '../../utils/calculateDistance';
 import { Vendor } from '../Vendor/vendor.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { AddonGroup } from '../Add-Ons/addOns.model';
+import { customAlphabet } from 'nanoid';
+
+const generateShortId = customAlphabet(
+  '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  6
+);
 
 // Product Create Service
 const createProduct = async (
@@ -51,25 +58,34 @@ const createProduct = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
     }
 
-    //  ------------ Generating productId ------------
-    const lastProduct = await Product.findOne().sort({ productId: -1 });
-    let newProductId = 'PROD-0001';
-    if (lastProduct) {
-      const lastProductIdNumber = parseInt(lastProduct.productId.split('-')[1]);
-      const newProductIdNumber = lastProductIdNumber + 1;
-      newProductId = `PROD-${String(newProductIdNumber).padStart(4, '0')}`;
+    // check add ons
+    if (payload.addonGroups && payload.addonGroups.length > 0) {
+      const validAddonsCount = await AddonGroup.countDocuments({
+        _id: { $in: payload.addonGroups },
+        vendorId: existingUser._id,
+        isDeleted: false,
+      });
+
+      if (validAddonsCount !== payload.addonGroups.length) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'One or more selected Addon Groups are invalid or do not belong to you!'
+        );
+      }
     }
-    payload.productId = newProductId;
+
+    //  ------------ Generating productId ------------
+    const shortId = generateShortId();
+    payload.productId = `PROD-${shortId}`;
     //  ------------ Generating slug ------------
-    const newSlug = payload.name
+    payload.slug = payload.name
       .toLowerCase()
-      .replace(/ /g, '-')
-      .replace(/[^\w-]+/g, '');
-    payload.slug = newSlug;
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     //  ------------ Generating SKU ------------
-    const newSKU = `SKU-${payload?.category?.toUpperCase()}-${String(
-      newProductId
-    )
+    const newSKU = `SKU-${payload?.category?.toUpperCase()}-${String(shortId)
       .split('-')
       .pop()
       ?.padStart(4, '0')}`;
@@ -99,91 +115,80 @@ const updateProduct = async (
   const existingVendor = await Vendor.findOne({
     userId: currentUser.id,
     isDeleted: false,
-  });
+  }).lean();
+
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found...');
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
   if (existingVendor.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete product images. Your account is ${existingVendor.status}`
+      `Action forbidden. Your account status is ${existingVendor.status}`
     );
   }
 
   const existingProduct = await Product.findOne({
     productId,
-    ...(currentUser.role === 'VENDOR' && {
-      vendorId: existingVendor._id,
-    }),
+    ...(currentUser.role === 'VENDOR' && { vendorId: existingVendor._id }),
   });
 
   if (!existingProduct) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Product not found or you are not authorized to update this product'
+      'Product not found or unauthorized'
     );
   }
 
-  // check image if up to 5
-
-  if (existingProduct.images.length + images.length > 5) {
+  const currentImagesCount = existingProduct.images?.length || 0;
+  if (currentImagesCount + images.length > 5) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You can upload maximum 5 images'
+      'A product can have a maximum of 5 images'
     );
   }
 
-  const nestedFields = [
-    'pricing',
-    'stock',
-    'deliveryInfo',
-    'meta',
-    'attributes',
-  ] as const;
+  const { pricing, stock, meta, attributes, variations, ...remainingData } =
+    payload;
 
-  const mergeInto = (target: any, src: any) => {
-    const t = (target?.toObject?.() || target) ?? {};
-    Object.entries(src).forEach(([k, v]) => {
-      if (v !== undefined) (t as any)[k] = v;
-    });
-    return t;
-  };
+  const modifiedData: Record<string, any> = { ...remainingData };
 
-  for (const [key, value] of Object.entries(payload)) {
-    if (value === undefined) continue;
-    if (key === 'images' && Array.isArray(value)) {
-      existingProduct.images = [...(existingProduct.images || []), ...value];
-      continue;
+  if (pricing && Object.keys(pricing).length) {
+    for (const [key, value] of Object.entries(pricing)) {
+      modifiedData[`pricing.${key}`] = value;
     }
-    if (key === 'tags' && Array.isArray(value)) {
-      existingProduct.tags = value as string[];
-      continue;
+  }
+
+  if (stock && Object.keys(stock).length) {
+    for (const [key, value] of Object.entries(stock)) {
+      modifiedData[`stock.${key}`] = value;
     }
-    if (
-      (nestedFields as readonly string[]).includes(key) &&
-      !Array.isArray(value) &&
-      typeof value === 'object'
-    ) {
-      (existingProduct as any)[key] = mergeInto(
-        (existingProduct as any)[key],
-        value
-      );
-      if (key === 'attributes') existingProduct.markModified('attributes');
-      if (key === 'pricing') existingProduct.markModified('pricing');
-      if (key === 'stock') existingProduct.markModified('stock');
-      if (key === 'deliveryInfo') existingProduct.markModified('deliveryInfo');
-      if (key === 'meta') existingProduct.markModified('meta');
-      continue;
+  }
+
+  if (meta && Object.keys(meta).length) {
+    for (const [key, value] of Object.entries(meta)) {
+      modifiedData[`meta.${key}`] = value;
     }
-    (existingProduct as any)[key] = value;
   }
 
   if (images && images.length > 0) {
-    existingProduct.images = [...(existingProduct.images || []), ...images];
+    modifiedData.$push = { images: { $each: images } };
   }
-  await existingProduct.save({ validateModifiedOnly: true });
-  return existingProduct;
+
+  if (variations) modifiedData.variations = variations;
+  if (attributes) modifiedData.attributes = attributes;
+
+  const updatedProduct = await Product.findOneAndUpdate(
+    { productId },
+    modifiedData,
+    {
+      new: true,
+      runValidators: true,
+      context: 'query',
+    }
+  );
+
+  return updatedProduct;
 };
 
 // Approved Product Service
@@ -264,6 +269,16 @@ const deleteProductImages = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
+  if (
+    currentUser.role === 'VENDOR' &&
+    product.vendorId.toString() !== existingUser._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You can only delete images of your own products'
+    );
+  }
+
   // -------------check if images to be deleted exist in product images-------------
   const invalidImages = images.filter((img) => !product.images.includes(img));
   if (invalidImages.length > 0) {
@@ -271,11 +286,7 @@ const deleteProductImages = async (
   }
 
   // delete image from cloudinary
-  for (const image of images) {
-    deleteSingleImageFromCloudinary(image).catch((err) => {
-      throw new AppError(httpStatus.BAD_REQUEST, err.message);
-    });
-  }
+  await Promise.all(images.map((img) => deleteSingleImageFromCloudinary(img)));
 
   // Remove images from product
   product.images = product.images.filter((img) => !images.includes(img));
@@ -289,11 +300,10 @@ const getAllProducts = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
+  const { user: loggedInUser } = await findUserByEmailOrId({
     userId: currentUser.id,
     isDeleted: false,
   });
-  const loggedInUser = result.user;
 
   if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(

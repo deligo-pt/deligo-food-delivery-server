@@ -6,6 +6,7 @@ export type TAddress = {
   street: string;
   city: string;
   state?: string;
+  country?: string;
   postalCode?: string;
   latitude: number;
   longitude: number;
@@ -14,6 +15,7 @@ export type TAddress = {
 
 export type TOrderItemSnapshot = {
   productId: mongoose.Types.ObjectId;
+  vendorId: mongoose.Types.ObjectId;
   name: string;
   image?: string;
   variantName?: string;
@@ -24,10 +26,9 @@ export type TOrderItemSnapshot = {
   }[];
   quantity: number;
   price: number;
-
-  subtotal: number;
-  vendorId: mongoose.Types.ObjectId;
   taxRate?: number;
+  taxAmount?: number;
+  subtotal: number;
 };
 
 export type TAppliedOfferSnapshot = {

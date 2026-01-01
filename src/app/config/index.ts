@@ -8,6 +8,7 @@ export default {
   port: process.env.PORT,
   frontend_url_vendor: process.env.FRONTEND_URL_VENDOR,
   frontend_url_admin: process.env.FRONTEND_URL_ADMIN,
+  frontend_url_admin_admin: process.env.FRONTEND_URL_ADMIN_WITH_DOMAIN,
   frontend_url_fleet_manager: process.env.FRONTEND_URL_FLEET_MANAGER,
   bulkgate_send_api_url: process.env.BULKGATE_SEND_API_URL,
   bulkgate_verify_api_url: process.env.BULKGATE_VERIFY_API_URL,

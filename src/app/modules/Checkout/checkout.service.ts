@@ -24,19 +24,24 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   }
 
   // Validate address
-  if (
-    !customer.name?.firstName ||
-    !customer.name?.lastName ||
-    !customer.contactNumber ||
-    !customer.address?.state ||
-    !customer.address?.city ||
-    !customer.address?.country ||
-    !customer.address?.postalCode
-  )
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please complete your profile before checking out'
-    );
+  const requiredFields = [
+    { field: customer.name?.firstName, label: 'First Name' },
+    { field: customer.name?.lastName, label: 'Last Name' },
+    { field: customer.contactNumber, label: 'Contact Number' },
+    { field: customer.address?.state, label: 'State' },
+    { field: customer.address?.city, label: 'City' },
+    { field: customer.address?.country, label: 'Country' },
+    { field: customer.address?.postalCode, label: 'Postal Code' },
+  ];
+
+  for (const item of requiredFields) {
+    if (!item.field) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Please provide your ${item.label} to complete your profile before checking out.`
+      );
+    }
+  }
 
   if (!customer.email && !customer.contactNumber) {
     throw new AppError(
@@ -89,35 +94,26 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       );
     }
 
-    const existingProduct = await Product.findOne({
-      _id: payload.items[0].productId,
-    });
-    if (!existingProduct) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Product not found');
-    }
-    const existingVendor = await Vendor.findOne({
-      _id: existingProduct.vendorId,
-      isDeleted: false,
-    });
-    if (!existingVendor) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Vendor not found');
-    }
-    if (existingVendor?.businessDetails?.isStoreOpen === false) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Store is closed');
-    }
-
     selectedItems = payload.items;
   }
-
   // ---------- Check Product Stock ----------
   const productIds = selectedItems.map((i) => i.productId.toString());
   const products = await Product.find({ _id: { $in: productIds } });
+
+  const firstProduct = products[0];
+  if (!firstProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  const existingVendor = await Vendor.findById(firstProduct.vendorId);
+  if (!existingVendor)
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  if (existingVendor?.businessDetails?.isStoreOpen === false) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Store is closed');
+  }
+
   const deliveryAddress = customer?.deliveryAddresses?.find(
     (i) => i.isActive === true
   );
-  const existingVendor = await Vendor.findOne({
-    _id: products[0].vendorId.toString(),
-  });
 
   const vendorLongitude = existingVendor?.businessLocation?.longitude;
   const vendorLatitude = existingVendor?.businessLocation?.latitude;
@@ -142,6 +138,9 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 
   const deliveryCharge = deliveryDistance.meters * deliveryChargePerMeter;
 
+  let totalTaxAmount = 0;
+  let totalPriceBeforeTaxAndDelivery = 0;
+
   const orderItems = selectedItems.map((item) => {
     const product = products.find(
       (p) => p._id.toString() === item.productId.toString()
@@ -158,24 +157,44 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
         `Stock not available for ${product.name}`
       );
 
+    const unitPrice = product?.pricing?.price || 0;
+    const taxRate = product?.pricing?.taxRate || 0;
+
+    const addonsTotal = (item.addons || []).reduce(
+      (sum: number, a: any) => sum + (a.price || 0) * a.quantity,
+      0
+    );
+
+    const itemSubtotal = unitPrice * item.quantity + addonsTotal;
+    const itemTax = (itemSubtotal * taxRate) / 100;
+
+    totalTaxAmount += itemTax;
+    totalPriceBeforeTaxAndDelivery += itemSubtotal;
+
     return {
       productId: product._id,
-      quantity: item.quantity,
-      price: product.pricing.finalPrice,
-      subtotal: product.pricing.finalPrice * item.quantity,
       vendorId: product.vendorId,
-      estimatedDeliveryTime: payload?.estimatedDeliveryTime || 'N/A',
+      name: product.name,
+      image: product.images?.[0] || '',
+      variantName: item.variantName,
+      addons: item.addons || [],
+      quantity: item.quantity,
+      price: unitPrice,
+      taxRate: taxRate,
+      taxAmount: Number(itemTax.toFixed(2)),
+      subtotal: Number(itemSubtotal?.toFixed(2)),
     };
   });
 
   // ---------- Calculate ----------
   const totalItems = orderItems.reduce((s, i) => s + i.quantity, 0);
-  const rawTotalPrice = orderItems.reduce((s, i) => s + i.subtotal, 0);
-  const totalPrice = parseFloat(rawTotalPrice.toFixed(2));
+
+  const totalPrice = parseFloat(totalPriceBeforeTaxAndDelivery.toFixed(2));
   const discount = Number(payload.discount || 0);
+  const taxAmount = Number(totalTaxAmount.toFixed(2));
 
   const subTotal = parseFloat(
-    (totalPrice + deliveryCharge - discount).toFixed(2)
+    (totalPrice - discount + deliveryCharge + taxAmount).toFixed(2)
   );
 
   // Vendor check
@@ -196,13 +215,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     },
     currentUser
   );
-  console.log({ orderItems });
-  const offerResult = OfferServices.applyOffer({
-    offer,
-    items: orderItems,
-    subtotal: totalPrice,
-    deliveryCharge,
-  });
+  console.log({ offer });
 
   // Delivery address
   const activeAddress = customer.deliveryAddresses?.find((a) => a.isActive);
@@ -218,14 +231,15 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     contactNumber: customer?.contactNumber,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
-    discount: discount,
     totalItems,
-    totalPrice,
-    deliveryCharge: deliveryCharge.toFixed(2),
+    totalPrice: Number(totalPrice.toFixed(2)),
+    taxAmount: Number(taxAmount.toFixed(2)),
+    deliveryCharge: Number(deliveryCharge.toFixed(2)),
+    discount,
     subTotal,
-    estimatedDeliveryTime: orderItems[0].estimatedDeliveryTime,
+    estimatedDeliveryTime: payload.estimatedDeliveryTime || '20-30 minutes',
     deliveryAddress: activeAddress,
-    couponId: cart?.couponId,
+    couponId: cart?.couponId || null,
   };
   // -----------------------------------------------------------
   //  Prevent Duplicate Checkout Summary
@@ -252,9 +266,11 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 
   return {
     CheckoutSummaryId: summary._id,
-    subTotal: summary.subTotal,
-    items: summary.items,
     vendorId: summary.vendorId,
+    subTotal: summary.subTotal,
+    taxAmount: summary.taxAmount,
+    deliveryCharge: summary.deliveryCharge,
+    items: summary.items,
   };
 };
 
@@ -295,10 +311,6 @@ const getCheckoutSummary = async (
       httpStatus.BAD_REQUEST,
       'Checkout summary already converted to order'
     );
-  }
-
-  if (summary.isDeleted) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Checkout summary deleted');
   }
 
   return summary;

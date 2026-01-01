@@ -32,6 +32,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
         taxRate: { type: Number, default: 0 },
+        taxAmount: { type: Number, default: 0 },
         subtotal: { type: Number, required: true },
         vendorId: {
           type: Schema.Types.ObjectId,
@@ -86,7 +87,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       enum: ['CARD', 'MOBILE'],
     },
 
-    transactionId: { type: String, default: undefined },
+    transactionId: { type: String, default: null },
 
     orderId: { type: Schema.Types.ObjectId, default: null, ref: 'Order' },
 

@@ -19,6 +19,7 @@ export type TOrder = {
   totalItems: number;
   totalPrice: number;
   discount?: number;
+  taxAmount?: number;
   deliveryCharge?: number;
   taxAmount?: number;
   subTotal: number;
@@ -48,6 +49,7 @@ export type TOrder = {
   // Delivery Details
   estimatedDeliveryTime?: string; // e.g., "30 mins"
   deliveredAt?: Date;
+  preparationTime?: number;
 
   // Status Tracking
   isDeleted: boolean;

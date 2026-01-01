@@ -36,6 +36,14 @@ router.delete(
   validateRequest(CartValidation.deleteCartItemValidationSchema),
   CartControllers.deleteCartItem
 );
+
+// update cart item add ons
+router.patch(
+  '/update-add-ons',
+  auth('CUSTOMER'),
+  validateRequest(CartValidation.updateCartItemAddonsValidationSchema),
+  CartControllers.updateCartItemAddons
+);
 // view cart
 router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
 
