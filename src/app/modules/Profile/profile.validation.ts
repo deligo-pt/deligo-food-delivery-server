@@ -22,6 +22,7 @@ const userProfileUpdateValidationSchema = z.object({
         required_error: 'Contact number is required',
       })
       .optional(),
+    NIF: z.string().optional().nullable(),
 
     profilePhoto: z.string().nullable().optional(),
 
