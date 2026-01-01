@@ -90,6 +90,13 @@ const updateMyProfile = async (
     );
   }
 
+  if (payload.NIF && user.role !== 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Only customers can update NIF. Please contact support.'
+    );
+  }
+
   // -----------------------------
   // Profile Photo Upload Handle
   // -----------------------------

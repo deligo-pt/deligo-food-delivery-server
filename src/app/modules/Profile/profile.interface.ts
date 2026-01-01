@@ -5,6 +5,7 @@ export type TUserProfileUpdate = {
   };
   contactNumber: string;
   profilePhoto?: string | null;
+  NIF?: string;
   address?: {
     street?: string;
     city?: string;
