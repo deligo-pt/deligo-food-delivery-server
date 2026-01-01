@@ -25,7 +25,12 @@ export type TOrderItemSnapshot = {
     quantity: number;
   }[];
   quantity: number;
+
+  originalPrice: number;
+  discountAmount: number;
+
   price: number;
+  totalBeforeTax?: number;
   taxRate?: number;
   taxAmount?: number;
   subtotal: number;
