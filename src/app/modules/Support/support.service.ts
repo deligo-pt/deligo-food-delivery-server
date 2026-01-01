@@ -134,10 +134,13 @@ const getAllSupportConversations = async (
 ) => {
   await validateUser(currentUser);
 
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    query['participants.userId'] = currentUser.id;
+  }
+
   const qb = new QueryBuilder(
     SupportConversation.find({
       isDeleted: false,
-      'participants.userId': currentUser.id,
     }),
     query
   )
@@ -204,7 +207,9 @@ const createMessage = async ({
     throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
   }
 
-  ensureParticipant(conversation, senderId);
+  if (senderRole !== 'ADMIN' && senderRole !== 'SUPER_ADMIN') {
+    ensureParticipant(conversation, senderId);
+  }
   await ensureConversationLock(conversation, senderId, senderRole);
 
   // --------------------------------------------------

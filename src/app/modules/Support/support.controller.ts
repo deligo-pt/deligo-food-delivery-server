@@ -43,9 +43,9 @@ const getAllSupportConversationsController = catchAsync(async (req, res) => {
 //  Get Single Conversation
 // ------------------------------------------------------
 const getSingleSupportConversationController = catchAsync(async (req, res) => {
-  const { conversationId } = req.params;
+  const { room } = req.params;
   const result = await SupportService.getSingleSupportConversationController(
-    conversationId,
+    room,
     req.user as AuthUser
   );
   sendResponse(res, {
