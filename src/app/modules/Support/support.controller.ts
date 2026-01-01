@@ -40,6 +40,23 @@ const getAllSupportConversationsController = catchAsync(async (req, res) => {
 });
 
 // ------------------------------------------------------
+//  Get Single Conversation
+// ------------------------------------------------------
+const getSingleSupportConversationController = catchAsync(async (req, res) => {
+  const { room } = req.params;
+  const result = await SupportService.getSingleSupportConversationController(
+    room,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Conversation retrieved successfully',
+    data: result,
+  });
+});
+
+// ------------------------------------------------------
 //  Get Messages by Room
 // ------------------------------------------------------
 const getMessagesByRoomController = catchAsync(async (req, res) => {
@@ -101,6 +118,7 @@ const closeConversationController = catchAsync(async (req, res) => {
 export const SupportControllers = {
   openOrCreateConversationController,
   getAllSupportConversationsController,
+  getSingleSupportConversationController,
   getMessagesByRoomController,
   markReadByAdminOrUserController,
   closeConversationController,

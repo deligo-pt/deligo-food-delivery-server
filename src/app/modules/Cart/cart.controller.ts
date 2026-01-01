@@ -48,14 +48,17 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
 
 // delete cart item Controller
 const deleteCartItem = catchAsync(async (req, res) => {
+  const itemsToDelete = Array.isArray(req.body) ? req.body : [req.body];
+
   const result = await CartServices.deleteCartItem(
     req.user as AuthUser,
-    req.body.productId
+    itemsToDelete
   );
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product deleted from cart successfully',
+    message: 'Cart updated: Item(s) removed successfully',
     data: result,
   });
 });

@@ -5,9 +5,22 @@ const cartItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
-    name: { type: String }, // Snapshot of product name
+    name: { type: String, required: true }, // Snapshot of product name
     image: { type: String }, // Snapshot of product image
-    variantName: { type: String }, // e.g., "Large" or "1:2"
+    variantName: { type: String, default: null }, // e.g., "Small", "Large"
+
+    originalPrice: { type: Number, required: true },
+    discountAmount: { type: Number, default: 0 },
+    // ------------------------------------------
+
+    price: { type: Number, required: true },
+
+    quantity: {
+      type: Number,
+      required: true,
+      min: [1, 'Quantity cannot be less than 1'],
+    },
+
     addons: [
       {
         name: { type: String },
@@ -15,14 +28,11 @@ const cartItemSchema = new Schema(
         quantity: { type: Number },
       },
     ],
-    quantity: {
-      type: Number,
-      required: true,
-      min: [1, 'Quantity cannot be less than 1'],
-    },
-    price: { type: Number, required: true }, // Base Price + Variant Price
+
+    totalBeforeTax: { type: Number, default: 0 },
     taxRate: { type: Number, default: 0 },
-    subtotal: { type: Number, required: true }, // (Price * Quantity) + Addons total
+    taxAmount: { type: Number, default: 0 },
+    subtotal: { type: Number, required: true },
     isActive: { type: Boolean, default: true },
   },
   { _id: false }
@@ -55,38 +65,29 @@ cartSchema.pre('save', function (next) {
   const activeItems = this.items.filter((item) => item.isActive === true);
 
   if (activeItems.length === 0) {
-    this.totalItems = 0;
     this.totalPrice = 0;
     this.taxAmount = 0;
     this.subtotal = 0;
     return next();
   }
 
-  // Calculations
-  const calculatedTotalItems = activeItems.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
-  const calculatedTotalPrice = activeItems.reduce(
-    (sum, item) => sum + item.subtotal,
+  const totalBeforeTax = activeItems.reduce(
+    (sum, item) => sum + (item.totalBeforeTax || 0),
     0
   );
 
-  const calculatedTaxAmount = activeItems.reduce((sum, item) => {
-    const itemTax = item.subtotal * ((item.taxRate || 0) / 100);
-    return sum + itemTax;
-  }, 0);
+  const totalTax = activeItems.reduce(
+    (sum, item) => sum + (item.taxAmount || 0),
+    0
+  );
 
-  const currentDiscount = this.discount || 0;
+  const couponDiscount = this.discount || 0;
 
-  const finalPayableAmount =
-    calculatedTotalPrice + calculatedTaxAmount - currentDiscount;
+  const grandTotal = totalBeforeTax + totalTax - couponDiscount;
 
-  this.totalItems = calculatedTotalItems;
-  this.totalPrice = Number(calculatedTotalPrice.toFixed(2));
-  this.taxAmount = Number(calculatedTaxAmount.toFixed(2));
-  this.subtotal =
-    finalPayableAmount > 0 ? Number(finalPayableAmount.toFixed(2)) : 0;
+  this.totalPrice = Number(totalBeforeTax.toFixed(2));
+  this.taxAmount = Number(totalTax.toFixed(2));
+  this.subtotal = grandTotal > 0 ? Number(grandTotal.toFixed(2)) : 0;
 
   next();
 });

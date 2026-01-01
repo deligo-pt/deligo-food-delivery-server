@@ -47,6 +47,27 @@ router.get(
 
 /**
  * ------------------------------------------------------
+ * Get single conversation
+ * - ADMIN / SUPER_ADMIN : see all
+ * - Others              : see only own conversations
+ * ------------------------------------------------------
+ */
+router.get(
+  '/conversations/:room',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'VENDOR',
+    'SUB_VENDOR',
+    'CUSTOMER',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER'
+  ),
+  SupportControllers.getSingleSupportConversationController
+);
+
+/**
+ * ------------------------------------------------------
  * Get messages of a conversation (by room)
  * - Only participants can access
  * ------------------------------------------------------

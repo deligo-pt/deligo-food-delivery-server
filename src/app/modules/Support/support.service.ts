@@ -134,10 +134,13 @@ const getAllSupportConversations = async (
 ) => {
   await validateUser(currentUser);
 
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    query['participants.userId'] = currentUser.id;
+  }
+
   const qb = new QueryBuilder(
     SupportConversation.find({
       isDeleted: false,
-      'participants.userId': currentUser.id,
     }),
     query
   )
@@ -149,6 +152,31 @@ const getAllSupportConversations = async (
   const meta = await qb.countTotal();
 
   return { meta, data };
+};
+
+// ------------------------------------------------------------------
+// Get Conversation (GENERIC)
+// ------------------------------------------------------------------
+
+const getSingleSupportConversationController = async (
+  room: string,
+  currentUser: AuthUser
+) => {
+  await validateUser(currentUser);
+
+  const conversation = await SupportConversation.findOne({
+    room,
+    isDeleted: false,
+  });
+
+  if (!conversation) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
+  }
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    ensureParticipant(conversation, currentUser.id);
+  }
+
+  return conversation;
 };
 
 // ------------------------------------------------------------------
@@ -179,7 +207,9 @@ const createMessage = async ({
     throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
   }
 
-  ensureParticipant(conversation, senderId);
+  if (senderRole !== 'ADMIN' && senderRole !== 'SUPER_ADMIN') {
+    ensureParticipant(conversation, senderId);
+  }
   await ensureConversationLock(conversation, senderId, senderRole);
 
   // --------------------------------------------------
@@ -248,7 +278,9 @@ const getMessagesByRoom = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
   }
 
-  ensureParticipant(conversation, currentUser.id);
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    ensureParticipant(conversation, currentUser.id);
+  }
 
   const qb = new QueryBuilder(
     SupportMessage.find({ room, isDeleted: false }),
@@ -326,6 +358,7 @@ const closeConversation = async (room: string, currentUser: AuthUser) => {
 export const SupportService = {
   openOrCreateConversation,
   getAllSupportConversations,
+  getSingleSupportConversationController,
   createMessage, // socket only
   getMessagesByRoom,
   markReadByAdminOrUser,
