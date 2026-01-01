@@ -152,6 +152,31 @@ const getAllSupportConversations = async (
 };
 
 // ------------------------------------------------------------------
+// Get Conversation (GENERIC)
+// ------------------------------------------------------------------
+
+const getSingleSupportConversationController = async (
+  room: string,
+  currentUser: AuthUser
+) => {
+  await validateUser(currentUser);
+
+  const conversation = await SupportConversation.findOne({
+    room,
+    isDeleted: false,
+  });
+
+  if (!conversation) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
+  }
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    ensureParticipant(conversation, currentUser.id);
+  }
+
+  return conversation;
+};
+
+// ------------------------------------------------------------------
 // Create Message (CALLED FROM SOCKET ONLY)
 // ------------------------------------------------------------------
 
@@ -328,6 +353,7 @@ const closeConversation = async (room: string, currentUser: AuthUser) => {
 export const SupportService = {
   openOrCreateConversation,
   getAllSupportConversations,
+  getSingleSupportConversationController,
   createMessage, // socket only
   getMessagesByRoom,
   markReadByAdminOrUser,
