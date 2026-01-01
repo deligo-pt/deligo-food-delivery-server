@@ -292,7 +292,8 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (
     loggedInUser?.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner?.registeredBy !== loggedInUser?._id.toString()
+    existingDeliveryPartner?.registeredBy?.toString() !==
+      loggedInUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
