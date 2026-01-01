@@ -11,8 +11,7 @@ const addToCartValidationSchema = z.object({
         addons: z
           .array(
             z.object({
-              name: z.string(),
-              price: z.number().min(0),
+              addOnId: z.string(),
               quantity: z.number().min(1),
             })
           )
@@ -36,11 +35,16 @@ const updateCartItemQuantityValidationSchema = z.object({
 
 // delete cart item validation
 const deleteCartItemValidationSchema = z.object({
-  body: z.object({
-    productId: z
-      .array(z.string({ required_error: 'Product ID is required' }))
-      .min(1, 'Product ID is required'),
-  }),
+  body: z
+    .array(
+      z.object({
+        productId: z.string({
+          required_error: 'Product ID is required',
+        }),
+        variantName: z.string().optional().nullable(),
+      })
+    )
+    .min(1, 'At least one item must be provided to delete'),
 });
 
 const updateCartItemAddonsValidationSchema = z.object({

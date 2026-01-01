@@ -11,6 +11,7 @@ import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
@@ -233,7 +234,7 @@ const getAllDeliveryPartnersFromDB = async (
   });
   const loggedInUser = result?.user;
   if (currentUser?.role === 'FLEET_MANAGER') {
-    query.registeredBy = loggedInUser?._id;
+    query.registeredBy = loggedInUser?._id.toString();
   }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
@@ -242,6 +243,15 @@ const getAllDeliveryPartnersFromDB = async (
     .sort()
     .filter()
     .search(DeliveryPartnerSearchableFields);
+
+  const populateOptions = getPopulateOptions(loggedInUser.role, {
+    approvedBy: 'name userId role',
+    rejectedBy: 'name userId role',
+    blockedBy: 'name userId role',
+  });
+  populateOptions.forEach((option) => {
+    deliveryPartners.modelQuery = deliveryPartners.modelQuery.populate(option);
+  });
 
   const meta = await deliveryPartners.countTotal();
 
