@@ -73,7 +73,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     payload.discount = cart.discount;
   } else {
     // ====== DIRECT CHECKOUT ======
-    if (!payload.items || payload.items.length === 0) {
+    if (!payload.items || payload.items.length !== 1) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'No items provided for checkout'
@@ -105,20 +105,30 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
   const existingVendor = await Vendor.findById(firstProduct.vendorId);
-  if (!existingVendor)
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  if (existingVendor?.businessDetails?.isStoreOpen === false) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Store is closed');
+  if (
+    !existingVendor ||
+    existingVendor?.businessDetails?.isStoreOpen === false
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Vendor unavailable or store closed'
+    );
   }
 
-  const deliveryAddress = customer?.deliveryAddresses?.find(
+  const activeAddress = customer?.deliveryAddresses?.find(
     (i) => i.isActive === true
   );
+  if (!activeAddress) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please add a delivery address before checking out'
+    );
+  }
 
   const vendorLongitude = existingVendor?.businessLocation?.longitude;
   const vendorLatitude = existingVendor?.businessLocation?.latitude;
-  const customerLongitude = deliveryAddress?.longitude;
-  const customerLatitude = deliveryAddress?.latitude;
+  const customerLongitude = activeAddress?.longitude;
+  const customerLatitude = activeAddress?.latitude;
 
   if (
     !vendorLongitude ||
@@ -139,7 +149,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   const deliveryCharge = deliveryDistance.meters * deliveryChargePerMeter;
 
   let totalTaxAmount = 0;
-  let totalPriceBeforeTaxAndDelivery = 0;
+  let totalPriceBeforeTax = 0;
 
   const orderItems = selectedItems.map((item) => {
     const product = products.find(
@@ -165,11 +175,18 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       0
     );
 
-    const itemSubtotal = unitPrice * item.quantity + addonsTotal;
-    const itemTax = (itemSubtotal * taxRate) / 100;
+    const itemTotalBeforeTax = parseFloat(
+      (unitPrice * item.quantity + addonsTotal).toFixed(2)
+    );
+    const itemTax = parseFloat(
+      (itemTotalBeforeTax * (taxRate / 100)).toFixed(2)
+    );
+    const itemSubtotalWithTax = parseFloat(
+      (itemTotalBeforeTax + itemTax).toFixed(2)
+    );
 
+    totalPriceBeforeTax += itemTotalBeforeTax;
     totalTaxAmount += itemTax;
-    totalPriceBeforeTaxAndDelivery += itemSubtotal;
 
     return {
       productId: product._id,
@@ -181,20 +198,23 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       quantity: item.quantity,
       price: unitPrice,
       taxRate: taxRate,
-      taxAmount: Number(itemTax.toFixed(2)),
-      subtotal: Number(itemSubtotal?.toFixed(2)),
+      taxAmount: itemTax,
+      totalBeforeTax: itemTotalBeforeTax,
+      subtotal: itemSubtotalWithTax,
     };
   });
 
   // ---------- Calculate ----------
   const totalItems = orderItems.reduce((s, i) => s + i.quantity, 0);
-
-  const totalPrice = parseFloat(totalPriceBeforeTaxAndDelivery.toFixed(2));
   const discount = Number(payload.discount || 0);
+
+  const totalPrice = parseFloat(totalPriceBeforeTax.toFixed(2));
   const taxAmount = Number(totalTaxAmount.toFixed(2));
 
-  const subTotal = parseFloat(
-    (totalPrice - discount + deliveryCharge + taxAmount).toFixed(2)
+  const finalSubTotal = parseFloat(
+    (totalPriceBeforeTax + totalTaxAmount + deliveryCharge - discount).toFixed(
+      2
+    )
   );
 
   // Vendor check
@@ -217,14 +237,6 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   );
   console.log({ offer });
 
-  // Delivery address
-  const activeAddress = customer.deliveryAddresses?.find((a) => a.isActive);
-  if (!activeAddress) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'No active delivery address found'
-    );
-  }
   const summaryData = {
     customerId,
     customerEmail: customer?.email,
@@ -236,7 +248,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     taxAmount: Number(taxAmount.toFixed(2)),
     deliveryCharge: Number(deliveryCharge.toFixed(2)),
     discount,
-    subTotal,
+    subTotal: finalSubTotal,
     estimatedDeliveryTime: payload.estimatedDeliveryTime || '20-30 minutes',
     deliveryAddress: activeAddress,
     couponId: cart?.couponId || null,
@@ -248,7 +260,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     customerId,
     vendorId: orderItems[0].vendorId.toString(),
     'items.productId': { $all: orderItems.map((i) => i.productId.toString()) },
-    subTotal,
+    subTotal: finalSubTotal,
     isConvertedToOrder: false,
   });
 

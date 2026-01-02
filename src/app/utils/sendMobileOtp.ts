@@ -19,8 +19,10 @@ export const sendMobileOtp = async (phone: string) => {
     application_id: appId,
     application_token: apiKey,
     number: phone,
+
     request_quota_identification: phone,
-    sender_id: 'Deligo',
+    sender_id: 'gText',
+    sender_id_value: 'Deligo',
   };
   try {
     const response = await axios.post(apiUrl, payload);
