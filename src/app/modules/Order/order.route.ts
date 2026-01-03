@@ -16,7 +16,15 @@ router.post(
 // Get all orders
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'VENDOR', 'CUSTOMER'),
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'FLEET_MANAGER',
+    'CUSTOMER'
+  ),
   OrderControllers.getAllOrders
 );
 
@@ -29,7 +37,6 @@ router.get(
 
 // Accept / Reject / Preparing / Ready for pickup/ Cancel order
 router.patch(
-  // '/:orderId/accept-reject',
   '/:orderId/status',
   auth('VENDOR'),
   validateRequest(OrderValidation.updateOrderStatusByVendorValidationSchema),
