@@ -134,21 +134,18 @@ const getAllSupportConversations = async (
 ) => {
   await validateUser(currentUser);
 
+  const baseFilter: Record<string, any> = { isDeleted: false };
+
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    query['participants.userId'] = currentUser.id;
-  } else if (query.role) {
-    query['participants'] = {
-      $elemMatch: { role: query.role as string },
-    };
+    baseFilter['participants.userId'] = currentUser.id;
+  }
+
+  if (query.role) {
+    baseFilter['participants.role'] = query.role;
     delete query.role;
   }
 
-  const qb = new QueryBuilder(
-    SupportConversation.find({
-      isDeleted: false,
-    }),
-    query
-  )
+  const qb = new QueryBuilder(SupportConversation.find(baseFilter), query)
     .sort()
     .paginate()
     .fields();

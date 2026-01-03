@@ -38,6 +38,7 @@ router.get(
     'ADMIN',
     'SUPER_ADMIN',
     'VENDOR',
+    'SUB_VENDOR',
     'CUSTOMER',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER'
