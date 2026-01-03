@@ -96,7 +96,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
   },
   { timestamps: true }
 );
-
+CheckoutSummarySchema.index({ customerId: 1, isConvertedToOrder: 1 });
 export const CheckoutSummary = model<TCheckoutSummary>(
   'CheckoutSummary',
   CheckoutSummarySchema
