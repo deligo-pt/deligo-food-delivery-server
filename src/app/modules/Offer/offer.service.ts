@@ -260,7 +260,7 @@ const getApplicableOffer = async (
   currentUser: AuthUser
 ) => {
   const now = new Date();
-
+  console.log(currentUser);
   // --------------------------------------------
   // Base query (vendor + global offers)
   // --------------------------------------------
@@ -327,7 +327,7 @@ const getApplicableOffer = async (
 };
 
 // apply offer to checkout
-const applyOffer = ({
+export const applyOffer = ({
   offer,
   items,
   subtotal,
