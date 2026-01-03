@@ -136,6 +136,11 @@ const getAllSupportConversations = async (
 
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     query['participants.userId'] = currentUser.id;
+  } else if (query.role) {
+    query['participants'] = {
+      $elemMatch: { role: query.role as string },
+    };
+    delete query.role;
   }
 
   const qb = new QueryBuilder(
