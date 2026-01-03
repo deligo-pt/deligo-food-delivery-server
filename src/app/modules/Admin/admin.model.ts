@@ -18,7 +18,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     },
     registeredBy: {
       type: Schema.Types.ObjectId,
-      required: true,
+      default: null,
       ref: 'Admin',
     },
     role: {

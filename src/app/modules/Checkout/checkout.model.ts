@@ -33,6 +33,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         price: { type: Number, required: true },
         taxRate: { type: Number, default: 0 },
         taxAmount: { type: Number, default: 0 },
+        totalBeforeTax: { type: Number, required: true },
         subtotal: { type: Number, required: true },
         vendorId: {
           type: Schema.Types.ObjectId,
