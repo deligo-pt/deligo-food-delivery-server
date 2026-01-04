@@ -27,6 +27,17 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
     socket.join(room);
   });
 
+  socket.on(
+    'typing',
+    ({ room, isTyping }: { room: string; isTyping: boolean }) => {
+      socket.to(room).emit('user-typing', {
+        userId,
+        name: user.name || 'User',
+        isTyping,
+      });
+    }
+  );
+
   // --------------------------------------------
   //  Send message (GENERIC for all chat types)
   //  --------------------------------------------
@@ -55,9 +66,12 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
       io.to(room).emit('new-message', savedMessage);
 
       if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-        io.to('admin-notifications-room').emit('new-support-ticket', {
+        io.to('admin-notifications-room').emit('incoming-notification', {
           room: payload.room,
-          message: savedMessage,
+          senderName: user.name || 'User',
+          messagePreview: message.slice(0, 50),
+          ticketId: savedMessage.ticketId || null,
+          conversationType: (savedMessage as any).type || 'SUPPORT',
         });
       }
     } catch (error: any) {
@@ -101,5 +115,10 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
         message: error?.message || 'Failed to close conversation',
       });
     }
+  });
+
+  socket.on('leave-conversation', ({ room }: { room: string }) => {
+    if (!room) return;
+    socket.leave(room);
   });
 };
