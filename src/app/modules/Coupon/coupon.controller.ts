@@ -65,11 +65,24 @@ const toggleCouponStatus = catchAsync(async (req, res) => {
   });
 });
 
-// get coupon analytics controller
-const getCouponAnalytics = catchAsync(async (req, res) => {
+// get all coupons analytics controller
+const getAllCouponsAnalytics = catchAsync(async (req, res) => {
+  const result = await CouponServices.getAllCouponsAnalytics(
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'All coupons analytics retrieved successfully',
+    data: result,
+  });
+});
+
+// get single coupon analytics controller
+const getSingleCouponAnalytics = catchAsync(async (req, res) => {
   const { couponId } = req.params;
 
-  const result = await CouponServices.getCouponAnalytics(
+  const result = await CouponServices.getSingleCouponAnalytics(
     couponId,
     req.user as AuthUser
   );
@@ -78,23 +91,6 @@ const getCouponAnalytics = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Coupon analytics retrieved successfully',
-    data: result,
-  });
-});
-
-// get coupon monthly analytics controller
-const getCouponMonthlyAnalytics = catchAsync(async (req, res) => {
-  const { couponId } = req.params;
-
-  const result = await CouponServices.getCouponMonthlyAnalytics(
-    couponId,
-    req.user as AuthUser
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Monthly coupon analytics retrieved successfully',
     data: result,
   });
 });
@@ -164,8 +160,8 @@ export const CouponControllers = {
   updateCoupon,
   applyCoupon,
   toggleCouponStatus,
-  getCouponAnalytics,
-  getCouponMonthlyAnalytics,
+  getAllCouponsAnalytics,
+  getSingleCouponAnalytics,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,
