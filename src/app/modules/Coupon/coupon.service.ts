@@ -414,8 +414,127 @@ const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
   };
 };
 
-// get coupon analytics service
-const getCouponAnalytics = async (couponId: string, currentUser: AuthUser) => {
+// get all coupons analytics service
+const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
+  // Validate user
+  const { user: loggedInUser } = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(httpStatus.FORBIDDEN, `You are not approved.`);
+  }
+
+  const orderMatch: any = {
+    paymentStatus: 'COMPLETED',
+    isDeleted: false,
+    couponId: { $exists: true, $ne: null },
+  };
+
+  if (['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role)) {
+    orderMatch.vendorId = loggedInUser._id;
+  }
+
+  const results = await Order.aggregate([
+    { $match: orderMatch },
+    {
+      $group: {
+        _id: '$couponId',
+        totalCustomerUsage: { $sum: 1 },
+        revenueImpact: { $sum: '$discount' },
+        allItems: { $push: '$items' },
+        monthlyRaw: {
+          $push: {
+            date: '$createdAt',
+            discount: '$discount',
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: 'coupons',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'couponDetails',
+      },
+    },
+    { $unwind: '$couponDetails' },
+    {
+      $project: {
+        _id: 0,
+        couponId: '$_id',
+        couponCode: '$couponDetails.code',
+        totalCustomerUsage: 1,
+        revenueImpact: { $round: ['$revenueImpact', 2] },
+        allItems: 1,
+        monthlyRaw: 1,
+      },
+    },
+  ]);
+
+  const finalAnalytics = await Promise.all(
+    results.map(async (couponData) => {
+      const itemMap: Record<string, number> = {};
+      couponData.allItems.flat().forEach((item: any) => {
+        const pid = item.productId.toString();
+        itemMap[pid] = (itemMap[pid] || 0) + item.quantity;
+      });
+
+      const topItemEntries = Object.entries(itemMap)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3);
+
+      const productDetails = await Product.find({
+        _id: { $in: topItemEntries.map(([id]) => id) },
+      })
+        .select('name')
+        .lean();
+
+      const topItemsInfluenced = topItemEntries.map(([id, qty]) => ({
+        name:
+          productDetails.find((p) => p._id.toString() === id)?.name ||
+          'Unknown',
+        quantity: qty,
+      }));
+
+      const monthlyMap: Record<
+        string,
+        { month: string; usage: number; revenue: number }
+      > = {};
+
+      couponData.monthlyRaw.forEach((entry: any) => {
+        const d = new Date(entry.date);
+        const label = `${d.getFullYear()}-${d.getMonth() + 1}`; // e.g. "2024-5"
+
+        if (!monthlyMap[label]) {
+          monthlyMap[label] = { month: label, usage: 0, revenue: 0 };
+        }
+        monthlyMap[label].usage += 1;
+        monthlyMap[label].revenue += entry.discount;
+      });
+
+      return {
+        couponCode: couponData.couponCode,
+        totalCustomerUsage: couponData.totalCustomerUsage,
+        revenueImpact: couponData.revenueImpact,
+        topItemsInfluenced,
+        monthlyAnalysis: Object.values(monthlyMap).sort((a, b) =>
+          a.month.localeCompare(b.month)
+        ),
+      };
+    })
+  );
+
+  return finalAnalytics;
+};
+
+// get single coupon analytics service
+const getSingleCouponAnalytics = async (
+  couponId: string,
+  currentUser: AuthUser
+) => {
   // --------------------------------------------------
   // Validate user
   // --------------------------------------------------
@@ -553,79 +672,6 @@ const getCouponAnalytics = async (couponId: string, currentUser: AuthUser) => {
     boost,
     revenueImpact,
     topItems,
-  };
-};
-
-// get coupon monthly analytics service
-const getCouponMonthlyAnalytics = async (
-  couponId: string,
-  currentUser: AuthUser
-) => {
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.status !== 'APPROVED') {
-    throw new AppError(httpStatus.FORBIDDEN, 'Not approved');
-  }
-
-  const coupon = await Coupon.findById(couponId);
-  if (!coupon) throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
-
-  const match: any = {
-    couponId: new Types.ObjectId(couponId),
-    paymentStatus: 'COMPLETED',
-    isDeleted: false,
-  };
-
-  // Vendor-only data
-  if (['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role)) {
-    match.vendorId = loggedInUser._id;
-  }
-
-  // Last 12 months
-  const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - 11);
-  startDate.setDate(1);
-
-  const monthlyData = await Order.aggregate([
-    {
-      $match: {
-        ...match,
-        createdAt: { $gte: startDate },
-      },
-    },
-    {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-        },
-        usage: { $sum: 1 },
-        revenueImpact: { $sum: '$discount' },
-      },
-    },
-    { $sort: { '_id.year': 1, '_id.month': 1 } },
-  ]);
-
-  // Format for frontend
-  const formatted = monthlyData.map((item) => {
-    const date = new Date(item._id.year, item._id.month - 1);
-    return {
-      month: date.toLocaleString('en-US', {
-        month: 'short',
-        year: 'numeric',
-      }),
-      usage: item.usage,
-      revenueImpact: Number(item.revenueImpact.toFixed(2)),
-    };
-  });
-
-  return {
-    couponId,
-    couponCode: coupon.code,
-    monthlyAnalytics: formatted,
   };
 };
 
@@ -785,8 +831,8 @@ export const CouponServices = {
   updateCoupon,
   applyCoupon,
   toggleCouponStatus,
-  getCouponAnalytics,
-  getCouponMonthlyAnalytics,
+  getAllCouponsAnalytics,
+  getSingleCouponAnalytics,
   getAllCoupons,
   getSingleCoupon,
   softDeleteCoupon,

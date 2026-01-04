@@ -304,6 +304,7 @@ const getAllProducts = async (
     userId: currentUser.id,
     isDeleted: false,
   });
+  console.log({ currentUser });
 
   if (loggedInUser.status !== 'APPROVED') {
     throw new AppError(

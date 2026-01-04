@@ -49,4 +49,7 @@ const offerSchema = new Schema<TOffer>(
   }
 );
 
+offerSchema.index({ code: 1, isActive: 1 });
+offerSchema.index({ vendorId: 1, isActive: 1 });
+
 export const Offer = model<TOffer>('Offer', offerSchema);

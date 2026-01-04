@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { AuthUser } from '../../constant/user.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { TAddonGroup } from './addOns.interface';
@@ -46,19 +47,30 @@ const createAddonGroup = async (
   return result;
 };
 
-const getVendorAddonGroups = async (vendorId: string) => {
-  const result = await AddonGroup.find({ vendorId, isDeleted: false });
+// update addon group service
+const updateAddonGroup = async (
+  id: string,
+  payload: Partial<TAddonGroup>,
+  currentUser: AuthUser
+) => {
+  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
+
+  const result = await AddonGroup.findOneAndUpdate(
+    { _id: id, vendorId: existingVendor?._id, isDeleted: false },
+    payload,
+    { new: true, runValidators: true }
+  );
+
+  if (!result) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Addon group not found or unauthorized'
+    );
+  }
   return result;
 };
 
-const updateAddonGroup = async (id: string, payload: Partial<TAddonGroup>) => {
-  const result = await AddonGroup.findByIdAndUpdate(id, payload, {
-    new: true,
-    runValidators: true,
-  });
-  return result;
-};
-
+// add option to addon group service
 const addOptionToAddonGroup = async (
   groupId: string,
   newOption: { name: string; price: number },
@@ -84,9 +96,10 @@ const addOptionToAddonGroup = async (
   return result;
 };
 
+// delete option from addon group service
 const deleteOptionFromAddonGroup = async (
   groupId: string,
-  optionName: string,
+  optionId: string,
   currentUser: AuthUser
 ) => {
   const existingVendor = await Vendor.findOne({ userId: currentUser.id });
@@ -94,7 +107,7 @@ const deleteOptionFromAddonGroup = async (
   const result = await AddonGroup.findOneAndUpdate(
     { _id: groupId, vendorId: existingVendor?._id },
     {
-      $pull: { options: { name: optionName } },
+      $pull: { options: { _id: optionId } },
     },
     { new: true }
   );
@@ -106,6 +119,7 @@ const deleteOptionFromAddonGroup = async (
   return result;
 };
 
+// get all addon groups service
 const getAllAddonGroups = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
@@ -141,6 +155,7 @@ const getAllAddonGroups = async (
   return result;
 };
 
+// get single addon group service
 const getSingleAddonGroup = async (id: string, currentUser: AuthUser) => {
   const { user: loggedInUser } = await findUserByEmailOrId({
     userId: currentUser.id,
@@ -156,12 +171,60 @@ const getSingleAddonGroup = async (id: string, currentUser: AuthUser) => {
   return result;
 };
 
+// toggle option status (active/inactive)
+const toggleOptionStatus = async (
+  groupId: string,
+  optionId: string,
+  currentUser: AuthUser
+) => {
+  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
+  if (!existingVendor)
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+
+  const group = await AddonGroup.findOne({
+    _id: groupId,
+    vendorId: existingVendor._id,
+    isDeleted: false,
+  });
+
+  if (!group) throw new AppError(httpStatus.NOT_FOUND, 'Addon Group not found');
+
+  const option = group.options.find(
+    (opt: any) => opt._id.toString() === optionId
+  );
+
+  if (!option) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Option not found in this group');
+  }
+
+  // স্ট্যাটাস টগল করুন
+  option.isActive = !option.isActive;
+
+  await group.save();
+  return group;
+};
+
+// soft delete addon group
+const softDeleteAddonGroup = async (id: string, currentUser: AuthUser) => {
+  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
+  const result = await AddonGroup.findOneAndUpdate(
+    { _id: id, vendorId: existingVendor?._id },
+    { isDeleted: true },
+    { new: true }
+  );
+  if (!result) throw new AppError(httpStatus.NOT_FOUND, 'Group not found');
+  return {
+    message: 'Addon group deleted successfully',
+  };
+};
+
 export const AddOnsServices = {
   createAddonGroup,
-  getVendorAddonGroups,
   updateAddonGroup,
   addOptionToAddonGroup,
   deleteOptionFromAddonGroup,
   getAllAddonGroups,
   getSingleAddonGroup,
+  toggleOptionStatus,
+  softDeleteAddonGroup,
 };

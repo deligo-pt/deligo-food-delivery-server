@@ -167,7 +167,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
         `Stock not available for ${product.name}`
       );
 
-    const unitPrice = product?.pricing?.price || 0;
+    const unitPrice = item.price || product?.pricing?.price || 0;
     const taxRate = product?.pricing?.taxRate || 0;
 
     const addonsTotal = (item.addons || []).reduce(
@@ -206,16 +206,15 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 
   // ---------- Calculate ----------
   const totalItems = orderItems.reduce((s, i) => s + i.quantity, 0);
-  const discount = Number(payload.discount || 0);
+  // const discount = Number(payload.discount || 0);
 
   const totalPrice = parseFloat(totalPriceBeforeTax.toFixed(2));
-  const taxAmount = Number(totalTaxAmount.toFixed(2));
 
-  const finalSubTotal = parseFloat(
-    (totalPriceBeforeTax + totalTaxAmount + deliveryCharge - discount).toFixed(
-      2
-    )
-  );
+  // const finalSubTotal = parseFloat(
+  //   (totalPriceBeforeTax + totalTaxAmount + deliveryCharge - discount).toFixed(
+  //     2
+  //   )
+  // );
 
   // Vendor check
   const vendorIds = orderItems.map((i) => i.vendorId.toString());
@@ -235,7 +234,14 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     },
     currentUser
   );
-  console.log({ offer });
+
+  const offerResult = OfferServices.applyOffer({
+    offer,
+    items: orderItems,
+    totalPriceBeforeTax,
+    taxAmount: totalTaxAmount,
+    deliveryCharge,
+  });
 
   const summaryData = {
     customerId,
@@ -245,10 +251,11 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     items: orderItems,
     totalItems,
     totalPrice: Number(totalPrice.toFixed(2)),
-    taxAmount: Number(taxAmount.toFixed(2)),
-    deliveryCharge: Number(deliveryCharge.toFixed(2)),
-    discount,
-    subTotal: finalSubTotal,
+    taxAmount: Number(totalTaxAmount.toFixed(2)),
+    deliveryCharge: offerResult.deliveryCharge,
+    discount: offerResult.discount,
+    subTotal: offerResult.subTotal,
+    appliedOffer: offerResult.appliedOffer,
     estimatedDeliveryTime: payload.estimatedDeliveryTime || '20-30 minutes',
     deliveryAddress: activeAddress,
     couponId: cart?.couponId || null,
@@ -260,7 +267,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     customerId,
     vendorId: orderItems[0].vendorId.toString(),
     'items.productId': { $all: orderItems.map((i) => i.productId.toString()) },
-    subTotal: finalSubTotal,
+    subTotal: offerResult.subTotal,
     isConvertedToOrder: false,
   });
 
@@ -276,14 +283,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 
   const summary = await CheckoutSummary.create(summaryData);
 
-  return {
-    CheckoutSummaryId: summary._id,
-    vendorId: summary.vendorId,
-    subTotal: summary.subTotal,
-    taxAmount: summary.taxAmount,
-    deliveryCharge: summary.deliveryCharge,
-    items: summary.items,
-  };
+  return summary;
 };
 
 // get checkout summary

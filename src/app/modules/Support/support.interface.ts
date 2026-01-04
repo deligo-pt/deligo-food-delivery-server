@@ -2,12 +2,21 @@ import mongoose from 'mongoose';
 import { TUserRole } from '../../constant/user.constant';
 import { TConversationParticipant } from './support.constant';
 
-export type TConversationType = 'SUPPORT' | 'ORDER' | 'DIRECT';
+export type TConversationType =
+  | 'SUPPORT' // Admin <-> Customer (Ticket based)
+  | 'VENDOR_CHAT' // Admin <-> Vendor
+  | 'DRIVER_CHAT' // Admin <-> Driver/Delivery Partner
+  | 'CUSTOMER_CHAT' // Admin <-> Customer (Direct)
+  | 'FLEET_MANAGER_CHAT' // Admin <-> Fleet Manager
+  | 'FLEET_DRIVER_CHAT' // Fleet Manager <-> Delivery Partner
+  | 'ORDER' // Specific to an Order
+  | 'DIRECT'; // General/Others
 
 export type TSupportConversation = {
   _id?: mongoose.Types.ObjectId;
 
   room: string;
+  ticketId?: string;
 
   //  Generic participants (NOT user/receiver)
   participants: TConversationParticipant[];
@@ -28,6 +37,9 @@ export type TSupportConversation = {
   //  Conversation category
   type: TConversationType;
 
+  // Optional reference ID (e.g., Order ID)
+  referenceId?: string;
+
   //  Flags
   isActive?: boolean;
   isDeleted?: boolean;
@@ -39,6 +51,7 @@ export type TSupportConversation = {
 export type TSupportMessage = {
   _id?: mongoose.Types.ObjectId;
 
+  ticketId?: string;
   room: string;
 
   senderId: string;
@@ -48,7 +61,7 @@ export type TSupportMessage = {
   attachments?: string[];
 
   //  Read status per participant (generic)
-  readBy: Record<string, boolean>; // { "userId1": true, "userId2": false }
+  readBy: Map<string, boolean>; // { "userId1": true, "userId2": false }
 
   //  Edit / delete
   isEdited?: boolean;

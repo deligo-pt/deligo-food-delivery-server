@@ -6,6 +6,8 @@ import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { SupportConversation, SupportMessage } from './support.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TConversationParticipant } from './support.constant';
+import { generateTicketId } from '../../utils/generateTicketId';
+import { TConversationType } from './support.interface';
 
 // ------------------------------------------------------------------
 // Helpers
@@ -69,7 +71,8 @@ const ensureConversationLock = async (
 const openOrCreateConversation = async (
   currentUser: AuthUser,
   payload?: {
-    type?: 'SUPPORT' | 'DIRECT' | 'ORDER';
+    type?: TConversationType;
+    referenceId?: string;
     targetUser?: {
       userId: string;
       role: TUserRole;
@@ -82,11 +85,21 @@ const openOrCreateConversation = async (
   const type = payload?.type ?? 'SUPPORT';
 
   // deterministic room
-  let room = `support:${user.userId}`;
+  let room: string;
 
-  if (type === 'DIRECT' && payload?.targetUser) {
-    const ids = [user.userId, payload.targetUser.userId].sort();
-    room = `direct:${ids[0]}:${ids[1]}`;
+  if (type === 'SUPPORT') {
+    room = `SUPPORT_${user.id}`;
+  } else if (payload?.targetUser) {
+    const ids = [user.id, payload.targetUser.userId].sort();
+    room = `${type}_${ids[0]}_${ids[1]}`;
+    if (type === 'ORDER' && payload.referenceId) {
+      room = `ORDER_${payload.referenceId}_${ids[0]}_${ids[1]}`;
+    }
+  } else {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Target user is required for DIRECT or ORDER conversations'
+    );
   }
 
   const existing = await SupportConversation.findOne({
@@ -94,7 +107,17 @@ const openOrCreateConversation = async (
     isDeleted: false,
   });
 
-  if (existing) return existing;
+  if (existing) {
+    if (type === 'SUPPORT' && existing.status === 'CLOSED') {
+      existing.status = 'OPEN';
+      existing.handledBy = null;
+      existing.ticketId = await generateTicketId();
+      await existing.save();
+    }
+    return existing;
+  }
+
+  const ticketId = type === 'SUPPORT' ? await generateTicketId() : undefined;
 
   const participants: TConversationParticipant[] = [
     {
@@ -108,18 +131,17 @@ const openOrCreateConversation = async (
     participants.push(payload.targetUser);
   }
 
-  const unreadCount: Record<string, number> = {};
-  participants.forEach((p) => {
-    unreadCount[p.userId] = 0;
-  });
+  const unreadCount = new Map<string, number>();
+  participants.forEach((p) => unreadCount.set(p.userId, 0));
 
   return SupportConversation.create({
     room,
+    ticketId,
     participants,
-    handledBy: null,
+    type,
+    referenceId: payload?.referenceId || undefined,
     status: 'OPEN',
     unreadCount,
-    type,
     isActive: true,
   });
 };
@@ -148,7 +170,8 @@ const getAllSupportConversations = async (
   const qb = new QueryBuilder(SupportConversation.find(baseFilter), query)
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search(['room', 'ticketId']);
 
   const data = await qb.modelQuery;
   const meta = await qb.countTotal();
@@ -212,17 +235,20 @@ const createMessage = async ({
   if (senderRole !== 'ADMIN' && senderRole !== 'SUPER_ADMIN') {
     ensureParticipant(conversation, senderId);
   }
-  await ensureConversationLock(conversation, senderId, senderRole);
+  if (conversation.type === 'SUPPORT') {
+    await ensureConversationLock(conversation, senderId, senderRole);
+  }
 
   // --------------------------------------------------
   //  Read map (DO NOT replace map)
   // --------------------------------------------------
-  const readBy: Record<string, boolean> = {};
-  conversation.participants.forEach((p: TConversationParticipant) => {
-    readBy[p.userId] = p.userId === senderId;
+  const readBy = new Map<string, boolean>();
+  conversation.participants.forEach((p) => {
+    readBy.set(p.userId, p.userId === senderId);
   });
 
   const msg = await SupportMessage.create({
+    ticketId: conversation?.ticketId || null,
     room,
     senderId,
     senderRole,
@@ -317,7 +343,7 @@ const markReadByAdminOrUser = async (room: string, currentUser: AuthUser) => {
   ensureParticipant(conversation, currentUser.id);
 
   await SupportMessage.updateMany(
-    { room },
+    { room, [`readBy.${currentUser.id}`]: false },
     { $set: { [`readBy.${currentUser.id}`]: true } }
   );
 

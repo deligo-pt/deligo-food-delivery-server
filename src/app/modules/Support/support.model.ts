@@ -28,6 +28,13 @@ const supportConversationSchema = new Schema<TSupportConversation>(
       index: true,
     },
 
+    ticketId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
     // Generic participants
     participants: {
       type: [participantSchema],
@@ -62,8 +69,23 @@ const supportConversationSchema = new Schema<TSupportConversation>(
 
     type: {
       type: String,
-      enum: ['SUPPORT', 'ORDER', 'DIRECT'],
+      enum: [
+        'SUPPORT',
+        'VENDOR_CHAT',
+        'DRIVER_CHAT',
+        'CUSTOMER_CHAT',
+        'FLEET_MANAGER_CHAT',
+        'FLEET_DRIVER_CHAT',
+        'ORDER',
+        'DIRECT',
+      ],
       default: 'SUPPORT',
+    },
+
+    referenceId: {
+      type: String,
+      default: null,
+      index: true,
     },
 
     // Flags
@@ -82,6 +104,7 @@ supportConversationSchema.index({ lastMessageTime: -1 });
 
 const supportMessageSchema = new Schema<TSupportMessage>(
   {
+    ticketId: { type: String, default: null, index: true },
     room: { type: String, required: true, index: true },
 
     // Sender

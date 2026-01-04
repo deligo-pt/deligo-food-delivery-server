@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server, Socket } from 'socket.io';
 import { AuthUser } from '../../../constant/user.constant';
+import { DeliveryPartnerServices } from '../../../modules/Delivery-Partner/delivery-partner.service';
 
 type LiveLocationPayload = {
   orderId: string;
@@ -9,6 +10,7 @@ type LiveLocationPayload = {
   accuracy?: number;
 };
 
+const lastDbUpdateMap = new Map<string, number>();
 export const registerDriverLiveLocationEvents = (
   io: Server,
   socket: Socket
@@ -71,8 +73,20 @@ export const registerDriverLiveLocationEvents = (
           accuracy,
           time: new Date(),
         });
+
+        const now = Date.now();
+        const lastUpdate = lastDbUpdateMap.get(userId) || 0;
+        if (now - lastUpdate > 5000) {
+          lastDbUpdateMap.set(userId, now);
+          DeliveryPartnerServices.updateDeliveryPartnerLiveLocation(
+            { latitude, longitude, accuracy },
+            user
+          ).catch((err) => {
+            console.error('Failed to update live location:', err);
+          });
+        }
       } catch {
-        // silent fail – location stream must never crash socket
+        console.error('Error processing live location update');
       }
     }
   );
