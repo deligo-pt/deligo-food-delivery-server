@@ -53,10 +53,10 @@ const addOptionToGroup = catchAsync(async (req, res) => {
 // delete option from addon group controller
 const deleteOptionFromGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
-  const { optionName } = req.query;
+  const { optionId } = req.body;
   const result = await AddOnsServices.deleteOptionFromAddonGroup(
     addonGroupId,
-    optionName as string,
+    optionId,
     req.user as AuthUser
   );
   sendResponse(res, {

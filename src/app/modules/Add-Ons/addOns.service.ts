@@ -99,7 +99,7 @@ const addOptionToAddonGroup = async (
 // delete option from addon group service
 const deleteOptionFromAddonGroup = async (
   groupId: string,
-  optionName: string,
+  optionId: string,
   currentUser: AuthUser
 ) => {
   const existingVendor = await Vendor.findOne({ userId: currentUser.id });
@@ -107,7 +107,7 @@ const deleteOptionFromAddonGroup = async (
   const result = await AddonGroup.findOneAndUpdate(
     { _id: groupId, vendorId: existingVendor?._id },
     {
-      $pull: { options: { name: optionName } },
+      $pull: { options: { _id: optionId } },
     },
     { new: true }
   );

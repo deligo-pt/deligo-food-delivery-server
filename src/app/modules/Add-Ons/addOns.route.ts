@@ -58,10 +58,10 @@ router.patch(
 );
 
 // soft delete addon group
-router.patch(
-  '/:addonGroupId/add-option',
+router.delete(
+  '/:addonGroupId/soft-delete',
   auth('VENDOR', 'SUB_VENDOR'),
-  AddOnsControllers.addOptionToGroup
+  AddOnsControllers.softDeleteAddonGroup
 );
 
 export const AddOnsRoutes = router;
