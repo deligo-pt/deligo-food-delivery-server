@@ -3,7 +3,7 @@ import config from '../config';
 import AppError from '../errors/AppError';
 import httpStatus from 'http-status';
 
-export const sendMobileOtp = async (phone: string) => {
+export const sendMobileOtp = async (phone: string, country?: string) => {
   const apiUrl = config.bulkgate_send_api_url;
   const apiKey = config.bulkgate_api_key;
   const appId = config.bulkgate_app_id;
@@ -19,10 +19,17 @@ export const sendMobileOtp = async (phone: string) => {
     application_id: appId,
     application_token: apiKey,
     number: phone,
-
     request_quota_identification: phone,
-    sender_id: 'gText',
-    sender_id_value: 'Deligo',
+    country: country || 'pt',
+    language: 'en',
+    code_length: 6,
+    channel: {
+      sms: {
+        sender_id: 'gText',
+        sender_id_value: 'Deligo',
+        unicode: true,
+      },
+    },
   };
   try {
     const response = await axios.post(apiUrl, payload);

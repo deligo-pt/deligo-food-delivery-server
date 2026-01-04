@@ -343,90 +343,85 @@ const deleteCartItem = async (
 
   return cart;
 };
-
-const updateCartItemAddons = async (
+// update add on quantity Service
+const updateAddonQuantity = async (
   currentUser: AuthUser,
   payload: {
     productId: string;
     variantName?: string;
-    addons: { optionId: string; quantity: number }[];
+    optionId: string;
+    action: 'increment' | 'decrement';
   }
 ) => {
   const existingCustomer = await Customer.findOne({ userId: currentUser.id });
   if (!existingCustomer)
     throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
 
-  const existingProduct = await Product.findOne({
-    _id: payload.productId,
-    isDeleted: false,
-  }).populate('addonGroups');
-
-  if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-
-  const allowedAddonsMap = new Map<string, { name: string; price: number }>();
-
-  ((existingProduct.addonGroups as any[]) || []).forEach((group) => {
-    if (group?.options) {
-      group.options.forEach((opt: any) => {
-        allowedAddonsMap.set(opt._id.toString(), {
-          name: opt.name,
-          price: opt.price,
-        });
-      });
-    }
-  });
-
   const cart = await Cart.findOne({ customerId: existingCustomer._id });
   if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
-  const { productId, variantName, addons } = payload;
+  const { productId, variantName, optionId, action } = payload;
 
   const itemIndex = cart.items.findIndex(
-    (i) =>
-      i.productId.toString() === productId &&
-      (variantName ? i.variantName === variantName : !i.variantName)
+    (i) => i.productId.toString() === productId && i.variantName === variantName
   );
-
   if (itemIndex === -1)
     throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');
 
-  const targetItem = cart.items[itemIndex];
-  const currentItemAddons = [...(targetItem.addons || [])];
+  const targetItem = cart.items[itemIndex] as any;
+  if (!targetItem.addons) {
+    targetItem.addons = [] as any[];
+  }
 
-  for (const newAddon of addons) {
-    if (!allowedAddonsMap.has(newAddon.optionId)) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Selected add-on is not valid for this product.`
-      );
+  const product = await Product.findById(productId).populate('addonGroups');
+  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  let addonData: { name: string; price: number } | null = null;
+  ((product.addonGroups as any[]) || []).forEach((group) => {
+    group.options.forEach((opt: any) => {
+      if (opt._id.toString() === optionId) {
+        addonData = { name: opt.name, price: opt.price };
+      }
+    });
+  });
+
+  if (!addonData)
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid Addon selected');
+  const { name: selectedAddonName, price: selectedAddonPrice } = addonData;
+
+  const existingAddonIndex = targetItem.addons.findIndex(
+    (a: any) => a.name === selectedAddonName
+  );
+
+  if (action === 'increment') {
+    if (existingAddonIndex > -1) {
+      targetItem.addons[existingAddonIndex as number].quantity += 1;
+    } else {
+      targetItem.addons.push({
+        name: selectedAddonName,
+        price: selectedAddonPrice,
+        quantity: 1,
+      });
+    }
+  } else if (action === 'decrement') {
+    if (existingAddonIndex === -1) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Addon not found in your cart');
     }
 
-    const dbAddonData = allowedAddonsMap.get(newAddon.optionId)!;
-
-    const existingIndex = currentItemAddons.findIndex(
-      (a) => a.name === dbAddonData.name
-    );
-
-    if (existingIndex > -1) {
-      currentItemAddons[existingIndex].quantity += newAddon.quantity;
-      currentItemAddons[existingIndex].price = dbAddonData.price;
+    if (targetItem.addons[existingAddonIndex].quantity > 1) {
+      targetItem.addons[existingAddonIndex].quantity -= 1;
     } else {
-      currentItemAddons.push({
-        name: dbAddonData.name,
-        price: dbAddonData.price,
-        quantity: newAddon.quantity,
-      });
+      targetItem.addons.splice(existingAddonIndex, 1);
     }
   }
 
-  targetItem.addons = currentItemAddons;
-  const addonsTotal = currentItemAddons.reduce(
-    (sum, a) => sum + a.price * a.quantity,
+  const addonsTotal = targetItem.addons.reduce(
+    (sum: number, a: any) => sum + a.price * a.quantity,
     0
   );
+
   targetItem.totalBeforeTax = parseFloat(
-    (targetItem.price * targetItem.quantity + addonsTotal).toFixed(2)
+    (targetItem.price * targetItem.quantity + (addonsTotal || 0)).toFixed(2)
   );
 
   const taxRate = targetItem.taxRate || 0;
@@ -436,7 +431,6 @@ const updateCartItemAddons = async (
   targetItem.subtotal = parseFloat(
     (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2)
   );
-  cart.items[itemIndex] = targetItem;
 
   await recalculateCartTotals(cart);
   cart.markModified('items');
@@ -471,11 +465,33 @@ const viewCart = async (currentUser: AuthUser) => {
   return cart;
 };
 
+// clear cart Service
+const clearCart = async (currentUser: AuthUser) => {
+  const customer = await Customer.findOne({ userId: currentUser.id });
+  if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+
+  const cart = await Cart.findOneAndUpdate(
+    { customerId: customer._id },
+    {
+      $set: {
+        items: [],
+        totalPrice: 0,
+        taxAmount: 0,
+        subtotal: 0,
+        discount: 0,
+      },
+    },
+    { new: true }
+  );
+  return cart;
+};
+
 export const CartServices = {
   addToCart,
   activateItem,
   updateCartItemQuantity,
   deleteCartItem,
-  updateCartItemAddons,
+  updateAddonQuantity,
   viewCart,
+  clearCart,
 };

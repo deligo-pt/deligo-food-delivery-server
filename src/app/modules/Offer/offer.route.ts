@@ -22,6 +22,13 @@ router.patch(
   OfferControllers.updateOffer
 );
 
+// toggle Offer Status
+router.patch(
+  '/toggle-status/:offerId',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  OfferControllers.toggleOfferStatus
+);
+
 // getApplicableOffer
 router.post(
   '/get-applicable-offer',

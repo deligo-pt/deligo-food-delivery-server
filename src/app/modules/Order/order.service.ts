@@ -193,6 +193,7 @@ const getAllOrders = async (
   // -----------------------------
   switch (loggedInUser.role) {
     case 'VENDOR':
+    case 'SUB_VENDOR':
       query.vendorId = loggedInUser._id;
       break;
 
@@ -203,6 +204,17 @@ const getAllOrders = async (
     case 'DELIVERY_PARTNER':
       query.deliveryPartnerId = loggedInUser._id;
       break;
+
+    case 'FLEET_MANAGER': {
+      const managedPartners = await DeliveryPartner.find({
+        registeredBy: loggedInUser._id,
+      }).select('_id');
+      const partnerIds = managedPartners.map((partner) => partner._id);
+      query.deliveryPartnerId = {
+        $in: partnerIds.length > 0 ? partnerIds : [],
+      };
+      break;
+    }
 
     case 'ADMIN':
     case 'SUPER_ADMIN':

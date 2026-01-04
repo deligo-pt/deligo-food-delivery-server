@@ -37,7 +37,6 @@ const updateAddonGroupValidationSchema = z.object({
         })
       )
       .optional(),
-    isActive: z.boolean().optional(),
   }),
 });
 

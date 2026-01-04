@@ -63,16 +63,16 @@ const deleteCartItem = catchAsync(async (req, res) => {
   });
 });
 
-// update cart items add ons
-const updateCartItemAddons = catchAsync(async (req, res) => {
-  const result = await CartServices.updateCartItemAddons(
+// update add on quantity Controller
+const updateAddonQuantity = catchAsync(async (req, res) => {
+  const result = await CartServices.updateAddonQuantity(
     req.user as AuthUser,
     req.body
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product addons updated successfully',
+    message: 'Product addon quantity updated successfully',
     data: result,
   });
 });
@@ -89,11 +89,23 @@ const viewCart = catchAsync(async (req, res) => {
   });
 });
 
+// clear cart Controller
+const clearCart = catchAsync(async (req, res) => {
+  const result = await CartServices.clearCart(req.user as AuthUser);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Cart cleared successfully',
+    data: result,
+  });
+});
+
 export const CartControllers = {
   addToCart,
   activateItem,
   updateCartItemQuantity,
   deleteCartItem,
-  updateCartItemAddons,
+  updateAddonQuantity,
   viewCart,
+  clearCart,
 };

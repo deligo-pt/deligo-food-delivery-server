@@ -37,14 +37,18 @@ router.delete(
   CartControllers.deleteCartItem
 );
 
-// update cart item add ons
+// update addon quantity
 router.patch(
-  '/update-add-ons',
+  '/update-addon-quantity',
   auth('CUSTOMER'),
-  validateRequest(CartValidation.updateCartItemAddonsValidationSchema),
-  CartControllers.updateCartItemAddons
+  validateRequest(CartValidation.updateAddonQuantityValidationSchema),
+  CartControllers.updateAddonQuantity
 );
+
 // view cart
 router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
+
+// clear cart
+router.delete('/clear-cart', auth('CUSTOMER'), CartControllers.clearCart);
 
 export const CartRoutes = router;

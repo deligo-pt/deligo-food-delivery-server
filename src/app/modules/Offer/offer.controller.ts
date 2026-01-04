@@ -34,6 +34,22 @@ const updateOffer = catchAsync(async (req, res) => {
   });
 });
 
+// toggle offer status controller
+const toggleOfferStatus = catchAsync(async (req, res) => {
+  const { offerId } = req.params;
+  const result = await OfferServices.toggleOfferStatus(
+    offerId,
+    req.user as AuthUser
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Offer status updated successfully',
+    data: result,
+  });
+});
+
+// get applicable offer controller
 const getApplicableOffer = catchAsync(async (req, res) => {
   const { vendorId, subtotal, offerCode } = req.body;
 
@@ -118,6 +134,7 @@ const permanentDeleteOffer = catchAsync(async (req, res) => {
 export const OfferControllers = {
   createOffer,
   updateOffer,
+  toggleOfferStatus,
   getApplicableOffer,
   getAllOffers,
   getSingleOffer,

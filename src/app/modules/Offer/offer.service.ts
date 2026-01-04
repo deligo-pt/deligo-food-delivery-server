@@ -254,6 +254,53 @@ const updateOffer = async (
   return updatedOffer;
 };
 
+// toggle offer status service
+const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
+  const { user: loggedInUser } = await findUserByEmailOrId({
+    userId: currentUser.id,
+    isDeleted: false,
+  });
+
+  if (loggedInUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `Your account is ${loggedInUser.status}. You cannot perform this action.`
+    );
+  }
+
+  const offer = await Offer.findById(id);
+  if (!offer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Offer not found');
+  }
+
+  if (offer.isDeleted) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Cannot toggle a deleted offer');
+  }
+
+  if (
+    ['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role) &&
+    offer.vendorId?.toString() !== loggedInUser._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to change the status of this offer'
+    );
+  }
+
+  const updatedOffer = await Offer.findByIdAndUpdate(
+    id,
+    { isActive: !offer.isActive },
+    { new: true, runValidators: true }
+  );
+
+  return {
+    message: `Offer ${
+      updatedOffer?.isActive ? 'activated' : 'deactivated'
+    } successfully`,
+    data: updatedOffer,
+  };
+};
+
 // get applicable offer for checkout
 const getApplicableOffer = async (
   { vendorId, subtotal, offerCode }: TApplyOfferPayload,
@@ -279,7 +326,7 @@ const getApplicableOffer = async (
   if (offerCode) {
     offer = await Offer.findOne({
       ...baseQuery,
-      code: offerCode,
+      code: offerCode.toUpperCase(),
       isAutoApply: false,
     }).sort({ vendorId: -1 });
 
@@ -327,22 +374,26 @@ const getApplicableOffer = async (
 };
 
 // apply offer to checkout
-export const applyOffer = ({
+const applyOffer = ({
   offer,
   items,
-  subtotal,
+  totalPriceBeforeTax,
+  taxAmount,
   deliveryCharge,
 }: {
   offer: TOffer | null;
   items: TCheckoutItem[];
-  subtotal: number;
+  totalPriceBeforeTax: number;
+  taxAmount: number;
   deliveryCharge: number;
 }) => {
   if (!offer) {
     return {
       discount: 0,
       deliveryCharge,
-      subTotal: subtotal + deliveryCharge,
+      subTotal: parseFloat(
+        (totalPriceBeforeTax + taxAmount + deliveryCharge).toFixed(2)
+      ),
       appliedOffer: null,
     };
   }
@@ -352,10 +403,11 @@ export const applyOffer = ({
 
   switch (offer.offerType) {
     case 'PERCENT': {
-      const percent = (subtotal * offer.discountValue!) / 100;
+      const calculatedPercent =
+        (totalPriceBeforeTax * offer.discountValue!) / 100;
       discount = offer.maxDiscountAmount
-        ? Math.min(percent, offer.maxDiscountAmount)
-        : percent;
+        ? Math.min(calculatedPercent, offer.maxDiscountAmount)
+        : calculatedPercent;
       break;
     }
 
@@ -371,25 +423,37 @@ export const applyOffer = ({
 
     case 'BOGO': {
       const bogo = offer.bogo!;
-      const item = items.find((i) => i.productId.toString() === bogo.itemId);
+      // Find the item eligible for BOGO
+      const item = items.find(
+        (i) => i.productId.toString() === bogo.itemId.toString()
+      );
 
       if (item) {
-        const group = bogo.buyQty + bogo.getQty;
-        const freeQty = Math.floor(item.quantity / group) * bogo.getQty;
+        const groupSize = bogo.buyQty + bogo.getQty;
+        const eligibleFreeSets = Math.floor(item.quantity / groupSize);
+        const freeQty = eligibleFreeSets * bogo.getQty;
 
+        // Apply discount based on the item's price
         discount = freeQty * item.price;
       }
       break;
     }
   }
 
-  discount = Math.max(0, Math.min(discount, subtotal));
+  // Discount cannot exceed total item price
+  discount = Math.max(0, Math.min(discount, totalPriceBeforeTax));
+
+  // Calculate subtotal
+  const subTotal = parseFloat(
+    (totalPriceBeforeTax - discount + taxAmount + finalDeliveryCharge).toFixed(
+      2
+    )
+  );
 
   return {
-    discount,
-    deliveryCharge: finalDeliveryCharge,
-    subTotal: subtotal - discount + finalDeliveryCharge,
-
+    discount: Number(discount.toFixed(2)),
+    deliveryCharge: Number(finalDeliveryCharge.toFixed(2)),
+    subTotal,
     appliedOffer: {
       offerId: offer._id,
       title: offer.title,
@@ -572,7 +636,9 @@ const permanentDeleteOffer = async (id: string, currentUser: AuthUser) => {
 export const OfferServices = {
   createOffer,
   updateOffer,
+  toggleOfferStatus,
   getApplicableOffer,
+  applyOffer,
   getAllOffers,
   getSingleOffer,
   softDeleteOffer,

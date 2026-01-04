@@ -37,18 +37,18 @@ router.patch(
   CouponControllers.toggleCouponStatus
 );
 
+// get all coupons analytics route
+router.get(
+  '/analytics',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  CouponControllers.getAllCouponsAnalytics
+);
+
 // get coupon analytics route
 router.get(
   '/:couponId/analytics',
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
-  CouponControllers.getCouponAnalytics
-);
-
-// get coupon monthly analytics
-router.get(
-  '/:couponId/analytics/monthly',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
-  CouponControllers.getCouponMonthlyAnalytics
+  CouponControllers.getSingleCouponAnalytics
 );
 
 // get all coupons
