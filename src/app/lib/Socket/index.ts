@@ -6,6 +6,7 @@ import { registerSupportEvents } from './events/support.events';
 import config from '../../config';
 import AppError from '../../errors/AppError';
 import { registerDriverLiveLocationEvents } from './events/riderLiveLocation.events';
+import { registerSosSocketEvents } from './events/sosAlerts.events';
 
 let io: Server;
 
@@ -34,6 +35,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
 
     registerSupportEvents(io, socket);
     registerDriverLiveLocationEvents(io, socket);
+    registerSosSocketEvents(io, socket);
   });
 };
 

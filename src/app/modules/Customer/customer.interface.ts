@@ -76,8 +76,7 @@ export type TCustomer = {
     type: 'Point';
     coordinates: [number, number]; // [longitude, latitude]
     accuracy?: number; // GPS Accuracy in meters
-    lastUpdate: Date; // Timestamp for data freshness
-    isSharingActive: boolean; // Flag if the app is currently streaming location
+    lastLocationUpdate: Date; // Timestamp for data freshness
   };
 
   // ------------------------------------------------------

@@ -6,7 +6,7 @@ import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
 
-const locationSchema = new Schema(
+export const locationSchema = new Schema(
   {
     type: { type: String, enum: ['Point'], default: 'Point', required: true },
     coordinates: { type: [Number], required: true }, // [longitude, latitude]
