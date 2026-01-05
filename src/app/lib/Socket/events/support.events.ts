@@ -72,6 +72,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
           messagePreview: message.slice(0, 50),
           ticketId: savedMessage.ticketId || null,
           conversationType: (savedMessage as any).type || 'SUPPORT',
+          time: new Date(),
         });
       }
     } catch (error: any) {
