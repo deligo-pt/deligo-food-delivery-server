@@ -444,11 +444,14 @@ const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
         totalCustomerUsage: { $sum: 1 },
         revenueImpact: { $sum: '$discount' },
         allItems: { $push: '$items' },
-        monthlyRaw: {
-          $push: {
-            date: '$createdAt',
-            discount: '$discount',
-          },
+        // monthlyRaw: {
+        //   $push: {
+        //     date: '$createdAt',
+        //     discount: '$discount',
+        //   },
+        // },
+        orderDates: {
+          $push: { date: '$createdAt', discount: '$discount' },
         },
       },
     },
@@ -466,13 +469,19 @@ const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
         _id: 0,
         couponId: '$_id',
         couponCode: '$couponDetails.code',
+        discountType: '$couponDetails.discountType',
         totalCustomerUsage: 1,
         revenueImpact: { $round: ['$revenueImpact', 2] },
         allItems: 1,
-        monthlyRaw: 1,
+        orderDates: 1,
       },
     },
   ]);
+
+  const globalMonthlyMap: Record<
+    string,
+    { month: string; usage: number; revenue: number }
+  > = {};
 
   const finalAnalytics = await Promise.all(
     results.map(async (couponData) => {
@@ -499,35 +508,38 @@ const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
         quantity: qty,
       }));
 
-      const monthlyMap: Record<
-        string,
-        { month: string; usage: number; revenue: number }
-      > = {};
-
-      couponData.monthlyRaw.forEach((entry: any) => {
+      couponData.orderDates.forEach((entry: any) => {
         const d = new Date(entry.date);
-        const label = `${d.getFullYear()}-${d.getMonth() + 1}`; // e.g. "2024-5"
+        const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+          2,
+          '0'
+        )}`;
 
-        if (!monthlyMap[label]) {
-          monthlyMap[label] = { month: label, usage: 0, revenue: 0 };
+        if (!globalMonthlyMap[label]) {
+          globalMonthlyMap[label] = { month: label, usage: 0, revenue: 0 };
         }
-        monthlyMap[label].usage += 1;
-        monthlyMap[label].revenue += entry.discount;
+        globalMonthlyMap[label].usage += 1;
+        globalMonthlyMap[label].revenue += entry.discount;
       });
 
       return {
         couponCode: couponData.couponCode,
+        discountType: couponData.discountType,
         totalCustomerUsage: couponData.totalCustomerUsage,
         revenueImpact: couponData.revenueImpact,
         topItemsInfluenced,
-        monthlyAnalysis: Object.values(monthlyMap).sort((a, b) =>
-          a.month.localeCompare(b.month)
-        ),
       };
     })
   );
 
-  return finalAnalytics;
+  const monthlyAnalysis = Object.values(globalMonthlyMap).sort((a, b) =>
+    a.month.localeCompare(b.month)
+  );
+
+  return {
+    coupons: finalAnalytics,
+    monthlyAnalytics: monthlyAnalysis,
+  };
 };
 
 // get single coupon analytics service
