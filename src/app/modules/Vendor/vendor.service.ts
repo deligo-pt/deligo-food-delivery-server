@@ -69,9 +69,10 @@ const vendorUpdate = async (
     const hasLat = typeof latitude === 'number';
 
     if (hasLng && hasLat) {
-      payload.businessLocation.locationPoint = {
+      payload.currentSessionLocation = {
         type: 'Point',
         coordinates: [longitude, latitude],
+        lastLocationUpdate: new Date(),
       };
     }
   }
@@ -181,9 +182,10 @@ const vendorBusinessLocationUpdate = async (
     const hasLat = typeof latitude === 'number';
 
     if (hasLng && hasLat) {
-      payload.businessLocation.locationPoint = {
+      payload.currentSessionLocation = {
         type: 'Point',
         coordinates: [longitude, latitude],
+        lastLocationUpdate: new Date(),
       };
     }
   }

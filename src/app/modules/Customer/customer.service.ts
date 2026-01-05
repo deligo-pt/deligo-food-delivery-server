@@ -64,8 +64,7 @@ const updateCustomer = async (
         type: 'Point',
         coordinates: [longitude, latitude],
         accuracy: geoAccuracy ?? 0,
-        lastUpdate: new Date(),
-        isSharingActive: false,
+        lastLocationUpdate: new Date(),
       };
     }
 
@@ -106,8 +105,7 @@ const updateCustomer = async (
         type: 'Point',
         coordinates: [longitude, latitude],
         accuracy: geoAccuracy ?? 0,
-        lastUpdate: new Date(),
-        isSharingActive: false,
+        lastLocationUpdate: new Date(),
       };
     }
     const newAddress = {
@@ -253,8 +251,7 @@ const addDeliveryAddress = async (
       type: 'Point',
       coordinates: [longitude, latitude],
       accuracy: geoAccuracy ?? 0,
-      lastUpdate: new Date(),
-      isSharingActive: false,
+      lastLocationUpdate: new Date(),
     };
   }
   await customer.save();

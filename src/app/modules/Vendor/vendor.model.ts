@@ -4,6 +4,7 @@ import { TVendor } from './vendor.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
+import { locationSchema } from '../Delivery-Partner/delivery-partner.model';
 
 const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
@@ -16,7 +17,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       unique: true,
     },
     // registeredBy: {
-    //   userId: {
+    //   id: {
     //     type: Schema.Types.ObjectId,
     //     refPath: 'registeredBy.model',
     //     default: null,
@@ -140,18 +141,10 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       longitude: { type: Number },
       latitude: { type: Number },
       geoAccuracy: { type: Number },
+    },
 
-      // GeoJSON Point (For 2dsphere indexing)
-      locationPoint: {
-        type: {
-          type: String,
-          enum: ['Point'],
-        },
-        coordinates: {
-          type: [Number], // [longitude, latitude]
-        },
-        _id: false,
-      },
+    currentSessionLocation: {
+      type: locationSchema,
     },
 
     // -------------------------------------------------------

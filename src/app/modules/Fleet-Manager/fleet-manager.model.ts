@@ -4,6 +4,7 @@ import { TFleetManager } from './fleet-manager.interface';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
+import { locationSchema } from '../Delivery-Partner/delivery-partner.model';
 
 const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   {
@@ -97,6 +98,10 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       longitude: { type: Number },
       latitude: { type: Number },
       geoAccuracy: { type: Number },
+    },
+
+    currentSessionLocation: {
+      type: locationSchema,
     },
 
     // ------------------------------------------

@@ -21,6 +21,7 @@ import { SupportRoutes } from '../modules/Support/support.route';
 import { ZoneRoutes } from '../modules/Zone/zone.route';
 import { GlobalSettingRoutes } from '../modules/GlobalSetting/globalSetting.route';
 import { AddOnsRoutes } from '../modules/Add-Ons/addOns.route';
+import { sosRoutes } from '../modules/Sos/sos.route';
 
 const router = express.Router();
 
@@ -112,6 +113,10 @@ const moduleRoutes = [
   {
     path: '/add-ons',
     route: AddOnsRoutes,
+  },
+  {
+    path: '/sos',
+    route: sosRoutes,
   },
 ];
 

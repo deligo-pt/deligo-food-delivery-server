@@ -58,6 +58,13 @@ export type TFleetManager = {
     geoAccuracy?: number;
   };
 
+  currentSessionLocation?: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+    accuracy?: number; // GPS Accuracy in meters
+    lastLocationUpdate: Date; // Timestamp for data freshness
+  };
+
   // ---------------------------------------------
   // Business Details
   // ---------------------------------------------
