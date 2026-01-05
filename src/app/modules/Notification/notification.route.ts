@@ -38,7 +38,7 @@ router.patch(
 
 // mark all as read
 router.patch(
-  '/all/read',
+  '/mark-all-as-read',
   auth(
     'ADMIN',
     'SUPER_ADMIN',

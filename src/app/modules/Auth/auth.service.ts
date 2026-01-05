@@ -609,9 +609,9 @@ const refreshToken = async (token: string) => {
     config.jwt_refresh_secret as string
   ) as JwtPayload;
 
-  const { iat, id } = decoded;
+  const { iat, userId } = decoded;
 
-  const result = await findUserByEmailOrId({ userId: id, isDeleted: false });
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
 
   const user = result?.user;
   const model = result?.model;
