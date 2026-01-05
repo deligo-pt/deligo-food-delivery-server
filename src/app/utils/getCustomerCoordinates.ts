@@ -6,7 +6,6 @@ export const getCustomerCoordinates = (
   // 1) Live location
   if (
     customer.currentSessionLocation &&
-    customer.currentSessionLocation.isSharingActive &&
     Array.isArray(customer.currentSessionLocation.coordinates)
   ) {
     // [lng, lat]
