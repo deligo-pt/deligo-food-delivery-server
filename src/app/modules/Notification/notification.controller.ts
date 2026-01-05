@@ -7,8 +7,8 @@ import { AuthUser } from '../../constant/user.constant';
 
 // Get notifications for current user
 const getMyNotifications = catchAsync(async (req, res) => {
-  const user = req.user;
-  const notifications = await Notification.find({ receiverId: user.id })
+  const user = req.user as AuthUser;
+  const notifications = await Notification.find({ receiverId: user.userId })
     .sort({ createdAt: -1 })
     .lean();
 

@@ -31,7 +31,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
 
   io.on('connection', (socket) => {
     const user = socket.data.user;
-    console.log(`Socket connected: ${user?.id}`);
+    console.log(`Socket connected: ${user?.userId}`);
 
     registerSupportEvents(io, socket);
     registerDriverLiveLocationEvents(io, socket);
