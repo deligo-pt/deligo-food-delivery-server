@@ -4,8 +4,6 @@ import { Zone } from './zone.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { AuthUser } from '../../constant/user.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Check for overlapping zones
 const checkZoneOverlap = async (
@@ -45,11 +43,7 @@ const checkZoneOverlap = async (
 };
 
 // Create a new Zone with overlap and duplicate checks
-const createZone = async (payload: TZone, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
+const createZone = async (payload: TZone) => {
   // Check for Duplicate Zone ID
   const existingZoneById = await Zone.findOne({ zoneId: payload.zoneId });
   if (existingZoneById) {
@@ -96,14 +90,7 @@ const getZoneByCoordinates = async (lng: number, lat: number) => {
 };
 
 // get all zones
-const getAllZones = async (
-  query: Record<string, unknown>,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
+const getAllZones = async (query: Record<string, unknown>) => {
   const zones = new QueryBuilder(Zone.find(), query)
     .fields()
     .paginate()
@@ -120,25 +107,13 @@ const getAllZones = async (
 };
 
 // get single
-const getSingleZone = async (id: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
+const getSingleZone = async (id: string) => {
   const zone = await Zone.findOne({ zoneId: id });
   return zone;
 };
 
 // update zone by id
-const updateZone = async (
-  zoneId: string,
-  payload: Partial<TZone>,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
+const updateZone = async (zoneId: string, payload: Partial<TZone>) => {
   const existingZone = await Zone.findOne({ zoneId });
   if (!existingZone) {
     throw new AppError(
@@ -174,16 +149,7 @@ const updateZone = async (
 };
 
 // toggle zone operational status
-const toggleZoneStatus = async (
-  zoneId: string,
-  isOperational: boolean,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
+const toggleZoneStatus = async (zoneId: string, isOperational: boolean) => {
   const zone = await Zone.findOne({ zoneId });
   if (!zone) {
     throw new AppError(
@@ -210,11 +176,7 @@ const toggleZoneStatus = async (
   };
 };
 // soft delete zone by id (set isOperational to false)
-const softDeleteZone = async (zoneId: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
+const softDeleteZone = async (zoneId: string) => {
   const zone = await Zone.findOne({ zoneId });
   if (!zone) {
     throw new AppError(
@@ -236,11 +198,7 @@ const softDeleteZone = async (zoneId: string, currentUser: AuthUser) => {
 };
 
 // permanent delete zone by id
-const permanentDeleteZone = async (zoneId: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
+const permanentDeleteZone = async (zoneId: string) => {
   const result = await Zone.findOne({ zoneId });
   if (!result) {
     throw new AppError(

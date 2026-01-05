@@ -6,10 +6,7 @@ import { AuthUser } from '../../constant/user.constant';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {
-  const result = await CategoryService.createBusinessCategory(
-    req.body,
-    req.user as AuthUser
-  );
+  const result = await CategoryService.createBusinessCategory(req.body);
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -50,8 +47,7 @@ const getSingleBusinessCategory = catchAsync(async (req, res) => {
 const updateBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.updateBusinessCategory(
     req.params.id,
-    req.body,
-    req.user as AuthUser
+    req.body
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -64,8 +60,7 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
 // soft Delete Business Category Controllers
 const softDeleteBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.softDeleteBusinessCategory(
-    req.params.id,
-    req.user as AuthUser
+    req.params.id
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -78,8 +73,7 @@ const softDeleteBusinessCategory = catchAsync(async (req, res) => {
 // Permanent Delete Business Category Controllers
 const permanentDeleteBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.permanentDeleteBusinessCategory(
-    req.params.id,
-    req.user as AuthUser
+    req.params.id
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -91,10 +85,7 @@ const permanentDeleteBusinessCategory = catchAsync(async (req, res) => {
 
 // Create Product Category Controllers
 const createProductCategory = catchAsync(async (req, res) => {
-  const result = await CategoryService.createProductCategory(
-    req.body,
-    req.user as AuthUser
-  );
+  const result = await CategoryService.createProductCategory(req.body);
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -135,8 +126,7 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
 const updateProductCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.updateProductCategory(
     req.params.id,
-    req.body,
-    req.user as AuthUser
+    req.body
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -148,10 +138,7 @@ const updateProductCategory = catchAsync(async (req, res) => {
 
 // soft Delete Product Category Controllers
 const softDeleteProductCategory = catchAsync(async (req, res) => {
-  const result = await CategoryService.softDeleteProductCategory(
-    req.params.id,
-    req.user as AuthUser
-  );
+  const result = await CategoryService.softDeleteProductCategory(req.params.id);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -163,8 +150,7 @@ const softDeleteProductCategory = catchAsync(async (req, res) => {
 // Permanent Delete Product Category Controllers
 const permanentDeleteProductCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.permanentDeleteProductCategory(
-    req.params.id,
-    req.user as AuthUser
+    req.params.id
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

@@ -10,7 +10,6 @@ import {
 } from './fleet-manager.interface';
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -35,7 +34,7 @@ const fleetManagerUpdate = async (
   // ---------------------------------------------------------
   const isSelf =
     currentUser.role === 'FLEET_MANAGER' &&
-    currentUser.id === existingFleetManager.userId;
+    currentUser.userId === existingFleetManager.userId;
 
   if (!isSelf) {
     throw new AppError(
@@ -93,7 +92,6 @@ const fleetManagerDocImageUpload = async (
   currentUser: AuthUser,
   fleetManagerId: string
 ) => {
-  await findUserByEmailOrId({ userId: currentUser?.id, isDeleted: false });
   const existingFleetManager = await FleetManager.findOne({
     userId: fleetManagerId,
     isDeleted: false,
@@ -107,7 +105,7 @@ const fleetManagerDocImageUpload = async (
   // ---------------------------------------------------------
   const isSelf =
     currentUser.role === 'FLEET_MANAGER' &&
-    currentUser.id === existingFleetManager.userId;
+    currentUser.userId === existingFleetManager.userId;
 
   if (!isSelf) {
     throw new AppError(
@@ -175,13 +173,8 @@ const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result?.user;
-  const userId = loggedInUser?.userId;
-  if (loggedInUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
+  const userId = currentUser?.userId;
+  if (currentUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this fleet manager!'
@@ -189,7 +182,7 @@ const getSingleFleetManagerFromDB = async (
   }
   let existingFleetManager;
 
-  if (loggedInUser?.role === 'FLEET_MANAGER') {
+  if (currentUser?.role === 'FLEET_MANAGER') {
     existingFleetManager = await FleetManager.findOne({
       userId,
       isDeleted: false,

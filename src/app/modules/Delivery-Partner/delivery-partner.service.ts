@@ -9,7 +9,6 @@ import {
 } from './delivery-partner.interface';
 import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 
@@ -19,20 +18,6 @@ const updateDeliveryPartner = async (
   deliveryPartnerId: string,
   currentUser: AuthUser
 ) => {
-  // ---------------------------------------------------------
-  // Validate logged-in user (exists & active)
-  // ---------------------------------------------------------
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const loggedInUser = result?.user;
-
-  if (!loggedInUser) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'User not found!');
-  }
-
   // ---------------------------------------------------------
   // Check if target delivery partner exists
   // ---------------------------------------------------------
@@ -48,7 +33,7 @@ const updateDeliveryPartner = async (
   // Check if update is locked
   // ---------------------------------------------------------
   if (
-    loggedInUser.role === 'FLEET_MANAGER' &&
+    currentUser.role === 'FLEET_MANAGER' &&
     existingDeliveryPartner.isUpdateLocked
   ) {
     throw new AppError(
@@ -62,8 +47,8 @@ const updateDeliveryPartner = async (
   // ---------------------------------------------------------
 
   // Delivery Partner updating their own profile
-  if (loggedInUser.role === 'DELIVERY_PARTNER') {
-    if (existingDeliveryPartner.userId !== loggedInUser?.userId) {
+  if (currentUser.role === 'DELIVERY_PARTNER') {
+    if (existingDeliveryPartner.userId !== currentUser?.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to update this profile.'
@@ -82,7 +67,7 @@ const updateDeliveryPartner = async (
   if (
     currentUser.role === 'FLEET_MANAGER' &&
     existingDeliveryPartner.registeredBy?.toString() !==
-      loggedInUser?._id.toString()
+      currentUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -143,7 +128,7 @@ const updateDeliveryPartnerLiveLocation = async (
   // Update only location fields
   // ------------------------------------
   const updated = await DeliveryPartner.findOneAndUpdate(
-    { userId: currentUser.id, isDeleted: false },
+    { userId: currentUser.userId, isDeleted: false },
     {
       $set: {
         currentSessionLocation: {
@@ -175,11 +160,6 @@ const deliverPartnerDocImageUpload = async (
   currentUser: AuthUser,
   deliveryPartnerId: string
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result?.user;
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
   });
@@ -187,9 +167,9 @@ const deliverPartnerDocImageUpload = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  if (loggedInUser?.role === 'FLEET_MANAGER') {
+  if (currentUser?.role === 'FLEET_MANAGER') {
     if (
-      loggedInUser?._id.toString() !==
+      currentUser?._id.toString() !==
       existingDeliveryPartner?.registeredBy?.toString()
     ) {
       throw new AppError(
@@ -228,13 +208,8 @@ const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result?.user;
   if (currentUser?.role === 'FLEET_MANAGER') {
-    query.registeredBy = loggedInUser?._id.toString();
+    query.registeredBy = currentUser?._id.toString();
   }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
@@ -244,7 +219,7 @@ const getAllDeliveryPartnersFromDB = async (
     .filter()
     .search(DeliveryPartnerSearchableFields);
 
-  const populateOptions = getPopulateOptions(loggedInUser.role, {
+  const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',
     rejectedBy: 'name userId role',
     blockedBy: 'name userId role',
@@ -268,14 +243,9 @@ const getSingleDeliveryPartnerFromDB = async (
   deliveryPartnerId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result?.user;
   if (
-    loggedInUser?.role === 'DELIVERY_PARTNER' &&
-    currentUser?.id !== deliveryPartnerId
+    currentUser?.role === 'DELIVERY_PARTNER' &&
+    currentUser?.userId !== deliveryPartnerId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -285,7 +255,7 @@ const getSingleDeliveryPartnerFromDB = async (
 
   let existingDeliveryPartner;
 
-  if (loggedInUser?.role !== 'ADMIN' && loggedInUser?.role !== 'SUPER_ADMIN') {
+  if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
     existingDeliveryPartner = await DeliveryPartner.findOne({
       userId: deliveryPartnerId,
       isDeleted: false,
@@ -301,9 +271,9 @@ const getSingleDeliveryPartnerFromDB = async (
   }
 
   if (
-    loggedInUser?.role === 'FLEET_MANAGER' &&
+    currentUser?.role === 'FLEET_MANAGER' &&
     existingDeliveryPartner?.registeredBy?.toString() !==
-      loggedInUser?._id.toString()
+      currentUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,

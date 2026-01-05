@@ -5,7 +5,6 @@ import { TAdmin } from './admin.interface';
 import { Admin, TAdminImageDocuments } from './admin.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 // update admin service
 const updateAdmin = async (
@@ -13,10 +12,6 @@ const updateAdmin = async (
   adminId: string,
   currentUser: AuthUser
 ) => {
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
   // -----------------------------------------
   // Check if admin exists
   // -----------------------------------------
@@ -46,7 +41,10 @@ const updateAdmin = async (
   // -----------------------------------------
   // Authorization check
   // -----------------------------------------
-  if (loggedInUser === 'ADMIN' && currentUser.id !== existingAdmin.userId) {
+  if (
+    currentUser.role === 'ADMIN' &&
+    currentUser.userId !== existingAdmin.userId
+  ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to update this admin account.'
@@ -79,10 +77,6 @@ const adminDocImageUpload = async (
   currentUser: AuthUser,
   adminId: string
 ) => {
-  await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
   const existingAdmin = await Admin.findOne({ userId: adminId });
 
   if (!existingAdmin) {
@@ -147,23 +141,9 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
 // get single admin service
 const getSingleAdmin = async (adminId: string, currentUser: AuthUser) => {
   // ---------------------------------------------------------
-  // Validate CURRENT user (logged-in admin)
-  // ---------------------------------------------------------
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const loggedInUser = result?.user;
-
-  if (!loggedInUser) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'User not found!');
-  }
-
-  // ---------------------------------------------------------
   // Authorization Logic
   // ---------------------------------------------------------
-  if (loggedInUser.role === 'ADMIN' && loggedInUser.userId !== adminId) {
+  if (currentUser.role === 'ADMIN' && currentUser.userId !== adminId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to access this admin.'

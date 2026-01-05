@@ -4,7 +4,6 @@ import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { Order } from './order.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import {
   BLOCKED_FOR_ORDER_CANCEL,
   DELIVERY_SEARCH_TIERS_METERS,
@@ -32,16 +31,6 @@ const createOrderAfterPayment = async (
   payload: { checkoutSummaryId: string; paymentIntentId: string },
   currentUser: AuthUser
 ) => {
-  // --- Authorization ---
-  const existingCustomer = await Customer.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  }
-
   const { checkoutSummaryId, paymentIntentId } = payload;
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
@@ -56,7 +45,7 @@ const createOrderAfterPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  if (summary.customerId.toString() !== existingCustomer._id.toString())
+  if (summary.customerId.toString() !== currentUser._id.toString())
     throw new AppError(httpStatus.FORBIDDEN, 'Not authorized');
 
   if (summary.isConvertedToOrder)
@@ -166,20 +155,10 @@ const getAllOrders = async (
   incomingQuery: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  // -----------------------------
-  // User Verification
-  // -----------------------------
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const loggedInUser = result.user;
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view orders. Your account is ${loggedInUser.status}`
+      `You are not approved to view orders. Your account is ${currentUser.status}`
     );
   }
 
@@ -191,23 +170,23 @@ const getAllOrders = async (
   // -----------------------------
   // Role-Based Query Filters
   // -----------------------------
-  switch (loggedInUser.role) {
+  switch (currentUser.role) {
     case 'VENDOR':
     case 'SUB_VENDOR':
-      query.vendorId = loggedInUser._id;
+      query.vendorId = currentUser._id;
       break;
 
     case 'CUSTOMER':
-      query.customerId = loggedInUser._id;
+      query.customerId = currentUser._id;
       break;
 
     case 'DELIVERY_PARTNER':
-      query.deliveryPartnerId = loggedInUser._id;
+      query.deliveryPartnerId = currentUser._id;
       break;
 
     case 'FLEET_MANAGER': {
       const managedPartners = await DeliveryPartner.find({
-        registeredBy: loggedInUser._id,
+        registeredBy: currentUser._id,
       }).select('_id');
       const partnerIds = managedPartners.map((partner) => partner._id);
       query.deliveryPartnerId = {
@@ -234,7 +213,7 @@ const getAllOrders = async (
     .paginate()
     .search(OrderSearchableFields);
 
-  const populateOptions = getPopulateOptions(loggedInUser?.role, {
+  const populateOptions = getPopulateOptions(currentUser?.role, {
     customer: 'name userId role',
     vendor: 'name userId role',
     deliveryPartner: 'name userId role',
@@ -253,31 +232,20 @@ const getAllOrders = async (
 
 // get single order for customer service
 const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
-  // ------------------------------------------------------
-  // Authenticate & authorize user
-  // ------------------------------------------------------
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const loggedInUser = result.user;
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${loggedInUser.status}`
+      `You are not approved to view the order. Your account is ${currentUser.status}`
     );
   }
 
-  const userId = loggedInUser._id;
-
+  const userId = currentUser._id;
   // ------------------------------------------------------
   // Build role-based query filter securely
   // ------------------------------------------------------
   const filter: Record<string, unknown> = {};
 
-  switch (loggedInUser.role) {
+  switch (currentUser.role) {
     case 'CUSTOMER':
       filter.customerId = userId;
       break;
@@ -307,7 +275,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   // ------------------------------------------------------
   const query = Order.findOne({ orderId, ...filter });
 
-  const populateOptions = getPopulateOptions(loggedInUser?.role, {
+  const populateOptions = getPopulateOptions(currentUser?.role, {
     customer: 'name userId role',
     vendor: 'name userId role',
     deliveryPartner: 'name userId role',
@@ -333,25 +301,17 @@ const updateOrderStatusByVendor = async (
   orderId: string,
   action: { type: OrderStatus; reason?: string }
 ) => {
-  // ---------------------------------------------------------
-  // Ensure current user is an approved vendor
-  // ---------------------------------------------------------
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!loggedInUser || loggedInUser.role !== 'VENDOR') {
+  if (!currentUser || currentUser.role !== 'VENDOR') {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to accept or reject orders.'
     );
   }
 
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to accept or reject orders. Your account is ${loggedInUser.status}`
+      `You are not approved to accept or reject orders. Your account is ${currentUser.status}`
     );
   }
 
@@ -384,7 +344,7 @@ const updateOrderStatusByVendor = async (
     const order = await Order.findOne(
       {
         orderId,
-        vendorId: loggedInUser._id,
+        vendorId: currentUser._id,
         isDeleted: false,
       },
       null,
@@ -478,7 +438,7 @@ const updateOrderStatusByVendor = async (
       );
     }
 
-    if (loggedInUser._id.toString() !== order.vendorId.toString()) {
+    if (currentUser._id.toString() !== order.vendorId.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to accept or reject orders.'
@@ -491,14 +451,14 @@ const updateOrderStatusByVendor = async (
     if (action.type === 'ACCEPTED') {
       if (!order.pickupAddress) {
         order.pickupAddress = {
-          street: loggedInUser.businessLocation.street || '',
-          city: loggedInUser.businessLocation.city || '',
-          state: loggedInUser.businessLocation.state || '',
-          country: loggedInUser.businessLocation.country || '',
-          postalCode: loggedInUser.businessLocation.postalCode || '',
-          longitude: loggedInUser.businessLocation.longitude,
-          latitude: loggedInUser.businessLocation.latitude,
-          geoAccuracy: loggedInUser.businessLocation.geoAccuracy,
+          street: currentUser?.businessLocation?.street || '',
+          city: currentUser?.businessLocation?.city || '',
+          state: currentUser?.businessLocation?.state || '',
+          country: currentUser?.businessLocation?.country || '',
+          postalCode: currentUser?.businessLocation?.postalCode || '',
+          longitude: currentUser?.businessLocation?.longitude || 0,
+          latitude: currentUser?.businessLocation?.latitude || 0,
+          geoAccuracy: currentUser?.businessLocation?.geoAccuracy,
         };
       }
 
@@ -541,7 +501,7 @@ const updateOrderStatusByVendor = async (
 
       const notificationPayload = {
         title: 'Order Accepted',
-        body: `Your order has been accepted by ${loggedInUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,
+        body: `Your order has been accepted by ${currentUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,
         data: { orderId: order._id.toString() },
       };
       NotificationService.sendToUser(
@@ -559,7 +519,7 @@ const updateOrderStatusByVendor = async (
       NotificationService.sendToUser(
         customerId!,
         'Order is being prepared',
-        `Your order is now being prepared by ${loggedInUser.businessDetails?.businessName}.`,
+        `Your order is now being prepared by ${currentUser.businessDetails?.businessName}.`,
         { orderId: order._id.toString(), status: ORDER_STATUS.PREPARING },
         'ORDER'
       );
@@ -572,7 +532,7 @@ const updateOrderStatusByVendor = async (
       NotificationService.sendToUser(
         customerId!,
         'Order is ready for pickup',
-        `Your order is now ready for pickup by ${loggedInUser.businessDetails?.businessName}.`,
+        `Your order is now ready for pickup by ${currentUser.businessDetails?.businessName}.`,
         {
           orderId: order._id.toString(),
           status: ORDER_STATUS.READY_FOR_PICKUP,
@@ -678,22 +638,15 @@ const broadcastOrderToPartners = async (
   orderId: string,
   currentUser: AuthUser
 ) => {
-  // Auth check
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-
-  if (!loggedInUser || loggedInUser.status !== 'APPROVED') {
+  if (!currentUser || currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${loggedInUser?.status}`
+      `You are not approved. Status: ${currentUser?.status}`
     );
   }
 
   // Vendor location check
-  const loc = loggedInUser.businessLocation;
+  const loc = currentUser.businessLocation;
   if (
     !loc ||
     typeof loc.longitude !== 'number' ||
@@ -707,7 +660,7 @@ const broadcastOrderToPartners = async (
   // Fetch order AND ensure this vendor owns it
   const order = await Order.findOne({
     orderId,
-    vendorId: loggedInUser._id.toString(),
+    vendorId: currentUser._id.toString(),
     isDeleted: false,
   });
   if (
@@ -770,7 +723,7 @@ const broadcastOrderToPartners = async (
 
   // Safe atomic update using $addToSet and status update
   await Order.updateOne(
-    { orderId, vendorId: loggedInUser._id.toString(), isDeleted: false },
+    { orderId, vendorId: currentUser._id.toString(), isDeleted: false },
     {
       $set: { orderStatus: ORDER_STATUS.DISPATCHING },
       $addToSet: { dispatchPartnerPool: { $each: partnerIds } },
@@ -781,7 +734,7 @@ const broadcastOrderToPartners = async (
   const orderDataForPopup = {
     orderId: order.orderId,
     deliveryAddress: order.deliveryAddress,
-    vendorName: loggedInUser.businessDetails.businessName,
+    vendorName: currentUser?.businessDetails?.businessName,
     timer: 60, // 60 seconds
   };
 
@@ -816,18 +769,14 @@ const partnerAcceptsDispatchedOrder = async (
   currentUser: AuthUser,
   orderId: string
 ) => {
-  // Validate partner
-  const partner = await DeliveryPartner.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-    status: 'APPROVED',
-  });
-
-  if (!partner) {
+  if (
+    currentUser.status !== 'APPROVED' ||
+    currentUser.role !== 'DELIVERY_PARTNER'
+  ) {
     throw new AppError(httpStatus.FORBIDDEN, 'Partner not approved.');
   }
 
-  if (partner.operationalData?.currentOrderId) {
+  if (currentUser.operationalData?.currentOrderId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You already have an assigned order.'
@@ -844,11 +793,11 @@ const partnerAcceptsDispatchedOrder = async (
       orderId,
       orderStatus: ORDER_STATUS.DISPATCHING,
       deliveryPartnerId: null,
-      dispatchPartnerPool: { $in: [partner.userId] },
+      dispatchPartnerPool: { $in: [currentUser.userId] },
     },
     {
       $set: {
-        deliveryPartnerId: partner._id.toString(),
+        deliveryPartnerId: currentUser._id.toString(),
         orderStatus: ORDER_STATUS.ASSIGNED,
         dispatchPartnerPool: [],
       },
@@ -866,14 +815,14 @@ const partnerAcceptsDispatchedOrder = async (
 
   const io = getIO();
   notifiedPartnerIds.forEach((id) => {
-    if (id !== partner.userId) {
+    if (id !== currentUser.userId) {
       io.to(`user_${id}`).emit('REMOVE_ORDER_POPUP', { orderId });
     }
   });
 
   // Update partner state
   await DeliveryPartner.updateOne(
-    { userId: partner.userId },
+    { userId: currentUser.userId },
     {
       $set: {
         'operationalData.currentOrderId': claimedOrder._id.toString(),
@@ -891,19 +840,14 @@ const otpVerificationByVendor = async (
   otp: string,
   currentUser: AuthUser
 ) => {
-  const existingVendor = await Vendor.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingVendor) {
+  if (!currentUser || currentUser.role !== 'VENDOR') {
     throw new AppError(httpStatus.FORBIDDEN, 'Vendor not found.');
   }
 
-  if (existingVendor.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${existingVendor.status}`
+      `You are not approved to view the order. Your account is ${currentUser.status}`
     );
   }
 
@@ -914,7 +858,7 @@ const otpVerificationByVendor = async (
   const updatedOrder = await Order.findOneAndUpdate(
     {
       orderId,
-      vendorId: existingVendor._id.toString(),
+      vendorId: currentUser._id.toString(),
       orderStatus: ORDER_STATUS.ASSIGNED,
       isOtpVerified: false,
       deliveryOtp: otp,
@@ -935,7 +879,7 @@ const otpVerificationByVendor = async (
   if (!updatedOrder) {
     const orderCheck = await Order.findOne({
       orderId,
-      vendorId: existingVendor._id.toString(),
+      vendorId: currentUser._id.toString(),
     });
 
     if (!orderCheck) {
@@ -1009,19 +953,8 @@ const updateOrderStatusByDeliveryPartner = async (
   payload: { orderStatus: OrderStatus; reason?: string },
   currentUser: AuthUser
 ) => {
-  // Validate partner
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const partner = result.user;
-
-  if (!partner || partner.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${partner?.status}`
-    );
+  if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
+    throw new AppError(httpStatus.FORBIDDEN, 'Delivery Partner not found.');
   }
 
   // VALID state transitions
@@ -1052,7 +985,7 @@ const updateOrderStatusByDeliveryPartner = async (
   const updatedOrder = await Order.findOneAndUpdate(
     {
       orderId,
-      deliveryPartnerId: partner._id.toString(),
+      deliveryPartnerId: currentUser._id.toString(),
       orderStatus: requiredCurrentStatus,
       isDeleted: false,
     },
@@ -1085,7 +1018,7 @@ const updateOrderStatusByDeliveryPartner = async (
 
   if (shouldReleasePartner) {
     await DeliveryPartner.updateOne(
-      { userId: partner.userId },
+      { userId: currentUser.userId },
       {
         $set: {
           'operationalData.currentOrderId': null,

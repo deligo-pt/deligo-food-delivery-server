@@ -6,7 +6,6 @@ import { AuthUser } from '../../constant/user.constant';
 import { TCustomer } from './customer.interface';
 import { Customer } from './customer.model';
 import { CustomerSearchableFields } from './customer.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { TDeliveryAddress } from '../../constant/address.constant';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 
@@ -17,18 +16,10 @@ const updateCustomer = async (
   currentUser: AuthUser,
   profilePhoto?: string
 ) => {
-  // ----------------------------------------------------------------------
-  // Authorization
-  // ----------------------------------------------------------------------
-  const userRecord = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-
-  if (userRecord.user.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You cannot update profile. Status: ${userRecord.user.status}`
+      `You cannot update profile. Status: ${currentUser.status}`
     );
   }
 
@@ -37,7 +28,10 @@ const updateCustomer = async (
   if (!customer.isOtpVerified)
     throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
 
-  if (currentUser.role === 'CUSTOMER' && currentUser.id !== customer.userId) {
+  if (
+    currentUser.role === 'CUSTOMER' &&
+    currentUser.userId !== customer.userId
+  ) {
     throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized update');
   }
 
@@ -139,16 +133,6 @@ const addDeliveryAddress = async (
   currentUser: AuthUser
 ) => {
   // --------------------------------------------------
-  // Authorization
-  // --------------------------------------------------
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const userId = currentUser.id;
-
-  // --------------------------------------------------
   // Validate payload
   // --------------------------------------------------
   if (
@@ -162,13 +146,14 @@ const addDeliveryAddress = async (
     );
   }
 
-  const customer = await Customer.findOne({ userId }, { deliveryAddresses: 1 });
-
-  if (!customer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  if (currentUser?.role !== 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only customers can add delivery addresses'
+    );
   }
-
-  if (customer.deliveryAddresses!.length >= 5) {
+  const userId = currentUser.userId;
+  if (currentUser.deliveryAddresses!.length >= 5) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You have reached the maximum number of delivery addresses'
@@ -183,7 +168,7 @@ const addDeliveryAddress = async (
     if (a == null || b == null) return false;
     return Math.abs(a - b) <= tolerance;
   };
-  const isDuplicate = customer.deliveryAddresses?.some((addr) => {
+  const isDuplicate = currentUser.deliveryAddresses?.some((addr) => {
     const textMatch =
       normalize(addr.street) === normalize(deliveryAddress.street) &&
       normalize(addr.city) === normalize(deliveryAddress.city) &&
@@ -204,7 +189,7 @@ const addDeliveryAddress = async (
     );
   }
 
-  const hasAnyAddress = (customer.deliveryAddresses?.length ?? 0) > 0;
+  const hasAnyAddress = (currentUser.deliveryAddresses?.length ?? 0) > 0;
 
   // --------------------------------------------------
   // Deactivate previous addresses
@@ -247,14 +232,14 @@ const addDeliveryAddress = async (
 
   // Auto-update location if coords provided
   if (longitude != null && latitude != null) {
-    customer.currentSessionLocation = {
+    currentUser.currentSessionLocation = {
       type: 'Point',
       coordinates: [longitude, latitude],
       accuracy: geoAccuracy ?? 0,
       lastLocationUpdate: new Date(),
     };
   }
-  await customer.save();
+  await (currentUser as any).save();
 
   return {
     message: 'Delivery address added successfully',
@@ -267,18 +252,14 @@ const toggleDeliveryAddressStatus = async (
   addressId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result?.user;
+  const userId = currentUser.userId;
   await Customer.updateOne(
-    { userId: loggedInUser.userId },
+    { userId },
     { $set: { 'deliveryAddresses.$[].isActive': false } }
   );
 
   const updatedCustomer = await Customer.findOneAndUpdate(
-    { userId: loggedInUser.userId, 'deliveryAddresses._id': addressId },
+    { userId, 'deliveryAddresses._id': addressId },
     { $set: { 'deliveryAddresses.$.isActive': true } },
     { new: true }
   );
@@ -289,15 +270,14 @@ const toggleDeliveryAddressStatus = async (
 
   // Auto-update location if coords provided
   if (longitude != null && latitude != null) {
-    loggedInUser.currentSessionLocation = {
+    currentUser.currentSessionLocation = {
       type: 'Point',
       coordinates: [longitude, latitude],
       accuracy: geoAccuracy ?? 0,
-      lastUpdate: new Date(),
-      isSharingActive: false,
+      lastLocationUpdate: new Date(),
     };
   }
-  await loggedInUser.save();
+  await (currentUser as any).save();
   return {
     message: 'Delivery address status updated successfully',
   };
@@ -308,8 +288,7 @@ const deleteDeliveryAddress = async (
   addressId: string,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
-  const userId = currentUser.id;
+  const userId = currentUser.userId;
   const result = await Customer.findOne(
     { userId },
     { deliveryAddresses: { $elemMatch: { _id: addressId } } }
@@ -340,17 +319,10 @@ const getAllCustomersFromDB = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-
-  const loggedInUser = result?.user;
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view customers. Your account is ${loggedInUser.status}`
+      `You are not approved to view customers. Your account is ${currentUser.status}`
     );
   }
 
@@ -361,7 +333,7 @@ const getAllCustomersFromDB = async (
     .filter()
     .search(CustomerSearchableFields);
 
-  const populateOptions = getPopulateOptions(loggedInUser.role, {
+  const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',
     rejectedBy: 'name userId role',
     blockedBy: 'name userId role',
@@ -386,26 +358,23 @@ const getSingleCustomerFromDB = async (
   customerId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result?.user;
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view a customer. Your account is ${loggedInUser.status}`
+      `You are not approved to view a customer. Your account is ${currentUser.status}`
     );
   }
 
   let query: any;
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     query = Customer.findOne({
-      userId: loggedInUser?.userId,
+      userId: currentUser?.userId,
       isDeleted: false,
     });
-    if (query?.userId !== currentUser?.id || customerId !== currentUser?.id) {
+    if (
+      query?.userId !== currentUser?.userId ||
+      customerId !== currentUser?.userId
+    ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to view this customer'
@@ -417,7 +386,7 @@ const getSingleCustomerFromDB = async (
     });
   }
 
-  const populateOptions = getPopulateOptions(loggedInUser.role, {
+  const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',
     rejectedBy: 'name userId role',
     blockedBy: 'name userId role',

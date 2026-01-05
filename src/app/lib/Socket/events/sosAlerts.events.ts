@@ -7,7 +7,7 @@ const sosLastDbUpdateMap = new Map<string, number>();
 
 export const registerSosSocketEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as AuthUser;
-  const userId = user?.id;
+  const userId = user?.userId;
   const userRole = user?.role;
 
   // --------------------------------------------

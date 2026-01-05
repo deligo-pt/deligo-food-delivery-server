@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import { TDeliveryAddress } from './address.constant';
 
 // User Roles constant
 export const USER_ROLE = {
@@ -43,17 +44,59 @@ export const UrlPath = {
 
 export type AuthUser = {
   _id: mongoose.Types.ObjectId;
-  id: string;
-  name: string;
+  userId: string;
+  name: {
+    firstName: string;
+    lastName: string;
+  };
+  password: string;
   role: TUserRole;
   status: keyof typeof USER_STATUS;
+  fcmTokens?: string[];
+  profilePhoto?: string;
+  mobileOtpId?: string;
+  contactNumber: string;
+  email: string;
+  pendingContactNumber?: string;
+  otp?: string;
+  isOtpExpired?: Date;
+  pendingEmail?: string;
   currentSessionLocation?: {
     type: 'Point';
     coordinates: [number, number];
+    accuracy: number;
+    lastLocationUpdate: Date;
   };
-  address?: string;
-  iat: number;
-  exp: number;
+  businessDetails?: {
+    businessName: string;
+    businessType: string;
+    isStoreOpen: boolean;
+    storeClosedAt?: Date;
+  };
+  deliveryAddresses?: TDeliveryAddress[];
+  businessLocation?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    longitude?: number;
+    latitude?: number;
+    geoAccuracy?: number;
+  };
+  operationalData: {
+    currentOrderId?: string;
+  };
+  address: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    longitude?: number;
+    latitude?: number;
+    geoAccuracy?: number;
+  };
 };
 
 export type TLoginDevice = {
