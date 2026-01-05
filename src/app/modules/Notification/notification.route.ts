@@ -9,14 +9,30 @@ const router = Router();
 // Get my notifications
 router.get(
   '/my-notifications',
-  auth('CUSTOMER', 'VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN'),
+  auth(
+    'CUSTOMER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'ADMIN',
+    'SUPER_ADMIN'
+  ),
   NotificationControllers.getMyNotifications
 );
 
 // Mark one as read
 router.patch(
   '/:id/read',
-  auth('CUSTOMER', 'VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN'),
+  auth(
+    'CUSTOMER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'ADMIN',
+    'SUPER_ADMIN'
+  ),
   NotificationControllers.markAsRead
 );
 
@@ -29,6 +45,7 @@ router.patch(
     'CUSTOMER',
     'DELIVERY_PARTNER',
     'VENDOR',
+    'SUB_VENDOR',
     'FLEET_MANAGER'
   ),
   NotificationControllers.markAllAsRead
@@ -43,6 +60,7 @@ router.get(
     'CUSTOMER',
     'DELIVERY_PARTNER',
     'VENDOR',
+    'SUB_VENDOR',
     'FLEET_MANAGER'
   ),
   NotificationControllers.getAllNotifications
