@@ -164,6 +164,29 @@ const markAllAsRead = async (currentUser: AuthUser) => {
   return null;
 };
 
+const getMyNotifications = async (
+  currentUser: AuthUser,
+  query: Record<string, unknown>
+) => {
+  const notifications = new QueryBuilder(
+    Notification.find({
+      receiverId: currentUser.userId,
+    }),
+    query
+  )
+    .filter()
+    .fields()
+    .paginate()
+    .sort()
+    .search(['title', 'message', 'receiverRole']);
+  const meta = await notifications.countTotal();
+  const data = await notifications.modelQuery;
+  return {
+    meta,
+    data,
+  };
+};
+
 // Get all notifications
 const getAllNotifications = async (
   currentUser: AuthUser,
@@ -389,6 +412,7 @@ export const NotificationService = {
   sendToRole,
   markAsRead,
   markAllAsRead,
+  getMyNotifications,
   getAllNotifications,
   softDeleteSingleNotification,
   softDeleteMultipleNotifications,
