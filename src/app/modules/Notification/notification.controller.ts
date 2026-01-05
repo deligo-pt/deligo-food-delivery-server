@@ -1,4 +1,3 @@
-import { Notification } from './notification.model';
 import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
@@ -7,16 +6,17 @@ import { AuthUser } from '../../constant/user.constant';
 
 // Get notifications for current user
 const getMyNotifications = catchAsync(async (req, res) => {
-  const user = req.user as AuthUser;
-  const notifications = await Notification.find({ receiverId: user.userId })
-    .sort({ createdAt: -1 })
-    .lean();
+  const result = await NotificationService.getMyNotifications(
+    req.user as AuthUser,
+    req.query
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Notifications retrieved successfully',
-    data: notifications,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
