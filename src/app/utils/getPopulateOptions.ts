@@ -2,6 +2,7 @@ import { PopulateOptions } from 'mongoose';
 
 type UserRole =
   | 'VENDOR'
+  | 'SUB_VENDOR'
   | 'CUSTOMER'
   | 'DELIVERY_PARTNER'
   | 'ADMIN'
@@ -20,6 +21,8 @@ type PopulateInput = {
   blockedBy?: string;
   itemVendor?: string;
   product?: string;
+  id?: string;
+  resolvedBy?: string;
 };
 
 export const getPopulateOptions = (
@@ -115,6 +118,22 @@ export const getPopulateOptions = (
     options.push({
       path: 'items.productId',
       select: fields.product,
+    });
+  }
+
+  // ---------------- ID ----------------
+  if (fields.id) {
+    options.push({
+      path: 'userId.id',
+      select: fields.id,
+    });
+  }
+
+  // ---------------- Resolved By ----------------
+  if (fields.resolvedBy && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
+    options.push({
+      path: 'resolvedBy',
+      select: fields.resolvedBy,
     });
   }
 

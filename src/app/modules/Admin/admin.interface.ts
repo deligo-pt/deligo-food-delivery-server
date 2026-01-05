@@ -59,6 +59,13 @@ export type TAdmin = {
 
   NIF?: string;
 
+  currentSessionLocation?: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+    accuracy?: number; // GPS Accuracy in meters
+    lastLocationUpdate: Date; // Timestamp for data freshness
+  };
+
   // ---------------------------------------------
   // Documents & Verification
   // ---------------------------------------------

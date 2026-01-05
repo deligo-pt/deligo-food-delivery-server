@@ -1,4 +1,4 @@
-import { Schema } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
 // User Roles constant
 export const USER_ROLE = {
@@ -12,6 +12,16 @@ export const USER_ROLE = {
 } as const;
 
 export type TUserRole = keyof typeof USER_ROLE;
+
+export const ROLE_COLLECTION_MAP: Record<keyof typeof USER_ROLE, string> = {
+  SUPER_ADMIN: 'Admin',
+  ADMIN: 'Admin',
+  CUSTOMER: 'Customer',
+  FLEET_MANAGER: 'FleetManager',
+  VENDOR: 'Vendor',
+  SUB_VENDOR: 'Vendor',
+  DELIVERY_PARTNER: 'DeliveryPartner',
+} as const;
 
 // User Status constant
 export const USER_STATUS = {
@@ -32,10 +42,16 @@ export const UrlPath = {
 } as const;
 
 export type AuthUser = {
+  _id: mongoose.Types.ObjectId;
   id: string;
   name: string;
   role: TUserRole;
   status: keyof typeof USER_STATUS;
+  currentSessionLocation?: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+  address?: string;
   iat: number;
   exp: number;
 };

@@ -111,11 +111,13 @@ export type TVendor = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+  };
 
-    locationPoint: {
-      type: 'Point';
-      coordinates: [number, number]; // [longitude, latitude]
-    };
+  currentSessionLocation?: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+    accuracy?: number; // GPS Accuracy in meters
+    lastLocationUpdate: Date; // Timestamp for data freshness
   };
 
   // --------------------------------------------------------

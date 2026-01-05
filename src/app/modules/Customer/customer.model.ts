@@ -5,6 +5,7 @@ import { IUserModel } from '../../interfaces/user.interface';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { AddressType } from './customer.constant';
+import { locationSchema } from '../Delivery-Partner/delivery-partner.model';
 
 const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {
@@ -102,20 +103,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // ----------------------------------------------------------------
     // Current/Real-Time Location Data (For live tracking during delivery)
     // ----------------------------------------------------------------
-    currentSessionLocation: {
-      type: {
-        type: String,
-        enum: ['Point'],
-        default: 'Point',
-      },
-      coordinates: {
-        type: [Number], // [longitude, latitude]
-        default: [0, 0],
-      },
-      accuracy: { type: Number },
-      lastUpdate: { type: Date, default: null },
-      isSharingActive: { type: Boolean, default: false },
-    },
+    currentSessionLocation: { type: locationSchema },
 
     // ----------------------------------------------------------------
     // MULTIPLE SAVED ADDRESSES
