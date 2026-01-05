@@ -1,21 +1,13 @@
-import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
-import AppError from '../../errors/AppError';
 import { Customer } from '../Customer/customer.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { FleetManager } from '../Fleet-Manager/fleet-manager.model';
 import { Order } from '../Order/order.model';
 import { Product } from '../Product/product.model';
 import { Vendor } from '../Vendor/vendor.model';
-import { Admin } from '../Admin/admin.model';
 
 // get admin dashboard analytics
-const getAdminDashboardAnalytics = async (currentUser: AuthUser) => {
-  const existingAdmin = await Admin.findOne({ userId: currentUser.id });
-
-  if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
-  }
+const getAdminDashboardAnalytics = async () => {
   const [
     customers,
     vendors,
@@ -111,15 +103,7 @@ const getAdminDashboardAnalytics = async (currentUser: AuthUser) => {
 
 // get vendor dashboard analytics
 const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
-  // --------------------------------------------------
-  // Validate Vendor
-  // --------------------------------------------------
-  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  const vendorId = existingVendor._id;
+  const vendorId = currentUser._id;
 
   // --------------------------------------------------
   // Get Vendor Products

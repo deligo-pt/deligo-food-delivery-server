@@ -3,26 +3,16 @@ import AppError from '../../errors/AppError';
 import { AuthUser } from '../../constant/user.constant';
 import { TGlobalSettings } from './globalSetting.interface';
 import { GlobalSettings } from './globalSetting.model';
-import { Admin } from '../Admin/admin.model';
 
 // create global settings service
 const createGlobalSettings = async (
   payload: Partial<TGlobalSettings>,
   currentUser: AuthUser
 ) => {
-  // --------------------------------------------------
-  // Validate logged-in user
-  // --------------------------------------------------
-  const existingAdmin = await Admin.findOne({ userId: currentUser.id });
-
-  if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
-  }
-
-  if (existingAdmin.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${existingAdmin.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 
@@ -75,7 +65,7 @@ const createGlobalSettings = async (
   // --------------------------------------------------
   // Meta info
   // --------------------------------------------------
-  payload.updatedBy = existingAdmin._id;
+  payload.updatedBy = currentUser._id.toString();
 
   // --------------------------------------------------
   // Create global settings
@@ -90,29 +80,17 @@ const updateGlobalSettings = async (
   payload: Partial<TGlobalSettings>,
   currentUser: AuthUser
 ) => {
-  // --------------------------------------------------
-  // Validate logged-in user
-  // --------------------------------------------------
-  const existingAdmin = await Admin.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
-  }
-
-  if (!['ADMIN', 'SUPER_ADMIN'].includes(existingAdmin.role)) {
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Only admin can update global settings'
     );
   }
 
-  if (existingAdmin.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${existingAdmin.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 
@@ -177,7 +155,7 @@ const updateGlobalSettings = async (
   // --------------------------------------------------
   // Meta info
   // --------------------------------------------------
-  payload.updatedBy = existingAdmin._id;
+  payload.updatedBy = currentUser._id.toString();
 
   // --------------------------------------------------
   // Update settings (single document)
@@ -191,29 +169,24 @@ const updateGlobalSettings = async (
 };
 
 const getGlobalSettingsForAdmin = async (currentUser: AuthUser) => {
-  // --------------------------------------------------
-  // Validate logged-in user
-  // --------------------------------------------------
-  const existingAdmin = await Admin.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved. Status: ${currentUser.status}`
+    );
   }
 
-  if (!['ADMIN', 'SUPER_ADMIN'].includes(existingAdmin.role)) {
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Only admin can access global settings'
     );
   }
 
-  if (existingAdmin.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${existingAdmin.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 

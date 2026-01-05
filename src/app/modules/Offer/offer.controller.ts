@@ -89,10 +89,7 @@ const getAllOffers = catchAsync(async (req, res) => {
 // get single offer controller
 const getSingleOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
-  const result = await OfferServices.getSingleOffer(
-    offerId,
-    req.user as AuthUser
-  );
+  const result = await OfferServices.getSingleOffer(offerId);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

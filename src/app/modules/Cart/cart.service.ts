@@ -5,20 +5,25 @@ import AppError from '../../errors/AppError';
 import { Product } from '../Product/product.model';
 import { TCart } from './cart.interface';
 import { Cart } from './cart.model';
-import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { recalculateCartTotals } from './cart.constant';
 import { Vendor } from '../Vendor/vendor.model';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
-  const existingCustomer = await Customer.isUserExistsByUserId(
-    currentUser.id,
-    false
-  );
-  if (!existingCustomer)
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  const customerId = existingCustomer._id;
+  if (currentUser.role !== 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only customers are allowed to perform this action'
+    );
+  }
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Your account is not approved yet. You cannot perform this action.'
+    );
+  }
+  const customerId = currentUser._id;
 
   const { productId, quantity, variantName } = payload.items[0];
   const existingProduct = await Product.findOne({
@@ -162,16 +167,14 @@ const activateItem = async (
   productId: string,
   variantName?: string
 ) => {
-  const existingCustomer = await Customer.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update cart. Your account is ${currentUser.status}`
+    );
   }
 
-  const customerId = existingCustomer._id;
+  const customerId = currentUser._id;
 
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
@@ -231,16 +234,14 @@ const updateCartItemQuantity = async (
     action: 'increment' | 'decrement';
   }
 ) => {
-  const existingCustomer = await Customer.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update cart. Your account is ${currentUser.status}`
+    );
   }
 
-  const customerId = existingCustomer._id;
+  const customerId = currentUser._id;
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
@@ -303,16 +304,14 @@ const deleteCartItem = async (
   currentUser: AuthUser,
   itemsToDelete: { productId: string; variantName?: string }[]
 ) => {
-  const existingCustomer = await Customer.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update cart. Your account is ${currentUser.status}`
+    );
   }
 
-  const cart = await Cart.findOne({ customerId: existingCustomer._id });
+  const cart = await Cart.findOne({ customerId: currentUser._id });
   if (!cart || !cart.items || cart.items.length === 0) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart is empty or not found');
   }
@@ -353,11 +352,13 @@ const updateAddonQuantity = async (
     action: 'increment' | 'decrement';
   }
 ) => {
-  const existingCustomer = await Customer.findOne({ userId: currentUser.id });
-  if (!existingCustomer)
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-
-  const cart = await Cart.findOne({ customerId: existingCustomer._id });
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update cart. Your account is ${currentUser.status}`
+    );
+  }
+  const cart = await Cart.findOne({ customerId: currentUser._id });
   if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
   const { productId, variantName, optionId, action } = payload;
@@ -441,11 +442,13 @@ const updateAddonQuantity = async (
 
 // view cart Service
 const viewCart = async (currentUser: AuthUser) => {
-  const existingCustomer = await Customer.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const customerId = existingCustomer?._id;
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view cart. Your account is ${currentUser.status}`
+    );
+  }
+  const customerId = currentUser._id;
   const query = Cart.findOne({ customerId });
 
   const populateOptions = getPopulateOptions('CUSTOMER', {
@@ -467,11 +470,8 @@ const viewCart = async (currentUser: AuthUser) => {
 
 // clear cart Service
 const clearCart = async (currentUser: AuthUser) => {
-  const customer = await Customer.findOne({ userId: currentUser.id });
-  if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-
   const cart = await Cart.findOneAndUpdate(
-    { customerId: customer._id },
+    { customerId: currentUser._id },
     {
       $set: {
         items: [],

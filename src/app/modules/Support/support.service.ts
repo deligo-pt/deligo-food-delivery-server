@@ -2,29 +2,11 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { AuthUser, TUserRole } from '../../constant/user.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { SupportConversation, SupportMessage } from './support.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TConversationParticipant } from './support.constant';
 import { generateTicketId } from '../../utils/generateTicketId';
 import { TConversationType } from './support.interface';
-
-// ------------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------------
-
-const validateUser = async (user: AuthUser) => {
-  const res = await findUserByEmailOrId({
-    userId: user.id,
-    isDeleted: false,
-  });
-
-  if (!res.user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  return res.user;
-};
 
 const ensureParticipant = (conversation: any, userId: string) => {
   const isParticipant = conversation.participants.some(
@@ -80,17 +62,15 @@ const openOrCreateConversation = async (
     };
   }
 ) => {
-  const user = await validateUser(currentUser);
-
   const type = payload?.type ?? 'SUPPORT';
 
   // deterministic room
   let room: string;
 
   if (type === 'SUPPORT') {
-    room = `SUPPORT_${user.id}`;
+    room = `SUPPORT_${currentUser.userId}`;
   } else if (payload?.targetUser) {
-    const ids = [user.id, payload.targetUser.userId].sort();
+    const ids = [currentUser.userId, payload.targetUser.userId].sort();
     room = `${type}_${ids[0]}_${ids[1]}`;
     if (type === 'ORDER' && payload.referenceId) {
       room = `ORDER_${payload.referenceId}_${ids[0]}_${ids[1]}`;
@@ -121,9 +101,9 @@ const openOrCreateConversation = async (
 
   const participants: TConversationParticipant[] = [
     {
-      userId: user.userId,
-      role: user.role,
-      name: `${user.name.firstName} ${user.name.lastName}`,
+      userId: currentUser.userId,
+      role: currentUser.role,
+      name: `${currentUser.name.firstName} ${currentUser.name.lastName}`,
     },
   ];
 
@@ -154,12 +134,10 @@ const getAllSupportConversations = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  await validateUser(currentUser);
-
   const baseFilter: Record<string, any> = { isDeleted: false };
 
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    baseFilter['participants.userId'] = currentUser.id;
+    baseFilter['participants.userId'] = currentUser.userId;
   }
 
   if (query.role) {
@@ -187,8 +165,6 @@ const getSingleSupportConversationController = async (
   room: string,
   currentUser: AuthUser
 ) => {
-  await validateUser(currentUser);
-
   const conversation = await SupportConversation.findOne({
     room,
     isDeleted: false,
@@ -198,7 +174,7 @@ const getSingleSupportConversationController = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
   }
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    ensureParticipant(conversation, currentUser.id);
+    ensureParticipant(conversation, currentUser.userId);
   }
 
   return conversation;
@@ -295,8 +271,6 @@ const getMessagesByRoom = async (
   room: string,
   currentUser: AuthUser
 ) => {
-  await validateUser(currentUser);
-
   const conversation = await SupportConversation.findOne({
     room,
     isDeleted: false,
@@ -307,7 +281,7 @@ const getMessagesByRoom = async (
   }
 
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    ensureParticipant(conversation, currentUser.id);
+    ensureParticipant(conversation, currentUser.userId);
   }
 
   const qb = new QueryBuilder(
@@ -329,8 +303,6 @@ const getMessagesByRoom = async (
 // ------------------------------------------------------------------
 
 const markReadByAdminOrUser = async (room: string, currentUser: AuthUser) => {
-  await validateUser(currentUser);
-
   const conversation = await SupportConversation.findOne({
     room,
     isDeleted: false,
@@ -340,14 +312,14 @@ const markReadByAdminOrUser = async (room: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
   }
 
-  ensureParticipant(conversation, currentUser.id);
+  ensureParticipant(conversation, currentUser.userId);
 
   await SupportMessage.updateMany(
-    { room, [`readBy.${currentUser.id}`]: false },
-    { $set: { [`readBy.${currentUser.id}`]: true } }
+    { room, [`readBy.${currentUser.userId}`]: false },
+    { $set: { [`readBy.${currentUser.userId}`]: true } }
   );
 
-  conversation.unreadCount.set(currentUser.id, 0);
+  conversation.unreadCount.set(currentUser.userId, 0);
   await conversation.save();
 
   return true;
@@ -358,8 +330,6 @@ const markReadByAdminOrUser = async (room: string, currentUser: AuthUser) => {
 // ------------------------------------------------------------------
 
 const closeConversation = async (room: string, currentUser: AuthUser) => {
-  await validateUser(currentUser);
-
   const conversation = await SupportConversation.findOne({
     room,
     isDeleted: false,
@@ -369,7 +339,7 @@ const closeConversation = async (room: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
   }
 
-  if (conversation.handledBy !== currentUser.id) {
+  if (conversation.handledBy !== currentUser.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Only handler can close conversation'

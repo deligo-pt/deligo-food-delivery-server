@@ -16,7 +16,7 @@ export const registerDriverLiveLocationEvents = (
   socket: Socket
 ) => {
   const user = socket.data.user as AuthUser;
-  const userId = user?.id;
+  const userId = user?.userId;
   const userRole = user?.role;
 
   // --------------------------------------------
