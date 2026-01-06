@@ -190,6 +190,9 @@ const loginUser = async (payload: TLoginUser) => {
     isDeleted: false,
   });
   const user = result?.user;
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
   await findUserByEmailOrId({ userId: user?.userId, isDeleted: false });
   const userModel = result?.model;
 
@@ -392,6 +395,10 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 const logoutUser = async (email: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
 
   if (user?.role === 'CUSTOMER') {
     user.isEmailVerified = false;
@@ -907,10 +914,12 @@ const verifyOtp = async (
       'Email or contact number is required for OTP verification'
     );
   }
-  let user: any;
+
+  let user: any = undefined;
 
   if (email) {
-    const { user } = await findUserByEmailOrId({ email, isDeleted: false });
+    const result = await findUserByEmailOrId({ email, isDeleted: false });
+    user = result?.user;
 
     if (!user)
       throw new AppError(
@@ -929,9 +938,7 @@ const verifyOtp = async (
       user.requiresOtpVerification = false;
       user.isOtpVerified = true;
     }
-  }
-
-  if (contactNumber) {
+  } else if (contactNumber) {
     user = await Customer.findOne({ contactNumber, isDeleted: false });
     if (!user)
       throw new AppError(
@@ -950,6 +957,13 @@ const verifyOtp = async (
     user.isOtpVerified = true;
     user.requiresOtpVerification = false;
     user.mobileOtpId = undefined;
+  }
+
+  if (!user) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'User not found. Please register.'
+    );
   }
 
   await user.save();
@@ -1017,6 +1031,12 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
   }
   if (email) {
     const { user } = await findUserByEmailOrId({ email, isDeleted: false });
+    if (!user) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'User not found. Please register.'
+      );
+    }
 
     if (user?.isEmailVerified) {
       throw new AppError(
