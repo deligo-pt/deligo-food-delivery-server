@@ -58,13 +58,13 @@ const loginCustomer = catchAsync(async (req, res) => {
 // Save FCM Token Controller
 const saveFcmToken = catchAsync(async (req, res) => {
   const { token } = req.body;
-  const result = await AuthServices.saveFcmToken(req.user.id, token);
+  const result = await AuthServices.saveFcmToken(req.user as AuthUser, token);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'FCM token saved successfully',
-    data: result,
+    message: result?.message,
+    data: null,
   });
 });
 

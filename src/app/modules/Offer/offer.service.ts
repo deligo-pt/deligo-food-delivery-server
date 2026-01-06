@@ -2,7 +2,6 @@ import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';
 import { TCheckoutItem } from '../Checkout/checkout.interface';
@@ -16,23 +15,11 @@ type TApplyOfferPayload = {
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   // --------------------------------------------
-  //  Get logged-in user
-  // --------------------------------------------
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!loggedInUser) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'User not found');
-  }
-
-  // --------------------------------------------
   //  Role-based access control
   // --------------------------------------------
   if (currentUser.role === 'VENDOR') {
     // Vendor can ONLY create vendor-specific offers
-    payload.vendorId = loggedInUser._id;
+    payload.vendorId = currentUser._id;
   } else {
     // Admin / Super Admin
     payload.vendorId = payload.vendorId ?? null; // null = global offer
@@ -119,18 +106,10 @@ const updateOffer = async (
   payload: Partial<TOffer>,
   currentUser: AuthUser
 ) => {
-  // --------------------------------------------------
-  // Validate logged-in user
-  // --------------------------------------------------
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${loggedInUser.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 
@@ -146,8 +125,8 @@ const updateOffer = async (
   // Authorization (Vendor can update only own offer)
   // --------------------------------------------------
   if (
-    ['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role) &&
-    offer.vendorId?.toString() !== loggedInUser._id.toString()
+    ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role) &&
+    offer.vendorId?.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -256,15 +235,10 @@ const updateOffer = async (
 
 // toggle offer status service
 const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Your account is ${loggedInUser.status}. You cannot perform this action.`
+      `Your account is ${currentUser.status}. You cannot perform this action.`
     );
   }
 
@@ -278,8 +252,8 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
   }
 
   if (
-    ['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role) &&
-    offer.vendorId?.toString() !== loggedInUser._id.toString()
+    ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role) &&
+    offer.vendorId?.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -470,13 +444,8 @@ const getAllOffers = async (
   currentUser: AuthUser,
   query: Record<string, unknown>
 ) => {
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.role === 'VENDOR') {
-    query.vendorId = loggedInUser._id;
+  if (currentUser.role === 'VENDOR') {
+    query.vendorId = currentUser._id;
   }
   const offers = new QueryBuilder(Offer.find(), query)
     .fields()
@@ -493,11 +462,7 @@ const getAllOffers = async (
 };
 
 // get single offer service
-const getSingleOffer = async (id: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
+const getSingleOffer = async (id: string) => {
   const offer = await Offer.findById(id);
   if (!offer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Offer not found');
@@ -507,18 +472,10 @@ const getSingleOffer = async (id: string, currentUser: AuthUser) => {
 
 // soft delete offer service
 const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
-  // --------------------------------------------------
-  // Validate logged-in user
-  // --------------------------------------------------
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${loggedInUser.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 
@@ -534,8 +491,8 @@ const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
   // Authorization
   // --------------------------------------------------
   if (
-    ['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role) &&
-    offer.vendorId?.toString() !== loggedInUser._id.toString()
+    ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role) &&
+    offer.vendorId?.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -574,25 +531,17 @@ const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
 
 // permanent delete offer service
 const permanentDeleteOffer = async (id: string, currentUser: AuthUser) => {
-  // --------------------------------------------------
-  // Validate logged-in user
-  // --------------------------------------------------
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${loggedInUser.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 
   // --------------------------------------------------
   // Only Admin / Super Admin allowed
   // --------------------------------------------------
-  if (!['ADMIN', 'SUPER_ADMIN'].includes(loggedInUser.role)) {
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Only admin can permanently delete an offer'

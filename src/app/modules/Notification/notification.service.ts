@@ -62,12 +62,11 @@ const sendToUser = (
   //  Detach from request lifecycle
   setImmediate(async () => {
     try {
-      const result = await findUserByEmailOrId({
+      const { user } = await findUserByEmailOrId({
         userId,
         isDeleted: false,
       });
 
-      const user = result?.user;
       if (!user) return;
 
       const uniqueTokens = [...new Set((user.fcmTokens as string[]) || [])];
@@ -140,17 +139,12 @@ const sendToRole = (
 
 // mark as read (one)
 const markAsRead = async (id: string, currentUser: AuthUser) => {
-  const { user } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
   const notification = await Notification.findById(id);
   if (!notification) {
     throw new AppError(httpStatus.NOT_FOUND, 'Notification not found');
   }
 
-  if (user.userId !== notification.receiverId) {
+  if (currentUser.userId !== notification.receiverId) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'You are not authorized to perform this action'
@@ -163,12 +157,34 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
 
 // mark as read (all)
 const markAllAsRead = async (currentUser: AuthUser) => {
-  const { user } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  await Notification.updateMany({ receiverId: user.userId }, { isRead: true });
+  await Notification.updateMany(
+    { receiverId: currentUser.userId },
+    { isRead: true }
+  );
   return null;
+};
+
+const getMyNotifications = async (
+  currentUser: AuthUser,
+  query: Record<string, unknown>
+) => {
+  const notifications = new QueryBuilder(
+    Notification.find({
+      receiverId: currentUser.userId,
+    }),
+    query
+  )
+    .filter()
+    .fields()
+    .paginate()
+    .sort()
+    .search(['title', 'message', 'receiverRole']);
+  const meta = await notifications.countTotal();
+  const data = await notifications.modelQuery;
+  return {
+    meta,
+    data,
+  };
 };
 
 // Get all notifications
@@ -176,13 +192,8 @@ const getAllNotifications = async (
   currentUser: AuthUser,
   query: Record<string, unknown>
 ) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.id;
+    query.receiverId = currentUser.userId;
   }
 
   const notifications = new QueryBuilder(Notification.find(), query)
@@ -212,7 +223,7 @@ const softDeleteSingleNotification = async (
 
   // If NOT super admin, restrict to own notification
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.id;
+    query.receiverId = currentUser.userId;
   }
 
   // --------------------------------------------------
@@ -257,7 +268,7 @@ const softDeleteMultipleNotifications = async (
 
   // Restrict only if NOT super admin
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.id;
+    query.receiverId = currentUser.userId;
   }
 
   // --------------------------------------------------
@@ -283,7 +294,7 @@ const softDeleteAllNotifications = async (currentUser: AuthUser) => {
 
   // Only restrict if NOT super admin
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.id;
+    query.receiverId = currentUser.userId;
   }
 
   // --------------------------------------------------
@@ -401,6 +412,7 @@ export const NotificationService = {
   sendToRole,
   markAsRead,
   markAllAsRead,
+  getMyNotifications,
   getAllNotifications,
   softDeleteSingleNotification,
   softDeleteMultipleNotifications,

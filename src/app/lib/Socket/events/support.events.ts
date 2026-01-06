@@ -12,7 +12,7 @@ type SendMessagePayload = {
 
 export const registerSupportEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as AuthUser;
-  const userId = user.id;
+  const userId = user.userId;
   const userRole = user.role;
 
   if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
@@ -72,6 +72,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
           messagePreview: message.slice(0, 50),
           ticketId: savedMessage.ticketId || null,
           conversationType: (savedMessage as any).type || 'SUPPORT',
+          time: new Date(),
         });
       }
     } catch (error: any) {

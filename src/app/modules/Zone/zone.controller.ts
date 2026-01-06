@@ -1,12 +1,11 @@
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { ZoneService } from './zone.service';
 
 // Create Zone Controller
 const createZoneController = catchAsync(async (req, res) => {
-  const result = await ZoneService.createZone(req.body, req.user as AuthUser);
+  const result = await ZoneService.createZone(req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -32,7 +31,7 @@ const checkPointInZoneController = catchAsync(async (req, res) => {
 
 // get all zones controller
 const getAllZonesController = catchAsync(async (req, res) => {
-  const zones = await ZoneService.getAllZones(req.query, req.user as AuthUser);
+  const zones = await ZoneService.getAllZones(req.query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -45,7 +44,7 @@ const getAllZonesController = catchAsync(async (req, res) => {
 // get single zone controller
 const getSingleZoneController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
-  const result = await ZoneService.getSingleZone(zoneId, req.user as AuthUser);
+  const result = await ZoneService.getSingleZone(zoneId);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -57,11 +56,7 @@ const getSingleZoneController = catchAsync(async (req, res) => {
 // update zone controller
 const updateZoneController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
-  const result = await ZoneService.updateZone(
-    zoneId,
-    req.body,
-    req.user as AuthUser
-  );
+  const result = await ZoneService.updateZone(zoneId, req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -74,11 +69,7 @@ const updateZoneController = catchAsync(async (req, res) => {
 const toggleZoneStatusController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
   const isOperational = req.body.isOperational;
-  const result = await ZoneService.toggleZoneStatus(
-    zoneId,
-    isOperational,
-    req.user as AuthUser
-  );
+  const result = await ZoneService.toggleZoneStatus(zoneId, isOperational);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -90,7 +81,7 @@ const toggleZoneStatusController = catchAsync(async (req, res) => {
 // soft delete zone controller
 const softDeleteZoneController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
-  const result = await ZoneService.softDeleteZone(zoneId, req.user as AuthUser);
+  const result = await ZoneService.softDeleteZone(zoneId);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -102,10 +93,7 @@ const softDeleteZoneController = catchAsync(async (req, res) => {
 // permanent delete zone controller
 const permanentDeleteZoneController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
-  const result = await ZoneService.permanentDeleteZone(
-    zoneId,
-    req.user as AuthUser
-  );
+  const result = await ZoneService.permanentDeleteZone(zoneId);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

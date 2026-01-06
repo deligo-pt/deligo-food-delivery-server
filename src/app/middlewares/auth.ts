@@ -22,9 +22,9 @@ const auth = (...requiredRoles: TUserRole[]) => {
       config.jwt_access_secret as string
     ) as JwtPayload;
 
-    const { role, iat, id } = decoded;
+    const { role, iat, userId } = decoded;
 
-    const result = await findUserByEmailOrId({ userId: id, isDeleted: false });
+    const result = await findUserByEmailOrId({ userId, isDeleted: false });
 
     const foundModel = result?.model;
 
@@ -52,7 +52,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
       throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
-    req.user = decoded as JwtPayload;
+    req.user = user;
     next();
   });
 };

@@ -6,9 +6,7 @@ import { AuthUser } from '../../constant/user.constant';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminDashboardAnalytics(
-    req.user as AuthUser
-  );
+  const result = await AnalyticsServices.getAdminDashboardAnalytics();
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

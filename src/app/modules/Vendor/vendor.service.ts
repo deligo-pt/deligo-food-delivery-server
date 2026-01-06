@@ -8,7 +8,6 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { BusinessCategory } from '../Category/category.model';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 
 // Vendor Update Service
@@ -39,7 +38,7 @@ const vendorUpdate = async (
   // -----------------------------------------
   // Authorization check
   // -----------------------------------------
-  if (currentUser.id !== existingVendor.userId) {
+  if (currentUser.userId !== existingVendor.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to update this vendor.'
@@ -114,7 +113,7 @@ const vendorDocImageUpload = async (
     );
   }
 
-  if (currentUser?.id !== existingVendor?.userId) {
+  if (currentUser?.userId !== existingVendor?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to upload document image!'
@@ -150,25 +149,10 @@ const vendorBusinessLocationUpdate = async (
   payload: Partial<TVendor>,
   currentUser: AuthUser
 ) => {
-  const existingVendor = await Vendor.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  if (existingVendor?.status !== 'APPROVED') {
+  if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `You are not approved to update business location. Your account is ${existingVendor?.status}`
-    );
-  }
-
-  if (currentUser?.id !== existingVendor?.userId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You are not authorize to update business location!'
+      `You are not approved to update business location. Your account is ${currentUser?.status}`
     );
   }
 
@@ -193,7 +177,7 @@ const vendorBusinessLocationUpdate = async (
   // Update vendor
   // -----------------------------------------
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { userId: existingVendor.userId },
+    { userId: currentUser.userId },
     { $set: payload },
     { new: true }
   );
@@ -212,27 +196,20 @@ const vendorBusinessLocationUpdate = async (
 
 // toggle vendor store open/close service
 const toggleVendorStoreOpenClose = async (currentUser: AuthUser) => {
-  const existingVendor = await Vendor.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-  if (existingVendor?.status !== 'APPROVED') {
+  if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `You are not approved to toggle store open/close. Your account is ${existingVendor?.status}`
+      `You are not approved to toggle store open/close. Your account is ${currentUser?.status}`
     );
   }
 
-  existingVendor.businessDetails!.isStoreOpen =
-    !existingVendor?.businessDetails?.isStoreOpen;
-  existingVendor.businessDetails!.storeClosedAt = new Date();
-  await existingVendor.save();
+  currentUser.businessDetails!.isStoreOpen =
+    !currentUser.businessDetails?.isStoreOpen;
+  currentUser.businessDetails!.storeClosedAt = new Date();
+  await (currentUser as any).save();
   return {
     message: `Store is ${
-      existingVendor?.businessDetails?.isStoreOpen ? 'open' : 'closed'
+      currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
     }`,
   };
 };
@@ -242,15 +219,10 @@ const getAllVendors = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result?.user;
-  if (loggedInUser?.status !== 'APPROVED') {
+  if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view vendors. Your account is ${loggedInUser?.status}`
+      `You are not approved to view vendors. Your account is ${currentUser?.status}`
     );
   }
   const vendors = new QueryBuilder(Vendor.find(), query)
@@ -260,7 +232,7 @@ const getAllVendors = async (
     .filter()
     .search(VendorSearchableFields);
 
-  const populateOptions = getPopulateOptions(loggedInUser.role, {
+  const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',
     rejectedBy: 'name userId role',
     blockedBy: 'name userId role',
@@ -284,12 +256,7 @@ const getSingleVendorFromDB = async (
   vendorId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-  if (loggedInUser.role === 'VENDOR' && loggedInUser.userId !== vendorId) {
+  if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this vendor!'
@@ -297,9 +264,9 @@ const getSingleVendorFromDB = async (
   }
 
   let query: any;
-  if (loggedInUser.role === 'VENDOR') {
+  if (currentUser.role === 'VENDOR') {
     query = Vendor.findOne({
-      userId: loggedInUser.userId,
+      userId: currentUser.userId,
       isDeleted: false,
     });
   } else {
@@ -308,7 +275,7 @@ const getSingleVendorFromDB = async (
     });
   }
 
-  const populateOptions = getPopulateOptions(loggedInUser.role, {
+  const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',
     rejectedBy: 'name userId role',
     blockedBy: 'name userId role',

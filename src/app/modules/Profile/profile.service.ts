@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser, USER_STATUS } from '../../constant/user.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import {
+  AuthUser,
+  ROLE_COLLECTION_MAP,
+  USER_STATUS,
+} from '../../constant/user.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TUserProfileUpdate } from './profile.interface';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
@@ -14,32 +17,15 @@ import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 // get my profile service
 const getMyProfile = async (currentUser: AuthUser) => {
   // -----------------------------
-  // Find User
-  // -----------------------------
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const user = result?.user;
-
-  // -----------------------------
-  // User Exists Check
-  // -----------------------------
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User does not exist!');
-  }
-
-  // -----------------------------
   // Status Check
   // -----------------------------
-  if (user.status !== USER_STATUS.APPROVED) {
+  if (currentUser.status !== USER_STATUS.APPROVED) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Your account is ${user.status.toLowerCase()}. Please contact support.`
+      `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`
     );
   }
-  return user;
+  return currentUser;
 };
 
 // update my profile service
@@ -48,28 +34,19 @@ const updateMyProfile = async (
   profilePhoto: string | null,
   payload: Partial<TUserProfileUpdate>
 ) => {
-  // -----------------------------
-  // Find User
-  // -----------------------------
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
+  const Model = ROLE_COLLECTION_MAP[currentUser.role] as any;
 
-  const user = result?.user;
-  const Model = result?.model;
-
-  if (!user) {
+  if (!currentUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found.');
   }
 
   // -----------------------------
   // Account Status Check
   // -----------------------------
-  if (user.status !== USER_STATUS.APPROVED) {
+  if (currentUser.status !== USER_STATUS.APPROVED) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Your account is ${user.status.toLowerCase()}. Please contact support.`
+      `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`
     );
   }
 
@@ -83,14 +60,14 @@ const updateMyProfile = async (
     );
   }
 
-  if (user.role === 'CUSTOMER' && payload.contactNumber) {
+  if (currentUser.role === 'CUSTOMER' && payload.contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Customers cannot update contact number. Please contact support.'
     );
   }
 
-  if (payload.NIF && user.role !== 'CUSTOMER') {
+  if (payload.NIF && currentUser.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Only customers can update NIF. Please contact support.'
@@ -102,8 +79,8 @@ const updateMyProfile = async (
   // -----------------------------
   if (profilePhoto) {
     // Delete old photo (non-blocking but logged)
-    if (user.profilePhoto) {
-      const oldPhoto = user.profilePhoto;
+    if (currentUser.profilePhoto) {
+      const oldPhoto = currentUser.profilePhoto;
       deleteSingleImageFromCloudinary(oldPhoto).catch((err) => {
         throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
       });
@@ -116,7 +93,7 @@ const updateMyProfile = async (
   // Update User Document
   // -----------------------------
   const updatedUser = await Model?.findOneAndUpdate(
-    { userId: user.userId },
+    { userId: currentUser.userId },
     { $set: payload },
     { new: true }
   );
@@ -144,18 +121,6 @@ const sendOtp = async (
       httpStatus.BAD_REQUEST,
       'Email or contact number is required'
     );
-  }
-
-  // --------------------------------------------------
-  // Get logged-in user
-  // --------------------------------------------------
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!loggedInUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
   // --------------------------------------------------
@@ -199,10 +164,10 @@ const sendOtp = async (
     const response = await sendMobileOtp(payload.contactNumber);
     const mobileOtpId = response?.data?.id;
 
-    loggedInUser.mobileOtpId = mobileOtpId;
-    loggedInUser.pendingContactNumber = payload.contactNumber;
+    currentUser.mobileOtpId = mobileOtpId;
+    currentUser.pendingContactNumber = payload.contactNumber;
 
-    await loggedInUser.save();
+    await (currentUser as any).save();
 
     return {
       message: 'OTP sent to your mobile number. Please verify to update.',
@@ -215,11 +180,11 @@ const sendOtp = async (
   if (payload.email) {
     const { otp, otpExpires } = generateOtp();
 
-    loggedInUser.otp = otp;
-    loggedInUser.isOtpExpired = otpExpires;
-    loggedInUser.pendingEmail = payload.email;
+    currentUser.otp = otp;
+    currentUser.isOtpExpired = otpExpires;
+    currentUser.pendingEmail = payload.email;
 
-    await loggedInUser.save();
+    await (currentUser as any).save();
 
     const emailHtml = await EmailHelper.createEmailContent(
       {
@@ -227,7 +192,7 @@ const sendOtp = async (
         userEmail: payload.email,
         currentYear: new Date().getFullYear(),
         date: new Date().toDateString(),
-        user: loggedInUser?.name?.firstName || 'Customer',
+        user: currentUser?.name?.firstName || 'Customer',
       },
       'verify-email'
     );
@@ -256,16 +221,7 @@ const updateEmailOrContactNumber = async (
   currentUser: AuthUser,
   otp: string
 ) => {
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!loggedInUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  if (!loggedInUser.pendingEmail && !loggedInUser.pendingContactNumber) {
+  if (!currentUser.pendingEmail && !currentUser.pendingContactNumber) {
     throw new AppError(httpStatus.BAD_REQUEST, 'No pending change found.');
   }
 
@@ -273,39 +229,39 @@ const updateEmailOrContactNumber = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'OTP is required.');
   }
 
-  if (loggedInUser.pendingEmail) {
+  if (currentUser.pendingEmail) {
     // verify otp
-    if (loggedInUser.otp !== otp) {
+    if (currentUser.otp !== otp) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
     }
-    if (loggedInUser.isOtpExpired && loggedInUser.isOtpExpired < new Date()) {
+    if (currentUser.isOtpExpired && currentUser.isOtpExpired < new Date()) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'OTP has expired');
     }
 
-    loggedInUser.otp = undefined;
-    loggedInUser.isOtpExpired = undefined;
-    loggedInUser.email = loggedInUser.pendingEmail;
-    loggedInUser.pendingEmail = null;
+    currentUser.otp = undefined;
+    currentUser.isOtpExpired = undefined;
+    currentUser.email = currentUser.pendingEmail;
+    currentUser.pendingEmail = '';
   }
 
-  if (loggedInUser.pendingContactNumber) {
+  if (currentUser.pendingContactNumber) {
     const res = await verifyMobileOtp(
-      loggedInUser.mobileOtpId as string,
+      currentUser.mobileOtpId as string,
       otp as string
     );
     if (!res?.data?.verified) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
     }
-    loggedInUser.mobileOtpId = undefined;
-    loggedInUser.contactNumber = loggedInUser.pendingContactNumber;
-    loggedInUser.pendingContactNumber = null;
+    currentUser.mobileOtpId = undefined;
+    currentUser.contactNumber = currentUser.pendingContactNumber;
+    currentUser.pendingContactNumber = '';
   }
 
-  await loggedInUser.save();
+  await (currentUser as any).save();
 
   return {
     message: `${
-      loggedInUser.pendingEmail ? 'Email' : 'Contact number'
+      currentUser.pendingEmail ? 'Email' : 'Contact number'
     } updated successfully.`,
   };
 };

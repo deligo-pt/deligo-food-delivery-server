@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AuthUser } from '../../constant/user.constant';
-import { Vendor } from '../Vendor/vendor.model';
 import { TAddonGroup } from './addOns.interface';
 import { AddonGroup } from './addOns.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 
 // create addon group service
@@ -13,20 +11,15 @@ const createAddonGroup = async (
   payload: TAddonGroup,
   currentUser: AuthUser
 ) => {
-  const existingVendor = await Vendor.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingVendor) {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Vendor profile not found for this user!'
+      httpStatus.FORBIDDEN,
+      'Your vendor account is not approved yet!'
     );
   }
 
   const isGroupExists = await AddonGroup.findOne({
-    vendorId: existingVendor._id,
+    vendorId: currentUser._id,
     title: { $regex: new RegExp(`^${payload.title}$`, 'i') },
     isDeleted: false,
   });
@@ -40,7 +33,7 @@ const createAddonGroup = async (
 
   const addonData = {
     ...payload,
-    vendorId: existingVendor._id,
+    vendorId: currentUser._id,
   };
 
   const result = await AddonGroup.create(addonData);
@@ -53,10 +46,15 @@ const updateAddonGroup = async (
   payload: Partial<TAddonGroup>,
   currentUser: AuthUser
 ) => {
-  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Your vendor account is not approved yet!'
+    );
+  }
 
   const result = await AddonGroup.findOneAndUpdate(
-    { _id: id, vendorId: existingVendor?._id, isDeleted: false },
+    { _id: id, vendorId: currentUser._id, isDeleted: false },
     payload,
     { new: true, runValidators: true }
   );
@@ -76,10 +74,14 @@ const addOptionToAddonGroup = async (
   newOption: { name: string; price: number },
   currentUser: AuthUser
 ) => {
-  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
-
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Your vendor account is not approved yet!'
+    );
+  }
   const result = await AddonGroup.findOneAndUpdate(
-    { _id: groupId, vendorId: existingVendor?._id, isDeleted: false },
+    { _id: groupId, vendorId: currentUser._id, isDeleted: false },
     {
       $push: { options: { ...newOption, isActive: true } },
     },
@@ -102,10 +104,15 @@ const deleteOptionFromAddonGroup = async (
   optionId: string,
   currentUser: AuthUser
 ) => {
-  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Your vendor account is not approved yet!'
+    );
+  }
 
   const result = await AddonGroup.findOneAndUpdate(
-    { _id: groupId, vendorId: existingVendor?._id },
+    { _id: groupId, vendorId: currentUser._id, isDeleted: false },
     {
       $pull: { options: { _id: optionId } },
     },
@@ -124,13 +131,8 @@ const getAllAddonGroups = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.role === 'VENDOR') {
-    query.vendorId = loggedInUser._id;
+  if (currentUser.role === 'VENDOR') {
+    query.vendorId = currentUser._id;
   }
 
   const addOns = new QueryBuilder(AddonGroup.find(), query)
@@ -157,13 +159,9 @@ const getAllAddonGroups = async (
 
 // get single addon group service
 const getSingleAddonGroup = async (id: string, currentUser: AuthUser) => {
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
   let query;
-  if (loggedInUser.role === 'VENDOR') {
-    query = AddonGroup.findOne({ _id: id, vendorId: loggedInUser._id });
+  if (currentUser.role === 'VENDOR') {
+    query = AddonGroup.findOne({ _id: id, vendorId: currentUser._id });
   } else {
     query = AddonGroup.findOne({ _id: id });
   }
@@ -177,13 +175,15 @@ const toggleOptionStatus = async (
   optionId: string,
   currentUser: AuthUser
 ) => {
-  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
-  if (!existingVendor)
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Your vendor account is not approved yet!'
+    );
+  }
   const group = await AddonGroup.findOne({
     _id: groupId,
-    vendorId: existingVendor._id,
+    vendorId: currentUser._id,
     isDeleted: false,
   });
 
@@ -197,7 +197,6 @@ const toggleOptionStatus = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Option not found in this group');
   }
 
-  // স্ট্যাটাস টগল করুন
   option.isActive = !option.isActive;
 
   await group.save();
@@ -206,9 +205,8 @@ const toggleOptionStatus = async (
 
 // soft delete addon group
 const softDeleteAddonGroup = async (id: string, currentUser: AuthUser) => {
-  const existingVendor = await Vendor.findOne({ userId: currentUser.id });
   const result = await AddonGroup.findOneAndUpdate(
-    { _id: id, vendorId: existingVendor?._id },
+    { _id: id, vendorId: currentUser._id },
     { isDeleted: true },
     { new: true }
   );

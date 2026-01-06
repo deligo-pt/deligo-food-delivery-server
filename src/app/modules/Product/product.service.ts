@@ -1,7 +1,4 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
@@ -9,13 +6,11 @@ import { TProduct } from './product.interface';
 import { Product } from './product.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { Customer } from '../Customer/customer.model';
 import { getCustomerCoordinates } from '../../utils/getCustomerCoordinates';
 import { calculateDistance } from '../../utils/calculateDistance';
-import { Vendor } from '../Vendor/vendor.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { customAlphabet } from 'nanoid';
@@ -31,24 +26,18 @@ const createProduct = async (
   currentUser: AuthUser,
   images: string[]
 ) => {
-  //  ------------ Vendor Details Adjustment ------------
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const existingUser = result?.user;
-  if (existingUser?.status !== 'APPROVED') {
+  if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Vendor is not approved to add products'
     );
   }
-  const vendorCategory = existingUser?.businessDetails?.businessType;
+  const vendorCategory = currentUser?.businessDetails?.businessType;
   // find vendor category is exist
   const vendorCategoryExist = await BusinessCategory.findOne({
     name: vendorCategory,
   });
-  payload.vendorId = existingUser?._id;
+  payload.vendorId = currentUser?._id;
 
   // check category
   if (payload?.category) {
@@ -62,7 +51,7 @@ const createProduct = async (
     if (payload.addonGroups && payload.addonGroups.length > 0) {
       const validAddonsCount = await AddonGroup.countDocuments({
         _id: { $in: payload.addonGroups },
-        vendorId: existingUser._id,
+        vendorId: currentUser._id,
         isDeleted: false,
       });
 
@@ -112,25 +101,16 @@ const updateProduct = async (
   currentUser: AuthUser,
   images: string[]
 ) => {
-  const existingVendor = await Vendor.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  }).lean();
-
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  if (existingVendor.status !== 'APPROVED') {
+  if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Action forbidden. Your account status is ${existingVendor.status}`
+      `Action forbidden. Your account status is ${currentUser.status}`
     );
   }
 
   const existingProduct = await Product.findOne({
     productId,
-    ...(currentUser.role === 'VENDOR' && { vendorId: existingVendor._id }),
+    ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
   });
 
   if (!existingProduct) {
@@ -197,11 +177,6 @@ const approvedProduct = async (
   currentUser: AuthUser,
   payload: { isApproved: boolean; remarks?: string }
 ) => {
-  await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
   const existingProduct = await Product.findOne({
     productId,
   });
@@ -251,16 +226,10 @@ const deleteProductImages = async (
   images: string[],
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const existingUser = result.user;
-  if (existingUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete product images. Your account is ${existingUser.status}`
+      `You are not approved to delete product images. Your account is ${currentUser.status}`
     );
   }
 
@@ -271,7 +240,7 @@ const deleteProductImages = async (
 
   if (
     currentUser.role === 'VENDOR' &&
-    product.vendorId.toString() !== existingUser._id.toString()
+    product.vendorId.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -300,21 +269,16 @@ const getAllProducts = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${loggedInUser.status}`
+      `You are not approved to view products. Your account is ${currentUser.status}`
     );
   }
-  const role = loggedInUser.role;
+  const role = currentUser.role;
 
   if (role === 'VENDOR') {
-    query.vendorId = loggedInUser._id;
+    query.vendorId = currentUser._id;
     query.isDeleted = false;
   }
 
@@ -344,7 +308,7 @@ const getAllProducts = async (
     // Use QueryBuilder to get total/page/limit, but NOT DB pagination
     const [customer, meta, products] = await Promise.all([
       Customer.findOne({
-        userId: currentUser.id,
+        userId: currentUser.userId,
         isDeleted: false,
       }).lean(),
       productsQB.countTotal(), // uses query.page + query.limit
@@ -420,40 +384,33 @@ const getAllProducts = async (
 
 // get single product service
 const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const loggedInUser = result.user;
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${loggedInUser.status}`
+      `You are not approved to view products. Your account is ${currentUser.status}`
     );
   }
 
   let query;
   if (
-    loggedInUser.role === 'CUSTOMER' ||
-    loggedInUser.role === 'DELIVERY_PARTNER' ||
-    loggedInUser.role === 'FLEET_MANAGER'
+    currentUser.role === 'CUSTOMER' ||
+    currentUser.role === 'DELIVERY_PARTNER' ||
+    currentUser.role === 'FLEET_MANAGER'
   ) {
     query = Product.findOne({
       productId,
       isApproved: true,
       isDeleted: false,
     });
-  } else if (loggedInUser.role === 'VENDOR') {
+  } else if (currentUser.role === 'VENDOR') {
     query = Product.findOne({
       productId,
-      vendorId: loggedInUser._id,
+      vendorId: currentUser._id,
     });
   } else {
     query = Product.findOne({ productId });
   }
-  const populateOptions = getPopulateOptions(loggedInUser.role, {
+  const populateOptions = getPopulateOptions(currentUser.role, {
     vendor:
       'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
   });
@@ -470,21 +427,16 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
 
 // product soft delete service
 const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a product. Your account is ${loggedInUser.status}`
+      `You are not approved to delete a product. Your account is ${currentUser.status}`
     );
   }
 
   const product = await Product.findOne({ productId });
-  if (loggedInUser.role === 'VENDOR' || loggedInUser.role === 'SUB_VENDOR') {
-    if (loggedInUser._id.toString() !== product?.vendorId.toString()) {
+  if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
+    if (currentUser._id.toString() !== product?.vendorId.toString()) {
       throw new AppError(
         httpStatus.NOT_FOUND,
         'You are not authorized to delete this product'
@@ -515,15 +467,10 @@ const permanentDeleteProduct = async (
   productId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to permanently delete a product. Your account is ${loggedInUser.status}`
+      `You are not approved to permanently delete a product. Your account is ${currentUser.status}`
     );
   }
 

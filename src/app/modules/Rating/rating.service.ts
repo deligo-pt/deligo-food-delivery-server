@@ -9,12 +9,9 @@ import {
   calcAndUpdateVendor,
 } from './rating.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { AuthUser } from '../../constant/user.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 
 // create rating service
-const createRatingIntoDB = async (payload: TRating, currentUser: AuthUser) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+const createRatingIntoDB = async (payload: TRating) => {
   // Prevent duplicate: same order + ratingType
   const exists = await Rating.findOne({
     orderId: payload.orderId,
@@ -51,11 +48,7 @@ const createRatingIntoDB = async (payload: TRating, currentUser: AuthUser) => {
 };
 
 // Get Ratings (Admin/User)
-const getAllRatingsFromDB = async (
-  query: Record<string, unknown>,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+const getAllRatingsFromDB = async (query: Record<string, unknown>) => {
   const ratingQuery = new QueryBuilder(Rating.find(), query)
     .filter()
     .sort()

@@ -4,29 +4,20 @@ import AppError from '../../errors/AppError';
 import { TCoupon } from './coupon.interface';
 import { Coupon } from './coupon.model';
 import { AuthUser } from '../../constant/user.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Types } from 'mongoose';
-import { Customer } from '../Customer/customer.model';
 import { Order } from '../Order/order.model';
 
 // create coupon service
 const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
-  // Find logged in user
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${loggedInUser.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 
@@ -63,17 +54,17 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Coupon already exists');
 
   // Set creator
-  if (loggedInUser.role === 'ADMIN' || loggedInUser.role === 'SUPER_ADMIN') {
-    payload.adminId = loggedInUser._id;
-  } else if (loggedInUser.role === 'VENDOR') {
-    payload.vendorId = loggedInUser._id;
+  if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') {
+    payload.adminId = currentUser._id;
+  } else if (currentUser.role === 'VENDOR') {
+    payload.vendorId = currentUser._id;
   }
 
   // Create coupon
   const newCoupon = await Coupon.create(payload);
 
   return {
-    message: `Coupon created successfully by ${loggedInUser.role}`,
+    message: `Coupon created successfully by ${currentUser.role}`,
     data: newCoupon,
   };
 };
@@ -84,16 +75,10 @@ const updateCoupon = async (
   payload: Partial<TCoupon>,
   currentUser: AuthUser
 ) => {
-  // Find user
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${loggedInUser.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 
@@ -104,13 +89,13 @@ const updateCoupon = async (
   if (existingCoupon.isDeleted)
     throw new AppError(httpStatus.BAD_REQUEST, 'Cannot update deleted coupon');
 
-  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role);
-  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(loggedInUser.role);
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
   if (isVendor) {
     if (
       !existingCoupon.vendorId ||
-      existingCoupon.vendorId.toString() !== loggedInUser._id.toString()
+      existingCoupon.vendorId.toString() !== currentUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
@@ -122,7 +107,7 @@ const updateCoupon = async (
   if (isAdmin) {
     if (
       !existingCoupon.adminId ||
-      existingCoupon.adminId.toString() !== loggedInUser._id.toString()
+      existingCoupon.adminId.toString() !== currentUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
@@ -184,15 +169,6 @@ const applyCoupon = async (
   currentUser: AuthUser,
   type: 'CART' | 'CHECKOUT'
 ) => {
-  const existingCustomer = await Customer.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  }
-
   // Find coupon
   const coupon = await Coupon.findOne({
     _id: couponId,
@@ -215,7 +191,7 @@ const applyCoupon = async (
   // cart flow — active items only
   if (type === 'CART') {
     const cart = await Cart.findOne({
-      customerId: existingCustomer._id,
+      customerId: currentUser._id,
       isDeleted: false,
     });
     if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
@@ -308,7 +284,7 @@ const applyCoupon = async (
   // checkout flow — active items only
   if (type === 'CHECKOUT') {
     const checkout = await CheckoutSummary.findOne({
-      customerId: existingCustomer._id,
+      customerId: currentUser._id,
       isConvertedToOrder: false,
       isDeleted: false,
     }).sort({ createdAt: -1 });
@@ -380,15 +356,10 @@ const applyCoupon = async (
 
 // toggle coupon status service
 const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update coupons. Your account is ${loggedInUser.status}`
+      `You are not approved to update coupons. Your account is ${currentUser.status}`
     );
   }
   const coupon = await Coupon.findById(couponId);
@@ -396,8 +367,8 @@ const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
   if (
-    (loggedInUser.role === 'VENDOR' || loggedInUser.role === 'SUB_VENDOR') &&
-    coupon.vendorId.toString() !== loggedInUser._id.toString()
+    (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
+    coupon.vendorId.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -416,13 +387,7 @@ const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
 
 // get all coupons analytics service
 const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
-  // Validate user
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(httpStatus.FORBIDDEN, `You are not approved.`);
   }
 
@@ -432,8 +397,8 @@ const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
     couponId: { $exists: true, $ne: null },
   };
 
-  if (['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role)) {
-    orderMatch.vendorId = loggedInUser._id;
+  if (['VENDOR', 'SUB_VENDOR'].includes(currentUser.role)) {
+    orderMatch.vendorId = currentUser._id;
   }
 
   const results = await Order.aggregate([
@@ -547,18 +512,10 @@ const getSingleCouponAnalytics = async (
   couponId: string,
   currentUser: AuthUser
 ) => {
-  // --------------------------------------------------
-  // Validate user
-  // --------------------------------------------------
-  const { user: loggedInUser } = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${loggedInUser.status}`
+      `You are not approved. Status: ${currentUser.status}`
     );
   }
 
@@ -581,8 +538,8 @@ const getSingleCouponAnalytics = async (
     isDeleted: false,
   };
 
-  if (['VENDOR', 'SUB_VENDOR'].includes(loggedInUser.role)) {
-    orderMatch.vendorId = loggedInUser._id;
+  if (['VENDOR', 'SUB_VENDOR'].includes(currentUser.role)) {
+    orderMatch.vendorId = currentUser._id;
   }
 
   // --------------------------------------------------
@@ -692,15 +649,10 @@ const getAllCoupons = async (
   currentUser: AuthUser,
   query: Record<string, unknown>
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view coupons. Your account is ${loggedInUser.status}`
+      `You are not approved to view coupons. Your account is ${currentUser.status}`
     );
   }
 
@@ -711,7 +663,7 @@ const getAllCoupons = async (
     .fields()
     .search(['code', 'description']);
 
-  const populateOptions = getPopulateOptions(loggedInUser.role, {
+  const populateOptions = getPopulateOptions(currentUser.role, {
     vendor: 'name userId role',
     admin: 'name userId role',
   });
@@ -727,21 +679,16 @@ const getAllCoupons = async (
 
 // get single coupon service
 const getSingleCoupon = async (couponId: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result.user;
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view a coupon. Your account is ${loggedInUser.status}`
+      `You are not approved to view a coupon. Your account is ${currentUser.status}`
     );
   }
 
   const query = Coupon.findById(couponId);
 
-  const populateOptions = getPopulateOptions(loggedInUser.role, {
+  const populateOptions = getPopulateOptions(currentUser.role, {
     vendor: 'name userId role',
     admin: 'name userId role',
   });
@@ -759,17 +706,10 @@ const getSingleCoupon = async (couponId: string, currentUser: AuthUser) => {
 
 // coupon soft delete service
 const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const loggedInUser = result.user;
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a coupon. Your account is ${loggedInUser.status}`
+      `You are not approved to delete a coupon. Your account is ${currentUser.status}`
     );
   }
 
@@ -778,8 +718,8 @@ const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
 
-  if (loggedInUser.role !== 'ADMIN' && loggedInUser.role !== 'SUPER_ADMIN') {
-    if (existingCoupon.vendorId !== loggedInUser._id) {
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    if (existingCoupon.vendorId !== currentUser._id) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to delete this coupon'
@@ -810,17 +750,10 @@ const permanentDeleteCoupon = async (
   couponId: string,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-
-  const loggedInUser = result.user;
-
-  if (loggedInUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a coupon. Your account is ${loggedInUser.status}`
+      `You are not approved to delete a coupon. Your account is ${currentUser.status}`
     );
   }
   const existingCoupon = await Coupon.findById(couponId);

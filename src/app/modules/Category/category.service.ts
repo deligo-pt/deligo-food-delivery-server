@@ -3,16 +3,10 @@ import AppError from '../../errors/AppError';
 import { BusinessCategory, ProductCategory } from './category.model';
 import { TBusinessCategory, TProductCategory } from './category.interface';
 import { AuthUser } from '../../constant/user.constant';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 
 //  Create Business Category
-const createBusinessCategory = async (
-  payload: TBusinessCategory,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
-
+const createBusinessCategory = async (payload: TBusinessCategory) => {
   const exists = await BusinessCategory.findOne({ name: payload.name });
   if (exists) {
     throw new AppError(httpStatus.CONFLICT, 'Business category already exists');
@@ -34,7 +28,6 @@ const getAllBusinessCategories = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     (query.isActive = true), (query.isDeleted = false);
   }
@@ -52,7 +45,6 @@ const getAllBusinessCategories = async (
 
 //  Get Single Business Category
 const getSingleBusinessCategory = async (id: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
   const category = await BusinessCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
@@ -71,10 +63,8 @@ const getSingleBusinessCategory = async (id: string, currentUser: AuthUser) => {
 //  Update Business Category
 const updateBusinessCategory = async (
   id: string,
-  payload: Partial<TBusinessCategory>,
-  currentUser: AuthUser
+  payload: Partial<TBusinessCategory>
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
   if (payload.name)
     payload.slug = payload.name
       .toLowerCase()
@@ -98,11 +88,7 @@ const updateBusinessCategory = async (
 };
 
 // Soft Delete Business Category
-const softDeleteBusinessCategory = async (
-  id: string,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+const softDeleteBusinessCategory = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category)
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
@@ -128,11 +114,7 @@ const softDeleteBusinessCategory = async (
 };
 
 // Permanent Delete Business Category
-const permanentDeleteBusinessCategory = async (
-  id: string,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+const permanentDeleteBusinessCategory = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
@@ -148,11 +130,7 @@ const permanentDeleteBusinessCategory = async (
 };
 
 //  Create Product Category (Linked to Business)
-const createProductCategory = async (
-  payload: TProductCategory,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+const createProductCategory = async (payload: TProductCategory) => {
   const business = await BusinessCategory.findById(payload.businessCategoryId);
   if (!business) {
     throw new AppError(
@@ -180,16 +158,11 @@ const getAllProductCategories = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const user = result.user;
   if (currentUser.role === 'VENDOR') {
     query.isActive = true;
     query.isDeleted = false;
     const findBusinessCategory = await BusinessCategory.findOne({
-      name: user?.businessDetails?.businessType,
+      name: currentUser?.businessDetails?.businessType,
     });
     query.businessCategoryId = findBusinessCategory?._id;
   }
@@ -207,7 +180,6 @@ const getAllProductCategories = async (
 
 // get single product category
 const getSingleProductCategory = async (id: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
   const category = await ProductCategory.findById(id);
   if (!category)
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
@@ -221,10 +193,8 @@ const getSingleProductCategory = async (id: string, currentUser: AuthUser) => {
 //  Update Product Category
 const updateProductCategory = async (
   id: string,
-  payload: Partial<TProductCategory>,
-  currentUser: AuthUser
+  payload: Partial<TProductCategory>
 ) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
   const category = await ProductCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
@@ -263,8 +233,7 @@ const updateProductCategory = async (
 };
 
 // soft delete Product Category
-const softDeleteProductCategory = async (id: string, currentUser: AuthUser) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+const softDeleteProductCategory = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
@@ -285,11 +254,7 @@ const softDeleteProductCategory = async (id: string, currentUser: AuthUser) => {
   };
 };
 // Permanent Delete Product Category
-const permanentDeleteProductCategory = async (
-  id: string,
-  currentUser: AuthUser
-) => {
-  await findUserByEmailOrId({ userId: currentUser.id, isDeleted: false });
+const permanentDeleteProductCategory = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');

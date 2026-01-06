@@ -12,6 +12,7 @@ import {
 } from './auth.constant';
 import {
   AuthUser,
+  ROLE_COLLECTION_MAP,
   TUserRole,
   USER_ROLE,
   USER_STATUS,
@@ -54,18 +55,11 @@ const registerUser = async <
   // Restrict Delivery Partner registration
   if (userType === '/create-delivery-partner') {
     const allowedRoles: TUserRole[] = ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'];
-    const allowedUser = await findUserByEmailOrId({
-      userId: currentUser?.id,
-      isDeleted: false,
-    });
 
-    if (!allowedUser?.user) {
-      throw new AppError(httpStatus.FORBIDDEN, 'Permission check failed');
-    }
-    if (allowedUser.user.status !== 'APPROVED') {
+    if (currentUser.status !== 'APPROVED') {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        `You are not approved to register a Delivery Partner. Your account is ${allowedUser.user.status}`
+        `You are not approved to register a Delivery Partner. Your account is ${currentUser.status}`
       );
     }
     if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
@@ -74,23 +68,17 @@ const registerUser = async <
         'You do not have permission to register a Delivery Partner'
       );
     }
-    registeredBy = allowedUser.user._id.toString();
+    registeredBy = currentUser._id.toString();
   }
 
   // Restrict sub vendor registration
   if (userType === '/create-sub-vendor') {
     const allowedRoles: TUserRole[] = ['ADMIN', 'SUPER_ADMIN', 'VENDOR'];
-    const allowedUser = await findUserByEmailOrId({
-      userId: currentUser?.id,
-      isDeleted: false,
-    });
-    if (!allowedUser?.user) {
-      throw new AppError(httpStatus.FORBIDDEN, 'Permission check failed');
-    }
-    if (allowedUser.user.status !== 'APPROVED') {
+
+    if (currentUser.status !== 'APPROVED') {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        `You are not approved to register a Sub Vendor. Your account is ${allowedUser.user.status}`
+        `You are not approved to register a Sub Vendor. Your account is ${currentUser.status}`
       );
     }
     if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
@@ -100,7 +88,7 @@ const registerUser = async <
       );
     }
 
-    registeredBy = allowedUser.user.userId;
+    registeredBy = currentUser._id.toString();
   }
 
   const { Model, idField } = modelData;
@@ -232,8 +220,11 @@ const loginUser = async (payload: TLoginUser) => {
   //create token and sent to the  client
 
   const jwtPayload = {
-    id: user?.userId,
-    name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
+    userId: user?.userId,
+    name: {
+      firstName: user?.name?.firstName,
+      lastName: user?.name?.lastName,
+    },
     email: user?.email,
     contactNumber: user?.contactNumber,
     role: user?.role,
@@ -377,25 +368,24 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 };
 
 //save FCM Token
-const saveFcmToken = async (userId: string, token: string) => {
+const saveFcmToken = async (currentUser: AuthUser, token: string) => {
   if (!token) {
     throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
   }
 
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const user = result?.user;
-  const Model = result?.model;
+  const Model = ROLE_COLLECTION_MAP[currentUser.role];
 
-  if (!user || !Model) {
+  if (!currentUser || !Model) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
   // Add new token if not exists
-  const tokens = new Set([...(user.fcmTokens || []), token]);
-  user.fcmTokens = Array.from(tokens);
-  await user.save();
-
-  return { userId, tokens: user.fcmTokens };
+  const tokens = new Set([...(currentUser.fcmTokens || []), token]);
+  currentUser.fcmTokens = Array.from(tokens);
+  await (currentUser as any).save();
+  return {
+    message: 'FCM token saved successfully',
+  };
 };
 
 // Logout User
@@ -421,18 +411,14 @@ const changePassword = async (
   payload: { oldPassword: string; newPassword: string }
 ) => {
   // checking if the user is exist
-  const result = await findUserByEmailOrId({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  const user = result?.user;
-  const model = result?.model;
 
-  if (!user) {
+  const model = ROLE_COLLECTION_MAP[currentUser.role] as any;
+
+  if (!currentUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
   }
 
-  if (user?.role === 'CUSTOMER') {
+  if (currentUser?.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Customer no need to change password'
@@ -441,18 +427,20 @@ const changePassword = async (
 
   // checking if the user is blocked
 
-  const userStatus = user?.status;
+  const userStatus = currentUser?.status;
 
-  if (
-    userStatus === USER_STATUS.BLOCKED &&
-    userStatus === USER_STATUS.REJECTED
-  ) {
+  if (userStatus === USER_STATUS.REJECTED) {
+    throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
+  }
+  if (userStatus === USER_STATUS.BLOCKED) {
     throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
   }
 
   //checking if the password is correct
 
-  if (!(await model.isPasswordMatched(payload.oldPassword, user?.password)))
+  if (
+    !(await model.isPasswordMatched(payload.oldPassword, currentUser?.password))
+  )
     throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
 
   //hash new password
@@ -463,7 +451,7 @@ const changePassword = async (
 
   await model.findOneAndUpdate(
     {
-      userId: currentUser.id,
+      userId: currentUser.userId,
       role: currentUser.role,
     },
     {
@@ -621,9 +609,9 @@ const refreshToken = async (token: string) => {
     config.jwt_refresh_secret as string
   ) as JwtPayload;
 
-  const { iat, id } = decoded;
+  const { iat, userId } = decoded;
 
-  const result = await findUserByEmailOrId({ userId: id, isDeleted: false });
+  const result = await findUserByEmailOrId({ userId, isDeleted: false });
 
   const user = result?.user;
   const model = result?.model;
@@ -650,8 +638,11 @@ const refreshToken = async (token: string) => {
   }
 
   const jwtPayload = {
-    id: user?.userId,
-    name: `${user?.name?.firstName || ''} ${user?.name?.lastName || ''}`.trim(),
+    userId: user?.userId,
+    name: {
+      firstName: user?.name?.firstName,
+      lastName: user?.name?.lastName,
+    },
     email: user?.email,
     contactNumber: user?.contactNumber,
     role: user?.role,
@@ -671,20 +662,14 @@ const refreshToken = async (token: string) => {
 
 // submit approval request service
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
-  const result = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-  const loggedInUser = result?.user;
-  const result2 = await findUserByEmailOrId({
+  const { user: submittedUser } = await findUserByEmailOrId({
     userId,
     isDeleted: false,
   });
-  const submittedUser = result2?.user;
   if (!submittedUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
-  if (loggedInUser?.role === 'DELIVERY_PARTNER') {
+  if (currentUser?.role === 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       "You can't submit approval request."
@@ -706,8 +691,8 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
 
   if (submittedUser?.role === 'DELIVERY_PARTNER') {
     if (
-      loggedInUser?.role === 'FLEET_MANAGER' &&
-      submittedUser?.registeredBy.toString() !== loggedInUser._id.toString()
+      currentUser?.role === 'FLEET_MANAGER' &&
+      submittedUser?.registeredBy.toString() !== currentUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
@@ -715,7 +700,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
       );
     }
   } else {
-    if (submittedUser.userId !== loggedInUser.userId) {
+    if (submittedUser.userId !== currentUser.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to submit approval request for this user2'
@@ -774,7 +759,7 @@ const approvedOrRejectedUser = async (
   // --------------------------------------------------------------
   // Authorization & Validation
   // --------------------------------------------------------------
-  if (userId === currentUser.id) {
+  if (userId === currentUser.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You cannot change your own status'
@@ -782,20 +767,23 @@ const approvedOrRejectedUser = async (
   }
 
   const admin = await Admin.findOne({
-    userId: currentUser.id,
+    userId: currentUser.userId,
     isDeleted: false,
   });
   if (!admin) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Admin not found');
   }
 
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const user = result?.user;
-  if (!user) {
+  const { user: submittedUser } = await findUserByEmailOrId({
+    userId,
+    isDeleted: false,
+  });
+
+  if (!submittedUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (user.status === payload.status) {
+  if (submittedUser.status === payload.status) {
     //
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -819,31 +807,30 @@ const approvedOrRejectedUser = async (
   // --------------------------------------------------------------
   // Apply Status Changes
   // --------------------------------------------------------------
-  user.status = payload.status;
-  user.approvedOrRejectedOrBlockedAt = new Date();
+  submittedUser.status = payload.status;
+  submittedUser.approvedOrRejectedOrBlockedAt = new Date();
 
   switch (payload.status) {
     case 'APPROVED':
-      user.approvedBy = admin._id;
-      user.remarks =
+      submittedUser.approvedBy = admin._id;
+      submittedUser.remarks =
         payload.remarks ||
         'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.';
       break;
 
     case 'REJECTED':
-      user.rejectedBy = admin._id;
-      user.remarks = payload.remarks!;
-      user.isUpdateLocked = false;
+      submittedUser.rejectedBy = admin._id;
+      submittedUser.remarks = payload.remarks!;
+      submittedUser.isUpdateLocked = false;
       break;
 
     case 'BLOCKED':
-      user.blockedBy = admin._id;
-      user.remarks = payload.remarks!;
+      submittedUser.blockedBy = admin._id;
+      submittedUser.remarks = payload.remarks!;
       break;
   }
 
-  await user.save();
-
+  await submittedUser.save();
   // --------------------------------------------------------------
   // Push Notification (Non-blocking)
   // --------------------------------------------------------------
@@ -854,12 +841,12 @@ const approvedOrRejectedUser = async (
   };
 
   NotificationService.sendToUser(
-    user.userId,
+    submittedUser.userId,
     notificationTitleMap[payload.status],
-    user.remarks || '',
+    submittedUser.remarks || '',
     {
-      userId: user._id.toString(),
-      role: user.role,
+      userId: submittedUser._id.toString(),
+      role: submittedUser.role,
     },
     'ACCOUNT'
   );
@@ -869,10 +856,10 @@ const approvedOrRejectedUser = async (
   // --------------------------------------------------------------
   const emailHtml = await EmailHelper.createEmailContent(
     {
-      userName: user.name?.firstName || 'User',
-      userRole: user.role,
+      userName: submittedUser.name?.firstName || 'User',
+      userRole: submittedUser.role,
       currentYear: new Date().getFullYear(),
-      remarks: user.remarks || '',
+      remarks: submittedUser.remarks || '',
       date: new Date().toDateString(),
       status: payload.status,
     },
@@ -880,7 +867,7 @@ const approvedOrRejectedUser = async (
   );
 
   const emailSubject = `Your ${
-    user.role
+    submittedUser.role
   } Application has been ${payload.status.toLowerCase()}`;
 
   if (
@@ -891,18 +878,20 @@ const approvedOrRejectedUser = async (
       'VENDOR',
       'DELIVERY_PARTNER',
       'SUB_VENDOR',
-    ].includes(user.role) ||
-    (user.role === 'CUSTOMER' && user.email)
+    ].includes(submittedUser.role) ||
+    (submittedUser.role === 'CUSTOMER' && submittedUser.email)
   ) {
     try {
-      await EmailHelper.sendEmail(user.email, emailHtml, emailSubject);
+      await EmailHelper.sendEmail(submittedUser.email, emailHtml, emailSubject);
     } catch (err: any) {
       console.error('Email sending failed:', err);
     }
   }
 
   return {
-    message: `${user.role} ${payload.status.toLowerCase()} successfully`,
+    message: `${
+      submittedUser.role
+    } ${payload.status.toLowerCase()} successfully`,
   };
 };
 
@@ -921,8 +910,8 @@ const verifyOtp = async (
   let user: any;
 
   if (email) {
-    const result = await findUserByEmailOrId({ email, isDeleted: false });
-    user = result?.user;
+    const { user } = await findUserByEmailOrId({ email, isDeleted: false });
+
     if (!user)
       throw new AppError(
         httpStatus.NOT_FOUND,
@@ -966,8 +955,11 @@ const verifyOtp = async (
   await user.save();
 
   const jwtPayload = {
-    id: user.userId,
-    name: `${user.name?.firstName || ''} ${user.name?.lastName || ''}`.trim(),
+    userId: user.userId,
+    name: {
+      firstName: user.name.firstName,
+      lastName: user.name.lastName,
+    },
     email: user.email,
     contactNumber: user.contactNumber,
     role: user.role,
@@ -1024,8 +1016,8 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
     await user.save();
   }
   if (email) {
-    const result = await findUserByEmailOrId({ email, isDeleted: false });
-    user = result?.user;
+    const { user } = await findUserByEmailOrId({ email, isDeleted: false });
+
     if (user?.isEmailVerified) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -1067,32 +1059,28 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
 
 // soft delete user service
 const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
-  const results = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-  const existingCurrentUser = results?.user;
-
-  if (existingCurrentUser.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a user. Your account is ${existingCurrentUser.status}`
+      `You are not approved to delete a user. Your account is ${currentUser.status}`
     );
   }
 
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const existingUser = result?.user;
+  const { user: existingUser } = await findUserByEmailOrId({
+    userId,
+    isDeleted: false,
+  });
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
   }
 
   if (
-    (existingCurrentUser?.role === 'DELIVERY_PARTNER',
-    existingCurrentUser?.role === 'CUSTOMER',
-    existingCurrentUser?.role === 'VENDOR',
-    existingCurrentUser?.role === 'FLEET_MANAGER')
+    (currentUser?.role === 'DELIVERY_PARTNER',
+    currentUser?.role === 'CUSTOMER',
+    currentUser?.role === 'VENDOR',
+    currentUser?.role === 'FLEET_MANAGER')
   ) {
-    if (existingCurrentUser?.userId !== existingUser?.userID) {
+    if (currentUser?.userId !== existingUser?.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to delete this user!'
@@ -1101,10 +1089,10 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
   }
 
   if (
-    existingCurrentUser?.role === 'FLEET_MANAGER' &&
+    currentUser?.role === 'FLEET_MANAGER' &&
     existingUser?.role === 'DELIVERY_PARTNER'
   ) {
-    if (existingCurrentUser?.userId !== existingUser?.registeredBy) {
+    if (currentUser?._id.toString() !== existingUser?.registeredBy.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to delete this user!'
@@ -1126,21 +1114,14 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 
 // permanent delete user service
 const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
-  const existingCurrentUser = await findUserByEmailOrId({
-    userId: currentUser?.id,
-    isDeleted: false,
-  });
-
-  if (existingCurrentUser.user.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a user. Your account is ${existingCurrentUser.user.status}`
+      `You are not approved to delete a user. Your account is ${currentUser.status}`
     );
   }
 
-  const result = await findUserByEmailOrId({ userId });
-  const existingUser = result?.user;
-  const model = result?.model;
+  const { user: existingUser, model } = await findUserByEmailOrId({ userId });
   if (!existingUser) {
     throw new AppError(
       httpStatus.NOT_FOUND,

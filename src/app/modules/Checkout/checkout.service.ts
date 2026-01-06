@@ -6,7 +6,6 @@ import { Cart } from '../Cart/cart.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { Product } from '../Product/product.model';
 import { AuthUser } from '../../constant/user.constant';
-import { Customer } from '../Customer/customer.model';
 import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
@@ -14,24 +13,15 @@ import { OfferServices } from '../Offer/offer.service';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
-  // ---------- Find Customer ----------
-  const customer = await Customer.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  if (!customer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  }
-
   // Validate address
   const requiredFields = [
-    { field: customer.name?.firstName, label: 'First Name' },
-    { field: customer.name?.lastName, label: 'Last Name' },
-    { field: customer.contactNumber, label: 'Contact Number' },
-    { field: customer.address?.state, label: 'State' },
-    { field: customer.address?.city, label: 'City' },
-    { field: customer.address?.country, label: 'Country' },
-    { field: customer.address?.postalCode, label: 'Postal Code' },
+    { field: currentUser.name?.firstName, label: 'First Name' },
+    { field: currentUser.name?.lastName, label: 'Last Name' },
+    { field: currentUser.contactNumber, label: 'Contact Number' },
+    { field: currentUser.address?.state, label: 'State' },
+    { field: currentUser.address?.city, label: 'City' },
+    { field: currentUser.address?.country, label: 'Country' },
+    { field: currentUser.address?.postalCode, label: 'Postal Code' },
   ];
 
   for (const item of requiredFields) {
@@ -43,14 +33,14 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     }
   }
 
-  if (!customer.email && !customer.contactNumber) {
+  if (!currentUser.email && !currentUser.contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Please add email or contact number before checking out'
     );
   }
 
-  const customerId = customer._id.toString();
+  const customerId = currentUser._id.toString();
 
   // ---------- Get items ----------
   let selectedItems = [];
@@ -115,7 +105,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     );
   }
 
-  const activeAddress = customer?.deliveryAddresses?.find(
+  const activeAddress = currentUser?.deliveryAddresses?.find(
     (i) => i.isActive === true
   );
   if (!activeAddress) {
@@ -245,8 +235,8 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 
   const summaryData = {
     customerId,
-    customerEmail: customer?.email,
-    contactNumber: customer?.contactNumber,
+    customerEmail: currentUser?.email,
+    contactNumber: currentUser?.contactNumber,
     vendorId: orderItems[0].vendorId,
     items: orderItems,
     totalItems,
@@ -291,18 +281,10 @@ const getCheckoutSummary = async (
   checkoutSummaryId: string,
   currentUser: AuthUser
 ) => {
-  const existingCustomer = await Customer.findOne({
-    userId: currentUser.id,
-    isDeleted: false,
-  });
-  if (!existingCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  }
-
-  if (existingCustomer.status !== 'APPROVED') {
+  if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${existingCustomer.status}`
+      `You are not approved to view the order. Your account is ${currentUser.status}`
     );
   }
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
@@ -311,7 +293,7 @@ const getCheckoutSummary = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
   }
 
-  if (summary.customerId.toString() !== existingCustomer._id.toString()) {
+  if (summary.customerId.toString() !== currentUser._id.toString()) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'You are not authorized to view'
