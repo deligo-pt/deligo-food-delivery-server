@@ -1,5 +1,7 @@
+import { Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
+import { currentStatusOptions } from '../Delivery-Partner/delivery-partner.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { FleetManager } from '../Fleet-Manager/fleet-manager.model';
 import { Order } from '../Order/order.model';
@@ -253,7 +255,125 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   };
 };
 
+// get fleet dashboard analytics
+const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
+  const managerId = new Types.ObjectId(currentUser._id);
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const myPartners = await DeliveryPartner.find({
+    registeredBy: managerId,
+    isDeleted: false,
+  }).select('_id');
+
+  const partnerIds = myPartners.map((p) => p._id);
+
+  const [
+    totalPartners,
+    onlinePartners,
+    deliveriesToday,
+    vehicleComposition,
+    statusStats,
+  ] = await Promise.all([
+    DeliveryPartner.countDocuments({
+      registeredBy: managerId,
+      isDeleted: false,
+    }),
+
+    DeliveryPartner.countDocuments({
+      registeredBy: managerId,
+      'operationalData.currentStatus': { $ne: currentStatusOptions.OFFLINE },
+      isDeleted: false,
+    }),
+
+    Order.countDocuments({
+      orderStatus: 'DELIVERED',
+      createdAt: { $gte: startOfDay },
+      deliveryPartnerId: { $in: partnerIds },
+    }),
+
+    DeliveryPartner.aggregate([
+      { $match: { registeredBy: managerId, isDeleted: false } },
+      { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
+    ]),
+
+    DeliveryPartner.aggregate([
+      { $match: { registeredBy: managerId, isDeleted: false } },
+      { $group: { _id: '$operationalData.currentStatus', count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const onlinePercentage =
+    totalPartners > 0
+      ? ((onlinePartners / totalPartners) * 100).toFixed(1)
+      : '0';
+
+  const avgDeliveries =
+    totalPartners > 0 ? (deliveriesToday / totalPartners).toFixed(1) : '0';
+
+  const waitingPartners =
+    statusStats.find((s) => s._id === currentStatusOptions.IDLE)?.count || 0;
+
+  const availabilityRate =
+    onlinePartners > 0
+      ? ((waitingPartners / onlinePartners) * 100).toFixed(1)
+      : '0';
+
+  let topDrivers = await DeliveryPartner.find({
+    registeredBy: managerId,
+    isDeleted: false,
+    'operationalData.rating.average': { $exists: true, $gt: 0 },
+  })
+    .sort({ 'operationalData.rating.average': -1 })
+    .limit(4)
+    .select(
+      'name personalInfo.gender operationalData.rating nationality operationalData.completedDeliveries vehicleInfo'
+    );
+
+  if (!topDrivers.length) {
+    topDrivers = await DeliveryPartner.find({
+      registeredBy: managerId,
+      isDeleted: false,
+    })
+      .sort({ createdAt: -1 })
+      .limit(4)
+      .select(
+        'name personalInfo.gender operationalData.rating nationality operationalData.completedDeliveries vehicleInfo'
+      );
+  }
+
+  return {
+    cards: {
+      totalPartners,
+      onlineNow: {
+        count: onlinePartners,
+        percentage: `${onlinePercentage}%`,
+      },
+      deliveriesToday: {
+        total: deliveriesToday,
+        avgPerPartner: avgDeliveries,
+      },
+      availabilityRate: `${availabilityRate}%`,
+    },
+    fleetComposition: vehicleComposition.map((item) => ({
+      vehicle: item._id || 'Other',
+      count: item.count,
+    })),
+    partnerStatus: {
+      onDelivery:
+        statusStats.find((s) => s._id === currentStatusOptions.ON_DELIVERY)
+          ?.count || 0,
+      waiting: waitingPartners,
+      offline:
+        statusStats.find((s) => s._id === currentStatusOptions.OFFLINE)
+          ?.count || 0,
+    },
+    topRatedDrivers: topDrivers,
+  };
+};
+
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
+  getFleetDashboardAnalytics,
 };

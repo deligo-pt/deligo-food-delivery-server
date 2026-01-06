@@ -18,4 +18,11 @@ router.get(
   AnalyticsControllers.getVendorDashboardAnalytics
 );
 
+// get fleet dashboard analytics
+router.get(
+  '/fleet-dashboard-analytics',
+  auth('FLEET_MANAGER'),
+  AnalyticsControllers.getFleetDashboardAnalytics
+);
+
 export const AnalyticsRoutes = router;
