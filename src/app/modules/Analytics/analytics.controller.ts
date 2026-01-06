@@ -42,8 +42,23 @@ const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get partner performance analytics controller
+const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getPartnerPerformanceAnalytics(
+    req.user as AuthUser,
+    req.query
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Partner performance analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
+  getPartnerPerformanceAnalytics,
 };
