@@ -149,6 +149,7 @@ const getAllSupportConversations = async (
     .sort()
     .paginate()
     .fields()
+    .filter()
     .search(['room', 'ticketId']);
 
   const data = await qb.modelQuery;
@@ -290,6 +291,7 @@ const getMessagesByRoom = async (
   )
     .sort()
     .paginate()
+    .filter()
     .fields();
 
   return {
