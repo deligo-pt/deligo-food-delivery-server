@@ -1,60 +1,89 @@
+/* eslint-disable no-unused-vars */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import { TRating } from './rating.interface';
+import { TRating, TRefModel } from './rating.interface';
 import { Rating } from './rating.model';
+import { QueryBuilder } from '../../builder/QueryBuilder';
 import {
   calcAndUpdateDeliveryPartner,
-  calcAndUpdateFleetManager,
-  calcAndUpdateProduct,
-  calcAndUpdateVendor,
+  // calcAndUpdateFleetManager,
+  // calcAndUpdateProduct,
+  // calcAndUpdateVendor,
 } from './rating.constant';
-import { QueryBuilder } from '../../builder/QueryBuilder';
+import { AuthUser, ROLE_COLLECTION_MAP } from '../../constant/user.constant';
+import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
 
-// create rating service
-const createRatingIntoDB = async (payload: TRating) => {
-  // Prevent duplicate: same order + ratingType
+const createRatingIntoDB = async (payload: TRating, currentUser: AuthUser) => {
   const exists = await Rating.findOne({
     orderId: payload.orderId,
+    reviewerId: currentUser._id.toString(),
     ratingType: payload.ratingType,
   });
 
   if (exists) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You already submitted rating for this order'
+      'You have already submitted a rating for this category in this order.'
     );
   }
 
+  const { user: existsTargetedUser } = await findUserByEmailOrId({
+    userId: payload.targetId as string,
+  });
+
+  if (!existsTargetedUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  const reviewerModel =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const targetModel =
+    ROLE_COLLECTION_MAP[
+      existsTargetedUser?.role as keyof typeof ROLE_COLLECTION_MAP
+    ];
+  payload.reviewerId = currentUser._id.toString();
+  payload.reviewerModel = reviewerModel as TRefModel;
+  payload.targetId = existsTargetedUser._id.toString();
+  payload.targetModel = targetModel as TRefModel;
+
   const rating = await Rating.create(payload);
 
-  // Update summary
-  if (payload.ratingType === 'DELIVERY_PARTNER' && payload.deliveryPartnerId) {
-    await calcAndUpdateDeliveryPartner(payload.deliveryPartnerId);
-  }
+  const updateMap: Record<string, (targetId: string) => Promise<void>> = {
+    DELIVERY_PARTNER: calcAndUpdateDeliveryPartner,
+    // VENDOR: calcAndUpdateVendor,
+    // PRODUCT: calcAndUpdateProduct,
+    // FLEET_MANAGER: calcAndUpdateFleetManager,
+  };
 
-  if (payload.ratingType === 'PRODUCT' && payload.productId) {
-    await calcAndUpdateProduct(payload.productId);
-  }
+  const updateFunction = updateMap[payload.ratingType];
 
-  if (payload.ratingType === 'VENDOR' && payload.vendorId) {
-    await calcAndUpdateVendor(payload.vendorId);
-  }
-
-  if (payload.ratingType === 'FLEET_MANAGER' && payload.fleetManagerId) {
-    await calcAndUpdateFleetManager(payload.fleetManagerId);
+  if (updateFunction) {
+    await updateFunction(payload.targetId.toString());
   }
 
   return rating;
 };
 
-// Get Ratings (Admin/User)
-const getAllRatingsFromDB = async (query: Record<string, unknown>) => {
+const getAllRatingsFromDB = async (
+  query: Record<string, unknown>,
+  currentUser: AuthUser
+) => {
   const ratingQuery = new QueryBuilder(Rating.find(), query)
     .filter()
     .sort()
     .paginate()
     .fields()
-    .search(['orderId', 'ratingType']);
+    .search(['review', 'ratingType']);
+
+  const populateOptions = getPopulateOptions(currentUser.role, {
+    reviewerId: 'name userId role',
+    targetId: 'name userId role',
+  });
+
+  populateOptions.forEach((option) => {
+    ratingQuery.modelQuery = ratingQuery.modelQuery.populate(option);
+  });
 
   const data = await ratingQuery.modelQuery;
   const meta = await ratingQuery.countTotal();

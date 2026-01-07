@@ -85,11 +85,7 @@ const orderSchema = new Schema<TOrder>(
 
     isDeleted: { type: Boolean, default: false },
 
-    rating: {
-      foodRating: { type: Number, default: 0 },
-      deliveryRating: { type: Number, default: 0 },
-      review: { type: String },
-    },
+    isRated: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

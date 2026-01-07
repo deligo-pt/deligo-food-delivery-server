@@ -112,10 +112,6 @@ export type TFleetManager = {
     totalDrivers: number;
     activeVehicles?: number;
     totalDeliveries?: number;
-    rating?: {
-      average: number;
-      totalReviews: number;
-    };
   };
 
   // ---------------------------------------------
@@ -135,6 +131,11 @@ export type TFleetManager = {
   approvedOrRejectedOrBlockedAt?: Date;
 
   remarks?: string;
+
+  rating?: {
+    average: number;
+    totalReviews: number;
+  };
 
   // ---------------------------------------------
   // Timestamps

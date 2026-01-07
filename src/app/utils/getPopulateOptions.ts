@@ -23,6 +23,8 @@ type PopulateInput = {
   product?: string;
   id?: string;
   resolvedBy?: string;
+  reviewerId?: string;
+  targetId?: string;
 };
 
 export const getPopulateOptions = (
@@ -134,6 +136,22 @@ export const getPopulateOptions = (
     options.push({
       path: 'resolvedBy',
       select: fields.resolvedBy,
+    });
+  }
+
+  // ---------------- Reviewer Id ----------------
+  if (fields.reviewerId) {
+    options.push({
+      path: 'reviewerId',
+      select: fields.reviewerId,
+    });
+  }
+
+  // ---------------- Target Id ----------------
+  if (fields.targetId) {
+    options.push({
+      path: 'targetId',
+      select: fields.targetId,
     });
   }
 

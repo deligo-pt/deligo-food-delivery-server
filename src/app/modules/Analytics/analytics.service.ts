@@ -324,12 +324,12 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
   let topDrivers = await DeliveryPartner.find({
     registeredBy: managerId,
     isDeleted: false,
-    'operationalData.rating.average': { $exists: true, $gt: 0 },
+    'rating.average': { $exists: true, $gt: 0 },
   })
-    .sort({ 'operationalData.rating.average': -1 })
+    .sort({ 'rating.average': -1 })
     .limit(4)
     .select(
-      'name personalInfo.gender operationalData.rating nationality operationalData.completedDeliveries vehicleInfo'
+      'name personalInfo.gender rating nationality operationalData.completedDeliveries vehicleInfo'
     );
 
   if (!topDrivers.length) {
@@ -340,7 +340,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
       .sort({ createdAt: -1 })
       .limit(4)
       .select(
-        'name personalInfo.gender operationalData.rating nationality operationalData.completedDeliveries vehicleInfo'
+        'name personalInfo.gender rating nationality operationalData.completedDeliveries vehicleInfo'
       );
   }
 

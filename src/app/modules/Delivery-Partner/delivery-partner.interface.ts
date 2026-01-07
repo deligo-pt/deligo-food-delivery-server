@@ -157,10 +157,6 @@ export type TDeliveryPartner = {
     totalRejectedOrders?: number;
     totalDeliveryMinutes?: number;
 
-    rating?: {
-      average: number;
-      totalReviews: number;
-    };
     currentStatus: keyof typeof currentStatusOptions; // Current working state (IDLE, ON_DELIVERY, OFFLINE)
     assignmentZoneId: mongoose.Types.ObjectId;
     currentZoneId?: mongoose.Types.ObjectId; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
@@ -206,6 +202,11 @@ export type TDeliveryPartner = {
   submittedForApprovalAt?: Date;
   approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;
+
+  rating?: {
+    average: number;
+    totalReviews: number;
+  };
 
   // -------------------------------------------------
   // Timestamps

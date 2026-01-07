@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// Zod Validation Schema for Rating
-const ratingValidationSchema = z.object({
+// Create Rating Validation Schema
+const createRatingValidationSchema = z.object({
   body: z.object({
     ratingType: z.enum([
       'DELIVERY_PARTNER',
@@ -9,20 +9,37 @@ const ratingValidationSchema = z.object({
       'FLEET_MANAGER',
       'VENDOR',
     ]),
-    rating: z.number().min(1).max(5),
-    review: z.string().optional(),
+    rating: z
+      .number()
+      .min(1, { message: 'Rating must be at least 1' })
+      .max(5, { message: 'Rating cannot exceed 5' }),
+    review: z.string().optional().default(''),
 
-    reviewerId: z.string(),
+    reviewerId: z
+      .string({ required_error: 'Reviewer ID is required' })
+      .optional(),
+    reviewerModel: z
+      .enum(['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'])
+      .optional(),
 
-    deliveryPartnerId: z.string().optional(),
+    targetId: z.string({ required_error: 'Target ID is required' }),
+    targetModel: z
+      .enum([
+        'Customer',
+        'Vendor',
+        'FleetManager',
+        'DeliveryPartner',
+        'Product',
+      ])
+      .optional(),
+
+    orderId: z.string({ required_error: 'Order ID is required for tracking' }),
     productId: z.string().optional(),
-    vendorId: z.string().optional(),
-    fleetManagerId: z.string().optional(),
 
-    orderId: z.string().optional(),
+    tags: z.array(z.string()).optional().default([]),
   }),
 });
 
 export const RatingValidation = {
-  ratingValidationSchema,
+  createRatingValidationSchema,
 };

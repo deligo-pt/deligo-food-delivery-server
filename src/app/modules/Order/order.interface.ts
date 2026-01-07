@@ -55,11 +55,7 @@ export type TOrder = {
   isDeleted: boolean;
 
   // Ratings (optional, for later)
-  rating?: {
-    foodRating?: number;
-    deliveryRating?: number;
-    review?: string;
-  };
+  isRated?: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
