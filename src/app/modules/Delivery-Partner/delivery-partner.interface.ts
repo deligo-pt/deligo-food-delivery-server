@@ -151,6 +151,12 @@ export type TDeliveryPartner = {
     totalDeliveries?: number;
     completedDeliveries?: number;
     canceledDeliveries?: number;
+
+    totalOfferedOrders?: number;
+    totalAcceptedOrders?: number;
+    totalRejectedOrders?: number;
+    totalDeliveryMinutes?: number;
+
     rating?: {
       average: number;
       totalReviews: number;

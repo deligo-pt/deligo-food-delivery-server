@@ -201,6 +201,12 @@ const deliveryPartnerSchema = new Schema<
       totalDeliveries: { type: Number, default: 0 },
       completedDeliveries: { type: Number, default: 0 },
       canceledDeliveries: { type: Number, default: 0 },
+
+      totalOfferedOrders: { type: Number, default: 0 },
+      totalAcceptedOrders: { type: Number, default: 0 },
+      totalRejectedOrders: { type: Number, default: 0 },
+      totalDeliveryMinutes: { type: Number, default: 0 },
+
       rating: {
         average: { type: Number, default: 0 },
         totalReviews: { type: Number, default: 0 },
