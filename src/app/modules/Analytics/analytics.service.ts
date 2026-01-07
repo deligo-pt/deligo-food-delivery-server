@@ -7,6 +7,8 @@ import { FleetManager } from '../Fleet-Manager/fleet-manager.model';
 import { Order } from '../Order/order.model';
 import { Product } from '../Product/product.model';
 import { Vendor } from '../Vendor/vendor.model';
+import { QueryBuilder } from '../../builder/QueryBuilder';
+import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
@@ -372,8 +374,148 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
   };
 };
 
+// get partner performance analytics
+const getPartnerPerformanceAnalytics = async (
+  currentUser: AuthUser,
+  query: Record<string, unknown>
+) => {
+  const managerId = new Types.ObjectId(currentUser._id);
+
+  const timeframe = (query?.timeframe as string) || 'last14days';
+  const endDate = new Date();
+  const startDate = new Date();
+  const days = timeframe === 'last14days' ? 14 : 7;
+  startDate.setDate(endDate.getDate() - days);
+
+  const myPartners = await DeliveryPartner.find({
+    registeredBy: managerId,
+    isDeleted: false,
+  }).select('_id');
+  const partnerIds = myPartners.map((p) => p._id);
+
+  const [orderStats, topPartnerAggregation, overallAcceptance] =
+    await Promise.all([
+      Order.aggregate([
+        {
+          $match: {
+            deliveryPartnerId: { $in: partnerIds },
+            orderStatus: 'DELIVERED',
+            createdAt: { $gte: startDate, $lte: endDate },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalEarnings: { $sum: '$pricing.deliveryFee' },
+            avgTimeMs: { $avg: { $subtract: ['$deliveredAt', '$pickedUpAt'] } },
+          },
+        },
+      ]),
+
+      Order.aggregate([
+        {
+          $match: {
+            deliveryPartnerId: { $in: partnerIds },
+            orderStatus: 'DELIVERED',
+            createdAt: { $gte: startDate, $lte: endDate },
+          },
+        },
+        { $group: { _id: '$deliveryPartnerId', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+
+      DeliveryPartner.aggregate([
+        { $match: { _id: { $in: partnerIds }, isDeleted: false } },
+        {
+          $group: {
+            _id: null,
+            totalOffered: { $sum: '$operationalData.totalOfferedOrders' },
+            totalAccepted: { $sum: '$operationalData.totalAcceptedOrders' },
+          },
+        },
+      ]),
+    ]);
+
+  const searchableFields = [
+    'name.firstName',
+    'name.lastName',
+    'address.city',
+    'userId',
+  ];
+  const partnerQuery = new QueryBuilder(
+    DeliveryPartner.find({ registeredBy: managerId, isDeleted: false }),
+    query
+  )
+    .search(searchableFields)
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const tableData = await partnerQuery.modelQuery;
+  const meta = await partnerQuery.countTotal();
+
+  const stats = orderStats[0] || { totalEarnings: 0, avgTimeMs: 0 };
+  const avgDeliveryTimeMin = stats.avgTimeMs
+    ? Math.round(stats.avgTimeMs / 60000)
+    : 0;
+
+  const acceptanceData = overallAcceptance[0];
+  const avgAcceptanceRate =
+    acceptanceData?.totalOffered > 0
+      ? Math.round(
+          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100
+        )
+      : 0;
+
+  return {
+    cards: {
+      topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
+      avgDeliveryTime: `${avgDeliveryTimeMin} min`,
+      avgAcceptanceRate: `${avgAcceptanceRate}%`,
+      totalEarnings: `€${stats.totalEarnings.toFixed(2)}`,
+    },
+    table: {
+      data: tableData.map((partner: TDeliveryPartner) => {
+        const opData = partner.operationalData;
+
+        const rowAcceptance =
+          opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
+            ? Math.round(
+                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100
+              ) + '%'
+            : '0%';
+
+        const rowAvgMins =
+          opData?.completedDeliveries &&
+          opData.completedDeliveries > 0 &&
+          opData.totalDeliveryMinutes
+            ? Math.round(
+                opData.totalDeliveryMinutes / opData.completedDeliveries
+              )
+            : 0;
+
+        return {
+          id: partner._id,
+          name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
+          displayId: partner.userId,
+          vehicle: partner?.vehicleInfo?.vehicleType,
+          city: partner?.address?.city || 'N/A',
+          deliveries: opData?.completedDeliveries || 0,
+          avgMins: `${rowAvgMins} min`,
+          acceptance: rowAcceptance,
+          earnings: `€${(partner?.earnings?.totalEarnings || 0).toFixed(2)}`,
+        };
+      }),
+      meta,
+    },
+  };
+};
+
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
+  getPartnerPerformanceAnalytics,
 };

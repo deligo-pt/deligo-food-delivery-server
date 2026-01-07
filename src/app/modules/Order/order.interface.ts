@@ -48,6 +48,7 @@ export type TOrder = {
   dispatchPartnerPool?: string[];
   // Delivery Details
   estimatedDeliveryTime?: string; // e.g., "30 mins"
+  pickedUpAt?: Date;
   deliveredAt?: Date;
   preparationTime?: number;
 

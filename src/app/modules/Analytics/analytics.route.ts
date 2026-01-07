@@ -25,4 +25,11 @@ router.get(
   AnalyticsControllers.getFleetDashboardAnalytics
 );
 
+// get partner performance analytics
+router.get(
+  '/partner-performance-analytics',
+  auth('DELIVERY_PARTNER', 'FLEET_MANAGER'),
+  AnalyticsControllers.getPartnerPerformanceAnalytics
+);
+
 export const AnalyticsRoutes = router;

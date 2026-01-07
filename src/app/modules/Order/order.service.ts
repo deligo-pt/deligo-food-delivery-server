@@ -719,14 +719,23 @@ const broadcastOrderToPartners = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'No partner found.');
   }
 
+  const partnerObjectIds = eligiblePartners.map((p) => p._id);
   const partnerIds = eligiblePartners.map((p) => p.userId);
+
+  await DeliveryPartner.updateMany(
+    { _id: { $in: partnerObjectIds } },
+    {
+      $inc: { 'operationalData.totalOfferedOrders': 1 },
+      $set: { 'operationalData.lastActivityAt': new Date() },
+    }
+  );
 
   // Safe atomic update using $addToSet and status update
   await Order.updateOne(
     { orderId, vendorId: currentUser._id.toString(), isDeleted: false },
     {
       $set: { orderStatus: ORDER_STATUS.DISPATCHING },
-      $addToSet: { dispatchPartnerPool: { $each: partnerIds } },
+      $addToSet: { dispatchPartnerPool: { $each: partnerObjectIds } },
     }
   );
 
@@ -793,7 +802,7 @@ const partnerAcceptsDispatchedOrder = async (
       orderId,
       orderStatus: ORDER_STATUS.DISPATCHING,
       deliveryPartnerId: null,
-      dispatchPartnerPool: { $in: [currentUser.userId] },
+      dispatchPartnerPool: { $in: [currentUser._id] },
     },
     {
       $set: {
@@ -813,14 +822,6 @@ const partnerAcceptsDispatchedOrder = async (
     );
   }
 
-  const io = getIO();
-  notifiedPartnerIds.forEach((id) => {
-    if (id !== currentUser.userId) {
-      io.to(`user_${id}`).emit('REMOVE_ORDER_POPUP', { orderId });
-    }
-  });
-
-  // Update partner state
   await DeliveryPartner.updateOne(
     { userId: currentUser.userId },
     {
@@ -828,8 +829,18 @@ const partnerAcceptsDispatchedOrder = async (
         'operationalData.currentOrderId': claimedOrder._id.toString(),
         'operationalData.currentStatus': 'ON_DELIVERY',
       },
+      $inc: {
+        'operationalData.totalAcceptedOrders': 1,
+      },
     }
   );
+
+  const io = getIO();
+  notifiedPartnerIds.forEach((id) => {
+    if (id !== currentUser.userId) {
+      io.to(`user_${id}`).emit('REMOVE_ORDER_POPUP', { orderId });
+    }
+  });
 
   return claimedOrder;
 };
@@ -905,6 +916,15 @@ const otpVerificationByVendor = async (
       httpStatus.UNAUTHORIZED,
       'Invalid OTP or order status/assignment is incorrect.'
     );
+  }
+
+  if (updatedOrder.deliveryPartnerId) {
+    await DeliveryPartner.findByIdAndUpdate(updatedOrder.deliveryPartnerId, {
+      $set: {
+        'operationalData.currentStatus': 'ON_DELIVERY',
+        'operationalData.lastActivityAt': new Date(),
+      },
+    });
   }
 
   // TODO: Notify Customer & Delivery Partner (Order is now PICKED_UP)
@@ -1012,17 +1032,42 @@ const updateOrderStatusByDeliveryPartner = async (
   }
 
   // Update partner record
-  const shouldReleasePartner =
-    payload.orderStatus === ORDER_STATUS.DELIVERED ||
-    payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED;
+  if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
+    const pickupTime = updatedOrder.pickedUpAt
+      ? new Date(updatedOrder.pickedUpAt).getTime()
+      : Date.now();
+    const deliveryTime = new Date().getTime();
+    const durationMinutes = Math.max(
+      1,
+      Math.round((deliveryTime - pickupTime) / 60000)
+    );
+    const deliveryFee = updatedOrder.deliveryCharge || 0;
 
-  if (shouldReleasePartner) {
     await DeliveryPartner.updateOne(
       { userId: currentUser.userId },
       {
         $set: {
           'operationalData.currentOrderId': null,
           'operationalData.currentStatus': 'IDLE',
+        },
+        $inc: {
+          'operationalData.completedDeliveries': 1,
+          'operationalData.totalDeliveryMinutes': durationMinutes,
+          'earnings.totalEarnings': deliveryFee,
+        },
+      }
+    );
+  } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
+    await DeliveryPartner.updateOne(
+      { userId: currentUser.userId },
+      {
+        $set: {
+          'operationalData.currentOrderId': null,
+          'operationalData.currentStatus': 'IDLE',
+        },
+        $inc: {
+          'operationalData.canceledDeliveries': 1,
+          'operationalData.totalRejectedOrders': 1,
         },
       }
     );
