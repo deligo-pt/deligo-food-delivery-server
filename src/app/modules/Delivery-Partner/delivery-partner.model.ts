@@ -207,10 +207,6 @@ const deliveryPartnerSchema = new Schema<
       totalRejectedOrders: { type: Number, default: 0 },
       totalDeliveryMinutes: { type: Number, default: 0 },
 
-      rating: {
-        average: { type: Number, default: 0 },
-        totalReviews: { type: Number, default: 0 },
-      },
       currentStatus: {
         type: String,
         enum: Object.keys(currentStatusOptions),
@@ -279,6 +275,11 @@ const deliveryPartnerSchema = new Schema<
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
 
     remarks: { type: String, default: '' },
+
+    rating: {
+      average: { type: Number, default: 0 },
+      totalReviews: { type: Number, default: 0 },
+    },
   },
   {
     timestamps: true,

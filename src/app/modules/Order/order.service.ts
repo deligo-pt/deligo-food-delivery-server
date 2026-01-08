@@ -663,6 +663,14 @@ const broadcastOrderToPartners = async (
     vendorId: currentUser._id.toString(),
     isDeleted: false,
   });
+
+  if (order?.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Order already dispatched to ${order.dispatchPartnerPool.length} delivery partners.`
+    );
+  }
+
   if (
     !order ||
     !['ACCEPTED', 'AWAITING_PARTNER', 'REASSIGNMENT_NEEDED'].includes(
