@@ -7,15 +7,16 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import {
   calcAndUpdateDeliveryPartner,
   calcAndUpdateProduct,
-  calcAndUpdateVendor,
-  calcAndUpdateFleetManager,
+  calcAndUpdateVendorAllProductStats,
 } from './rating.constant';
 import { AuthUser, ROLE_COLLECTION_MAP } from '../../constant/user.constant';
 import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Order } from '../Order/order.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
+import { Product } from '../Product/product.model';
 
+// create rating
 const createRatingIntoDB = async (payload: TRating, currentUser: AuthUser) => {
   const exists = await Rating.findOne({
     orderId: payload.orderId,
@@ -30,53 +31,64 @@ const createRatingIntoDB = async (payload: TRating, currentUser: AuthUser) => {
     );
   }
 
-  const { user: existsTargetedUser } = await findUserByEmailOrId({
-    userId: payload.targetId as string,
-  });
-
-  if (!existsTargetedUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
   const reviewerModel =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
-  const targetModel =
-    ROLE_COLLECTION_MAP[
-      existsTargetedUser?.role as keyof typeof ROLE_COLLECTION_MAP
-    ];
   payload.reviewerId = currentUser._id.toString();
   payload.reviewerModel = reviewerModel as TRefModel;
-  payload.targetId = existsTargetedUser._id.toString();
-  payload.targetModel = targetModel as TRefModel;
 
   const existsOrder = await Order.findOne({ _id: payload.orderId });
   if (!existsOrder) {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
   }
 
-  if (payload.ratingType === 'VENDOR') {
-    if (existsOrder.vendorId.toString() !== existsTargetedUser._id.toString()) {
+  if (payload.ratingType === 'PRODUCT') {
+    if (!existsOrder.items || existsOrder.items.length === 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Target user is not the vendor of the order'
+        'No products found in this order to rate.'
       );
     }
+    const productRatings = existsOrder.items.map((item) => ({
+      ...payload,
+      targetId: item.productId.toString(),
+      targetModel: 'Product' as TRefModel,
+      productId: item.productId.toString(),
+    }));
+    const result = await Rating.insertMany(productRatings);
+    const updatePromises = existsOrder.items.map((item) =>
+      calcAndUpdateProduct(item.productId.toString())
+    );
+    await Promise.all(updatePromises);
+    await calcAndUpdateVendorAllProductStats(existsOrder.vendorId.toString());
+    return result;
+  } else {
+    if (!payload.targetId) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'targetId is required.');
+    }
+    const { user: existsTargetedUser } = await findUserByEmailOrId({
+      userId: payload.targetId as string,
+    });
+
+    if (!existsTargetedUser) {
+      throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    }
+    const targetModel =
+      ROLE_COLLECTION_MAP[
+        existsTargetedUser?.role as keyof typeof ROLE_COLLECTION_MAP
+      ];
+    payload.targetId = existsTargetedUser._id.toString();
+    payload.targetModel = targetModel as TRefModel;
+    const rating = await Rating.create(payload);
+    const updateMap: Record<string, (targetId: string) => Promise<void>> = {
+      DELIVERY_PARTNER: calcAndUpdateDeliveryPartner,
+    };
+    const updateFunction = updateMap[payload.ratingType];
+
+    if (updateFunction) {
+      await updateFunction(payload.targetId.toString());
+    }
+    return rating;
   }
-  const rating = await Rating.create(payload);
-
-  const updateMap: Record<string, (targetId: string) => Promise<void>> = {
-    DELIVERY_PARTNER: calcAndUpdateDeliveryPartner,
-    VENDOR: calcAndUpdateVendor,
-    PRODUCT: calcAndUpdateProduct,
-    FLEET_MANAGER: calcAndUpdateFleetManager,
-  };
-
-  const updateFunction = updateMap[payload.ratingType];
-
-  if (updateFunction) {
-    await updateFunction(payload.targetId.toString());
-  }
-  return rating;
 };
 
 const getAllRatingsFromDB = async (
@@ -87,10 +99,17 @@ const getAllRatingsFromDB = async (
     const myDeliveryPartners = await DeliveryPartner.find({
       registeredBy: currentUser._id,
     }).select('_id');
-
     const partnerIds = myDeliveryPartners.map((dp) => dp._id);
-
     query.targetId = { $in: [...partnerIds, currentUser._id] };
+  } else if (currentUser.role === 'VENDOR') {
+    const myProducts = await Product.find({
+      vendorId: currentUser._id,
+      isDeleted: false,
+    }).select('_id');
+
+    const productIds = myProducts.map((product) => product._id);
+
+    query.targetId = { $in: [...productIds, currentUser._id] };
   } else if (
     currentUser.role !== 'ADMIN' &&
     currentUser.role !== 'SUPER_ADMIN'
