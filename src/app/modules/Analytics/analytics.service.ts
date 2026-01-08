@@ -394,6 +394,16 @@ const getPartnerPerformanceAnalytics = async (
   }).select('_id');
   const partnerIds = myPartners.map((p) => p._id);
 
+  const sortMapping: Record<string, string> = {
+    'top-deliveries': '-operationalData.completedDeliveries',
+    'top-rating': '-rating.average',
+    'top-earnings': '-earnings.totalEarnings',
+  };
+
+  if (query.sortBy && sortMapping[query.sortBy as string]) {
+    query.sortBy = sortMapping[query.sortBy as string];
+  }
+
   const [orderStats, topPartnerAggregation, overallAcceptance] =
     await Promise.all([
       Order.aggregate([
