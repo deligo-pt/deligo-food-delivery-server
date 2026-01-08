@@ -329,7 +329,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
     .sort({ 'rating.average': -1 })
     .limit(4)
     .select(
-      'name personalInfo.gender rating nationality operationalData.completedDeliveries vehicleInfo'
+      'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo'
     );
 
   if (!topDrivers.length) {
@@ -340,7 +340,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
       .sort({ createdAt: -1 })
       .limit(4)
       .select(
-        'name personalInfo.gender rating nationality operationalData.completedDeliveries vehicleInfo'
+        'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo'
       );
   }
 
