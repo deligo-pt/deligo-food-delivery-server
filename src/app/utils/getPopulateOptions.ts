@@ -140,7 +140,7 @@ export const getPopulateOptions = (
   }
 
   // ---------------- Reviewer Id ----------------
-  if (fields.reviewerId) {
+  if (fields.reviewerId && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
     options.push({
       path: 'reviewerId',
       select: fields.reviewerId,
@@ -148,7 +148,10 @@ export const getPopulateOptions = (
   }
 
   // ---------------- Target Id ----------------
-  if (fields.targetId) {
+  if (
+    fields.targetId &&
+    (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'FLEET_MANAGER')
+  ) {
     options.push({
       path: 'targetId',
       select: fields.targetId,

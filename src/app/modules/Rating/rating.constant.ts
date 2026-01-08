@@ -41,20 +41,6 @@ export const calcAndUpdateDeliveryPartner = async (
   });
 };
 
-export const calcAndUpdateProduct = async (productId: string) => {
-  const stats = await getRatingStats(productId, 'PRODUCT');
-
-  const average = stats[0]?.averageRating ?? 0;
-  const totalReviews = stats[0]?.totalReviews ?? 0;
-
-  await Product.findByIdAndUpdate(productId, {
-    $set: {
-      'rating.average': Number(average.toFixed(1)),
-      'rating.totalReviews': totalReviews,
-    },
-  });
-};
-
 export const calcAndUpdateVendor = async (vendorId: string) => {
   const stats = await getRatingStats(vendorId, 'VENDOR');
 
@@ -62,6 +48,20 @@ export const calcAndUpdateVendor = async (vendorId: string) => {
   const totalReviews = stats[0]?.totalReviews ?? 0;
 
   await Vendor.findByIdAndUpdate(vendorId, {
+    $set: {
+      'rating.average': Number(average.toFixed(1)),
+      'rating.totalReviews': totalReviews,
+    },
+  });
+};
+
+export const calcAndUpdateProduct = async (productId: string) => {
+  const stats = await getRatingStats(productId, 'PRODUCT');
+
+  const average = stats[0]?.averageRating ?? 0;
+  const totalReviews = stats[0]?.totalReviews ?? 0;
+
+  await Product.findByIdAndUpdate(productId, {
     $set: {
       'rating.average': Number(average.toFixed(1)),
       'rating.totalReviews': totalReviews,

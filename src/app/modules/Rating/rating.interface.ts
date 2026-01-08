@@ -2,9 +2,9 @@ import { Types } from 'mongoose';
 
 export type TRatingType =
   | 'DELIVERY_PARTNER'
+  | 'VENDOR'
   | 'PRODUCT'
-  | 'FLEET_MANAGER'
-  | 'VENDOR';
+  | 'FLEET_MANAGER';
 
 export type TRefModel =
   | 'Customer'
