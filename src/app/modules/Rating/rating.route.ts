@@ -10,7 +10,7 @@ const router = Router();
 router.post(
   '/create-rating',
   auth('CUSTOMER', 'DELIVERY_PARTNER', 'VENDOR', 'FLEET_MANAGER'),
-  validateRequest(RatingValidation.ratingValidationSchema),
+  validateRequest(RatingValidation.createRatingValidationSchema),
   RatingControllers.createRating
 );
 

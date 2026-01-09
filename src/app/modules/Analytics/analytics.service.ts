@@ -324,12 +324,12 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
   let topDrivers = await DeliveryPartner.find({
     registeredBy: managerId,
     isDeleted: false,
-    'operationalData.rating.average': { $exists: true, $gt: 0 },
+    'rating.average': { $exists: true, $gt: 0 },
   })
-    .sort({ 'operationalData.rating.average': -1 })
+    .sort({ 'rating.average': -1 })
     .limit(4)
     .select(
-      'name personalInfo.gender operationalData.rating nationality operationalData.completedDeliveries vehicleInfo'
+      'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo'
     );
 
   if (!topDrivers.length) {
@@ -340,7 +340,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
       .sort({ createdAt: -1 })
       .limit(4)
       .select(
-        'name personalInfo.gender operationalData.rating nationality operationalData.completedDeliveries vehicleInfo'
+        'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo'
       );
   }
 
@@ -381,10 +381,11 @@ const getPartnerPerformanceAnalytics = async (
 ) => {
   const managerId = new Types.ObjectId(currentUser._id);
 
-  const timeframe = (query?.timeframe as string) || 'last14days';
+  const timeframe = (query?.timeframe as string) || 'last30days';
   const endDate = new Date();
   const startDate = new Date();
-  const days = timeframe === 'last14days' ? 14 : 7;
+  const days =
+    timeframe === 'last30days' ? 30 : timeframe === 'last14days' ? 14 : 7;
   startDate.setDate(endDate.getDate() - days);
 
   const myPartners = await DeliveryPartner.find({
@@ -392,6 +393,16 @@ const getPartnerPerformanceAnalytics = async (
     isDeleted: false,
   }).select('_id');
   const partnerIds = myPartners.map((p) => p._id);
+
+  const sortMapping: Record<string, string> = {
+    'top-deliveries': '-operationalData.completedDeliveries',
+    'top-rating': '-rating.average',
+    'top-earnings': '-earnings.totalEarnings',
+  };
+
+  if (query.sortBy && sortMapping[query.sortBy as string]) {
+    query.sortBy = sortMapping[query.sortBy as string];
+  }
 
   const [orderStats, topPartnerAggregation, overallAcceptance] =
     await Promise.all([

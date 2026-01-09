@@ -2,10 +2,14 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { RatingServices } from './rating.service';
+import { AuthUser } from '../../constant/user.constant';
 
 // create rating controller
 const createRating = catchAsync(async (req, res) => {
-  const result = await RatingServices.createRatingIntoDB(req.body);
+  const result = await RatingServices.createRatingIntoDB(
+    req.body,
+    req.user as AuthUser
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -16,7 +20,10 @@ const createRating = catchAsync(async (req, res) => {
 
 // get all ratings
 const getAllRatings = catchAsync(async (req, res) => {
-  const result = await RatingServices.getAllRatingsFromDB(req.query);
+  const result = await RatingServices.getAllRatingsFromDB(
+    req.query,
+    req.user as AuthUser
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

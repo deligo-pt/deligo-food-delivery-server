@@ -7,26 +7,67 @@ const ratingSchema = new Schema<TRating>(
       type: String,
       enum: ['DELIVERY_PARTNER', 'PRODUCT', 'FLEET_MANAGER', 'VENDOR'],
       required: true,
+      index: true,
     },
-    rating: { type: Number, min: 1, max: 5, required: true },
-    review: { type: String, default: '' },
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
+      required: true,
+    },
+    review: {
+      type: String,
+      trim: true,
+      default: '',
+    },
 
-    reviewerId: { type: String, required: true },
+    reviewerId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      refPath: 'reviewerModel',
+    },
+    reviewerModel: {
+      type: String,
+      required: true,
+      enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'],
+    },
 
-    deliveryPartnerId: { type: String, index: true },
-    productId: { type: String, index: true },
-    vendorId: { type: String, index: true },
-    fleetManagerId: { type: String, index: true },
+    targetId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      refPath: 'targetModel',
+      index: true,
+    },
+    targetModel: {
+      type: String,
+      required: true,
+      enum: [
+        'Customer',
+        'Vendor',
+        'FleetManager',
+        'DeliveryPartner',
+        'Product',
+      ],
+    },
 
-    orderId: { type: String, index: true },
+    productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+
+    orderId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Order',
+      required: true,
+      index: true,
+    },
+
+    tags: { type: [String], default: [] },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
-// Prevent duplicate rating per order per ratingType
-ratingSchema.index(
-  { orderId: 1, ratingType: 1 },
-  { unique: true, sparse: true }
-);
+ratingSchema.index({ targetId: 1, rating: -1 });
 
 export const Rating = model<TRating>('Rating', ratingSchema);

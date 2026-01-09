@@ -151,10 +151,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       totalDrivers: { type: Number, default: 0 },
       activeVehicles: { type: Number, default: 0 },
       totalDeliveries: { type: Number, default: 0 },
-      rating: {
-        average: { type: Number, default: 0 },
-        totalReviews: { type: Number, default: 0 },
-      },
     },
 
     // ------------------------------------------
@@ -178,6 +174,11 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
 
     remarks: { type: String, default: '' },
+
+    rating: {
+      average: { type: Number, default: 0 },
+      totalReviews: { type: Number, default: 0 },
+    },
   },
   {
     timestamps: true,
