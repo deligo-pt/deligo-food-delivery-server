@@ -30,6 +30,7 @@ import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import { resendMobileOtp } from '../../utils/resendMobileOtp';
 import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
+import mongoose from 'mongoose';
 
 // Register User
 const registerUser = async <
@@ -236,14 +237,14 @@ const loginUser = async (payload: TLoginUser) => {
 
   const accessToken = createToken(
     jwtPayload,
-    config.jwt_access_secret as string,
-    config.jwt_access_expires_in as string
+    config.jwt.jwt_access_secret as string,
+    config.jwt.jwt_access_expires_in as string
   );
 
   const refreshToken = createToken(
     jwtPayload,
-    config.jwt_refresh_secret as string,
-    config.jwt_refresh_expires_in as string
+    config.jwt.jwt_refresh_secret as string,
+    config.jwt.jwt_refresh_expires_in as string
   );
 
   return {
@@ -376,9 +377,7 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
   }
 
-  const Model = ROLE_COLLECTION_MAP[currentUser.role];
-
-  if (!currentUser || !Model) {
+  if (!currentUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
@@ -419,7 +418,10 @@ const changePassword = async (
 ) => {
   // checking if the user is exist
 
-  const model = ROLE_COLLECTION_MAP[currentUser.role] as any;
+  const modelName =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+
+  const model = mongoose.model(modelName) as any;
 
   if (!currentUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
@@ -498,11 +500,11 @@ const forgotPassword = async (email: string) => {
   let resetURL;
 
   if (user?.role === 'ADMIN') {
-    resetURL = `${config.frontend_url_admin}/reset-password?token=${token}`;
+    resetURL = `${config.frontend_urls.frontend_url_admin}/reset-password?token=${token}`;
   } else if (user?.role === 'VENDOR') {
-    resetURL = `${config.frontend_url_vendor}/reset-password?token=${token}`;
+    resetURL = `${config.frontend_urls.frontend_url_vendor}/reset-password?token=${token}`;
   } else if (user?.role === 'FLEET_MANAGER') {
-    resetURL = `${config.frontend_url_fleet_manager}/reset-password?token=${token}`;
+    resetURL = `${config.frontend_urls.frontend_url_fleet_manager}/reset-password?token=${token}`;
   }
 
   await user.save({ validateBeforeSave: false });
@@ -613,7 +615,7 @@ const refreshToken = async (token: string) => {
   // checking if the given token is valid
   const decoded = verifyToken(
     token,
-    config.jwt_refresh_secret as string
+    config.jwt.jwt_refresh_secret as string
   ) as JwtPayload;
 
   const { iat, userId } = decoded;
@@ -658,8 +660,8 @@ const refreshToken = async (token: string) => {
 
   const accessToken = createToken(
     jwtPayload,
-    config.jwt_access_secret as string,
-    config.jwt_access_expires_in as string
+    config.jwt.jwt_access_secret as string,
+    config.jwt.jwt_access_expires_in as string
   );
 
   return {
@@ -982,13 +984,13 @@ const verifyOtp = async (
 
   const accessToken = createToken(
     jwtPayload,
-    config.jwt_access_secret as string,
-    config.jwt_access_expires_in as string
+    config.jwt.jwt_access_secret as string,
+    config.jwt.jwt_access_expires_in as string
   );
   const refreshToken = createToken(
     jwtPayload,
-    config.jwt_refresh_secret as string,
-    config.jwt_refresh_expires_in as string
+    config.jwt.jwt_refresh_secret as string,
+    config.jwt.jwt_refresh_expires_in as string
   );
 
   return {

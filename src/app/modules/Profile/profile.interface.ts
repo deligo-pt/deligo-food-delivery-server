@@ -1,4 +1,5 @@
 export type TUserProfileUpdate = {
+  moloniCustomerId?: string;
   name: {
     firstName: string;
     lastName: string;

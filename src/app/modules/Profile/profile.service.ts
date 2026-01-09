@@ -13,6 +13,8 @@ import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { EmailHelper } from '../../utils/emailSender';
 import generateOtp from '../../utils/generateOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
+import { MoloniService } from '../Moloni/moloni.service';
+import mongoose from 'mongoose';
 
 // get my profile service
 const getMyProfile = async (currentUser: AuthUser) => {
@@ -34,7 +36,9 @@ const updateMyProfile = async (
   profilePhoto: string | null,
   payload: Partial<TUserProfileUpdate>
 ) => {
-  const Model = ROLE_COLLECTION_MAP[currentUser.role] as any;
+  const modelName =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const model = mongoose.model(modelName) as any;
 
   if (!currentUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found.');
@@ -92,7 +96,7 @@ const updateMyProfile = async (
   // -----------------------------
   // Update User Document
   // -----------------------------
-  const updatedUser = await Model?.findOneAndUpdate(
+  const updatedUser = await model.findOneAndUpdate(
     { userId: currentUser.userId },
     { $set: payload },
     { new: true }
@@ -103,6 +107,37 @@ const updateMyProfile = async (
       httpStatus.INTERNAL_SERVER_ERROR,
       'Failed to update profile.'
     );
+  }
+  if (currentUser.role === 'CUSTOMER') {
+    try {
+      const moloniData = {
+        name:
+          `${updatedUser.name.firstName} ${updatedUser.name.lastName}`.trim() ||
+          updatedUser.email,
+        email: updatedUser.email,
+        address: updatedUser.address?.street || 'Customer Address',
+        zipCode: updatedUser.address?.postalCode || '1000-001',
+        city: updatedUser.address?.city || 'Lisbon',
+      };
+
+      console.log(updatedUser.moloniCustomerId);
+      if (!updatedUser.moloniCustomerId) {
+        const newMoloniId = await MoloniService.createCustomer(moloniData);
+        if (newMoloniId) {
+          await model.findOneAndUpdate(
+            { userId: currentUser.userId },
+            { $set: { moloniCustomerId: String(newMoloniId) } }
+          );
+        }
+      } else {
+        await MoloniService.updateCustomer(
+          Number(updatedUser.moloniCustomerId),
+          moloniData
+        );
+      }
+    } catch (error: any) {
+      console.error('Moloni Sync Failed during profile update:', error.message);
+    }
   }
 
   return updatedUser;
