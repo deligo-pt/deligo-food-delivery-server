@@ -3,12 +3,7 @@ import { z } from 'zod';
 // Create Rating Validation Schema
 const createRatingValidationSchema = z.object({
   body: z.object({
-    ratingType: z.enum([
-      'DELIVERY_PARTNER',
-      'PRODUCT',
-      'FLEET_MANAGER',
-      'VENDOR',
-    ]),
+    ratingType: z.enum(['DELIVERY_PARTNER', 'PRODUCT', 'FLEET_MANAGER']),
     rating: z
       .number()
       .min(1, { message: 'Rating must be at least 1' })
@@ -22,7 +17,7 @@ const createRatingValidationSchema = z.object({
       .enum(['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'])
       .optional(),
 
-    targetId: z.string({ required_error: 'Target ID is required' }),
+    targetId: z.string({ required_error: 'Target ID is required' }).optional(),
     targetModel: z
       .enum([
         'Customer',

@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
-import { FleetManager } from '../Fleet-Manager/fleet-manager.model';
 import { Product } from '../Product/product.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { Rating } from './rating.model';
@@ -41,20 +40,6 @@ export const calcAndUpdateDeliveryPartner = async (
   });
 };
 
-export const calcAndUpdateVendor = async (vendorId: string) => {
-  const stats = await getRatingStats(vendorId, 'VENDOR');
-
-  const average = stats[0]?.averageRating ?? 0;
-  const totalReviews = stats[0]?.totalReviews ?? 0;
-
-  await Vendor.findByIdAndUpdate(vendorId, {
-    $set: {
-      'rating.average': Number(average.toFixed(1)),
-      'rating.totalReviews': totalReviews,
-    },
-  });
-};
-
 export const calcAndUpdateProduct = async (productId: string) => {
   const stats = await getRatingStats(productId, 'PRODUCT');
 
@@ -69,13 +54,30 @@ export const calcAndUpdateProduct = async (productId: string) => {
   });
 };
 
-export const calcAndUpdateFleetManager = async (fmId: string) => {
-  const stats = await getRatingStats(fmId, 'FLEET_MANAGER');
+export const calcAndUpdateVendorAllProductStats = async (vendorId: string) => {
+  const productStats = await Product.aggregate([
+    {
+      $match: {
+        vendorId: new mongoose.Types.ObjectId(vendorId),
+        isDeleted: false,
+        'rating.totalReviews': { $gt: 0 },
+      },
+    },
+    {
+      $group: {
+        _id: null,
 
-  const average = stats[0]?.averageRating ?? 0;
-  const totalReviews = stats[0]?.totalReviews ?? 0;
+        overallAverage: { $avg: '$rating.average' },
 
-  await FleetManager.findByIdAndUpdate(fmId, {
+        overallTotalReviews: { $sum: '$rating.totalReviews' },
+      },
+    },
+  ]);
+
+  const average = productStats[0]?.overallAverage ?? 0;
+  const totalReviews = productStats[0]?.overallTotalReviews ?? 0;
+
+  await Vendor.findByIdAndUpdate(vendorId, {
     $set: {
       'rating.average': Number(average.toFixed(1)),
       'rating.totalReviews': totalReviews,
