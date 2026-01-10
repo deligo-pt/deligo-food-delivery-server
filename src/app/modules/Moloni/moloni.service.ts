@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import qs from 'qs';
+
 import axios from 'axios';
 
 import config from '../../config';
@@ -7,11 +9,10 @@ import config from '../../config';
 import { MoloniCustomerData } from './moloni.interface';
 
 import { redis } from '../../utils/redis';
-import { TOrder } from '../Order/order.interface';
 
 const MOLONI_TAX_IDS: Record<number, number> = {
   23: 3742293, // IVA Normal
-  6: 3742298,  // IVA Reduzido
+  6: 3742298, // IVA Reduzido
   13: 3742303, // IVA Intermédio
 };
 
@@ -41,6 +42,7 @@ export class MoloniService {
 
           password: config.moloni.password,
         },
+        timeout: 30000,
       });
 
       const token = res.data.access_token;
@@ -62,7 +64,8 @@ export class MoloniService {
     try {
       const token = await this.getAccessToken();
 
-      const customerVat = data.NIF && data.NIF.trim() !== "" ? data.NIF : '999999990';
+      const customerVat =
+        data.NIF && data.NIF.trim() !== '' ? data.NIF : '999999990';
       const params = new URLSearchParams();
 
       params.append('company_id', String(config.moloni.company_id));
@@ -157,87 +160,114 @@ export class MoloniService {
     }
   }
 
-
-  static async createInvoice(order: TOrder, moloniCustomerId: number) {
+  static async createInvoice(order: any, moloniCustomerId: number) {
     try {
       const token = await this.getAccessToken();
-      const params = new URLSearchParams();
 
-      params.append('company_id', String(config.moloni.company_id));
-      params.append('customer_id', String(moloniCustomerId));
-      params.append('document_set_id', String(config.moloni.document_set_id));
-      params.append('date', new Date().toISOString().split('T')[0]);
-      params.append('expiration_date', new Date().toISOString().split('T')[0]);
-      params.append('status', '0');
+      const invoiceData: any = {
+        company_id: Number(config.moloni.company_id),
+        date: new Date().toISOString().split('T')[0],
+        expiration_date: new Date().toISOString().split('T')[0],
+        document_set_id: Number(config.moloni.document_set_id),
+        customer_id: Number(moloniCustomerId),
+        status: 0,
+        products: [],
+        associated_documents: [],
+      };
 
       let productIndex = 0;
 
-
       order.items.forEach((item: any) => {
-        params.append(`products[${productIndex}][product_id]`, '0');
-        params.append(`products[${productIndex}][name]`, `${item.name} (${item.variantName})`);
-        params.append(`products[${productIndex}][qty]`, String(item.quantity));
-        params.append(`products[${productIndex}][price]`, String(item.price));
-
         const taxId = MOLONI_TAX_IDS[item.taxRate];
 
-        if (taxId) {
-          params.append(`products[${productIndex}][taxes][0][tax_id]`, String(taxId));
-          params.append(`products[${productIndex}][taxes][0][value]`, String(item.taxRate));
-          params.append(`products[${productIndex}][taxes][0][cumulative]`, '0');
-        } else {
+        const product: any = {
+          product_id: 0,
+          name: `${item.name} (${item.variantName})`,
+          summary: '',
+          qty: Number(item.quantity),
+          price: Number(item.price),
+          discount: 0,
+          order: productIndex++,
+        };
 
-          params.append(`products[${productIndex}][exemption_reason]`, 'M01');
+        if (taxId) {
+          product.taxes = [
+            {
+              tax_id: Number(taxId),
+              value: Number(item.taxRate),
+              order: 1,
+              cumulative: 0,
+            },
+          ];
+        } else {
+          product.exemption_reason = 'M01';
         }
 
-        productIndex++;
-
+        invoiceData.products.push(product);
 
         if (item.addons && item.addons.length > 0) {
-          item.addons.forEach((addon: any) => {
-            params.append(`products[${productIndex}][product_id]`, '0');
-            params.append(`products[${productIndex}][name]`, `Addon: ${addon.name}`);
-            params.append(`products[${productIndex}][qty]`, String(addon.quantity * item.quantity));
-            params.append(`products[${productIndex}][price]`, String(addon.price));
-
+          for (const addon of item.addons) {
+            const addonProduct: any = {
+              product_id: 0,
+              name: `Addon: ${addon.name}`,
+              summary: '',
+              qty: Number(addon.quantity * item.quantity),
+              price: Number(addon.price),
+              discount: 0,
+              order: productIndex++,
+            };
 
             if (taxId) {
-              params.append(`products[${productIndex}][taxes][0][tax_id]`, String(taxId));
-              params.append(`products[${productIndex}][taxes][0][value]`, String(item.taxRate));
+              (addonProduct as any).taxes = [
+                {
+                  tax_id: Number(taxId),
+                  value: Number(item.taxRate),
+                  order: 1,
+                  cumulative: 0,
+                },
+              ];
             } else {
-              params.append(`products[${productIndex}][exemption_reason]`, 'M01');
+              addonProduct.exemption_reason = 'M01';
             }
-            productIndex++;
-          });
+            invoiceData.products.push(addonProduct);
+          }
         }
       });
 
-
-      if (typeof order.deliveryCharge === 'number' && order.deliveryCharge > 0) {
-        params.append(`products[${productIndex}][product_id]`, '0');
-        params.append(`products[${productIndex}][name]`, 'Delivery Charge');
-        params.append(`products[${productIndex}][qty]`, '1');
-        params.append(`products[${productIndex}][price]`, String(order.deliveryCharge));
-        params.append(`products[${productIndex}][exemption_reason]`, 'M01');
+      if (Number(order.deliveryCharge) > 0) {
+        invoiceData.products.push({
+          product_id: 0,
+          name: 'Delivery Charge',
+          summary: '',
+          qty: 1,
+          price: Number(Number(order.deliveryCharge).toFixed(2)),
+          discount: 0,
+          order: productIndex++,
+          exemption_reason: 'M01',
+        });
       }
 
+      const body = qs.stringify(invoiceData, {
+        arrayFormat: 'indices',
+        encode: false,
+      });
+
       const url = `${this.baseUrl}/invoices/insert/?access_token=${token}`;
-      const response = await axios.post(url, params.toString(), {
+      const response = await axios.post(url, body, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 15000,
       });
 
       if (response.data && response.data.document_id) {
-        console.log('Invoice Created Successfully:', response.data.document_id);
+        console.log('Success! Invoice ID:', response.data.document_id);
         return response.data.document_id;
       }
 
-      console.error('Invoice Creation Warning:', response.data);
+      console.error('Moloni Error Detail:', JSON.stringify(response.data));
       return null;
     } catch (error: any) {
-      console.error('Invoice Critical Error:', error.response?.data || error.message);
+      console.error('Critical Error:', error.response?.data || error.message);
       return null;
     }
   }
-
-
 }
