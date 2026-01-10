@@ -59,7 +59,7 @@ export default {
     password: process.env.MOLONI_PASSWORD,
     tax_id: process.env.MOLONI_DEFAULT_TAX_ID,
     company_id: process.env.MOLONI_COMPANY_ID,
-    document_id: process.env.MOLONI_DOCUMENT_SET_ID,
+    document_set_id: process.env.MOLONI_DOCUMENT_SET_ID,
     moloni_redirect_uri: process.env.MOLONI_REDIRECT_URI,
   },
 };

@@ -268,9 +268,8 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
   );
 
   return {
-    message: `Offer ${
-      updatedOffer?.isActive ? 'activated' : 'deactivated'
-    } successfully`,
+    message: `Offer ${updatedOffer?.isActive ? 'activated' : 'deactivated'
+      } successfully`,
     data: updatedOffer,
   };
 };
@@ -281,7 +280,7 @@ const getApplicableOffer = async (
   currentUser: AuthUser
 ) => {
   const now = new Date();
-  console.log(currentUser);
+  console.log({ currentUser }, "Get Applicable Offer");
   // --------------------------------------------
   // Base query (vendor + global offers)
   // --------------------------------------------

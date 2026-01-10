@@ -111,22 +111,23 @@ const updateMyProfile = async (
   if (currentUser.role === 'CUSTOMER') {
     try {
       const moloniData = {
+        customerId: currentUser.userId,
         name:
           `${updatedUser.name.firstName} ${updatedUser.name.lastName}`.trim() ||
           updatedUser.email,
         email: updatedUser.email,
+        NIF: updatedUser.NIF,
         address: updatedUser.address?.street || 'Customer Address',
         zipCode: updatedUser.address?.postalCode || '1000-001',
         city: updatedUser.address?.city || 'Lisbon',
       };
 
-      console.log(updatedUser.moloniCustomerId);
       if (!updatedUser.moloniCustomerId) {
         const newMoloniId = await MoloniService.createCustomer(moloniData);
         if (newMoloniId) {
           await model.findOneAndUpdate(
             { userId: currentUser.userId },
-            { $set: { moloniCustomerId: String(newMoloniId) } }
+            { $set: { moloniCustomerId: newMoloniId } }
           );
         }
       } else {
@@ -295,9 +296,8 @@ const updateEmailOrContactNumber = async (
   await (currentUser as any).save();
 
   return {
-    message: `${
-      currentUser.pendingEmail ? 'Email' : 'Contact number'
-    } updated successfully.`,
+    message: `${currentUser.pendingEmail ? 'Email' : 'Contact number'
+      } updated successfully.`,
   };
 };
 
