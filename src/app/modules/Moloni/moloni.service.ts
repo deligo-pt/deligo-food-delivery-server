@@ -11,9 +11,9 @@ import { MoloniCustomerData } from './moloni.interface';
 import { redis } from '../../utils/redis';
 
 const MOLONI_TAX_IDS: Record<number, number> = {
-  23: 3742293, // IVA Normal
-  6: 3742298, // IVA Reduzido
-  13: 3742303, // IVA Intermédio
+  23: 3741590, // IVA Normal
+  6: 3741595, // IVA Reduzido
+  13: 3741600, // IVA Intermédio
 };
 
 export class MoloniService {

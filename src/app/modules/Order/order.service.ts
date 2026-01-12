@@ -130,11 +130,12 @@ const createOrderAfterPayment = async (
       MoloniService.createInvoice(order, currentUser.moloniCustomerId)
         .then(async (invoiceId) => {
           if (invoiceId) {
-
-            await Order.findByIdAndUpdate(order._id, { moloniInvoiceId: invoiceId });
+            await Order.findByIdAndUpdate(order._id, {
+              moloniInvoiceId: invoiceId,
+            });
           }
         })
-        .catch(err => console.error('Moloni background error:', err.message));
+        .catch((err) => console.error('Moloni background error:', err.message));
     }
 
     const notificationPayload = {
@@ -396,8 +397,8 @@ const updateOrderStatusByVendor = async (
 
     const deliveryPartner = order.deliveryPartnerId
       ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
-        session,
-      })
+          session,
+        })
       : null;
     const deliveryPartnerId = deliveryPartner?.userId;
 
@@ -1100,12 +1101,13 @@ const updateOrderStatusByDeliveryPartner = async (
   const customerId = customer?.userId;
   const notificationPayload = {
     title: `Order is now ${payload.orderStatus}`,
-    body: `${payload.orderStatus === 'ON_THE_WAY'
-      ? `Your order ${orderId} is now ON_THE_WAY.`
-      : payload.orderStatus === 'DELIVERED'
+    body: `${
+      payload.orderStatus === 'ON_THE_WAY'
+        ? `Your order ${orderId} is now ON_THE_WAY.`
+        : payload.orderStatus === 'DELIVERED'
         ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
         : `Your order ${orderId} is  ${payload.orderStatus}.`
-      } `,
+    } `,
     data: {
       orderId,
       orderStatus: payload.orderStatus,

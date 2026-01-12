@@ -296,8 +296,9 @@ const updateEmailOrContactNumber = async (
   await (currentUser as any).save();
 
   return {
-    message: `${currentUser.pendingEmail ? 'Email' : 'Contact number'
-      } updated successfully.`,
+    message: `${
+      currentUser.pendingEmail ? 'Email' : 'Contact number'
+    } updated successfully.`,
   };
 };
 
