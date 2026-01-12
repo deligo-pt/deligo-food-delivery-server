@@ -9,7 +9,7 @@ const router = Router();
 // create rating
 router.post(
   '/create-rating',
-  auth('CUSTOMER', 'DELIVERY_PARTNER', 'VENDOR', 'FLEET_MANAGER'),
+  auth('CUSTOMER', 'DELIVERY_PARTNER'),
   validateRequest(RatingValidation.createRatingValidationSchema),
   RatingControllers.createRating
 );
@@ -17,8 +17,28 @@ router.post(
 // get all ratings
 router.get(
   '/get-all-ratings',
-  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'VENDOR'),
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUB_VENDOR'
+  ),
   RatingControllers.getAllRatings
+);
+
+router.get(
+  '/get-rating-summary',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUB_VENDOR'
+  ),
+  RatingControllers.getRatingSummary
 );
 
 export const RatingRoutes = router;

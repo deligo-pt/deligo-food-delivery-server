@@ -1,28 +1,33 @@
-import { Types } from 'mongoose';
+import mongoose from 'mongoose';
 
-export type TRatingType = 'DELIVERY_PARTNER' | 'PRODUCT' | 'FLEET_MANAGER';
+export type TRatingType = 'DELIVERY_PARTNER' | 'PRODUCT' | 'VENDOR';
 
-export type TRefModel =
-  | 'Customer'
-  | 'Vendor'
-  | 'FleetManager'
-  | 'DeliveryPartner'
-  | 'Product';
+export type TRefModel = 'Customer' | 'Vendor' | 'DeliveryPartner' | 'Product';
 
+export type TSubRatings = {
+  foodQuality?: number;
+  packaging?: number;
+  deliverySpeed?: number;
+  riderBehavior?: number;
+};
+export type TRatingSentiment = 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE';
 export type TRating = {
-  _id?: string | Types.ObjectId;
+  _id?: mongoose.Types.ObjectId;
   ratingType: TRatingType;
   rating: number;
+  sentiment?: TRatingSentiment;
   review?: string;
 
-  reviewerId: string | Types.ObjectId;
+  reviewerId: mongoose.Types.ObjectId;
   reviewerModel: TRefModel;
 
-  targetId: string | Types.ObjectId;
+  targetId: mongoose.Types.ObjectId;
   targetModel: TRefModel;
 
-  orderId: string | Types.ObjectId;
-  productId?: string | Types.ObjectId;
+  orderId: mongoose.Types.ObjectId;
+  productId?: mongoose.Types.ObjectId;
+
+  subRatings?: TSubRatings;
 
   tags?: string[];
   createdAt?: Date;
