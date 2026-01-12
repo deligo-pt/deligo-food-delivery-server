@@ -30,6 +30,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "nanoid": "^3.3.11",
     "nodemailer": "^6.9.14",
+    "qs": "^6.14.1",
     "socket.io": "^4.8.1",
     "stripe": "^19.2.0",
     "uuid": "^8.3.2",

@@ -41,7 +41,6 @@ export const sendPushNotification = async (
     };
 
     const response = await fcm.send(message);
-    console.log('Successfully sent message:', response);
     return { success: true, response };
   } catch (error: any) {
     console.error('Error sending push notification:', error);

@@ -4,9 +4,9 @@ import AppError from '../errors/AppError';
 import httpStatus from 'http-status';
 
 export const resendMobileOtp = async (id: string) => {
-  const apiUrl = config.bulkgate_resend_api_url;
-  const apiKey = config.bulkgate_api_key;
-  const appId = config.bulkgate_app_id;
+  const apiUrl = config.bulkgate.bulkgate_resend_api_url;
+  const apiKey = config.bulkgate.bulkgate_api_key;
+  const appId = config.bulkgate.bulkgate_app_id;
 
   if (!apiUrl || !apiKey || !appId) {
     throw new AppError(

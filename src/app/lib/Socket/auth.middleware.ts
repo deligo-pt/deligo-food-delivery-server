@@ -21,7 +21,7 @@ export const socketAuthMiddleware = (
 
     const decoded = jwt.verify(
       token,
-      config.jwt_access_secret as string
+      config.jwt.jwt_access_secret as string
     ) as AuthUser;
 
     socket.data.user = decoded;

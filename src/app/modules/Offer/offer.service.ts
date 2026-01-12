@@ -281,7 +281,7 @@ const getApplicableOffer = async (
   currentUser: AuthUser
 ) => {
   const now = new Date();
-  console.log(currentUser);
+  console.log(currentUser.role);
   // --------------------------------------------
   // Base query (vendor + global offers)
   // --------------------------------------------

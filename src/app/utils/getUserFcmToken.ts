@@ -10,7 +10,6 @@ export const getUserFcmToken = async (
     console.warn(`No fcm tokens found for userId: ${userId}`);
     return null;
   }
-  console.log(user.fcmTokens);
 
   return user.fcmTokens;
 };
