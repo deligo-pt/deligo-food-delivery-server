@@ -32,14 +32,14 @@ const createProduct = async (
       'Vendor is not approved to add products'
     );
   }
+
   const vendorCategory = currentUser?.businessDetails?.businessType;
-  // find vendor category is exist
   const vendorCategoryExist = await BusinessCategory.findOne({
     name: vendorCategory,
   });
+
   payload.vendorId = currentUser?._id;
 
-  // check category
   if (payload?.category) {
     payload.category = payload?.category?.toUpperCase();
     const category = await ProductCategory.findOne({ name: payload.category });
@@ -47,7 +47,7 @@ const createProduct = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
     }
 
-    // check add ons
+    // Validate Addon Groups
     if (payload.addonGroups && payload.addonGroups.length > 0) {
       const validAddonsCount = await AddonGroup.countDocuments({
         _id: { $in: payload.addonGroups },
@@ -58,27 +58,56 @@ const createProduct = async (
       if (validAddonsCount !== payload.addonGroups.length) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'One or more selected Addon Groups are invalid or do not belong to you!'
+          'One or more selected Addon Groups are invalid!'
         );
       }
     }
 
-    //  ------------ Generating productId ------------
+    // ------------ Unique IDs ------------
     const shortId = generateShortId();
     payload.productId = `PROD-${shortId}`;
-    //  ------------ Generating slug ------------
+
+    const cleanForSKU = (str: string) =>
+      str
+        .toUpperCase()
+        .trim()
+        .replace(/[^A-Z0-9]/g, '')
+        .substring(0, 3);
+
+    const productNamePart = cleanForSKU(payload.name);
+
+    // ------------ Main Product SKU ------------
+    const categoryPart = payload.category.substring(0, 3);
+    payload.sku = `SKU-${categoryPart}-${productNamePart}-${shortId
+      .split('-')
+      .pop()}`;
+
+    // ------------ Variation SKUs ------------
+    if (payload.variations && payload.variations.length > 0) {
+      payload.variations = payload.variations.map((variation) => ({
+        ...variation,
+        options: variation.options.map((option) => {
+          const labelPart = cleanForSKU(option.label);
+          const varSKU = `VAR-${productNamePart}-${labelPart}-${Math.random()
+            .toString(36)
+            .substring(2, 5)
+            .toUpperCase()}`;
+          return {
+            ...option,
+            sku: option.sku || varSKU,
+          };
+        }),
+      }));
+    }
+
+    // Slug generation
     payload.slug = payload.name
       .toLowerCase()
       .trim()
       .replace(/[^\w\s-]/g, '')
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    //  ------------ Generating SKU ------------
-    const newSKU = `SKU-${payload?.category?.toUpperCase()}-${String(shortId)
-      .split('-')
-      .pop()
-      ?.padStart(4, '0')}`;
-    payload.sku = newSKU;
+
     if (
       category?.businessCategoryId.toString() !==
       vendorCategoryExist?._id.toString()
