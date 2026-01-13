@@ -26,9 +26,21 @@ const deliveryPartnerSchema = new Schema<
     //-------------------------------------------------
     userId: { type: String, required: true, unique: true },
     registeredBy: {
-      type: Schema.Types.ObjectId,
-      required: true,
-      ref: 'FleetManager',
+      id: {
+        type: Schema.Types.ObjectId,
+        refPath: 'registeredBy.model',
+        default: null,
+      },
+      model: {
+        type: String,
+        enum: ['Admin', 'FleetManager'],
+        default: null,
+      },
+      role: {
+        type: String,
+        enum: ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
+        default: null,
+      },
     },
 
     role: {

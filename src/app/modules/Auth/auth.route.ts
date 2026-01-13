@@ -9,26 +9,20 @@ import { AuthValidation } from './auth.validation';
 import { Router } from 'express';
 
 const router = Router();
-// Register User Route
+// Register User Route [Vendor, Fleet Manager, Admin]
 router.post(
   [UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),
   AuthControllers.registerUser
 );
-// Register Delivery Partner Route (Registered by Fleet Manager, Admin, Super Admin)
+// Register User Route (Registered by Fleet Manager, Admin, Super Admin,Vendor)
 router.post(
-  [
-    UrlPath.DELIVERY_PARTNER,
-    UrlPath.VENDOR,
-    UrlPath.FLEET_MANAGER,
-    UrlPath.ADMIN,
-    UrlPath.SUB_VENDOR,
-  ],
-  auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN'),
+  '/register/onboard/:targetRole',
+  auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN', 'VENDOR'),
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.registerUser
+  AuthControllers.onboardUser
 );
 
 // Register Sub Vendor Route

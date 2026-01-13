@@ -2,13 +2,18 @@ import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
 
+export type TRegisteredByModel = 'Admin' | 'FleetManager';
 export type TDeliveryPartner = {
   // -------------------------------------------------
   // Core Identifiers & Credentials
   // -------------------------------------------------
   _id?: string;
   userId: string;
-  registeredBy?: mongoose.Types.ObjectId;
+  registeredBy?: {
+    id: mongoose.Types.ObjectId;
+    model: TRegisteredByModel;
+    role: 'ADMIN' | 'SUPER_ADMIN' | 'FLEET_MANAGER';
+  };
   role: 'DELIVERY_PARTNER';
   email: string;
   password: string;
