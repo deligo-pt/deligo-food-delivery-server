@@ -60,6 +60,7 @@ export default {
     tax_id: process.env.MOLONI_DEFAULT_TAX_ID,
     company_id: process.env.MOLONI_COMPANY_ID,
     document_set_id: process.env.MOLONI_DOCUMENT_SET_ID,
+    base_url: process.env.MOLONI_BASE_URL,
     redirect_uri: process.env.MOLONI_REDIRECT_URI,
   },
 };

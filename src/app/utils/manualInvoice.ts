@@ -15,7 +15,7 @@ const CONFIG = {
   unit_id: 3508728,
   tax_id: 3742303,
 };
-
+console.log({ CONFIG });
 async function createManualInvoice() {
   try {
     const auth = await axios.get('https://api.moloni.pt/v1/grant/', {
@@ -59,6 +59,8 @@ async function createManualInvoice() {
         },
       ],
     };
+
+    console.log({ invoiceData });
 
     const body = qs.stringify(invoiceData, {
       arrayFormat: 'indices',

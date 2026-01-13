@@ -18,8 +18,6 @@ const findMyMoloniIds = async () => {
 
     const token = auth.data.access_token;
 
-    console.log({ token });
-
     const companies = await axios.post(
       `https://api.moloni.pt/v1/companies/getAll/?access_token=${token}`
     );
@@ -27,10 +25,22 @@ const findMyMoloniIds = async () => {
     const companyId = companies.data[1].company_id;
     console.log(`Using Company ID: ${companyId}\n`);
 
+    console.log('\n-------------All customers---------------------');
     const customers = await axios.post(
       `https://api.moloni.pt/v1/customers/getAll/?access_token=${token}`,
       new URLSearchParams({ company_id: companyId.toString() })
     );
+
+    const checkSets = await axios.post(
+      `https://api.moloni.pt/v1/documentSets/getAll/?access_token=${token}`,
+      new URLSearchParams({ company_id: companyId.toString() })
+    );
+
+    const set75 = checkSets.data.find((s: any) => s.document_set_id === 907075);
+    const set88 = checkSets.data.find((s: any) => s.document_set_id === 907888);
+
+    console.log('Set 907075 Info:', set75);
+    console.log('Set 907888 Info:', set88);
 
     if (Array.isArray(customers.data) && customers.data.length > 0) {
       customers.data.forEach((c: any) => {
@@ -44,6 +54,7 @@ const findMyMoloniIds = async () => {
       console.log('No customers found in your account.');
     }
 
+    console.log('\n----------All document sets-----------');
     const docSets = await axios.post(
       `https://api.moloni.pt/v1/documentSets/getAll/?access_token=${token}`,
       new URLSearchParams({ company_id: companyId.toString() })
@@ -61,6 +72,7 @@ const findMyMoloniIds = async () => {
       console.log(`ID: ${t.tax_id} | Value: ${t.value}% | Name: ${t.name}`);
     });
 
+    console.log('\n------All units---------');
     try {
       const units = await axios.post(
         `https://api.moloni.pt/v1/measurementUnits/getAll/?access_token=${token}`,
@@ -75,6 +87,7 @@ const findMyMoloniIds = async () => {
       );
     }
 
+    console.log('\n--- Product Categories ---');
     const categories = await axios.post(
       `https://api.moloni.pt/v1/productCategories/getAll/?access_token=${token}`,
       new URLSearchParams({
