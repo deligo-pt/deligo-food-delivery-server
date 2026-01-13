@@ -13,7 +13,6 @@ import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { EmailHelper } from '../../utils/emailSender';
 import generateOtp from '../../utils/generateOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
-import { MoloniService } from '../Moloni/moloni.service';
 import mongoose from 'mongoose';
 
 // get my profile service
@@ -86,7 +85,8 @@ const updateMyProfile = async (
     if (currentUser.profilePhoto) {
       const oldPhoto = currentUser.profilePhoto;
       deleteSingleImageFromCloudinary(oldPhoto).catch((err) => {
-        throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+        // throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+        console.log(err);
       });
     }
 
@@ -107,38 +107,6 @@ const updateMyProfile = async (
       httpStatus.INTERNAL_SERVER_ERROR,
       'Failed to update profile.'
     );
-  }
-  if (currentUser.role === 'CUSTOMER') {
-    try {
-      const moloniData = {
-        customerId: currentUser.userId,
-        name:
-          `${updatedUser.name.firstName} ${updatedUser.name.lastName}`.trim() ||
-          updatedUser.email,
-        email: updatedUser.email,
-        NIF: updatedUser.NIF,
-        address: updatedUser.address?.street || 'Customer Address',
-        zipCode: updatedUser.address?.postalCode || '1000-001',
-        city: updatedUser.address?.city || 'Lisbon',
-      };
-
-      if (!updatedUser.moloniCustomerId) {
-        const newMoloniId = await MoloniService.createCustomer(moloniData);
-        if (newMoloniId) {
-          await model.findOneAndUpdate(
-            { userId: currentUser.userId },
-            { $set: { moloniCustomerId: newMoloniId } }
-          );
-        }
-      } else {
-        await MoloniService.updateCustomer(
-          Number(updatedUser.moloniCustomerId),
-          moloniData
-        );
-      }
-    } catch (error: any) {
-      console.error('Moloni Sync Failed during profile update:', error.message);
-    }
   }
 
   return updatedUser;
@@ -308,3 +276,36 @@ export const ProfileServices = {
   sendOtp,
   updateEmailOrContactNumber,
 };
+
+// if (currentUser.role === 'CUSTOMER') {
+//   try {
+//     const moloniData = {
+//       customerId: currentUser.userId,
+//       name:
+//         `${updatedUser.name.firstName} ${updatedUser.name.lastName}`.trim() ||
+//         updatedUser.email,
+//       email: updatedUser.email,
+//       NIF: updatedUser.NIF,
+//       address: updatedUser.address?.street || 'Customer Address',
+//       zipCode: updatedUser.address?.postalCode || '1000-001',
+//       city: updatedUser.address?.city || 'Lisbon',
+//     };
+
+//     if (!updatedUser.moloniCustomerId) {
+//       const newMoloniId = await MoloniService.createCustomer(moloniData);
+//       if (newMoloniId) {
+//         await model.findOneAndUpdate(
+//           { userId: currentUser.userId },
+//           { $set: { moloniCustomerId: newMoloniId } }
+//         );
+//       }
+//     } else {
+//       await MoloniService.updateCustomer(
+//         Number(updatedUser.moloniCustomerId),
+//         moloniData
+//       );
+//     }
+//   } catch (error: any) {
+//     console.error('Moloni Sync Failed during profile update:', error.message);
+//   }
+// }

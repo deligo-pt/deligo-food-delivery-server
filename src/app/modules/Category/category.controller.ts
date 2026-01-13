@@ -3,14 +3,35 @@ import { CategoryService } from './category.service';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AuthUser } from '../../constant/user.constant';
+import { TImageFile } from '../../interfaces/image.interface';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {
-  const result = await CategoryService.createBusinessCategory(req.body);
+  const file = req.file as TImageFile | undefined;
+  const result = await CategoryService.createBusinessCategory(
+    req.body,
+    file?.path ?? null
+  );
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
     message: 'Business category created successfully',
+    data: result,
+  });
+});
+
+// Update Business Category Controllers
+const updateBusinessCategory = catchAsync(async (req, res) => {
+  const file = req.file as TImageFile | undefined;
+  const result = await CategoryService.updateBusinessCategory(
+    req.params.id,
+    req.body,
+    file?.path ?? null
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Business category updated successfully',
     data: result,
   });
 });
@@ -43,20 +64,6 @@ const getSingleBusinessCategory = catchAsync(async (req, res) => {
   });
 });
 
-// Update Business Category Controllers
-const updateBusinessCategory = catchAsync(async (req, res) => {
-  const result = await CategoryService.updateBusinessCategory(
-    req.params.id,
-    req.body
-  );
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Business category updated successfully',
-    data: result,
-  });
-});
-
 // soft Delete Business Category Controllers
 const softDeleteBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.softDeleteBusinessCategory(
@@ -85,11 +92,31 @@ const permanentDeleteBusinessCategory = catchAsync(async (req, res) => {
 
 // Create Product Category Controllers
 const createProductCategory = catchAsync(async (req, res) => {
-  const result = await CategoryService.createProductCategory(req.body);
+  const file = req.file as TImageFile | undefined;
+  const result = await CategoryService.createProductCategory(
+    req.body,
+    file?.path ?? null
+  );
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
     message: 'Product category created successfully',
+    data: result,
+  });
+});
+
+// Update Product Category Controllers
+const updateProductCategory = catchAsync(async (req, res) => {
+  const file = req.file as TImageFile | undefined;
+  const result = await CategoryService.updateProductCategory(
+    req.params.id,
+    req.body,
+    file?.path ?? null
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Product category updated successfully',
     data: result,
   });
 });
@@ -122,20 +149,6 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
   });
 });
 
-// Update Product Category Controllers
-const updateProductCategory = catchAsync(async (req, res) => {
-  const result = await CategoryService.updateProductCategory(
-    req.params.id,
-    req.body
-  );
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Product category updated successfully',
-    data: result,
-  });
-});
-
 // soft Delete Product Category Controllers
 const softDeleteProductCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.softDeleteProductCategory(req.params.id);
@@ -162,15 +175,15 @@ const permanentDeleteProductCategory = catchAsync(async (req, res) => {
 
 export const CategoryController = {
   createBusinessCategory,
+  updateBusinessCategory,
   getAllBusinessCategories,
   getSingleBusinessCategory,
-  updateBusinessCategory,
   softDeleteBusinessCategory,
   permanentDeleteBusinessCategory,
   createProductCategory,
+  updateProductCategory,
   getAllProductCategories,
   getSingleProductCategory,
-  updateProductCategory,
   softDeleteProductCategory,
   permanentDeleteProductCategory,
 };

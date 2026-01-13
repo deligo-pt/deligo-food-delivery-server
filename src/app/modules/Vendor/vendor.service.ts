@@ -126,7 +126,8 @@ const vendorDocImageUpload = async (
   if (docTitle && existingVendor.documents?.[docTitle]) {
     const oldImage = existingVendor.documents[docTitle];
     deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      throw new AppError(httpStatus.BAD_REQUEST, err.message);
+      console.log(err);
+      // throw new AppError(httpStatus.BAD_REQUEST, err.message);
     });
   }
 
