@@ -52,15 +52,4 @@ export default {
     upstash_redis_rest_url: process.env.UPSTASH_REDIS_REST_URL,
     upstash_redis_rest_token: process.env.UPSTASH_REDIS_REST_TOKEN,
   },
-  moloni: {
-    client_id: process.env.MOLONI_CLIENT_ID,
-    client_secret: process.env.MOLONI_CLIENT_SECRET,
-    username: process.env.MOLONI_USERNAME,
-    password: process.env.MOLONI_PASSWORD,
-    tax_id: process.env.MOLONI_DEFAULT_TAX_ID,
-    company_id: process.env.MOLONI_COMPANY_ID,
-    document_set_id: process.env.MOLONI_DOCUMENT_SET_ID,
-    base_url: process.env.MOLONI_BASE_URL,
-    redirect_uri: process.env.MOLONI_REDIRECT_URI,
-  },
 };

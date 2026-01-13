@@ -5,12 +5,25 @@ import { catchAsync } from '../../utils/catchAsync';
 import { AuthUser } from '../../constant/user.constant';
 import config from '../../config';
 
-//register User Controller
+//register User Controller [Vendor, Fleet Manager, Admin]
 const registerUser = catchAsync(async (req, res) => {
   const url = req.originalUrl;
-  const result = await AuthServices.registerUser(
+  const result = await AuthServices.registerUser(req.body, url);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
+// register User Controller [Vendor, Fleet Manager, Admin, Sub Vendor, Delivery Partner]
+const onboardUser = catchAsync(async (req, res) => {
+  const { targetRole } = req.params;
+  const result = await AuthServices.onboardUser(
     req.body,
-    url,
+    targetRole,
     req.user as AuthUser
   );
 
@@ -165,8 +178,6 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
   });
 });
 
-//
-
 // Verify OTP Controller
 const verifyOtp = catchAsync(async (req, res) => {
   const { email, contactNumber, otp } = req.body;
@@ -232,6 +243,7 @@ const permanentDeleteUser = catchAsync(async (req, res) => {
 
 export const AuthControllers = {
   registerUser,
+  onboardUser,
   loginUser,
   loginCustomer,
   saveFcmToken,
