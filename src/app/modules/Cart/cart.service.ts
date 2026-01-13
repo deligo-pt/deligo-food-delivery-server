@@ -91,7 +91,9 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   const newItem = {
     productId: existingProduct._id,
     vendorId: existingProduct.vendorId,
-    name: existingProduct.name,
+    name: variantName
+      ? existingProduct.name + ' - ' + variantName
+      : existingProduct.name,
     image: existingProduct?.images[0] || '',
     variantName: variantName || null,
     quantity,

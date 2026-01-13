@@ -140,7 +140,14 @@ export const getPopulateOptions = (
   }
 
   // ---------------- Reviewer Id ----------------
-  if (fields.reviewerId && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
+  if (
+    fields.reviewerId &&
+    (role === 'ADMIN' ||
+      role === 'SUPER_ADMIN' ||
+      role === 'FLEET_MANAGER' ||
+      role === 'VENDOR' ||
+      role === 'SUB_VENDOR')
+  ) {
     options.push({
       path: 'reviewerId',
       select: fields.reviewerId,
@@ -150,7 +157,11 @@ export const getPopulateOptions = (
   // ---------------- Target Id ----------------
   if (
     fields.targetId &&
-    (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'FLEET_MANAGER')
+    (role === 'ADMIN' ||
+      role === 'SUPER_ADMIN' ||
+      role === 'FLEET_MANAGER' ||
+      role === 'VENDOR' ||
+      role === 'SUB_VENDOR')
   ) {
     options.push({
       path: 'targetId',

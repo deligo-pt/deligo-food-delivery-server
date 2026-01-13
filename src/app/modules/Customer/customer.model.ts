@@ -13,6 +13,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // Core Identifiers
     // ----------------------------------------------------------------
     userId: { type: String, required: true, unique: true },
+    moloniCustomerId: { type: Number, default: null },
 
     role: {
       type: String,

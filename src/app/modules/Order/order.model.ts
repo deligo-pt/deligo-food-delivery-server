@@ -41,6 +41,7 @@ const orderSchema = new Schema<TOrder>(
       ref: 'DeliveryPartner',
     },
     deliveryPartnerCancelReason: { type: String, default: null },
+    moloniInvoiceId: { type: Number, default: null },
 
     items: { type: [orderItemSchema], required: true },
 

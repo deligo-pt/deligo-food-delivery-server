@@ -10,7 +10,7 @@ export const seed = async () => {
     // at first check if the super admin exist or not
     const superAdmin = await Admin.findOne({
       role: USER_ROLE.SUPER_ADMIN,
-      email: config.super_admin_email,
+      email: config.super_admin.super_admin_email,
       status: USER_STATUS.APPROVED,
     });
     if (!superAdmin) {
@@ -22,10 +22,10 @@ export const seed = async () => {
         userId: id,
         name: 'Super Admin',
         role: USER_ROLE.SUPER_ADMIN,
-        email: config.super_admin_email,
-        password: config.super_admin_password,
-        profilePhoto: config.super_admin_profile_photo,
-        contactNumber: config.super_admin_contact_number,
+        email: config.super_admin.super_admin_email,
+        password: config.super_admin.super_admin_password,
+        profilePhoto: config.super_admin.super_admin_profile_photo,
+        contactNumber: config.super_admin.super_admin_contact_number,
         status: USER_STATUS.APPROVED,
         isEmailVerified: true,
       });

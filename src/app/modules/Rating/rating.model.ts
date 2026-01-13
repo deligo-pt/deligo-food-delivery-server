@@ -5,7 +5,7 @@ const ratingSchema = new Schema<TRating>(
   {
     ratingType: {
       type: String,
-      enum: ['DELIVERY_PARTNER', 'PRODUCT', 'FLEET_MANAGER', 'VENDOR'],
+      enum: ['DELIVERY_PARTNER', 'PRODUCT', 'VENDOR'],
       required: true,
       index: true,
     },
@@ -14,6 +14,11 @@ const ratingSchema = new Schema<TRating>(
       min: 1,
       max: 5,
       required: true,
+    },
+    sentiment: {
+      type: String,
+      enum: ['POSITIVE', 'NEGATIVE', 'NEUTRAL'],
+      index: true,
     },
     review: {
       type: String,
@@ -29,7 +34,7 @@ const ratingSchema = new Schema<TRating>(
     reviewerModel: {
       type: String,
       required: true,
-      enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'],
+      enum: ['Customer', 'Vendor', 'DeliveryPartner'],
     },
 
     targetId: {
@@ -59,15 +64,32 @@ const ratingSchema = new Schema<TRating>(
       index: true,
     },
 
+    subRatings: {
+      foodQuality: { type: Number, min: 1, max: 5 },
+      packaging: { type: Number, min: 1, max: 5 },
+      deliverySpeed: { type: Number, min: 1, max: 5 },
+      riderBehavior: { type: Number, min: 1, max: 5 },
+    },
+
     tags: { type: [String], default: [] },
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
   }
 );
 
-ratingSchema.index({ targetId: 1, rating: -1 });
+ratingSchema.pre('save', function (next) {
+  if (this.rating >= 4) {
+    this.sentiment = 'POSITIVE';
+  } else if (this.rating === 3) {
+    this.sentiment = 'NEUTRAL';
+  } else {
+    this.sentiment = 'NEGATIVE';
+  }
+  next();
+});
+
+ratingSchema.index({ targetId: 1, ratingType: 1 });
+ratingSchema.index({ createdAt: -1 });
 
 export const Rating = model<TRating>('Rating', ratingSchema);

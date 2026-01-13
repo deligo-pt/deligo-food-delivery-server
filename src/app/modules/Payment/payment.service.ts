@@ -4,7 +4,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 
-export const stripe = new Stripe(config.stripe_secret_key as string);
+export const stripe = new Stripe(config.stripe.stripe_secret_key as string);
 
 // create stripe payment intent service
 const createPaymentIntent = async (checkoutSummaryId: string) => {
