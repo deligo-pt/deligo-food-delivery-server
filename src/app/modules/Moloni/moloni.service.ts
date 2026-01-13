@@ -17,7 +17,7 @@ const MOLONI_TAX_IDS: Record<number, number> = {
 };
 
 export class MoloniService {
-  private static baseUrl = 'https://api.moloni.pt/v1';
+  private static baseUrl = config.moloni.base_url;
 
   private static REDIS_KEY = 'moloni_access_token';
 

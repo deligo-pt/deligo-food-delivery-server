@@ -60,15 +60,6 @@ const verifyOtpValidationSchema = z.object({
   }),
 });
 
-// -----------------------------------------------------
-// Resend OTP Schema
-// -----------------------------------------------------
-const resendOtpValidationSchema = z.object({
-  body: z.object({
-    email: emailSchema,
-  }),
-});
-
 const adminDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z.enum(['idProofFront', 'idProofBack'], {
@@ -84,6 +75,5 @@ export const AdminValidation = {
   updateAdminDataValidationSchema,
   activateOrBlockUserValidationSchema,
   verifyOtpValidationSchema,
-  resendOtpValidationSchema,
   adminDocImageValidationSchema,
 };
