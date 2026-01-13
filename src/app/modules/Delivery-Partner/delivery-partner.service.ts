@@ -185,7 +185,8 @@ const deliverPartnerDocImageUpload = async (
   if (docTitle && existingDeliveryPartner?.documents?.[docTitle]) {
     const oldImage = existingDeliveryPartner?.documents?.[docTitle];
     deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      throw new AppError(httpStatus.BAD_REQUEST, err.message);
+      console.log(err);
+      // throw new AppError(httpStatus.BAD_REQUEST, err.message);
     });
   }
 

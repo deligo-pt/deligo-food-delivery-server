@@ -25,7 +25,6 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { Coupon } from '../Coupon/coupon.model';
 import { getIO } from '../../lib/Socket';
-import { MoloniService } from '../Moloni/moloni.service';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -125,18 +124,6 @@ const createOrderAfterPayment = async (
     await summary.save({ session });
 
     await session.commitTransaction();
-
-    if (currentUser.role === 'CUSTOMER' && currentUser.moloniCustomerId) {
-      MoloniService.createInvoice(order, currentUser.moloniCustomerId)
-        .then(async (invoiceId) => {
-          if (invoiceId) {
-            await Order.findByIdAndUpdate(order._id, {
-              moloniInvoiceId: invoiceId,
-            });
-          }
-        })
-        .catch((err) => console.error('Moloni background error:', err.message));
-    }
 
     const notificationPayload = {
       title: 'You have a new order',

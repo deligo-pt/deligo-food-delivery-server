@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 export type TProduct = {
+  _id: mongoose.Types.ObjectId;
   productId: string;
   vendorId: mongoose.Types.ObjectId;
   sku: string;

@@ -11,7 +11,6 @@ export type TOrder = {
   vendorId: mongoose.Types.ObjectId;
   deliveryPartnerId?: mongoose.Types.ObjectId; // assigned after vendor accepts
   deliveryPartnerCancelReason?: string;
-  moloniInvoiceId?: number;
 
   // Items
   items: TOrderItemSnapshot[];
