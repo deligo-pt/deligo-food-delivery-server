@@ -18,6 +18,7 @@ const updateBusinessCategoryValidationSchema = z.object({
     name: z.string().optional(),
     slug: z.string().optional(),
     description: z.string().optional(),
+    icon: z.string().optional(),
     isActive: z.boolean().optional(),
   }),
 });
@@ -43,6 +44,7 @@ const updateProductCategoryValidationSchema = z.object({
     name: z.string().optional(),
     slug: z.string().optional(),
     description: z.string().optional(),
+    icon: z.string().optional(),
     businessCategoryId: z.string().optional(),
     isActive: z.boolean().optional(),
     isDeleted: z.boolean().optional(),

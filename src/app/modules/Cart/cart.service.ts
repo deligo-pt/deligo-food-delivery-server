@@ -49,6 +49,10 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     );
   }
 
+  if (quantity > existingProduct.stock.quantity) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Product is out of stock');
+  }
+
   const discountPercent = existingProduct.pricing?.discount || 0;
   const taxRate = existingProduct.pricing?.taxRate || 0;
 

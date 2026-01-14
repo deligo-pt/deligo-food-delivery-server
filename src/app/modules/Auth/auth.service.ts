@@ -32,64 +32,22 @@ import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 
-// Register User
+// Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
   T extends {
     email: string;
     role: TUserRole;
     isEmailVerified?: boolean;
-    registeredBy?: string;
   }
 >(
   payload: T,
-  url: string,
-  currentUser: AuthUser
+  url: string
 ) => {
   const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
   const userTypeData = USER_TYPE_MAP[userType];
   const modelData = USER_MODEL_MAP[userType];
   if (!userTypeData || !modelData) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
-  }
-
-  let registeredBy: string | undefined;
-  // Restrict Delivery Partner registration
-  if (userType === '/create-delivery-partner') {
-    const allowedRoles: TUserRole[] = ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'];
-
-    if (currentUser.status !== 'APPROVED') {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        `You are not approved to register a Delivery Partner. Your account is ${currentUser.status}`
-      );
-    }
-    if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to register a Delivery Partner'
-      );
-    }
-    registeredBy = currentUser._id.toString();
-  }
-
-  // Restrict sub vendor registration
-  if (userType === '/create-sub-vendor') {
-    const allowedRoles: TUserRole[] = ['ADMIN', 'SUPER_ADMIN', 'VENDOR'];
-
-    if (currentUser.status !== 'APPROVED') {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        `You are not approved to register a Sub Vendor. Your account is ${currentUser.status}`
-      );
-    }
-    if (currentUser.role && !allowedRoles.includes(currentUser.role)) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to register a Sub Vendor'
-      );
-    }
-
-    registeredBy = currentUser._id.toString();
   }
 
   const { Model, idField } = modelData;
@@ -139,7 +97,6 @@ const registerUser = async <
       {
         ...payload,
         [idField]: userID,
-        registeredBy,
         otp,
         isOtpExpired: otpExpires,
       },
@@ -178,7 +135,155 @@ const registerUser = async <
   }
 
   return {
-    message: `${payload.role} registered successfully. Please check your email for verification.`,
+    message: `${payload.role} registered successfully. Please check your email for verification.1`,
+    data: createdUser,
+  };
+};
+
+// Register User [Vendor, Fleet Manager, Admin] By Other
+const onboardUser = async <
+  T extends {
+    email: string;
+    role: TUserRole;
+    isEmailVerified?: boolean;
+    registeredBy?: any;
+  }
+>(
+  payload: T,
+  targetRole: string,
+  currentUser: AuthUser
+) => {
+  const mapKey = `/create-${targetRole}` as keyof typeof USER_TYPE_MAP;
+
+  const userTypeData = USER_TYPE_MAP[mapKey];
+  const modelData = USER_MODEL_MAP[mapKey];
+
+  if (!userTypeData || !modelData) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Invalid onboarding target role'
+    );
+  }
+
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `Your account is ${currentUser.status}. Only approved users can onboard others.`
+    );
+  }
+
+  const rolePermissions: Record<string, TUserRole[]> = {
+    'delivery-partner': ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
+    'sub-vendor': ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
+    'fleet-manager': ['ADMIN', 'SUPER_ADMIN'],
+    vendor: ['ADMIN', 'SUPER_ADMIN'],
+    customer: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
+    admin: ['SUPER_ADMIN'],
+  };
+
+  const allowedRoles = rolePermissions[targetRole.toLowerCase()];
+
+  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You do not have permission to onboard a ${targetRole.replace('-', ' ')}`
+    );
+  }
+
+  const { Model, idField } = modelData;
+  const mongooseModel = Model as unknown as Model<T>;
+
+  const userID = generateUserId(mapKey);
+  payload.role = userTypeData.role;
+  const { otp, otpExpires } = generateOtp();
+
+  const checkModels = ALL_USER_MODELS.map((M: any) =>
+    M.isUserExistsByEmail(payload.email).catch(() => null)
+  );
+  const checkResults = await Promise.all(checkModels);
+  const existingUser = checkResults.find((user) => user && user.email);
+
+  if (existingUser) {
+    if (existingUser.isEmailVerified) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${existingUser.email} is already registered as ${existingUser.role}.`
+      );
+    } else {
+      const index = checkResults.findIndex(
+        (u) => u?.email === existingUser.email
+      );
+      await ALL_USER_MODELS[index].deleteOne({ email: existingUser.email });
+    }
+  }
+
+  let registeredByValue: any;
+
+  if (
+    ['vendor', 'sub-vendor', 'delivery-partner'].includes(
+      targetRole.toLowerCase()
+    )
+  ) {
+    registeredByValue = {
+      id: currentUser._id,
+      model:
+        currentUser.role === 'FLEET_MANAGER'
+          ? 'FleetManager'
+          : currentUser.role === 'VENDOR'
+          ? 'Vendor'
+          : 'Admin',
+      role: currentUser.role,
+    };
+  } else {
+    registeredByValue = currentUser._id;
+  }
+
+  let createdUser;
+  try {
+    const result = await mongooseModel.create([
+      {
+        ...payload,
+        [idField]: userID,
+        registeredBy: registeredByValue,
+        otp,
+        isOtpExpired: otpExpires,
+        isEmailVerified: false,
+        status: USER_STATUS.PENDING,
+      },
+    ]);
+    createdUser = Array.isArray(result) ? result[0] : result;
+  } catch (err: any) {
+    if (err?.code === 11000)
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'User ID or Email already exists'
+      );
+    throw err;
+  }
+
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      otp,
+      userEmail: payload.email,
+      currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
+      user: payload.role.toLowerCase(),
+    },
+    'verify-email'
+  );
+
+  try {
+    await EmailHelper.sendEmail(
+      payload.email,
+      emailHtml,
+      'Verify your email for DeliGo'
+    );
+  } catch (err) {
+    console.error('Email sending failed:', err);
+  }
+
+  return {
+    message: `${payload.role} onboarded successfully. Verification email sent to ${payload.email}`,
     data: createdUser,
   };
 };
@@ -701,18 +806,18 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   if (submittedUser?.role === 'DELIVERY_PARTNER') {
     if (
       currentUser?.role === 'FLEET_MANAGER' &&
-      submittedUser?.registeredBy.toString() !== currentUser._id.toString()
+      submittedUser?.registeredBy?.id.toString() !== currentUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user1'
+        'You do not have permission to submit approval request for this user'
       );
     }
   } else {
     if (submittedUser.userId !== currentUser.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user2'
+        'You do not have permission to submit approval request for this user'
       );
     }
   }
@@ -1170,6 +1275,7 @@ const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
 
 export const AuthServices = {
   registerUser,
+  onboardUser,
   loginUser,
   loginCustomer,
   saveFcmToken,

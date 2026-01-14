@@ -4,9 +4,13 @@ import { BusinessCategory, ProductCategory } from './category.model';
 import { TBusinessCategory, TProductCategory } from './category.interface';
 import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 //  Create Business Category
-const createBusinessCategory = async (payload: TBusinessCategory) => {
+const createBusinessCategory = async (
+  payload: TBusinessCategory,
+  icon: string | null
+) => {
   const exists = await BusinessCategory.findOne({ name: payload.name });
   if (exists) {
     throw new AppError(httpStatus.CONFLICT, 'Business category already exists');
@@ -19,51 +23,15 @@ const createBusinessCategory = async (payload: TBusinessCategory) => {
     .replace(/[^\w ]+/g, '')
     .replace(/ +/g, '-');
 
-  const category = await BusinessCategory.create({ ...payload });
-  return category;
-};
-
-//  Get All Business Categories
-const getAllBusinessCategories = async (
-  query: Record<string, unknown>,
-  currentUser: AuthUser
-) => {
-  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    (query.isActive = true), (query.isDeleted = false);
-  }
-  const businessCategories = new QueryBuilder(BusinessCategory.find(), query)
-    .fields()
-    .paginate()
-    .sort()
-    .filter()
-    .search(['name', 'slug']);
-
-  const meta = await businessCategories.countTotal();
-  const data = await businessCategories.modelQuery;
-  return { meta, data };
-};
-
-//  Get Single Business Category
-const getSingleBusinessCategory = async (id: string, currentUser: AuthUser) => {
-  const category = await BusinessCategory.findById(id);
-  if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
-  }
-
-  if (
-    (currentUser.role === 'VENDOR' || currentUser.role === 'FLEET_MANAGER') &&
-    category.isActive === false
-  ) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
-  }
-
+  const category = await BusinessCategory.create({ ...payload, icon });
   return category;
 };
 
 //  Update Business Category
 const updateBusinessCategory = async (
   id: string,
-  payload: Partial<TBusinessCategory>
+  payload: Partial<TBusinessCategory>,
+  icon: string | null
 ) => {
   if (payload.name)
     payload.slug = payload.name
@@ -82,8 +50,59 @@ const updateBusinessCategory = async (
     );
   }
 
+  if (icon) {
+    if (category.icon) {
+      const oldIcon = category.icon;
+      deleteSingleImageFromCloudinary(oldIcon).catch((error) => {
+        console.log(error);
+      });
+    }
+  }
+  if (icon) {
+    category.icon = icon;
+  }
+
   Object.assign(category, payload);
   await category.save();
+  return category;
+};
+
+//  Get All Business Categories
+const getAllBusinessCategories = async (
+  query: Record<string, unknown>,
+  currentUser: AuthUser
+) => {
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    (query.isActive = true), (query.isDeleted = false);
+  }
+  const businessCategories = new QueryBuilder(BusinessCategory.find(), query)
+    .fields()
+    .paginate()
+    .sort()
+    .filter()
+    .search(['name', 'slug']);
+
+  const [meta, data] = await Promise.all([
+    businessCategories.countTotal(),
+    businessCategories.modelQuery,
+  ]);
+  return { meta, data };
+};
+
+//  Get Single Business Category
+const getSingleBusinessCategory = async (id: string, currentUser: AuthUser) => {
+  const category = await BusinessCategory.findById(id);
+  if (!category) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+  }
+
+  if (
+    (currentUser.role === 'VENDOR' || currentUser.role === 'FLEET_MANAGER') &&
+    category.isActive === false
+  ) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+  }
+
   return category;
 };
 
@@ -130,7 +149,10 @@ const permanentDeleteBusinessCategory = async (id: string) => {
 };
 
 //  Create Product Category (Linked to Business)
-const createProductCategory = async (payload: TProductCategory) => {
+const createProductCategory = async (
+  payload: TProductCategory,
+  icon: string | null
+) => {
   const business = await BusinessCategory.findById(payload.businessCategoryId);
   if (!business) {
     throw new AppError(
@@ -149,51 +171,19 @@ const createProductCategory = async (payload: TProductCategory) => {
     .replace(/[^\w ]+/g, '')
     .replace(/ +/g, '-');
 
+  if (icon) {
+    payload.icon = icon;
+  }
+
   const category = await ProductCategory.create(payload);
-  return category;
-};
-
-//  Get All Product Categories (with Business ref)
-const getAllProductCategories = async (
-  query: Record<string, unknown>,
-  currentUser: AuthUser
-) => {
-  if (currentUser.role === 'VENDOR') {
-    query.isActive = true;
-    query.isDeleted = false;
-    const findBusinessCategory = await BusinessCategory.findOne({
-      name: currentUser?.businessDetails?.businessType,
-    });
-    query.businessCategoryId = findBusinessCategory?._id;
-  }
-  const productCategories = new QueryBuilder(ProductCategory.find(), query)
-    .fields()
-    .paginate()
-    .sort()
-    .filter()
-    .search(['name', 'slug']);
-
-  const meta = await productCategories.countTotal();
-  const data = await productCategories.modelQuery;
-  return { meta, data };
-};
-
-// get single product category
-const getSingleProductCategory = async (id: string, currentUser: AuthUser) => {
-  const category = await ProductCategory.findById(id);
-  if (!category)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
-  if (currentUser.role === 'VENDOR' && category.isActive === false) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
-  }
-
   return category;
 };
 
 //  Update Product Category
 const updateProductCategory = async (
   id: string,
-  payload: Partial<TProductCategory>
+  payload: Partial<TProductCategory>,
+  icon: string | null
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
@@ -226,8 +216,59 @@ const updateProductCategory = async (
     );
   }
 
+  if (icon) {
+    if (category.icon) {
+      const oldIcon = category.icon;
+      deleteSingleImageFromCloudinary(oldIcon).catch((error) => {
+        console.log(error);
+      });
+    }
+    category.icon = icon;
+  }
+
   Object.assign(category, payload);
   await category.save();
+
+  return category;
+};
+
+//  Get All Product Categories (with Business ref)
+const getAllProductCategories = async (
+  query: Record<string, unknown>,
+  currentUser: AuthUser
+) => {
+  if (currentUser.role === 'VENDOR') {
+    query.isActive = true;
+    query.isDeleted = false;
+    const findBusinessCategory = await BusinessCategory.findOne({
+      name: currentUser?.businessDetails?.businessType,
+    })
+      .select('_id')
+      .lean();
+    query.businessCategoryId = findBusinessCategory?._id;
+  }
+  const productCategories = new QueryBuilder(ProductCategory.find(), query)
+    .fields()
+    .paginate()
+    .sort()
+    .filter()
+    .search(['name', 'slug']);
+
+  const [meta, data] = await Promise.all([
+    productCategories.countTotal(),
+    productCategories.modelQuery,
+  ]);
+  return { meta, data };
+};
+
+// get single product category
+const getSingleProductCategory = async (id: string, currentUser: AuthUser) => {
+  const category = await ProductCategory.findById(id);
+  if (!category)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+  if (currentUser.role === 'VENDOR' && category.isActive === false) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+  }
 
   return category;
 };
@@ -278,9 +319,9 @@ export const CategoryService = {
   softDeleteBusinessCategory,
   permanentDeleteBusinessCategory,
   createProductCategory,
+  updateProductCategory,
   getAllProductCategories,
   getSingleProductCategory,
-  updateProductCategory,
   softDeleteProductCategory,
   permanentDeleteProductCategory,
 };

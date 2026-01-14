@@ -8,7 +8,6 @@ export type TCustomer = {
   // ------------------------------------------------------
   _id?: string;
   userId: string;
-  moloniCustomerId: number;
   role: 'CUSTOMER';
   email?: string;
 
