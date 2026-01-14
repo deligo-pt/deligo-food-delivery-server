@@ -806,18 +806,18 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   if (submittedUser?.role === 'DELIVERY_PARTNER') {
     if (
       currentUser?.role === 'FLEET_MANAGER' &&
-      submittedUser?.registeredBy.toString() !== currentUser._id.toString()
+      submittedUser?.registeredBy?.id.toString() !== currentUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user1'
+        'You do not have permission to submit approval request for this user'
       );
     }
   } else {
     if (submittedUser.userId !== currentUser.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user2'
+        'You do not have permission to submit approval request for this user'
       );
     }
   }
