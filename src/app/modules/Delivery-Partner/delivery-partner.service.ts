@@ -29,6 +29,13 @@ const updateDeliveryPartner = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
 
+  if (!existingDeliveryPartner.isEmailVerified) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please verify your email before updating your profile.'
+    );
+  }
+
   // ---------------------------------------------------------
   // Check if update is locked
   // ---------------------------------------------------------
@@ -54,19 +61,12 @@ const updateDeliveryPartner = async (
         'You are not authorized to update this profile.'
       );
     }
-
-    if (!existingDeliveryPartner.isEmailVerified) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Please verify your email before updating your profile.'
-      );
-    }
   }
 
   // Admin/SuperAdmin updating a partner they registered
   if (
     currentUser.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner.registeredBy?.toString() !==
+    existingDeliveryPartner.registeredBy?.id.toString() !==
       currentUser?._id.toString()
   ) {
     throw new AppError(
