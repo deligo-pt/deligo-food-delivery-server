@@ -170,7 +170,7 @@ const deliverPartnerDocImageUpload = async (
   if (currentUser?.role === 'FLEET_MANAGER') {
     if (
       currentUser?._id.toString() !==
-      existingDeliveryPartner?.registeredBy?.toString()
+      existingDeliveryPartner?.registeredBy?.id.toString()
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -209,9 +209,9 @@ const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
   currentUser: AuthUser
 ) => {
-  if (currentUser?.role === 'FLEET_MANAGER') {
-    query.registeredBy = currentUser?._id.toString();
-  }
+  // if (currentUser?.role === 'FLEET_MANAGER') {
+  //   query.registeredBy = currentUser?._id.toString();
+  // }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
     .fields()
@@ -273,7 +273,7 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (
     currentUser?.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner?.registeredBy?.toString() !==
+    existingDeliveryPartner?.registeredBy?.id.toString() !==
       currentUser?._id.toString()
   ) {
     throw new AppError(
