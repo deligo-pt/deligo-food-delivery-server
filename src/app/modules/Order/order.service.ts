@@ -186,7 +186,7 @@ const getAllOrders = async (
 
     case 'FLEET_MANAGER': {
       const managedPartners = await DeliveryPartner.find({
-        registeredBy: currentUser._id,
+        'registeredBy.id': currentUser._id,
       }).select('_id');
       const partnerIds = managedPartners.map((partner) => partner._id);
       query.deliveryPartnerId = {
@@ -474,7 +474,7 @@ const updateOrderStatusByVendor = async (
       const stockOperations = order.items.map((item) => ({
         updateOne: {
           filter: {
-            _id: item.productId.toString(),
+            _id: new mongoose.Types.ObjectId(item.productId),
             'stock.quantity': { $gte: item.quantity },
           },
           update: {
@@ -557,7 +557,7 @@ const updateOrderStatusByVendor = async (
       // --------------------------------------------------------
       const stockOperations = order.items.map((item) => ({
         updateOne: {
-          filter: { productId: item.productId.toString() },
+          filter: { _id: new mongoose.Types.ObjectId(item.productId) },
           update: {
             $inc: { 'stock.quantity': item.quantity },
           },

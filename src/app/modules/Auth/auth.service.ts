@@ -1219,7 +1219,9 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
     currentUser?.role === 'FLEET_MANAGER' &&
     existingUser?.role === 'DELIVERY_PARTNER'
   ) {
-    if (currentUser?._id.toString() !== existingUser?.registeredBy.toString()) {
+    if (
+      currentUser?._id.toString() !== existingUser?.registeredBy.id.toString()
+    ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to delete this user!'

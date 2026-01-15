@@ -10,6 +10,7 @@ import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { OfferServices } from '../Offer/offer.service';
+import mongoose from 'mongoose';
 
 // Checkout Service
 const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
@@ -179,8 +180,8 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     totalTaxAmount += itemTax;
 
     return {
-      productId: product._id,
-      vendorId: product.vendorId,
+      productId: product._id as mongoose.Types.ObjectId,
+      vendorId: product.vendorId as mongoose.Types.ObjectId,
       name: product.name,
       image: product.images?.[0] || '',
       variantName: item.variantName,
