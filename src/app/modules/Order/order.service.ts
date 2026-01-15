@@ -557,7 +557,7 @@ const updateOrderStatusByVendor = async (
       // --------------------------------------------------------
       const stockOperations = order.items.map((item) => ({
         updateOne: {
-          filter: { productId: item.productId },
+          filter: { productId: item.productId.toString() },
           update: {
             $inc: { 'stock.quantity': item.quantity },
           },
