@@ -110,7 +110,7 @@ const getAllRatings = async (
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const myDeliveryPartners = await DeliveryPartner.find({
-      registeredBy: currentUser._id,
+      'registeredBy.id': currentUser._id,
     }).select('_id');
     const partnerIds = myDeliveryPartners.map((dp) => dp._id);
     query.targetId = { $in: [...partnerIds, currentUser._id] };

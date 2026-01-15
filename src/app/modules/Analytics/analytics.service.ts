@@ -264,7 +264,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
   startOfDay.setHours(0, 0, 0, 0);
 
   const myPartners = await DeliveryPartner.find({
-    registeredBy: managerId,
+    'registeredBy.id': managerId,
     isDeleted: false,
   }).select('_id');
 
@@ -278,12 +278,12 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
     statusStats,
   ] = await Promise.all([
     DeliveryPartner.countDocuments({
-      registeredBy: managerId,
+      'registeredBy.id': managerId,
       isDeleted: false,
     }),
 
     DeliveryPartner.countDocuments({
-      registeredBy: managerId,
+      'registeredBy.id': managerId,
       'operationalData.currentStatus': { $ne: currentStatusOptions.OFFLINE },
       isDeleted: false,
     }),
@@ -295,12 +295,12 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
     }),
 
     DeliveryPartner.aggregate([
-      { $match: { registeredBy: managerId, isDeleted: false } },
+      { $match: { 'registeredBy.id': managerId, isDeleted: false } },
       { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
     ]),
 
     DeliveryPartner.aggregate([
-      { $match: { registeredBy: managerId, isDeleted: false } },
+      { $match: { 'registeredBy.id': managerId, isDeleted: false } },
       { $group: { _id: '$operationalData.currentStatus', count: { $sum: 1 } } },
     ]),
   ]);
@@ -322,7 +322,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
       : '0';
 
   let topDrivers = await DeliveryPartner.find({
-    registeredBy: managerId,
+    'registeredBy.id': managerId,
     isDeleted: false,
     'rating.average': { $exists: true, $gt: 0 },
   })
@@ -334,7 +334,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
 
   if (!topDrivers.length) {
     topDrivers = await DeliveryPartner.find({
-      registeredBy: managerId,
+      'registeredBy.id': managerId,
       isDeleted: false,
     })
       .sort({ createdAt: -1 })
@@ -389,7 +389,7 @@ const getPartnerPerformanceAnalytics = async (
   startDate.setDate(endDate.getDate() - days);
 
   const myPartners = await DeliveryPartner.find({
-    registeredBy: managerId,
+    'registeredBy.id': managerId,
     isDeleted: false,
   }).select('_id');
   const partnerIds = myPartners.map((p) => p._id);
@@ -455,7 +455,7 @@ const getPartnerPerformanceAnalytics = async (
     'userId',
   ];
   const partnerQuery = new QueryBuilder(
-    DeliveryPartner.find({ registeredBy: managerId, isDeleted: false }),
+    DeliveryPartner.find({ 'registeredBy.id': managerId, isDeleted: false }),
     query
   )
     .search(searchableFields)
