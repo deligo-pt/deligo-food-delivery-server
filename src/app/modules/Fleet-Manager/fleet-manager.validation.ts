@@ -24,6 +24,8 @@ const fleetManagerUpdateValidationSchema = z.object({
       .object({
         businessName: z.string().optional(),
         businessLicenseNumber: z.string().optional(),
+        NIF: z.string().optional(),
+        totalBranches: z.number().optional(),
       })
       .optional(),
 
