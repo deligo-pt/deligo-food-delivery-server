@@ -1,48 +1,57 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { z } from 'zod';
 
-const createTaxValidationSchema = z.object({
-  body: z.object({
-    taxName: z
-      .string({
-        required_error: 'Tax name is required',
-      })
-      .trim(),
+const TAX_RATES = [0, 6, 13, 23] as const;
+const TAX_CODES = ['NOR', 'INT', 'RED', 'ISE'] as const;
 
-    taxCode: z.enum(['NOR', 'INT', 'RED', 'ISE'], {
-      required_error: 'Tax code must be one of: NOR, INT, RED, ISE',
+const baseTaxSchema = {
+  taxName: z.string().trim(),
+  taxCode: z.enum(TAX_CODES),
+  taxRate: z
+    .number()
+    .refine((val) => (TAX_RATES as unknown as number[]).includes(val), {
+      message: `Tax rate must be one of: ${TAX_RATES.join(', ')}`,
     }),
+  countryID: z
+    .string()
+    .default('PRT')
+    .transform((val) => val.toUpperCase()),
+  TaxRegionID: z.string().default('PRT').optional(),
+  taxGroupID: z.string().default('IVA'),
+  description: z
+    .string()
+    .min(10, 'Description should be at least 10 characters long'),
+  taxExemptionCode: z.string().optional(),
+  taxExemptionReason: z.string().optional(),
+  isActive: z.boolean().default(true),
+};
 
-    taxRate: z
-      .union([z.literal(6), z.literal(13), z.literal(23), z.literal(0)])
-      .refine((val) => [6, 13, 23, 0].includes(val), {
-        message: 'Tax rate must be 6, 13, 23, or 0',
-      }),
+const exemptionRefine = (data: any) => {
+  if (data.taxRate === 0) {
+    return !!data.taxExemptionCode && !!data.taxExemptionReason;
+  }
+  return true;
+};
 
-    countryID: z
-      .string({
-        required_error: 'Country ID is required',
-      })
-      .default('PRT')
-      .transform((val) => val.toUpperCase()),
+const exemptionMessage = {
+  message: 'Tax exemption code and reason are required when tax rate is 0',
+  path: ['taxExemptionCode'],
+};
 
-    TaxRegionID: z.string().default('PRT').optional(),
+// 1. Create Schema
+export const createTaxValidationSchema = z.object({
+  body: z.object(baseTaxSchema).refine(exemptionRefine, exemptionMessage),
+});
 
-    taxGroupID: z.string().default('IVA'),
-
-    description: z
-      .string({
-        required_error: 'Description is required for tax compliance',
-      })
-      .min(10, 'Description should be at least 10 characters long'),
-
-    taxExemptionCode: z.string().optional(),
-
-    taxExemptionReason: z.string().optional(),
-
-    isActive: z.boolean().default(true),
-  }),
+// 2. Update Schema
+export const updateTaxValidationSchema = z.object({
+  body: z
+    .object(baseTaxSchema)
+    .partial()
+    .refine(exemptionRefine, exemptionMessage),
 });
 
 export const TaxValidations = {
   createTaxValidationSchema,
+  updateTaxValidationSchema,
 };

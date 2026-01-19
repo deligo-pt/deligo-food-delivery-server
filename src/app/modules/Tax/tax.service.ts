@@ -61,6 +61,52 @@ const createTax = async (payload: TTax) => {
   return result;
 };
 
+// Update Tax Service
+const updateTax = async (taxId: string, payload: Partial<TTax>) => {
+  const isExist = await Tax.findById(taxId);
+  if (!isExist) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Tax record not found!');
+  }
+
+  if (payload.taxCode || payload.taxRate !== undefined) {
+    const isDuplicate = await checkExistingTax(
+      payload.taxCode || isExist.taxCode,
+      payload.taxRate !== undefined ? payload.taxRate : isExist.taxRate,
+      payload.countryID || isExist.countryID,
+      taxId,
+    );
+
+    if (isDuplicate) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `Conflict: Another tax with this code or rate already exists.`,
+      );
+    }
+  }
+
+  const finalRate =
+    payload.taxRate !== undefined ? payload.taxRate : isExist.taxRate;
+  if (finalRate === 0) {
+    const exemptionCode = payload.taxExemptionCode || isExist.taxExemptionCode;
+    const exemptionReason =
+      payload.taxExemptionReason || isExist.taxExemptionReason;
+
+    if (!exemptionCode || !exemptionReason) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Tax rate 0 requires a valid Tax Exemption Code and Reason.',
+      );
+    }
+  }
+
+  const result = await Tax.findByIdAndUpdate(taxId, payload, {
+    new: true,
+    runValidators: true,
+  });
+
+  return result;
+};
+
 // Get all taxes service
 const getAllTaxes = async (query: Record<string, unknown>) => {
   const taxes = new QueryBuilder(Tax.find(), query)
@@ -88,6 +134,7 @@ const getSingleTax = async (taxId: string) => {
 
 export const TaxService = {
   createTax,
+  updateTax,
   getAllTaxes,
   getSingleTax,
 };

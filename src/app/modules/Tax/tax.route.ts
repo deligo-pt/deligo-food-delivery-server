@@ -14,6 +14,14 @@ router.post(
   TaxController.createTax,
 );
 
+// update tax route
+router.patch(
+  '/:taxId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(TaxValidations.updateTaxValidationSchema),
+  TaxController.updateTax,
+);
+
 // get all taxes route
 router.get(
   '/',
