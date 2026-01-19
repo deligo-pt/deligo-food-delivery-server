@@ -15,8 +15,11 @@ const createAddonGroupValidationSchema = z.object({
         z.object({
           name: z.string({ required_error: 'Option name is required' }),
           price: z.number().min(0, 'Price cannot be negative'),
+          tax: z.string({
+            required_error: 'Tax ID is required for each option',
+          }),
           isActive: z.boolean().optional().default(true),
-        })
+        }),
       )
       .min(1, 'At least one option must be provided in the group'),
     isActive: z.boolean().optional().default(true),
@@ -33,10 +36,12 @@ const updateAddonGroupValidationSchema = z.object({
         z.object({
           name: z.string().optional(),
           price: z.number().min(0).optional(),
+          tax: z.string().optional(),
           isActive: z.boolean().optional(),
-        })
+        }),
       )
       .optional(),
+    isActive: z.boolean().optional(),
   }),
 });
 
