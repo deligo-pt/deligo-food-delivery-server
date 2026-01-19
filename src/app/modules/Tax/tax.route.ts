@@ -43,4 +43,11 @@ router.delete(
   TaxController.softDeleteTax,
 );
 
+// permanent delete tax route
+router.delete(
+  '/permanent-delete/:taxId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  TaxController.permanentDeleteTax,
+);
+
 export const TaxRoutes = router;

@@ -132,7 +132,7 @@ const getSingleTax = async (taxId: string) => {
   return result;
 };
 
-// soft delete single tax service
+// soft delete  tax service
 const softDeleteTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
@@ -156,10 +156,35 @@ const softDeleteTax = async (taxId: string) => {
   };
 };
 
+// permanently delete  tax service
+const permanentDeleteTax = async (taxId: string) => {
+  const result = await Tax.findById(taxId);
+  if (!result) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `Tax record with ID '${taxId}' not found!`,
+    );
+  }
+
+  if (!result.isDeleted) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      'Tax is not soft deleted. Please soft delete first.',
+    );
+  }
+
+  await Tax.findByIdAndDelete(taxId);
+
+  return {
+    message: 'Tax permanently deleted successfully',
+  };
+};
+
 export const TaxService = {
   createTax,
   updateTax,
   getAllTaxes,
   getSingleTax,
   softDeleteTax,
+  permanentDeleteTax,
 };
