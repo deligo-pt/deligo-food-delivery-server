@@ -14,6 +14,31 @@ const createTax = catchAsync(async (req, res) => {
   });
 });
 
+// get all taxes controller
+const getAllTaxes = catchAsync(async (req, res) => {
+  const result = await TaxService.getAllTaxes(req.query);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Taxes retrieved successfully',
+    data: result,
+  });
+});
+
+// get single tax controller
+const getSingleTax = catchAsync(async (req, res) => {
+  const { taxId } = req.params;
+  const result = await TaxService.getSingleTax(taxId);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Tax retrieved successfully',
+    data: result,
+  });
+});
+
 export const TaxController = {
   createTax,
+  getAllTaxes,
+  getSingleTax,
 };
