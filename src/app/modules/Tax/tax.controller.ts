@@ -49,9 +49,22 @@ const getSingleTax = catchAsync(async (req, res) => {
   });
 });
 
+// soft delete tax controller
+const softDeleteTax = catchAsync(async (req, res) => {
+  const { taxId } = req.params;
+  const result = await TaxService.softDeleteTax(taxId);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result?.message,
+    data: null,
+  });
+});
+
 export const TaxController = {
   createTax,
   updateTax,
   getAllTaxes,
   getSingleTax,
+  softDeleteTax,
 };

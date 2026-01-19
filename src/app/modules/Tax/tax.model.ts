@@ -49,6 +49,10 @@ const taxSchema = new Schema<TTax>(
       type: Boolean,
       default: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

@@ -38,13 +38,13 @@ const exemptionMessage = {
   path: ['taxExemptionCode'],
 };
 
-// 1. Create Schema
-export const createTaxValidationSchema = z.object({
+// Create Schema
+const createTaxValidationSchema = z.object({
   body: z.object(baseTaxSchema).refine(exemptionRefine, exemptionMessage),
 });
 
-// 2. Update Schema
-export const updateTaxValidationSchema = z.object({
+// Update Schema
+const updateTaxValidationSchema = z.object({
   body: z
     .object(baseTaxSchema)
     .partial()

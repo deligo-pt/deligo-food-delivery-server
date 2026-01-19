@@ -36,4 +36,11 @@ router.get(
   TaxController.getSingleTax,
 );
 
+// soft delete tax route
+router.delete(
+  '/soft-delete/:taxId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  TaxController.softDeleteTax,
+);
+
 export const TaxRoutes = router;

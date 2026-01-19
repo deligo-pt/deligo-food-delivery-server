@@ -12,4 +12,5 @@ export type TTax = {
   taxExemptionCode?: string;
   taxExemptionReason?: string;
   isActive: boolean;
+  isDeleted: boolean;
 };

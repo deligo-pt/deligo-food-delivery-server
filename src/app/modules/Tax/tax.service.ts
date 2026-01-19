@@ -132,9 +132,34 @@ const getSingleTax = async (taxId: string) => {
   return result;
 };
 
+// soft delete single tax service
+const softDeleteTax = async (taxId: string) => {
+  const result = await Tax.findById(taxId);
+  if (!result) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `Tax record with ID '${taxId}' not found!`,
+    );
+  }
+  if (result.isActive) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      'Active tax cannot be deleted. Please deactivate first.',
+    );
+  }
+
+  result.isDeleted = true;
+  await result.save();
+
+  return {
+    message: 'Tax soft deleted successfully',
+  };
+};
+
 export const TaxService = {
   createTax,
   updateTax,
   getAllTaxes,
   getSingleTax,
+  softDeleteTax,
 };
