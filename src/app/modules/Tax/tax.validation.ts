@@ -4,6 +4,13 @@ import { z } from 'zod';
 const TAX_RATES = [0, 6, 13, 23] as const;
 const TAX_CODES = ['NOR', 'INT', 'RED', 'ISE'] as const;
 
+const TAX_MAPPING: Record<string, number> = {
+  NOR: 23,
+  INT: 13,
+  RED: 6,
+  ISE: 0,
+};
+
 const baseTaxSchema = {
   taxName: z.string().trim(),
   taxCode: z.enum(TAX_CODES),
@@ -26,29 +33,38 @@ const baseTaxSchema = {
   isActive: z.boolean().default(true),
 };
 
-const exemptionRefine = (data: any) => {
-  if (data.taxRate === 0) {
-    return !!data.taxExemptionCode && !!data.taxExemptionReason;
+const taxLogicRefine = (data: any, ctx: z.RefinementCtx) => {
+  if (data.taxCode && data.taxRate !== undefined) {
+    const expectedRate = TAX_MAPPING[data.taxCode];
+    if (data.taxRate !== expectedRate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid rate for ${data.taxCode}. Expected ${expectedRate}% but got ${data.taxRate}%`,
+        path: ['taxRate'],
+      });
+    }
   }
-  return true;
-};
 
-const exemptionMessage = {
-  message: 'Tax exemption code and reason are required when tax rate is 0',
-  path: ['taxExemptionCode'],
+  if (data.taxRate === 0) {
+    if (!data.taxExemptionCode || !data.taxExemptionReason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Tax exemption code and reason are required when tax rate is 0',
+        path: ['taxExemptionCode'],
+      });
+    }
+  }
 };
 
 // Create Schema
 const createTaxValidationSchema = z.object({
-  body: z.object(baseTaxSchema).refine(exemptionRefine, exemptionMessage),
+  body: z.object(baseTaxSchema).superRefine(taxLogicRefine),
 });
 
 // Update Schema
 const updateTaxValidationSchema = z.object({
-  body: z
-    .object(baseTaxSchema)
-    .partial()
-    .refine(exemptionRefine, exemptionMessage),
+  body: z.object(baseTaxSchema).partial().superRefine(taxLogicRefine),
 });
 
 export const TaxValidations = {
