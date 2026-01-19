@@ -30,7 +30,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
 
     const decoded = verifyToken(
       token,
-      config.jwt.jwt_access_secret as string
+      config.jwt.jwt_access_secret as string,
     ) as JwtPayload;
 
     const { role, iat, userId } = decoded;
@@ -45,7 +45,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
     if (status === USER_STATUS.BLOCKED) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'Your account is blocked. Please contact support.'
+        'Your account is blocked. Please contact support.',
       );
     }
 
@@ -53,7 +53,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
       user.passwordChangedAt &&
       foundModel?.isJWTIssuedBeforePasswordChanged(
         user.passwordChangedAt,
-        iat as number
+        iat as number,
       )
     ) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
