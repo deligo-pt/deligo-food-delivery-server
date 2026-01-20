@@ -15,8 +15,12 @@ export const parseBody = catchAsync(async (req, res, next) => {
   const hasData = req.body?.data;
 
   if (hasData) {
-    req.body = JSON.parse(req.body.data);
-    return next();
+    try {
+      req.body = JSON.parse(req.body.data);
+      return next();
+    } catch (error) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid JSON data');
+    }
   }
 
   if (hasFiles && !hasData) {
@@ -26,6 +30,6 @@ export const parseBody = catchAsync(async (req, res, next) => {
 
   throw new AppError(
     httpStatus.BAD_REQUEST,
-    'Please provide required data or an image file as form data'
+    'Please provide required data or an image file as form data',
   );
 });

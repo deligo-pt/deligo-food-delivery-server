@@ -11,6 +11,7 @@ import handleDuplicateError from '../errors/handlerDuplicateError';
 import { TErrorSources } from '../interfaces/error.interface';
 import { TImageFiles } from '../interfaces/image.interface';
 import { deleteImageFromCloudinary } from '../utils/deleteImage';
+import multer from 'multer';
 
 const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
   let statusCode = 500;
@@ -30,7 +31,19 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
     }
   }
 
-  if (err instanceof ZodError) {
+  if (err instanceof multer.MulterError) {
+    statusCode = 400;
+    message = err.message;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'File size is too large. Maximum limit is 5MB.';
+    }
+    errorSources = [
+      {
+        path: 'file',
+        message: message,
+      },
+    ];
+  } else if (err instanceof ZodError) {
     const simplifiedError = handleZodError(err);
     statusCode = simplifiedError?.statusCode;
     message = simplifiedError?.message;
