@@ -14,13 +14,13 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   if (currentUser.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only customers are allowed to perform this action'
+      'Only customers are allowed to perform this action',
     );
   }
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Your account is not approved yet. You cannot perform this action.'
+      'Your account is not approved yet. You cannot perform this action.',
     );
   }
   const customerId = currentUser._id;
@@ -45,7 +45,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Store is closed or unavailable'
+      'Store is closed or unavailable',
     );
   }
 
@@ -57,14 +57,13 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   const taxRate = existingProduct.pricing?.taxRate || 0;
 
   let rawPrice = existingProduct.pricing.price;
-  let finalPrice = existingProduct.pricing.finalPrice || 0;
 
   const hasVariations =
     existingProduct.variations && existingProduct.variations.length > 0;
   if (hasVariations && !variantName) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please select a variation for this product'
+      'Please select a variation for this product',
     );
   }
 
@@ -76,20 +75,25 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     if (!variantOption)
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Variant '${variantName}' not found`
+        `Variant '${variantName}' not found`,
       );
 
     rawPrice = variantOption.price;
-    const discountAmt = (rawPrice * discountPercent) / 100;
-    finalPrice = parseFloat((rawPrice - discountAmt).toFixed(2));
   }
+  const discountAmtPerUnit = parseFloat(
+    ((rawPrice * discountPercent) / 100).toFixed(2),
+  );
 
-  const totalBeforeTax = parseFloat((finalPrice * quantity).toFixed(2));
+  const finalPricePerUnit = parseFloat(
+    (rawPrice - discountAmtPerUnit).toFixed(2),
+  );
+
+  const totalBeforeTax = parseFloat((finalPricePerUnit * quantity).toFixed(2));
   const itemTaxAmount = parseFloat(
-    (totalBeforeTax * (taxRate / 100)).toFixed(2)
+    (totalBeforeTax * (taxRate / 100)).toFixed(2),
   );
   const itemSubtotalWithTax = parseFloat(
-    (totalBeforeTax + itemTaxAmount).toFixed(2)
+    (totalBeforeTax + itemTaxAmount).toFixed(2),
   );
 
   const newItem = {
@@ -102,8 +106,8 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     variantName: variantName || null,
     quantity,
     originalPrice: rawPrice,
-    discountAmount: parseFloat((rawPrice - finalPrice).toFixed(2)),
-    price: finalPrice,
+    discountAmount: discountAmtPerUnit,
+    price: finalPricePerUnit,
     taxRate: taxRate,
     taxAmount: itemTaxAmount,
     totalBeforeTax: totalBeforeTax,
@@ -127,7 +131,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     const itemIndex = cart.items.findIndex(
       (i) =>
         i.productId.toString() === productId.toString() &&
-        i.variantName === variantName
+        (i.variantName || null) === (variantName || null),
     );
 
     if (itemIndex > -1) {
@@ -137,23 +141,23 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       if (newQuantity > existingProduct.stock.quantity)
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Insufficient product stock'
+          'Insufficient product stock',
         );
 
       currentItem.quantity = newQuantity;
       currentItem.totalBeforeTax = parseFloat(
-        (currentItem.price * currentItem.quantity).toFixed(2)
+        (currentItem.price * currentItem.quantity).toFixed(2),
       );
       currentItem.taxAmount = parseFloat(
-        (currentItem.totalBeforeTax * (taxRate / 100)).toFixed(2)
+        (currentItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
       );
       currentItem.subtotal = parseFloat(
-        (currentItem.totalBeforeTax + currentItem.taxAmount).toFixed(2)
+        (currentItem.totalBeforeTax + currentItem.taxAmount).toFixed(2),
       );
     } else {
       if (
         activeItem &&
-        activeItem.vendorId.toString() !== newItem.vendorId.toString()
+        activeItem.vendorId.toString() !== existingProduct.vendorId.toString()
       ) {
         newItem.isActive = false;
       }
@@ -171,12 +175,12 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 const activateItem = async (
   currentUser: AuthUser,
   productId: string,
-  variantName?: string
+  variantName?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`
+      `You are not approved to update cart. Your account is ${currentUser.status}`,
     );
   }
 
@@ -190,7 +194,7 @@ const activateItem = async (
   const itemToActivate = cart.items.find(
     (i) =>
       i.productId.toString() === productId.toString() &&
-      i.variantName === variantName
+      i.variantName === variantName,
   );
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
@@ -208,7 +212,7 @@ const activateItem = async (
     if (activeVendorId.toString() !== selectedVendorId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'You can only select items from the same vendor'
+        'You can only select items from the same vendor',
       );
     }
   }
@@ -238,12 +242,12 @@ const updateCartItemQuantity = async (
     variantName?: string;
     quantity: number;
     action: 'increment' | 'decrement';
-  }
+  },
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`
+      `You are not approved to update cart. Your account is ${currentUser.status}`,
     );
   }
 
@@ -254,7 +258,8 @@ const updateCartItemQuantity = async (
   }
   const { productId, variantName, quantity, action } = payload;
   const itemIndex = cart.items.findIndex(
-    (i) => i.productId.toString() === productId && i.variantName === variantName
+    (i) =>
+      i.productId.toString() === productId && i.variantName === variantName,
   );
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
@@ -273,7 +278,7 @@ const updateCartItemQuantity = async (
     if (targetItem.quantity - quantity < 1) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Not allowed to decrement quantity below 1'
+        'Not allowed to decrement quantity below 1',
       );
     }
     targetItem.quantity -= quantity;
@@ -281,20 +286,20 @@ const updateCartItemQuantity = async (
 
   const addonsTotal = (targetItem.addons || []).reduce(
     (sum, a) => sum + a.price * a.quantity,
-    0
+    0,
   );
 
   targetItem.totalBeforeTax = parseFloat(
-    (targetItem.price * targetItem.quantity + addonsTotal).toFixed(2)
+    (targetItem.price * targetItem.quantity + addonsTotal).toFixed(2),
   );
 
   const taxRate = targetItem.taxRate || 0;
   targetItem.taxAmount = parseFloat(
-    (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2)
+    (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
   );
 
   targetItem.subtotal = parseFloat(
-    (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2)
+    (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
   );
 
   // re-calculate active total
@@ -308,12 +313,12 @@ const updateCartItemQuantity = async (
 // delete cart item
 const deleteCartItem = async (
   currentUser: AuthUser,
-  itemsToDelete: { productId: string; variantName?: string }[]
+  itemsToDelete: { productId: string; variantName?: string }[],
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`
+      `You are not approved to update cart. Your account is ${currentUser.status}`,
     );
   }
 
@@ -328,7 +333,7 @@ const deleteCartItem = async (
     const isMatched = itemsToDelete.some(
       (deleteTarget) =>
         deleteTarget.productId === cartItem.productId.toString() &&
-        (deleteTarget.variantName || null) === (cartItem.variantName || null)
+        (deleteTarget.variantName || null) === (cartItem.variantName || null),
     );
 
     return !isMatched;
@@ -337,7 +342,7 @@ const deleteCartItem = async (
   if (cart.items.length === initialLength) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Selected items were not found in your cart'
+      'Selected items were not found in your cart',
     );
   }
 
@@ -356,12 +361,12 @@ const updateAddonQuantity = async (
     variantName?: string;
     optionId: string;
     action: 'increment' | 'decrement';
-  }
+  },
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`
+      `You are not approved to update cart. Your account is ${currentUser.status}`,
     );
   }
   const cart = await Cart.findOne({ customerId: currentUser._id });
@@ -370,7 +375,8 @@ const updateAddonQuantity = async (
   const { productId, variantName, optionId, action } = payload;
 
   const itemIndex = cart.items.findIndex(
-    (i) => i.productId.toString() === productId && i.variantName === variantName
+    (i) =>
+      i.productId.toString() === productId && i.variantName === variantName,
   );
   if (itemIndex === -1)
     throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');
@@ -397,7 +403,7 @@ const updateAddonQuantity = async (
   const { name: selectedAddonName, price: selectedAddonPrice } = addonData;
 
   const existingAddonIndex = targetItem.addons.findIndex(
-    (a: any) => a.name === selectedAddonName
+    (a: any) => a.name === selectedAddonName,
   );
 
   if (action === 'increment') {
@@ -424,19 +430,19 @@ const updateAddonQuantity = async (
 
   const addonsTotal = targetItem.addons.reduce(
     (sum: number, a: any) => sum + a.price * a.quantity,
-    0
+    0,
   );
 
   targetItem.totalBeforeTax = parseFloat(
-    (targetItem.price * targetItem.quantity + (addonsTotal || 0)).toFixed(2)
+    (targetItem.price * targetItem.quantity + (addonsTotal || 0)).toFixed(2),
   );
 
   const taxRate = targetItem.taxRate || 0;
   targetItem.taxAmount = parseFloat(
-    (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2)
+    (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
   );
   targetItem.subtotal = parseFloat(
-    (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2)
+    (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
   );
 
   await recalculateCartTotals(cart);
@@ -451,7 +457,7 @@ const viewCart = async (currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view cart. Your account is ${currentUser.status}`
+      `You are not approved to view cart. Your account is ${currentUser.status}`,
     );
   }
   const customerId = currentUser._id;
@@ -487,7 +493,7 @@ const clearCart = async (currentUser: AuthUser) => {
         discount: 0,
       },
     },
-    { new: true }
+    { new: true },
   );
   return cart;
 };
