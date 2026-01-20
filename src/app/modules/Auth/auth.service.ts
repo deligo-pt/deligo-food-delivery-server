@@ -496,9 +496,20 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 };
 
 // Logout User
-const logoutUser = async (email: string) => {
+const logoutUser = async (email: string, token: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
+
+  // if (!token) {
+  //   throw new AppError(httpStatus.BAD_REQUEST, 'Fcm token is required');
+  // }
+
+  if (token && user?.fcmTokens?.length) {
+    user.fcmTokens = user.fcmTokens.filter(
+      (fcmToken: string) => fcmToken !== token,
+    );
+    await user.save();
+  }
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');

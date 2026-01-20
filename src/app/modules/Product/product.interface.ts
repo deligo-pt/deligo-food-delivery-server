@@ -18,7 +18,7 @@ export type TProduct = {
   brand?: string;
 
   variations?: {
-    name: string; // e.g., "Size"
+    name: string;
     options: {
       label: string;
       price: number;
