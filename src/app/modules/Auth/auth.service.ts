@@ -38,10 +38,10 @@ const registerUser = async <
     email: string;
     role: TUserRole;
     isEmailVerified?: boolean;
-  }
+  },
 >(
   payload: T,
-  url: string
+  url: string,
 ) => {
   const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
   const userTypeData = USER_TYPE_MAP[userType];
@@ -60,7 +60,7 @@ const registerUser = async <
 
   //  Check existing user in ALL models
   const checkModels = ALL_USER_MODELS.map((M: any) =>
-    M.isUserExistsByEmail(payload.email).catch(() => null)
+    M.isUserExistsByEmail(payload.email).catch(() => null),
   );
 
   const checkUser = await Promise.all(checkModels);
@@ -69,13 +69,13 @@ const registerUser = async <
   if (existingUser && existingUser.isEmailVerified) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `${existingUser.email} already exists as ${existingUser.role}. Please Login!`
+      `${existingUser.email} already exists as ${existingUser.role}. Please Login!`,
     );
   }
 
   if (existingUser && !existingUser.isEmailVerified) {
     const index = checkUser.findIndex(
-      (user) => user && user.email === existingUser.email
+      (user) => user && user.email === existingUser.email,
     );
 
     if (index !== -1) {
@@ -85,7 +85,7 @@ const registerUser = async <
       } catch (error) {
         throw new AppError(
           httpStatus.INTERNAL_SERVER_ERROR,
-          'Error deleting user'
+          'Error deleting user',
         );
       }
     }
@@ -106,7 +106,7 @@ const registerUser = async <
     if (err?.code === 11000) {
       throw new AppError(
         httpStatus.CONFLICT,
-        'Something went wrong. Please try again'
+        'Something went wrong. Please try again',
       );
     }
     throw err;
@@ -120,7 +120,7 @@ const registerUser = async <
       date: new Date().toDateString(),
       user: payload?.role.toLocaleLowerCase(),
     },
-    'verify-email'
+    'verify-email',
   );
 
   // send email
@@ -128,7 +128,7 @@ const registerUser = async <
     await EmailHelper.sendEmail(
       payload?.email,
       emailHtml,
-      'Verify your email for DeliGo'
+      'Verify your email for DeliGo',
     );
   } catch (err: any) {
     console.error('Email sending failed:', err);
@@ -147,11 +147,11 @@ const onboardUser = async <
     role: TUserRole;
     isEmailVerified?: boolean;
     registeredBy?: any;
-  }
+  },
 >(
   payload: T,
   targetRole: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const mapKey = `/create-${targetRole}` as keyof typeof USER_TYPE_MAP;
 
@@ -161,14 +161,14 @@ const onboardUser = async <
   if (!userTypeData || !modelData) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Invalid onboarding target role'
+      'Invalid onboarding target role',
     );
   }
 
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status}. Only approved users can onboard others.`
+      `Your account is ${currentUser.status}. Only approved users can onboard others.`,
     );
   }
 
@@ -186,7 +186,7 @@ const onboardUser = async <
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You do not have permission to onboard a ${targetRole.replace('-', ' ')}`
+      `You do not have permission to onboard a ${targetRole.replace('-', ' ')}`,
     );
   }
 
@@ -198,7 +198,7 @@ const onboardUser = async <
   const { otp, otpExpires } = generateOtp();
 
   const checkModels = ALL_USER_MODELS.map((M: any) =>
-    M.isUserExistsByEmail(payload.email).catch(() => null)
+    M.isUserExistsByEmail(payload.email).catch(() => null),
   );
   const checkResults = await Promise.all(checkModels);
   const existingUser = checkResults.find((user) => user && user.email);
@@ -207,11 +207,11 @@ const onboardUser = async <
     if (existingUser.isEmailVerified) {
       throw new AppError(
         httpStatus.CONFLICT,
-        `${existingUser.email} is already registered as ${existingUser.role}.`
+        `${existingUser.email} is already registered as ${existingUser.role}.`,
       );
     } else {
       const index = checkResults.findIndex(
-        (u) => u?.email === existingUser.email
+        (u) => u?.email === existingUser.email,
       );
       await ALL_USER_MODELS[index].deleteOne({ email: existingUser.email });
     }
@@ -221,7 +221,7 @@ const onboardUser = async <
 
   if (
     ['vendor', 'sub-vendor', 'delivery-partner'].includes(
-      targetRole.toLowerCase()
+      targetRole.toLowerCase(),
     )
   ) {
     registeredByValue = {
@@ -230,8 +230,8 @@ const onboardUser = async <
         currentUser.role === 'FLEET_MANAGER'
           ? 'FleetManager'
           : currentUser.role === 'VENDOR'
-          ? 'Vendor'
-          : 'Admin',
+            ? 'Vendor'
+            : 'Admin',
       role: currentUser.role,
     };
   } else {
@@ -256,7 +256,7 @@ const onboardUser = async <
     if (err?.code === 11000)
       throw new AppError(
         httpStatus.CONFLICT,
-        'User ID or Email already exists'
+        'User ID or Email already exists',
       );
     throw err;
   }
@@ -269,14 +269,14 @@ const onboardUser = async <
       date: new Date().toDateString(),
       user: payload.role.toLowerCase(),
     },
-    'verify-email'
+    'verify-email',
   );
 
   try {
     await EmailHelper.sendEmail(
       payload.email,
       emailHtml,
-      'Verify your email for DeliGo'
+      'Verify your email for DeliGo',
     );
   } catch (err) {
     console.error('Email sending failed:', err);
@@ -313,7 +313,7 @@ const loginUser = async (payload: TLoginUser) => {
   if (!user?.isEmailVerified) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'This user is not verified. Please verify your email.'
+      'This user is not verified. Please verify your email.',
     );
   }
 
@@ -343,13 +343,13 @@ const loginUser = async (payload: TLoginUser) => {
   const accessToken = createToken(
     jwtPayload,
     config.jwt.jwt_access_secret as string,
-    config.jwt.jwt_access_expires_in as string
+    config.jwt.jwt_access_expires_in as string,
   );
 
   const refreshToken = createToken(
     jwtPayload,
     config.jwt.jwt_refresh_secret as string,
-    config.jwt.jwt_refresh_expires_in as string
+    config.jwt.jwt_refresh_expires_in as string,
   );
 
   return {
@@ -367,7 +367,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   if (!payload?.email && !payload?.contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Email or contact number is required'
+      'Email or contact number is required',
     );
   }
 
@@ -377,7 +377,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   if (payload.email) {
     // Check if email exists in other user models
     const checkModels = ALL_USER_MODELS.map((M: any) =>
-      M.isUserExistsByEmail(payload.email).catch(() => null)
+      M.isUserExistsByEmail(payload.email).catch(() => null),
     );
     const checkUser = await Promise.all(checkModels);
     const user = checkUser.find((u) => u);
@@ -385,7 +385,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     if (user && user.role !== 'CUSTOMER') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This email is already registered as a different role'
+        'This email is already registered as a different role',
       );
     }
 
@@ -424,13 +424,13 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         date: new Date().toDateString(),
         user: existingUser?.name?.firstName || 'Customer',
       },
-      'verify-email'
+      'verify-email',
     );
     try {
       await EmailHelper.sendEmail(
         payload.email,
         emailHtml,
-        'Verify your email for DeliGo'
+        'Verify your email for DeliGo',
       );
     } catch (err: any) {
       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
@@ -496,9 +496,20 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 };
 
 // Logout User
-const logoutUser = async (email: string) => {
+const logoutUser = async (email: string, token: string) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
+
+  // if (!token) {
+  //   throw new AppError(httpStatus.BAD_REQUEST, 'Fcm token is required');
+  // }
+
+  if (token && user?.fcmTokens?.length) {
+    user.fcmTokens = user.fcmTokens.filter(
+      (fcmToken: string) => fcmToken !== token,
+    );
+    await user.save();
+  }
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -519,7 +530,7 @@ const logoutUser = async (email: string) => {
 // Change Password
 const changePassword = async (
   currentUser: AuthUser,
-  payload: { oldPassword: string; newPassword: string }
+  payload: { oldPassword: string; newPassword: string },
 ) => {
   // checking if the user is exist
 
@@ -535,7 +546,7 @@ const changePassword = async (
   if (currentUser?.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Customer no need to change password'
+      'Customer no need to change password',
     );
   }
 
@@ -560,7 +571,7 @@ const changePassword = async (
   //hash new password
   const newHashedPassword = await bcryptjs.hash(
     payload.newPassword,
-    Number(config.bcrypt_salt_rounds)
+    Number(config.bcrypt_salt_rounds),
   );
 
   await model.findOneAndUpdate(
@@ -571,7 +582,7 @@ const changePassword = async (
     {
       password: newHashedPassword,
       passwordChangedAt: new Date(),
-    }
+    },
   );
 
   return null;
@@ -589,7 +600,7 @@ const forgotPassword = async (email: string) => {
   if (user?.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Customer no need to reset password'
+      'Customer no need to reset password',
     );
   }
 
@@ -622,7 +633,7 @@ const forgotPassword = async (email: string) => {
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
     },
-    'reset-password'
+    'reset-password',
   );
 
   // send email
@@ -630,7 +641,7 @@ const forgotPassword = async (email: string) => {
     await EmailHelper.sendEmail(
       email,
       emailHtml,
-      'Reset your password for DeliGo'
+      'Reset your password for DeliGo',
     );
   } catch (err: any) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
@@ -646,7 +657,7 @@ const forgotPassword = async (email: string) => {
 const resetPassword = async (
   email: string,
   token: string,
-  newPassword: string
+  newPassword: string,
 ) => {
   const result = await findUserByEmailOrId({ email, isDeleted: false });
   const user = result?.user;
@@ -663,7 +674,7 @@ const resetPassword = async (
   if (user?.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Customer no need to reset password'
+      'Customer no need to reset password',
     );
   }
 
@@ -688,13 +699,13 @@ const resetPassword = async (
   if (!validUser) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Reset token is invalid or has been expired'
+      'Reset token is invalid or has been expired',
     );
   }
 
   const newHashedPassword = await bcryptjs.hash(
     newPassword,
-    Number(config.bcrypt_salt_rounds)
+    Number(config.bcrypt_salt_rounds),
   );
 
   await model.findOneAndUpdate(
@@ -707,7 +718,7 @@ const resetPassword = async (
       passwordChangedAt: new Date(),
       passwordResetToken: null,
       passwordResetTokenExpiresAt: null,
-    }
+    },
   );
 
   return {
@@ -720,7 +731,7 @@ const refreshToken = async (token: string) => {
   // checking if the given token is valid
   const decoded = verifyToken(
     token,
-    config.jwt.jwt_refresh_secret as string
+    config.jwt.jwt_refresh_secret as string,
   ) as JwtPayload;
 
   const { iat, userId } = decoded;
@@ -745,7 +756,7 @@ const refreshToken = async (token: string) => {
     user.passwordChangedAt &&
     model.isJWTIssuedBeforePasswordChanged(
       user.passwordChangedAt,
-      iat as number
+      iat as number,
     )
   ) {
     throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
@@ -766,7 +777,7 @@ const refreshToken = async (token: string) => {
   const accessToken = createToken(
     jwtPayload,
     config.jwt.jwt_access_secret as string,
-    config.jwt.jwt_access_expires_in as string
+    config.jwt.jwt_access_expires_in as string,
   );
 
   return {
@@ -786,20 +797,20 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   if (currentUser?.role === 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      "You can't submit approval request."
+      "You can't submit approval request.",
     );
   }
 
   if (submittedUser?.status === 'SUBMITTED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You have already submitted the approval request. Please wait for admin approval.'
+      'You have already submitted the approval request. Please wait for admin approval.',
     );
   }
   if (submittedUser?.status === 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Your account is already approved.'
+      'Your account is already approved.',
     );
   }
 
@@ -810,14 +821,14 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user'
+        'You do not have permission to submit approval request for this user',
       );
     }
   } else {
     if (submittedUser.userId !== currentUser.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user'
+        'You do not have permission to submit approval request for this user',
       );
     }
   }
@@ -836,14 +847,14 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
       userRole: submittedUser.role,
       date: new Date().toDateString(),
     },
-    'user-approval-submission-notification'
+    'user-approval-submission-notification',
   );
 
   try {
     await EmailHelper.sendEmail(
       submittedUser?.email,
       emailHtml,
-      `New ${submittedUser?.role} Submission for Approval`
+      `New ${submittedUser?.role} Submission for Approval`,
     );
   } catch (err: any) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
@@ -856,7 +867,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     'New User Submission for Approval',
     `New ${submittedUser?.role} Submission for Approval`,
     { userId: submittedUser?._id.toString(), role: submittedUser?.role },
-    'ACCOUNT'
+    'ACCOUNT',
   );
 
   return {
@@ -868,7 +879,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
 const approvedOrRejectedUser = async (
   userId: string,
   payload: TApprovedRejectsPayload,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // --------------------------------------------------------------
   // Authorization & Validation
@@ -876,7 +887,7 @@ const approvedOrRejectedUser = async (
   if (userId === currentUser.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You cannot change your own status'
+      'You cannot change your own status',
     );
   }
 
@@ -901,7 +912,7 @@ const approvedOrRejectedUser = async (
     //
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `User is already ${payload.status.toLowerCase()}`
+      `User is already ${payload.status.toLowerCase()}`,
     );
   }
 
@@ -914,7 +925,7 @@ const approvedOrRejectedUser = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Remarks are required for ${payload.status.toLowerCase()}`
+      `Remarks are required for ${payload.status.toLowerCase()}`,
     );
   }
 
@@ -962,7 +973,7 @@ const approvedOrRejectedUser = async (
       userId: submittedUser._id.toString(),
       role: submittedUser.role,
     },
-    'ACCOUNT'
+    'ACCOUNT',
   );
 
   // --------------------------------------------------------------
@@ -977,7 +988,7 @@ const approvedOrRejectedUser = async (
       date: new Date().toDateString(),
       status: payload.status,
     },
-    'user-approval-notification'
+    'user-approval-notification',
   );
 
   const emailSubject = `Your ${
@@ -1013,12 +1024,12 @@ const approvedOrRejectedUser = async (
 const verifyOtp = async (
   email?: string,
   contactNumber?: string,
-  otp?: string
+  otp?: string,
 ) => {
   if (!email && !contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Email or contact number is required for OTP verification'
+      'Email or contact number is required for OTP verification',
     );
   }
 
@@ -1031,7 +1042,7 @@ const verifyOtp = async (
     if (!user)
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'User not found. Please register.'
+        'User not found. Please register.',
       );
     if (user.otp !== otp)
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
@@ -1050,12 +1061,12 @@ const verifyOtp = async (
     if (!user)
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'User not found. Please register.'
+        'User not found. Please register.',
       );
 
     const res = await verifyMobileOtp(
       user.mobileOtpId as string,
-      otp as string
+      otp as string,
     );
     if (!res?.data?.verified) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
@@ -1069,7 +1080,7 @@ const verifyOtp = async (
   if (!user) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'User not found. Please register.'
+      'User not found. Please register.',
     );
   }
 
@@ -1090,12 +1101,12 @@ const verifyOtp = async (
   const accessToken = createToken(
     jwtPayload,
     config.jwt.jwt_access_secret as string,
-    config.jwt.jwt_access_expires_in as string
+    config.jwt.jwt_access_expires_in as string,
   );
   const refreshToken = createToken(
     jwtPayload,
     config.jwt.jwt_refresh_secret as string,
-    config.jwt.jwt_refresh_expires_in as string
+    config.jwt.jwt_refresh_expires_in as string,
   );
 
   return {
@@ -1112,7 +1123,7 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
   if (!email && !contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Email or contact number is required to resend OTP'
+      'Email or contact number is required to resend OTP',
     );
   }
   let user;
@@ -1121,14 +1132,14 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
     if (!user) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'User not found. Please register.'
+        'User not found. Please register.',
       );
     }
     const id = user.mobileOtpId;
     if (!id) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No OTP found to resend. Please request a new OTP.'
+        'No OTP found to resend. Please request a new OTP.',
       );
     }
     await resendMobileOtp(id as string);
@@ -1141,14 +1152,14 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
     if (!user) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'User not found. Please register.'
+        'User not found. Please register.',
       );
     }
 
     if (user?.isEmailVerified) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'User is already verified. Please login.'
+        'User is already verified. Please login.',
       );
     }
     const { otp, otpExpires } = generateOtp();
@@ -1165,7 +1176,7 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
         date: new Date().toDateString(),
         user: user?.name?.firstName || user?.role.toLocaleLowerCase(),
       },
-      'verify-email'
+      'verify-email',
     );
 
     // Send verification email
@@ -1173,7 +1184,7 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
       await EmailHelper.sendEmail(
         email,
         emailHtml,
-        'Verify your email for DeliGo'
+        'Verify your email for DeliGo',
       );
     } catch (err: any) {
       throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
@@ -1189,7 +1200,7 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a user. Your account is ${currentUser.status}`
+      `You are not approved to delete a user. Your account is ${currentUser.status}`,
     );
   }
 
@@ -1210,7 +1221,7 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
     if (currentUser?.userId !== existingUser?.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to delete this user!'
+        'You do not have permission to delete this user!',
       );
     }
   }
@@ -1224,7 +1235,7 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to delete this user!'
+        'You do not have permission to delete this user!',
       );
     }
   }
@@ -1246,7 +1257,7 @@ const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a user. Your account is ${currentUser.status}`
+      `You are not approved to delete a user. Your account is ${currentUser.status}`,
     );
   }
 
@@ -1254,14 +1265,14 @@ const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
   if (!existingUser) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'User already permanently deleted!'
+      'User already permanently deleted!',
     );
   }
 
   if (!existingUser.isDeleted) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'User should be soft deleted first!'
+      'User should be soft deleted first!',
     );
   }
 

@@ -763,7 +763,7 @@ const broadcastOrderToPartners = async (
   const notificationPayload = {
     title: 'New Order Available',
     body: 'A new order is available for you.',
-    data: { orderId: order._id.toString() },
+    data: { orderId: order.orderId },
   };
   partnerIds.forEach(async (id) => {
     NotificationService.sendToUser(
