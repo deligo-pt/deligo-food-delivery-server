@@ -19,4 +19,7 @@ const storage = new CloudinaryStorage({
       removeExtension(file.originalname),
   },
 });
-export const multerUpload = multer({ storage: storage });
+export const multerUpload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
