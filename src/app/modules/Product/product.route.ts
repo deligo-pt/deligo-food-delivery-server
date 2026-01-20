@@ -11,21 +11,21 @@ const router = Router();
 // Product create
 router.post(
   '/create-product',
-  auth('VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   multerUpload.array('files', 5),
   parseBody,
   validateRequest(ProductValidation.createProductValidationSchema),
-  ProductControllers.productCreate
+  ProductControllers.productCreate,
 );
 
 // Product update
 router.patch(
   '/:productId',
-  auth('VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   multerUpload.array('files', 5),
   parseBody,
   validateRequest(ProductValidation.updateProductValidationSchema),
-  ProductControllers.updateProduct
+  ProductControllers.updateProduct,
 );
 
 // Approved product by Admin
@@ -33,14 +33,14 @@ router.patch(
   '/approveOrReject/:productId',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(ProductValidation.approveProductValidationSchema),
-  ProductControllers.approvedProduct
+  ProductControllers.approvedProduct,
 );
 
 // Product delete images
 router.delete(
   '/:productId/images',
   auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
-  ProductControllers.deleteProductImages
+  ProductControllers.deleteProductImages,
 );
 
 // Get all products
@@ -53,9 +53,9 @@ router.get(
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
     'VENDOR',
-    'SUB_VENDOR'
+    'SUB_VENDOR',
   ),
-  ProductControllers.getAllProducts
+  ProductControllers.getAllProducts,
 );
 
 // Get single product
@@ -68,22 +68,22 @@ router.get(
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
     'VENDOR',
-    'SUB_VENDOR'
+    'SUB_VENDOR',
   ),
-  ProductControllers.getSingleProduct
+  ProductControllers.getSingleProduct,
 );
 
 // Soft delete product
 router.delete(
   '/soft-delete/:productId',
   auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
-  ProductControllers.softDeleteProduct
+  ProductControllers.softDeleteProduct,
 );
 
 // Permanent delete product
 router.delete(
   '/permanent-delete/:productId',
   auth('ADMIN', 'SUPER_ADMIN'),
-  ProductControllers.permanentDeleteProduct
+  ProductControllers.permanentDeleteProduct,
 );
 export const ProductRoutes = router;

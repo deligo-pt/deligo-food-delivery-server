@@ -180,7 +180,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {
     timestamps: true,
     virtuals: true,
-  }
+  },
 );
 
 // GEO INDEX FOR REAL-TIME LOCATION
@@ -190,5 +190,5 @@ customerSchema.plugin(passwordPlugin);
 
 export const Customer = model<TCustomer, IUserModel<TCustomer>>(
   'Customer',
-  customerSchema
+  customerSchema,
 );

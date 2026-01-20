@@ -23,7 +23,7 @@ const orderItemSchema = new Schema(
     totalBeforeTax: { type: Number, required: true },
     subtotal: { type: Number, required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const orderSchema = new Schema<TOrder>(
@@ -34,6 +34,11 @@ const orderSchema = new Schema<TOrder>(
       required: true,
       ref: 'Customer',
     },
+    // customer: {
+    //   name: { type: String, required: true },
+    //   email: { type: String, default: '' },
+    //   contactNumber: { type: String, default: '' },
+    // },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     deliveryPartnerId: {
       type: Schema.Types.ObjectId,
@@ -83,11 +88,20 @@ const orderSchema = new Schema<TOrder>(
     deliveredAt: { type: Date },
     preparationTime: { type: Number, default: 0 },
 
+    sageSync: {
+      isSynced: { type: Boolean, default: false },
+      invoiceNo: { type: String },
+      atcud: { type: String },
+      signature: { type: String },
+      syncError: { type: String },
+      syncedAt: { type: Date },
+    },
+
     isDeleted: { type: Boolean, default: false },
 
     isRated: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // The "Dispatching" Engine (Critical for partnerAcceptsDispatchedOrder)
@@ -115,5 +129,7 @@ orderSchema.index({
   vendorId: 1,
   'items.productId': 1,
 });
+
+orderSchema.index({ 'sageSync.isSynced': 1, orderStatus: 1 });
 
 export const Order = model<TOrder>('Order', orderSchema);

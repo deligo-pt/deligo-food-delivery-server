@@ -8,6 +8,11 @@ export type TOrder = {
   // Relationships
   orderId: string;
   customerId: mongoose.Types.ObjectId;
+  // customer: {
+  //   name: string;
+  //   email: string;
+  //   contactNumber: string;
+  // };
   vendorId: mongoose.Types.ObjectId;
   deliveryPartnerId?: mongoose.Types.ObjectId; // assigned after vendor accepts
   deliveryPartnerCancelReason?: string;
@@ -50,6 +55,15 @@ export type TOrder = {
   pickedUpAt?: Date;
   deliveredAt?: Date;
   preparationTime?: number;
+
+  sageSync?: {
+    isSynced: boolean;
+    invoiceNo?: string; // TransDocNumber from Sage
+    atcud?: string; // Official Tax Identifier
+    signature?: string; // Digital Signature for certification
+    syncError?: string; // Error logs if sync fails
+    syncedAt?: Date;
+  };
 
   // Status Tracking
   isDeleted: boolean;

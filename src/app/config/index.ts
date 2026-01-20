@@ -52,4 +52,8 @@ export default {
     upstash_redis_rest_url: process.env.UPSTASH_REDIS_REST_URL,
     upstash_redis_rest_token: process.env.UPSTASH_REDIS_REST_TOKEN,
   },
+  sage: {
+    api_url: process.env.SAGE_API_URL,
+    access_key: process.env.SAGE_ACCESS_KEY,
+  },
 };

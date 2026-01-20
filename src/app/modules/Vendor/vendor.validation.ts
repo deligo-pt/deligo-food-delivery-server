@@ -4,7 +4,7 @@ import { addressValidationSchema } from '../Admin/admin.validation';
 // --------------------------------------------------
 // Vendor Update Validation Schema
 // --------------------------------------------------
-export const vendorUpdateValidationSchema = z.object({
+const vendorUpdateValidationSchema = z.object({
   body: z.object({
     // Personal Details
     name: z
@@ -51,7 +51,7 @@ export const vendorUpdateValidationSchema = z.object({
 // --------------------------------------------------
 // Document Image Validation
 // --------------------------------------------------
-export const vendorDocImageValidationSchema = z.object({
+const vendorDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z.enum(
       [
@@ -62,7 +62,7 @@ export const vendorDocImageValidationSchema = z.object({
         'storePhoto',
         'menuUpload',
       ],
-      { required_error: 'Document title is required' }
+      { required_error: 'Document title is required' },
     ),
   }),
 });
@@ -70,7 +70,7 @@ export const vendorDocImageValidationSchema = z.object({
 // --------------------------------------------------
 // Vendor business location update validation schema
 // --------------------------------------------------
-export const vendorBusinessLocationUpdateValidationSchema = z.object({
+const vendorBusinessLocationUpdateValidationSchema = z.object({
   body: z.object({
     businessLocation: z.object({
       street: z.string({ required_error: 'Street is required' }).min(1),

@@ -14,112 +14,113 @@ import { calculateDistance } from '../../utils/calculateDistance';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { customAlphabet } from 'nanoid';
+import { SageService } from '../Sage/SageService';
+import { cleanForSKU, generateSlug } from './product.utils';
+import { Tax } from '../Tax/tax.model';
+import { TTax } from '../Tax/tax.interface';
 
 const generateShortId = customAlphabet(
   '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-  6
+  6,
 );
 
 // Product Create Service
 const createProduct = async (
   payload: TProduct,
   currentUser: AuthUser,
-  images: string[]
+  images: string[],
 ) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Vendor is not approved to add products'
+      'Vendor is not approved to add products',
     );
   }
 
-  const vendorCategory = currentUser?.businessDetails?.businessType;
-  const vendorCategoryExist = await BusinessCategory.findOne({
-    name: vendorCategory,
-  });
+  const [vendorCategoryExist, category] = await Promise.all([
+    BusinessCategory.findOne({
+      name: currentUser?.businessDetails?.businessType,
+    }),
+    ProductCategory.findById(payload.category),
+  ]);
 
-  payload.vendorId = currentUser?._id;
+  if (!category) throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
 
-  if (payload?.category) {
-    payload.category = payload?.category?.toUpperCase();
-    const category = await ProductCategory.findOne({ name: payload.category });
-    if (!category) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
-    }
+  if (
+    category.businessCategoryId.toString() !==
+    vendorCategoryExist?._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Category is not under your business type',
+    );
+  }
 
-    // Validate Addon Groups
-    if (payload.addonGroups && payload.addonGroups.length > 0) {
-      const validAddonsCount = await AddonGroup.countDocuments({
-        _id: { $in: payload.addonGroups },
-        vendorId: currentUser._id,
-        isDeleted: false,
-      });
-
-      if (validAddonsCount !== payload.addonGroups.length) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'One or more selected Addon Groups are invalid!'
-        );
-      }
-    }
-
-    // ------------ Unique IDs ------------
-    const shortId = generateShortId();
-    payload.productId = `PROD-${shortId}`;
-
-    const cleanForSKU = (str: string) =>
-      str
-        .toUpperCase()
-        .trim()
-        .replace(/[^A-Z0-9]/g, '')
-        .substring(0, 3);
-
-    const productNamePart = cleanForSKU(payload.name);
-
-    // ------------ Main Product SKU ------------
-    const categoryPart = payload.category.substring(0, 3);
-    payload.sku = `SKU-${categoryPart}-${productNamePart}-${shortId
-      .split('-')
-      .pop()}`;
-
-    // ------------ Variation SKUs ------------
-    if (payload.variations && payload.variations.length > 0) {
-      payload.variations = payload.variations.map((variation) => ({
-        ...variation,
-        options: variation.options.map((option) => {
-          const labelPart = cleanForSKU(option.label);
-          const varSKU = `VAR-${productNamePart}-${labelPart}-${Math.random()
-            .toString(36)
-            .substring(2, 5)
-            .toUpperCase()}`;
-          return {
-            ...option,
-            sku: option.sku || varSKU,
-          };
-        }),
-      }));
-    }
-
-    // Slug generation
-    payload.slug = payload.name
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    if (
-      category?.businessCategoryId.toString() !==
-      vendorCategoryExist?._id.toString()
-    ) {
+  if (payload.addonGroups?.length) {
+    const validAddonsCount = await AddonGroup.countDocuments({
+      _id: { $in: payload.addonGroups },
+      vendorId: currentUser._id,
+      isDeleted: false,
+    });
+    if (validAddonsCount !== payload.addonGroups.length) {
       throw new AppError(
-        httpStatus.NOT_FOUND,
-        'Category is not under business category of vendor'
+        httpStatus.BAD_REQUEST,
+        'One or more invalid Addon Groups',
       );
     }
   }
 
+  if (payload.pricing.taxId) {
+    const tax: TTax | null = await Tax.findById(payload.pricing.taxId);
+    if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
+    payload.pricing.taxRate = tax.taxRate;
+  }
+
+  const shortId = generateShortId();
+  const productNamePart = cleanForSKU(payload.name);
+
+  payload.vendorId = currentUser._id;
+  payload.productId = `PROD-${shortId}`;
+  payload.slug = generateSlug(payload.name);
+  payload.sku = `${category.name.substring(0, 3).toUpperCase()}-${productNamePart}-${shortId.split('-').pop()}`;
+
+  if (payload.variations?.length) {
+    let totalStock = 0;
+
+    payload.variations = payload.variations.map((variation) => ({
+      ...variation,
+      options: variation.options.map((option) => {
+        const stock = option.stockQuantity || 0;
+        totalStock += stock;
+
+        return {
+          ...option,
+          sku:
+            option.sku ||
+            `VAR-${productNamePart}-${cleanForSKU(option.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+          stockQuantity: stock,
+          totalAddedQuantity: stock,
+          isOutOfStock: stock <= 0,
+        };
+      }),
+    }));
+
+    payload.stock.quantity = totalStock;
+    payload.stock.totalAddedQuantity = totalStock;
+    payload.stock.hasVariations = true;
+  } else {
+    payload.stock.hasVariations = false;
+    payload.stock.totalAddedQuantity = payload.stock.quantity;
+  }
+
   const newProduct = await Product.create({ ...payload, images });
+
+  if (newProduct) {
+    SageService.syncProductToSage(newProduct).catch((error) => {
+      console.error('Error syncing product to Sage:', error);
+    });
+  }
+
   return newProduct;
 };
 
@@ -128,13 +129,10 @@ const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
   currentUser: AuthUser,
-  images: string[]
+  images: string[],
 ) => {
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Action forbidden. Your account status is ${currentUser.status}`
-    );
+    throw new AppError(httpStatus.FORBIDDEN, `Action forbidden.`);
   }
 
   const existingProduct = await Product.findOne({
@@ -143,58 +141,123 @@ const updateProduct = async (
   });
 
   if (!existingProduct) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Product not found or unauthorized'
-    );
-  }
-
-  const currentImagesCount = existingProduct.images?.length || 0;
-  if (currentImagesCount + images.length > 5) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'A product can have a maximum of 5 images'
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
   const { pricing, stock, meta, attributes, variations, ...remainingData } =
     payload;
-
   const modifiedData: Record<string, any> = { ...remainingData };
+  const productNamePart = cleanForSKU(existingProduct.name);
 
-  if (pricing && Object.keys(pricing).length) {
-    for (const [key, value] of Object.entries(pricing)) {
-      modifiedData[`pricing.${key}`] = value;
-    }
+  if (variations && variations.length > 0) {
+    let totalStock = 0;
+
+    const finalVariations = JSON.parse(
+      JSON.stringify(existingProduct.variations || []),
+    );
+
+    variations.forEach((newVar) => {
+      const varIndex = finalVariations.findIndex(
+        (v: any) => v.name === newVar.name,
+      );
+
+      if (varIndex > -1) {
+        newVar.options.forEach((newOpt) => {
+          const optIndex = finalVariations[varIndex].options.findIndex(
+            (o: any) => o.label === newOpt.label,
+          );
+
+          if (optIndex > -1) {
+            const existingOpt = finalVariations[varIndex].options[optIndex];
+            const updatedStock =
+              newOpt.stockQuantity ?? existingOpt.stockQuantity ?? 0;
+
+            finalVariations[varIndex].options[optIndex] = {
+              ...existingOpt,
+              ...newOpt,
+              stockQuantity: updatedStock,
+              totalAddedQuantity:
+                existingOpt.totalAddedQuantity || updatedStock,
+              isOutOfStock: updatedStock <= 0,
+            };
+          } else {
+            const stock = newOpt.stockQuantity || 0;
+            finalVariations[varIndex].options.push({
+              ...newOpt,
+              sku:
+                newOpt.sku ||
+                `VAR-${productNamePart}-${cleanForSKU(newOpt.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+              stockQuantity: stock,
+              totalAddedQuantity: stock,
+              isOutOfStock: stock <= 0,
+            });
+          }
+        });
+      } else {
+        const processedNewVar = {
+          ...newVar,
+          options: newVar.options.map((o) => {
+            const s = o.stockQuantity || 0;
+            return {
+              ...o,
+              sku:
+                o.sku ||
+                `VAR-${productNamePart}-${cleanForSKU(o.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+              stockQuantity: s,
+              totalAddedQuantity: s,
+              isOutOfStock: s <= 0,
+            };
+          }),
+        };
+        finalVariations.push(processedNewVar);
+      }
+    });
+
+    finalVariations.forEach((v: any) => {
+      v.options.forEach((o: any) => {
+        totalStock += o.stockQuantity || 0;
+      });
+    });
+
+    modifiedData.variations = finalVariations;
+    modifiedData['stock.quantity'] = totalStock;
+    modifiedData['stock.totalAddedQuantity'] = totalStock;
+    modifiedData['stock.hasVariations'] = true;
+  } else if (stock?.quantity !== undefined) {
+    modifiedData['stock.quantity'] = stock.quantity;
+    modifiedData['stock.totalAddedQuantity'] = stock.quantity;
+    modifiedData['stock.hasVariations'] = false;
   }
 
-  if (stock && Object.keys(stock).length) {
-    for (const [key, value] of Object.entries(stock)) {
-      modifiedData[`stock.${key}`] = value;
-    }
+  if (pricing) {
+    Object.keys(pricing).forEach((key) => {
+      modifiedData[`pricing.${key}`] = (pricing as any)[key];
+    });
   }
 
-  if (meta && Object.keys(meta).length) {
-    for (const [key, value] of Object.entries(meta)) {
-      modifiedData[`meta.${key}`] = value;
-    }
+  if (meta) {
+    Object.keys(meta).forEach((key) => {
+      modifiedData[`meta.${key}`] = (meta as any)[key];
+    });
   }
+
+  if (stock?.unit) modifiedData['stock.unit'] = stock.unit;
+
+  if (attributes) modifiedData.attributes = attributes;
 
   if (images && images.length > 0) {
     modifiedData.$push = { images: { $each: images } };
   }
 
-  if (variations) modifiedData.variations = variations;
-  if (attributes) modifiedData.attributes = attributes;
+  const finalStockQty =
+    modifiedData['stock.quantity'] ?? existingProduct.stock.quantity;
+  modifiedData['stock.availabilityStatus'] =
+    finalStockQty > 0 ? 'In Stock' : 'Out of Stock';
 
   const updatedProduct = await Product.findOneAndUpdate(
     { productId },
     modifiedData,
-    {
-      new: true,
-      runValidators: true,
-      context: 'query',
-    }
+    { new: true, runValidators: true, context: 'query' },
   );
 
   return updatedProduct;
@@ -204,7 +267,7 @@ const updateProduct = async (
 const approvedProduct = async (
   productId: string,
   currentUser: AuthUser,
-  payload: { isApproved: boolean; remarks?: string }
+  payload: { isApproved: boolean; remarks?: string },
 ) => {
   const existingProduct = await Product.findOne({
     productId,
@@ -216,7 +279,7 @@ const approvedProduct = async (
   if (existingProduct.isApproved === payload.isApproved) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Product is already ${payload.isApproved ? 'approved' : 'rejected'}`
+      `Product is already ${payload.isApproved ? 'approved' : 'rejected'}`,
     );
   }
 
@@ -229,7 +292,7 @@ const approvedProduct = async (
     if (payload.isApproved === false && !payload.remarks) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Remarks are required when rejecting a product'
+        'Remarks are required when rejecting a product',
       );
     }
     existingProduct.remarks = payload.remarks;
@@ -253,12 +316,12 @@ const approvedProduct = async (
 const deleteProductImages = async (
   productId: string,
   images: string[],
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete product images. Your account is ${currentUser.status}`
+      `You are not approved to delete product images. Your account is ${currentUser.status}`,
     );
   }
 
@@ -273,7 +336,7 @@ const deleteProductImages = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You can only delete images of your own products'
+      'You can only delete images of your own products',
     );
   }
 
@@ -296,12 +359,12 @@ const deleteProductImages = async (
 // get all products service
 const getAllProducts = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${currentUser.status}`
+      `You are not approved to view products. Your account is ${currentUser.status}`,
     );
   }
   const role = currentUser.role;
@@ -328,7 +391,7 @@ const getAllProducts = async (
         select:
           'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
       }),
-      query
+      query,
     )
       .fields()
       .filter()
@@ -416,7 +479,7 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${currentUser.status}`
+      `You are not approved to view products. Your account is ${currentUser.status}`,
     );
   }
 
@@ -459,7 +522,7 @@ const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a product. Your account is ${currentUser.status}`
+      `You are not approved to delete a product. Your account is ${currentUser.status}`,
     );
   }
 
@@ -468,7 +531,7 @@ const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
     if (currentUser._id.toString() !== product?.vendorId.toString()) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'You are not authorized to delete this product'
+        'You are not authorized to delete this product',
       );
     }
   }
@@ -494,12 +557,12 @@ const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
 //  product permanent delete service (admin only)
 const permanentDeleteProduct = async (
   productId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to permanently delete a product. Your account is ${currentUser.status}`
+      `You are not approved to permanently delete a product. Your account is ${currentUser.status}`,
     );
   }
 
@@ -508,7 +571,7 @@ const permanentDeleteProduct = async (
   if (product?.isDeleted === false) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Product must be soft deleted before permanent deletion'
+      'Product must be soft deleted before permanent deletion',
     );
   }
 

@@ -201,14 +201,14 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
     timestamps: true,
     virtuals: true,
-  }
+  },
 );
 
-vendorSchema.index({ 'businessLocation.locationPoint': '2dsphere' });
+vendorSchema.index({ currentSessionLocation: '2dsphere' });
 
 vendorSchema.plugin(passwordPlugin);
 
 export const Vendor = model<TVendor, IUserModel<TVendor>>(
   'Vendor',
-  vendorSchema
+  vendorSchema,
 );

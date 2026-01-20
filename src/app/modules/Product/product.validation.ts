@@ -5,6 +5,10 @@ const variationOptionSchema = z.object({
   label: z.string({ required_error: 'Variation label is required' }),
   price: z.number().min(0, 'Variation price must be non-negative'),
   sku: z.string().optional(),
+  stockQuantity: z
+    .number({ required_error: 'Variation stock quantity is required' })
+    .min(0),
+  isOutOfStock: z.boolean().default(false),
 });
 
 // Variation Group Schema (e.g., Size, Color)
@@ -30,8 +34,9 @@ const createProductValidationSchema = z.object({
     pricing: z.object({
       price: z.number().min(0, 'Price must be positive'),
       discount: z.number().min(0).max(100).default(0),
-      taxRate: z.number().min(0).max(100).default(0),
-      finalPrice: z.number().optional(),
+      taxId: z.string({ required_error: 'Tax ID is required' }),
+      // taxRate: z.number().min(0).max(100).default(0),
+      // finalPrice: z.number().optional(),
       currency: z.string().default('BDT'),
     }),
 
@@ -53,7 +58,7 @@ const createProductValidationSchema = z.object({
           z.boolean(),
           z.array(z.string()),
           z.null(),
-        ])
+        ]),
       )
       .optional(),
 
@@ -77,8 +82,24 @@ const updateProductValidationSchema = z.object({
     subCategory: z.string().optional(),
     brand: z.string().optional(),
 
-    // New Fields Added for Update
-    variations: z.array(variationSchema).optional(),
+    variations: z
+      .array(
+        z.object({
+          name: z.string(),
+          options: z.array(
+            z.object({
+              label: z.string(),
+              price: z.number().min(0),
+              sku: z.string().optional(),
+              stockQuantity: z.number().min(0).optional(),
+              totalAddedQuantity: z.number().min(0).optional(),
+              isOutOfStock: z.boolean().optional(),
+            }),
+          ),
+        }),
+      )
+      .optional(),
+
     addonGroups: z.array(z.string()).optional(),
 
     pricing: z
@@ -94,19 +115,36 @@ const updateProductValidationSchema = z.object({
     stock: z
       .object({
         quantity: z.number().min(0).optional(),
+        totalAddedQuantity: z.number().min(0).optional(),
         unit: z.string().optional(),
         availabilityStatus: z
           .enum(['In Stock', 'Out of Stock', 'Limited'])
           .optional(),
+        hasVariations: z.boolean().optional(),
       })
       .optional(),
 
     images: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
+
+    attributes: z
+      .record(
+        z.union([
+          z.string(),
+          z.number(),
+          z.boolean(),
+          z.array(z.string()),
+          z.null(),
+        ]),
+      )
+      .optional(),
+
     meta: z
       .object({
         isFeatured: z.boolean().optional(),
+        isAvailableForPreOrder: z.boolean().optional(),
         status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+        origin: z.string().optional(),
       })
       .optional(),
   }),

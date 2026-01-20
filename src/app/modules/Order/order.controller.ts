@@ -3,12 +3,13 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/user.constant';
+import { SageService } from '../Sage/SageService';
 
 // order after payment secure controller
 const createOrderAfterPayment = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderAfterPayment(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -22,7 +23,7 @@ const createOrderAfterPayment = catchAsync(async (req, res) => {
 const getAllOrders = catchAsync(async (req, res) => {
   const result = await OrderServices.getAllOrders(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -38,7 +39,7 @@ const getAllOrders = catchAsync(async (req, res) => {
 const getSingleOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getSingleOrder(
     req.params.orderId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -54,7 +55,7 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
   const result = await OrderServices.updateOrderStatusByVendor(
     req.user as AuthUser,
     req.params.orderId,
-    req.body
+    req.body,
   );
 
   sendResponse(res, {
@@ -69,7 +70,7 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
 const broadcastOrderToPartners = catchAsync(async (req, res) => {
   const result = await OrderServices.broadcastOrderToPartners(
     req.params.orderId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -83,7 +84,7 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
 const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.partnerAcceptsDispatchedOrder(
     req.user as AuthUser,
-    req.params.orderId
+    req.params.orderId,
   );
 
   sendResponse(res, {
@@ -99,7 +100,7 @@ const otpVerificationByVendor = catchAsync(async (req, res) => {
   const result = await OrderServices.otpVerificationByVendor(
     req.params.orderId,
     req.body.otp,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -115,12 +116,22 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
   const result = await OrderServices.updateOrderStatusByDeliveryPartner(
     req.params.orderId,
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Order status updated successfully',
+    data: result,
+  });
+});
+
+const getInvoicePdfFromSage = catchAsync(async (req, res) => {
+  const result = await SageService.getInvoicePdfFromSage(req.params.orderId);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Invoice PDF retrieved successfully',
     data: result,
   });
 });
@@ -134,4 +145,5 @@ export const OrderControllers = {
   partnerAcceptsDispatchedOrder,
   otpVerificationByVendor,
   updateOrderStatusByDeliveryPartner,
+  getInvoicePdfFromSage,
 };
