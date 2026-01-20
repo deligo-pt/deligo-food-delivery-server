@@ -24,7 +24,7 @@ const onboardUser = catchAsync(async (req, res) => {
   const result = await AuthServices.onboardUser(
     req.body,
     targetRole,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -84,7 +84,7 @@ const saveFcmToken = catchAsync(async (req, res) => {
 // Logout User Controller
 const logoutUser = catchAsync(async (req, res) => {
   res.clearCookie('refreshToken');
-  const result = await AuthServices.logoutUser(req.user.email);
+  const result = await AuthServices.logoutUser(req.user.email, req.body.token);
 
   sendResponse(res, {
     success: true,
@@ -100,7 +100,7 @@ const changePassword = catchAsync(async (req, res) => {
 
   const result = await AuthServices.changePassword(
     req.user as AuthUser,
-    passwordData
+    passwordData,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -151,7 +151,7 @@ const refreshToken = catchAsync(async (req, res) => {
 const submitForApproval = catchAsync(async (req, res) => {
   const result = await AuthServices.submitForApproval(
     req.params.userId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -168,7 +168,7 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
   const result = await AuthServices.approvedOrRejectedUser(
     req.params.userId,
     req.body,
-    currentUser
+    currentUser,
   );
   sendResponse(res, {
     success: true,
@@ -215,7 +215,7 @@ const resendOtp = catchAsync(async (req, res) => {
 const softDeleteUser = catchAsync(async (req, res) => {
   const result = await AuthServices.softDeleteUser(
     req.params.userId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -230,7 +230,7 @@ const softDeleteUser = catchAsync(async (req, res) => {
 const permanentDeleteUser = catchAsync(async (req, res) => {
   const result = await AuthServices.permanentDeleteUser(
     req.params.userId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
