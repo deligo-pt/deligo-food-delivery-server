@@ -117,4 +117,6 @@ orderSchema.index({
   'items.productId': 1,
 });
 
+orderSchema.index({ orderStatus: 1, dispatchExpiresAt: 1 });
+
 export const Order = model<TOrder>('Order', orderSchema);

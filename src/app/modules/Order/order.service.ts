@@ -150,151 +150,6 @@ const createOrderAfterPayment = async (
   }
 };
 
-// get all order service
-const getAllOrders = async (
-  incomingQuery: Record<string, unknown>,
-  currentUser: AuthUser,
-) => {
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view orders. Your account is ${currentUser.status}`,
-    );
-  }
-
-  // -----------------------------
-  // Create a SAFE query object
-  // -----------------------------
-  const query: Record<string, unknown> = { ...incomingQuery };
-
-  // -----------------------------
-  // Role-Based Query Filters
-  // -----------------------------
-  switch (currentUser.role) {
-    case 'VENDOR':
-    case 'SUB_VENDOR':
-      query.vendorId = currentUser._id;
-      break;
-
-    case 'CUSTOMER':
-      query.customerId = currentUser._id;
-      break;
-
-    case 'DELIVERY_PARTNER':
-      query.deliveryPartnerId = currentUser._id;
-      break;
-
-    case 'FLEET_MANAGER': {
-      const managedPartners = await DeliveryPartner.find({
-        'registeredBy.id': currentUser._id,
-      }).select('_id');
-      const partnerIds = managedPartners.map((partner) => partner._id);
-      query.deliveryPartnerId = {
-        $in: partnerIds.length > 0 ? partnerIds : [],
-      };
-      break;
-    }
-
-    case 'ADMIN':
-    case 'SUPER_ADMIN':
-      break;
-
-    default:
-      throw new AppError(httpStatus.FORBIDDEN, 'Invalid user role');
-  }
-
-  // -----------------------------
-  // Build Query with QueryBuilder
-  // -----------------------------
-  const builder = new QueryBuilder(Order.find(), query)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .search(OrderSearchableFields);
-
-  const populateOptions = getPopulateOptions(currentUser?.role, {
-    customer: 'name userId role',
-    vendor: 'name userId role',
-    deliveryPartner: 'name userId role',
-    product: 'productId name',
-  });
-
-  populateOptions.forEach((option) => {
-    builder.modelQuery = builder.modelQuery.populate(option);
-  });
-
-  const meta = await builder.countTotal();
-  const data = await builder.modelQuery;
-
-  return { meta, data };
-};
-
-// get single order for customer service
-const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${currentUser.status}`,
-    );
-  }
-
-  const userId = currentUser._id;
-  // ------------------------------------------------------
-  // Build role-based query filter securely
-  // ------------------------------------------------------
-  const filter: Record<string, unknown> = {};
-
-  switch (currentUser.role) {
-    case 'CUSTOMER':
-      filter.customerId = userId;
-      break;
-
-    case 'VENDOR':
-      filter.vendorId = userId;
-      break;
-
-    case 'DELIVERY_PARTNER':
-      filter.deliveryPartnerId = userId;
-      // filter.orderStatus = { $in: ['ACCEPTED', 'PICKED', 'DELIVERED'] };
-      break;
-
-    case 'ADMIN':
-    case 'SUPER_ADMIN':
-      break;
-
-    default:
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'Invalid role or permission denied',
-      );
-  }
-
-  // ------------------------------------------------------
-  // Fetch order using secure filter
-  // ------------------------------------------------------
-  const query = Order.findOne({ orderId, ...filter });
-
-  const populateOptions = getPopulateOptions(currentUser?.role, {
-    customer: 'name userId role',
-    vendor: 'name userId role',
-    deliveryPartner: 'name userId role',
-    product: 'productId name',
-  });
-
-  populateOptions.forEach((option) => {
-    query.populate(option);
-  });
-
-  const order = await query;
-
-  if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
-  }
-
-  return order;
-};
-
 // update order status by vendor (accept / reject / preparing / cancel)
 const updateOrderStatusByVendor = async (
   currentUser: AuthUser,
@@ -729,6 +584,7 @@ const broadcastOrderToPartners = async (
 
   const partnerObjectIds = eligiblePartners.map((p) => p._id);
   const partnerIds = eligiblePartners.map((p) => p.userId);
+  console.log({ partnerIds });
 
   const timerSeconds = 120;
   const expirationTime = new Date(Date.now() + timerSeconds * 1000);
@@ -766,46 +622,20 @@ const broadcastOrderToPartners = async (
     io.to(`user_${id}`).emit('NEW_ORDER_AVAILABLE', orderDataForPopup);
   });
 
-  setTimeout(async () => {
-    const finalCheckOrder = await Order.findOne({ orderId }).select(
-      'orderStatus dispatchPartnerPool',
-    );
-
-    if (
-      finalCheckOrder &&
-      finalCheckOrder.orderStatus === ORDER_STATUS.DISPATCHING
-    ) {
-      await Order.updateOne(
-        { orderId },
-        {
-          $set: {
-            orderStatus: ORDER_STATUS.AWAITING_PARTNER,
-            dispatchPartnerPool: [],
-          },
-        },
-      );
-      io.to(`user_${currentUser.userId}`).emit('ORDER_DISPATCH_EXPIRED', {
-        orderId,
-        message: 'No partner accepted the order within 120 seconds.',
-      });
-    }
-  }, timerSeconds * 1000);
-
-  // send push notification to delivery partner
-  const notificationPayload = {
-    title: 'New Order Available',
-    body: 'A new order is available for you.',
-    data: { orderId: order.orderId },
-  };
-  partnerIds.forEach(async (id) => {
+  for (const partnerId of partnerIds) {
+    const notificationPayload = {
+      title: 'New Order Available',
+      body: 'A new order is available for you.',
+      data: { orderId: order.orderId },
+    };
     NotificationService.sendToUser(
-      id,
+      partnerId,
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
       'ORDER',
     );
-  });
+  }
 
   return {
     message: `Order dispatched to ${partnerIds.length} delivery partners.`,
@@ -817,7 +647,7 @@ const broadcastOrderToPartners = async (
 const partnerAcceptsDispatchedOrder = async (
   currentUser: AuthUser,
   orderId: string,
-  action: 'reject',
+  action?: 'reject',
 ) => {
   if (
     currentUser.status !== 'APPROVED' ||
@@ -826,10 +656,11 @@ const partnerAcceptsDispatchedOrder = async (
     throw new AppError(httpStatus.FORBIDDEN, 'Partner not approved.');
   }
 
-  const order = await Order.findOne({ orderId });
+  const order = await Order.findOne({ orderId }).populate('vendorId');
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
   }
+  const vendorUserId = (order.vendorId as any)?.userId;
 
   const isExpired =
     order.dispatchExpiresAt && new Date() > new Date(order.dispatchExpiresAt);
@@ -842,6 +673,13 @@ const partnerAcceptsDispatchedOrder = async (
 
     const io = getIO();
     io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', { orderId });
+
+    if (vendorUserId) {
+      io.to(`user_${vendorUserId}`).emit('ORDER_DISPATCH_EXPIRED', {
+        orderId,
+        message: 'No partner accepted in time (Expired on attempt).',
+      });
+    }
 
     throw new AppError(httpStatus.GONE, 'Order request has expired.');
   }
@@ -878,7 +716,7 @@ const partnerAcceptsDispatchedOrder = async (
     io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', { orderId });
     return {
       data: null,
-      message: 'Order rejected.',
+      message: 'Order rejected successfully.',
     };
   }
 
@@ -936,6 +774,13 @@ const partnerAcceptsDispatchedOrder = async (
       io.to(`user_${id}`).emit('REMOVE_ORDER_POPUP', { orderId });
     }
   });
+
+  if (vendorUserId) {
+    io.to(`user_${vendorUserId}`).emit('ORDER_ACCEPTED_BY_PARTNER', {
+      orderId,
+      partnerName: `${currentUser.name.firstName} ${currentUser.name.lastName}`,
+    });
+  }
 
   return {
     data: claimedOrder,
@@ -1202,6 +1047,151 @@ const updateOrderStatusByDeliveryPartner = async (
     message: 'Order status updated successfully.',
     data: updatedOrder,
   };
+};
+
+// get all order service
+const getAllOrders = async (
+  incomingQuery: Record<string, unknown>,
+  currentUser: AuthUser,
+) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view orders. Your account is ${currentUser.status}`,
+    );
+  }
+
+  // -----------------------------
+  // Create a SAFE query object
+  // -----------------------------
+  const query: Record<string, unknown> = { ...incomingQuery };
+
+  // -----------------------------
+  // Role-Based Query Filters
+  // -----------------------------
+  switch (currentUser.role) {
+    case 'VENDOR':
+    case 'SUB_VENDOR':
+      query.vendorId = currentUser._id;
+      break;
+
+    case 'CUSTOMER':
+      query.customerId = currentUser._id;
+      break;
+
+    case 'DELIVERY_PARTNER':
+      query.deliveryPartnerId = currentUser._id;
+      break;
+
+    case 'FLEET_MANAGER': {
+      const managedPartners = await DeliveryPartner.find({
+        'registeredBy.id': currentUser._id,
+      }).select('_id');
+      const partnerIds = managedPartners.map((partner) => partner._id);
+      query.deliveryPartnerId = {
+        $in: partnerIds.length > 0 ? partnerIds : [],
+      };
+      break;
+    }
+
+    case 'ADMIN':
+    case 'SUPER_ADMIN':
+      break;
+
+    default:
+      throw new AppError(httpStatus.FORBIDDEN, 'Invalid user role');
+  }
+
+  // -----------------------------
+  // Build Query with QueryBuilder
+  // -----------------------------
+  const builder = new QueryBuilder(Order.find(), query)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .search(OrderSearchableFields);
+
+  const populateOptions = getPopulateOptions(currentUser?.role, {
+    customer: 'name userId role',
+    vendor: 'name userId role',
+    deliveryPartner: 'name userId role',
+    product: 'productId name',
+  });
+
+  populateOptions.forEach((option) => {
+    builder.modelQuery = builder.modelQuery.populate(option);
+  });
+
+  const meta = await builder.countTotal();
+  const data = await builder.modelQuery;
+
+  return { meta, data };
+};
+
+// get single order for customer service
+const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view the order. Your account is ${currentUser.status}`,
+    );
+  }
+
+  const userId = currentUser._id;
+  // ------------------------------------------------------
+  // Build role-based query filter securely
+  // ------------------------------------------------------
+  const filter: Record<string, unknown> = {};
+
+  switch (currentUser.role) {
+    case 'CUSTOMER':
+      filter.customerId = userId;
+      break;
+
+    case 'VENDOR':
+      filter.vendorId = userId;
+      break;
+
+    case 'DELIVERY_PARTNER':
+      filter.deliveryPartnerId = userId;
+      // filter.orderStatus = { $in: ['ACCEPTED', 'PICKED', 'DELIVERED'] };
+      break;
+
+    case 'ADMIN':
+    case 'SUPER_ADMIN':
+      break;
+
+    default:
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'Invalid role or permission denied',
+      );
+  }
+
+  // ------------------------------------------------------
+  // Fetch order using secure filter
+  // ------------------------------------------------------
+  const query = Order.findOne({ orderId, ...filter });
+
+  const populateOptions = getPopulateOptions(currentUser?.role, {
+    customer: 'name userId role',
+    vendor: 'name userId role',
+    deliveryPartner: 'name userId role',
+    product: 'productId name',
+  });
+
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const order = await query;
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+  }
+
+  return order;
 };
 
 export const OrderServices = {
