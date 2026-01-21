@@ -37,6 +37,13 @@ const createProduct = async (
     );
   }
 
+  if (!payload.variations && !payload.pricing.price) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Price is required when no variations',
+    );
+  }
+
   const [vendorCategoryExist, category] = await Promise.all([
     BusinessCategory.findOne({
       name: currentUser?.businessDetails?.businessType,
@@ -84,17 +91,22 @@ const createProduct = async (
   payload.slug = generateSlug(payload.name);
   payload.sku = `${category.name.substring(0, 3).toUpperCase()}-${productNamePart}-${shortId.split('-').pop()}`;
 
-  if (payload.variations?.length) {
+  if (payload.variations && payload.variations?.length > 0) {
     let totalStock = 0;
+    let minNetPrice = Infinity;
 
     payload.variations = payload.variations.map((variation) => ({
       ...variation,
       options: variation.options.map((option) => {
+        const currentOptionPrice = option.price;
+        if (currentOptionPrice < minNetPrice) minNetPrice = currentOptionPrice;
+
         const stock = option.stockQuantity || 0;
         totalStock += stock;
 
         return {
           ...option,
+          price: currentOptionPrice,
           sku:
             option.sku ||
             `VAR-${productNamePart}-${cleanForSKU(option.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
@@ -105,6 +117,7 @@ const createProduct = async (
       }),
     }));
 
+    payload.pricing.price = minNetPrice === Infinity ? 0 : minNetPrice;
     payload.stock.quantity = totalStock;
     payload.stock.totalAddedQuantity = totalStock;
     payload.stock.hasVariations = true;

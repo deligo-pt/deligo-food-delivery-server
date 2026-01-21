@@ -34,11 +34,6 @@ const orderSchema = new Schema<TOrder>(
       required: true,
       ref: 'Customer',
     },
-    // customer: {
-    //   name: { type: String, required: true },
-    //   email: { type: String, default: '' },
-    //   contactNumber: { type: String, default: '' },
-    // },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     deliveryPartnerId: {
       type: Schema.Types.ObjectId,
@@ -79,6 +74,7 @@ const orderSchema = new Schema<TOrder>(
     deliveryOtp: { type: String },
     isOtpVerified: { type: Boolean, default: false },
     dispatchPartnerPool: { type: [String], default: [] },
+    dispatchExpiresAt: { type: Date },
 
     deliveryAddress: { type: addressSchema, required: true },
     pickupAddress: { type: addressSchema },
@@ -87,15 +83,6 @@ const orderSchema = new Schema<TOrder>(
     pickedUpAt: { type: Date },
     deliveredAt: { type: Date },
     preparationTime: { type: Number, default: 0 },
-
-    sageSync: {
-      isSynced: { type: Boolean, default: false },
-      invoiceNo: { type: String },
-      atcud: { type: String },
-      signature: { type: String },
-      syncError: { type: String },
-      syncedAt: { type: Date },
-    },
 
     isDeleted: { type: Boolean, default: false },
 
@@ -130,6 +117,6 @@ orderSchema.index({
   'items.productId': 1,
 });
 
-orderSchema.index({ 'sageSync.isSynced': 1, orderStatus: 1 });
+orderSchema.index({ orderStatus: 1, dispatchExpiresAt: 1 });
 
 export const Order = model<TOrder>('Order', orderSchema);

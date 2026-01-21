@@ -32,12 +32,10 @@ const createProductValidationSchema = z.object({
     addonGroups: z.array(z.string()).optional(),
 
     pricing: z.object({
-      price: z.number().min(0, 'Price must be positive'),
+      price: z.number().optional(),
       discount: z.number().min(0).max(100).default(0),
       taxId: z.string({ required_error: 'Tax ID is required' }),
-      // taxRate: z.number().min(0).max(100).default(0),
-      // finalPrice: z.number().optional(),
-      currency: z.string().default('BDT'),
+      currency: z.string().default('EUR'),
     }),
 
     stock: z.object({

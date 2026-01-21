@@ -25,7 +25,6 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { Coupon } from '../Coupon/coupon.model';
 import { getIO } from '../../lib/Socket';
-import { SageService } from '../Sage/SageService';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -130,7 +129,7 @@ const createOrderAfterPayment = async (
       title: 'You have a new order',
       body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
       data: {
-        orderId: order._id.toString(),
+        orderId: order.orderId,
       },
     };
 
@@ -149,151 +148,6 @@ const createOrderAfterPayment = async (
   } finally {
     session.endSession();
   }
-};
-
-// get all order service
-const getAllOrders = async (
-  incomingQuery: Record<string, unknown>,
-  currentUser: AuthUser,
-) => {
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view orders. Your account is ${currentUser.status}`,
-    );
-  }
-
-  // -----------------------------
-  // Create a SAFE query object
-  // -----------------------------
-  const query: Record<string, unknown> = { ...incomingQuery };
-
-  // -----------------------------
-  // Role-Based Query Filters
-  // -----------------------------
-  switch (currentUser.role) {
-    case 'VENDOR':
-    case 'SUB_VENDOR':
-      query.vendorId = currentUser._id;
-      break;
-
-    case 'CUSTOMER':
-      query.customerId = currentUser._id;
-      break;
-
-    case 'DELIVERY_PARTNER':
-      query.deliveryPartnerId = currentUser._id;
-      break;
-
-    case 'FLEET_MANAGER': {
-      const managedPartners = await DeliveryPartner.find({
-        'registeredBy.id': currentUser._id,
-      }).select('_id');
-      const partnerIds = managedPartners.map((partner) => partner._id);
-      query.deliveryPartnerId = {
-        $in: partnerIds.length > 0 ? partnerIds : [],
-      };
-      break;
-    }
-
-    case 'ADMIN':
-    case 'SUPER_ADMIN':
-      break;
-
-    default:
-      throw new AppError(httpStatus.FORBIDDEN, 'Invalid user role');
-  }
-
-  // -----------------------------
-  // Build Query with QueryBuilder
-  // -----------------------------
-  const builder = new QueryBuilder(Order.find(), query)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .search(OrderSearchableFields);
-
-  const populateOptions = getPopulateOptions(currentUser?.role, {
-    customer: 'name userId role',
-    vendor: 'name userId role',
-    deliveryPartner: 'name userId role',
-    product: 'productId name',
-  });
-
-  populateOptions.forEach((option) => {
-    builder.modelQuery = builder.modelQuery.populate(option);
-  });
-
-  const meta = await builder.countTotal();
-  const data = await builder.modelQuery;
-
-  return { meta, data };
-};
-
-// get single order for customer service
-const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${currentUser.status}`,
-    );
-  }
-
-  const userId = currentUser._id;
-  // ------------------------------------------------------
-  // Build role-based query filter securely
-  // ------------------------------------------------------
-  const filter: Record<string, unknown> = {};
-
-  switch (currentUser.role) {
-    case 'CUSTOMER':
-      filter.customerId = userId;
-      break;
-
-    case 'VENDOR':
-      filter.vendorId = userId;
-      break;
-
-    case 'DELIVERY_PARTNER':
-      filter.deliveryPartnerId = userId;
-      // filter.orderStatus = { $in: ['ACCEPTED', 'PICKED', 'DELIVERED'] };
-      break;
-
-    case 'ADMIN':
-    case 'SUPER_ADMIN':
-      break;
-
-    default:
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'Invalid role or permission denied',
-      );
-  }
-
-  // ------------------------------------------------------
-  // Fetch order using secure filter
-  // ------------------------------------------------------
-  const query = Order.findOne({ orderId, ...filter });
-
-  const populateOptions = getPopulateOptions(currentUser?.role, {
-    customer: 'name userId role',
-    vendor: 'name userId role',
-    deliveryPartner: 'name userId role',
-    product: 'productId name',
-  });
-
-  populateOptions.forEach((option) => {
-    query.populate(option);
-  });
-
-  const order = await query;
-
-  if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
-  }
-
-  return order;
 };
 
 // update order status by vendor (accept / reject / preparing / cancel)
@@ -336,8 +190,6 @@ const updateOrderStatusByVendor = async (
 
   const session = await mongoose.startSession();
   session.startTransaction();
-
-  let isAccepted = false;
 
   try {
     // ---------------------------------------------------------
@@ -452,7 +304,6 @@ const updateOrderStatusByVendor = async (
     // If ACCEPTED → set pickup address from vendor location and reduce product stock
     // ---------------------------------------------------------
     if (action.type === 'ACCEPTED') {
-      isAccepted = true;
       if (!order.pickupAddress) {
         order.pickupAddress = {
           street: currentUser?.businessLocation?.street || '',
@@ -506,7 +357,7 @@ const updateOrderStatusByVendor = async (
       const notificationPayload = {
         title: 'Order Accepted',
         body: `Your order has been accepted by ${currentUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,
-        data: { orderId: order._id.toString() },
+        data: { orderId: order.orderId },
       };
       NotificationService.sendToUser(
         customerId!,
@@ -524,7 +375,7 @@ const updateOrderStatusByVendor = async (
         customerId!,
         'Order is being prepared',
         `Your order is now being prepared by ${currentUser.businessDetails?.businessName}.`,
-        { orderId: order._id.toString(), status: ORDER_STATUS.PREPARING },
+        { orderId: order.orderId.toString(), status: ORDER_STATUS.PREPARING },
         'ORDER',
       );
     }
@@ -538,7 +389,7 @@ const updateOrderStatusByVendor = async (
         'Order is ready for pickup',
         `Your order is now ready for pickup by ${currentUser.businessDetails?.businessName}.`,
         {
-          orderId: order._id.toString(),
+          orderId: order.orderId,
           status: ORDER_STATUS.READY_FOR_PICKUP,
         },
         'ORDER',
@@ -571,7 +422,7 @@ const updateOrderStatusByVendor = async (
       const notificationPayload = {
         title: 'Order Canceled',
         body: `Your order has been canceled for ${action.reason}`,
-        data: { orderId: order._id.toString() },
+        data: { orderId: order.orderId },
       };
       if (order.deliveryPartnerId) {
         NotificationService.sendToUser(
@@ -606,7 +457,7 @@ const updateOrderStatusByVendor = async (
       const notificationPayload = {
         title: 'Order Rejected',
         body: `Your order has been rejected for ${action.reason}`,
-        data: { orderId: order._id.toString() },
+        data: { orderId: order.orderId },
       };
       NotificationService.sendToUser(
         customerId!,
@@ -629,14 +480,6 @@ const updateOrderStatusByVendor = async (
 
     await session.commitTransaction();
     session.endSession();
-    if (isAccepted) {
-      try {
-        await SageService.syncOrderWithSage(order._id.toString());
-      } catch (e) {
-        console.log('Sync failed immediately');
-        console.log({ e });
-      }
-    }
     return order;
   } catch (error) {
     await session.abortTransaction();
@@ -741,6 +584,10 @@ const broadcastOrderToPartners = async (
 
   const partnerObjectIds = eligiblePartners.map((p) => p._id);
   const partnerIds = eligiblePartners.map((p) => p.userId);
+  console.log({ partnerIds });
+
+  const timerSeconds = 120;
+  const expirationTime = new Date(Date.now() + timerSeconds * 1000);
 
   await DeliveryPartner.updateMany(
     { _id: { $in: partnerObjectIds } },
@@ -754,8 +601,11 @@ const broadcastOrderToPartners = async (
   await Order.updateOne(
     { orderId, vendorId: currentUser._id.toString(), isDeleted: false },
     {
-      $set: { orderStatus: ORDER_STATUS.DISPATCHING },
-      $addToSet: { dispatchPartnerPool: { $each: partnerObjectIds } },
+      $set: {
+        orderStatus: ORDER_STATUS.DISPATCHING,
+        dispatchExpiresAt: expirationTime,
+      },
+      $addToSet: { dispatchPartnerPool: { $each: partnerIds } },
     },
   );
 
@@ -764,28 +614,28 @@ const broadcastOrderToPartners = async (
     orderId: order.orderId,
     deliveryAddress: order.deliveryAddress,
     vendorName: currentUser?.businessDetails?.businessName,
-    timer: 60, // 60 seconds
+    timer: timerSeconds,
+    expiresAt: expirationTime,
   };
 
   partnerIds.forEach((id) => {
     io.to(`user_${id}`).emit('NEW_ORDER_AVAILABLE', orderDataForPopup);
   });
 
-  // send push notification to delivery partner
-  const notificationPayload = {
-    title: 'New Order Available',
-    body: 'A new order is available for you.',
-    data: { orderId: order._id.toString() },
-  };
-  partnerIds.forEach(async (id) => {
+  for (const partnerId of partnerIds) {
+    const notificationPayload = {
+      title: 'New Order Available',
+      body: 'A new order is available for you.',
+      data: { orderId: order.orderId },
+    };
     NotificationService.sendToUser(
-      id,
+      partnerId,
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
       'ORDER',
     );
-  });
+  }
 
   return {
     message: `Order dispatched to ${partnerIds.length} delivery partners.`,
@@ -797,6 +647,7 @@ const broadcastOrderToPartners = async (
 const partnerAcceptsDispatchedOrder = async (
   currentUser: AuthUser,
   orderId: string,
+  action?: 'reject',
 ) => {
   if (
     currentUser.status !== 'APPROVED' ||
@@ -805,16 +656,77 @@ const partnerAcceptsDispatchedOrder = async (
     throw new AppError(httpStatus.FORBIDDEN, 'Partner not approved.');
   }
 
+  const order = await Order.findOne({ orderId }).populate('vendorId');
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+  }
+  const vendorUserId = (order.vendorId as any)?.userId;
+
+  const isExpired =
+    order.dispatchExpiresAt && new Date() > new Date(order.dispatchExpiresAt);
+
+  if (isExpired && order.orderStatus === 'DISPATCHING') {
+    await Order.updateOne(
+      { orderId },
+      { $set: { orderStatus: 'AWAITING_PARTNER', dispatchPartnerPool: [] } },
+    );
+
+    const io = getIO();
+    io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', { orderId });
+
+    if (vendorUserId) {
+      io.to(`user_${vendorUserId}`).emit('ORDER_DISPATCH_EXPIRED', {
+        orderId,
+        message: 'No partner accepted in time (Expired on attempt).',
+      });
+    }
+
+    throw new AppError(httpStatus.GONE, 'Order request has expired.');
+  }
+
+  if (action === 'reject') {
+    const isInPool = order.dispatchPartnerPool?.some(
+      (id) => id === currentUser.userId,
+    );
+
+    if (!isInPool) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'You are not in the dispatch pool.',
+      );
+    }
+
+    const isLastPartner = order?.dispatchPartnerPool?.length === 1;
+    const orderUpdate: any = {
+      $pull: { dispatchPartnerPool: currentUser.userId },
+    };
+    if (isLastPartner) {
+      orderUpdate.$set = { orderStatus: 'AWAITING_PARTNER' };
+    }
+    await Order.updateOne({ orderId }, orderUpdate);
+    await DeliveryPartner.updateOne(
+      { _id: { $in: currentUser._id } },
+      {
+        $inc: { 'operationalData.totalRejectedOrders': 1 },
+        $set: { 'operationalData.lastActivityAt': new Date() },
+      },
+    );
+
+    const io = getIO();
+    io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', { orderId });
+    return {
+      data: null,
+      message: 'Order rejected successfully.',
+    };
+  }
+
   if (currentUser.operationalData?.currentOrderId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You already have an assigned order.',
     );
   }
-  const orderBeforeUpdate = await Order.findOne({ orderId }).select(
-    'dispatchPartnerPool',
-  );
-  const notifiedPartnerIds = orderBeforeUpdate?.dispatchPartnerPool || [];
+  const notifiedPartnerIds = order?.dispatchPartnerPool || [];
 
   // atomic first-come-first-served claim
   const claimedOrder = await Order.findOneAndUpdate(
@@ -822,7 +734,8 @@ const partnerAcceptsDispatchedOrder = async (
       orderId,
       orderStatus: ORDER_STATUS.DISPATCHING,
       deliveryPartnerId: null,
-      dispatchPartnerPool: { $in: [currentUser._id] },
+      dispatchPartnerPool: { $in: [currentUser.userId] },
+      dispatchExpiresAt: { $gt: new Date() },
     },
     {
       $set: {
@@ -843,7 +756,7 @@ const partnerAcceptsDispatchedOrder = async (
   }
 
   await DeliveryPartner.updateOne(
-    { userId: currentUser.userId },
+    { _id: currentUser._id },
     {
       $set: {
         'operationalData.currentOrderId': claimedOrder._id.toString(),
@@ -862,7 +775,17 @@ const partnerAcceptsDispatchedOrder = async (
     }
   });
 
-  return claimedOrder;
+  if (vendorUserId) {
+    io.to(`user_${vendorUserId}`).emit('ORDER_ACCEPTED_BY_PARTNER', {
+      orderId,
+      partnerName: `${currentUser.name.firstName} ${currentUser.name.lastName}`,
+    });
+  }
+
+  return {
+    data: claimedOrder,
+    message: 'Order accepted.',
+  };
 };
 
 // otp verification by vendor service
@@ -1077,14 +1000,6 @@ const updateOrderStatusByDeliveryPartner = async (
         },
       },
     );
-
-    // try {
-    //   await SageService.syncOrderWithSage(updatedOrder._id.toString());
-    //   console.log('Sync success');
-    // } catch (e) {
-    //   console.log('Sync failed immediately');
-    //   console.log({ e });
-    // }
   } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
     await DeliveryPartner.updateOne(
       { userId: currentUser.userId },
@@ -1132,6 +1047,151 @@ const updateOrderStatusByDeliveryPartner = async (
     message: 'Order status updated successfully.',
     data: updatedOrder,
   };
+};
+
+// get all order service
+const getAllOrders = async (
+  incomingQuery: Record<string, unknown>,
+  currentUser: AuthUser,
+) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view orders. Your account is ${currentUser.status}`,
+    );
+  }
+
+  // -----------------------------
+  // Create a SAFE query object
+  // -----------------------------
+  const query: Record<string, unknown> = { ...incomingQuery };
+
+  // -----------------------------
+  // Role-Based Query Filters
+  // -----------------------------
+  switch (currentUser.role) {
+    case 'VENDOR':
+    case 'SUB_VENDOR':
+      query.vendorId = currentUser._id;
+      break;
+
+    case 'CUSTOMER':
+      query.customerId = currentUser._id;
+      break;
+
+    case 'DELIVERY_PARTNER':
+      query.deliveryPartnerId = currentUser._id;
+      break;
+
+    case 'FLEET_MANAGER': {
+      const managedPartners = await DeliveryPartner.find({
+        'registeredBy.id': currentUser._id,
+      }).select('_id');
+      const partnerIds = managedPartners.map((partner) => partner._id);
+      query.deliveryPartnerId = {
+        $in: partnerIds.length > 0 ? partnerIds : [],
+      };
+      break;
+    }
+
+    case 'ADMIN':
+    case 'SUPER_ADMIN':
+      break;
+
+    default:
+      throw new AppError(httpStatus.FORBIDDEN, 'Invalid user role');
+  }
+
+  // -----------------------------
+  // Build Query with QueryBuilder
+  // -----------------------------
+  const builder = new QueryBuilder(Order.find(), query)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .search(OrderSearchableFields);
+
+  const populateOptions = getPopulateOptions(currentUser?.role, {
+    customer: 'name userId role',
+    vendor: 'name userId role',
+    deliveryPartner: 'name userId role',
+    product: 'productId name',
+  });
+
+  populateOptions.forEach((option) => {
+    builder.modelQuery = builder.modelQuery.populate(option);
+  });
+
+  const meta = await builder.countTotal();
+  const data = await builder.modelQuery;
+
+  return { meta, data };
+};
+
+// get single order for customer service
+const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view the order. Your account is ${currentUser.status}`,
+    );
+  }
+
+  const userId = currentUser._id;
+  // ------------------------------------------------------
+  // Build role-based query filter securely
+  // ------------------------------------------------------
+  const filter: Record<string, unknown> = {};
+
+  switch (currentUser.role) {
+    case 'CUSTOMER':
+      filter.customerId = userId;
+      break;
+
+    case 'VENDOR':
+      filter.vendorId = userId;
+      break;
+
+    case 'DELIVERY_PARTNER':
+      filter.deliveryPartnerId = userId;
+      // filter.orderStatus = { $in: ['ACCEPTED', 'PICKED', 'DELIVERED'] };
+      break;
+
+    case 'ADMIN':
+    case 'SUPER_ADMIN':
+      break;
+
+    default:
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'Invalid role or permission denied',
+      );
+  }
+
+  // ------------------------------------------------------
+  // Fetch order using secure filter
+  // ------------------------------------------------------
+  const query = Order.findOne({ orderId, ...filter });
+
+  const populateOptions = getPopulateOptions(currentUser?.role, {
+    customer: 'name userId role',
+    vendor: 'name userId role',
+    deliveryPartner: 'name userId role',
+    product: 'productId name',
+  });
+
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const order = await query;
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+  }
+
+  return order;
 };
 
 export const OrderServices = {
