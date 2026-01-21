@@ -5,6 +5,7 @@ import config from './app/config';
 import { seed } from './app/utils/seeding';
 import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
+import { initOrderCronJobs } from './app/utils/orderCleanup';
 
 const server = http.createServer(app);
 
@@ -41,6 +42,9 @@ async function bootstrap() {
 
     // Initialize Socket.IO
     initializeSocket(server);
+
+    initOrderCronJobs();
+    console.log('Order expiry cron job started');
 
     server.listen(config.port, () => {
       console.log(`Application is running on port ${config.port}`);
