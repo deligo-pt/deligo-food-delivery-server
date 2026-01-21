@@ -33,7 +33,7 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
       if (!payload.discountValue) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'discountValue is required for PERCENT offer'
+          'discountValue is required for PERCENT offer',
         );
       }
       break;
@@ -42,7 +42,7 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
       if (!payload.discountValue) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'discountValue is required for FLAT offer'
+          'discountValue is required for FLAT offer',
         );
       }
       break;
@@ -51,7 +51,7 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
       if (!payload.bogo?.buyQty || !payload.bogo?.getQty) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'BOGO offer requires buyQty and getQty'
+          'BOGO offer requires buyQty and getQty',
         );
       }
       break;
@@ -69,7 +69,7 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   if (!payload.isAutoApply && !payload.code) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Offer code is required when auto apply is disabled'
+      'Offer code is required when auto apply is disabled',
     );
   }
 
@@ -83,7 +83,7 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   if (payload.endDate <= payload.startDate) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'End date must be after start date'
+      'End date must be after start date',
     );
   }
 
@@ -104,12 +104,12 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
 const updateOffer = async (
   id: string,
   payload: Partial<TOffer>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -130,7 +130,7 @@ const updateOffer = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this offer'
+      'You are not authorized to update this offer',
     );
   }
 
@@ -140,7 +140,7 @@ const updateOffer = async (
   if (offer.endDate < new Date()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Expired offer cannot be updated'
+      'Expired offer cannot be updated',
     );
   }
 
@@ -151,7 +151,7 @@ const updateOffer = async (
     if (new Date(payload.startDate) >= new Date(payload.endDate)) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Start date must be before end date'
+        'Start date must be before end date',
       );
     }
   }
@@ -166,7 +166,7 @@ const updateOffer = async (
       if (payload.discountValue <= 0 || payload.discountValue > 100) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Percent discount must be between 1 and 100'
+          'Percent discount must be between 1 and 100',
         );
       }
     }
@@ -176,7 +176,7 @@ const updateOffer = async (
     if (payload.discountValue !== undefined && payload.discountValue <= 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Flat discount must be greater than 0'
+        'Flat discount must be greater than 0',
       );
     }
   }
@@ -199,7 +199,7 @@ const updateOffer = async (
     if (!payload.code && !offer.code) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Offer code is required when auto apply is disabled'
+        'Offer code is required when auto apply is disabled',
       );
     }
   }
@@ -218,7 +218,7 @@ const updateOffer = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Max usage count cannot be less than already used count'
+      'Max usage count cannot be less than already used count',
     );
   }
 
@@ -238,7 +238,7 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status}. You cannot perform this action.`
+      `Your account is ${currentUser.status}. You cannot perform this action.`,
     );
   }
 
@@ -257,14 +257,14 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to change the status of this offer'
+      'You are not authorized to change the status of this offer',
     );
   }
 
   const updatedOffer = await Offer.findByIdAndUpdate(
     id,
     { isActive: !offer.isActive },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
 
   return {
@@ -278,7 +278,7 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
 // get applicable offer for checkout
 const getApplicableOffer = async (
   { vendorId, subtotal, offerCode }: TApplyOfferPayload,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const now = new Date();
   console.log(currentUser.role);
@@ -307,7 +307,7 @@ const getApplicableOffer = async (
     if (!offer) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Invalid or expired offer code1'
+        'Invalid or expired offer code1',
       );
     }
   }
@@ -331,7 +331,7 @@ const getApplicableOffer = async (
   if (offer.minOrderAmount && subtotal < offer.minOrderAmount) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Minimum order amount ${offer.minOrderAmount} required`
+      `Minimum order amount ${offer.minOrderAmount} required`,
     );
   }
 
@@ -366,7 +366,7 @@ const applyOffer = ({
       discount: 0,
       deliveryCharge,
       subTotal: parseFloat(
-        (totalPriceBeforeTax + taxAmount + deliveryCharge).toFixed(2)
+        (totalPriceBeforeTax + taxAmount + deliveryCharge).toFixed(2),
       ),
       appliedOffer: null,
     };
@@ -399,7 +399,7 @@ const applyOffer = ({
       const bogo = offer.bogo!;
       // Find the item eligible for BOGO
       const item = items.find(
-        (i) => i.productId.toString() === bogo.itemId.toString()
+        (i) => i.productId.toString() === bogo.itemId.toString(),
       );
 
       if (item) {
@@ -420,8 +420,8 @@ const applyOffer = ({
   // Calculate subtotal
   const subTotal = parseFloat(
     (totalPriceBeforeTax - discount + taxAmount + finalDeliveryCharge).toFixed(
-      2
-    )
+      2,
+    ),
   );
 
   return {
@@ -442,10 +442,14 @@ const applyOffer = ({
 // get all offers service
 const getAllOffers = async (
   currentUser: AuthUser,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ) => {
   if (currentUser.role === 'VENDOR') {
     query.vendorId = currentUser._id;
+  }
+  if (currentUser.role === 'CUSTOMER') {
+    query.isActive = true;
+    query.isDeleted = false;
   }
   const offers = new QueryBuilder(Offer.find(), query)
     .fields()
@@ -475,7 +479,7 @@ const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -496,7 +500,7 @@ const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to delete this offer'
+      'You are not authorized to delete this offer',
     );
   }
 
@@ -513,7 +517,7 @@ const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
   if (offer.isActive) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Active offer must be deactivated before deleting'
+      'Active offer must be deactivated before deleting',
     );
   }
 
@@ -534,7 +538,7 @@ const permanentDeleteOffer = async (id: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -544,7 +548,7 @@ const permanentDeleteOffer = async (id: string, currentUser: AuthUser) => {
   if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only admin can permanently delete an offer'
+      'Only admin can permanently delete an offer',
     );
   }
 
@@ -562,14 +566,14 @@ const permanentDeleteOffer = async (id: string, currentUser: AuthUser) => {
   if (!offer.isDeleted) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'Offer must be soft deleted before permanent delete'
+      'Offer must be soft deleted before permanent delete',
     );
   }
 
   if (offer.isActive) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Active offer cannot be permanently deleted'
+      'Active offer cannot be permanently deleted',
     );
   }
 

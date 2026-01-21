@@ -45,6 +45,7 @@ export type TOrder = {
   rejectReason?: string;
 
   dispatchPartnerPool?: string[];
+  dispatchExpiresAt?: Date;
   // Delivery Details
   estimatedDeliveryTime?: string; // e.g., "30 mins"
   pickedUpAt?: Date;
