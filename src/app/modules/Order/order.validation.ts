@@ -7,7 +7,7 @@ const updateOrderStatusByVendorValidationSchema = z.object({
       ['ACCEPTED', 'REJECTED', 'PREPARING', 'READY_FOR_PICKUP', 'CANCELED'],
       {
         required_error: 'Action type is required',
-      }
+      },
     ),
     reason: z.string().optional(),
   }),
@@ -21,7 +21,14 @@ const updateOrderStatusByDeliveryPartnerValidationSchema = z.object({
   }),
 });
 
+const partnerAcceptDispatchOrder = z.object({
+  body: z.object({
+    action: z.enum(['reject']).optional(),
+  }),
+});
+
 export const OrderValidation = {
   updateOrderStatusByVendorValidationSchema,
   updateOrderStatusByDeliveryPartnerValidationSchema,
+  partnerAcceptDispatchOrder,
 };

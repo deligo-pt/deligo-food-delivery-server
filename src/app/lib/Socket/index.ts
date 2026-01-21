@@ -7,6 +7,7 @@ import config from '../../config';
 import AppError from '../../errors/AppError';
 import { registerDriverLiveLocationEvents } from './events/riderLiveLocation.events';
 import { registerSosSocketEvents } from './events/sosAlerts.events';
+import { registerOrderEvents } from './events/order.events';
 
 let io: Server;
 
@@ -36,6 +37,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
     registerSupportEvents(io, socket);
     registerDriverLiveLocationEvents(io, socket);
     registerSosSocketEvents(io, socket);
+    registerOrderEvents(io, socket);
   });
 };
 
@@ -43,7 +45,7 @@ export const getIO = () => {
   if (!io) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Socket not initialized'
+      'Socket not initialized',
     );
   }
   return io;

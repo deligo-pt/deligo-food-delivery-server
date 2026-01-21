@@ -8,7 +8,7 @@ import { AuthUser } from '../../constant/user.constant';
 const createOrderAfterPayment = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderAfterPayment(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -22,7 +22,7 @@ const createOrderAfterPayment = catchAsync(async (req, res) => {
 const getAllOrders = catchAsync(async (req, res) => {
   const result = await OrderServices.getAllOrders(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -38,7 +38,7 @@ const getAllOrders = catchAsync(async (req, res) => {
 const getSingleOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getSingleOrder(
     req.params.orderId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -54,7 +54,7 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
   const result = await OrderServices.updateOrderStatusByVendor(
     req.user as AuthUser,
     req.params.orderId,
-    req.body
+    req.body,
   );
 
   sendResponse(res, {
@@ -69,7 +69,7 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
 const broadcastOrderToPartners = catchAsync(async (req, res) => {
   const result = await OrderServices.broadcastOrderToPartners(
     req.params.orderId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -83,14 +83,15 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
 const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.partnerAcceptsDispatchedOrder(
     req.user as AuthUser,
-    req.params.orderId
+    req.params.orderId,
+    req.body.action,
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery partner assigned successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -99,7 +100,7 @@ const otpVerificationByVendor = catchAsync(async (req, res) => {
   const result = await OrderServices.otpVerificationByVendor(
     req.params.orderId,
     req.body.otp,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -115,7 +116,7 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
   const result = await OrderServices.updateOrderStatusByDeliveryPartner(
     req.params.orderId,
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,

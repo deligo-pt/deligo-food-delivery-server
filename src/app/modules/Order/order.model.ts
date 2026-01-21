@@ -23,7 +23,7 @@ const orderItemSchema = new Schema(
     totalBeforeTax: { type: Number, required: true },
     subtotal: { type: Number, required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const orderSchema = new Schema<TOrder>(
@@ -74,6 +74,7 @@ const orderSchema = new Schema<TOrder>(
     deliveryOtp: { type: String },
     isOtpVerified: { type: Boolean, default: false },
     dispatchPartnerPool: { type: [String], default: [] },
+    dispatchExpiresAt: { type: Date },
 
     deliveryAddress: { type: addressSchema, required: true },
     pickupAddress: { type: addressSchema },
@@ -87,7 +88,7 @@ const orderSchema = new Schema<TOrder>(
 
     isRated: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // The "Dispatching" Engine (Critical for partnerAcceptsDispatchedOrder)
