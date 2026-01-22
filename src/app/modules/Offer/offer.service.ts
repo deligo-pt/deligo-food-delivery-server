@@ -456,7 +456,7 @@ const getAllOffers = async (
     .paginate()
     .sort()
     .filter()
-    .search([]);
+    .search(['title']);
   const meta = await offers.countTotal();
   const data = await offers.modelQuery;
   return {
