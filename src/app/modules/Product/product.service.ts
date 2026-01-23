@@ -254,6 +254,94 @@ const updateProduct = async (
   return updatedProduct;
 };
 
+// update inventory and pricing service
+const updateInventoryAndPricing = async (
+  currentUser: AuthUser,
+  productId: string,
+  addedQuantity: number = 0,
+  reduceQuantity: number = 0,
+  newPrice?: number,
+  variationSku?: string,
+) => {
+  const product = await Product.findOne({ productId });
+
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
+  if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
+    if (currentUser._id.toString() !== product?.vendorId.toString()) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to update this product',
+      );
+    }
+  }
+
+  const netQuantityChange = addedQuantity - reduceQuantity;
+
+  if (product.stock.hasVariations) {
+    if (!variationSku) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Variation SKU is required');
+    }
+
+    let variationFound = false;
+    let minPrice = Infinity;
+
+    product?.variations?.forEach((variation) => {
+      variation.options.forEach((opt) => {
+        if (opt.sku === variationSku) {
+          if (reduceQuantity > 0 && reduceQuantity > opt.stockQuantity) {
+            throw new AppError(
+              httpStatus.BAD_REQUEST,
+              `Insufficient stock for SKU ${variationSku}. Available: ${opt.stockQuantity}`,
+            );
+          }
+
+          opt.stockQuantity += netQuantityChange;
+          opt.totalAddedQuantity += netQuantityChange;
+          opt.isOutOfStock = opt.stockQuantity <= 0;
+
+          if (newPrice !== undefined) opt.price = newPrice;
+          variationFound = true;
+        }
+        if (opt.price < minPrice) minPrice = opt.price;
+      });
+    });
+
+    if (!variationFound) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Variation SKU not found');
+    }
+
+    let totalStock = 0;
+    product?.variations?.forEach((v) =>
+      v.options.forEach((opt) => (totalStock += opt.stockQuantity)),
+    );
+
+    product.stock.quantity = totalStock;
+    product.stock.totalAddedQuantity += netQuantityChange;
+    if (newPrice !== undefined) product.pricing.price = minPrice;
+  } else {
+    if (reduceQuantity > 0 && reduceQuantity > product.stock.quantity) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Insufficient stock. Available: ${product.stock.quantity}`,
+      );
+    }
+
+    product.stock.quantity += netQuantityChange;
+    product.stock.totalAddedQuantity += netQuantityChange;
+    if (newPrice !== undefined) product.pricing.price = newPrice;
+  }
+
+  const finalQty = product.stock.quantity;
+  product.stock.availabilityStatus =
+    finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+
+  await product.save();
+  return product;
+};
+
 // Approved Product Service
 const approvedProduct = async (
   productId: string,
@@ -578,6 +666,7 @@ const permanentDeleteProduct = async (
 export const ProductServices = {
   createProduct,
   updateProduct,
+  updateInventoryAndPricing,
   approvedProduct,
   deleteProductImages,
   getAllProducts,

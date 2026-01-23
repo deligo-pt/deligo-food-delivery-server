@@ -28,6 +28,14 @@ router.patch(
   ProductControllers.updateProduct,
 );
 
+// Update inventory and pricing route
+router.patch(
+  '/update-inventory-and-pricing/:productId',
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  validateRequest(ProductValidation.updateStockAndPriceValidationSchema),
+  ProductControllers.updateInventoryAndPricing,
+);
+
 // Approved product by Admin
 router.patch(
   '/approveOrReject/:productId',

@@ -125,6 +125,21 @@ const updateProductValidationSchema = z.object({
   }),
 });
 
+const updateStockAndPriceValidationSchema = z.object({
+  body: z
+    .object({
+      addedQuantity: z.number().optional(),
+      reduceQuantity: z.number().min(1).optional(),
+      newPrice: z.number().min(0, 'Price cannot be negative').optional(),
+      variationSku: z.string().optional(),
+    })
+    .refine((data) => !(data.addedQuantity && data.reduceQuantity), {
+      message:
+        'You cannot provide both addedQuantity and reduceQuantity at the same time',
+      path: ['addedQuantity'],
+    }),
+});
+
 // approveProductValidationSchema
 const approveProductValidationSchema = z.object({
   body: z.object({
@@ -136,5 +151,6 @@ const approveProductValidationSchema = z.object({
 export const ProductValidation = {
   createProductValidationSchema,
   updateProductValidationSchema,
+  updateStockAndPriceValidationSchema,
   approveProductValidationSchema,
 };
