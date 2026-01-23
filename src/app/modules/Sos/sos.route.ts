@@ -9,7 +9,7 @@ const router = Router();
 // trigger sos route
 router.post(
   '/trigger',
-  auth('ADMIN', 'DELIVERY_PARTNER', 'VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'),
+  auth('DELIVERY_PARTNER', 'VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'),
   validateRequest(SosValidation.createSosValidationSchema),
   SosController.triggerSos,
 );
