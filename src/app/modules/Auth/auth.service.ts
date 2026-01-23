@@ -20,7 +20,7 @@ import {
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginCustomer, TLoginUser } from './auth.interface';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
+import { findUserByEmail, findUserById } from '../../utils/findUserByEmailOrId';
 import { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../../config';
@@ -291,16 +291,13 @@ const onboardUser = async <
 // Login User
 const loginUser = async (payload: TLoginUser) => {
   // checking if the user is exist
-  const result = await findUserByEmailOrId({
+  const { user, model } = await findUserByEmail({
     email: payload?.email,
-    isDeleted: false,
   });
-  const user = result?.user;
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
-  await findUserByEmailOrId({ userId: user?.userId, isDeleted: false });
-  const userModel = result?.model;
+  const userModel = model;
 
   // checking if the user is blocked
 
@@ -497,8 +494,7 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 
 // Logout User
 const logoutUser = async (email: string, token: string) => {
-  const result = await findUserByEmailOrId({ email, isDeleted: false });
-  const user = result?.user;
+  const { user } = await findUserByEmail({ email });
 
   // if (!token) {
   //   throw new AppError(httpStatus.BAD_REQUEST, 'Fcm token is required');
@@ -590,8 +586,7 @@ const changePassword = async (
 
 // Forgot Password
 const forgotPassword = async (email: string) => {
-  const result = await findUserByEmailOrId({ email, isDeleted: false });
-  const user = result?.user;
+  const { user } = await findUserByEmail({ email });
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
@@ -659,9 +654,7 @@ const resetPassword = async (
   token: string,
   newPassword: string,
 ) => {
-  const result = await findUserByEmailOrId({ email, isDeleted: false });
-  const user = result?.user;
-  const model = result?.model;
+  const { user, model } = await findUserByEmail({ email });
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
@@ -736,7 +729,7 @@ const refreshToken = async (token: string) => {
 
   const { iat, userId } = decoded;
 
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
+  const result = await findUserById({ userId });
 
   const user = result?.user;
   const model = result?.model;
@@ -787,9 +780,8 @@ const refreshToken = async (token: string) => {
 
 // submit approval request service
 const submitForApproval = async (userId: string, currentUser: AuthUser) => {
-  const { user: submittedUser } = await findUserByEmailOrId({
+  const { user: submittedUser } = await findUserById({
     userId,
-    isDeleted: false,
   });
   if (!submittedUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -899,9 +891,8 @@ const approvedOrRejectedUser = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'Admin not found');
   }
 
-  const { user: submittedUser } = await findUserByEmailOrId({
+  const { user: submittedUser } = await findUserById({
     userId,
-    isDeleted: false,
   });
 
   if (!submittedUser) {
@@ -1036,8 +1027,7 @@ const verifyOtp = async (
   let user: any = undefined;
 
   if (email) {
-    const result = await findUserByEmailOrId({ email, isDeleted: false });
-    user = result?.user;
+    const { user } = await findUserByEmail({ email });
 
     if (!user)
       throw new AppError(
@@ -1148,7 +1138,7 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
     await user.save();
   }
   if (email) {
-    const { user } = await findUserByEmailOrId({ email, isDeleted: false });
+    const { user } = await findUserByEmail({ email });
     if (!user) {
       throw new AppError(
         httpStatus.NOT_FOUND,
@@ -1204,9 +1194,8 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
     );
   }
 
-  const { user: existingUser } = await findUserByEmailOrId({
+  const { user: existingUser } = await findUserById({
     userId,
-    isDeleted: false,
   });
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
@@ -1261,7 +1250,10 @@ const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
     );
   }
 
-  const { user: existingUser, model } = await findUserByEmailOrId({ userId });
+  const { user: existingUser, model } = await findUserById({
+    userId,
+    isDeleted: true,
+  });
   if (!existingUser) {
     throw new AppError(
       httpStatus.NOT_FOUND,

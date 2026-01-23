@@ -90,8 +90,6 @@ const updateProductValidationSchema = z.object({
               price: z.number().min(0),
               sku: z.string().optional(),
               stockQuantity: z.number().min(0).optional(),
-              totalAddedQuantity: z.number().min(0).optional(),
-              isOutOfStock: z.boolean().optional(),
             }),
           ),
         }),
@@ -104,8 +102,7 @@ const updateProductValidationSchema = z.object({
       .object({
         price: z.number().min(0).optional(),
         discount: z.number().min(0).max(100).optional(),
-        taxRate: z.number().min(0).max(100).optional(),
-        finalPrice: z.number().optional(),
+        taxId: z.string().optional(),
         currency: z.string().optional(),
       })
       .optional(),
@@ -113,36 +110,20 @@ const updateProductValidationSchema = z.object({
     stock: z
       .object({
         quantity: z.number().min(0).optional(),
-        totalAddedQuantity: z.number().min(0).optional(),
         unit: z.string().optional(),
         availabilityStatus: z
           .enum(['In Stock', 'Out of Stock', 'Limited'])
           .optional(),
-        hasVariations: z.boolean().optional(),
       })
       .optional(),
 
     images: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
-
-    attributes: z
-      .record(
-        z.union([
-          z.string(),
-          z.number(),
-          z.boolean(),
-          z.array(z.string()),
-          z.null(),
-        ]),
-      )
-      .optional(),
-
+    attributes: z.record(z.any()).optional(),
     meta: z
       .object({
         isFeatured: z.boolean().optional(),
-        isAvailableForPreOrder: z.boolean().optional(),
         status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
-        origin: z.string().optional(),
       })
       .optional(),
   }),

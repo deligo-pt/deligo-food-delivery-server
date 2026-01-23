@@ -13,7 +13,7 @@ export const locationSchema = new Schema(
     accuracy: { type: Number }, // GPS Accuracy in meters
     lastLocationUpdate: { type: Date, default: Date.now, required: true }, // Data Freshness Timestamp
   },
-  { _id: false }
+  { _id: false },
 );
 
 const deliveryPartnerSchema = new Schema<
@@ -296,7 +296,7 @@ const deliveryPartnerSchema = new Schema<
   {
     timestamps: true,
     virtuals: true,
-  }
+  },
 );
 
 // --- Indexing and Plugins ---

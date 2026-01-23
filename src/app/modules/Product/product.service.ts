@@ -14,7 +14,7 @@ import { calculateDistance } from '../../utils/calculateDistance';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { customAlphabet } from 'nanoid';
-import { SageService } from '../Sage/SageService';
+// import { SageService } from '../Sage/SageService';
 import { cleanForSKU, generateSlug } from './product.utils';
 import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
@@ -128,11 +128,11 @@ const createProduct = async (
 
   const newProduct = await Product.create({ ...payload, images });
 
-  if (newProduct) {
-    SageService.syncProductToSage(newProduct).catch((error) => {
-      console.error('Error syncing product to Sage:', error);
-    });
-  }
+  // if (newProduct) {
+  //   SageService.syncProductToSage(newProduct).catch((error) => {
+  //     console.error('Error syncing product to Sage:', error);
+  //   });
+  // }
 
   return newProduct;
 };
@@ -153,8 +153,19 @@ const updateProduct = async (
     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
   });
 
-  if (!existingProduct) {
+  if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (existingProduct.stock.hasVariations && payload.stock) {
+    const isUpdatingOtherThanUnit = Object.keys(payload.stock).some(
+      (field) => field !== 'unit',
+    );
+    if (isUpdatingOtherThanUnit) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'For products with variations, update variations for quantity changes.',
+      );
+    }
   }
 
   const { pricing, stock, meta, attributes, variations, ...remainingData } =
@@ -162,8 +173,24 @@ const updateProduct = async (
   const modifiedData: Record<string, any> = { ...remainingData };
   const productNamePart = cleanForSKU(existingProduct.name);
 
+  if (pricing?.taxId) {
+    const tax: TTax | null = await Tax.findById(pricing.taxId);
+    if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
+    modifiedData['pricing.taxId'] = pricing.taxId;
+    modifiedData['pricing.taxRate'] = tax.taxRate;
+  }
+
+  if (pricing) {
+    Object.keys(pricing).forEach((key) => {
+      if (key !== 'taxId')
+        modifiedData[`pricing.${key}`] = (pricing as any)[key];
+    });
+  }
+
   if (variations && variations.length > 0) {
     let totalStock = 0;
+    let totalAdded = 0;
+    let minPrice = Infinity;
 
     const finalVariations = JSON.parse(
       JSON.stringify(existingProduct.variations || []),
@@ -182,99 +209,280 @@ const updateProduct = async (
 
           if (optIndex > -1) {
             const existingOpt = finalVariations[varIndex].options[optIndex];
-            const updatedStock =
-              newOpt.stockQuantity ?? existingOpt.stockQuantity ?? 0;
 
-            finalVariations[varIndex].options[optIndex] = {
-              ...existingOpt,
-              ...newOpt,
-              stockQuantity: updatedStock,
-              totalAddedQuantity:
-                existingOpt.totalAddedQuantity || updatedStock,
-              isOutOfStock: updatedStock <= 0,
-            };
+            if (newOpt.stockQuantity !== undefined) {
+              const currentStock = existingOpt.stockQuantity || 0;
+              const currentTotal = existingOpt.totalAddedQuantity || 0;
+
+              const updatedTotal =
+                newOpt.stockQuantity > currentStock
+                  ? currentTotal + (newOpt.stockQuantity - currentStock)
+                  : newOpt.stockQuantity;
+
+              finalVariations[varIndex].options[optIndex].stockQuantity =
+                newOpt.stockQuantity;
+              finalVariations[varIndex].options[optIndex].totalAddedQuantity =
+                updatedTotal;
+              finalVariations[varIndex].options[optIndex].isOutOfStock =
+                newOpt.stockQuantity <= 0;
+            }
+            if (newOpt.price !== undefined)
+              finalVariations[varIndex].options[optIndex].price = newOpt.price;
           } else {
-            const stock = newOpt.stockQuantity || 0;
+            const s = newOpt.stockQuantity || 0;
             finalVariations[varIndex].options.push({
               ...newOpt,
               sku:
                 newOpt.sku ||
-                `VAR-${productNamePart}-${cleanForSKU(newOpt.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
-              stockQuantity: stock,
-              totalAddedQuantity: stock,
-              isOutOfStock: stock <= 0,
+                `VAR-${productNamePart}-${cleanForSKU(newOpt.label)}-${Math.random().toString(36).substring(2, 3).toUpperCase()}`,
+              stockQuantity: s,
+              totalAddedQuantity: s,
+              isOutOfStock: s <= 0,
             });
           }
         });
       } else {
-        const processedNewVar = {
+        finalVariations.push({
           ...newVar,
-          options: newVar.options.map((o) => {
-            const s = o.stockQuantity || 0;
-            return {
-              ...o,
-              sku:
-                o.sku ||
-                `VAR-${productNamePart}-${cleanForSKU(o.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
-              stockQuantity: s,
-              totalAddedQuantity: s,
-              isOutOfStock: s <= 0,
-            };
-          }),
-        };
-        finalVariations.push(processedNewVar);
+          options: newVar.options.map((o) => ({
+            ...o,
+            sku:
+              o.sku ||
+              `VAR-${productNamePart}-${cleanForSKU(o.label)}-${Math.random().toString(36).substring(2, 3).toUpperCase()}`,
+            totalAddedQuantity: o.stockQuantity || 0,
+            isOutOfStock: (o.stockQuantity || 0) <= 0,
+          })),
+        });
       }
     });
 
     finalVariations.forEach((v: any) => {
       v.options.forEach((o: any) => {
         totalStock += o.stockQuantity || 0;
+        totalAdded += o.totalAddedQuantity || 0;
+        if (o.price < minPrice) minPrice = o.price;
       });
     });
 
     modifiedData.variations = finalVariations;
     modifiedData['stock.quantity'] = totalStock;
-    modifiedData['stock.totalAddedQuantity'] = totalStock;
+    modifiedData['stock.totalAddedQuantity'] = totalAdded;
     modifiedData['stock.hasVariations'] = true;
-  } else if (stock?.quantity !== undefined) {
-    modifiedData['stock.quantity'] = stock.quantity;
-    modifiedData['stock.totalAddedQuantity'] = stock.quantity;
-    modifiedData['stock.hasVariations'] = false;
-  }
+    if (minPrice !== Infinity) modifiedData['pricing.price'] = minPrice;
+  } else if (stock && !existingProduct.stock.hasVariations) {
+    if (stock.quantity !== undefined) {
+      const currentStock = existingProduct.stock.quantity;
+      const currentTotal = existingProduct.stock.totalAddedQuantity;
 
-  if (pricing) {
-    Object.keys(pricing).forEach((key) => {
-      modifiedData[`pricing.${key}`] = (pricing as any)[key];
-    });
-  }
+      const updatedTotal =
+        stock.quantity > currentStock
+          ? currentTotal + (stock.quantity - currentStock)
+          : stock.quantity;
 
-  if (meta) {
-    Object.keys(meta).forEach((key) => {
-      modifiedData[`meta.${key}`] = (meta as any)[key];
-    });
+      modifiedData['stock.quantity'] = stock.quantity;
+      modifiedData['stock.totalAddedQuantity'] = updatedTotal;
+    }
   }
 
   if (stock?.unit) modifiedData['stock.unit'] = stock.unit;
-
+  if (meta)
+    Object.keys(meta).forEach(
+      (key) => (modifiedData[`meta.${key}`] = (meta as any)[key]),
+    );
   if (attributes) modifiedData.attributes = attributes;
-
-  if (images && images.length > 0) {
+  if (images && images.length > 0)
     modifiedData.$push = { images: { $each: images } };
-  }
 
-  const finalStockQty =
+  const finalQty =
     modifiedData['stock.quantity'] ?? existingProduct.stock.quantity;
   modifiedData['stock.availabilityStatus'] =
-    finalStockQty > 0 ? 'In Stock' : 'Out of Stock';
+    finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
 
   const updatedProduct = await Product.findOneAndUpdate(
     { productId },
-    modifiedData,
-    { new: true, runValidators: true, context: 'query' },
+    { $set: modifiedData },
+    { new: true, runValidators: true },
   );
 
   return updatedProduct;
 };
+
+// const updateProduct = async (
+//   productId: string,
+//   payload: Partial<TProduct>,
+//   currentUser: AuthUser,
+//   images: string[],
+// ) => {
+//   if (currentUser?.status !== 'APPROVED') {
+//     throw new AppError(httpStatus.FORBIDDEN, `Action forbidden.`);
+//   }
+
+//   const existingProduct = await Product.findOne({
+//     productId,
+//     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
+//   });
+
+//   if (!existingProduct) {
+//     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+//   }
+
+//   if (
+//     Array.isArray(existingProduct?.variations) &&
+//     existingProduct.variations.length > 0 &&
+//     payload.stock
+//   ) {
+//     const updatedFields = Object.keys(payload.stock);
+//     const isUpdatingOtherThanUnit = updatedFields.some(
+//       (field) => field !== 'unit',
+//     );
+
+//     if (isUpdatingOtherThanUnit) {
+//       throw new AppError(
+//         httpStatus.BAD_REQUEST,
+//         'For products with variations, you can only update the stock "unit". Please update variations for quantity changes.',
+//       );
+//     }
+//   }
+
+//   const { pricing, stock, meta, attributes, variations, ...remainingData } =
+//     payload;
+//   const modifiedData: Record<string, any> = { ...remainingData };
+//   const productNamePart = cleanForSKU(existingProduct.name);
+
+//   if (pricing?.taxId) {
+//     const tax: TTax | null = await Tax.findById(pricing.taxId);
+//     if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
+//     modifiedData['pricing.taxId'] = pricing.taxId;
+//     modifiedData['pricing.taxRate'] = tax.taxRate;
+//   }
+
+//   if (variations && variations.length > 0) {
+//     let totalStock = 0;
+//     let totalAdded = 0;
+//     let minNetPrice = Infinity;
+
+//     const finalVariations = JSON.parse(
+//       JSON.stringify(existingProduct.variations || []),
+//     );
+
+//     variations.forEach((newVar) => {
+//       const varIndex = finalVariations.findIndex(
+//         (v: any) => v.name === newVar.name,
+//       );
+
+//       if (varIndex > -1) {
+//         newVar.options.forEach((newOpt) => {
+//           const optIndex = finalVariations[varIndex].options.findIndex(
+//             (o: any) => o.label === newOpt.label,
+//           );
+
+//           if (optIndex > -1) {
+//             const existingOpt = finalVariations[varIndex].options[optIndex];
+//             if (newOpt.stockQuantity !== undefined) {
+//               const diff = newOpt.stockQuantity - existingOpt.stockQuantity;
+//               const updatedTotal =
+//                 newOpt.stockQuantity > existingOpt.stockQuantity
+//                   ? existingOpt.totalAddedQuantity + diff
+//                   : newOpt.stockQuantity;
+
+//               finalVariations[varIndex].options[optIndex] = {
+//                 ...existingOpt,
+//                 ...newOpt,
+//                 stockQuantity: newOpt.stockQuantity,
+//                 totalAddedQuantity: updatedTotal,
+//                 isOutOfStock: newOpt.stockQuantity <= 0,
+//               };
+//             }
+//           } else {
+//             const s = newOpt.stockQuantity || 0;
+//             finalVariations[varIndex].options.push({
+//               ...newOpt,
+//               sku:
+//                 newOpt.sku ||
+//                 `VAR-${productNamePart}-${cleanForSKU(newOpt.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+//               stockQuantity: s,
+//               totalAddedQuantity: s,
+//               isOutOfStock: s <= 0,
+//             });
+//           }
+//         });
+//       } else {
+//         finalVariations.push({
+//           ...newVar,
+//           options: newVar.options.map((o) => ({
+//             ...o,
+//             sku:
+//               o.sku ||
+//               `VAR-${productNamePart}-${cleanForSKU(o.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+//             totalAddedQuantity: o.stockQuantity || 0,
+//             isOutOfStock: (o.stockQuantity || 0) <= 0,
+//           })),
+//         });
+//       }
+//     });
+
+//     finalVariations.forEach((v: any) => {
+//       v.options.forEach((o: any) => {
+//         totalStock += o.stockQuantity || 0;
+//         totalAdded += o.totalAddedQuantity || 0;
+//         if (o.price < minNetPrice) minNetPrice = o.price;
+//       });
+//     });
+
+//     modifiedData.variations = finalVariations;
+//     modifiedData['stock.quantity'] = totalStock;
+//     modifiedData['stock.totalAddedQuantity'] = totalAdded;
+//     modifiedData['stock.hasVariations'] = true;
+//     modifiedData['pricing.price'] = minNetPrice;
+//   } else if (
+//     stock?.quantity !== undefined &&
+//     !existingProduct.stock.hasVariations
+//   ) {
+//     const currentStock = existingProduct.stock.quantity;
+//     const newStockInput = stock.quantity;
+//     const currentTotal = existingProduct.stock.totalAddedQuantity;
+
+//     const updatedTotal =
+//       newStockInput > currentStock
+//         ? currentTotal + (newStockInput - currentStock)
+//         : newStockInput;
+
+//     modifiedData['stock.quantity'] = newStockInput;
+//     modifiedData['stock.totalAddedQuantity'] = updatedTotal;
+//     modifiedData['stock.hasVariations'] = false;
+//   }
+
+//   if (pricing) {
+//     Object.keys(pricing).forEach((key) => {
+//       if (key !== 'taxId')
+//         modifiedData[`pricing.${key}`] = (pricing as any)[key];
+//     });
+//   }
+
+//   if (meta) {
+//     Object.keys(meta).forEach((key) => {
+//       modifiedData[`meta.${key}`] = (meta as any)[key];
+//     });
+//   }
+
+//   if (stock?.unit) modifiedData['stock.unit'] = stock.unit;
+//   if (attributes) modifiedData.attributes = attributes;
+//   if (images && images.length > 0)
+//     modifiedData.$push = { images: { $each: images } };
+
+//   const finalQty =
+//     modifiedData['stock.quantity'] ?? existingProduct.stock.quantity;
+//   modifiedData['stock.availabilityStatus'] =
+//     finalQty > 0 ? 'In Stock' : 'Out of Stock';
+
+//   const updatedProduct = await Product.findOneAndUpdate(
+//     { productId },
+//     modifiedData,
+//     { new: true, runValidators: true },
+//   );
+
+//   return updatedProduct;
+// };
 
 // Approved Product Service
 const approvedProduct = async (

@@ -16,7 +16,7 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // ---------------------------------------------------------
   // Check if target delivery partner exists
@@ -32,7 +32,7 @@ const updateDeliveryPartner = async (
   if (!existingDeliveryPartner.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please verify your email before updating your profile.'
+      'Please verify your email before updating your profile.',
     );
   }
 
@@ -45,7 +45,7 @@ const updateDeliveryPartner = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Delivery Partner update is locked. Please contact support.'
+      'Delivery Partner update is locked. Please contact support.',
     );
   }
 
@@ -58,7 +58,7 @@ const updateDeliveryPartner = async (
     if (existingDeliveryPartner.userId !== currentUser?.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to update this profile.'
+        'You are not authorized to update this profile.',
       );
     }
   }
@@ -71,7 +71,7 @@ const updateDeliveryPartner = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this Delivery Partner.'
+      'You are not authorized to update this Delivery Partner.',
     );
   }
 
@@ -82,13 +82,13 @@ const updateDeliveryPartner = async (
   const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
     { userId: deliveryPartnerId },
     { $set: payload },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedDeliveryPartner) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update Delivery Partner.'
+      'Failed to update Delivery Partner.',
     );
   }
 
@@ -98,7 +98,7 @@ const updateDeliveryPartner = async (
 // update delivery partner live location
 const updateDeliveryPartnerLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // ------------------------------------
   // Role check
@@ -106,7 +106,7 @@ const updateDeliveryPartnerLiveLocation = async (
   if (currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only delivery partners can update live location'
+      'Only delivery partners can update live location',
     );
   }
 
@@ -140,7 +140,7 @@ const updateDeliveryPartnerLiveLocation = async (
         'operationalData.lastActivityAt': new Date(),
       },
     },
-    { new: true, projection: { currentSessionLocation: 1 } }
+    { new: true, projection: { currentSessionLocation: 1 } },
   );
 
   if (!updated) {
@@ -158,7 +158,7 @@ const deliverPartnerDocImageUpload = async (
   file: string | undefined,
   data: TDeliveryPartnerImageDocuments,
   currentUser: AuthUser,
-  deliveryPartnerId: string
+  deliveryPartnerId: string,
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
@@ -174,7 +174,7 @@ const deliverPartnerDocImageUpload = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'You are not authorize to upload document image!'
+        'You are not authorize to upload document image!',
       );
     }
   }
@@ -207,11 +207,11 @@ const deliverPartnerDocImageUpload = async (
 //get all delivery partners
 const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
-  // if (currentUser?.role === 'FLEET_MANAGER') {
-  //   query.registeredBy = currentUser?._id.toString();
-  // }
+  if (currentUser?.role === 'FLEET_MANAGER') {
+    query['registeredBy.id'] = currentUser?._id.toString();
+  }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
     .fields()
@@ -242,7 +242,7 @@ const getAllDeliveryPartnersFromDB = async (
 // get single delivery partner from db
 const getSingleDeliveryPartnerFromDB = async (
   deliveryPartnerId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (
     currentUser?.role === 'DELIVERY_PARTNER' &&
@@ -250,7 +250,7 @@ const getSingleDeliveryPartnerFromDB = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this delivery partner'
+      'You are not authorized to access this delivery partner',
     );
   }
 
@@ -278,7 +278,7 @@ const getSingleDeliveryPartnerFromDB = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this delivery partner'
+      'You are not authorized to access this delivery partner',
     );
   }
 
