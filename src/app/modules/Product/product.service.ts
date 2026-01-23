@@ -410,7 +410,7 @@ const deleteProductImages = async (
   }
 
   if (
-    currentUser.role === 'VENDOR' &&
+    (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
     product.vendorId.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(

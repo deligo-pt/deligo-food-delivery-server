@@ -47,7 +47,7 @@ router.patch(
 // Product delete images
 router.delete(
   '/:productId/images',
-  auth('VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   ProductControllers.deleteProductImages,
 );
 
