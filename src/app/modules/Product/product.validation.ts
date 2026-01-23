@@ -100,7 +100,6 @@ const updateProductValidationSchema = z.object({
 
     pricing: z
       .object({
-        price: z.number().min(0).optional(),
         discount: z.number().min(0).max(100).optional(),
         taxId: z.string().optional(),
         currency: z.string().optional(),
@@ -109,11 +108,7 @@ const updateProductValidationSchema = z.object({
 
     stock: z
       .object({
-        quantity: z.number().min(0).optional(),
         unit: z.string().optional(),
-        availabilityStatus: z
-          .enum(['In Stock', 'Out of Stock', 'Limited'])
-          .optional(),
       })
       .optional(),
 
@@ -123,6 +118,7 @@ const updateProductValidationSchema = z.object({
     meta: z
       .object({
         isFeatured: z.boolean().optional(),
+        isAvailableForPreOrder: z.boolean().optional(),
         status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
       })
       .optional(),
