@@ -7,16 +7,16 @@ const addToCartValidationSchema = z.object({
       z.object({
         productId: z.string({ required_error: 'Product ID is required' }),
         quantity: z.number().min(1, 'Quantity must be at least 1'),
-        variantName: z.string().optional(),
+        variationSku: z.string().optional(),
         addons: z
           .array(
             z.object({
               addOnId: z.string(),
               quantity: z.number().min(1),
-            })
+            }),
           )
           .optional(),
-      })
+      }),
     ),
   }),
 });
@@ -42,7 +42,7 @@ const deleteCartItemValidationSchema = z.object({
           required_error: 'Product ID is required',
         }),
         variantName: z.string().optional().nullable(),
-      })
+      }),
     )
     .min(1, 'At least one item must be provided to delete'),
 });

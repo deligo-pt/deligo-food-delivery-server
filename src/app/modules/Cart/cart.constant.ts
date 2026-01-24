@@ -1,23 +1,32 @@
 import { Coupon } from '../Coupon/coupon.model';
 import { Product } from '../Product/product.model';
+import { TCart } from './cart.interface';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export const recalculateCartTotals = async (cart: any) => {
-  // 1. Get a fresh list of active items after the change
+export const recalculateCartTotals = async (cart: TCart) => {
   const activeItems = cart.items.filter((i: any) => i.isActive === true);
 
-  // 2. Update basic totals (before discount)
+  if (activeItems.length === 0) {
+    cart.totalItems = 0;
+    cart.totalPrice = 0;
+    cart.discount = 0;
+    cart.subtotal = 0;
+    cart.couponId = null;
+    return cart;
+  }
+
+  // Update basic totals (before discount)
   const activeSubtotal = activeItems.reduce(
     (sum: number, i: any) => sum + i.subtotal,
-    0
+    0,
   );
   cart.totalItems = activeItems.reduce(
     (sum: number, i: any) => sum + i.quantity,
-    0
+    0,
   );
-  cart.totalPrice = parseFloat(activeSubtotal.toFixed(2));
+  cart.totalPrice = Number(activeSubtotal.toFixed(2));
 
-  // 3. Auto re-apply or validate coupon
+  // Auto re-apply or validate coupon
   if (cart.couponId) {
     const coupon = await Coupon.findOne({
       _id: cart.couponId,
@@ -36,43 +45,50 @@ export const recalculateCartTotals = async (cart: any) => {
       cart.couponId = null;
     } else {
       // Category validation
-      const productIds = activeItems.map((i: any) => i.productId.toString());
-      const products = await Product.find({ _id: { $in: productIds } }).select(
-        'category'
-      );
-      const cartCategories = products.map((p) => p.category.toLowerCase());
-      const couponCategories =
+      const uniqueProductIds = [
+        ...new Set(activeItems.map((i: any) => i.productId.toString())),
+      ];
+      const productsInCart = await Product.find({
+        _id: { $in: uniqueProductIds },
+      }).select('category');
+      console.log({ productsInCart });
+      const cartCategoryIds = productsInCart.map((p) => p.category);
+      console.log({ cartCategoryIds });
+      const couponCategoryIds =
         coupon.applicableCategories?.map((c: string) => c.toLowerCase()) || [];
 
-      const categoryMatch =
-        couponCategories.length === 0 ||
-        cartCategories.some((cat) => couponCategories.includes(cat));
+      const isCategoryMatch =
+        cartCategoryIds.length === 0 ||
+        couponCategoryIds.some((cat) => couponCategoryIds.includes(cat));
 
-      if (!categoryMatch) {
+      if (!isCategoryMatch) {
         cart.discount = 0;
         cart.couponId = null;
       } else if (coupon.minPurchase && cart.totalPrice < coupon.minPurchase) {
-        cart.discount = 0; // Keep couponId, but set discount to 0
+        cart.discount = 0;
       } else {
         // Calculate final discount
-        let discount = 0;
+        let calculatedDiscount = 0;
         if (coupon.discountType === 'PERCENT') {
-          discount = (cart.totalPrice * coupon.discountValue) / 100;
+          calculatedDiscount = (cart.totalPrice * coupon.discountValue) / 100;
           if (coupon.maxDiscount)
-            discount = Math.min(discount, coupon.maxDiscount);
+            calculatedDiscount = Math.min(
+              calculatedDiscount,
+              coupon.maxDiscount,
+            );
         } else {
-          discount = coupon.discountValue;
+          calculatedDiscount = coupon.discountValue;
         }
-        cart.discount = parseFloat(discount.toFixed(2));
+        cart.discount = Number(calculatedDiscount.toFixed(2));
       }
     }
   } else {
     cart.discount = 0;
   }
 
-  // 4. Set final subtotal (Net Total)
-  cart.subtotal = parseFloat(
-    Math.max(0, cart.totalPrice - cart.discount).toFixed(2)
+  // Set final subtotal (Net Total)
+  cart.subtotal = Number(
+    Math.max(0, cart.totalPrice - cart.discount).toFixed(2),
   );
 
   return cart;

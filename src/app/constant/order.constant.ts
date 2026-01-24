@@ -18,7 +18,6 @@ export type TOrderItemSnapshot = {
   vendorId: mongoose.Types.ObjectId;
   name: string;
   image?: string;
-  variantName?: string;
   addons?: {
     name: string;
     price: number;

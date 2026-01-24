@@ -25,12 +25,12 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   }
   const customerId = currentUser._id;
 
-  const { productId, quantity, variantName } = payload.items[0];
+  const { productId, quantity, variationSku } = payload.items[0];
   const existingProduct = await Product.findOne({
     _id: productId,
     isDeleted: false,
     isApproved: true,
-  }).populate('addonGroups');
+  });
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
@@ -49,65 +49,74 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     );
   }
 
-  if (quantity > existingProduct.stock.quantity) {
+  let selectedPrice = existingProduct.pricing.price;
+  let selectedVariantLabel: string | undefined = undefined;
+  let finalVariationSku: string | null = null;
+  let availableStock = existingProduct.stock.quantity;
+
+  if (existingProduct.stock.hasVariations) {
+    if (!variationSku) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This product has variations. Please select one.',
+      );
+    }
+
+    const variations = existingProduct.variations || [];
+    let targetOption = null;
+
+    for (const variation of variations) {
+      targetOption = variation.options.find((opt) => opt.sku === variationSku);
+      if (targetOption) break;
+    }
+
+    if (!targetOption) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'The selected variation SKU is invalid',
+      );
+    }
+
+    selectedPrice = targetOption.price;
+    selectedVariantLabel = targetOption.label;
+    availableStock = targetOption.stockQuantity;
+    finalVariationSku = targetOption.sku;
+  } else {
+    finalVariationSku = null;
+  }
+
+  if (quantity > availableStock) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Product is out of stock');
   }
 
-  const discountPercent = existingProduct.pricing?.discount || 0;
-  const taxRate = existingProduct.pricing?.taxRate || 0;
+  const { discount = 0, taxRate = 0 } = existingProduct.pricing;
 
-  let rawPrice = existingProduct.pricing.price;
-  let finalPrice = existingProduct.pricing.finalPrice || 0;
+  const priceAfterDiscount = parseFloat(
+    (selectedPrice - (selectedPrice * discount) / 100).toFixed(2),
+  );
 
-  const hasVariations =
-    existingProduct.variations && existingProduct.variations.length > 0;
-  if (hasVariations && !variantName) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please select a variation for this product',
-    );
-  }
-
-  if (variantName) {
-    const variantOption = existingProduct.variations
-      ?.flatMap((v) => v.options)
-      .find((opt) => opt.label === variantName);
-
-    if (!variantOption)
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Variant '${variantName}' not found`,
-      );
-
-    rawPrice = variantOption.price;
-    const discountAmt = (rawPrice * discountPercent) / 100;
-    finalPrice = parseFloat((rawPrice - discountAmt).toFixed(2));
-  }
-
-  const totalBeforeTax = parseFloat((finalPrice * quantity).toFixed(2));
+  const totalBeforeTax = parseFloat((priceAfterDiscount * quantity).toFixed(2));
   const itemTaxAmount = parseFloat(
     (totalBeforeTax * (taxRate / 100)).toFixed(2),
   );
-  const itemSubtotalWithTax = parseFloat(
-    (totalBeforeTax + itemTaxAmount).toFixed(2),
-  );
+  const itemSubtotal = parseFloat((totalBeforeTax + itemTaxAmount).toFixed(2));
 
   const newItem = {
     productId: existingProduct._id,
     vendorId: existingProduct.vendorId,
-    name: variantName
-      ? existingProduct.name + ' - ' + variantName
+    name: selectedVariantLabel
+      ? `${existingProduct.name} - ${selectedVariantLabel}`
       : existingProduct.name,
     image: existingProduct?.images[0] || '',
-    variantName: variantName || null,
+    variationSku: finalVariationSku,
     quantity,
-    originalPrice: rawPrice,
-    discountAmount: parseFloat((finalPrice - rawPrice).toFixed(2)),
-    price: finalPrice,
-    taxRate: taxRate,
+    originalPrice: selectedPrice,
+    discountAmount: Number((selectedPrice - priceAfterDiscount).toFixed(2)),
+    price: priceAfterDiscount,
+    taxRate,
     taxAmount: itemTaxAmount,
     totalBeforeTax: totalBeforeTax,
-    subtotal: itemSubtotalWithTax,
+    subtotal: itemSubtotal,
     isActive: true,
     addons: [],
   };
@@ -115,42 +124,41 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   let cart = await Cart.findOne({ customerId, isDeleted: false });
 
   if (!cart) {
-    if (quantity > existingProduct.stock.quantity)
-      throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
-
     cart = new Cart({
       customerId,
       items: [newItem],
     });
   } else {
-    const activeItem = cart.items.find((i) => i.isActive === true);
     const itemIndex = cart.items.findIndex(
       (i) =>
         i.productId.toString() === productId.toString() &&
-        (i.variantName || null) === (variantName || null),
+        (String(i.variationSku).trim() || null) ===
+          (String(variationSku).trim() || null),
     );
 
     if (itemIndex > -1) {
       const currentItem = cart.items[itemIndex];
-      const newQuantity = currentItem.quantity + quantity;
+      const finalQuantity = currentItem.quantity + quantity;
 
-      if (newQuantity > existingProduct.stock.quantity)
+      if (finalQuantity > availableStock) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Insufficient product stock',
+          `Insufficient stock. You already have ${currentItem.quantity} in cart.`,
         );
+      }
 
-      currentItem.quantity = newQuantity;
-      currentItem.totalBeforeTax = parseFloat(
-        (currentItem.price * currentItem.quantity).toFixed(2),
+      currentItem.quantity = finalQuantity;
+      currentItem.totalBeforeTax = Number(
+        (currentItem.price * finalQuantity).toFixed(2),
       );
-      currentItem.taxAmount = parseFloat(
+      currentItem.taxAmount = Number(
         (currentItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
       );
-      currentItem.subtotal = parseFloat(
+      currentItem.subtotal = Number(
         (currentItem.totalBeforeTax + currentItem.taxAmount).toFixed(2),
       );
     } else {
+      const activeItem = cart.items.find((i) => i.isActive === true);
       if (
         activeItem &&
         activeItem.vendorId.toString() !== existingProduct.vendorId.toString()
@@ -190,7 +198,7 @@ const activateItem = async (
   const itemToActivate = cart.items.find(
     (i) =>
       i.productId.toString() === productId.toString() &&
-      i.variantName === variantName,
+      i.variationName === variantName,
   );
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
@@ -255,7 +263,7 @@ const updateCartItemQuantity = async (
   const { productId, variantName, quantity, action } = payload;
   const itemIndex = cart.items.findIndex(
     (i) =>
-      i.productId.toString() === productId && i.variantName === variantName,
+      i.productId.toString() === productId && i.variationName === variantName,
   );
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
@@ -329,7 +337,7 @@ const deleteCartItem = async (
     const isMatched = itemsToDelete.some(
       (deleteTarget) =>
         deleteTarget.productId === cartItem.productId.toString() &&
-        (deleteTarget.variantName || null) === (cartItem.variantName || null),
+        (deleteTarget.variantName || null) === (cartItem.variationName || null),
     );
 
     return !isMatched;
@@ -372,7 +380,7 @@ const updateAddonQuantity = async (
 
   const itemIndex = cart.items.findIndex(
     (i) =>
-      i.productId.toString() === productId && i.variantName === variantName,
+      i.productId.toString() === productId && i.variationName === variantName,
   );
   if (itemIndex === -1)
     throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');

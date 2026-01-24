@@ -1027,13 +1027,14 @@ const verifyOtp = async (
   let user: any = undefined;
 
   if (email) {
-    const { user } = await findUserByEmail({ email });
-
+    const result = await findUserByEmail({ email });
+    user = result?.user;
     if (!user)
       throw new AppError(
         httpStatus.NOT_FOUND,
         'User not found. Please register.',
       );
+
     if (user.otp !== otp)
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
     if (user.isOtpExpired && user.isOtpExpired < new Date())
@@ -1048,6 +1049,7 @@ const verifyOtp = async (
     }
   } else if (contactNumber) {
     user = await Customer.findOne({ contactNumber, isDeleted: false });
+
     if (!user)
       throw new AppError(
         httpStatus.NOT_FOUND,
@@ -1066,7 +1068,6 @@ const verifyOtp = async (
     user.requiresOtpVerification = false;
     user.mobileOtpId = undefined;
   }
-
   if (!user) {
     throw new AppError(
       httpStatus.NOT_FOUND,
@@ -1138,7 +1139,8 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
     await user.save();
   }
   if (email) {
-    const { user } = await findUserByEmail({ email });
+    const result = await findUserByEmail({ email });
+    user = result?.user;
     if (!user) {
       throw new AppError(
         httpStatus.NOT_FOUND,

@@ -7,7 +7,7 @@ const cartItemSchema = new Schema(
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     name: { type: String, required: true }, // Snapshot of product name
     image: { type: String }, // Snapshot of product image
-    variantName: { type: String, default: null }, // e.g., "Small", "Large"
+    variationSku: { type: String, default: null },
 
     originalPrice: { type: Number, required: true },
     discountAmount: { type: Number, default: 0 },
@@ -35,7 +35,7 @@ const cartItemSchema = new Schema(
     subtotal: { type: Number, required: true },
     isActive: { type: Boolean, default: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const cartSchema = new Schema<TCart>(
@@ -57,7 +57,7 @@ const cartSchema = new Schema<TCart>(
 
     isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Pre-save hook updated with 'const' and clean logic
@@ -73,12 +73,12 @@ cartSchema.pre('save', function (next) {
 
   const totalBeforeTax = activeItems.reduce(
     (sum, item) => sum + (item.totalBeforeTax || 0),
-    0
+    0,
   );
 
   const totalTax = activeItems.reduce(
     (sum, item) => sum + (item.taxAmount || 0),
-    0
+    0,
   );
 
   const couponDiscount = this.discount || 0;
