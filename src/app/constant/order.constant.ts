@@ -19,6 +19,7 @@ export type TOrderItemSnapshot = {
   name: string;
   image?: string;
   addons?: {
+    optionId: string;
     name: string;
     price: number;
     quantity: number;

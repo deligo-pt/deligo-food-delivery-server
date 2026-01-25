@@ -422,21 +422,30 @@ const updateAddonQuantity = async (
     taxRate: number;
   } | null = null;
 
+  let parentGroup: any = null;
+
   ((product.addonGroups as any[]) || []).forEach((group) => {
-    group.options.forEach((opt: any) => {
-      if (opt._id.toString() === optionId) {
+    if (group.isActive && !group.isDeleted) {
+      const option = group.options.find(
+        (opt: any) => opt._id.toString() === optionId,
+      );
+      if (option && option.isActive) {
         addonData = {
-          optionId: opt._id.toString(),
-          name: opt.name,
-          price: opt.price,
-          taxRate: opt.tax?.taxRate || 0,
+          optionId: option._id.toString(),
+          name: option.name,
+          price: option.price,
+          taxRate: option.tax?.taxRate || 0,
         };
+        parentGroup = group;
       }
-    });
+    }
   });
 
   if (!addonData)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid Addon selected');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Addon is inactive or unavailable',
+    );
 
   const selectedAddon = addonData as {
     optionId: string;
@@ -446,10 +455,23 @@ const updateAddonQuantity = async (
   };
 
   const existingAddonIndex = targetItem.addons.findIndex(
-    (a: any) => a.name === selectedAddon.name,
+    (a: any) => a.optionId?.toString() === selectedAddon.optionId.toString(),
   );
 
   if (action === 'increment') {
+    const groupOptionIds = parentGroup.options.map((o: any) =>
+      o._id.toString(),
+    );
+    const currentGroupSelectionCount = targetItem.addons
+      .filter((a: any) => groupOptionIds.includes(a.optionId.toString()))
+      .reduce((sum: number, a: any) => sum + a.quantity, 0);
+
+    if (currentGroupSelectionCount >= parentGroup.maxSelectable) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Maximum selection limit of ${parentGroup.maxSelectable} reached for ${parentGroup.title}`,
+      );
+    }
     if (existingAddonIndex > -1) {
       targetItem.addons[existingAddonIndex].quantity += 1;
     } else {

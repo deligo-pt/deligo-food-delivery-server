@@ -24,6 +24,9 @@ const cartItemSchema = new Schema(
 
     addons: [
       {
+        optionId: {
+          type: String,
+        },
         name: { type: String },
         price: { type: Number },
         quantity: { type: Number },
