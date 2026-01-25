@@ -43,7 +43,7 @@ router.get(
 router.get(
   '/user/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  SosController.getSosAlertsByUserId,
+  SosController.getUserSosHistory,
 );
 
 export const sosRoutes = router;

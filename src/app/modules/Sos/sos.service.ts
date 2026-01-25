@@ -167,7 +167,7 @@ const getSingleSosAlert = async (id: string) => {
   return result;
 };
 
-const getSosAlertsByUserId = async (
+const getUserSosHistory = async (
   currentUser: AuthUser,
   userId: string,
   query: Record<string, unknown>,
@@ -206,5 +206,5 @@ export const SosService = {
   getNearbySosAlerts,
   getAllSosAlerts,
   getSingleSosAlert,
-  getSosAlertsByUserId,
+  getUserSosHistory,
 };

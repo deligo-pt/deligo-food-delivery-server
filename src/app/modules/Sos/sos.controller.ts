@@ -65,8 +65,8 @@ const getSingleSosAlert = catchAsync(async (req, res) => {
 });
 
 // get sos alerts by user id controller
-const getSosAlertsByUserId = catchAsync(async (req, res) => {
-  const result = await SosService.getSosAlertsByUserId(
+const getUserSosHistory = catchAsync(async (req, res) => {
+  const result = await SosService.getUserSosHistory(
     req.user as AuthUser,
     req.params.id,
     req.query,
@@ -85,5 +85,5 @@ export const SosController = {
   getNearbySosAlerts,
   getAllSosAlerts,
   getSingleSosAlert,
-  getSosAlertsByUserId,
+  getUserSosHistory,
 };
