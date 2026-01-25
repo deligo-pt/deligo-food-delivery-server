@@ -3,26 +3,18 @@ import { z } from 'zod';
 // create coupon validation schema
 const createCouponValidationSchema = z.object({
   body: z.object({
-    code: z
-      .string({ required_error: 'Coupon code is required' })
-      .min(3, 'Coupon code must be at least 3 characters')
-      .toUpperCase(),
-    createdBy: z
-      .string({ required_error: 'Creator ID is required' })
-      .optional(),
-    discountType: z.enum(['PERCENT', 'FLAT'], {
-      required_error: 'Discount type is required',
-    }),
-    discountValue: z
-      .number({ required_error: 'Discount value is required' })
-      .positive('Discount value must be greater than 0'),
-    minPurchase: z.number().min(0).optional(),
-    maxDiscount: z.number().min(0).optional(),
-    usageLimit: z.number().min(1).default(1).optional(),
+    code: z.string().min(3).toUpperCase(),
+    discountType: z.enum(['PERCENT', 'FLAT']),
+    discountValue: z.number().positive(),
+    isGlobal: z.boolean().optional(),
+    minPurchase: z.number().nonnegative().optional(),
+    maxDiscount: z.number().nonnegative().optional(),
+    usageLimit: z.number().int().min(1).optional(),
+    userUsageLimit: z.number().int().min(1).optional(),
     validFrom: z.coerce.date().optional(),
-    expiresAt: z.coerce.date().optional(),
+    expiresAt: z.coerce.date({ required_error: 'Expiry date is required' }),
     applicableCategories: z.array(z.string()).optional(),
-    isActive: z.boolean().default(true).optional(),
+    applicableProducts: z.array(z.string()).optional(),
   }),
 });
 

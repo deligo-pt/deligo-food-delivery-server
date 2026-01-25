@@ -25,39 +25,54 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
   payload.code = payload.code.trim().toUpperCase();
   payload.usedCount = payload.usedCount ?? 0;
 
-  // Discount validations
-  if (payload.discountValue <= 0)
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Discount must be greater than 0',
-    );
-  if (payload.discountType === 'PERCENT' && payload.discountValue > 100)
+  const existingCoupon = await Coupon.findOne({
+    code: payload.code,
+    isDeleted: false,
+  });
+  if (existingCoupon)
+    throw new AppError(httpStatus.BAD_REQUEST, 'Coupon code already exists');
+
+  if (payload.discountType === 'PERCENT' && payload.discountValue > 100) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Percent cannot exceed 100%');
+  }
+
   if (
     payload.discountType === 'FLAT' &&
     payload.minPurchase &&
     payload.discountValue > payload.minPurchase
-  )
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Flat discount cannot exceed min purchase',
+      'Flat discount cannot be more than minimum purchase',
     );
-
-  // Expiry validation
-  if (payload.expiresAt && new Date(payload.expiresAt) < new Date()) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Expiry must be future date');
   }
 
-  // Check duplicate code
-  const existingCoupon = await Coupon.findOne({ code: payload.code });
-  if (existingCoupon)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Coupon already exists');
+  const now = new Date();
+  const validFrom = payload.validFrom ? new Date(payload.validFrom) : now;
+  if (!payload.expiresAt) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Expiry date is required');
+  }
+  const expiresAt = new Date(payload.expiresAt);
+
+  if (expiresAt <= now)
+    throw new AppError(httpStatus.BAD_REQUEST, 'Expiry must be a future date');
+  if (expiresAt <= validFrom)
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Expiry must be after start date',
+    );
 
   // Set creator
   if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') {
     payload.adminId = currentUser._id;
   } else if (currentUser.role === 'VENDOR') {
     payload.vendorId = currentUser._id;
+    payload.isGlobal = false;
+  } else {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only Admins and Vendors can create coupons',
+    );
   }
 
   // Create coupon
