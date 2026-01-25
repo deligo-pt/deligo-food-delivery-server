@@ -129,18 +129,22 @@ const getAllSosAlerts = async (
   currentUser: AuthUser,
 ) => {
   const sosQuery = new QueryBuilder(SosModel.find(), query)
-    .search(['status', 'role', 'issueTags'])
     .filter()
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search(['status', 'role', 'issueTags']);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     id: 'name userId',
     resolvedBy: 'name userId role',
   });
 
-  const result = await sosQuery.modelQuery.populate(populateOptions).exec();
+  populateOptions.forEach((option) => {
+    sosQuery.modelQuery = sosQuery.modelQuery.populate(option);
+  });
+
+  const result = await sosQuery.modelQuery.exec();
   const meta = await sosQuery.countTotal();
 
   return {
@@ -163,10 +167,44 @@ const getSingleSosAlert = async (id: string) => {
   return result;
 };
 
+const getUserSosHistory = async (
+  currentUser: AuthUser,
+  userId: string,
+  query: Record<string, unknown>,
+) => {
+  const sosQuery = new QueryBuilder(
+    SosModel.find({ 'userId.id': userId }),
+    query,
+  )
+    .filter()
+    .sort()
+    .paginate()
+    .fields()
+    .search(['status', 'role', 'issueTags']);
+
+  const populateOptions = getPopulateOptions(currentUser.role, {
+    id: 'name',
+    resolvedBy: 'name userId role',
+  });
+
+  populateOptions.forEach((option) => {
+    sosQuery.modelQuery = sosQuery.modelQuery.populate(option);
+  });
+
+  const result = await sosQuery.modelQuery;
+  const meta = await sosQuery.countTotal();
+
+  return {
+    meta,
+    result,
+  };
+};
+
 export const SosService = {
   triggerSos,
   updateSosStatus,
   getNearbySosAlerts,
   getAllSosAlerts,
   getSingleSosAlert,
+  getUserSosHistory,
 };

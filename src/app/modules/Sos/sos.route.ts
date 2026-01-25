@@ -9,7 +9,7 @@ const router = Router();
 // trigger sos route
 router.post(
   '/trigger',
-  auth('DELIVERY_PARTNER', 'VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'),
+  auth('ADMIN', 'DELIVERY_PARTNER', 'VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'),
   validateRequest(SosValidation.createSosValidationSchema),
   SosController.triggerSos,
 );
@@ -37,6 +37,13 @@ router.get(
   '/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
   SosController.getSingleSosAlert,
+);
+
+// get sos alerts by user id route
+router.get(
+  '/user/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  SosController.getUserSosHistory,
 );
 
 export const sosRoutes = router;
