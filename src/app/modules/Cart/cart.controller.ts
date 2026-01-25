@@ -60,18 +60,6 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
   });
 });
 
-// view cart Controller
-const viewCart = catchAsync(async (req, res) => {
-  const result = await CartServices.viewCart(req.user as AuthUser);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Cart retrieved successfully',
-    data: result,
-  });
-});
-
 // delete cart item Controller
 const deleteCartItem = catchAsync(async (req, res) => {
   const itemsToDelete = Array.isArray(req.body) ? req.body : [req.body];
@@ -100,12 +88,40 @@ const clearCart = catchAsync(async (req, res) => {
   });
 });
 
+// get all cart Controller
+const getAllCart = catchAsync(async (req, res) => {
+  const result = await CartServices.getAllCart(req.user as AuthUser, req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Cart retrieved successfully',
+    data: result,
+  });
+});
+
+// view cart Controller
+const viewCart = catchAsync(async (req, res) => {
+  const { cartCustomerId } = req.body;
+  const result = await CartServices.viewCart(
+    req.user as AuthUser,
+    cartCustomerId,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Cart retrieved successfully',
+    data: result,
+  });
+});
+
 export const CartControllers = {
   addToCart,
   activateItem,
   updateCartItemQuantity,
   updateAddonQuantity,
-  viewCart,
   deleteCartItem,
   clearCart,
+  getAllCart,
+  viewCart,
 };

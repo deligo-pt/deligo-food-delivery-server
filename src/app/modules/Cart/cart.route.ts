@@ -37,9 +37,6 @@ router.patch(
   CartControllers.updateAddonQuantity,
 );
 
-// view cart
-router.get('/view-cart', auth('CUSTOMER'), CartControllers.viewCart);
-
 // delete cart item
 router.delete(
   '/delete-item',
@@ -50,5 +47,15 @@ router.delete(
 
 // clear cart
 router.delete('/clear-cart', auth('CUSTOMER'), CartControllers.clearCart);
+
+// get all cart
+router.get('/', auth('ADMIN', 'SUPER_ADMIN'), CartControllers.getAllCart);
+
+// view cart
+router.get(
+  '/view-cart',
+  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
+  CartControllers.viewCart,
+);
 
 export const CartRoutes = router;

@@ -8,6 +8,7 @@ import { Cart } from './cart.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { recalculateCartTotals } from './cart.constant';
 import { Vendor } from '../Vendor/vendor.model';
+import { QueryBuilder } from '../../builder/QueryBuilder';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
@@ -540,34 +541,6 @@ const updateAddonQuantity = async (
   return cart;
 };
 
-// view cart Service
-const viewCart = async (currentUser: AuthUser) => {
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view cart. Your account is ${currentUser.status}`,
-    );
-  }
-  const customerId = currentUser._id;
-  const query = Cart.findOne({ customerId });
-
-  const populateOptions = getPopulateOptions('CUSTOMER', {
-    // customer: 'name',
-    itemVendor: 'name userId',
-    product: 'productId name',
-  });
-  populateOptions.forEach((option) => {
-    query.populate(option);
-  });
-
-  const cart = await query;
-  if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
-  }
-
-  return cart;
-};
-
 // delete cart item
 const deleteCartItem = async (
   currentUser: AuthUser,
@@ -642,12 +615,84 @@ const clearCart = async (currentUser: AuthUser) => {
   return cart;
 };
 
+// get all cart service
+const getAllCart = async (
+  currentUser: AuthUser,
+  query: Record<string, unknown>,
+) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view cart. Your account is ${currentUser.status}`,
+    );
+  }
+
+  const cart = new QueryBuilder(Cart.find(), query)
+    .fields()
+    .filter()
+    .paginate()
+    .sort()
+    .search([]);
+
+  const populateOptions = getPopulateOptions(currentUser.role, {
+    customer: 'name',
+  });
+  populateOptions.forEach((option) => {
+    cart.modelQuery = cart.modelQuery.populate(option);
+  });
+
+  const meta = await cart.countTotal();
+  const data = await cart.modelQuery;
+
+  return { meta, data };
+};
+
+// view cart Service
+const viewCart = async (currentUser: AuthUser, cartCustomerId?: string) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view cart. Your account is ${currentUser.status}`,
+    );
+  }
+
+  if (currentUser.role !== 'CUSTOMER' && !cartCustomerId) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Customer id is required');
+  }
+
+  let customerId;
+  let query: any;
+  if (currentUser.role === 'CUSTOMER') {
+    customerId = currentUser._id;
+    query = Cart.findOne({ customerId });
+  } else {
+    query = Cart.findOne({ customerId: cartCustomerId });
+  }
+
+  const populateOptions = getPopulateOptions(currentUser.role, {
+    customer: 'name',
+    itemVendor: 'name userId',
+    product: 'productId name',
+  });
+  populateOptions.forEach((option) => {
+    query.populate(option);
+  });
+
+  const cart = await query;
+  if (!cart) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+  }
+
+  return cart;
+};
+
 export const CartServices = {
   addToCart,
   activateItem,
   updateCartItemQuantity,
   updateAddonQuantity,
-  viewCart,
   deleteCartItem,
   clearCart,
+  getAllCart,
+  viewCart,
 };
