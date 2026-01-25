@@ -17,7 +17,7 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -29,7 +29,7 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
   if (payload.discountValue <= 0)
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Discount must be greater than 0'
+      'Discount must be greater than 0',
     );
   if (payload.discountType === 'PERCENT' && payload.discountValue > 100)
     throw new AppError(httpStatus.BAD_REQUEST, 'Percent cannot exceed 100%');
@@ -40,7 +40,7 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
   )
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Flat discount cannot exceed min purchase'
+      'Flat discount cannot exceed min purchase',
     );
 
   // Expiry validation
@@ -73,12 +73,12 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
 const updateCoupon = async (
   couponId: string,
   payload: Partial<TCoupon>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -99,7 +99,7 @@ const updateCoupon = async (
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'Vendors can only update their own coupons'
+        'Vendors can only update their own coupons',
       );
     }
   }
@@ -111,7 +111,7 @@ const updateCoupon = async (
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'Admins can only update their own coupons'
+        'Admins can only update their own coupons',
       );
     }
   }
@@ -124,7 +124,7 @@ const updateCoupon = async (
       if (couponWithSameCode)
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Coupon code already exists'
+          'Coupon code already exists',
         );
     }
   }
@@ -145,13 +145,13 @@ const updateCoupon = async (
   // Merge categories
   if (payload.applicableCategories) {
     const cleanExisting = (existingCoupon.applicableCategories || []).map((c) =>
-      c.trim()
+      c.trim(),
     );
     const cleanPayload = payload.applicableCategories.map((c) => c.trim());
     const mergedCategories = [...cleanExisting, ...cleanPayload];
 
     payload.applicableCategories = [...new Set(mergedCategories)].filter(
-      (c) => c !== ''
+      (c) => c !== '',
     );
   }
 
@@ -167,7 +167,7 @@ const updateCoupon = async (
 const applyCoupon = async (
   couponId: string,
   currentUser: AuthUser,
-  type: 'CART' | 'CHECKOUT'
+  type: 'CART' | 'CHECKOUT',
 ) => {
   // Find coupon
   const coupon = await Coupon.findOne({
@@ -200,7 +200,7 @@ const applyCoupon = async (
     if (cart.couponId?.toString() === couponId.toString()) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This coupon is already applied'
+        'This coupon is already applied',
       );
     }
 
@@ -214,7 +214,7 @@ const applyCoupon = async (
     // recalculate active subtotal (real-time)
     const activeSubtotal = activeItems.reduce(
       (sum, item) => sum + item.subtotal,
-      0
+      0,
     );
     const finalActiveSubtotal = parseFloat(activeSubtotal.toFixed(2));
 
@@ -227,13 +227,13 @@ const applyCoupon = async (
     // vendor validation
     if (coupon.vendorId) {
       const isVendorProductMatched = products.some(
-        (p) => p.vendorId.toString() === coupon.vendorId.toString()
+        (p) => p.vendorId.toString() === coupon.vendorId.toString(),
       );
 
       if (!isVendorProductMatched) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'This coupon is only valid for specific vendor products'
+          'This coupon is only valid for specific vendor products',
         );
       }
     }
@@ -244,13 +244,13 @@ const applyCoupon = async (
 
     if (couponCategories.length) {
       const isCategoryMatched = cartCategories.some((cat) =>
-        couponCategories.includes(cat)
+        couponCategories.includes(cat),
       );
 
       if (!isCategoryMatched) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Coupon not applicable for these product categories'
+          'Coupon not applicable for these product categories',
         );
       }
     }
@@ -259,7 +259,7 @@ const applyCoupon = async (
     if (coupon.minPurchase && finalActiveSubtotal < coupon.minPurchase) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Minimum purchase ${coupon.minPurchase} required`
+        `Minimum purchase ${coupon.minPurchase} required`,
       );
     }
 
@@ -296,7 +296,7 @@ const applyCoupon = async (
     if (checkout.couponId?.toString() === couponId.toString()) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This coupon is already applied'
+        'This coupon is already applied',
       );
     }
 
@@ -310,13 +310,13 @@ const applyCoupon = async (
 
     if (couponCategories.length) {
       const isCategoryMatched = cartCategories.some((cat) =>
-        couponCategories.includes(cat)
+        couponCategories.includes(cat),
       );
 
       if (!isCategoryMatched) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Coupon not applicable for these product categories'
+          'Coupon not applicable for these product categories',
         );
       }
     }
@@ -326,7 +326,7 @@ const applyCoupon = async (
     if (coupon.minPurchase && checkOutTotalPrice < coupon.minPurchase) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Minimum purchase ${coupon.minPurchase} required`
+        `Minimum purchase ${coupon.minPurchase} required`,
       );
     }
 
@@ -359,7 +359,7 @@ const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update coupons. Your account is ${currentUser.status}`
+      `You are not approved to update coupons. Your account is ${currentUser.status}`,
     );
   }
   const coupon = await Coupon.findById(couponId);
@@ -372,7 +372,7 @@ const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this coupon'
+      'You are not authorized to update this coupon',
     );
   }
 
@@ -477,7 +477,7 @@ const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
         const d = new Date(entry.date);
         const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
           2,
-          '0'
+          '0',
         )}`;
 
         if (!globalMonthlyMap[label]) {
@@ -494,11 +494,11 @@ const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
         revenueImpact: couponData.revenueImpact,
         topItemsInfluenced,
       };
-    })
+    }),
   );
 
   const monthlyAnalysis = Object.values(globalMonthlyMap).sort((a, b) =>
-    a.month.localeCompare(b.month)
+    a.month.localeCompare(b.month),
   );
 
   return {
@@ -510,12 +510,12 @@ const getAllCouponsAnalytics = async (currentUser: AuthUser) => {
 // get single coupon analytics service
 const getSingleCouponAnalytics = async (
   couponId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -587,7 +587,7 @@ const getSingleCouponAnalytics = async (
 
   const usage = statsAgg[0]?.total[0]?.usage || 0;
   const revenueImpact = Number(
-    (statsAgg[0]?.total[0]?.revenueImpact || 0).toFixed(2)
+    (statsAgg[0]?.total[0]?.revenueImpact || 0).toFixed(2),
   );
 
   const currentUsage = statsAgg[0]?.current[0]?.count || 0;
@@ -647,12 +647,12 @@ const getSingleCouponAnalytics = async (
 // get all coupons service
 const getAllCoupons = async (
   currentUser: AuthUser,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view coupons. Your account is ${currentUser.status}`
+      `You are not approved to view coupons. Your account is ${currentUser.status}`,
     );
   }
 
@@ -682,7 +682,7 @@ const getSingleCoupon = async (couponId: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view a coupon. Your account is ${currentUser.status}`
+      `You are not approved to view a coupon. Your account is ${currentUser.status}`,
     );
   }
 
@@ -709,7 +709,7 @@ const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a coupon. Your account is ${currentUser.status}`
+      `You are not approved to delete a coupon. Your account is ${currentUser.status}`,
     );
   }
 
@@ -722,7 +722,7 @@ const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
     if (existingCoupon.vendorId !== currentUser._id) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to delete this coupon'
+        'You are not authorized to delete this coupon',
       );
     }
   }
@@ -734,7 +734,7 @@ const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
   if (existingCoupon.isActive) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Active coupons cannot be deleted'
+      'Active coupons cannot be deleted',
     );
   }
 
@@ -748,12 +748,12 @@ const softDeleteCoupon = async (couponId: string, currentUser: AuthUser) => {
 // coupon permanent delete service
 const permanentDeleteCoupon = async (
   couponId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a coupon. Your account is ${currentUser.status}`
+      `You are not approved to delete a coupon. Your account is ${currentUser.status}`,
     );
   }
   const existingCoupon = await Coupon.findById(couponId);

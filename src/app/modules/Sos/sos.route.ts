@@ -39,4 +39,11 @@ router.get(
   SosController.getSingleSosAlert,
 );
 
+// get sos alerts by user id route
+router.get(
+  '/user/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  SosController.getSosAlertsByUserId,
+);
+
 export const sosRoutes = router;
