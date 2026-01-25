@@ -9,9 +9,9 @@ const router = Router();
 // trigger sos route
 router.post(
   '/trigger',
-  auth('ADMIN', 'DELIVERY_PARTNER'),
+  auth('DELIVERY_PARTNER', 'VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'),
   validateRequest(SosValidation.createSosValidationSchema),
-  SosController.triggerSos
+  SosController.triggerSos,
 );
 
 // update sos status route
@@ -19,14 +19,14 @@ router.patch(
   '/:id/status',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(SosValidation.updateSosStatusSchema),
-  SosController.updateSosStatus
+  SosController.updateSosStatus,
 );
 
 // get nearby sos alerts route
 router.get(
   '/nearby',
   auth('ADMIN', 'SUPER_ADMIN'),
-  SosController.getNearbySosAlerts
+  SosController.getNearbySosAlerts,
 );
 
 // get all sos alerts route
@@ -36,7 +36,7 @@ router.get('/', auth('ADMIN', 'SUPER_ADMIN'), SosController.getAllSosAlerts);
 router.get(
   '/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  SosController.getSingleSosAlert
+  SosController.getSingleSosAlert,
 );
 
 export const sosRoutes = router;

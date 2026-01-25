@@ -1,5 +1,4 @@
 import { JwtPayload } from 'jsonwebtoken';
-import { Server } from 'socket.io';
 
 declare global {
   namespace Express {
@@ -7,8 +6,6 @@ declare global {
       user: JwtPayload;
     }
   }
-  // eslint-disable-next-line no-var
-  var io: Server;
 }
 
 export {};
