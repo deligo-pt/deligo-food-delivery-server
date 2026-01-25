@@ -245,7 +245,7 @@ const updateCartItemQuantity = async (
   currentUser: AuthUser,
   payload: {
     productId: string;
-    variantName?: string;
+    variationSku?: string;
     quantity: number;
     action: 'increment' | 'decrement';
   },
@@ -257,26 +257,39 @@ const updateCartItemQuantity = async (
     );
   }
 
+  const { productId, variationSku, quantity, action } = payload;
   const customerId = currentUser._id;
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
-  const { productId, variantName, quantity, action } = payload;
-  const itemIndex = cart.items.findIndex(
-    (i) =>
-      i.productId.toString() === productId && i.variationName === variantName,
-  );
+
+  const itemIndex = cart.items.findIndex((i: any) => {
+    const isSameProduct = i.productId.toString() === productId.toString();
+    const effectiveSku = i.hasVariations ? variationSku || null : null;
+    return isSameProduct && (i.variationSku || null) === effectiveSku;
+  });
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
-  const product = await Product.findById(productId);
+
+  const targetItem = cart.items[itemIndex];
+
+  const product = await Product.findById(productId).lean();
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  const targetItem = cart.items[itemIndex];
+
+  let availableStock = product.stock.quantity;
+  if (product.stock.hasVariations && targetItem.variationSku) {
+    const option = (product?.variations ?? [])
+      .flatMap((v: any) => v.options)
+      .find((opt: any) => opt.sku === targetItem.variationSku);
+    if (option) availableStock = option.stockQuantity;
+  }
+
   if (action === 'increment') {
-    if (targetItem.quantity + quantity > product.stock.quantity) {
+    if (targetItem.quantity + quantity > availableStock) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
     }
     targetItem.quantity += quantity;
@@ -291,20 +304,19 @@ const updateCartItemQuantity = async (
   }
 
   const addonsTotal = (targetItem.addons || []).reduce(
-    (sum, a) => sum + a.price * a.quantity,
+    (sum: number, a: any) => sum + a.price * a.quantity,
     0,
   );
 
-  targetItem.totalBeforeTax = parseFloat(
-    (targetItem.price * targetItem.quantity + addonsTotal).toFixed(2),
-  );
+  const itemsBasePrice = targetItem.price * targetItem.quantity;
+  targetItem.totalBeforeTax = Number((itemsBasePrice + addonsTotal).toFixed(2));
 
   const taxRate = targetItem.taxRate || 0;
-  targetItem.taxAmount = parseFloat(
+  targetItem.taxAmount = Number(
     (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
   );
 
-  targetItem.subtotal = parseFloat(
+  targetItem.subtotal = Number(
     (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
   );
 
