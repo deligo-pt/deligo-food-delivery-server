@@ -33,26 +33,12 @@ const updateCartItemQuantityValidationSchema = z.object({
   }),
 });
 
-// delete cart item validation
-const deleteCartItemValidationSchema = z.object({
-  body: z
-    .array(
-      z.object({
-        productId: z.string({
-          required_error: 'Product ID is required',
-        }),
-        variantName: z.string().optional().nullable(),
-      }),
-    )
-    .min(1, 'At least one item must be provided to delete'),
-});
-
 const updateAddonQuantityValidationSchema = z.object({
   body: z.object({
     productId: z.string({
       required_error: 'Product ID is required',
     }),
-    variantName: z.string().optional(),
+    variationSku: z.string().optional(),
     optionId: z.string({
       required_error: 'Add-on option ID is required',
     }),
@@ -62,9 +48,23 @@ const updateAddonQuantityValidationSchema = z.object({
   }),
 });
 
+// delete cart item validation
+const deleteCartItemValidationSchema = z.object({
+  body: z
+    .array(
+      z.object({
+        productId: z.string({
+          required_error: 'Product ID is required',
+        }),
+        variationSku: z.string().optional().nullable(),
+      }),
+    )
+    .min(1, 'At least one item must be provided to delete'),
+});
+
 export const CartValidation = {
   addToCartValidationSchema,
   updateCartItemQuantityValidationSchema,
-  deleteCartItemValidationSchema,
   updateAddonQuantityValidationSchema,
+  deleteCartItemValidationSchema,
 };

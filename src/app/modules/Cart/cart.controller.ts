@@ -46,23 +46,6 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
   });
 });
 
-// delete cart item Controller
-const deleteCartItem = catchAsync(async (req, res) => {
-  const itemsToDelete = Array.isArray(req.body) ? req.body : [req.body];
-
-  const result = await CartServices.deleteCartItem(
-    req.user as AuthUser,
-    itemsToDelete,
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Cart updated: Item(s) removed successfully',
-    data: result,
-  });
-});
-
 // update add on quantity Controller
 const updateAddonQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateAddonQuantity(
@@ -89,6 +72,23 @@ const viewCart = catchAsync(async (req, res) => {
   });
 });
 
+// delete cart item Controller
+const deleteCartItem = catchAsync(async (req, res) => {
+  const itemsToDelete = Array.isArray(req.body) ? req.body : [req.body];
+
+  const result = await CartServices.deleteCartItem(
+    req.user as AuthUser,
+    itemsToDelete,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Cart updated: Item(s) removed successfully',
+    data: result,
+  });
+});
+
 // clear cart Controller
 const clearCart = catchAsync(async (req, res) => {
   const result = await CartServices.clearCart(req.user as AuthUser);
@@ -104,8 +104,8 @@ export const CartControllers = {
   addToCart,
   activateItem,
   updateCartItemQuantity,
-  deleteCartItem,
   updateAddonQuantity,
   viewCart,
+  deleteCartItem,
   clearCart,
 };

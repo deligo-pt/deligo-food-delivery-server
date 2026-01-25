@@ -9,22 +9,31 @@ export const recalculateCartTotals = async (cart: TCart) => {
   if (activeItems.length === 0) {
     cart.totalItems = 0;
     cart.totalPrice = 0;
+    cart.taxAmount = 0;
     cart.discount = 0;
     cart.subtotal = 0;
     cart.couponId = null;
     return cart;
   }
 
-  // Update basic totals (before discount)
-  const activeSubtotal = activeItems.reduce(
-    (sum: number, i: any) => sum + i.subtotal,
+  const totalTax = activeItems.reduce(
+    (sum: number, i: any) => sum + (Number(i.taxAmount) || 0),
     0,
   );
+
+  const totalBasePrice = activeItems.reduce(
+    (sum: number, i: any) => sum + (Number(i.totalBeforeTax) || 0),
+    0,
+  );
+
   cart.totalItems = activeItems.reduce(
     (sum: number, i: any) => sum + i.quantity,
     0,
   );
-  cart.totalPrice = Number(activeSubtotal.toFixed(2));
+
+  cart.taxAmount = Number(totalTax.toFixed(2));
+
+  cart.totalPrice = Number(totalBasePrice.toFixed(2));
 
   // Auto re-apply or validate coupon
   if (cart.couponId) {
@@ -51,9 +60,7 @@ export const recalculateCartTotals = async (cart: TCart) => {
       const productsInCart = await Product.find({
         _id: { $in: uniqueProductIds },
       }).select('category');
-      console.log({ productsInCart });
       const cartCategoryIds = productsInCart.map((p) => p.category);
-      console.log({ cartCategoryIds });
       const couponCategoryIds =
         coupon.applicableCategories?.map((c: string) => c.toLowerCase()) || [];
 
@@ -86,10 +93,10 @@ export const recalculateCartTotals = async (cart: TCart) => {
     cart.discount = 0;
   }
 
+  const finalSubtotal = cart.totalPrice - (cart.discount || 0) + cart.taxAmount;
+
   // Set final subtotal (Net Total)
-  cart.subtotal = Number(
-    Math.max(0, cart.totalPrice - cart.discount).toFixed(2),
-  );
+  cart.subtotal = Number(Math.max(0, finalSubtotal).toFixed(2));
 
   return cart;
 };

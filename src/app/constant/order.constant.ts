@@ -22,13 +22,18 @@ export type TOrderItemSnapshot = {
     name: string;
     price: number;
     quantity: number;
+    taxRate: number;
+    taxAmount: number;
   }[];
   quantity: number;
 
   originalPrice: number;
   discountAmount: number;
-
   price: number;
+
+  productTotalBeforeTax?: number;
+  productTaxAmount?: number;
+
   totalBeforeTax?: number;
   taxRate?: number;
   taxAmount?: number;

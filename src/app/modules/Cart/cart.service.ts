@@ -114,6 +114,10 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     originalPrice: selectedPrice,
     discountAmount: Number((selectedPrice - priceAfterDiscount).toFixed(2)),
     price: priceAfterDiscount,
+
+    productTotalBeforeTax: totalBeforeTax,
+    productTaxAmount: itemTaxAmount,
+
     taxRate,
     taxAmount: itemTaxAmount,
     totalBeforeTax: totalBeforeTax,
@@ -148,11 +152,32 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       }
 
       currentItem.quantity = finalQuantity;
+
+      let totalAddonsPrice = 0;
+      let totalAddonsTax = 0;
+
+      if (currentItem.addons && currentItem.addons.length > 0) {
+        currentItem.addons.forEach((addon: any) => {
+          const addonSubtotal =
+            (Number(addon.price) || 0) * (Number(addon.quantity) || 0);
+          const addonTax = addonSubtotal * ((Number(addon.taxRate) || 0) / 100);
+
+          totalAddonsPrice += addonSubtotal;
+          totalAddonsTax += addonTax;
+
+          addon.taxAmount = Number(addonTax.toFixed(2));
+        });
+      }
+
+      const baseProductPrice = currentItem.price * finalQuantity;
+      const baseProductTax =
+        baseProductPrice * ((currentItem.taxRate || 0) / 100);
+
       currentItem.totalBeforeTax = Number(
-        (currentItem.price * finalQuantity).toFixed(2),
+        (baseProductPrice + totalAddonsPrice).toFixed(2),
       );
       currentItem.taxAmount = Number(
-        (currentItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
+        (baseProductTax + totalAddonsTax).toFixed(2),
       );
       currentItem.subtotal = Number(
         (currentItem.totalBeforeTax + currentItem.taxAmount).toFixed(2),
@@ -303,23 +328,39 @@ const updateCartItemQuantity = async (
     targetItem.quantity -= quantity;
   }
 
-  const addonsTotal = (targetItem.addons || []).reduce(
-    (sum: number, a: any) => sum + a.price * a.quantity,
-    0,
+  let totalAddonsPrice = 0;
+  let totalAddonsTax = 0;
+
+  if (targetItem.addons && targetItem.addons.length > 0) {
+    targetItem.addons.forEach((addon: any) => {
+      const addonSubtotal =
+        (Number(addon.price) || 0) * (Number(addon.quantity) || 0);
+      const addonTaxValue =
+        addonSubtotal * ((Number(addon.taxRate) || 0) / 100);
+
+      totalAddonsPrice += addonSubtotal;
+      totalAddonsTax += addonTaxValue;
+      addon.taxAmount = Number(addonTaxValue.toFixed(2));
+    });
+  }
+
+  const mainProductBasePrice = Number(
+    (targetItem.price * targetItem.quantity).toFixed(2),
+  );
+  const mainProductTax = Number(
+    (mainProductBasePrice * ((targetItem.taxRate || 0) / 100)).toFixed(2),
   );
 
-  const itemsBasePrice = targetItem.price * targetItem.quantity;
-  targetItem.totalBeforeTax = Number((itemsBasePrice + addonsTotal).toFixed(2));
+  targetItem.productTotalBeforeTax = mainProductBasePrice;
+  targetItem.productTaxAmount = mainProductTax;
 
-  const taxRate = targetItem.taxRate || 0;
-  targetItem.taxAmount = Number(
-    (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
+  targetItem.totalBeforeTax = Number(
+    (mainProductBasePrice + totalAddonsPrice).toFixed(2),
   );
-
+  targetItem.taxAmount = Number((mainProductTax + totalAddonsTax).toFixed(2));
   targetItem.subtotal = Number(
     (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
   );
-
   // re-calculate active total
   await recalculateCartTotals(cart);
 
@@ -328,55 +369,12 @@ const updateCartItemQuantity = async (
   return cart;
 };
 
-// delete cart item
-const deleteCartItem = async (
-  currentUser: AuthUser,
-  itemsToDelete: { productId: string; variantName?: string }[],
-) => {
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`,
-    );
-  }
-
-  const cart = await Cart.findOne({ customerId: currentUser._id });
-  if (!cart || !cart.items || cart.items.length === 0) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart is empty or not found');
-  }
-
-  const initialLength = cart.items.length;
-
-  cart.items = cart.items.filter((cartItem) => {
-    const isMatched = itemsToDelete.some(
-      (deleteTarget) =>
-        deleteTarget.productId === cartItem.productId.toString() &&
-        (deleteTarget.variantName || null) === (cartItem.variationName || null),
-    );
-
-    return !isMatched;
-  });
-
-  if (cart.items.length === initialLength) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Selected items were not found in your cart',
-    );
-  }
-
-  await recalculateCartTotals(cart);
-
-  cart.markModified('items');
-  await cart.save();
-
-  return cart;
-};
 // update add on quantity Service
 const updateAddonQuantity = async (
   currentUser: AuthUser,
   payload: {
     productId: string;
-    variantName?: string;
+    variationSku?: string;
     optionId: string;
     action: 'increment' | 'decrement';
   },
@@ -387,15 +385,17 @@ const updateAddonQuantity = async (
       `You are not approved to update cart. Your account is ${currentUser.status}`,
     );
   }
+
+  const { productId, variationSku, optionId, action } = payload;
   const cart = await Cart.findOne({ customerId: currentUser._id });
   if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
-  const { productId, variantName, optionId, action } = payload;
+  const itemIndex = cart.items.findIndex((i: any) => {
+    const isSameProduct = i.productId.toString() === productId.toString();
+    const effectiveSku = i.hasVariations ? variationSku || null : null;
+    return isSameProduct && (i.variationSku || null) === effectiveSku;
+  });
 
-  const itemIndex = cart.items.findIndex(
-    (i) =>
-      i.productId.toString() === productId && i.variationName === variantName,
-  );
   if (itemIndex === -1)
     throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');
 
@@ -404,34 +404,62 @@ const updateAddonQuantity = async (
     targetItem.addons = [] as any[];
   }
 
-  const product = await Product.findById(productId).populate('addonGroups');
+  const product = await Product.findById(productId)
+    .populate({
+      path: 'addonGroups',
+      populate: {
+        path: 'options.tax',
+      },
+    })
+    .lean();
+
   if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
-  let addonData: { name: string; price: number } | null = null;
+  let addonData: {
+    name: string;
+    price: number;
+    optionId: string;
+    taxRate: number;
+  } | null = null;
+
   ((product.addonGroups as any[]) || []).forEach((group) => {
     group.options.forEach((opt: any) => {
       if (opt._id.toString() === optionId) {
-        addonData = { name: opt.name, price: opt.price };
+        addonData = {
+          optionId: opt._id.toString(),
+          name: opt.name,
+          price: opt.price,
+          taxRate: opt.tax?.taxRate || 0,
+        };
       }
     });
   });
 
   if (!addonData)
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid Addon selected');
-  const { name: selectedAddonName, price: selectedAddonPrice } = addonData;
+
+  const selectedAddon = addonData as {
+    optionId: string;
+    name: string;
+    price: number;
+    taxRate: number;
+  };
 
   const existingAddonIndex = targetItem.addons.findIndex(
-    (a: any) => a.name === selectedAddonName,
+    (a: any) => a.name === selectedAddon.name,
   );
 
   if (action === 'increment') {
     if (existingAddonIndex > -1) {
-      targetItem.addons[existingAddonIndex as number].quantity += 1;
+      targetItem.addons[existingAddonIndex].quantity += 1;
     } else {
       targetItem.addons.push({
-        name: selectedAddonName,
-        price: selectedAddonPrice,
+        optionId: selectedAddon.optionId,
+        name: selectedAddon.name,
+        price: selectedAddon.price,
+        taxRate: selectedAddon.taxRate,
         quantity: 1,
+        taxAmount: 0,
       });
     }
   } else if (action === 'decrement') {
@@ -446,20 +474,40 @@ const updateAddonQuantity = async (
     }
   }
 
-  const addonsTotal = targetItem.addons.reduce(
-    (sum: number, a: any) => sum + a.price * a.quantity,
-    0,
+  let totalAddonsPrice = 0;
+  let totalAddonsTaxAmount = 0;
+
+  targetItem.addons.forEach((addon: any) => {
+    const aPrice = Number(addon.price) || 0;
+    const aQty = Number(addon.quantity) || 0;
+    const aTaxRate = Number(addon.taxRate) || 0;
+
+    const addonSubtotal = aPrice * aQty;
+    const addonTaxValue = addonSubtotal * (aTaxRate / 100);
+
+    addon.taxAmount = Number(addonTaxValue.toFixed(2));
+
+    totalAddonsPrice += addonSubtotal;
+    totalAddonsTaxAmount += addonTaxValue;
+  });
+
+  const itemsBasePrice =
+    (Number(targetItem.price) || 0) * (Number(targetItem.quantity) || 0);
+  const mainProductTaxRate = Number(targetItem.taxRate) || 0;
+  const mainProductTaxAmount = itemsBasePrice * (mainProductTaxRate / 100);
+
+  targetItem.productTotalBeforeTax = itemsBasePrice;
+  targetItem.productTaxAmount = mainProductTaxAmount;
+
+  targetItem.totalBeforeTax = Number(
+    (itemsBasePrice + totalAddonsPrice).toFixed(2),
   );
 
-  targetItem.totalBeforeTax = parseFloat(
-    (targetItem.price * targetItem.quantity + (addonsTotal || 0)).toFixed(2),
+  targetItem.taxAmount = Number(
+    (mainProductTaxAmount + totalAddonsTaxAmount).toFixed(2),
   );
 
-  const taxRate = targetItem.taxRate || 0;
-  targetItem.taxAmount = parseFloat(
-    (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
-  );
-  targetItem.subtotal = parseFloat(
+  targetItem.subtotal = Number(
     (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
   );
 
@@ -498,6 +546,55 @@ const viewCart = async (currentUser: AuthUser) => {
   return cart;
 };
 
+// delete cart item
+const deleteCartItem = async (
+  currentUser: AuthUser,
+  itemsToDelete: { productId: string; variationSku?: string }[],
+) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update cart. Your account is ${currentUser.status}`,
+    );
+  }
+
+  const cart = await Cart.findOne({ customerId: currentUser._id });
+  if (!cart || !cart.items || cart.items.length === 0) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Cart is empty or not found');
+  }
+
+  const initialLength = cart.items.length;
+
+  cart.items = cart.items.filter((cartItem: any) => {
+    const isTargetedForDeletion = itemsToDelete.some((target) => {
+      const isSameProduct = target.productId === cartItem.productId.toString();
+
+      const effectiveSku = cartItem.hasVariations
+        ? target.variationSku || null
+        : null;
+      const dbSku = cartItem.variationSku || null;
+
+      return isSameProduct && dbSku === effectiveSku;
+    });
+
+    return !isTargetedForDeletion;
+  });
+
+  if (cart.items.length === initialLength) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Selected items were not found in your cart',
+    );
+  }
+
+  await recalculateCartTotals(cart);
+
+  cart.markModified('items');
+  await cart.save();
+
+  return cart;
+};
+
 // clear cart Service
 const clearCart = async (currentUser: AuthUser) => {
   const cart = await Cart.findOneAndUpdate(
@@ -520,8 +617,8 @@ export const CartServices = {
   addToCart,
   activateItem,
   updateCartItemQuantity,
-  deleteCartItem,
   updateAddonQuantity,
   viewCart,
+  deleteCartItem,
   clearCart,
 };

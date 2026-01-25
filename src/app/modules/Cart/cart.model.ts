@@ -27,8 +27,13 @@ const cartItemSchema = new Schema(
         name: { type: String },
         price: { type: Number },
         quantity: { type: Number },
+        taxRate: { type: Number, default: 0 },
+        taxAmount: { type: Number, default: 0 },
       },
     ],
+
+    productTotalBeforeTax: { type: Number, default: 0 },
+    productTaxAmount: { type: Number, default: 0 },
 
     totalBeforeTax: { type: Number, default: 0 },
     taxRate: { type: Number, default: 0 },
