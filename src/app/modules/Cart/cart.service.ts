@@ -624,14 +624,21 @@ const clearCart = async (currentUser: AuthUser) => {
     {
       $set: {
         items: [],
+        totalItems: 0,
         totalPrice: 0,
         taxAmount: 0,
         subtotal: 0,
         discount: 0,
+        couponId: null,
       },
     },
     { new: true },
   );
+
+  if (!cart) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found for this user');
+  }
+
   return cart;
 };
 
