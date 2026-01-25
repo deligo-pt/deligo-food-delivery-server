@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 import { TOrderItemSnapshot } from '../../constant/order.constant';
 
 export type TCartItem = TOrderItemSnapshot & {
-  variationSku?: string | null;
+  hasVariations: boolean;
+  variationSku: string | null;
   isActive: boolean;
 };
 

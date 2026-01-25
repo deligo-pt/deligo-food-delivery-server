@@ -7,6 +7,7 @@ const cartItemSchema = new Schema(
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     name: { type: String, required: true }, // Snapshot of product name
     image: { type: String }, // Snapshot of product image
+    hasVariations: { type: Boolean, default: false },
     variationSku: { type: String, default: null },
 
     originalPrice: { type: Number, required: true },
@@ -59,37 +60,5 @@ const cartSchema = new Schema<TCart>(
   },
   { timestamps: true },
 );
-
-// Pre-save hook updated with 'const' and clean logic
-cartSchema.pre('save', function (next) {
-  const activeItems = this.items.filter((item) => item.isActive === true);
-
-  if (activeItems.length === 0) {
-    this.totalPrice = 0;
-    this.taxAmount = 0;
-    this.subtotal = 0;
-    return next();
-  }
-
-  const totalBeforeTax = activeItems.reduce(
-    (sum, item) => sum + (item.totalBeforeTax || 0),
-    0,
-  );
-
-  const totalTax = activeItems.reduce(
-    (sum, item) => sum + (item.taxAmount || 0),
-    0,
-  );
-
-  const couponDiscount = this.discount || 0;
-
-  const grandTotal = totalBeforeTax + totalTax - couponDiscount;
-
-  this.totalPrice = Number(totalBeforeTax.toFixed(2));
-  this.taxAmount = Number(totalTax.toFixed(2));
-  this.subtotal = grandTotal > 0 ? Number(grandTotal.toFixed(2)) : 0;
-
-  next();
-});
 
 export const Cart = model<TCart>('Cart', cartSchema);

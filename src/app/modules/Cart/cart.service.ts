@@ -108,6 +108,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       ? `${existingProduct.name} - ${selectedVariantLabel}`
       : existingProduct.name,
     image: existingProduct?.images[0] || '',
+    hasVariations: existingProduct.stock.hasVariations,
     variationSku: finalVariationSku,
     quantity,
     originalPrice: selectedPrice,
@@ -132,8 +133,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     const itemIndex = cart.items.findIndex(
       (i) =>
         i.productId.toString() === productId.toString() &&
-        (String(i.variationSku).trim() || null) ===
-          (String(variationSku).trim() || null),
+        (i.variationSku || null) === (finalVariationSku || null),
     );
 
     if (itemIndex > -1) {
@@ -179,7 +179,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 const activateItem = async (
   currentUser: AuthUser,
   productId: string,
-  variantName?: string,
+  variationSku?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -194,22 +194,24 @@ const activateItem = async (
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
-  // Item to activate
-  const itemToActivate = cart.items.find(
-    (i) =>
-      i.productId.toString() === productId.toString() &&
-      i.variationName === variantName,
-  );
+
+  const itemToActivate = cart.items.find((i: any) => {
+    const isSameProduct = i.productId.toString() === productId.toString();
+
+    if (isSameProduct && !i.hasVariations) return true;
+
+    return isSameProduct && (i.variationSku || null) === (variationSku || null);
+  });
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
 
   const selectedVendorId = itemToActivate.vendorId.toString();
 
-  // // Get existing active items
+  // Get existing active items
   const activeItems = cart.items.filter((i) => i.isActive === true);
 
-  // // If already active items exist → vendor must match
+  //  If already active items exist → vendor must match
   if (activeItems.length > 0) {
     const activeVendorId = activeItems[0].vendorId;
 

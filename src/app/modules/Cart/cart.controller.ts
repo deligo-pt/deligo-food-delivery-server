@@ -22,7 +22,7 @@ const activateItem = catchAsync(async (req, res) => {
   const result = await CartServices.activateItem(
     req.user as AuthUser,
     productId,
-    req.body.variantName
+    req.body.variationSku,
   );
   sendResponse(res, {
     success: true,
@@ -36,7 +36,7 @@ const activateItem = catchAsync(async (req, res) => {
 const updateCartItemQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateCartItemQuantity(
     req.user as AuthUser,
-    req.body
+    req.body,
   );
   sendResponse(res, {
     success: true,
@@ -52,7 +52,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
 
   const result = await CartServices.deleteCartItem(
     req.user as AuthUser,
-    itemsToDelete
+    itemsToDelete,
   );
 
   sendResponse(res, {
@@ -67,7 +67,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
 const updateAddonQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateAddonQuantity(
     req.user as AuthUser,
-    req.body
+    req.body,
   );
   sendResponse(res, {
     success: true,
