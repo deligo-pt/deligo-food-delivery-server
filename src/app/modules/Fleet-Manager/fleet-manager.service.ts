@@ -57,13 +57,12 @@ const fleetManagerUpdate = async (
     const { longitude, latitude, geoAccuracy } = payload.businessLocation;
     const hasLng = typeof longitude === 'number';
     const hasLat = typeof latitude === 'number';
-    const hasAcc = typeof geoAccuracy === 'number';
 
-    if (hasLng && hasLat && hasAcc) {
+    if (hasLng && hasLat) {
       payload.currentSessionLocation = {
         type: 'Point',
         coordinates: [longitude, latitude],
-        accuracy: geoAccuracy,
+        accuracy: geoAccuracy || 0,
         lastLocationUpdate: new Date(),
       };
     }
