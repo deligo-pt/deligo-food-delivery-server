@@ -584,10 +584,6 @@ const broadcastOrderToPartners = async (
 
   const partnerObjectIds = eligiblePartners.map((p) => p._id);
   const partnerIds = eligiblePartners.map((p) => p.userId);
-  console.log({ partnerIds });
-
-  const timerSeconds = 120;
-  const expirationTime = new Date(Date.now() + timerSeconds * 1000);
 
   const timerSeconds = 120;
   const expirationTime = new Date(Date.now() + timerSeconds * 1000);
