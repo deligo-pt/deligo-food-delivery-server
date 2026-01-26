@@ -105,7 +105,6 @@ const updateCoupon = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'Cannot update deleted coupon');
 
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
-  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
   if (isVendor) {
     if (
@@ -119,61 +118,66 @@ const updateCoupon = async (
     }
   }
 
-  if (isAdmin) {
-    if (
-      !existingCoupon.adminId ||
-      existingCoupon.adminId.toString() !== currentUser._id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'Admins can only update their own coupons',
-      );
-    }
-  }
-
   // Normalize code
   if (payload.code) {
     payload.code = payload.code.trim().toUpperCase();
     if (payload.code !== existingCoupon.code) {
-      const couponWithSameCode = await Coupon.findOne({ code: payload.code });
+      const couponWithSameCode = await Coupon.findOne({
+        code: payload.code,
+        isDeleted: false,
+      });
       if (couponWithSameCode)
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Coupon code already exists',
+          'New coupon code already in use',
         );
     }
   }
 
+  const discountType = payload.discountType || existingCoupon.discountType;
+  const discountValue = payload.discountValue || existingCoupon.discountValue;
+
   // Validate discount updates
-  if (payload.discountValue) {
-    if (payload.discountValue <= 0)
-      throw new AppError(httpStatus.BAD_REQUEST, 'Discount must be > 0');
-    if (payload.discountType === 'PERCENT' && payload.discountValue > 100)
-      throw new AppError(httpStatus.BAD_REQUEST, 'Percent discount max 100%');
+
+  if (discountType === 'PERCENT' && discountValue > 100) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Percent discount max 100%');
   }
 
+  const finalExpiresAt = payload.expiresAt
+    ? new Date(payload.expiresAt)
+    : existingCoupon.expiresAt!;
+  const finalValidFrom = payload.validFrom
+    ? new Date(payload.validFrom)
+    : existingCoupon.validFrom!;
+
   // Expiry update
-  if (payload.expiresAt && new Date(payload.expiresAt) < new Date()) {
+  if (payload.expiresAt && finalExpiresAt < new Date()) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Expiry must be future date');
+  }
+
+  if (finalExpiresAt <= finalValidFrom) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Expiry must be after valid from date',
+    );
   }
 
   // Merge categories
   if (payload.applicableCategories) {
-    const cleanExisting = (existingCoupon.applicableCategories || []).map((c) =>
-      c.trim(),
-    );
-    const cleanPayload = payload.applicableCategories.map((c) => c.trim());
-    const mergedCategories = [...cleanExisting, ...cleanPayload];
-
-    payload.applicableCategories = [...new Set(mergedCategories)].filter(
-      (c) => c !== '',
-    );
+    payload.applicableCategories = payload.applicableCategories
+      .map((c) => c.trim())
+      .filter((c) => c !== '');
   }
 
   // Update coupon
-  const updatedCoupon = await Coupon.findByIdAndUpdate(couponId, payload, {
-    new: true,
-  });
+  const updatedCoupon = await Coupon.findByIdAndUpdate(
+    couponId,
+    { $set: payload },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
 
   return updatedCoupon;
 };

@@ -19,7 +19,7 @@ const createCouponValidationSchema = z.object({
 });
 
 // update coupon validation schema
-export const updateCouponValidationSchema = z.object({
+const updateCouponValidationSchema = z.object({
   body: z.object({
     code: z.string().optional(),
     discountType: z.enum(['PERCENT', 'FLAT']).optional(),
@@ -30,6 +30,8 @@ export const updateCouponValidationSchema = z.object({
     validFrom: z.coerce.date().optional(),
     expiresAt: z.coerce.date().optional(),
     applicableCategories: z.array(z.string()).optional(),
+    applicableProducts: z.array(z.string()).optional(),
+    isActive: z.boolean().optional(),
     isDeleted: z.boolean().optional(),
   }),
 });
