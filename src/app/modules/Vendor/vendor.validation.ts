@@ -68,28 +68,7 @@ const vendorDocImageValidationSchema = z.object({
 });
 
 // --------------------------------------------------
-// Vendor business location update validation schema
-// --------------------------------------------------
-const vendorBusinessLocationUpdateValidationSchema = z.object({
-  body: z.object({
-    businessLocation: z.object({
-      street: z.string({ required_error: 'Street is required' }).min(1),
-      city: z.string({ required_error: 'City is required' }).min(1),
-      state: z.string({ required_error: 'State is required' }).min(1),
-      country: z.string({ required_error: 'Country is required' }).min(1),
-      postalCode: z
-        .string({ required_error: 'Postal code is required' })
-        .min(1),
-      longitude: z.number({ required_error: 'Longitude is required' }).min(1),
-      latitude: z.number({ required_error: 'Latitude is required' }).min(1),
-      geoAccuracy: z.number().optional(),
-    }),
-  }),
-});
-
-// --------------------------------------------------
 export const VendorValidation = {
   vendorUpdateValidationSchema,
   vendorDocImageValidationSchema,
-  vendorBusinessLocationUpdateValidationSchema,
 };

@@ -5,6 +5,7 @@ import validateRequest from '../../middlewares/validateRequest';
 import { VendorValidation } from './vendor.validation';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
+import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
 
 const router = Router();
 
@@ -28,12 +29,10 @@ router.patch(
 
 // Vendor business location update route
 router.patch(
-  '/:vendorId/businessLocation',
-  auth('VENDOR'),
-  validateRequest(
-    VendorValidation.vendorBusinessLocationUpdateValidationSchema,
-  ),
-  VendorControllers.vendorBusinessLocationUpdate,
+  '/:vendorId/liveLocation',
+  auth('VENDOR', 'SUB_VENDOR'),
+  validateRequest(GlobalValidation.UpdateLiveLocationValidationSchema),
+  VendorControllers.updateVendorLiveLocation,
 );
 
 // Vendor toggle store open close route

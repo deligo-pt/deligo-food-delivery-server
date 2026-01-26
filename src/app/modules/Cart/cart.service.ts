@@ -85,6 +85,13 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   } else {
     finalVariationSku = null;
   }
+  const discountAmtPerUnit = parseFloat(
+    ((rawPrice * discountPercent) / 100).toFixed(2),
+  );
+
+  const finalPricePerUnit = parseFloat(
+    (rawPrice - discountAmtPerUnit).toFixed(2),
+  );
 
   if (quantity > availableStock) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Product is out of stock');

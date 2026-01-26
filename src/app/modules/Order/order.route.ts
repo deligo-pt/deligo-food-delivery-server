@@ -13,32 +13,10 @@ router.post(
   OrderControllers.createOrderAfterPayment,
 );
 
-// Get all orders
-router.get(
-  '/',
-  auth(
-    'ADMIN',
-    'SUPER_ADMIN',
-    'DELIVERY_PARTNER',
-    'VENDOR',
-    'SUB_VENDOR',
-    'FLEET_MANAGER',
-    'CUSTOMER',
-  ),
-  OrderControllers.getAllOrders,
-);
-
-// Get single order
-router.get(
-  '/:orderId',
-  auth('CUSTOMER', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER'),
-  OrderControllers.getSingleOrder,
-);
-
 // Accept / Reject / Preparing / Ready for pickup/ Cancel order
 router.patch(
   '/:orderId/status',
-  auth('VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR'),
   validateRequest(OrderValidation.updateOrderStatusByVendorValidationSchema),
   OrderControllers.updateOrderStatusByVendor,
 );
@@ -46,7 +24,7 @@ router.patch(
 // Assign delivery partner to order (vendor)
 router.patch(
   '/:orderId/broadcast-order',
-  auth('VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR'),
   OrderControllers.broadcastOrderToPartners,
 );
 
@@ -54,6 +32,7 @@ router.patch(
 router.patch(
   '/:orderId/accept-dispatch-order',
   auth('DELIVERY_PARTNER'),
+  validateRequest(OrderValidation.partnerAcceptDispatchOrder),
   OrderControllers.partnerAcceptsDispatchedOrder,
 );
 
@@ -74,11 +53,26 @@ router.patch(
   OrderControllers.updateOrderStatusByDeliveryPartner,
 );
 
-// sage invoice download
+// Get all orders
 router.get(
-  '/invoice/:orderId',
-  auth('VENDOR', 'SUB_VENDOR'),
-  OrderControllers.getInvoicePdfFromSage,
+  '/',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'FLEET_MANAGER',
+    'CUSTOMER',
+  ),
+  OrderControllers.getAllOrders,
+);
+
+// Get single order
+router.get(
+  '/:orderId',
+  auth('CUSTOMER', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER'),
+  OrderControllers.getSingleOrder,
 );
 
 export const OrderRoutes = router;

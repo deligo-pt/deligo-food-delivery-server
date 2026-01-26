@@ -494,7 +494,8 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 
 // Logout User
 const logoutUser = async (email: string, token: string) => {
-  const { user } = await findUserByEmail({ email });
+  const result = await findUserByEmailOrId({ email, isDeleted: false });
+  const user = result?.user;
 
   // if (!token) {
   //   throw new AppError(httpStatus.BAD_REQUEST, 'Fcm token is required');
