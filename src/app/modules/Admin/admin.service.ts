@@ -10,7 +10,7 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 const updateAdmin = async (
   payload: Partial<TAdmin>,
   adminId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // -----------------------------------------
   // Check if admin exists
@@ -34,8 +34,30 @@ const updateAdmin = async (
   if (existingAdmin.isUpdateLocked) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Admin update is locked. Please contact support.'
+      'Admin update is locked. Please contact support.',
     );
+  }
+
+  if (payload.address) {
+    const { longitude, latitude, geoAccuracy = 0 } = payload.address;
+
+    if (geoAccuracy !== undefined && geoAccuracy > 100) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Geo accuracy must be less than or equal to 100.',
+      );
+    }
+    const hasLng = typeof longitude === 'number';
+    const hasLat = typeof latitude === 'number';
+
+    if (hasLng && hasLat) {
+      payload.currentSessionLocation = {
+        type: 'Point',
+        coordinates: [longitude, latitude],
+        geoAccuracy: geoAccuracy,
+        lastLocationUpdate: new Date(),
+      };
+    }
   }
 
   // -----------------------------------------
@@ -47,7 +69,7 @@ const updateAdmin = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this admin account.'
+      'You are not authorized to update this admin account.',
     );
   }
 
@@ -57,13 +79,13 @@ const updateAdmin = async (
   const updatedAdmin = await Admin.findOneAndUpdate(
     { userId: adminId },
     { $set: payload },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedAdmin) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update admin profile.'
+      'Failed to update admin profile.',
     );
   }
 
@@ -75,7 +97,7 @@ const adminDocImageUpload = async (
   file: string | undefined,
   data: TAdminImageDocuments,
   currentUser: AuthUser,
-  adminId: string
+  adminId: string,
 ) => {
   const existingAdmin = await Admin.findOne({ userId: adminId });
 
@@ -86,14 +108,14 @@ const adminDocImageUpload = async (
   if (currentUser.role === 'ADMIN' && existingAdmin.isUpdateLocked) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Admin update is locked. Please contact support.'
+      'Admin update is locked. Please contact support.',
     );
   }
 
   if (currentUser.role === 'ADMIN' && existingAdmin.userId !== adminId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this admin account.'
+      'You are not authorized to update this admin account.',
     );
   }
   // delete previous image if exists
@@ -147,7 +169,7 @@ const getSingleAdmin = async (adminId: string, currentUser: AuthUser) => {
   if (currentUser.role === 'ADMIN' && currentUser.userId !== adminId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this admin.'
+      'You are not authorized to access this admin.',
     );
   }
 

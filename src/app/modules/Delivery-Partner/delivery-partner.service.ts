@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
@@ -5,18 +6,18 @@ import { AuthUser } from '../../constant/user.constant';
 import {
   TDeliveryPartner,
   TDeliveryPartnerImageDocuments,
-  TLiveLocationPayload,
 } from './delivery-partner.interface';
 import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // ---------------------------------------------------------
   // Check if target delivery partner exists
@@ -32,7 +33,7 @@ const updateDeliveryPartner = async (
   if (!existingDeliveryPartner.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please verify your email before updating your profile.'
+      'Please verify your email before updating your profile.',
     );
   }
 
@@ -45,7 +46,7 @@ const updateDeliveryPartner = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Delivery Partner update is locked. Please contact support.'
+      'Delivery Partner update is locked. Please contact support.',
     );
   }
 
@@ -58,7 +59,7 @@ const updateDeliveryPartner = async (
     if (existingDeliveryPartner.userId !== currentUser?.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to update this profile.'
+        'You are not authorized to update this profile.',
       );
     }
   }
@@ -71,7 +72,7 @@ const updateDeliveryPartner = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this Delivery Partner.'
+      'You are not authorized to update this Delivery Partner.',
     );
   }
 
@@ -82,13 +83,13 @@ const updateDeliveryPartner = async (
   const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
     { userId: deliveryPartnerId },
     { $set: payload },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedDeliveryPartner) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update Delivery Partner.'
+      'Failed to update Delivery Partner.',
     );
   }
 
@@ -96,51 +97,70 @@ const updateDeliveryPartner = async (
 };
 
 // update delivery partner live location
+
 const updateDeliveryPartnerLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: AuthUser
+  currentUser: AuthUser,
+  deliveryPartnerId: string,
 ) => {
-  // ------------------------------------
-  // Role check
-  // ------------------------------------
   if (currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only delivery partners can update live location'
+      'Only delivery partners can update live location',
     );
   }
 
-  const { latitude, longitude, accuracy = 0 } = payload;
-
-  // ------------------------------------
-  // Basic GPS validation
-  // ------------------------------------
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid GPS coordinates');
+  if (currentUser.userId !== deliveryPartnerId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorize to update live location!',
+    );
   }
 
-  if (accuracy > 100) {
-    // Ignore bad GPS (fake / weak signal)
-    return { skipped: true, reason: 'Low GPS accuracy' };
+  const {
+    latitude,
+    longitude,
+    geoAccuracy,
+    heading,
+    speed,
+    isMocked,
+    timestamp,
+  } = payload;
+
+  if (geoAccuracy !== undefined && geoAccuracy > 100) {
+    return {
+      success: false,
+      skipped: true,
+      reason: 'Low GPS accuracy',
+    };
   }
 
-  // ------------------------------------
-  // Update only location fields
-  // ------------------------------------
+  const updateData: Record<string, any> = {
+    'currentSessionLocation.type': 'Point',
+    'currentSessionLocation.coordinates': [longitude, latitude],
+    'currentSessionLocation.lastLocationUpdate': timestamp
+      ? new Date(timestamp)
+      : new Date(),
+    'operationalData.lastActivityAt': new Date(),
+  };
+
+  if (geoAccuracy !== undefined)
+    updateData['currentSessionLocation.geoAccuracy'] = geoAccuracy;
+  if (heading !== undefined)
+    updateData['currentSessionLocation.heading'] = heading;
+  if (speed !== undefined) updateData['currentSessionLocation.speed'] = speed;
+
+  if (isMocked !== undefined)
+    updateData['currentSessionLocation.isMocked'] = isMocked;
+
   const updated = await DeliveryPartner.findOneAndUpdate(
     { userId: currentUser.userId, isDeleted: false },
+    { $set: updateData },
     {
-      $set: {
-        currentSessionLocation: {
-          type: 'Point',
-          coordinates: [longitude, latitude],
-          accuracy,
-          lastLocationUpdate: new Date(),
-        },
-        'operationalData.lastActivityAt': new Date(),
-      },
+      new: true,
+      runValidators: true,
+      projection: { currentSessionLocation: 1 },
     },
-    { new: true, projection: { currentSessionLocation: 1 } }
   );
 
   if (!updated) {
@@ -148,8 +168,9 @@ const updateDeliveryPartnerLiveLocation = async (
   }
 
   return {
-    message: 'Live location updated',
-    location: updated.currentSessionLocation,
+    success: true,
+    message: 'Live location updated successfully',
+    data: updated.currentSessionLocation,
   };
 };
 
@@ -158,7 +179,7 @@ const deliverPartnerDocImageUpload = async (
   file: string | undefined,
   data: TDeliveryPartnerImageDocuments,
   currentUser: AuthUser,
-  deliveryPartnerId: string
+  deliveryPartnerId: string,
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
     userId: deliveryPartnerId,
@@ -174,7 +195,7 @@ const deliverPartnerDocImageUpload = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'You are not authorize to upload document image!'
+        'You are not authorize to upload document image!',
       );
     }
   }
@@ -207,11 +228,11 @@ const deliverPartnerDocImageUpload = async (
 //get all delivery partners
 const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
-  // if (currentUser?.role === 'FLEET_MANAGER') {
-  //   query.registeredBy = currentUser?._id.toString();
-  // }
+  if (currentUser?.role === 'FLEET_MANAGER') {
+    query['registeredBy.id'] = currentUser?._id.toString();
+  }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
     .fields()
@@ -242,7 +263,7 @@ const getAllDeliveryPartnersFromDB = async (
 // get single delivery partner from db
 const getSingleDeliveryPartnerFromDB = async (
   deliveryPartnerId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (
     currentUser?.role === 'DELIVERY_PARTNER' &&
@@ -250,7 +271,7 @@ const getSingleDeliveryPartnerFromDB = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this delivery partner'
+      'You are not authorized to access this delivery partner',
     );
   }
 
@@ -278,7 +299,7 @@ const getSingleDeliveryPartnerFromDB = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this delivery partner'
+      'You are not authorized to access this delivery partner',
     );
   }
 

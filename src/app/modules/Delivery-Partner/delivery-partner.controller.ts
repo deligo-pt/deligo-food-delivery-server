@@ -10,7 +10,7 @@ const updateDeliveryPartner = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.updateDeliveryPartner(
     req.body,
     req.params.deliveryPartnerId,
-    currentUser
+    currentUser,
   );
   sendResponse(res, {
     success: true,
@@ -25,13 +25,14 @@ const updateDeliveryPartnerLiveLocation = catchAsync(async (req, res) => {
   const result =
     await DeliveryPartnerServices.updateDeliveryPartnerLiveLocation(
       req.body,
-      req.user as AuthUser
+      req.user as AuthUser,
+      req.params.deliveryPartnerId,
     );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: result?.location,
+    data: result?.data,
   });
 });
 
@@ -42,7 +43,7 @@ const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
     file?.path,
     req.body,
     req.user as AuthUser,
-    req.params.deliveryPartnerId
+    req.params.deliveryPartnerId,
   );
   sendResponse(res, {
     success: true,
@@ -56,7 +57,7 @@ const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
 const getAllDeliveryPartners = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.getAllDeliveryPartnersFromDB(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -72,7 +73,7 @@ const getAllDeliveryPartners = catchAsync(async (req, res) => {
 const getSingleDeliveryPartner = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.getSingleDeliveryPartnerFromDB(
     req.params.deliveryPartnerId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {

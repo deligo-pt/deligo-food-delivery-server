@@ -4,7 +4,7 @@ import { TVendor } from './vendor.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
-import { locationSchema } from '../Delivery-Partner/delivery-partner.model';
+import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 
 const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
@@ -144,7 +144,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     },
 
     currentSessionLocation: {
-      type: locationSchema,
+      type: liveLocationSchema,
     },
 
     // -------------------------------------------------------
@@ -201,14 +201,14 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
     timestamps: true,
     virtuals: true,
-  }
+  },
 );
 
-vendorSchema.index({ 'businessLocation.locationPoint': '2dsphere' });
+vendorSchema.index({ currentSessionLocation: '2dsphere' });
 
 vendorSchema.plugin(passwordPlugin);
 
 export const Vendor = model<TVendor, IUserModel<TVendor>>(
   'Vendor',
-  vendorSchema
+  vendorSchema,
 );

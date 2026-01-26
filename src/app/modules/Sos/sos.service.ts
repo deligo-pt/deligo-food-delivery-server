@@ -6,6 +6,7 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TSos } from './sos.interface';
 import { SosModel } from './sos.model';
 import mongoose from 'mongoose';
+import { getIO } from '../../lib/Socket';
 
 // trigger SOS service
 const triggerSos = async (payload: Partial<TSos>, currentUser: AuthUser) => {
@@ -15,7 +16,7 @@ const triggerSos = async (payload: Partial<TSos>, currentUser: AuthUser) => {
   if (!sosLocation) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Could not determine your current location. Please enable GPS.'
+      'Could not determine your current location. Please enable GPS.',
     );
   }
   const sosData = {
@@ -38,7 +39,7 @@ const triggerSos = async (payload: Partial<TSos>, currentUser: AuthUser) => {
     throw new Error('Failed to trigger SOS');
   }
 
-  global.io.to('SOS_ALERTS_POOL').emit('new-sos-alert', {
+  getIO().to('SOS_ALERTS_POOL').emit('new-sos-alert', {
     message: 'Emergency SOS Triggered!',
     data: result,
   });
@@ -50,7 +51,7 @@ const triggerSos = async (payload: Partial<TSos>, currentUser: AuthUser) => {
 const updateSosStatus = async (
   id: string,
   adminId: string,
-  payload: { status: TSos['status']; note?: string }
+  payload: { status: TSos['status']; note?: string },
 ) => {
   const isSosExist = await SosModel.findById(id);
   if (!isSosExist) {
@@ -60,14 +61,14 @@ const updateSosStatus = async (
   if (isSosExist.status === 'RESOLVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Resolved SOS cannot be changed'
+      'Resolved SOS cannot be changed',
     );
   }
 
   if (isSosExist.status === payload.status) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `SOS is already ${payload.status}`
+      `SOS is already ${payload.status}`,
     );
   }
 
@@ -92,7 +93,7 @@ const updateSosStatus = async (
   });
 
   if (result) {
-    global.io.emit(`sos-status-updated-${id}`, result);
+    getIO().emit(`sos-status-updated-${id}`, result);
   }
 
   return result;
@@ -105,7 +106,7 @@ const getNearbySosAlerts = async (currentUser: AuthUser) => {
   if (!sosLocation) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Could not determine your current location. Please enable GPS.'
+      'Could not determine your current location. Please enable GPS.',
     );
   }
   const [longitude, latitude] = sosLocation;
@@ -125,21 +126,25 @@ const getNearbySosAlerts = async (currentUser: AuthUser) => {
 // get all sos alerts
 const getAllSosAlerts = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const sosQuery = new QueryBuilder(SosModel.find(), query)
-    .search(['status', 'role', 'issueTags'])
     .filter()
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search(['status', 'role', 'issueTags']);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     id: 'name userId',
     resolvedBy: 'name userId role',
   });
 
-  const result = await sosQuery.modelQuery.populate(populateOptions).exec();
+  populateOptions.forEach((option) => {
+    sosQuery.modelQuery = sosQuery.modelQuery.populate(option);
+  });
+
+  const result = await sosQuery.modelQuery.exec();
   const meta = await sosQuery.countTotal();
 
   return {
@@ -152,7 +157,7 @@ const getAllSosAlerts = async (
 const getSingleSosAlert = async (id: string) => {
   const result = await SosModel.findById(id).populate(
     'resolvedBy',
-    'name email'
+    'name email',
   );
 
   if (!result) {
@@ -162,10 +167,44 @@ const getSingleSosAlert = async (id: string) => {
   return result;
 };
 
+const getUserSosHistory = async (
+  currentUser: AuthUser,
+  userId: string,
+  query: Record<string, unknown>,
+) => {
+  const sosQuery = new QueryBuilder(
+    SosModel.find({ 'userId.id': userId }),
+    query,
+  )
+    .filter()
+    .sort()
+    .paginate()
+    .fields()
+    .search(['status', 'role', 'issueTags']);
+
+  const populateOptions = getPopulateOptions(currentUser.role, {
+    id: 'name',
+    resolvedBy: 'name userId role',
+  });
+
+  populateOptions.forEach((option) => {
+    sosQuery.modelQuery = sosQuery.modelQuery.populate(option);
+  });
+
+  const result = await sosQuery.modelQuery;
+  const meta = await sosQuery.countTotal();
+
+  return {
+    meta,
+    result,
+  };
+};
+
 export const SosService = {
   triggerSos,
   updateSosStatus,
   getNearbySosAlerts,
   getAllSosAlerts,
   getSingleSosAlert,
+  getUserSosHistory,
 };

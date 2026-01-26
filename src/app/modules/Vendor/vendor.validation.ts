@@ -4,7 +4,7 @@ import { addressValidationSchema } from '../Admin/admin.validation';
 // --------------------------------------------------
 // Vendor Update Validation Schema
 // --------------------------------------------------
-export const vendorUpdateValidationSchema = z.object({
+const vendorUpdateValidationSchema = z.object({
   body: z.object({
     // Personal Details
     name: z
@@ -51,7 +51,7 @@ export const vendorUpdateValidationSchema = z.object({
 // --------------------------------------------------
 // Document Image Validation
 // --------------------------------------------------
-export const vendorDocImageValidationSchema = z.object({
+const vendorDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z.enum(
       [
@@ -62,28 +62,8 @@ export const vendorDocImageValidationSchema = z.object({
         'storePhoto',
         'menuUpload',
       ],
-      { required_error: 'Document title is required' }
+      { required_error: 'Document title is required' },
     ),
-  }),
-});
-
-// --------------------------------------------------
-// Vendor business location update validation schema
-// --------------------------------------------------
-export const vendorBusinessLocationUpdateValidationSchema = z.object({
-  body: z.object({
-    businessLocation: z.object({
-      street: z.string({ required_error: 'Street is required' }).min(1),
-      city: z.string({ required_error: 'City is required' }).min(1),
-      state: z.string({ required_error: 'State is required' }).min(1),
-      country: z.string({ required_error: 'Country is required' }).min(1),
-      postalCode: z
-        .string({ required_error: 'Postal code is required' })
-        .min(1),
-      longitude: z.number({ required_error: 'Longitude is required' }).min(1),
-      latitude: z.number({ required_error: 'Latitude is required' }).min(1),
-      geoAccuracy: z.number().optional(),
-    }),
   }),
 });
 
@@ -91,5 +71,4 @@ export const vendorBusinessLocationUpdateValidationSchema = z.object({
 export const VendorValidation = {
   vendorUpdateValidationSchema,
   vendorDocImageValidationSchema,
-  vendorBusinessLocationUpdateValidationSchema,
 };
