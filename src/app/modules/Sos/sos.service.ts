@@ -167,6 +167,7 @@ const getSingleSosAlert = async (id: string) => {
   return result;
 };
 
+// get sos alerts by user id
 const getUserSosHistory = async (
   currentUser: AuthUser,
   userId: string,
@@ -200,6 +201,47 @@ const getUserSosHistory = async (
   };
 };
 
+// get sos stats
+const getSosStats = async (currentUser: AuthUser) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view SOS stats. Your account is ${currentUser.status}`,
+    );
+  }
+  const stats = await SosModel.aggregate([
+    {
+      $group: {
+        _id: '$userId.model',
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        userType: '$_id',
+        count: 1,
+      },
+    },
+  ]);
+
+  const formattedStats = {
+    Vendor: 0,
+    FleetManager: 0,
+    DeliveryPartner: 0,
+    total: 0,
+  };
+
+  stats.forEach((item) => {
+    if (item.userType in formattedStats) {
+      formattedStats[item.userType as keyof typeof formattedStats] = item.count;
+      formattedStats.total += item.count;
+    }
+  });
+
+  return formattedStats;
+};
+
 export const SosService = {
   triggerSos,
   updateSosStatus,
@@ -207,4 +249,5 @@ export const SosService = {
   getAllSosAlerts,
   getSingleSosAlert,
   getUserSosHistory,
+  getSosStats,
 };

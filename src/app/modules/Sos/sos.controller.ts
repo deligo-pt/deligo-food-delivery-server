@@ -79,6 +79,17 @@ const getUserSosHistory = catchAsync(async (req, res) => {
   });
 });
 
+// get sos stats controller
+const getSosStats = catchAsync(async (req, res) => {
+  const result = await SosService.getSosStats(req.user as AuthUser);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'SOS stats retrieved successfully',
+    data: result,
+  });
+});
+
 export const SosController = {
   triggerSos,
   updateSosStatus,
@@ -86,4 +97,5 @@ export const SosController = {
   getAllSosAlerts,
   getSingleSosAlert,
   getUserSosHistory,
+  getSosStats,
 };
