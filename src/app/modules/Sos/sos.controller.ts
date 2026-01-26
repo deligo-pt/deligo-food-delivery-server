@@ -43,7 +43,7 @@ const getNearbySosAlerts = catchAsync(async (req, res) => {
 const getAllSosAlerts = catchAsync(async (req, res) => {
   const result = await SosService.getAllSosAlerts(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -64,10 +64,26 @@ const getSingleSosAlert = catchAsync(async (req, res) => {
   });
 });
 
+// get sos alerts by user id controller
+const getUserSosHistory = catchAsync(async (req, res) => {
+  const result = await SosService.getUserSosHistory(
+    req.user as AuthUser,
+    req.params.id,
+    req.query,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'SOS alerts retrieved successfully',
+    data: result,
+  });
+});
+
 export const SosController = {
   triggerSos,
   updateSosStatus,
   getNearbySosAlerts,
   getAllSosAlerts,
   getSingleSosAlert,
+  getUserSosHistory,
 };

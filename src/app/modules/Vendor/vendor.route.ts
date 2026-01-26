@@ -5,6 +5,7 @@ import validateRequest from '../../middlewares/validateRequest';
 import { VendorValidation } from './vendor.validation';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
+import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
 
 const router = Router();
 
@@ -13,7 +14,7 @@ router.patch(
   '/:vendorId',
   auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
   validateRequest(VendorValidation.vendorUpdateValidationSchema),
-  VendorControllers.vendorUpdate
+  VendorControllers.vendorUpdate,
 );
 
 // Vendor doc image upload route
@@ -23,24 +24,22 @@ router.patch(
   multerUpload.single('file'),
   parseBody,
   validateRequest(VendorValidation.vendorDocImageValidationSchema),
-  VendorControllers.vendorDocImageUpload
+  VendorControllers.vendorDocImageUpload,
 );
 
 // Vendor business location update route
 router.patch(
-  '/:vendorId/businessLocation',
-  auth('VENDOR'),
-  validateRequest(
-    VendorValidation.vendorBusinessLocationUpdateValidationSchema
-  ),
-  VendorControllers.vendorBusinessLocationUpdate
+  '/:vendorId/liveLocation',
+  auth('VENDOR', 'SUB_VENDOR'),
+  validateRequest(GlobalValidation.UpdateLiveLocationValidationSchema),
+  VendorControllers.updateVendorLiveLocation,
 );
 
 // Vendor toggle store open close route
 router.patch(
   '/toggle/store-open-close',
   auth('VENDOR'),
-  VendorControllers.toggleVendorStoreOpenClose
+  VendorControllers.toggleVendorStoreOpenClose,
 );
 
 // get all vendors
@@ -49,7 +48,7 @@ router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);
 router.get(
   '/:vendorId',
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
-  VendorControllers.getSingleVendor
+  VendorControllers.getSingleVendor,
 );
 
 export const VendorRoutes = router;

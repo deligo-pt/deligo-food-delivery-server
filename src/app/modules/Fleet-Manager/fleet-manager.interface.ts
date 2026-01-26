@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
 export type TFleetManager = {
   // ---------------------------------------------
@@ -58,12 +59,7 @@ export type TFleetManager = {
     geoAccuracy?: number;
   };
 
-  currentSessionLocation?: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-    accuracy?: number; // GPS Accuracy in meters
-    lastLocationUpdate: Date; // Timestamp for data freshness
-  };
+  currentSessionLocation?: TGeoJSONPoint;
 
   // ---------------------------------------------
   // Business Details

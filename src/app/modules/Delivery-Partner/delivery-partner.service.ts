@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
@@ -5,12 +6,12 @@ import { AuthUser } from '../../constant/user.constant';
 import {
   TDeliveryPartner,
   TDeliveryPartnerImageDocuments,
-  TLiveLocationPayload,
 } from './delivery-partner.interface';
 import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
@@ -96,13 +97,12 @@ const updateDeliveryPartner = async (
 };
 
 // update delivery partner live location
+
 const updateDeliveryPartnerLiveLocation = async (
   payload: TLiveLocationPayload,
   currentUser: AuthUser,
+  deliveryPartnerId: string,
 ) => {
-  // ------------------------------------
-  // Role check
-  // ------------------------------------
   if (currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -110,37 +110,57 @@ const updateDeliveryPartnerLiveLocation = async (
     );
   }
 
-  const { latitude, longitude, accuracy = 0 } = payload;
-
-  // ------------------------------------
-  // Basic GPS validation
-  // ------------------------------------
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid GPS coordinates');
+  if (currentUser.userId !== deliveryPartnerId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorize to update live location!',
+    );
   }
 
-  if (accuracy > 100) {
-    // Ignore bad GPS (fake / weak signal)
-    return { skipped: true, reason: 'Low GPS accuracy' };
+  const {
+    latitude,
+    longitude,
+    geoAccuracy,
+    heading,
+    speed,
+    isMocked,
+    timestamp,
+  } = payload;
+
+  if (geoAccuracy !== undefined && geoAccuracy > 100) {
+    return {
+      success: false,
+      skipped: true,
+      reason: 'Low GPS accuracy',
+    };
   }
 
-  // ------------------------------------
-  // Update only location fields
-  // ------------------------------------
+  const updateData: Record<string, any> = {
+    'currentSessionLocation.type': 'Point',
+    'currentSessionLocation.coordinates': [longitude, latitude],
+    'currentSessionLocation.lastLocationUpdate': timestamp
+      ? new Date(timestamp)
+      : new Date(),
+    'operationalData.lastActivityAt': new Date(),
+  };
+
+  if (geoAccuracy !== undefined)
+    updateData['currentSessionLocation.geoAccuracy'] = geoAccuracy;
+  if (heading !== undefined)
+    updateData['currentSessionLocation.heading'] = heading;
+  if (speed !== undefined) updateData['currentSessionLocation.speed'] = speed;
+
+  if (isMocked !== undefined)
+    updateData['currentSessionLocation.isMocked'] = isMocked;
+
   const updated = await DeliveryPartner.findOneAndUpdate(
     { userId: currentUser.userId, isDeleted: false },
+    { $set: updateData },
     {
-      $set: {
-        currentSessionLocation: {
-          type: 'Point',
-          coordinates: [longitude, latitude],
-          accuracy,
-          lastLocationUpdate: new Date(),
-        },
-        'operationalData.lastActivityAt': new Date(),
-      },
+      new: true,
+      runValidators: true,
+      projection: { currentSessionLocation: 1 },
     },
-    { new: true, projection: { currentSessionLocation: 1 } },
   );
 
   if (!updated) {
@@ -148,8 +168,9 @@ const updateDeliveryPartnerLiveLocation = async (
   }
 
   return {
-    message: 'Live location updated',
-    location: updated.currentSessionLocation,
+    success: true,
+    message: 'Live location updated successfully',
+    data: updated.currentSessionLocation,
   };
 };
 

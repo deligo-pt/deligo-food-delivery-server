@@ -5,6 +5,7 @@ import { DeliveryPartnerValidation } from './delivery-partner.validation';
 import { DeliveryPartnerControllers } from './delivery-partner.controller';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
+import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
 
 const router = Router();
 
@@ -13,19 +14,17 @@ router.patch(
   '/:deliveryPartnerId',
   auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
   validateRequest(
-    DeliveryPartnerValidation.updateDeliveryPartnerDataValidationSchema
+    DeliveryPartnerValidation.updateDeliveryPartnerDataValidationSchema,
   ),
-  DeliveryPartnerControllers.updateDeliveryPartner
+  DeliveryPartnerControllers.updateDeliveryPartner,
 );
 
 // update delivery partner live location
 router.patch(
   '/:deliveryPartnerId/liveLocation',
   auth('DELIVERY_PARTNER'),
-  validateRequest(
-    DeliveryPartnerValidation.updateDeliveryPartnerLiveLocationValidationSchema
-  ),
-  DeliveryPartnerControllers.updateDeliveryPartnerLiveLocation
+  validateRequest(GlobalValidation.UpdateLiveLocationValidationSchema),
+  DeliveryPartnerControllers.updateDeliveryPartnerLiveLocation,
 );
 
 // Delivery Partner Doc Image Upload Route
@@ -35,23 +34,23 @@ router.patch(
   multerUpload.single('file'),
   parseBody,
   validateRequest(
-    DeliveryPartnerValidation.deliveryPartnerDocImageValidationSchema
+    DeliveryPartnerValidation.deliveryPartnerDocImageValidationSchema,
   ),
-  DeliveryPartnerControllers.deliveryPartnerDocImageUpload
+  DeliveryPartnerControllers.deliveryPartnerDocImageUpload,
 );
 
 // Get All Delivery Partners Route
 router.get(
   '/',
   auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
-  DeliveryPartnerControllers.getAllDeliveryPartners
+  DeliveryPartnerControllers.getAllDeliveryPartners,
 );
 
 // Get Single Delivery Partner Route
 router.get(
   '/:deliveryPartnerId',
   auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
-  DeliveryPartnerControllers.getSingleDeliveryPartner
+  DeliveryPartnerControllers.getSingleDeliveryPartner,
 );
 
 export const DeliveryPartnerRoutes = router;
