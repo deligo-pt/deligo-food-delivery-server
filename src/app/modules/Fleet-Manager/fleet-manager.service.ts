@@ -15,7 +15,7 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 const fleetManagerUpdate = async (
   fleetManagerId: string,
   payload: Partial<TFleetManager>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // ---------------------------------------------------------
   // Find Fleet Manager
@@ -39,7 +39,7 @@ const fleetManagerUpdate = async (
   if (!isSelf) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this Fleet Manager.'
+      'You are not authorized to update this Fleet Manager.',
     );
   }
 
@@ -49,8 +49,24 @@ const fleetManagerUpdate = async (
   if (!existingFleetManager.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please verify your email before updating your profile.'
+      'Please verify your email before updating your profile.',
     );
+  }
+
+  if (payload.businessLocation) {
+    const { longitude, latitude, geoAccuracy } = payload.businessLocation;
+    const hasLng = typeof longitude === 'number';
+    const hasLat = typeof latitude === 'number';
+    const hasAcc = typeof geoAccuracy === 'number';
+
+    if (hasLng && hasLat && hasAcc) {
+      payload.currentSessionLocation = {
+        type: 'Point',
+        coordinates: [longitude, latitude],
+        accuracy: geoAccuracy,
+        lastLocationUpdate: new Date(),
+      };
+    }
   }
 
   // ---------------------------------------------------------
@@ -62,7 +78,7 @@ const fleetManagerUpdate = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Fleet Manager update is locked. Please contact support.'
+      'Fleet Manager update is locked. Please contact support.',
     );
   }
 
@@ -72,13 +88,13 @@ const fleetManagerUpdate = async (
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
     { userId: fleetManagerId },
     { $set: payload },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedFleetManager) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update Fleet Manager.'
+      'Failed to update Fleet Manager.',
     );
   }
 
@@ -90,7 +106,7 @@ const fleetManagerDocImageUpload = async (
   file: string | undefined,
   data: TFleetManagerImageDocuments,
   currentUser: AuthUser,
-  fleetManagerId: string
+  fleetManagerId: string,
 ) => {
   const existingFleetManager = await FleetManager.findOne({
     userId: fleetManagerId,
@@ -110,7 +126,7 @@ const fleetManagerDocImageUpload = async (
   if (!isSelf) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this Fleet Manager.'
+      'You are not authorized to update this Fleet Manager.',
     );
   }
 
@@ -123,7 +139,7 @@ const fleetManagerDocImageUpload = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Fleet Manager update is locked. Please contact support.'
+      'Fleet Manager update is locked. Please contact support.',
     );
   }
 
@@ -172,13 +188,13 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 // get single fleet manager
 const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const userId = currentUser?.userId;
   if (currentUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to access this fleet manager!'
+      'You are not authorize to access this fleet manager!',
     );
   }
   let existingFleetManager;
