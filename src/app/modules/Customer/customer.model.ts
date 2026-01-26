@@ -5,7 +5,7 @@ import { IUserModel } from '../../interfaces/user.interface';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { AddressType } from './customer.constant';
-import { locationSchema } from '../Delivery-Partner/delivery-partner.model';
+import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 
 const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {
@@ -86,24 +86,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     NIF: { type: String, default: '' },
 
     // ----------------------------------------------------------------
-    // Operational Address
-    // ----------------------------------------------------------------
-
-    operationalAddress: {
-      street: { type: String, default: '' },
-      city: { type: String, default: '' },
-      state: { type: String, default: '' },
-      country: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
-      longitude: { type: Number },
-      latitude: { type: Number },
-      geoAccuracy: { type: Number },
-    },
-
-    // ----------------------------------------------------------------
     // Current/Real-Time Location Data (For live tracking during delivery)
     // ----------------------------------------------------------------
-    currentSessionLocation: { type: locationSchema },
+    currentSessionLocation: { type: liveLocationSchema },
 
     // ----------------------------------------------------------------
     // MULTIPLE SAVED ADDRESSES
@@ -180,7 +165,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {
     timestamps: true,
     virtuals: true,
-  }
+  },
 );
 
 // GEO INDEX FOR REAL-TIME LOCATION
@@ -190,5 +175,5 @@ customerSchema.plugin(passwordPlugin);
 
 export const Customer = model<TCustomer, IUserModel<TCustomer>>(
   'Customer',
-  customerSchema
+  customerSchema,
 );

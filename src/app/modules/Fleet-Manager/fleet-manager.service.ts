@@ -54,7 +54,14 @@ const fleetManagerUpdate = async (
   }
 
   if (payload.businessLocation) {
-    const { longitude, latitude, geoAccuracy } = payload.businessLocation;
+    const { longitude, latitude, geoAccuracy = 0 } = payload.businessLocation;
+
+    if (geoAccuracy !== undefined && geoAccuracy > 100) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Geo accuracy must be less than or equal to 100.',
+      );
+    }
     const hasLng = typeof longitude === 'number';
     const hasLat = typeof latitude === 'number';
 
@@ -62,7 +69,7 @@ const fleetManagerUpdate = async (
       payload.currentSessionLocation = {
         type: 'Point',
         coordinates: [longitude, latitude],
-        accuracy: geoAccuracy || 0,
+        geoAccuracy: geoAccuracy,
         lastLocationUpdate: new Date(),
       };
     }
