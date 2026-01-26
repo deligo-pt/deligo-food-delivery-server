@@ -128,11 +128,10 @@ const updateDeliveryPartnerLiveLocation = async (
   } = payload;
 
   if (geoAccuracy !== undefined && geoAccuracy > 100) {
-    return {
-      success: false,
-      skipped: true,
-      reason: 'Low GPS accuracy',
-    };
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Geo accuracy cannot be greater than 100',
+    );
   }
 
   const updateData: Record<string, any> = {

@@ -32,6 +32,9 @@ router.get(
 // get all sos alerts route
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), SosController.getAllSosAlerts);
 
+// get sos stats route
+router.get('/stats', auth('ADMIN', 'SUPER_ADMIN'), SosController.getSosStats);
+
 // get single sos alert route
 router.get(
   '/:id',
