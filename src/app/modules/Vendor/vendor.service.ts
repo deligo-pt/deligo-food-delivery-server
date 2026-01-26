@@ -177,6 +177,13 @@ const updateVendorLiveLocation = async (
     timestamp,
   } = payload;
 
+  if (geoAccuracy !== undefined && geoAccuracy > 100) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Geo accuracy should be less than 100',
+    );
+  }
+
   const updateData: Record<string, any> = {
     'currentSessionLocation.type': 'Point',
     'currentSessionLocation.coordinates': [longitude, latitude],
