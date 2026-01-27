@@ -196,6 +196,7 @@ const addDeliveryAddress = async (
     longitude: deliveryAddress.longitude,
     latitude: deliveryAddress.latitude,
     geoAccuracy: deliveryAddress.geoAccuracy,
+    detailedAddress: deliveryAddress.detailedAddress?.trim(),
 
     zoneId: deliveryAddress.zoneId ?? undefined,
     notes: deliveryAddress.notes?.trim(),
@@ -212,14 +213,14 @@ const addDeliveryAddress = async (
     { $push: { deliveryAddresses: newDeliveryAddress } },
   );
 
-  const { longitude, latitude, geoAccuracy } = newDeliveryAddress;
+  const { longitude, latitude, geoAccuracy = 0 } = newDeliveryAddress;
 
   // Auto-update location if coords provided
   if (longitude != null && latitude != null) {
     currentUser.currentSessionLocation = {
       type: 'Point',
       coordinates: [longitude, latitude],
-      accuracy: geoAccuracy ?? 0,
+      geoAccuracy,
       lastLocationUpdate: new Date(),
     };
   }
@@ -250,14 +251,14 @@ const toggleDeliveryAddressStatus = async (
   const updatedAddress = updatedCustomer?.deliveryAddresses?.find(
     (addr) => addr.isActive === true,
   );
-  const { longitude, latitude, geoAccuracy } = updatedAddress!;
+  const { longitude, latitude, geoAccuracy = 0 } = updatedAddress!;
 
   // Auto-update location if coords provided
   if (longitude != null && latitude != null) {
     currentUser.currentSessionLocation = {
       type: 'Point',
       coordinates: [longitude, latitude],
-      accuracy: geoAccuracy ?? 0,
+      geoAccuracy,
       lastLocationUpdate: new Date(),
     };
   }

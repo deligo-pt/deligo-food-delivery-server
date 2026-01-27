@@ -14,21 +14,6 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       .optional(),
     contactNumber: z.string().optional(),
     address: addressValidationSchema.optional(),
-    operationalAddress: addressValidationSchema.optional(),
-
-    // ---------------------------------------------------
-    // GeoJSON location auto-set for backend $geoNear
-    // ---------------------------------------------------
-    currentSessionLocation: z
-      .object({
-        type: z.literal('Point').optional().default('Point'),
-        coordinates: z
-          .tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)])
-          .optional(),
-        accuracy: z.number().optional(),
-        lastLocationUpdate: z.date().optional(),
-      })
-      .optional(),
 
     // Personal Information
     personalInfo: z
@@ -109,14 +94,6 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
   }),
 });
 
-const updateDeliveryPartnerLiveLocationValidationSchema = z.object({
-  body: z.object({
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
-    accuracy: z.number().optional(),
-  }),
-});
-
 // ---------------------------------------------
 // Document Upload Validation Schema
 // ---------------------------------------------
@@ -136,6 +113,5 @@ const deliveryPartnerDocImageValidationSchema = z.object({
 // ---------------------------------------------
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
-  updateDeliveryPartnerLiveLocationValidationSchema,
   deliveryPartnerDocImageValidationSchema,
 };

@@ -99,6 +99,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       longitude: { type: Number, default: null },
       latitude: { type: Number, default: null },
       geoAccuracy: { type: Number, default: null },
+      detailedAddress: { type: String, default: '' },
     },
 
     NIF: { type: String, default: '' },

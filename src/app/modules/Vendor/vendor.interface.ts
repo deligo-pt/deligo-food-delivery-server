@@ -70,6 +70,7 @@ export type TVendor = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   // --------------------------------------------------------
