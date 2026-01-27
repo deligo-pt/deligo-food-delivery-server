@@ -29,10 +29,10 @@ export const registerSosSocketEvents = (io: Server, socket: Socket) => {
       sosId: string;
       latitude: number;
       longitude: number;
-      accuracy?: number;
+      geoAccuracy?: number;
     }) => {
       try {
-        const { sosId, latitude, longitude, accuracy = 0 } = payload;
+        const { sosId, latitude, longitude, geoAccuracy = 0 } = payload;
 
         if (!sosId || !userId) return;
 
@@ -43,13 +43,13 @@ export const registerSosSocketEvents = (io: Server, socket: Socket) => {
           longitude > 180
         )
           return;
-        if (accuracy > 100) return;
+        if (geoAccuracy > 100) return;
 
         io.to('SOS_ALERTS_POOL').emit(`sos-live-location-${sosId}`, {
           sosId,
           latitude,
           longitude,
-          accuracy,
+          geoAccuracy,
           updatedAt: new Date(),
         });
 
@@ -66,6 +66,6 @@ export const registerSosSocketEvents = (io: Server, socket: Socket) => {
       } catch (error) {
         console.error('SOS Live Stream Error:', error);
       }
-    }
+    },
   );
 };
