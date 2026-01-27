@@ -20,7 +20,7 @@ export type TCoupon = {
   validFrom?: Date; // Optional start date
   expiresAt?: Date; // Expiration date
 
-  applicableCategories?: string[]; // e.g. ['food', 'grocery']
+  applicableCategories?: mongoose.Types.ObjectId[];
   applicableProducts?: mongoose.Types.ObjectId[];
 
   isActive: boolean; // Status

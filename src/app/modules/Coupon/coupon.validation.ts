@@ -6,7 +6,7 @@ const createCouponValidationSchema = z.object({
     code: z.string().min(3).toUpperCase(),
     discountType: z.enum(['PERCENT', 'FLAT']),
     discountValue: z.number().positive(),
-    isGlobal: z.boolean().optional(),
+    isGlobal: z.boolean().optional().default(false),
     minPurchase: z.number().nonnegative().optional(),
     maxDiscount: z.number().nonnegative().optional(),
     usageLimit: z.number().int().min(1).optional(),

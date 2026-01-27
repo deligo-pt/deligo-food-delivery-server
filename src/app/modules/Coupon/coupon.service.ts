@@ -9,8 +9,9 @@ import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { Order } from '../Order/order.model';
+import { ProductCategory } from '../Category/category.model';
 
 // create coupon service
 const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
@@ -61,6 +62,43 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
       httpStatus.BAD_REQUEST,
       'Expiry must be after start date',
     );
+
+  const categoryIds =
+    payload.applicableCategories?.map(
+      (id) => new mongoose.Types.ObjectId(id),
+    ) || [];
+  const productIds =
+    payload.applicableProducts?.map((id) => new mongoose.Types.ObjectId(id)) ||
+    [];
+
+  const [validCategoriesCount, validProductsCount] = await Promise.all([
+    categoryIds.length
+      ? ProductCategory.countDocuments({
+          _id: { $in: categoryIds },
+          isDeleted: false,
+        })
+      : 0,
+    productIds.length
+      ? Product.countDocuments({ _id: { $in: productIds }, isDeleted: false })
+      : 0,
+  ]);
+
+  if (categoryIds.length && validCategoriesCount !== categoryIds.length) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'One or more provided categories are invalid or deleted',
+    );
+  }
+
+  if (productIds.length && validProductsCount !== productIds.length) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'One or more provided products are invalid or deleted',
+    );
+  }
+
+  payload.applicableCategories = categoryIds;
+  payload.applicableProducts = productIds;
 
   // Set creator
   if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') {
@@ -163,10 +201,42 @@ const updateCoupon = async (
   }
 
   // Merge categories
-  if (payload.applicableCategories) {
-    payload.applicableCategories = payload.applicableCategories
-      .map((c) => c.trim())
-      .filter((c) => c !== '');
+  const categoryIds =
+    payload.applicableCategories?.map(
+      (id) => new mongoose.Types.ObjectId(id),
+    ) || [];
+  const productIds =
+    payload.applicableProducts?.map((id) => new mongoose.Types.ObjectId(id)) ||
+    [];
+
+  if (categoryIds.length > 0 || productIds.length > 0) {
+    const [validCategoriesCount, validProductsCount] = await Promise.all([
+      categoryIds.length
+        ? ProductCategory.countDocuments({
+            _id: { $in: categoryIds },
+            isDeleted: false,
+          })
+        : Promise.resolve(0),
+      productIds.length
+        ? Product.countDocuments({ _id: { $in: productIds }, isDeleted: false })
+        : Promise.resolve(0),
+    ]);
+
+    if (categoryIds.length && validCategoriesCount !== categoryIds.length) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'One or more categories are invalid',
+      );
+    }
+    if (productIds.length && validProductsCount !== productIds.length) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'One or more products are invalid',
+      );
+    }
+
+    if (categoryIds.length) payload.applicableCategories = categoryIds;
+    if (productIds.length) payload.applicableProducts = productIds;
   }
 
   // Update coupon
@@ -183,194 +253,330 @@ const updateCoupon = async (
 };
 
 // apply coupon service
+// const applyCoupon = async (
+//   couponId: string,
+//   currentUser: AuthUser,
+//   type: 'CART' | 'CHECKOUT',
+// ) => {
+//   // Find coupon
+//   const coupon = await Coupon.findOne({
+//     _id: couponId,
+//     isActive: true,
+//     isDeleted: false,
+//   });
+//   if (!coupon)
+//     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found or inactive');
+
+//   // Validate timing + usage
+//   const now = new Date();
+//   if (coupon.validFrom && now < coupon.validFrom)
+//     throw new AppError(httpStatus.BAD_REQUEST, 'This coupon is not yet active');
+
+//   if (coupon.expiresAt && now > coupon.expiresAt)
+//     throw new AppError(httpStatus.BAD_REQUEST, 'This coupon has expired');
+
+//   if (coupon.usageLimit && (coupon.usedCount ?? 0) >= coupon.usageLimit)
+//     throw new AppError(httpStatus.BAD_REQUEST, 'Coupon usage limit reached');
+
+//   // cart flow — active items only
+//   if (type === 'CART') {
+//     const cart = await Cart.findOne({
+//       customerId: currentUser._id,
+//       isDeleted: false,
+//     });
+//     if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+
+//     // Prevent duplicate apply
+//     if (cart.couponId?.toString() === couponId.toString()) {
+//       throw new AppError(
+//         httpStatus.BAD_REQUEST,
+//         'This coupon is already applied',
+//       );
+//     }
+
+//     // Take ONLY ACTIVE items
+//     const activeItems = cart.items.filter((i) => i.isActive === true);
+
+//     if (!activeItems.length) {
+//       throw new AppError(httpStatus.BAD_REQUEST, 'No active items in cart');
+//     }
+
+//     // recalculate active subtotal (real-time)
+//     const activeSubtotal = activeItems.reduce(
+//       (sum, item) => sum + item.subtotal,
+//       0,
+//     );
+//     const finalActiveSubtotal = parseFloat(activeSubtotal.toFixed(2));
+
+//     //  category validation from db
+//     const productIds = activeItems.map((i) => i.productId.toString());
+//     const products = await Product.find({
+//       _id: { $in: productIds },
+//     }).select('productId category');
+
+//     // vendor validation
+//     if (coupon.vendorId) {
+//       const isVendorProductMatched = products.some(
+//         (p) => p.vendorId.toString() === coupon.vendorId.toString(),
+//       );
+
+//       if (!isVendorProductMatched) {
+//         throw new AppError(
+//           httpStatus.BAD_REQUEST,
+//           'This coupon is only valid for specific vendor products',
+//         );
+//       }
+//     }
+
+//     const cartCategories = products.map((p) => p.category.toLowerCase());
+//     const couponCategories =
+//       coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
+
+//     if (couponCategories.length) {
+//       const isCategoryMatched = cartCategories.some((cat) =>
+//         couponCategories.includes(cat),
+//       );
+
+//       if (!isCategoryMatched) {
+//         throw new AppError(
+//           httpStatus.BAD_REQUEST,
+//           'Coupon not applicable for these product categories',
+//         );
+//       }
+//     }
+
+//     // min purchase check (active subtotal)
+//     if (coupon.minPurchase && finalActiveSubtotal < coupon.minPurchase) {
+//       throw new AppError(
+//         httpStatus.BAD_REQUEST,
+//         `Minimum purchase ${coupon.minPurchase} required`,
+//       );
+//     }
+
+//     // discount calculation (active subtotal)
+//     let discount = 0;
+//     if (coupon.discountType === 'PERCENT') {
+//       discount = (finalActiveSubtotal * coupon.discountValue) / 100;
+//       if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+//     } else {
+//       discount = coupon.discountValue;
+//     }
+
+//     // save final values
+//     cart.discount = parseFloat(discount.toFixed(2));
+//     cart.couponId = new Types.ObjectId(couponId);
+//     cart.subtotal = finalActiveSubtotal;
+//     await cart.save();
+
+//     return null;
+//   }
+
+//   // checkout flow — active items only
+//   if (type === 'CHECKOUT') {
+//     const checkout = await CheckoutSummary.findOne({
+//       customerId: currentUser._id,
+//       isConvertedToOrder: false,
+//       isDeleted: false,
+//     }).sort({ createdAt: -1 });
+
+//     if (!checkout) {
+//       throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
+//     }
+
+//     if (checkout.couponId?.toString() === couponId.toString()) {
+//       throw new AppError(
+//         httpStatus.BAD_REQUEST,
+//         'This coupon is already applied',
+//       );
+//     }
+
+//     const products = await Product.find({
+//       _id: { $in: checkout.items.map((i) => i.productId) },
+//     }).select('productId category');
+//     const cartCategories = products.map((p) => p.category.toLowerCase());
+
+//     const couponCategories =
+//       coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
+
+//     if (couponCategories.length) {
+//       const isCategoryMatched = cartCategories.some((cat) =>
+//         couponCategories.includes(cat),
+//       );
+
+//       if (!isCategoryMatched) {
+//         throw new AppError(
+//           httpStatus.BAD_REQUEST,
+//           'Coupon not applicable for these product categories',
+//         );
+//       }
+//     }
+
+//     const checkOutTotalPrice = checkout.totalPrice;
+//     // min purchase check (active)
+//     if (coupon.minPurchase && checkOutTotalPrice < coupon.minPurchase) {
+//       throw new AppError(
+//         httpStatus.BAD_REQUEST,
+//         `Minimum purchase ${coupon.minPurchase} required`,
+//       );
+//     }
+
+//     // discount calculation
+//     let discount = 0;
+//     if (coupon.discountType === 'PERCENT') {
+//       discount = (checkOutTotalPrice * coupon.discountValue) / 100;
+//       if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+//     } else {
+//       discount = coupon.discountValue;
+//     }
+
+//     const subTotal = checkOutTotalPrice - discount + checkout.deliveryCharge;
+
+//     // final save
+//     checkout.totalPrice = checkOutTotalPrice;
+//     checkout.discount = parseFloat(discount.toFixed(2));
+//     checkout.couponId = new Types.ObjectId(couponId);
+//     checkout.subTotal = parseFloat(subTotal.toFixed(2));
+//     await checkout.save();
+
+//     return null;
+//   }
+
+//   return null;
+// };
+
 const applyCoupon = async (
   couponId: string,
   currentUser: AuthUser,
   type: 'CART' | 'CHECKOUT',
 ) => {
-  // Find coupon
   const coupon = await Coupon.findOne({
     _id: couponId,
     isActive: true,
     isDeleted: false,
   });
-  if (!coupon) throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
 
-  // Validate timing + usage
+  if (!coupon)
+    throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found or inactive');
+
   const now = new Date();
-  if (coupon.validFrom && now < coupon.validFrom)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Coupon is not valid yet');
-
-  if (coupon.expiresAt && now > coupon.expiresAt)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Coupon expired');
-
-  if (coupon.usageLimit && (coupon.usedCount ?? 0) >= coupon.usageLimit)
+  if (coupon.validFrom && now < coupon.validFrom) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'This coupon is not yet active');
+  }
+  if (coupon.expiresAt && now > coupon.expiresAt) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'This coupon has expired');
+  }
+  if (coupon.usageLimit && (coupon.usedCount ?? 0) >= coupon.usageLimit) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Coupon usage limit reached');
+  }
 
-  // cart flow — active items only
+  let targetDoc: any;
+  let items: any[] = [];
+  let currentBaseAmount = 0;
+
   if (type === 'CART') {
-    const cart = await Cart.findOne({
+    targetDoc = await Cart.findOne({
       customerId: currentUser._id,
       isDeleted: false,
     });
-    if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+    if (!targetDoc) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
-    // Prevent duplicate apply
-    if (cart.couponId?.toString() === couponId.toString()) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'This coupon is already applied',
-      );
-    }
-
-    // Take ONLY ACTIVE items
-    const activeItems = cart.items.filter((i) => i.isActive === true);
-
-    if (!activeItems.length) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'No active items in cart');
-    }
-
-    // recalculate active subtotal (real-time)
-    const activeSubtotal = activeItems.reduce(
-      (sum, item) => sum + item.subtotal,
-      0,
-    );
-    const finalActiveSubtotal = parseFloat(activeSubtotal.toFixed(2));
-
-    //  category validation from db
-    const productIds = activeItems.map((i) => i.productId.toString());
-    const products = await Product.find({
-      _id: { $in: productIds },
-    }).select('productId category');
-
-    // vendor validation
-    if (coupon.vendorId) {
-      const isVendorProductMatched = products.some(
-        (p) => p.vendorId.toString() === coupon.vendorId.toString(),
-      );
-
-      if (!isVendorProductMatched) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'This coupon is only valid for specific vendor products',
-        );
-      }
-    }
-
-    const cartCategories = products.map((p) => p.category.toLowerCase());
-    const couponCategories =
-      coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
-
-    if (couponCategories.length) {
-      const isCategoryMatched = cartCategories.some((cat) =>
-        couponCategories.includes(cat),
-      );
-
-      if (!isCategoryMatched) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Coupon not applicable for these product categories',
-        );
-      }
-    }
-
-    // min purchase check (active subtotal)
-    if (coupon.minPurchase && finalActiveSubtotal < coupon.minPurchase) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Minimum purchase ${coupon.minPurchase} required`,
-      );
-    }
-
-    // discount calculation (active subtotal)
-    let discount = 0;
-    if (coupon.discountType === 'PERCENT') {
-      discount = (finalActiveSubtotal * coupon.discountValue) / 100;
-      if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
-    } else {
-      discount = coupon.discountValue;
-    }
-
-    // save final values
-    cart.discount = parseFloat(discount.toFixed(2));
-    cart.couponId = new Types.ObjectId(couponId);
-    cart.subtotal = finalActiveSubtotal;
-    await cart.save();
-
-    return null;
-  }
-
-  // checkout flow — active items only
-  if (type === 'CHECKOUT') {
-    const checkout = await CheckoutSummary.findOne({
+    items = targetDoc.items.filter((i: any) => i.isActive);
+    currentBaseAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
+  } else {
+    targetDoc = await CheckoutSummary.findOne({
       customerId: currentUser._id,
       isConvertedToOrder: false,
       isDeleted: false,
     }).sort({ createdAt: -1 });
+    if (!targetDoc)
+      throw new AppError(httpStatus.NOT_FOUND, 'Checkout not found');
 
-    if (!checkout) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
-    }
-
-    if (checkout.couponId?.toString() === couponId.toString()) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'This coupon is already applied',
-      );
-    }
-
-    const products = await Product.find({
-      _id: { $in: checkout.items.map((i) => i.productId) },
-    }).select('productId category');
-    const cartCategories = products.map((p) => p.category.toLowerCase());
-
-    const couponCategories =
-      coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
-
-    if (couponCategories.length) {
-      const isCategoryMatched = cartCategories.some((cat) =>
-        couponCategories.includes(cat),
-      );
-
-      if (!isCategoryMatched) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Coupon not applicable for these product categories',
-        );
-      }
-    }
-
-    const checkOutTotalPrice = checkout.totalPrice;
-    // min purchase check (active)
-    if (coupon.minPurchase && checkOutTotalPrice < coupon.minPurchase) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Minimum purchase ${coupon.minPurchase} required`,
-      );
-    }
-
-    // discount calculation
-    let discount = 0;
-    if (coupon.discountType === 'PERCENT') {
-      discount = (checkOutTotalPrice * coupon.discountValue) / 100;
-      if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
-    } else {
-      discount = coupon.discountValue;
-    }
-
-    const subTotal = checkOutTotalPrice - discount + checkout.deliveryCharge;
-
-    // final save
-    checkout.totalPrice = checkOutTotalPrice;
-    checkout.discount = parseFloat(discount.toFixed(2));
-    checkout.couponId = new Types.ObjectId(couponId);
-    checkout.subTotal = parseFloat(subTotal.toFixed(2));
-    await checkout.save();
-
-    return null;
+    items = targetDoc.items;
+    currentBaseAmount = targetDoc.totalPrice;
   }
 
-  return null;
+  if (!items.length)
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'No items found to apply coupon',
+    );
+
+  if (targetDoc.couponId?.toString() === couponId) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This coupon is already applied',
+    );
+  }
+
+  const productIds = items.map((i) => i.productId.toString());
+  const dbProducts = await Product.find({ _id: { $in: productIds } }).populate(
+    'category',
+  );
+
+  if (!coupon.isGlobal && coupon.vendorId) {
+    const isOwnerOfAllItems = dbProducts.every(
+      (p) => p.vendorId?.toString() === coupon.vendorId?.toString(),
+    );
+    if (!isOwnerOfAllItems) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This coupon is only valid for a specific vendor',
+      );
+    }
+  }
+
+  if (coupon.applicableCategories?.length) {
+    const couponCats = coupon.applicableCategories.map((c) => c.toLowerCase());
+
+    const hasValidCategory = dbProducts.some((p: any) => {
+      const categoryName = p.category?.name?.toLowerCase();
+      return categoryName && couponCats.includes(categoryName);
+    });
+
+    if (!hasValidCategory) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Coupon not applicable for these product categories',
+      );
+    }
+  }
+
+  if (coupon.minPurchase && currentBaseAmount < coupon.minPurchase) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Minimum purchase of ${coupon.minPurchase} required`,
+    );
+  }
+
+  let discountAmount = 0;
+  if (coupon.discountType === 'PERCENT') {
+    discountAmount = (currentBaseAmount * coupon.discountValue) / 100;
+    if (coupon.maxDiscount) {
+      discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+    }
+  } else {
+    discountAmount = Math.min(coupon.discountValue, currentBaseAmount);
+  }
+
+  discountAmount = parseFloat(discountAmount.toFixed(2));
+
+  targetDoc.discount = discountAmount;
+  targetDoc.couponId = new Types.ObjectId(couponId);
+
+  if (type === 'CART') {
+    targetDoc.subtotal = currentBaseAmount;
+  } else {
+    targetDoc.subTotal = parseFloat(
+      (
+        currentBaseAmount -
+        discountAmount +
+        (targetDoc.deliveryCharge || 0)
+      ).toFixed(2),
+    );
+  }
+
+  await targetDoc.save();
+  return { message: 'Coupon applied successfully', discount: discountAmount };
 };
 
 // toggle coupon status service

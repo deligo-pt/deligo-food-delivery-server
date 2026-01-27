@@ -38,7 +38,11 @@ const couponSchema = new Schema<TCoupon>(
     validFrom: { type: Date, default: Date.now },
     expiresAt: { type: Date, required: true },
 
-    applicableCategories: { type: [String], default: [] },
+    applicableCategories: {
+      type: [Schema.Types.ObjectId],
+      ref: 'ProductCategory',
+      default: [],
+    },
     applicableProducts: {
       type: [Schema.Types.ObjectId],
       ref: 'Product',
