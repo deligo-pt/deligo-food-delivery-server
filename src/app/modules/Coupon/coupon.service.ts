@@ -71,6 +71,13 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
     payload.applicableProducts?.map((id) => new mongoose.Types.ObjectId(id)) ||
     [];
 
+  const isVendor =
+    currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR';
+  const productQuery: any = { _id: { $in: productIds }, isDeleted: false };
+  if (isVendor) {
+    productQuery.vendorId = currentUser._id.toString();
+  }
+
   const [validCategoriesCount, validProductsCount] = await Promise.all([
     categoryIds.length
       ? ProductCategory.countDocuments({
@@ -78,9 +85,7 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
           isDeleted: false,
         })
       : 0,
-    productIds.length
-      ? Product.countDocuments({ _id: { $in: productIds }, isDeleted: false })
-      : 0,
+    productIds.length ? Product.countDocuments(productQuery) : 0,
   ]);
 
   if (categoryIds.length && validCategoriesCount !== categoryIds.length) {
