@@ -17,7 +17,7 @@ export const createToken = (
     status: keyof typeof USER_STATUS;
   },
   secret: string,
-  expiresIn: string
+  expiresIn: string,
 ) => {
   return jwt.sign(jwtPayload, secret, {
     expiresIn: expiresIn as SignOptions['expiresIn'],
@@ -26,11 +26,11 @@ export const createToken = (
 
 export const verifyToken = (
   token: string,
-  secret: string
+  secret: string,
 ): JwtPayload | Error => {
   try {
     return jwt.verify(token, secret) as JwtPayload;
   } catch (error: any) {
-    throw new AppError(401, 'You are not authorized!4');
+    throw new AppError(401, 'You are not authorized!');
   }
 };

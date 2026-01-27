@@ -98,6 +98,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       longitude: { type: Number },
       latitude: { type: Number },
       geoAccuracy: { type: Number },
+      detailedAddress: { type: String, default: '' },
     },
 
     currentSessionLocation: {

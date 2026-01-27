@@ -17,6 +17,7 @@ export const addressValidationSchema = z.object({
   longitude: z.number().optional(),
   latitude: z.number().optional(),
   geoAccuracy: z.number().optional(),
+  detailedAddress: z.string().optional(),
 });
 
 // -----------------------------------------------------

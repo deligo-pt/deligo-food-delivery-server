@@ -54,6 +54,7 @@ export type TCustomer = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   NIF?: string;
@@ -75,6 +76,7 @@ export type TCustomer = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
     isActive: boolean;
 
     // Zone Integration & Metadata

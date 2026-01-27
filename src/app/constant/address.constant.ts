@@ -10,6 +10,7 @@ export type TDeliveryAddress = {
   longitude?: number;
   latitude?: number;
   geoAccuracy?: number;
+  detailedAddress?: string;
   isActive: boolean;
 
   // Zone Integration & Metadata
@@ -28,6 +29,7 @@ export const addressSchema = new Schema(
     longitude: { type: Number, default: null },
     latitude: { type: Number, default: null },
     geoAccuracy: { type: Number, default: null },
+    detailedAddress: { type: String, default: '' },
   },
-  { _id: false }
+  { _id: false },
 );
