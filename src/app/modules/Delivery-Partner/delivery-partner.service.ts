@@ -101,7 +101,7 @@ const updateDeliveryPartner = async (
 const updateDeliveryPartnerLiveLocation = async (
   payload: TLiveLocationPayload,
   currentUser: AuthUser,
-  deliveryPartnerId: string,
+  deliveryPartnerId?: string,
 ) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(
@@ -110,7 +110,7 @@ const updateDeliveryPartnerLiveLocation = async (
     );
   }
 
-  if (currentUser.userId !== deliveryPartnerId) {
+  if (deliveryPartnerId && currentUser.userId !== deliveryPartnerId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorize to update live location!',
