@@ -61,18 +61,7 @@ export type TDeliveryPartner = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
-  };
-
-  // operational address
-  operationalAddress?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    longitude?: number;
-    latitude?: number;
-    geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   // -------------------------------------------------

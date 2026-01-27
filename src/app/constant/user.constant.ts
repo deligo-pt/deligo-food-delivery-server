@@ -66,7 +66,7 @@ export type AuthUser = {
   currentSessionLocation?: {
     type: 'Point';
     coordinates: [number, number];
-    accuracy: number;
+    geoAccuracy: number;
     lastLocationUpdate: Date;
   };
   businessDetails?: {
@@ -85,6 +85,7 @@ export type AuthUser = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
   operationalData: {
     currentOrderId?: string;
@@ -98,6 +99,7 @@ export type AuthUser = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 };
 

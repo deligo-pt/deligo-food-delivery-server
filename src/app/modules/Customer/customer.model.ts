@@ -81,6 +81,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       longitude: { type: Number },
       latitude: { type: Number },
       geoAccuracy: { type: Number },
+      detailedAddress: { type: String },
     },
 
     NIF: { type: String, default: '' },
@@ -103,6 +104,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         longitude: { type: Number },
         latitude: { type: Number },
         geoAccuracy: { type: Number },
+        detailedAddress: { type: String },
         isActive: { type: Boolean, default: false },
 
         zoneId: { type: Schema.Types.ObjectId, default: null, ref: 'Zone' },

@@ -101,6 +101,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       longitude: { type: Number },
       latitude: { type: Number },
       geoAccuracy: { type: Number },
+      detailedAddress: { type: String, default: '' },
     },
 
     // -------------------------------------------------------
