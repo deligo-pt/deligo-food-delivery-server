@@ -68,11 +68,15 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       label: { type: String },
       street: { type: String, required: true },
       city: { type: String, required: true },
-      state: String,
-      postalCode: String,
+      state: { type: String },
+      country: { type: String },
+      postalCode: { type: String },
       longitude: { type: Number, required: true },
       latitude: { type: Number, required: true },
-      geoAccuracy: Number,
+      geoAccuracy: { type: Number },
+      detailedAddress: {
+        type: String,
+      },
     },
 
     estimatedDeliveryTime: { type: String, default: 'N/A' },
@@ -94,10 +98,10 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
 
     isConvertedToOrder: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 CheckoutSummarySchema.index({ customerId: 1, isConvertedToOrder: 1 });
 export const CheckoutSummary = model<TCheckoutSummary>(
   'CheckoutSummary',
-  CheckoutSummarySchema
+  CheckoutSummarySchema,
 );

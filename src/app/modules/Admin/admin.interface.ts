@@ -56,6 +56,7 @@ export type TAdmin = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   NIF?: string;

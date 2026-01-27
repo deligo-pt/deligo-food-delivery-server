@@ -105,19 +105,9 @@ const deliveryPartnerSchema = new Schema<
       longitude: { type: Number },
       latitude: { type: Number },
       geoAccuracy: { type: Number },
+      detailedAddress: { type: String, default: '' },
     },
 
-    // operational address
-    operationalAddress: {
-      street: { type: String, default: '' },
-      city: { type: String, default: '' },
-      state: { type: String, default: '' },
-      country: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
-      longitude: { type: Number },
-      latitude: { type: Number },
-      geoAccuracy: { type: Number },
-    },
     //-------------------------------------------------
     // Live Location (UPDATED for Geo-Search)
     //-------------------------------------------------

@@ -57,6 +57,7 @@ export type TFleetManager = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   currentSessionLocation?: TGeoJSONPoint;

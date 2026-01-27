@@ -29,6 +29,7 @@ export type TCheckoutAddress = {
   longitude?: number;
   latitude?: number;
   geoAccuracy?: number;
+  detailedAddress?: string;
   isActive?: boolean;
   _id?: string;
 };
