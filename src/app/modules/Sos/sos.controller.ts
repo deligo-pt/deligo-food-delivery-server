@@ -55,7 +55,10 @@ const getAllSosAlerts = catchAsync(async (req, res) => {
 
 // get single sos alert controller
 const getSingleSosAlert = catchAsync(async (req, res) => {
-  const result = await SosService.getSingleSosAlert(req.params.id);
+  const result = await SosService.getSingleSosAlert(
+    req.params.id,
+    req.user as AuthUser,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
