@@ -12,13 +12,7 @@ const sosSchema = new Schema<TSos>(
       },
       model: {
         type: String,
-        enum: [
-          'Customer',
-          'Vendor',
-          'Admin',
-          'FleetManager',
-          'DeliveryPartner',
-        ],
+        enum: ['Vendor', 'FleetManager', 'DeliveryPartner'],
         required: true,
       },
       role: {
@@ -92,7 +86,7 @@ const sosSchema = new Schema<TSos>(
     toJSON: {
       virtuals: true,
     },
-  }
+  },
 );
 
 sosSchema.index({ location: '2dsphere' });

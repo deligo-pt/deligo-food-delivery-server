@@ -7,13 +7,13 @@ type LiveLocationPayload = {
   orderId: string;
   latitude: number;
   longitude: number;
-  accuracy?: number;
+  geoAccuracy?: number;
 };
 
 const lastDbUpdateMap = new Map<string, number>();
 export const registerDriverLiveLocationEvents = (
   io: Server,
-  socket: Socket
+  socket: Socket,
 ) => {
   const user = socket.data.user as AuthUser;
   const userId = user?.userId;
@@ -45,7 +45,7 @@ export const registerDriverLiveLocationEvents = (
     'delivery-location-update',
     async (payload: LiveLocationPayload) => {
       try {
-        const { orderId, latitude, longitude, accuracy = 0 } = payload;
+        const { orderId, latitude, longitude, geoAccuracy = 0 } = payload;
 
         if (!orderId || !userId) return;
 
@@ -63,14 +63,14 @@ export const registerDriverLiveLocationEvents = (
         }
 
         // Ignore weak / fake GPS
-        if (accuracy > 100) return;
+        if (geoAccuracy > 100) return;
 
         // Broadcast to order room
         socket.to(orderId).emit('delivery-location-live', {
           orderId,
           latitude,
           longitude,
-          accuracy,
+          geoAccuracy,
           time: new Date(),
         });
 
@@ -79,8 +79,8 @@ export const registerDriverLiveLocationEvents = (
         if (now - lastUpdate > 5000) {
           lastDbUpdateMap.set(userId, now);
           DeliveryPartnerServices.updateDeliveryPartnerLiveLocation(
-            { latitude, longitude, accuracy },
-            user
+            { latitude, longitude, geoAccuracy },
+            user,
           ).catch((err) => {
             console.error('Failed to update live location:', err);
           });
@@ -88,6 +88,6 @@ export const registerDriverLiveLocationEvents = (
       } catch {
         console.error('Error processing live location update');
       }
-    }
+    },
   );
 };

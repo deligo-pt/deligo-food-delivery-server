@@ -9,12 +9,13 @@ import { VendorSearchableFields } from './vendor.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { BusinessCategory } from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 
 // Vendor Update Service
 const vendorUpdate = async (
   id: string,
   payload: Partial<TVendor>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // -----------------------------------------
   // Check if vendor exists
@@ -31,7 +32,7 @@ const vendorUpdate = async (
   if (existingVendor.isUpdateLocked) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Vendor update is locked. Please contact support.'
+      'Vendor update is locked. Please contact support.',
     );
   }
 
@@ -41,7 +42,7 @@ const vendorUpdate = async (
   if (currentUser.userId !== existingVendor.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this vendor.'
+      'You are not authorized to update this vendor.',
     );
   }
 
@@ -81,13 +82,13 @@ const vendorUpdate = async (
   const updatedVendor = await Vendor.findOneAndUpdate(
     { userId: existingVendor.userId },
     { $set: payload },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedVendor) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update vendor.'
+      'Failed to update vendor.',
     );
   }
 
@@ -99,7 +100,7 @@ const vendorDocImageUpload = async (
   file: string | undefined,
   data: TVendorImageDocuments,
   currentUser: AuthUser,
-  vendorId: string
+  vendorId: string,
 ) => {
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
@@ -109,14 +110,14 @@ const vendorDocImageUpload = async (
   if (existingVendor?.isUpdateLocked) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Vendor update is locked. Please contact support.'
+      'Vendor update is locked. Please contact support.',
     );
   }
 
   if (currentUser?.userId !== existingVendor?.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to upload document image!'
+      'You are not authorize to upload document image!',
     );
   }
 
@@ -146,52 +147,81 @@ const vendorDocImageUpload = async (
 };
 
 // vendor business location update service
-const vendorBusinessLocationUpdate = async (
-  payload: Partial<TVendor>,
-  currentUser: AuthUser
+
+const updateVendorLiveLocation = async (
+  payload: TLiveLocationPayload,
+  currentUser: AuthUser,
+  vendorId: string,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `You are not approved to update business location. Your account is ${currentUser?.status}`
+      httpStatus.FORBIDDEN,
+      `You are not approved to update live location. Your account status is: ${currentUser?.status}`,
     );
   }
 
-  // -----------------------------------------
-  // Derive GeoJSON from latitude/longitude
-  // -----------------------------------------
-  if (payload.businessLocation) {
-    const { longitude, latitude } = payload.businessLocation;
-
-    const hasLng = typeof longitude === 'number';
-    const hasLat = typeof latitude === 'number';
-
-    if (hasLng && hasLat) {
-      payload.currentSessionLocation = {
-        type: 'Point',
-        coordinates: [longitude, latitude],
-        lastLocationUpdate: new Date(),
-      };
-    }
+  if (currentUser?.userId !== vendorId) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You are not authorize to update live location!',
+    );
   }
-  // -----------------------------------------
-  // Update vendor
-  // -----------------------------------------
+
+  const {
+    latitude,
+    longitude,
+    geoAccuracy,
+    heading,
+    speed,
+    isMocked,
+    timestamp,
+  } = payload;
+
+  if (geoAccuracy !== undefined && geoAccuracy > 100) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Geo accuracy should be less than 100',
+    );
+  }
+
+  const updateData: Record<string, any> = {
+    'currentSessionLocation.type': 'Point',
+    'currentSessionLocation.coordinates': [longitude, latitude],
+    'currentSessionLocation.lastLocationUpdate': timestamp
+      ? new Date(timestamp)
+      : new Date(),
+    'businessLocation.longitude': longitude,
+    'businessLocation.latitude': latitude,
+  };
+
+  if (geoAccuracy !== undefined)
+    updateData['currentSessionLocation.geoAccuracy'] = geoAccuracy;
+  if (heading !== undefined)
+    updateData['currentSessionLocation.heading'] = heading;
+  if (speed !== undefined) updateData['currentSessionLocation.speed'] = speed;
+  if (isMocked !== undefined)
+    updateData['currentSessionLocation.isMocked'] = isMocked;
+
   const updatedVendor = await Vendor.findOneAndUpdate(
     { userId: currentUser.userId },
-    { $set: payload },
-    { new: true }
+    { $set: updateData },
+    {
+      new: true,
+      runValidators: true,
+    },
   );
 
   if (!updatedVendor) {
     throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update vendor.'
+      httpStatus.NOT_FOUND,
+      'Vendor not found or update failed.',
     );
   }
+
   return {
-    message: 'Vendor business location updated successfully',
-    data: updatedVendor.businessLocation,
+    success: true,
+    message: 'Live location updated successfully',
+    data: updatedVendor.currentSessionLocation,
   };
 };
 
@@ -200,7 +230,7 @@ const toggleVendorStoreOpenClose = async (currentUser: AuthUser) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `You are not approved to toggle store open/close. Your account is ${currentUser?.status}`
+      `You are not approved to toggle store open/close. Your account is ${currentUser?.status}`,
     );
   }
 
@@ -218,12 +248,12 @@ const toggleVendorStoreOpenClose = async (currentUser: AuthUser) => {
 // get all vendors
 const getAllVendors = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view vendors. Your account is ${currentUser?.status}`
+      `You are not approved to view vendors. Your account is ${currentUser?.status}`,
     );
   }
   const vendors = new QueryBuilder(Vendor.find(), query)
@@ -255,12 +285,12 @@ const getAllVendors = async (
 // get single vendor
 const getSingleVendorFromDB = async (
   vendorId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to access this vendor!'
+      'You are not authorize to access this vendor!',
     );
   }
 
@@ -297,7 +327,7 @@ const getSingleVendorFromDB = async (
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
-  vendorBusinessLocationUpdate,
+  updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,
   getSingleVendorFromDB,

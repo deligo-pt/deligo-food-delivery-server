@@ -14,12 +14,12 @@ const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
   currentUser: AuthUser,
-  profilePhoto?: string
+  profilePhoto?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You cannot update profile. Status: ${currentUser.status}`
+      `You cannot update profile. Status: ${currentUser.status}`,
     );
   }
 
@@ -50,14 +50,23 @@ const updateCustomer = async (
   let updatedDeliveryAddresses = customer.deliveryAddresses;
 
   if (payload.address) {
-    const { longitude, latitude, geoAccuracy } = payload.address;
+    const { longitude, latitude, geoAccuracy = 0 } = payload.address;
 
-    // Auto-update location if coords provided
-    if (longitude != null && latitude != null) {
+    if (geoAccuracy !== undefined && geoAccuracy > 100) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Geo accuracy must be less than or equal to 100.',
+      );
+    }
+
+    const hasLng = typeof longitude === 'number';
+    const hasLat = typeof latitude === 'number';
+
+    if (hasLng && hasLat) {
       payload.currentSessionLocation = {
         type: 'Point',
         coordinates: [longitude, latitude],
-        accuracy: geoAccuracy ?? 0,
+        geoAccuracy: geoAccuracy,
         lastLocationUpdate: new Date(),
       };
     }
@@ -71,7 +80,7 @@ const updateCustomer = async (
     const exists = customer?.deliveryAddresses?.some(
       (addr) =>
         addr.longitude === newAddress.longitude &&
-        addr.latitude === newAddress.latitude
+        addr.latitude === newAddress.latitude,
     );
 
     if (!exists) {
@@ -88,38 +97,13 @@ const updateCustomer = async (
     payload.deliveryAddresses = updatedDeliveryAddresses;
   }
 
-  // -----------------------------------------------------------------------
-  //  update operational address
-  // -----------------------------------------------------------------------
-  if (payload.operationalAddress) {
-    const { longitude, latitude, geoAccuracy } = payload.operationalAddress;
-    // Auto-update location if coords provided
-    if (longitude != null && latitude != null) {
-      payload.currentSessionLocation = {
-        type: 'Point',
-        coordinates: [longitude, latitude],
-        accuracy: geoAccuracy ?? 0,
-        lastLocationUpdate: new Date(),
-      };
-    }
-    const newAddress = {
-      ...payload.operationalAddress,
-    };
-
-    await Customer.findOneAndUpdate(
-      { userId: customerId },
-      { $set: { operationalAddress: newAddress } },
-      { new: true }
-    );
-  }
-
   // ----------------------------------------------------------------------
   // Final Update
   // ----------------------------------------------------------------------
   const updated = await Customer.findOneAndUpdate(
     { userId: customerId },
     { $set: payload },
-    { new: true }
+    { new: true },
   );
 
   return updated;
@@ -130,7 +114,7 @@ const updateCustomer = async (
 // --------------------------------------------------------------
 const addDeliveryAddress = async (
   deliveryAddress: TDeliveryAddress,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // --------------------------------------------------
   // Validate payload
@@ -142,21 +126,21 @@ const addDeliveryAddress = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Street, city and country are required'
+      'Street, city and country are required',
     );
   }
 
   if (currentUser?.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only customers can add delivery addresses'
+      'Only customers can add delivery addresses',
     );
   }
   const userId = currentUser.userId;
   if (currentUser.deliveryAddresses!.length >= 5) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You have reached the maximum number of delivery addresses'
+      'You have reached the maximum number of delivery addresses',
     );
   }
 
@@ -185,7 +169,7 @@ const addDeliveryAddress = async (
   if (isDuplicate) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'This delivery address already exists'
+      'This delivery address already exists',
     );
   }
 
@@ -196,7 +180,7 @@ const addDeliveryAddress = async (
   // --------------------------------------------------
   await Customer.updateOne(
     { userId },
-    { $set: { 'deliveryAddresses.$[].isActive': false } }
+    { $set: { 'deliveryAddresses.$[].isActive': false } },
   );
 
   // --------------------------------------------------
@@ -212,6 +196,7 @@ const addDeliveryAddress = async (
     longitude: deliveryAddress.longitude,
     latitude: deliveryAddress.latitude,
     geoAccuracy: deliveryAddress.geoAccuracy,
+    detailedAddress: deliveryAddress.detailedAddress?.trim(),
 
     zoneId: deliveryAddress.zoneId ?? undefined,
     notes: deliveryAddress.notes?.trim(),
@@ -225,17 +210,17 @@ const addDeliveryAddress = async (
   // --------------------------------------------------
   await Customer.updateOne(
     { userId },
-    { $push: { deliveryAddresses: newDeliveryAddress } }
+    { $push: { deliveryAddresses: newDeliveryAddress } },
   );
 
-  const { longitude, latitude, geoAccuracy } = newDeliveryAddress;
+  const { longitude, latitude, geoAccuracy = 0 } = newDeliveryAddress;
 
   // Auto-update location if coords provided
   if (longitude != null && latitude != null) {
     currentUser.currentSessionLocation = {
       type: 'Point',
       coordinates: [longitude, latitude],
-      accuracy: geoAccuracy ?? 0,
+      geoAccuracy,
       lastLocationUpdate: new Date(),
     };
   }
@@ -250,30 +235,30 @@ const addDeliveryAddress = async (
 // Active or deactivate delivery address
 const toggleDeliveryAddressStatus = async (
   addressId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const userId = currentUser.userId;
   await Customer.updateOne(
     { userId },
-    { $set: { 'deliveryAddresses.$[].isActive': false } }
+    { $set: { 'deliveryAddresses.$[].isActive': false } },
   );
 
   const updatedCustomer = await Customer.findOneAndUpdate(
     { userId, 'deliveryAddresses._id': addressId },
     { $set: { 'deliveryAddresses.$.isActive': true } },
-    { new: true }
+    { new: true },
   );
   const updatedAddress = updatedCustomer?.deliveryAddresses?.find(
-    (addr) => addr.isActive === true
+    (addr) => addr.isActive === true,
   );
-  const { longitude, latitude, geoAccuracy } = updatedAddress!;
+  const { longitude, latitude, geoAccuracy = 0 } = updatedAddress!;
 
   // Auto-update location if coords provided
   if (longitude != null && latitude != null) {
     currentUser.currentSessionLocation = {
       type: 'Point',
       coordinates: [longitude, latitude],
-      accuracy: geoAccuracy ?? 0,
+      geoAccuracy,
       lastLocationUpdate: new Date(),
     };
   }
@@ -286,12 +271,12 @@ const toggleDeliveryAddressStatus = async (
 // delete delivery address
 const deleteDeliveryAddress = async (
   addressId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const userId = currentUser.userId;
   const result = await Customer.findOne(
     { userId },
-    { deliveryAddresses: { $elemMatch: { _id: addressId } } }
+    { deliveryAddresses: { $elemMatch: { _id: addressId } } },
   );
 
   if (result?.deliveryAddresses?.length === 0) {
@@ -304,12 +289,12 @@ const deleteDeliveryAddress = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Primary address cannot be deleted'
+      'Primary address cannot be deleted',
     );
   }
   await Customer.updateOne(
     { userId },
-    { $pull: { deliveryAddresses: { _id: addressId } } }
+    { $pull: { deliveryAddresses: { _id: addressId } } },
   );
   return null;
 };
@@ -317,12 +302,12 @@ const deleteDeliveryAddress = async (
 //get all customers
 const getAllCustomersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view customers. Your account is ${currentUser.status}`
+      `You are not approved to view customers. Your account is ${currentUser.status}`,
     );
   }
 
@@ -356,12 +341,12 @@ const getAllCustomersFromDB = async (
 // get single customer
 const getSingleCustomerFromDB = async (
   customerId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view a customer. Your account is ${currentUser.status}`
+      `You are not approved to view a customer. Your account is ${currentUser.status}`,
     );
   }
 
@@ -377,7 +362,7 @@ const getSingleCustomerFromDB = async (
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to view this customer'
+        'You are not authorized to view this customer',
       );
     }
   } else {

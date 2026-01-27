@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
 export type TAdmin = {
   // ------------------------------------------------------------------
@@ -55,16 +56,12 @@ export type TAdmin = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   NIF?: string;
 
-  currentSessionLocation?: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-    accuracy?: number; // GPS Accuracy in meters
-    lastLocationUpdate: Date; // Timestamp for data freshness
-  };
+  currentSessionLocation?: TGeoJSONPoint;
 
   // ---------------------------------------------
   // Documents & Verification

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
+import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
 export type TRegisteredByModel = 'Admin' | 'FleetManager';
 export type TDeliveryPartner = {
@@ -60,29 +61,13 @@ export type TDeliveryPartner = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
-  };
-
-  // operational address
-  operationalAddress?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    longitude?: number;
-    latitude?: number;
-    geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)
   // -------------------------------------------------
-  currentSessionLocation: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-    accuracy?: number; // GPS Accuracy in meters (lower is better)
-    lastLocationUpdate: Date; // Timestamp for data freshness (Crucial for filtering stale data)
-  };
+  currentSessionLocation: TGeoJSONPoint;
   personalInfo?: {
     dateOfBirth?: Date;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
@@ -218,12 +203,6 @@ export type TDeliveryPartner = {
   // -------------------------------------------------
   createdAt?: Date;
   updatedAt?: Date;
-};
-
-export type TLiveLocationPayload = {
-  latitude: number;
-  longitude: number;
-  accuracy?: number;
 };
 
 // Document Upload Types (unchanged)

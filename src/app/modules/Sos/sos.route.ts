@@ -9,9 +9,9 @@ const router = Router();
 // trigger sos route
 router.post(
   '/trigger',
-  auth('ADMIN', 'DELIVERY_PARTNER'),
+  auth('ADMIN', 'DELIVERY_PARTNER', 'VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'),
   validateRequest(SosValidation.createSosValidationSchema),
-  SosController.triggerSos
+  SosController.triggerSos,
 );
 
 // update sos status route
@@ -19,24 +19,38 @@ router.patch(
   '/:id/status',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(SosValidation.updateSosStatusSchema),
-  SosController.updateSosStatus
+  SosController.updateSosStatus,
 );
 
 // get nearby sos alerts route
 router.get(
   '/nearby',
   auth('ADMIN', 'SUPER_ADMIN'),
-  SosController.getNearbySosAlerts
+  SosController.getNearbySosAlerts,
 );
 
 // get all sos alerts route
-router.get('/', auth('ADMIN', 'SUPER_ADMIN'), SosController.getAllSosAlerts);
+router.get(
+  '/',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  SosController.getAllSosAlerts,
+);
+
+// get sos stats route
+router.get('/stats', auth('ADMIN', 'SUPER_ADMIN'), SosController.getSosStats);
 
 // get single sos alert route
 router.get(
   '/:id',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  SosController.getSingleSosAlert,
+);
+
+// get sos alerts by user id route
+router.get(
+  '/user/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  SosController.getSingleSosAlert
+  SosController.getUserSosHistory,
 );
 
 export const sosRoutes = router;

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
 import { AddressType } from './customer.constant';
+import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
 export type TCustomer = {
   // ------------------------------------------------------
@@ -53,31 +54,15 @@ export type TCustomer = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   NIF?: string;
 
-  // Operational Address
-  operationalAddress?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    longitude?: number;
-    latitude?: number;
-    geoAccuracy?: number;
-  };
-
   // ------------------------------------------------------
   // Current/Real-Time Location Data (For live tracking during delivery)
   // ------------------------------------------------------
-  currentSessionLocation?: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-    accuracy?: number; // GPS Accuracy in meters
-    lastLocationUpdate: Date; // Timestamp for data freshness
-  };
+  currentSessionLocation?: TGeoJSONPoint;
 
   // ------------------------------------------------------
   // Multiple Saved Delivery Addresses (Includes Zone Integration)
@@ -91,6 +76,7 @@ export type TCustomer = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
     isActive: boolean;
 
     // Zone Integration & Metadata

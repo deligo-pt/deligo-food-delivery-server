@@ -16,5 +16,6 @@ export type TUserProfileUpdate = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 };

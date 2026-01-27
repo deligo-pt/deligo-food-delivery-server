@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
 // export type TVendorSchedule = {
 //   day: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
@@ -69,6 +70,7 @@ export type TVendor = {
     longitude?: number;
     latitude?: number;
     geoAccuracy?: number;
+    detailedAddress?: string;
   };
 
   // --------------------------------------------------------
@@ -113,12 +115,7 @@ export type TVendor = {
     geoAccuracy?: number;
   };
 
-  currentSessionLocation?: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-    accuracy?: number; // GPS Accuracy in meters
-    lastLocationUpdate: Date; // Timestamp for data freshness
-  };
+  currentSessionLocation?: TGeoJSONPoint;
 
   // --------------------------------------------------------
   // Banking & Payments

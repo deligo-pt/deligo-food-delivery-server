@@ -10,7 +10,7 @@ const vendorUpdate = catchAsync(async (req, res) => {
   const result = await VendorServices.vendorUpdate(
     req.params.vendorId,
     req?.body,
-    currentUser
+    currentUser,
   );
 
   sendResponse(res, {
@@ -27,7 +27,7 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
     file?.path,
     req.body,
     req.user as AuthUser,
-    req.params.vendorId
+    req.params.vendorId,
   );
 
   sendResponse(res, {
@@ -38,11 +38,12 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
   });
 });
 
-// vendor business location update controller
-const vendorBusinessLocationUpdate = catchAsync(async (req, res) => {
-  const result = await VendorServices.vendorBusinessLocationUpdate(
+// vendor live location update controller
+const updateVendorLiveLocation = catchAsync(async (req, res) => {
+  const result = await VendorServices.updateVendorLiveLocation(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
+    req.params.vendorId,
   );
 
   sendResponse(res, {
@@ -56,7 +57,7 @@ const vendorBusinessLocationUpdate = catchAsync(async (req, res) => {
 // toggle vendor store open/close controller
 const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
   const result = await VendorServices.toggleVendorStoreOpenClose(
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -71,7 +72,7 @@ const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
 const getAllVendors = catchAsync(async (req, res) => {
   const result = await VendorServices.getAllVendors(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -87,7 +88,7 @@ const getAllVendors = catchAsync(async (req, res) => {
 const getSingleVendor = catchAsync(async (req, res) => {
   const result = await VendorServices.getSingleVendorFromDB(
     req.params.vendorId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -101,7 +102,7 @@ const getSingleVendor = catchAsync(async (req, res) => {
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
-  vendorBusinessLocationUpdate,
+  updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,
   getSingleVendor,

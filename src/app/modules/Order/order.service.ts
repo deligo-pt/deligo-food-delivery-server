@@ -314,6 +314,7 @@ const updateOrderStatusByVendor = async (
           longitude: currentUser?.businessLocation?.longitude || 0,
           latitude: currentUser?.businessLocation?.latitude || 0,
           geoAccuracy: currentUser?.businessLocation?.geoAccuracy,
+          detailedAddress: currentUser?.businessLocation?.detailedAddress || '',
         };
       }
 

@@ -11,6 +11,7 @@ export type TAddress = {
   latitude: number;
   longitude: number;
   geoAccuracy?: number;
+  detailedAddress?: string;
 };
 
 export type TOrderItemSnapshot = {

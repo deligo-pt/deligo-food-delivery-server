@@ -5,16 +5,7 @@ import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
-
-export const locationSchema = new Schema(
-  {
-    type: { type: String, enum: ['Point'], default: 'Point', required: true },
-    coordinates: { type: [Number], required: true }, // [longitude, latitude]
-    accuracy: { type: Number }, // GPS Accuracy in meters
-    lastLocationUpdate: { type: Date, default: Date.now, required: true }, // Data Freshness Timestamp
-  },
-  { _id: false }
-);
+import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 
 const deliveryPartnerSchema = new Schema<
   TDeliveryPartner,
@@ -114,23 +105,13 @@ const deliveryPartnerSchema = new Schema<
       longitude: { type: Number },
       latitude: { type: Number },
       geoAccuracy: { type: Number },
+      detailedAddress: { type: String, default: '' },
     },
 
-    // operational address
-    operationalAddress: {
-      street: { type: String, default: '' },
-      city: { type: String, default: '' },
-      state: { type: String, default: '' },
-      country: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
-      longitude: { type: Number },
-      latitude: { type: Number },
-      geoAccuracy: { type: Number },
-    },
     //-------------------------------------------------
     // Live Location (UPDATED for Geo-Search)
     //-------------------------------------------------
-    currentSessionLocation: { type: locationSchema },
+    currentSessionLocation: { type: liveLocationSchema },
 
     personalInfo: {
       dateOfBirth: { type: Date },
@@ -296,7 +277,7 @@ const deliveryPartnerSchema = new Schema<
   {
     timestamps: true,
     virtuals: true,
-  }
+  },
 );
 
 // --- Indexing and Plugins ---

@@ -5,7 +5,7 @@ import { TAdmin } from './admin.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
-import { locationSchema } from '../Delivery-Partner/delivery-partner.model';
+import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 
 const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
   {
@@ -99,12 +99,13 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       longitude: { type: Number, default: null },
       latitude: { type: Number, default: null },
       geoAccuracy: { type: Number, default: null },
+      detailedAddress: { type: String, default: '' },
     },
 
     NIF: { type: String, default: '' },
 
     currentSessionLocation: {
-      type: locationSchema,
+      type: liveLocationSchema,
     },
 
     // ---------------------------------------------
@@ -159,7 +160,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
   {
     timestamps: true,
     virtuals: true,
-  }
+  },
 );
 
 // password hashing plugin
