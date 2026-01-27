@@ -7,6 +7,7 @@ import { TSos } from './sos.interface';
 import { SosModel } from './sos.model';
 import mongoose from 'mongoose';
 import { getIO } from '../../lib/Socket';
+import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 
 // trigger SOS service
 const triggerSos = async (payload: Partial<TSos>, currentUser: AuthUser) => {
@@ -128,7 +129,17 @@ const getAllSosAlerts = async (
   query: Record<string, unknown>,
   currentUser: AuthUser,
 ) => {
-  const sosQuery = new QueryBuilder(SosModel.find(), query)
+  let filterConditions = {};
+  if (currentUser.role === 'FLEET_MANAGER') {
+    const partners = await DeliveryPartner.find({
+      'registeredBy.id': currentUser._id.toString(),
+    }).select('_id');
+
+    const partnerIds = partners.map((p) => p._id);
+
+    filterConditions = { 'userId.id': { $in: partnerIds } };
+  }
+  const sosQuery = new QueryBuilder(SosModel.find(filterConditions), query)
     .filter()
     .sort()
     .paginate()
@@ -154,7 +165,7 @@ const getAllSosAlerts = async (
 };
 
 // get single sos alert by id
-const getSingleSosAlert = async (id: string) => {
+const getSingleSosAlert = async (id: string, currentUser: AuthUser) => {
   const result = await SosModel.findById(id).populate(
     'resolvedBy',
     'name email',
@@ -162,6 +173,20 @@ const getSingleSosAlert = async (id: string) => {
 
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'SOS Alert not found');
+  }
+
+  if (currentUser.role === 'FLEET_MANAGER') {
+    const partner = await DeliveryPartner.findById(result.userId.id);
+
+    if (
+      !partner ||
+      partner?.registeredBy?.id.toString() !== currentUser._id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to view this SOS alert',
+      );
+    }
   }
 
   return result;
