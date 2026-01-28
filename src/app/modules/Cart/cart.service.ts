@@ -8,6 +8,7 @@ import { Cart } from './cart.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { recalculateCartTotals } from './cart.constant';
 import { Vendor } from '../Vendor/vendor.model';
+import { QueryBuilder } from '../../builder/QueryBuilder';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
@@ -25,12 +26,12 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   }
   const customerId = currentUser._id;
 
-  const { productId, quantity, variantName } = payload.items[0];
+  const { productId, quantity, variationSku } = payload.items[0];
   const existingProduct = await Product.findOne({
     _id: productId,
     isDeleted: false,
     isApproved: true,
-  }).populate('addonGroups');
+  });
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
@@ -49,69 +50,86 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     );
   }
 
-  if (quantity > existingProduct.stock.quantity) {
+  let selectedPrice = existingProduct.pricing.price;
+  let selectedVariantLabel: string | undefined = undefined;
+  let finalVariationSku: string | null = null;
+  let availableStock = existingProduct.stock.quantity;
+
+  if (existingProduct.stock.hasVariations) {
+    if (!variationSku) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This product has variations. Please select one.',
+      );
+    }
+
+    const variations = existingProduct.variations || [];
+    let targetOption = null;
+
+    for (const variation of variations) {
+      targetOption = variation.options.find((opt) => opt.sku === variationSku);
+      if (targetOption) break;
+    }
+
+    if (!targetOption) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'The selected variation SKU is invalid',
+      );
+    }
+
+    selectedPrice = targetOption.price;
+    selectedVariantLabel = targetOption.label;
+    availableStock = targetOption.stockQuantity;
+    finalVariationSku = targetOption.sku;
+  } else {
+    finalVariationSku = null;
+  }
+  // const discountAmtPerUnit = parseFloat(
+  //   ((selectedPrice * discountPercent) / 100).toFixed(2),
+  // );
+
+  // const finalPricePerUnit = parseFloat(
+  //   (rawPrice - discountAmtPerUnit).toFixed(2),
+  // );
+
+  if (quantity > availableStock) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Product is out of stock');
   }
 
-  const discountPercent = existingProduct.pricing?.discount || 0;
-  const taxRate = existingProduct.pricing?.taxRate || 0;
+  const { discount = 0, taxRate = 0 } = existingProduct.pricing;
 
-  let rawPrice = existingProduct.pricing.price;
-
-  const hasVariations =
-    existingProduct.variations && existingProduct.variations.length > 0;
-  if (hasVariations && !variantName) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please select a variation for this product',
-    );
-  }
-
-  if (variantName) {
-    const variantOption = existingProduct.variations
-      ?.flatMap((v) => v.options)
-      .find((opt) => opt.label === variantName);
-
-    if (!variantOption)
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Variant '${variantName}' not found`,
-      );
-
-    rawPrice = variantOption.price;
-  }
-  const discountAmtPerUnit = parseFloat(
-    ((rawPrice * discountPercent) / 100).toFixed(2),
+  const priceAfterDiscount = parseFloat(
+    (selectedPrice - (selectedPrice * discount) / 100).toFixed(2),
   );
 
-  const finalPricePerUnit = parseFloat(
-    (rawPrice - discountAmtPerUnit).toFixed(2),
-  );
-
-  const totalBeforeTax = parseFloat((finalPricePerUnit * quantity).toFixed(2));
+  const totalBeforeTax = parseFloat((priceAfterDiscount * quantity).toFixed(2));
   const itemTaxAmount = parseFloat(
     (totalBeforeTax * (taxRate / 100)).toFixed(2),
   );
-  const itemSubtotalWithTax = parseFloat(
-    (totalBeforeTax + itemTaxAmount).toFixed(2),
-  );
+  const itemSubtotal = parseFloat((totalBeforeTax + itemTaxAmount).toFixed(2));
 
   const newItem = {
     productId: existingProduct._id,
     vendorId: existingProduct.vendorId,
-    name: variantName
-      ? existingProduct.name + ' - ' + variantName
+    name: selectedVariantLabel
+      ? `${existingProduct.name} - ${selectedVariantLabel}`
       : existingProduct.name,
     image: existingProduct?.images[0] || '',
-    variantName: variantName || null,
+    hasVariations: existingProduct.stock.hasVariations,
+    variationSku: finalVariationSku,
     quantity,
-    originalPrice: rawPrice,
-    discountAmount: discountAmtPerUnit,
-    price: finalPricePerUnit,
-    taxRate: taxRate,
+    originalPrice: selectedPrice,
+    discountAmount: Number((selectedPrice - priceAfterDiscount).toFixed(2)),
+    price: priceAfterDiscount,
+
+    productTotalBeforeTax: totalBeforeTax,
+    productTaxAmount: itemTaxAmount,
+
+    taxRate,
     taxAmount: itemTaxAmount,
     totalBeforeTax: totalBeforeTax,
-    subtotal: itemSubtotalWithTax,
+    subtotal: itemSubtotal,
     isActive: true,
     addons: [],
   };
@@ -119,42 +137,61 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   let cart = await Cart.findOne({ customerId, isDeleted: false });
 
   if (!cart) {
-    if (quantity > existingProduct.stock.quantity)
-      throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
-
     cart = new Cart({
       customerId,
       items: [newItem],
     });
   } else {
-    const activeItem = cart.items.find((i) => i.isActive === true);
     const itemIndex = cart.items.findIndex(
       (i) =>
         i.productId.toString() === productId.toString() &&
-        (i.variantName || null) === (variantName || null),
+        (i.variationSku || null) === (finalVariationSku || null),
     );
 
     if (itemIndex > -1) {
       const currentItem = cart.items[itemIndex];
-      const newQuantity = currentItem.quantity + quantity;
+      const finalQuantity = currentItem.quantity + quantity;
 
-      if (newQuantity > existingProduct.stock.quantity)
+      if (finalQuantity > availableStock) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Insufficient product stock',
+          `Insufficient stock. You already have ${currentItem.quantity} in cart.`,
         );
+      }
 
-      currentItem.quantity = newQuantity;
-      currentItem.totalBeforeTax = parseFloat(
-        (currentItem.price * currentItem.quantity).toFixed(2),
+      currentItem.quantity = finalQuantity;
+
+      let totalAddonsPrice = 0;
+      let totalAddonsTax = 0;
+
+      if (currentItem.addons && currentItem.addons.length > 0) {
+        currentItem.addons.forEach((addon: any) => {
+          const addonSubtotal =
+            (Number(addon.price) || 0) * (Number(addon.quantity) || 0);
+          const addonTax = addonSubtotal * ((Number(addon.taxRate) || 0) / 100);
+
+          totalAddonsPrice += addonSubtotal;
+          totalAddonsTax += addonTax;
+
+          addon.taxAmount = Number(addonTax.toFixed(2));
+        });
+      }
+
+      const baseProductPrice = currentItem.price * finalQuantity;
+      const baseProductTax =
+        baseProductPrice * ((currentItem.taxRate || 0) / 100);
+
+      currentItem.totalBeforeTax = Number(
+        (baseProductPrice + totalAddonsPrice).toFixed(2),
       );
-      currentItem.taxAmount = parseFloat(
-        (currentItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
+      currentItem.taxAmount = Number(
+        (baseProductTax + totalAddonsTax).toFixed(2),
       );
-      currentItem.subtotal = parseFloat(
+      currentItem.subtotal = Number(
         (currentItem.totalBeforeTax + currentItem.taxAmount).toFixed(2),
       );
     } else {
+      const activeItem = cart.items.find((i) => i.isActive === true);
       if (
         activeItem &&
         activeItem.vendorId.toString() !== existingProduct.vendorId.toString()
@@ -175,7 +212,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 const activateItem = async (
   currentUser: AuthUser,
   productId: string,
-  variantName?: string,
+  variationSku?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -190,22 +227,24 @@ const activateItem = async (
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
-  // Item to activate
-  const itemToActivate = cart.items.find(
-    (i) =>
-      i.productId.toString() === productId.toString() &&
-      i.variantName === variantName,
-  );
+
+  const itemToActivate = cart.items.find((i: any) => {
+    const isSameProduct = i.productId.toString() === productId.toString();
+
+    if (isSameProduct && !i.hasVariations) return true;
+
+    return isSameProduct && (i.variationSku || null) === (variationSku || null);
+  });
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
 
   const selectedVendorId = itemToActivate.vendorId.toString();
 
-  // // Get existing active items
+  // Get existing active items
   const activeItems = cart.items.filter((i) => i.isActive === true);
 
-  // // If already active items exist → vendor must match
+  //  If already active items exist → vendor must match
   if (activeItems.length > 0) {
     const activeVendorId = activeItems[0].vendorId;
 
@@ -239,7 +278,7 @@ const updateCartItemQuantity = async (
   currentUser: AuthUser,
   payload: {
     productId: string;
-    variantName?: string;
+    variationSku?: string;
     quantity: number;
     action: 'increment' | 'decrement';
   },
@@ -251,26 +290,39 @@ const updateCartItemQuantity = async (
     );
   }
 
+  const { productId, variationSku, quantity, action } = payload;
   const customerId = currentUser._id;
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
-  const { productId, variantName, quantity, action } = payload;
-  const itemIndex = cart.items.findIndex(
-    (i) =>
-      i.productId.toString() === productId && i.variantName === variantName,
-  );
+
+  const itemIndex = cart.items.findIndex((i: any) => {
+    const isSameProduct = i.productId.toString() === productId.toString();
+    const effectiveSku = i.hasVariations ? variationSku || null : null;
+    return isSameProduct && (i.variationSku || null) === effectiveSku;
+  });
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
-  const product = await Product.findById(productId);
+
+  const targetItem = cart.items[itemIndex];
+
+  const product = await Product.findById(productId).lean();
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  const targetItem = cart.items[itemIndex];
+
+  let availableStock = product.stock.quantity;
+  if (product.stock.hasVariations && targetItem.variationSku) {
+    const option = (product?.variations ?? [])
+      .flatMap((v: any) => v.options)
+      .find((opt: any) => opt.sku === targetItem.variationSku);
+    if (option) availableStock = option.stockQuantity;
+  }
+
   if (action === 'increment') {
-    if (targetItem.quantity + quantity > product.stock.quantity) {
+    if (targetItem.quantity + quantity > availableStock) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
     }
     targetItem.quantity += quantity;
@@ -284,24 +336,39 @@ const updateCartItemQuantity = async (
     targetItem.quantity -= quantity;
   }
 
-  const addonsTotal = (targetItem.addons || []).reduce(
-    (sum, a) => sum + a.price * a.quantity,
-    0,
+  let totalAddonsPrice = 0;
+  let totalAddonsTax = 0;
+
+  if (targetItem.addons && targetItem.addons.length > 0) {
+    targetItem.addons.forEach((addon: any) => {
+      const addonSubtotal =
+        (Number(addon.price) || 0) * (Number(addon.quantity) || 0);
+      const addonTaxValue =
+        addonSubtotal * ((Number(addon.taxRate) || 0) / 100);
+
+      totalAddonsPrice += addonSubtotal;
+      totalAddonsTax += addonTaxValue;
+      addon.taxAmount = Number(addonTaxValue.toFixed(2));
+    });
+  }
+
+  const mainProductBasePrice = Number(
+    (targetItem.price * targetItem.quantity).toFixed(2),
+  );
+  const mainProductTax = Number(
+    (mainProductBasePrice * ((targetItem.taxRate || 0) / 100)).toFixed(2),
   );
 
-  targetItem.totalBeforeTax = parseFloat(
-    (targetItem.price * targetItem.quantity + addonsTotal).toFixed(2),
-  );
+  targetItem.productTotalBeforeTax = mainProductBasePrice;
+  targetItem.productTaxAmount = mainProductTax;
 
-  const taxRate = targetItem.taxRate || 0;
-  targetItem.taxAmount = parseFloat(
-    (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
+  targetItem.totalBeforeTax = Number(
+    (mainProductBasePrice + totalAddonsPrice).toFixed(2),
   );
-
-  targetItem.subtotal = parseFloat(
+  targetItem.taxAmount = Number((mainProductTax + totalAddonsTax).toFixed(2));
+  targetItem.subtotal = Number(
     (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
   );
-
   // re-calculate active total
   await recalculateCartTotals(cart);
 
@@ -310,10 +377,181 @@ const updateCartItemQuantity = async (
   return cart;
 };
 
+// update add on quantity Service
+const updateAddonQuantity = async (
+  currentUser: AuthUser,
+  payload: {
+    productId: string;
+    variationSku?: string;
+    optionId: string;
+    action: 'increment' | 'decrement';
+  },
+) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update cart. Your account is ${currentUser.status}`,
+    );
+  }
+
+  const { productId, variationSku, optionId, action } = payload;
+  const cart = await Cart.findOne({ customerId: currentUser._id });
+  if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+
+  const itemIndex = cart.items.findIndex((i: any) => {
+    const isSameProduct = i.productId.toString() === productId.toString();
+    const effectiveSku = i.hasVariations ? variationSku || null : null;
+    return isSameProduct && (i.variationSku || null) === effectiveSku;
+  });
+
+  if (itemIndex === -1)
+    throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');
+
+  const targetItem = cart.items[itemIndex] as any;
+  if (!targetItem.addons) {
+    targetItem.addons = [] as any[];
+  }
+
+  const product = await Product.findById(productId)
+    .populate({
+      path: 'addonGroups',
+      populate: {
+        path: 'options.tax',
+      },
+    })
+    .lean();
+
+  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  let addonData: {
+    name: string;
+    price: number;
+    optionId: string;
+    taxRate: number;
+  } | null = null;
+
+  let parentGroup: any = null;
+
+  ((product.addonGroups as any[]) || []).forEach((group) => {
+    if (group.isActive && !group.isDeleted) {
+      const option = group.options.find(
+        (opt: any) => opt._id.toString() === optionId,
+      );
+      if (option && option.isActive) {
+        addonData = {
+          optionId: option._id.toString(),
+          name: option.name,
+          price: option.price,
+          taxRate: option.tax?.taxRate || 0,
+        };
+        parentGroup = group;
+      }
+    }
+  });
+
+  if (!addonData)
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Addon is inactive or unavailable',
+    );
+
+  const selectedAddon = addonData as {
+    optionId: string;
+    name: string;
+    price: number;
+    taxRate: number;
+  };
+
+  const existingAddonIndex = targetItem.addons.findIndex(
+    (a: any) => a.optionId?.toString() === selectedAddon.optionId.toString(),
+  );
+
+  if (action === 'increment') {
+    const groupOptionIds = parentGroup.options.map((o: any) =>
+      o._id.toString(),
+    );
+    const currentGroupSelectionCount = targetItem.addons
+      .filter((a: any) => groupOptionIds.includes(a.optionId.toString()))
+      .reduce((sum: number, a: any) => sum + a.quantity, 0);
+
+    if (currentGroupSelectionCount >= parentGroup.maxSelectable) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Maximum selection limit of ${parentGroup.maxSelectable} reached for ${parentGroup.title}`,
+      );
+    }
+    if (existingAddonIndex > -1) {
+      targetItem.addons[existingAddonIndex].quantity += 1;
+    } else {
+      targetItem.addons.push({
+        optionId: selectedAddon.optionId,
+        name: selectedAddon.name,
+        price: selectedAddon.price,
+        taxRate: selectedAddon.taxRate,
+        quantity: 1,
+        taxAmount: 0,
+      });
+    }
+  } else if (action === 'decrement') {
+    if (existingAddonIndex === -1) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Addon not found in your cart');
+    }
+
+    if (targetItem.addons[existingAddonIndex].quantity > 1) {
+      targetItem.addons[existingAddonIndex].quantity -= 1;
+    } else {
+      targetItem.addons.splice(existingAddonIndex, 1);
+    }
+  }
+
+  let totalAddonsPrice = 0;
+  let totalAddonsTaxAmount = 0;
+
+  targetItem.addons.forEach((addon: any) => {
+    const aPrice = Number(addon.price) || 0;
+    const aQty = Number(addon.quantity) || 0;
+    const aTaxRate = Number(addon.taxRate) || 0;
+
+    const addonSubtotal = aPrice * aQty;
+    const addonTaxValue = addonSubtotal * (aTaxRate / 100);
+
+    addon.taxAmount = Number(addonTaxValue.toFixed(2));
+
+    totalAddonsPrice += addonSubtotal;
+    totalAddonsTaxAmount += addonTaxValue;
+  });
+
+  const itemsBasePrice =
+    (Number(targetItem.price) || 0) * (Number(targetItem.quantity) || 0);
+  const mainProductTaxRate = Number(targetItem.taxRate) || 0;
+  const mainProductTaxAmount = itemsBasePrice * (mainProductTaxRate / 100);
+
+  targetItem.productTotalBeforeTax = itemsBasePrice;
+  targetItem.productTaxAmount = mainProductTaxAmount;
+
+  targetItem.totalBeforeTax = Number(
+    (itemsBasePrice + totalAddonsPrice).toFixed(2),
+  );
+
+  targetItem.taxAmount = Number(
+    (mainProductTaxAmount + totalAddonsTaxAmount).toFixed(2),
+  );
+
+  targetItem.subtotal = Number(
+    (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
+  );
+
+  await recalculateCartTotals(cart);
+  cart.markModified('items');
+  await cart.save();
+
+  return cart;
+};
+
 // delete cart item
 const deleteCartItem = async (
   currentUser: AuthUser,
-  itemsToDelete: { productId: string; variantName?: string }[],
+  itemsToDelete: { productId: string; variationSku?: string }[],
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -329,14 +567,19 @@ const deleteCartItem = async (
 
   const initialLength = cart.items.length;
 
-  cart.items = cart.items.filter((cartItem) => {
-    const isMatched = itemsToDelete.some(
-      (deleteTarget) =>
-        deleteTarget.productId === cartItem.productId.toString() &&
-        (deleteTarget.variantName || null) === (cartItem.variantName || null),
-    );
+  cart.items = cart.items.filter((cartItem: any) => {
+    const isTargetedForDeletion = itemsToDelete.some((target) => {
+      const isSameProduct = target.productId === cartItem.productId.toString();
 
-    return !isMatched;
+      const effectiveSku = cartItem.hasVariations
+        ? target.variationSku || null
+        : null;
+      const dbSku = cartItem.variationSku || null;
+
+      return isSameProduct && dbSku === effectiveSku;
+    });
+
+    return !isTargetedForDeletion;
   });
 
   if (cart.items.length === initialLength) {
@@ -353,118 +596,88 @@ const deleteCartItem = async (
 
   return cart;
 };
-// update add on quantity Service
-const updateAddonQuantity = async (
-  currentUser: AuthUser,
-  payload: {
-    productId: string;
-    variantName?: string;
-    optionId: string;
-    action: 'increment' | 'decrement';
-  },
-) => {
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`,
-    );
+
+// clear cart Service
+const clearCart = async (currentUser: AuthUser) => {
+  const cart = await Cart.findOneAndUpdate(
+    { customerId: currentUser._id },
+    {
+      $set: {
+        items: [],
+        totalItems: 0,
+        totalPrice: 0,
+        taxAmount: 0,
+        subtotal: 0,
+        discount: 0,
+        couponId: null,
+      },
+    },
+    { new: true },
+  );
+
+  if (!cart) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found for this user');
   }
-  const cart = await Cart.findOne({ customerId: currentUser._id });
-  if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
-
-  const { productId, variantName, optionId, action } = payload;
-
-  const itemIndex = cart.items.findIndex(
-    (i) =>
-      i.productId.toString() === productId && i.variantName === variantName,
-  );
-  if (itemIndex === -1)
-    throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');
-
-  const targetItem = cart.items[itemIndex] as any;
-  if (!targetItem.addons) {
-    targetItem.addons = [] as any[];
-  }
-
-  const product = await Product.findById(productId).populate('addonGroups');
-  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-
-  let addonData: { name: string; price: number } | null = null;
-  ((product.addonGroups as any[]) || []).forEach((group) => {
-    group.options.forEach((opt: any) => {
-      if (opt._id.toString() === optionId) {
-        addonData = { name: opt.name, price: opt.price };
-      }
-    });
-  });
-
-  if (!addonData)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid Addon selected');
-  const { name: selectedAddonName, price: selectedAddonPrice } = addonData;
-
-  const existingAddonIndex = targetItem.addons.findIndex(
-    (a: any) => a.name === selectedAddonName,
-  );
-
-  if (action === 'increment') {
-    if (existingAddonIndex > -1) {
-      targetItem.addons[existingAddonIndex as number].quantity += 1;
-    } else {
-      targetItem.addons.push({
-        name: selectedAddonName,
-        price: selectedAddonPrice,
-        quantity: 1,
-      });
-    }
-  } else if (action === 'decrement') {
-    if (existingAddonIndex === -1) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Addon not found in your cart');
-    }
-
-    if (targetItem.addons[existingAddonIndex].quantity > 1) {
-      targetItem.addons[existingAddonIndex].quantity -= 1;
-    } else {
-      targetItem.addons.splice(existingAddonIndex, 1);
-    }
-  }
-
-  const addonsTotal = targetItem.addons.reduce(
-    (sum: number, a: any) => sum + a.price * a.quantity,
-    0,
-  );
-
-  targetItem.totalBeforeTax = parseFloat(
-    (targetItem.price * targetItem.quantity + (addonsTotal || 0)).toFixed(2),
-  );
-
-  const taxRate = targetItem.taxRate || 0;
-  targetItem.taxAmount = parseFloat(
-    (targetItem.totalBeforeTax * (taxRate / 100)).toFixed(2),
-  );
-  targetItem.subtotal = parseFloat(
-    (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
-  );
-
-  await recalculateCartTotals(cart);
-  cart.markModified('items');
-  await cart.save();
 
   return cart;
 };
 
-// view cart Service
-const viewCart = async (currentUser: AuthUser) => {
+// get all cart service
+const getAllCart = async (
+  currentUser: AuthUser,
+  query: Record<string, unknown>,
+) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
       `You are not approved to view cart. Your account is ${currentUser.status}`,
     );
   }
-  const customerId = currentUser._id;
-  const query = Cart.findOne({ customerId });
 
-  const populateOptions = getPopulateOptions('CUSTOMER', {
-    // customer: 'name',
+  const cart = new QueryBuilder(Cart.find(), query)
+    .fields()
+    .filter()
+    .paginate()
+    .sort()
+    .search([]);
+
+  const populateOptions = getPopulateOptions(currentUser.role, {
+    customer: 'name',
+  });
+  populateOptions.forEach((option) => {
+    cart.modelQuery = cart.modelQuery.populate(option);
+  });
+
+  const meta = await cart.countTotal();
+  const data = await cart.modelQuery;
+
+  return { meta, data };
+};
+
+// view cart Service
+const viewCart = async (currentUser: AuthUser, cartCustomerId?: string) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view cart. Your account is ${currentUser.status}`,
+    );
+  }
+
+  if (currentUser.role !== 'CUSTOMER' && !cartCustomerId) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Customer id is required');
+  }
+
+  let customerId;
+  let query: any;
+  if (currentUser.role === 'CUSTOMER') {
+    customerId = currentUser._id;
+    query = Cart.findOne({ customerId });
+  } else {
+    query = Cart.findOne({ customerId: cartCustomerId });
+  }
+
+  const populateOptions = getPopulateOptions(currentUser.role, {
+    customer: 'name',
     itemVendor: 'name userId',
     product: 'productId name',
   });
@@ -480,30 +693,13 @@ const viewCart = async (currentUser: AuthUser) => {
   return cart;
 };
 
-// clear cart Service
-const clearCart = async (currentUser: AuthUser) => {
-  const cart = await Cart.findOneAndUpdate(
-    { customerId: currentUser._id },
-    {
-      $set: {
-        items: [],
-        totalPrice: 0,
-        taxAmount: 0,
-        subtotal: 0,
-        discount: 0,
-      },
-    },
-    { new: true },
-  );
-  return cart;
-};
-
 export const CartServices = {
   addToCart,
   activateItem,
   updateCartItemQuantity,
-  deleteCartItem,
   updateAddonQuantity,
-  viewCart,
+  deleteCartItem,
   clearCart,
+  getAllCart,
+  viewCart,
 };

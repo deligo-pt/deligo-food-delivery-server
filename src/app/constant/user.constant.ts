@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose, { Schema } from 'mongoose';
 import { TDeliveryAddress } from './address.constant';
 
@@ -140,3 +141,13 @@ export const loginDeviceSchema = new Schema(
   },
   { _id: false },
 );
+
+export const ROLE_PREFIX_MAP: Record<string, TUserRole> = {
+  SA: 'ADMIN',
+  A: 'ADMIN',
+  V: 'VENDOR',
+  SV: 'VENDOR',
+  C: 'CUSTOMER',
+  D: 'DELIVERY_PARTNER',
+  F: 'FLEET_MANAGER',
+};

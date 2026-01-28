@@ -8,7 +8,7 @@ import { AuthUser } from '../../constant/user.constant';
 const createCoupon = catchAsync(async (req, res) => {
   const result = await CouponServices.createCoupon(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -24,7 +24,7 @@ const updateCoupon = catchAsync(async (req, res) => {
   const result = await CouponServices.updateCoupon(
     couponId,
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -40,13 +40,13 @@ const applyCoupon = catchAsync(async (req, res) => {
   const result = await CouponServices.applyCoupon(
     couponId,
     req.user as AuthUser,
-    type
+    type,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Coupon applied successfully',
-    data: result,
+    message: result?.message,
+    data: result?.discount,
   });
 });
 
@@ -55,20 +55,20 @@ const toggleCouponStatus = catchAsync(async (req, res) => {
   const { couponId } = req.params;
   const result = await CouponServices.toggleCouponStatus(
     couponId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
 // get all coupons analytics controller
 const getAllCouponsAnalytics = catchAsync(async (req, res) => {
   const result = await CouponServices.getAllCouponsAnalytics(
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -84,7 +84,7 @@ const getSingleCouponAnalytics = catchAsync(async (req, res) => {
 
   const result = await CouponServices.getSingleCouponAnalytics(
     couponId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -99,7 +99,7 @@ const getSingleCouponAnalytics = catchAsync(async (req, res) => {
 const getAllCoupons = catchAsync(async (req, res) => {
   const result = await CouponServices.getAllCoupons(
     req.user as AuthUser,
-    req.query
+    req.query,
   );
   sendResponse(res, {
     success: true,
@@ -115,7 +115,7 @@ const getSingleCoupon = catchAsync(async (req, res) => {
   const { couponId } = req.params;
   const result = await CouponServices.getSingleCoupon(
     couponId,
-    req?.user as AuthUser
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -130,7 +130,7 @@ const softDeleteCoupon = catchAsync(async (req, res) => {
   const { couponId } = req.params;
   const result = await CouponServices.softDeleteCoupon(
     couponId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -145,7 +145,7 @@ const permanentDeleteCoupon = catchAsync(async (req, res) => {
   const { couponId } = req.params;
   const result = await CouponServices.permanentDeleteCoupon(
     couponId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,

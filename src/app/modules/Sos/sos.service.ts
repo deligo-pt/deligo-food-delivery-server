@@ -155,12 +155,12 @@ const getAllSosAlerts = async (
     sosQuery.modelQuery = sosQuery.modelQuery.populate(option);
   });
 
-  const result = await sosQuery.modelQuery.exec();
+  const data = await sosQuery.modelQuery.exec();
   const meta = await sosQuery.countTotal();
 
   return {
     meta,
-    result,
+    data,
   };
 };
 
@@ -217,12 +217,12 @@ const getUserSosHistory = async (
     sosQuery.modelQuery = sosQuery.modelQuery.populate(option);
   });
 
-  const result = await sosQuery.modelQuery;
+  const data = await sosQuery.modelQuery;
   const meta = await sosQuery.countTotal();
 
   return {
     meta,
-    result,
+    data,
   };
 };
 

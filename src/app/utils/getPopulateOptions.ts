@@ -29,12 +29,12 @@ type PopulateInput = {
 
 export const getPopulateOptions = (
   role: UserRole,
-  fields: PopulateInput
+  fields: PopulateInput,
 ): PopulateOptions[] => {
   const options: PopulateOptions[] = [];
 
   // ---------------- Customer ----------------
-  if (fields.customer) {
+  if (fields.customer && role !== 'CUSTOMER') {
     options.push({
       path: 'customerId',
       select: fields.customer,

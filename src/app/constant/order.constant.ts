@@ -19,18 +19,23 @@ export type TOrderItemSnapshot = {
   vendorId: mongoose.Types.ObjectId;
   name: string;
   image?: string;
-  variantName?: string;
   addons?: {
+    optionId: string;
     name: string;
     price: number;
     quantity: number;
+    taxRate: number;
+    taxAmount: number;
   }[];
   quantity: number;
 
   originalPrice: number;
   discountAmount: number;
-
   price: number;
+
+  productTotalBeforeTax?: number;
+  productTaxAmount?: number;
+
   totalBeforeTax?: number;
   taxRate?: number;
   taxAmount?: number;
