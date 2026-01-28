@@ -21,7 +21,7 @@ const getAdminDashboardAnalytics = async () => {
     totalOrders,
     pendingOrders,
     completedOrders,
-    cancelledOrders,
+    canceledOrders,
   ] = await Promise.all([
     Customer.countDocuments(),
     Vendor.countDocuments(),
@@ -31,7 +31,7 @@ const getAdminDashboardAnalytics = async () => {
     Order.countDocuments(),
     Order.countDocuments({ orderStatus: 'PENDING' }),
     Order.countDocuments({ orderStatus: 'DELIVERED' }),
-    Order.countDocuments({ orderStatus: 'CANCELLED' }),
+    Order.countDocuments({ orderStatus: 'CANCELED' }),
   ]);
 
   const popularCategories = await Order.aggregate([
@@ -96,7 +96,7 @@ const getAdminDashboardAnalytics = async () => {
       total: totalOrders,
       pending: pendingOrders,
       completed: completedOrders,
-      cancelled: cancelledOrders,
+      canceled: canceledOrders,
     },
     popularCategories,
     recentOrders,
@@ -114,7 +114,7 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   // --------------------------------------------------
   const products = await Product.find(
     { vendorId },
-    '_id category rating meta.status'
+    '_id category rating meta.status',
   );
 
   const productIds = products.map((p) => p._id);
@@ -122,7 +122,7 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   // --------------------------------------------------
   // Order Counts
   // --------------------------------------------------
-  const [totalOrders, pendingOrders, completedOrders, cancelledOrders] =
+  const [totalOrders, pendingOrders, completedOrders, canceledOrders] =
     await Promise.all([
       Order.countDocuments({ vendorId }),
       Order.countDocuments({ vendorId, orderStatus: 'PENDING' }),
@@ -249,7 +249,7 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
       total: totalOrders,
       pending: pendingOrders,
       completed: completedOrders,
-      cancelled: cancelledOrders,
+      canceled: canceledOrders,
     },
     popularCategories,
     recentOrders,
@@ -329,7 +329,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
     .sort({ 'rating.average': -1 })
     .limit(4)
     .select(
-      'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo'
+      'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo',
     );
 
   if (!topDrivers.length) {
@@ -340,7 +340,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
       .sort({ createdAt: -1 })
       .limit(4)
       .select(
-        'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo'
+        'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo',
       );
   }
 
@@ -377,7 +377,7 @@ const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
 // get partner performance analytics
 const getPartnerPerformanceAnalytics = async (
   currentUser: AuthUser,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ) => {
   const managerId = new Types.ObjectId(currentUser._id);
 
@@ -456,7 +456,7 @@ const getPartnerPerformanceAnalytics = async (
   ];
   const partnerQuery = new QueryBuilder(
     DeliveryPartner.find({ 'registeredBy.id': managerId, isDeleted: false }),
-    query
+    query,
   )
     .search(searchableFields)
     .filter()
@@ -476,7 +476,7 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100
+          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
         )
       : 0;
 
@@ -494,7 +494,7 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100
+                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
               ) + '%'
             : '0%';
 
@@ -503,7 +503,7 @@ const getPartnerPerformanceAnalytics = async (
           opData.completedDeliveries > 0 &&
           opData.totalDeliveryMinutes
             ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries
+                opData.totalDeliveryMinutes / opData.completedDeliveries,
               )
             : 0;
 

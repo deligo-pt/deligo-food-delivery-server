@@ -494,7 +494,7 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 
 // Logout User
 const logoutUser = async (email: string, token: string) => {
-  const result = await findUserByEmailOrId({ email, isDeleted: false });
+  const result = await findUserByEmail({ email, isDeleted: false });
   const user = result?.user;
 
   // if (!token) {

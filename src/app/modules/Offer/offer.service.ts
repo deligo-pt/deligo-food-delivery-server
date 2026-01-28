@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AuthUser } from '../../constant/user.constant';
@@ -5,6 +6,8 @@ import AppError from '../../errors/AppError';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';
 import { TCheckoutItem } from '../Checkout/checkout.interface';
+import { Product } from '../Product/product.model';
+import { Order } from '../Order/order.model';
 
 type TApplyOfferPayload = {
   vendorId: string;
@@ -14,15 +17,56 @@ type TApplyOfferPayload = {
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
-  // --------------------------------------------
-  //  Role-based access control
-  // --------------------------------------------
-  if (currentUser.role === 'VENDOR') {
-    // Vendor can ONLY create vendor-specific offers
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not authorized. Your account is ${currentUser.status}`,
+    );
+  }
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+  if (isVendor) {
     payload.vendorId = currentUser._id;
   } else {
-    // Admin / Super Admin
-    payload.vendorId = payload.vendorId ?? null; // null = global offer
+    payload.vendorId = payload.vendorId ?? null;
+  }
+
+  // --------------------------------------------
+  //  Product Validation & Ownership Check
+  // --------------------------------------------
+  if (payload.offerType === 'BOGO' && payload.bogo?.productId) {
+    const product = await Product.findById(payload.bogo.productId);
+
+    if (!product) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'The specified product for BOGO was not found',
+      );
+    }
+
+    // If currentUser is a Vendor, ensure they own the product
+    if (
+      isVendor &&
+      product.vendorId.toString() !== currentUser._id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You can only create BOGO offers for your own products',
+      );
+    }
+  }
+
+  if (!payload.isAutoApply && payload.code) {
+    const existingCode = await Offer.findOne({
+      code: payload.code.toUpperCase(),
+      isDeleted: false,
+    });
+    if (existingCode) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'An active offer with this code already exists',
+      );
+    }
+    payload.code = payload.code.toUpperCase();
   }
 
   // --------------------------------------------
@@ -30,28 +74,24 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   // --------------------------------------------
   switch (payload.offerType) {
     case 'PERCENT':
-      if (!payload.discountValue) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'discountValue is required for PERCENT offer',
-        );
-      }
-      break;
-
     case 'FLAT':
-      if (!payload.discountValue) {
+      if (!payload.discountValue || payload.discountValue <= 0) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'discountValue is required for FLAT offer',
+          `Valid discountValue is required for ${payload.offerType} offer`,
         );
       }
       break;
 
     case 'BOGO':
-      if (!payload.bogo?.buyQty || !payload.bogo?.getQty) {
+      if (
+        !payload.bogo?.buyQty ||
+        !payload.bogo?.getQty ||
+        !payload.bogo?.productId
+      ) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'BOGO offer requires buyQty and getQty',
+          'BOGO offer requires buyQty, getQty and a valid productId',
         );
       }
       break;
@@ -64,12 +104,21 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   }
 
   // --------------------------------------------
-  //  Code vs Auto apply validation
+  //  Date validation
   // --------------------------------------------
-  if (!payload.isAutoApply && !payload.code) {
+  const start = new Date(payload.startDate);
+  const end = new Date(payload.endDate);
+  if (end <= start) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Offer code is required when auto apply is disabled',
+      'End date must be after start date',
+    );
+  }
+
+  if (end <= new Date()) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'End date cannot be in the past',
     );
   }
 
@@ -78,22 +127,14 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   }
 
   // --------------------------------------------
-  //  Date validation
-  // --------------------------------------------
-  if (payload.endDate <= payload.startDate) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'End date must be after start date',
-    );
-  }
-
-  // --------------------------------------------
   //  Create Offer
   // --------------------------------------------
   const offer = await Offer.create({
     ...payload,
+    startDate: start,
+    endDate: end,
     usageCount: 0,
-    isActive: true,
+    isActive: payload.isActive ?? true,
     isDeleted: false,
   });
 
@@ -117,17 +158,15 @@ const updateOffer = async (
   // Find offer
   // --------------------------------------------------
   const offer = await Offer.findById(id);
-  if (!offer) {
+  if (!offer || offer.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Offer not found');
   }
 
   // --------------------------------------------------
   // Authorization (Vendor can update only own offer)
   // --------------------------------------------------
-  if (
-    ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role) &&
-    offer.vendorId?.toString() !== currentUser._id.toString()
-  ) {
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+  if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to update this offer',
@@ -145,67 +184,97 @@ const updateOffer = async (
   }
 
   // --------------------------------------------------
-  // Date validation
-  // --------------------------------------------------
-  if (payload.startDate && payload.endDate) {
-    if (new Date(payload.startDate) >= new Date(payload.endDate)) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Start date must be before end date',
-      );
-    }
-  }
-
-  // --------------------------------------------------
   // OfferType based validation
   // --------------------------------------------------
   const offerType = payload.offerType ?? offer.offerType;
+  const productId = payload.bogo?.productId;
 
-  if (offerType === 'PERCENT') {
-    if (payload.discountValue !== undefined) {
-      if (payload.discountValue <= 0 || payload.discountValue > 100) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Percent discount must be between 1 and 100',
-        );
-      }
-    }
-  }
-
-  if (offerType === 'FLAT') {
-    if (payload.discountValue !== undefined && payload.discountValue <= 0) {
+  if (offerType === 'BOGO' && productId) {
+    const product = await Product.findById(productId);
+    if (!product) {
       throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Flat discount must be greater than 0',
+        httpStatus.NOT_FOUND,
+        'Specified BOGO product not found',
       );
     }
-  }
-
-  if (offerType === 'FREE_DELIVERY') {
-    payload.discountValue = undefined;
-    payload.maxDiscountAmount = undefined;
-  }
-
-  if (offerType === 'BOGO') {
-    if (!payload.bogo && !offer.bogo) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'BOGO details are required');
-    }
-  }
-
-  // --------------------------------------------------
-  // Auto apply & code validation
-  // --------------------------------------------------
-  if (payload.isAutoApply === false) {
-    if (!payload.code && !offer.code) {
+    if (
+      isVendor &&
+      product.vendorId.toString() !== currentUser._id.toString()
+    ) {
       throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Offer code is required when auto apply is disabled',
+        httpStatus.FORBIDDEN,
+        'You can only use your own products for BOGO offers',
       );
     }
   }
 
   if (payload.isAutoApply === true) {
     payload.code = undefined;
+  } else if (payload.code) {
+    payload.code = payload.code.toUpperCase();
+    if (payload.code !== offer.code) {
+      const duplicate = await Offer.findOne({
+        code: payload.code,
+        isDeleted: false,
+        _id: { $ne: id },
+      });
+      if (duplicate)
+        throw new AppError(httpStatus.CONFLICT, 'Promo code already in use');
+    }
+  } else if (payload.isAutoApply === false && !offer.code) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Code required when auto-apply is disabled',
+    );
+  }
+
+  const startDate = payload.startDate
+    ? new Date(payload.startDate)
+    : offer.startDate;
+  const endDate = payload.endDate ? new Date(payload.endDate) : offer.endDate;
+
+  if (endDate <= startDate) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'End date must be after start date',
+    );
+  }
+
+  if (payload.offerType) {
+    if (payload.offerType === 'BOGO') {
+      payload.discountValue = 0;
+      payload.maxDiscountAmount = 0;
+    } else {
+      (payload as any).bogo = null;
+    }
+  }
+
+  if (offerType === 'PERCENT' && payload.discountValue !== undefined) {
+    if (payload.discountValue <= 0 || payload.discountValue > 100) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Percentage must be between 1-100',
+      );
+    }
+  }
+
+  if (
+    offerType === 'FLAT' &&
+    payload.discountValue !== undefined &&
+    payload.discountValue <= 0
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Flat discount must be positive',
+    );
+  }
+  if (offerType === 'FREE_DELIVERY') {
+    payload.discountValue = 0;
+    payload.maxDiscountAmount = 0;
+  }
+
+  if (payload.bogo && offer.bogo) {
+    payload.bogo = { ...offer.bogo, ...payload.bogo };
   }
 
   // --------------------------------------------------
@@ -213,22 +282,25 @@ const updateOffer = async (
   // --------------------------------------------------
   if (
     payload.maxUsageCount !== undefined &&
-    offer.usageCount !== undefined &&
-    payload.maxUsageCount < offer.usageCount
+    payload.maxUsageCount < (offer.usageCount || 0)
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Max usage count cannot be less than already used count',
+      'Max usage cannot be less than current usage',
     );
   }
 
   // --------------------------------------------------
   // Update offer
   // --------------------------------------------------
-  const updatedOffer = await Offer.findByIdAndUpdate(id, payload, {
-    new: true,
-    runValidators: true,
-  });
+  const updatedOffer = await Offer.findByIdAndUpdate(
+    id,
+    { $set: payload },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
 
   return updatedOffer;
 };
@@ -251,22 +323,24 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Cannot toggle a deleted offer');
   }
 
-  if (
-    ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role) &&
-    offer.vendorId?.toString() !== currentUser._id.toString()
-  ) {
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+
+  if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to change the status of this offer',
     );
   }
 
-  const updatedOffer = await Offer.findByIdAndUpdate(
-    id,
-    { isActive: !offer.isActive },
-    { new: true, runValidators: true },
-  );
+  if (!offer.isActive && offer.endDate < new Date()) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Cannot activate an expired offer. Please update the end date first.',
+    );
+  }
 
+  offer.isActive = !offer.isActive;
+  const updatedOffer = await offer.save();
   return {
     message: `Offer ${
       updatedOffer?.isActive ? 'activated' : 'deactivated'
@@ -280,8 +354,13 @@ const getApplicableOffer = async (
   { vendorId, subtotal, offerCode }: TApplyOfferPayload,
   currentUser: AuthUser,
 ) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `Your account is ${currentUser.status}. You cannot apply offers.`,
+    );
+  }
   const now = new Date();
-  console.log(currentUser.role);
   // --------------------------------------------
   // Base query (vendor + global offers)
   // --------------------------------------------
@@ -329,9 +408,11 @@ const getApplicableOffer = async (
   // Minimum order amount validation
   // --------------------------------------------
   if (offer.minOrderAmount && subtotal < offer.minOrderAmount) {
+    if (!offerCode) return null;
+
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Minimum order amount ${offer.minOrderAmount} required`,
+      `Minimum order amount of ${offer.minOrderAmount} is required for this offer`,
     );
   }
 
@@ -341,7 +422,25 @@ const getApplicableOffer = async (
   const usageCount = offer.usageCount ?? 0;
 
   if (offer.maxUsageCount !== undefined && usageCount >= offer.maxUsageCount) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Offer usage limit reached');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Offer usage limit has been reached',
+    );
+  }
+
+  if (offer.limitPerUser) {
+    const userUsageCount = await Order.countDocuments({
+      userId: currentUser._id,
+      offerId: offer._id,
+      status: { $ne: 'CANCELED' },
+    });
+
+    if (userUsageCount >= offer.limitPerUser) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `You have already used this offer ${offer.limitPerUser} time(s)`,
+      );
+    }
   }
 
   return offer;
@@ -365,7 +464,7 @@ const applyOffer = ({
     return {
       discount: 0,
       deliveryCharge,
-      subTotal: parseFloat(
+      subTotal: Number(
         (totalPriceBeforeTax + taxAmount + deliveryCharge).toFixed(2),
       ),
       appliedOffer: null,
@@ -399,7 +498,7 @@ const applyOffer = ({
       const bogo = offer.bogo!;
       // Find the item eligible for BOGO
       const item = items.find(
-        (i) => i.productId.toString() === bogo.itemId.toString(),
+        (i) => i.productId.toString() === bogo.productId.toString(),
       );
 
       if (item) {
