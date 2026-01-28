@@ -15,7 +15,7 @@ export type TOffer = {
   bogo?: {
     buyQty: number;
     getQty: number;
-    itemId: string;
+    productId: mongoose.Types.ObjectId;
   };
 
   // Validity period
@@ -37,8 +37,8 @@ export type TOffer = {
 
   // Status
   isActive: boolean;
-
   isDeleted: boolean;
+
   createdAt?: Date;
   updatedAt?: Date;
 };
