@@ -49,7 +49,7 @@ export type TCheckoutSummary = {
   discount: number;
   deliveryCharge: number;
   taxAmount: number;
-  subTotal: number;
+  subtotal: number;
 
   offerApplied?: TAppliedOfferSnapshot;
   couponId?: mongoose.Types.ObjectId;

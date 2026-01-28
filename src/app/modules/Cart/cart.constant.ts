@@ -59,20 +59,21 @@ export const recalculateCartTotals = async (cart: TCart) => {
       ];
       const productsInCart = await Product.find({
         _id: { $in: uniqueProductIds },
-      }).select('category');
-      const cartCategoryIds = productsInCart.map((p) => p.category);
+      });
+      const cartCategoryIds = productsInCart.map((p) => p.category?.toString());
       const couponCategoryIds =
-        coupon.applicableCategories?.map((c: string) => c.toLowerCase()) || [];
+        coupon.applicableCategories?.map((c) => c.toString()) || [];
 
       const isCategoryMatch =
-        cartCategoryIds.length === 0 ||
-        couponCategoryIds.some((cat) => couponCategoryIds.includes(cat));
+        couponCategoryIds.length === 0 ||
+        cartCategoryIds.some((cat) => couponCategoryIds.includes(cat));
 
-      if (!isCategoryMatch) {
+      if (
+        !isCategoryMatch ||
+        (coupon.minPurchase && cart.totalPrice < coupon.minPurchase)
+      ) {
         cart.discount = 0;
         cart.couponId = null;
-      } else if (coupon.minPurchase && cart.totalPrice < coupon.minPurchase) {
-        cart.discount = 0;
       } else {
         // Calculate final discount
         let calculatedDiscount = 0;
@@ -93,7 +94,7 @@ export const recalculateCartTotals = async (cart: TCart) => {
     cart.discount = 0;
   }
 
-  const finalSubtotal = cart.totalPrice - (cart.discount || 0) + cart.taxAmount;
+  const finalSubtotal = cart.totalPrice + cart.taxAmount - (cart.discount || 0);
 
   // Set final subtotal (Net Total)
   cart.subtotal = Number(Math.max(0, finalSubtotal).toFixed(2));

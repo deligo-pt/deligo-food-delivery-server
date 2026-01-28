@@ -108,7 +108,10 @@ const createCoupon = async (payload: TCoupon, currentUser: AuthUser) => {
   // Set creator
   if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') {
     payload.adminId = currentUser._id;
-  } else if (currentUser.role === 'VENDOR') {
+  } else if (
+    currentUser.role === 'VENDOR' ||
+    currentUser.role === 'SUB_VENDOR'
+  ) {
     payload.vendorId = currentUser._id;
     payload.isGlobal = false;
   } else {
@@ -215,6 +218,10 @@ const updateCoupon = async (
     [];
 
   if (categoryIds.length > 0 || productIds.length > 0) {
+    const productQuery: any = { _id: { $in: productIds }, isDeleted: false };
+    if (isVendor) {
+      productQuery.vendorId = currentUser._id;
+    }
     const [validCategoriesCount, validProductsCount] = await Promise.all([
       categoryIds.length
         ? ProductCategory.countDocuments({
@@ -223,7 +230,7 @@ const updateCoupon = async (
           })
         : Promise.resolve(0),
       productIds.length
-        ? Product.countDocuments({ _id: { $in: productIds }, isDeleted: false })
+        ? Product.countDocuments(productQuery)
         : Promise.resolve(0),
     ]);
 
@@ -258,197 +265,6 @@ const updateCoupon = async (
 };
 
 // apply coupon service
-// const applyCoupon = async (
-//   couponId: string,
-//   currentUser: AuthUser,
-//   type: 'CART' | 'CHECKOUT',
-// ) => {
-//   // Find coupon
-//   const coupon = await Coupon.findOne({
-//     _id: couponId,
-//     isActive: true,
-//     isDeleted: false,
-//   });
-//   if (!coupon)
-//     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found or inactive');
-
-//   // Validate timing + usage
-//   const now = new Date();
-//   if (coupon.validFrom && now < coupon.validFrom)
-//     throw new AppError(httpStatus.BAD_REQUEST, 'This coupon is not yet active');
-
-//   if (coupon.expiresAt && now > coupon.expiresAt)
-//     throw new AppError(httpStatus.BAD_REQUEST, 'This coupon has expired');
-
-//   if (coupon.usageLimit && (coupon.usedCount ?? 0) >= coupon.usageLimit)
-//     throw new AppError(httpStatus.BAD_REQUEST, 'Coupon usage limit reached');
-
-//   // cart flow — active items only
-//   if (type === 'CART') {
-//     const cart = await Cart.findOne({
-//       customerId: currentUser._id,
-//       isDeleted: false,
-//     });
-//     if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
-
-//     // Prevent duplicate apply
-//     if (cart.couponId?.toString() === couponId.toString()) {
-//       throw new AppError(
-//         httpStatus.BAD_REQUEST,
-//         'This coupon is already applied',
-//       );
-//     }
-
-//     // Take ONLY ACTIVE items
-//     const activeItems = cart.items.filter((i) => i.isActive === true);
-
-//     if (!activeItems.length) {
-//       throw new AppError(httpStatus.BAD_REQUEST, 'No active items in cart');
-//     }
-
-//     // recalculate active subtotal (real-time)
-//     const activeSubtotal = activeItems.reduce(
-//       (sum, item) => sum + item.subtotal,
-//       0,
-//     );
-//     const finalActiveSubtotal = parseFloat(activeSubtotal.toFixed(2));
-
-//     //  category validation from db
-//     const productIds = activeItems.map((i) => i.productId.toString());
-//     const products = await Product.find({
-//       _id: { $in: productIds },
-//     }).select('productId category');
-
-//     // vendor validation
-//     if (coupon.vendorId) {
-//       const isVendorProductMatched = products.some(
-//         (p) => p.vendorId.toString() === coupon.vendorId.toString(),
-//       );
-
-//       if (!isVendorProductMatched) {
-//         throw new AppError(
-//           httpStatus.BAD_REQUEST,
-//           'This coupon is only valid for specific vendor products',
-//         );
-//       }
-//     }
-
-//     const cartCategories = products.map((p) => p.category.toLowerCase());
-//     const couponCategories =
-//       coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
-
-//     if (couponCategories.length) {
-//       const isCategoryMatched = cartCategories.some((cat) =>
-//         couponCategories.includes(cat),
-//       );
-
-//       if (!isCategoryMatched) {
-//         throw new AppError(
-//           httpStatus.BAD_REQUEST,
-//           'Coupon not applicable for these product categories',
-//         );
-//       }
-//     }
-
-//     // min purchase check (active subtotal)
-//     if (coupon.minPurchase && finalActiveSubtotal < coupon.minPurchase) {
-//       throw new AppError(
-//         httpStatus.BAD_REQUEST,
-//         `Minimum purchase ${coupon.minPurchase} required`,
-//       );
-//     }
-
-//     // discount calculation (active subtotal)
-//     let discount = 0;
-//     if (coupon.discountType === 'PERCENT') {
-//       discount = (finalActiveSubtotal * coupon.discountValue) / 100;
-//       if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
-//     } else {
-//       discount = coupon.discountValue;
-//     }
-
-//     // save final values
-//     cart.discount = parseFloat(discount.toFixed(2));
-//     cart.couponId = new Types.ObjectId(couponId);
-//     cart.subtotal = finalActiveSubtotal;
-//     await cart.save();
-
-//     return null;
-//   }
-
-//   // checkout flow — active items only
-//   if (type === 'CHECKOUT') {
-//     const checkout = await CheckoutSummary.findOne({
-//       customerId: currentUser._id,
-//       isConvertedToOrder: false,
-//       isDeleted: false,
-//     }).sort({ createdAt: -1 });
-
-//     if (!checkout) {
-//       throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
-//     }
-
-//     if (checkout.couponId?.toString() === couponId.toString()) {
-//       throw new AppError(
-//         httpStatus.BAD_REQUEST,
-//         'This coupon is already applied',
-//       );
-//     }
-
-//     const products = await Product.find({
-//       _id: { $in: checkout.items.map((i) => i.productId) },
-//     }).select('productId category');
-//     const cartCategories = products.map((p) => p.category.toLowerCase());
-
-//     const couponCategories =
-//       coupon.applicableCategories?.map((c) => c.toLowerCase()) || [];
-
-//     if (couponCategories.length) {
-//       const isCategoryMatched = cartCategories.some((cat) =>
-//         couponCategories.includes(cat),
-//       );
-
-//       if (!isCategoryMatched) {
-//         throw new AppError(
-//           httpStatus.BAD_REQUEST,
-//           'Coupon not applicable for these product categories',
-//         );
-//       }
-//     }
-
-//     const checkOutTotalPrice = checkout.totalPrice;
-//     // min purchase check (active)
-//     if (coupon.minPurchase && checkOutTotalPrice < coupon.minPurchase) {
-//       throw new AppError(
-//         httpStatus.BAD_REQUEST,
-//         `Minimum purchase ${coupon.minPurchase} required`,
-//       );
-//     }
-
-//     // discount calculation
-//     let discount = 0;
-//     if (coupon.discountType === 'PERCENT') {
-//       discount = (checkOutTotalPrice * coupon.discountValue) / 100;
-//       if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
-//     } else {
-//       discount = coupon.discountValue;
-//     }
-
-//     const subTotal = checkOutTotalPrice - discount + checkout.deliveryCharge;
-
-//     // final save
-//     checkout.totalPrice = checkOutTotalPrice;
-//     checkout.discount = parseFloat(discount.toFixed(2));
-//     checkout.couponId = new Types.ObjectId(couponId);
-//     checkout.subTotal = parseFloat(subTotal.toFixed(2));
-//     await checkout.save();
-
-//     return null;
-//   }
-
-//   return null;
-// };
-
 const applyCoupon = async (
   couponId: string,
   currentUser: AuthUser,
@@ -486,7 +302,10 @@ const applyCoupon = async (
     if (!targetDoc) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
     items = targetDoc.items.filter((i: any) => i.isActive);
-    currentBaseAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
+    currentBaseAmount = items.reduce(
+      (sum, item) => sum + item.totalBeforeTax,
+      0,
+    );
   } else {
     targetDoc = await CheckoutSummary.findOne({
       customerId: currentUser._id,
@@ -514,9 +333,7 @@ const applyCoupon = async (
   }
 
   const productIds = items.map((i) => i.productId.toString());
-  const dbProducts = await Product.find({ _id: { $in: productIds } }).populate(
-    'category',
-  );
+  const dbProducts = await Product.find({ _id: { $in: productIds } });
 
   if (!coupon.isGlobal && coupon.vendorId) {
     const isOwnerOfAllItems = dbProducts.every(
@@ -531,17 +348,16 @@ const applyCoupon = async (
   }
 
   if (coupon.applicableCategories?.length) {
-    const couponCats = coupon.applicableCategories.map((c) => c.toLowerCase());
+    const couponCats = coupon.applicableCategories.map((c) => c.toString());
 
-    const hasValidCategory = dbProducts.some((p: any) => {
-      const categoryName = p.category?.name?.toLowerCase();
-      return categoryName && couponCats.includes(categoryName);
-    });
+    const hasValidCategory = dbProducts.some(
+      (p: any) => p.category && couponCats.includes(p.category.toString()),
+    );
 
     if (!hasValidCategory) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Coupon not applicable for these product categories',
+        'Coupon not applicable for these categories',
       );
     }
   }
@@ -568,20 +384,22 @@ const applyCoupon = async (
   targetDoc.discount = discountAmount;
   targetDoc.couponId = new Types.ObjectId(couponId);
 
-  if (type === 'CART') {
-    targetDoc.subtotal = currentBaseAmount;
-  } else {
-    targetDoc.subTotal = parseFloat(
-      (
-        currentBaseAmount -
-        discountAmount +
-        (targetDoc.deliveryCharge || 0)
-      ).toFixed(2),
-    );
-  }
+  const finalSubtotal = parseFloat(
+    (
+      currentBaseAmount +
+      (targetDoc.taxAmount || 0) +
+      (targetDoc.deliveryCharge || 0) -
+      discountAmount
+    ).toFixed(2),
+  );
+
+  targetDoc.subtotal = finalSubtotal;
 
   await targetDoc.save();
-  return { message: 'Coupon applied successfully', discount: discountAmount };
+  return {
+    message: 'Coupon applied successfully',
+    discount: `Discount: ${discountAmount}`,
+  };
 };
 
 // toggle coupon status service
@@ -596,22 +414,34 @@ const toggleCouponStatus = async (couponId: string, currentUser: AuthUser) => {
   if (!coupon) {
     throw new AppError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
-  if (
-    (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
-    coupon.vendorId.toString() !== currentUser._id.toString()
-  ) {
+
+  if (coupon.isDeleted) {
     throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this coupon',
+      httpStatus.BAD_REQUEST,
+      'Cannot toggle status of a deleted coupon',
     );
+  }
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+  if (isVendor) {
+    if (
+      !coupon.vendorId ||
+      coupon.vendorId.toString() !== currentUser._id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to update this coupon',
+      );
+    }
   }
 
   coupon.isActive = !coupon.isActive;
   await coupon.save();
   return {
-    message: `Coupon status updated to ${
-      coupon.isActive ? 'active' : 'inactive'
-    } `,
+    message: `Coupon status updated to ${coupon.isActive ? 'active' : 'inactive'}`,
+    data: {
+      id: coupon._id,
+      isActive: coupon.isActive,
+    },
   };
 };
 
