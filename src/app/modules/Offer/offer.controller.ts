@@ -8,7 +8,7 @@ import { AuthUser } from '../../constant/user.constant';
 const createOffer = catchAsync(async (req, res) => {
   const result = await OfferServices.createOffer(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -24,7 +24,7 @@ const updateOffer = catchAsync(async (req, res) => {
   const result = await OfferServices.updateOffer(
     offerId,
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -39,7 +39,7 @@ const toggleOfferStatus = catchAsync(async (req, res) => {
   const { offerId } = req.params;
   const result = await OfferServices.toggleOfferStatus(
     offerId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -59,7 +59,7 @@ const getApplicableOffer = catchAsync(async (req, res) => {
       subtotal,
       offerCode,
     },
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -76,7 +76,7 @@ const getApplicableOffer = catchAsync(async (req, res) => {
 const getAllOffers = catchAsync(async (req, res) => {
   const result = await OfferServices.getAllOffers(
     req.user as AuthUser,
-    req.query
+    req.query,
   );
   sendResponse(res, {
     success: true,
@@ -89,7 +89,10 @@ const getAllOffers = catchAsync(async (req, res) => {
 // get single offer controller
 const getSingleOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
-  const result = await OfferServices.getSingleOffer(offerId);
+  const result = await OfferServices.getSingleOffer(
+    offerId,
+    req.user as AuthUser,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -103,7 +106,7 @@ const softDeleteOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
   const result = await OfferServices.softDeleteOffer(
     offerId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -118,7 +121,7 @@ const permanentDeleteOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
   const result = await OfferServices.permanentDeleteOffer(
     offerId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,

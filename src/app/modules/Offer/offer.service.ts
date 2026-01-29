@@ -477,7 +477,7 @@ const applyOffer = ({
   switch (offer.offerType) {
     case 'PERCENT': {
       const calculatedPercent =
-        (totalPriceBeforeTax * offer.discountValue!) / 100;
+        (totalPriceBeforeTax * (offer.discountValue || 0)) / 100;
       discount = offer.maxDiscountAmount
         ? Math.min(calculatedPercent, offer.maxDiscountAmount)
         : calculatedPercent;
@@ -517,7 +517,7 @@ const applyOffer = ({
   discount = Math.max(0, Math.min(discount, totalPriceBeforeTax));
 
   // Calculate subtotal
-  const subTotal = parseFloat(
+  const subtotal = parseFloat(
     (totalPriceBeforeTax - discount + taxAmount + finalDeliveryCharge).toFixed(
       2,
     ),
@@ -526,7 +526,7 @@ const applyOffer = ({
   return {
     discount: Number(discount.toFixed(2)),
     deliveryCharge: Number(finalDeliveryCharge.toFixed(2)),
-    subTotal,
+    subtotal,
     appliedOffer: {
       offerId: offer._id,
       title: offer.title,
@@ -543,19 +543,25 @@ const getAllOffers = async (
   currentUser: AuthUser,
   query: Record<string, unknown>,
 ) => {
+  const now = new Date();
+
   if (currentUser.role === 'VENDOR') {
     query.vendorId = currentUser._id;
+    query.isDeleted = false;
   }
   if (currentUser.role === 'CUSTOMER') {
     query.isActive = true;
     query.isDeleted = false;
+
+    query.startDate = { $lte: now };
+    query.endDate = { $gte: now };
   }
   const offers = new QueryBuilder(Offer.find(), query)
     .fields()
     .paginate()
     .sort()
     .filter()
-    .search(['title']);
+    .search(['title', 'code']);
   const meta = await offers.countTotal();
   const data = await offers.modelQuery;
   return {
@@ -565,11 +571,33 @@ const getAllOffers = async (
 };
 
 // get single offer service
-const getSingleOffer = async (id: string) => {
-  const offer = await Offer.findById(id);
-  if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Offer not found');
+const getSingleOffer = async (id: string, currentUser: AuthUser) => {
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  const isCustomer = currentUser.role === 'CUSTOMER';
+
+  const query: Record<string, any> = { _id: id };
+
+  if (!isAdmin) {
+    query.isDeleted = false;
   }
+
+  if (isCustomer) {
+    query.isActive = true;
+  }
+
+  const offer = await Offer.findOne(query);
+  if (!offer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Offer not found or unavailable');
+  }
+
+  if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to view this offer',
+    );
+  }
+
   return offer;
 };
 
@@ -591,23 +619,21 @@ const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
   }
 
   // --------------------------------------------------
-  // Authorization
-  // --------------------------------------------------
-  if (
-    ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role) &&
-    offer.vendorId?.toString() !== currentUser._id.toString()
-  ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to delete this offer',
-    );
-  }
-
-  // --------------------------------------------------
   // Prevent duplicate delete
   // --------------------------------------------------
   if (offer.isDeleted) {
     throw new AppError(httpStatus.CONFLICT, 'Offer is already deleted');
+  }
+
+  // --------------------------------------------------
+  // Authorization
+  // --------------------------------------------------
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+  if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to delete this offer',
+    );
   }
 
   // --------------------------------------------------
@@ -644,7 +670,8 @@ const permanentDeleteOffer = async (id: string, currentUser: AuthUser) => {
   // --------------------------------------------------
   // Only Admin / Super Admin allowed
   // --------------------------------------------------
-  if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  if (!isAdmin) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Only admin can permanently delete an offer',
