@@ -477,7 +477,7 @@ const applyOffer = ({
   switch (offer.offerType) {
     case 'PERCENT': {
       const calculatedPercent =
-        (totalPriceBeforeTax * offer.discountValue!) / 100;
+        (totalPriceBeforeTax * (offer.discountValue || 0)) / 100;
       discount = offer.maxDiscountAmount
         ? Math.min(calculatedPercent, offer.maxDiscountAmount)
         : calculatedPercent;
@@ -517,7 +517,7 @@ const applyOffer = ({
   discount = Math.max(0, Math.min(discount, totalPriceBeforeTax));
 
   // Calculate subtotal
-  const subTotal = parseFloat(
+  const subtotal = parseFloat(
     (totalPriceBeforeTax - discount + taxAmount + finalDeliveryCharge).toFixed(
       2,
     ),
@@ -526,7 +526,7 @@ const applyOffer = ({
   return {
     discount: Number(discount.toFixed(2)),
     deliveryCharge: Number(finalDeliveryCharge.toFixed(2)),
-    subTotal,
+    subtotal,
     appliedOffer: {
       offerId: offer._id,
       title: offer.title,
