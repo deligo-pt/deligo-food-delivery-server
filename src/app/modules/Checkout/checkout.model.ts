@@ -60,6 +60,11 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       discountValue: { type: Number },
       maxDiscountAmount: { type: Number },
       code: { type: String },
+      bogoSnapshot: {
+        buyQty: { type: Number },
+        getQty: { type: Number },
+        productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+      },
     },
 
     couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },

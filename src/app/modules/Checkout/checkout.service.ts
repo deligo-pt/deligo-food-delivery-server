@@ -29,24 +29,17 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     if (!item.field) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Please provide your ${item.label} to complete your profile before checking out.`
+        `Please provide your ${item.label} to complete your profile before checking out.`,
       );
     }
-  }
-
-  if (!currentUser.email && !currentUser.contactNumber) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please add email or contact number before checking out'
-    );
   }
 
   const customerId = currentUser._id.toString();
 
   // ---------- Get items ----------
   let selectedItems = [];
-
   const cart = await Cart.findOne({ customerId, isDeleted: false });
+
   if (payload.useCart === true) {
     if (!cart || cart.items.length === 0) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Your cart is empty');
@@ -56,32 +49,32 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     if (activeItems.length === 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Please select at least one product from your cart to order'
+        'Please select at least one product from your cart to order',
       );
     }
 
     selectedItems = activeItems;
-    payload.discount = cart.discount;
+    // payload.discount = cart.discount;
   } else {
     // ====== DIRECT CHECKOUT ======
     if (!payload.items || payload.items.length !== 1) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No items provided for checkout'
+        'No items provided for checkout',
       );
     }
 
     if (payload.items.length > 1) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Direct checkout supports only one product at a time'
+        'Direct checkout supports only one product at a time',
       );
     }
 
     if (!payload.items[0].quantity) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Quantity is required for direct checkout'
+        'Quantity is required for direct checkout',
       );
     }
 
@@ -91,33 +84,44 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   const productIds = selectedItems.map((i) => i.productId.toString());
   const products = await Product.find({ _id: { $in: productIds } });
 
-  const firstProduct = products[0];
-  if (!firstProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  if (products.length === 0)
+    throw new AppError(httpStatus.NOT_FOUND, 'Products not found');
 
-  const existingVendor = await Vendor.findById(firstProduct.vendorId);
+  const vendorId = products[0].vendorId;
+
+  const sameVendor = products.every(
+    (p) => p.vendorId.toString() === vendorId.toString(),
+  );
+  if (!sameVendor)
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'All items must be from the same vendor',
+    );
+
+  const existingVendor = await Vendor.findById(vendorId);
   if (
     !existingVendor ||
     existingVendor?.businessDetails?.isStoreOpen === false
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Vendor unavailable or store closed'
+      'Vendor unavailable or store closed',
     );
   }
 
   const activeAddress = currentUser?.deliveryAddresses?.find(
-    (i) => i.isActive === true
+    (i) => i.isActive === true,
   );
   if (!activeAddress) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please add a delivery address before checking out'
+      'Please add a delivery address before checking out',
     );
   }
 
-  const vendorLongitude = existingVendor?.businessLocation?.longitude;
-  const vendorLatitude = existingVendor?.businessLocation?.latitude;
+  const vendorLongitude =
+    existingVendor?.currentSessionLocation?.coordinates[0];
+  const vendorLatitude = existingVendor?.currentSessionLocation?.coordinates[1];
   const customerLongitude = activeAddress?.longitude;
   const customerLatitude = activeAddress?.latitude;
 
@@ -133,7 +137,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
     vendorLongitude,
     vendorLatitude,
     customerLongitude,
-    customerLatitude
+    customerLatitude,
   );
   const deliveryChargePerMeter = await GlobalSettingsService.getPerMeterRate();
 
@@ -144,36 +148,36 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 
   const orderItems = selectedItems.map((item) => {
     const product = products.find(
-      (p) => p._id.toString() === item.productId.toString()
+      (p) => p._id.toString() === item.productId.toString(),
     );
     if (!product)
       throw new AppError(
         httpStatus.NOT_FOUND,
-        `Product not found: ${item.productId}`
+        `Product not found: ${item.productId}`,
       );
 
     if (product.stock.quantity < item.quantity)
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Stock not available for ${product.name}`
+        `Stock not available for ${product.name}`,
       );
 
-    const unitPrice = item.price || product?.pricing?.price || 0;
+    const unitPrice = item.price || 0;
     const taxRate = product?.pricing?.taxRate || 0;
 
     const addonsTotal = (item.addons || []).reduce(
       (sum: number, a: any) => sum + (a.price || 0) * a.quantity,
-      0
+      0,
     );
 
     const itemTotalBeforeTax = parseFloat(
-      (unitPrice * item.quantity + addonsTotal).toFixed(2)
+      (unitPrice * item.quantity + addonsTotal).toFixed(2),
     );
     const itemTax = parseFloat(
-      (itemTotalBeforeTax * (taxRate / 100)).toFixed(2)
+      (itemTotalBeforeTax * (taxRate / 100)).toFixed(2),
     );
     const itemSubtotalWithTax = parseFloat(
-      (itemTotalBeforeTax + itemTax).toFixed(2)
+      (itemTotalBeforeTax + itemTax).toFixed(2),
     );
 
     totalPriceBeforeTax += itemTotalBeforeTax;
@@ -212,7 +216,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   if (new Set(vendorIds).size > 1) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You can only order products from ONE vendor at a time'
+      'You can only order products from ONE vendor at a time',
     );
   }
 
@@ -223,7 +227,7 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
       subtotal: totalPrice,
       offerCode: payload.offerCode,
     },
-    currentUser
+    currentUser,
   );
 
   const offerResult = OfferServices.applyOffer({
@@ -280,12 +284,12 @@ const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
 // get checkout summary
 const getCheckoutSummary = async (
   checkoutSummaryId: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${currentUser.status}`
+      `You are not approved to view the order. Your account is ${currentUser.status}`,
     );
   }
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
@@ -297,14 +301,14 @@ const getCheckoutSummary = async (
   if (summary.customerId.toString() !== currentUser._id.toString()) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
-      'You are not authorized to view'
+      'You are not authorized to view',
     );
   }
 
   if (summary.isConvertedToOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order'
+      'Checkout summary already converted to order',
     );
   }
 

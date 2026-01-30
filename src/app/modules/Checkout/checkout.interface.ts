@@ -9,6 +9,12 @@ export type TAppliedOfferSnapshot = {
   discountValue?: number;
   maxDiscountAmount?: number;
   code?: string;
+
+  bogoSnapshot?: {
+    buyQty: number;
+    getQty: number;
+    productId: mongoose.Types.ObjectId;
+  };
 };
 
 export type TCheckoutItem = {
