@@ -794,12 +794,6 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
   if (!submittedUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
-  if (currentUser?.role === 'DELIVERY_PARTNER') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "You can't submit approval request.",
-    );
-  }
 
   if (submittedUser?.status === 'SUBMITTED') {
     throw new AppError(
