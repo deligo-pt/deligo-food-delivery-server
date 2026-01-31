@@ -23,7 +23,7 @@ const getMyProfile = async (currentUser: AuthUser) => {
   if (currentUser.status !== USER_STATUS.APPROVED) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`
+      `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`,
     );
   }
   return currentUser;
@@ -33,7 +33,7 @@ const getMyProfile = async (currentUser: AuthUser) => {
 const updateMyProfile = async (
   currentUser: AuthUser,
   profilePhoto: string | null,
-  payload: Partial<TUserProfileUpdate>
+  payload: Partial<TUserProfileUpdate>,
 ) => {
   const modelName =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
@@ -49,7 +49,7 @@ const updateMyProfile = async (
   if (currentUser.status !== USER_STATUS.APPROVED) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`
+      `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`,
     );
   }
 
@@ -59,21 +59,21 @@ const updateMyProfile = async (
   if (payload.profilePhoto) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Profile photo must be uploaded as a file, not in text.'
+      'Profile photo must be uploaded as a file, not in text.',
     );
   }
 
   if (currentUser.role === 'CUSTOMER' && payload.contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Customers cannot update contact number. Please contact support.'
+      'Customers cannot update contact number. Please contact support.',
     );
   }
 
   if (payload.NIF && currentUser.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Only customers can update NIF. Please contact support.'
+      'Only customers can update NIF. Please contact support.',
     );
   }
 
@@ -99,13 +99,13 @@ const updateMyProfile = async (
   const updatedUser = await model.findOneAndUpdate(
     { userId: currentUser.userId },
     { $set: payload },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedUser) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update profile.'
+      'Failed to update profile.',
     );
   }
 
@@ -115,7 +115,7 @@ const updateMyProfile = async (
 // send otp service
 const sendOtp = async (
   currentUser: AuthUser,
-  payload: { contactNumber?: string; email?: string }
+  payload: { contactNumber?: string; email?: string },
 ) => {
   // --------------------------------------------------
   // Validate input
@@ -123,7 +123,7 @@ const sendOtp = async (
   if (!payload?.contactNumber && !payload?.email) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Email or contact number is required'
+      'Email or contact number is required',
     );
   }
 
@@ -139,7 +139,7 @@ const sendOtp = async (
       if (exists) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'This mobile number is already registered.'
+          'This mobile number is already registered.',
         );
       }
     }
@@ -155,7 +155,7 @@ const sendOtp = async (
       if (exists) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'This email is already registered.'
+          'This email is already registered.',
         );
       }
     }
@@ -198,19 +198,19 @@ const sendOtp = async (
         date: new Date().toDateString(),
         user: currentUser?.name?.firstName || 'Customer',
       },
-      'verify-email'
+      'verify-email',
     );
 
     try {
       await EmailHelper.sendEmail(
         payload.email,
         emailHtml,
-        'Verify your email for DeliGo'
+        'Verify your email for DeliGo',
       );
     } catch (error: any) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'Failed to send verification email'
+        'Failed to send verification email',
       );
     }
 
@@ -223,7 +223,7 @@ const sendOtp = async (
 // update email or contact number service
 const updateEmailOrContactNumber = async (
   currentUser: AuthUser,
-  otp: string
+  otp: string,
 ) => {
   if (!currentUser.pendingEmail && !currentUser.pendingContactNumber) {
     throw new AppError(httpStatus.BAD_REQUEST, 'No pending change found.');
@@ -251,7 +251,7 @@ const updateEmailOrContactNumber = async (
   if (currentUser.pendingContactNumber) {
     const res = await verifyMobileOtp(
       currentUser.mobileOtpId as string,
-      otp as string
+      otp as string,
     );
     if (!res?.data?.verified) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
@@ -276,36 +276,3 @@ export const ProfileServices = {
   sendOtp,
   updateEmailOrContactNumber,
 };
-
-// if (currentUser.role === 'CUSTOMER') {
-//   try {
-//     const moloniData = {
-//       customerId: currentUser.userId,
-//       name:
-//         `${updatedUser.name.firstName} ${updatedUser.name.lastName}`.trim() ||
-//         updatedUser.email,
-//       email: updatedUser.email,
-//       NIF: updatedUser.NIF,
-//       address: updatedUser.address?.street || 'Customer Address',
-//       zipCode: updatedUser.address?.postalCode || '1000-001',
-//       city: updatedUser.address?.city || 'Lisbon',
-//     };
-
-//     if (!updatedUser.moloniCustomerId) {
-//       const newMoloniId = await MoloniService.createCustomer(moloniData);
-//       if (newMoloniId) {
-//         await model.findOneAndUpdate(
-//           { userId: currentUser.userId },
-//           { $set: { moloniCustomerId: newMoloniId } }
-//         );
-//       }
-//     } else {
-//       await MoloniService.updateCustomer(
-//         Number(updatedUser.moloniCustomerId),
-//         moloniData
-//       );
-//     }
-//   } catch (error: any) {
-//     console.error('Moloni Sync Failed during profile update:', error.message);
-//   }
-// }
