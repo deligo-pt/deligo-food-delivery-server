@@ -23,6 +23,7 @@ import { GlobalSettingRoutes } from '../modules/GlobalSetting/globalSetting.rout
 import { AddOnsRoutes } from '../modules/Add-Ons/addOns.route';
 import { sosRoutes } from '../modules/Sos/sos.route';
 import { TaxRoutes } from '../modules/Tax/tax.route';
+import { SponsorshipsRoutes } from '../modules/Sponsorships/sponsorships.route';
 
 const router = express.Router();
 
@@ -122,6 +123,10 @@ const moduleRoutes = [
   {
     path: '/taxes',
     route: TaxRoutes,
+  },
+  {
+    path: '/sponsorships',
+    route: SponsorshipsRoutes,
   },
 ];
 
