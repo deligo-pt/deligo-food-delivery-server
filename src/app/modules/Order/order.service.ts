@@ -1171,7 +1171,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   // ------------------------------------------------------
   // Fetch order using secure filter
   // ------------------------------------------------------
-  const query = Order.findOne({ _id: orderId, ...filter });
+  const query = Order.findOne({ orderId: orderId, ...filter });
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer: 'name userId role',
