@@ -41,7 +41,8 @@ const updateDeliveryPartner = async (
   // Check if update is locked
   // ---------------------------------------------------------
   if (
-    currentUser.role === 'FLEET_MANAGER' &&
+    (currentUser.role === 'FLEET_MANAGER' ||
+      currentUser.role === 'DELIVERY_PARTNER') &&
     existingDeliveryPartner.isUpdateLocked
   ) {
     throw new AppError(
