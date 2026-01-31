@@ -49,7 +49,8 @@ const getAllSosAlerts = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'SOS alerts retrieved successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -78,7 +79,8 @@ const getUserSosHistory = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'SOS alerts retrieved successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
