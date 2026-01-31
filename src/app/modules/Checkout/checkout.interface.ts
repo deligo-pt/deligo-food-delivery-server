@@ -80,7 +80,8 @@ export type TCheckoutPayload = {
   items?: {
     productId: mongoose.Types.ObjectId;
     quantity: number;
-    variantName?: string;
+    variationName?: string;
+    variationSku?: string;
     addons?: {
       optionId: string;
       quantity: number;
