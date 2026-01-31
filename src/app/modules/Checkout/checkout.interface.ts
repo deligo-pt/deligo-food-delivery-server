@@ -61,7 +61,7 @@ export type TCheckoutSummary = {
   couponId?: mongoose.Types.ObjectId;
 
   deliveryAddress: TAddress;
-  estimatedDeliveryTime: string;
+  estimatedDeliveryTime: string; // will check is it need?
 
   paymentMethod?: 'CARD' | 'MOBILE';
   paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
