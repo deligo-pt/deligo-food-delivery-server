@@ -9,12 +9,17 @@ import { AuthValidation } from './auth.validation';
 import { Router } from 'express';
 
 const router = Router();
-// Register User Route [Vendor, Fleet Manager, Admin]
+// Register User Route [Vendor, Fleet Manager, Admin,Delivery Partner]
 router.post(
-  [UrlPath.VENDOR, UrlPath.FLEET_MANAGER, UrlPath.ADMIN],
+  [
+    UrlPath.VENDOR,
+    UrlPath.FLEET_MANAGER,
+    UrlPath.ADMIN,
+    UrlPath.DELIVERY_PARTNER,
+  ],
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.registerUser
+  AuthControllers.registerUser,
 );
 // Register User Route (Registered by Fleet Manager, Admin, Super Admin,Vendor)
 router.post(
@@ -22,7 +27,7 @@ router.post(
   auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN', 'VENDOR'),
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.onboardUser
+  AuthControllers.onboardUser,
 );
 
 // Register Sub Vendor Route
@@ -31,7 +36,7 @@ router.post(
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.registerUser
+  AuthControllers.registerUser,
 );
 
 // Login User Route
@@ -39,7 +44,7 @@ router.post(
   '/login',
   validateRequest(AuthValidation.loginValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.loginUser
+  AuthControllers.loginUser,
 );
 
 // login customer
@@ -47,7 +52,7 @@ router.post(
   '/login-customer',
   validateRequest(AuthValidation.loginCustomerValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.loginCustomer
+  AuthControllers.loginCustomer,
 );
 
 // Save FCM Token Route
@@ -59,9 +64,9 @@ router.post(
     'DELIVERY_PARTNER',
     'VENDOR',
     'FLEET_MANAGER',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
-  AuthControllers.saveFcmToken
+  AuthControllers.saveFcmToken,
 );
 
 // Logout User Route
@@ -73,9 +78,9 @@ router.post(
     'DELIVERY_PARTNER',
     'VENDOR',
     'FLEET_MANAGER',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
-  AuthControllers.logoutUser
+  AuthControllers.logoutUser,
 );
 // Change Password
 router.post(
@@ -86,11 +91,11 @@ router.post(
     'CUSTOMER',
     'DELIVERY_PARTNER',
     'VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
   validateRequest(AuthValidation.changePasswordValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.changePassword
+  AuthControllers.changePassword,
 );
 
 //forgot password
@@ -98,7 +103,7 @@ router.post(
   '/forgot-password',
   validateRequest(AuthValidation.forgotPasswordValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.forgotPassword
+  AuthControllers.forgotPassword,
 );
 
 // reset password
@@ -106,7 +111,7 @@ router.post(
   '/reset-password',
   validateRequest(AuthValidation.resetPasswordValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.resetPassword
+  AuthControllers.resetPassword,
 );
 
 // refresh token
@@ -114,14 +119,14 @@ router.post(
   '/refresh-token',
   validateRequestCookies(AuthValidation.refreshTokenValidationSchema),
   rateLimiter('auth'),
-  AuthControllers.refreshToken
+  AuthControllers.refreshToken,
 );
 
 // submit approval request Route
 router.patch(
   '/:userId/submitForApproval',
   auth('VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN', 'SUPER_ADMIN'),
-  AuthControllers.submitForApproval
+  AuthControllers.submitForApproval,
 );
 
 // Approved or Rejected User Route
@@ -129,21 +134,21 @@ router.patch(
   '/:userId/approved-rejected-user',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.approvedOrRejectedUserValidationSchema),
-  AuthControllers.approvedOrRejectedUser
+  AuthControllers.approvedOrRejectedUser,
 );
 
 // Verify OTP Route
 router.post(
   '/verify-otp',
   validateRequest(AuthValidation.verifyOtpValidationSchema),
-  AuthControllers.verifyOtp
+  AuthControllers.verifyOtp,
 );
 
 // Resend OTP Route
 router.post(
   '/resend-otp',
   validateRequest(AuthValidation.resendOtpValidationSchema),
-  AuthControllers.resendOtp
+  AuthControllers.resendOtp,
 );
 
 // soft Delete User Route
@@ -155,16 +160,16 @@ router.delete(
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
     'VENDOR',
-    'CUSTOMER'
+    'CUSTOMER',
   ),
-  AuthControllers.softDeleteUser
+  AuthControllers.softDeleteUser,
 );
 
 // permanent Delete User Route
 router.delete(
   '/permanent-delete/:userId',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AuthControllers.permanentDeleteUser
+  AuthControllers.permanentDeleteUser,
 );
 
 export const AuthRoutes = router;
