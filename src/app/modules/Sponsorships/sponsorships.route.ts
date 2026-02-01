@@ -31,14 +31,14 @@ router.patch(
 // get all sponsorships route
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
   SponsorshipControllers.getAllSponsorships,
 );
 
 // get single sponsorship route
 router.get(
   '/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
   SponsorshipControllers.getSingleSponsorship,
 );
 

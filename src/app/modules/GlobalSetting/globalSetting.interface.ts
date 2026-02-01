@@ -9,7 +9,10 @@ export type TGlobalSettings = {
 
   // Platform commission
   platformCommissionPercent: number;
+  platformCommissionVatRate: number;
+  fleetManagerCommissionPercent?: number;
   deliveryPartnerCommissionPercent?: number;
+  deliveryVatRate?: number;
   vendorVatPercent?: number;
 
   // Order rules

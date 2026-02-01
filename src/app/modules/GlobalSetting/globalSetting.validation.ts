@@ -40,6 +40,7 @@ const createGlobalSettingValidationSchema = z.object({
     // --------------------------------------------------
     platformCommissionPercent: z.number().min(0).max(100).optional(),
 
+    fleetManagerCommissionPercent: z.number().min(0).max(100).optional(),
     deliveryPartnerCommissionPercent: z.number().min(0).max(100).optional(),
 
     vendorVatPercent: z.number().min(0).max(100).optional(),
