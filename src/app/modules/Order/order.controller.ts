@@ -3,7 +3,6 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/user.constant';
-import { SageService } from '../Sage/SageService';
 
 // order after payment secure controller
 const createOrderAfterPayment = catchAsync(async (req, res) => {
@@ -126,16 +125,6 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
   });
 });
 
-const getInvoicePdfFromSage = catchAsync(async (req, res) => {
-  const result = await SageService.getInvoicePdfFromSage(req.params.orderId);
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Invoice PDF retrieved successfully',
-    data: result,
-  });
-});
-
 export const OrderControllers = {
   createOrderAfterPayment,
   getAllOrders,
@@ -145,5 +134,4 @@ export const OrderControllers = {
   partnerAcceptsDispatchedOrder,
   otpVerificationByVendor,
   updateOrderStatusByDeliveryPartner,
-  getInvoicePdfFromSage,
 };

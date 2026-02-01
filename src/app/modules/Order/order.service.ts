@@ -89,7 +89,6 @@ const createOrderAfterPayment = async (
       items: summary.items.map((i) => ({
         productId: i.productId,
         name: i.name,
-        variantName: i.variantName,
         addons: i.addons,
         quantity: i.quantity,
         price: i.price,
@@ -103,7 +102,7 @@ const createOrderAfterPayment = async (
       taxAmount: summary.taxAmount,
       discount: summary.discount,
       deliveryCharge: summary.deliveryCharge,
-      subTotal: summary.subTotal,
+      subTotal: summary.subtotal,
 
       couponId: summary.couponId,
       paymentMethod: 'CARD',
