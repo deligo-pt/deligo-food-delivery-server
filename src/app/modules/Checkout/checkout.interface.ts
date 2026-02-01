@@ -42,24 +42,31 @@ export type TCheckoutAddress = {
 
 export type TCheckoutSummary = {
   customerId: mongoose.Types.ObjectId;
-
+  vendorId: mongoose.Types.ObjectId;
   customerEmail?: string; // will check is it need?
   contactNumber?: string; // will check is it need?
-
-  vendorId: mongoose.Types.ObjectId;
 
   items: TOrderItemSnapshot[];
   totalItems: number;
 
   totalPrice: number;
-  discount: number;
-  deliveryCharge: number;
   taxAmount: number;
+
+  deliveryCharge: number;
+  deliveryVatRate: number;
+  deliveryVatAmount: number;
+
+  deliGoCommission: number; // €1.50 (Total Net Commission)
+  commissionVat: number; // €0.35 (Total VAT collected from vendor)
+
+  fleetFee: number; // €0.08 (4% of Net Delivery)
+  riderNetEarnings: number; // €2.38 (Payout to partner after fleet fee)
+
+  discount: number;
   subtotal: number;
 
   offerApplied?: TAppliedOfferSnapshot;
   couponId?: mongoose.Types.ObjectId;
-
   deliveryAddress: TAddress;
   estimatedDeliveryTime: string;
 

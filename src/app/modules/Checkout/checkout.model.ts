@@ -8,9 +8,9 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       required: true,
       ref: 'Customer',
     },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     customerEmail: { type: String, default: '' },
     contactNumber: { type: String, default: '' },
-    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
 
     items: [
       {
@@ -19,36 +19,61 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           required: true,
           ref: 'Product',
         },
-        name: { type: String, required: true },
-        image: { type: String },
-        variantName: { type: String },
-        addons: [
-          {
-            name: { type: String },
-            price: { type: Number },
-            quantity: { type: Number },
-          },
-        ],
-        quantity: { type: Number, required: true },
-        price: { type: Number, required: true },
-        taxRate: { type: Number, default: 0 },
-        taxAmount: { type: Number, default: 0 },
-        totalBeforeTax: { type: Number, required: true },
-        subtotal: { type: Number, required: true },
         vendorId: {
           type: Schema.Types.ObjectId,
           required: true,
           ref: 'Vendor',
         },
+        name: { type: String, required: true },
+        image: { type: String },
+        hasVariations: { type: Boolean, required: true },
+        variationSku: { type: String, default: null },
+        addons: [
+          {
+            optionId: { type: String },
+            name: { type: String },
+            price: { type: Number },
+            quantity: { type: Number },
+            taxRate: { type: Number },
+            taxAmount: { type: Number },
+          },
+        ],
+        quantity: { type: Number, required: true },
+        originalPrice: { type: Number, required: true },
+        discountAmount: { type: Number, default: 0 },
+        price: { type: Number, required: true },
+
+        productTotalBeforeTax: { type: Number, required: true },
+        productTaxAmount: { type: Number, required: true },
+        totalBeforeTax: { type: Number, required: true },
+
+        taxRate: { type: Number, required: true },
+        taxAmount: { type: Number, required: true },
+        subtotal: { type: Number, required: true },
+
+        commissionRate: { type: Number, required: true },
+        commissionAmount: { type: Number, required: true },
+        commissionVatRate: { type: Number, required: true },
+        commissionVatAmount: { type: Number, required: true },
+        vendorNetEarnings: { type: Number, required: true },
       },
     ],
 
     totalItems: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
     taxAmount: { type: Number, required: true },
-    deliveryCharge: { type: Number, required: true },
+
+    deliveryCharge: { type: Number, required: true }, // Net Delivery
+    deliveryVatRate: { type: Number, required: true, default: 23 },
+    deliveryVatAmount: { type: Number, required: true, default: 0 },
+
     discount: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
+
+    deliGoCommission: { type: Number, required: true, default: 0 }, // Net Commission
+    commissionVat: { type: Number, required: true, default: 0 }, // VAT on Commission
+    fleetFee: { type: Number, required: true, default: 0 },
+    riderNetEarnings: { type: Number, required: true, default: 0 },
 
     offerApplied: {
       offerId: {

@@ -9,7 +9,7 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
     deliveryChargePerKm: {
       type: Number,
       required: true,
-      default: 20, // BDT per KM
+      default: 0,
     },
 
     baseDeliveryCharge: {
@@ -42,14 +42,35 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
     // --------------------------------------------------
     platformCommissionPercent: {
       type: Number,
-      default: 10,
+      default: 15,
+      min: 0,
+      max: 100,
+    },
+
+    platformCommissionVatRate: {
+      type: Number,
+      default: 23,
+      min: 0,
+      max: 100,
+    },
+
+    fleetManagerCommissionPercent: {
+      type: Number,
+      default: 4,
       min: 0,
       max: 100,
     },
 
     deliveryPartnerCommissionPercent: {
       type: Number,
-      default: 80,
+      default: 96,
+      min: 0,
+      max: 100,
+    },
+
+    deliveryVatRate: {
+      type: Number,
+      default: 23,
       min: 0,
       max: 100,
     },
@@ -167,12 +188,12 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 GlobalSettingsSchema.index({}, { unique: true });
 
 export const GlobalSettings = model<TGlobalSettings>(
   'GlobalSettings',
-  GlobalSettingsSchema
+  GlobalSettingsSchema,
 );
