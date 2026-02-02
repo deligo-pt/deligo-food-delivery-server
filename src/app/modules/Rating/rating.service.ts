@@ -27,7 +27,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
   if (exists) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You have already submitted a rating for this category in this order.'
+      'You have already submitted a rating for this category in this order.',
     );
   }
 
@@ -45,7 +45,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
     if (!existsOrder.items || existsOrder.items.length === 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No products found in this order.'
+        'No products found in this order.',
       );
     }
 
@@ -63,7 +63,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
     const result = await Rating.insertMany(productRatings);
 
     const updatePromises = existsOrder.items.map((item) =>
-      calcAndUpdateProduct(item.productId.toString())
+      calcAndUpdateProduct(item.productId.toString()),
     );
     await Promise.all(updatePromises);
     await calcAndUpdateVendorAllProductStats(existsOrder.vendorId.toString());
@@ -74,7 +74,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
 
     if (payload.ratingType === 'DELIVERY_PARTNER') {
       targetedUser = await DeliveryPartner.findById(
-        existsOrder.deliveryPartnerId
+        existsOrder.deliveryPartnerId,
       );
     }
 
@@ -106,7 +106,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
 
 const getAllRatings = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const myDeliveryPartners = await DeliveryPartner.find({
