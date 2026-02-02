@@ -672,10 +672,9 @@ const viewCart = async (currentUser: AuthUser, cartCustomerId?: string) => {
   const populateOptions = getPopulateOptions(currentUser.role, {
     customer: 'name',
     itemVendor: 'name userId',
-    product: 'productId name',
   });
   populateOptions.forEach((option) => {
-    query.populate(option);
+    query = query.populate(option);
   });
 
   const cart = await query;

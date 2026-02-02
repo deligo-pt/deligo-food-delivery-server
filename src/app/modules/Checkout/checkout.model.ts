@@ -64,11 +64,19 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     taxAmount: { type: Number, required: true },
 
     deliveryCharge: { type: Number, required: true }, // Net Delivery
-    deliveryVatRate: { type: Number, required: true, default: 23 },
+    deliveryVatRate: { type: Number, required: true },
     deliveryVatAmount: { type: Number, required: true, default: 0 },
 
     discount: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
+
+    promoType: {
+      type: String,
+      enum: ['COUPON', 'OFFER', 'NONE'],
+      default: 'NONE',
+    },
+    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
+    offerId: { type: Schema.Types.ObjectId, default: null, ref: 'Offer' },
 
     deliGoCommission: { type: Number, required: true, default: 0 }, // Net Commission
     commissionVat: { type: Number, required: true, default: 0 }, // VAT on Commission
@@ -76,11 +84,11 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     riderNetEarnings: { type: Number, required: true, default: 0 },
 
     offerApplied: {
-      offerId: {
+      promoId: {
         type: Schema.Types.ObjectId,
-        ref: 'Offer',
       },
       title: { type: String },
+      promoType: { type: String, enum: ['COUPON', 'OFFER'] },
       offerType: { type: String },
       discountValue: { type: Number },
       maxDiscountAmount: { type: Number },
@@ -89,10 +97,9 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         buyQty: { type: Number },
         getQty: { type: Number },
         productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+        productName: { type: String },
       },
     },
-
-    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
 
     deliveryAddress: {
       label: { type: String },

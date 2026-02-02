@@ -12,7 +12,6 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { OfferServices } from '../Offer/offer.service';
 
 // Checkout Service
-
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const requiredFields = [
     { field: currentUser.name?.firstName, label: 'First Name' },
