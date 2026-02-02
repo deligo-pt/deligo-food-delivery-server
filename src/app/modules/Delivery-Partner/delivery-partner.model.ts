@@ -245,6 +245,8 @@ const deliveryPartnerSchema = new Schema<
       drivingLicenseBack: { type: String, default: '' },
       vehicleRegistration: { type: String, default: '' },
       criminalRecordCertificate: { type: String, default: '' },
+      activity: { type: String, default: '' },
+      insurancePolicy: { type: String, default: '' },
     },
 
     //-------------------------------------------------

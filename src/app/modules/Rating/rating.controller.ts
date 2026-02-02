@@ -8,7 +8,7 @@ import { AuthUser } from '../../constant/user.constant';
 const createRating = catchAsync(async (req, res) => {
   const result = await RatingServices.createRating(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -22,7 +22,7 @@ const createRating = catchAsync(async (req, res) => {
 const getAllRatings = catchAsync(async (req, res) => {
   const result = await RatingServices.getAllRatings(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -30,6 +30,19 @@ const getAllRatings = catchAsync(async (req, res) => {
     message: 'Ratings fetched successfully',
     meta: result.meta,
     data: result.data,
+  });
+});
+
+const getSingleRating = catchAsync(async (req, res) => {
+  const result = await RatingServices.getSingleRating(
+    req.params.ratingId,
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Rating fetched successfully',
+    data: result,
   });
 });
 
@@ -47,4 +60,5 @@ export const RatingControllers = {
   createRating,
   getAllRatings,
   getRatingSummary,
+  getSingleRating,
 };

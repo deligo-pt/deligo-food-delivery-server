@@ -60,7 +60,10 @@ export const getPopulateOptions = (
   }
 
   // ---------------- Delivery Partner ----------------
-  if (fields.deliveryPartner && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
+  if (
+    fields.deliveryPartner &&
+    (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'CUSTOMER')
+  ) {
     options.push({
       path: 'deliveryPartnerId',
       select: fields.deliveryPartner,

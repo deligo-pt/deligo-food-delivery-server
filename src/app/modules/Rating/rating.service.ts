@@ -18,95 +18,105 @@ import mongoose from 'mongoose';
 
 // create rating
 const createRating = async (payload: TRating, currentUser: AuthUser) => {
-  const exists = await Rating.findOne({
-    orderId: payload.orderId,
-    reviewerId: currentUser._id,
-    ratingType: payload.ratingType,
-  });
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const exists = await Rating.findOne({
+      orderId: payload.orderId,
+      reviewerId: currentUser._id,
+      ratingType: payload.ratingType,
+    }).session(session);
 
-  if (exists) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You have already submitted a rating for this category in this order.'
-    );
-  }
-
-  const reviewerModel =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
-  payload.reviewerId = currentUser._id;
-  payload.reviewerModel = reviewerModel as TRefModel;
-
-  const existsOrder = await Order.findById(payload.orderId);
-  if (!existsOrder) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
-  }
-
-  if (payload.ratingType === 'PRODUCT') {
-    if (!existsOrder.items || existsOrder.items.length === 0) {
+    if (exists) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No products found in this order.'
+        'You have already submitted a rating for this category in this order.',
       );
     }
 
-    let sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' = 'NEUTRAL';
-    if (payload.rating >= 4) sentiment = 'POSITIVE';
-    else if (payload.rating <= 2) sentiment = 'NEGATIVE';
-    const productRatings = existsOrder.items.map((item) => ({
-      ...payload,
-      sentiment,
-      targetId: item.productId,
-      targetModel: 'Product' as TRefModel,
-      productId: item.productId,
-    }));
+    const existsOrder = await Order.findById(payload.orderId).session(session);
+    if (!existsOrder) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+    }
 
-    const result = await Rating.insertMany(productRatings);
+    const reviewerModel =
+      ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+    payload.reviewerId = currentUser._id;
+    payload.reviewerModel = reviewerModel as TRefModel;
 
-    const updatePromises = existsOrder.items.map((item) =>
-      calcAndUpdateProduct(item.productId.toString())
-    );
-    await Promise.all(updatePromises);
-    await calcAndUpdateVendorAllProductStats(existsOrder.vendorId.toString());
+    let result;
 
+    if (payload.ratingType === 'PRODUCT') {
+      if (!existsOrder.items || existsOrder.items.length === 0) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'No products found in this order.',
+        );
+      }
+
+      const productRatings = existsOrder.items.map((item) => ({
+        ...payload,
+        targetId: item.productId,
+        targetModel: 'Product' as TRefModel,
+        productId: item.productId,
+      }));
+
+      result = await Rating.insertMany(productRatings, { session });
+
+      await Promise.all(
+        existsOrder.items.map((item) =>
+          calcAndUpdateProduct(item.productId.toString(), session),
+        ),
+      );
+      await calcAndUpdateVendorAllProductStats(
+        existsOrder.vendorId.toString(),
+        session,
+      );
+    } else {
+      let targetId: string | undefined;
+      let targetModel: TRefModel | undefined;
+
+      if (payload.ratingType === 'DELIVERY_PARTNER') {
+        if (!existsOrder.deliveryPartnerId) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            'No delivery partner assigned to this order.',
+          );
+        }
+        targetId = existsOrder.deliveryPartnerId.toString();
+        targetModel = 'DeliveryPartner';
+      } else if (payload.ratingType === 'VENDOR') {
+        targetId = existsOrder.vendorId.toString();
+        targetModel = 'Vendor';
+      }
+
+      if (!targetId || !targetModel) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Target for rating not found');
+      }
+
+      payload.targetId = new mongoose.Types.ObjectId(targetId);
+      payload.targetModel = targetModel;
+
+      const newRatings = await Rating.create([payload], { session });
+      result = newRatings[0];
+
+      if (payload.ratingType === 'DELIVERY_PARTNER') {
+        await calcAndUpdateDeliveryPartner(targetId, session);
+      }
+    }
+    await session.commitTransaction();
+    await session.endSession();
     return result;
-  } else {
-    let targetedUser;
-
-    if (payload.ratingType === 'DELIVERY_PARTNER') {
-      targetedUser = await DeliveryPartner.findById(
-        existsOrder.deliveryPartnerId
-      );
-    }
-
-    if (!targetedUser) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Targeted user not found');
-    }
-
-    const targetModel =
-      ROLE_COLLECTION_MAP[
-        targetedUser?.role as keyof typeof ROLE_COLLECTION_MAP
-      ];
-    payload.targetId = new mongoose.Types.ObjectId(targetedUser._id);
-    payload.targetModel = targetModel as TRefModel;
-
-    const rating = await Rating.create(payload);
-
-    const updateMap: Record<string, (targetId: string) => Promise<void>> = {
-      DELIVERY_PARTNER: calcAndUpdateDeliveryPartner,
-    };
-
-    const updateFunction = updateMap[payload.ratingType];
-    if (updateFunction) {
-      await updateFunction(payload.targetId.toString());
-    }
-
-    return rating;
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    throw err;
   }
 };
 
 const getAllRatings = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const myDeliveryPartners = await DeliveryPartner.find({
@@ -123,14 +133,16 @@ const getAllRatings = async (
     const productIds = myProducts.map((product) => product._id);
 
     query.targetId = { $in: [...productIds, currentUser._id] };
-  } else if (
-    currentUser.role !== 'ADMIN' &&
-    currentUser.role !== 'SUPER_ADMIN'
-  ) {
+  } else if (currentUser.role === 'CUSTOMER') {
+    query.reviewerId = currentUser._id.toString();
+  } else if (currentUser.role === 'DELIVERY_PARTNER') {
     query.targetId = currentUser._id.toString();
   }
 
-  const ratingQuery = new QueryBuilder(Rating.find(), query)
+  const ratingQuery = new QueryBuilder(
+    Rating.find().populate('productId', 'name image'),
+    query,
+  )
     .filter()
     .sort()
     .paginate()
@@ -150,6 +162,61 @@ const getAllRatings = async (
   const meta = await ratingQuery.countTotal();
 
   return { meta, data };
+};
+
+// get single rating
+const getSingleRating = async (ratingId: string, currentUser: AuthUser) => {
+  const rating = await Rating.findById(ratingId)
+    .populate('reviewerId', 'name image role userId')
+    .populate('targetId', 'name image role userId')
+    .populate('productId', 'name image');
+
+  if (!rating) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Rating not found');
+  }
+
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+
+  const isReviewer =
+    rating.reviewerId?._id.toString() === currentUser._id.toString();
+  const isTarget =
+    rating.targetId?._id.toString() === currentUser._id.toString();
+
+  let isProductOwner = false;
+  if (currentUser.role === 'VENDOR' && rating.ratingType === 'PRODUCT') {
+    const product = await Product.findOne({
+      _id: rating.productId,
+      vendorId: currentUser._id,
+    });
+    if (product) isProductOwner = true;
+  }
+
+  let isFleetManagerOfPartner = false;
+  if (
+    currentUser.role === 'FLEET_MANAGER' &&
+    rating.ratingType === 'DELIVERY_PARTNER'
+  ) {
+    const partner = await DeliveryPartner.findOne({
+      _id: rating.targetId,
+      'registeredBy.id': currentUser._id,
+    });
+    if (partner) isFleetManagerOfPartner = true;
+  }
+
+  if (
+    !isAdmin &&
+    !isReviewer &&
+    !isTarget &&
+    !isProductOwner &&
+    !isFleetManagerOfPartner
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You do not have permission to view this rating detail',
+    );
+  }
+
+  return rating;
 };
 
 const getRatingSummary = async (currentUser: AuthUser) => {
@@ -380,5 +447,6 @@ const getRatingSummary = async (currentUser: AuthUser) => {
 export const RatingServices = {
   createRating,
   getAllRatings,
+  getSingleRating,
   getRatingSummary,
 };
