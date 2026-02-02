@@ -110,8 +110,15 @@ const deliveryPartnerDocImageValidationSchema = z.object({
   }),
 });
 
+const deliveryPartnerStatusChangeValidationSchema = z.object({
+  body: z.object({
+    status: z.enum(['IDLE', 'OFFLINE']),
+  }),
+});
+
 // ---------------------------------------------
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
   deliveryPartnerDocImageValidationSchema,
+  deliveryPartnerStatusChangeValidationSchema,
 };

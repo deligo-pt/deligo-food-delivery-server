@@ -39,6 +39,16 @@ router.patch(
   DeliveryPartnerControllers.deliveryPartnerDocImageUpload,
 );
 
+// Change Delivery Partner Status Route
+router.patch(
+  '/status/change',
+  auth('DELIVERY_PARTNER'),
+  validateRequest(
+    DeliveryPartnerValidation.deliveryPartnerStatusChangeValidationSchema,
+  ),
+  DeliveryPartnerControllers.changeDeliveryPartnerStatus,
+);
+
 // Get All Delivery Partners Route
 router.get(
   '/',
