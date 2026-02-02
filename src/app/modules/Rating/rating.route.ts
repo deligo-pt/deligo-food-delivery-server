@@ -11,7 +11,7 @@ router.post(
   '/create-rating',
   auth('CUSTOMER', 'DELIVERY_PARTNER'),
   validateRequest(RatingValidation.createRatingValidationSchema),
-  RatingControllers.createRating
+  RatingControllers.createRating,
 );
 
 // get all ratings
@@ -23,9 +23,10 @@ router.get(
     'DELIVERY_PARTNER',
     'FLEET_MANAGER',
     'VENDOR',
-    'SUB_VENDOR'
+    'SUB_VENDOR',
+    'CUSTOMER',
   ),
-  RatingControllers.getAllRatings
+  RatingControllers.getAllRatings,
 );
 
 router.get(
@@ -36,9 +37,9 @@ router.get(
     'DELIVERY_PARTNER',
     'FLEET_MANAGER',
     'VENDOR',
-    'SUB_VENDOR'
+    'SUB_VENDOR',
   ),
-  RatingControllers.getRatingSummary
+  RatingControllers.getRatingSummary,
 );
 
 export const RatingRoutes = router;
