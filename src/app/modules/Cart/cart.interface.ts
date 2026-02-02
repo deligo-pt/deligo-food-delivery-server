@@ -10,10 +10,14 @@ export type TCart = {
   items: TCartItem[];
   totalItems: number;
   totalPrice: number;
-  discount?: number;
-  couponId?: mongoose.Types.ObjectId | null;
   taxAmount?: number;
+  discount?: number;
   subtotal: number;
+
+  promoType?: 'COUPON' | 'OFFER' | 'NONE';
+  couponId?: mongoose.Types.ObjectId | null;
+  offerId?: mongoose.Types.ObjectId | null;
+
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;

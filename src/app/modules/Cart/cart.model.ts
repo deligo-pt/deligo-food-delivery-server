@@ -58,11 +58,18 @@ const cartSchema = new Schema<TCart>(
 
     totalItems: { type: Number, default: 0 },
     totalPrice: { type: Number, default: 0 },
-    discount: { type: Number, default: 0 },
     taxAmount: { type: Number, default: 0 },
+
+    discount: { type: Number, default: 0 },
     subtotal: { type: Number, default: 0 },
 
+    promoType: {
+      type: String,
+      enum: ['COUPON', 'OFFER', 'NONE'],
+      default: 'NONE',
+    },
     couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
+    offerId: { type: Schema.Types.ObjectId, default: null, ref: 'Offer' },
 
     isDeleted: { type: Boolean, default: false },
   },
