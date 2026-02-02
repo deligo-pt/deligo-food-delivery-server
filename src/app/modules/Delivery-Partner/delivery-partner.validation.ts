@@ -106,6 +106,8 @@ const deliveryPartnerDocImageValidationSchema = z.object({
       'drivingLicenseBack',
       'vehicleRegistration',
       'criminalRecordCertificate',
+      'activity',
+      'insurancePolicy',
     ]),
   }),
 });
