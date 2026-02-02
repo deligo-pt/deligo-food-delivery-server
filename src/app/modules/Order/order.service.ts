@@ -1114,7 +1114,7 @@ const getAllOrders = async (
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer: 'name userId role',
     vendor: 'name userId role',
-    deliveryPartner: 'name userId role',
+    deliveryPartner: 'name userId role contactNumber',
     product: 'productId name',
   });
 
