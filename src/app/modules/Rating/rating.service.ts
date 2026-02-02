@@ -18,89 +18,99 @@ import mongoose from 'mongoose';
 
 // create rating
 const createRating = async (payload: TRating, currentUser: AuthUser) => {
-  const exists = await Rating.findOne({
-    orderId: payload.orderId,
-    reviewerId: currentUser._id,
-    ratingType: payload.ratingType,
-  });
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const exists = await Rating.findOne({
+      orderId: payload.orderId,
+      reviewerId: currentUser._id,
+      ratingType: payload.ratingType,
+    }).session(session);
 
-  if (exists) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You have already submitted a rating for this category in this order.',
-    );
-  }
-
-  const reviewerModel =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
-  payload.reviewerId = currentUser._id;
-  payload.reviewerModel = reviewerModel as TRefModel;
-
-  const existsOrder = await Order.findById(payload.orderId);
-  if (!existsOrder) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
-  }
-
-  if (payload.ratingType === 'PRODUCT') {
-    if (!existsOrder.items || existsOrder.items.length === 0) {
+    if (exists) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No products found in this order.',
+        'You have already submitted a rating for this category in this order.',
       );
     }
 
-    let sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' = 'NEUTRAL';
-    if (payload.rating >= 4) sentiment = 'POSITIVE';
-    else if (payload.rating <= 2) sentiment = 'NEGATIVE';
-    const productRatings = existsOrder.items.map((item) => ({
-      ...payload,
-      sentiment,
-      targetId: item.productId,
-      targetModel: 'Product' as TRefModel,
-      productId: item.productId,
-    }));
+    const existsOrder = await Order.findById(payload.orderId).session(session);
+    if (!existsOrder) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+    }
 
-    const result = await Rating.insertMany(productRatings);
+    const reviewerModel =
+      ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+    payload.reviewerId = currentUser._id;
+    payload.reviewerModel = reviewerModel as TRefModel;
 
-    const updatePromises = existsOrder.items.map((item) =>
-      calcAndUpdateProduct(item.productId.toString()),
-    );
-    await Promise.all(updatePromises);
-    await calcAndUpdateVendorAllProductStats(existsOrder.vendorId.toString());
+    let result;
 
+    if (payload.ratingType === 'PRODUCT') {
+      if (!existsOrder.items || existsOrder.items.length === 0) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'No products found in this order.',
+        );
+      }
+
+      const productRatings = existsOrder.items.map((item) => ({
+        ...payload,
+        targetId: item.productId,
+        targetModel: 'Product' as TRefModel,
+        productId: item.productId,
+      }));
+
+      result = await Rating.insertMany(productRatings, { session });
+
+      await Promise.all(
+        existsOrder.items.map((item) =>
+          calcAndUpdateProduct(item.productId.toString(), session),
+        ),
+      );
+      await calcAndUpdateVendorAllProductStats(
+        existsOrder.vendorId.toString(),
+        session,
+      );
+    } else {
+      let targetId: string | undefined;
+      let targetModel: TRefModel | undefined;
+
+      if (payload.ratingType === 'DELIVERY_PARTNER') {
+        if (!existsOrder.deliveryPartnerId) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            'No delivery partner assigned to this order.',
+          );
+        }
+        targetId = existsOrder.deliveryPartnerId.toString();
+        targetModel = 'DeliveryPartner';
+      } else if (payload.ratingType === 'VENDOR') {
+        targetId = existsOrder.vendorId.toString();
+        targetModel = 'Vendor';
+      }
+
+      if (!targetId || !targetModel) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Target for rating not found');
+      }
+
+      payload.targetId = new mongoose.Types.ObjectId(targetId);
+      payload.targetModel = targetModel;
+
+      const newRatings = await Rating.create([payload], { session });
+      result = newRatings[0];
+
+      if (payload.ratingType === 'DELIVERY_PARTNER') {
+        await calcAndUpdateDeliveryPartner(targetId, session);
+      }
+    }
+    await session.commitTransaction();
+    await session.endSession();
     return result;
-  } else {
-    let targetedUser;
-
-    if (payload.ratingType === 'DELIVERY_PARTNER') {
-      targetedUser = await DeliveryPartner.findById(
-        existsOrder.deliveryPartnerId,
-      );
-    }
-
-    if (!targetedUser) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Targeted user not found');
-    }
-
-    const targetModel =
-      ROLE_COLLECTION_MAP[
-        targetedUser?.role as keyof typeof ROLE_COLLECTION_MAP
-      ];
-    payload.targetId = new mongoose.Types.ObjectId(targetedUser._id);
-    payload.targetModel = targetModel as TRefModel;
-
-    const rating = await Rating.create(payload);
-
-    const updateMap: Record<string, (targetId: string) => Promise<void>> = {
-      DELIVERY_PARTNER: calcAndUpdateDeliveryPartner,
-    };
-
-    const updateFunction = updateMap[payload.ratingType];
-    if (updateFunction) {
-      await updateFunction(payload.targetId.toString());
-    }
-
-    return rating;
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    throw err;
   }
 };
 
@@ -123,14 +133,16 @@ const getAllRatings = async (
     const productIds = myProducts.map((product) => product._id);
 
     query.targetId = { $in: [...productIds, currentUser._id] };
-  } else if (
-    currentUser.role !== 'ADMIN' &&
-    currentUser.role !== 'SUPER_ADMIN'
-  ) {
+  } else if (currentUser.role === 'CUSTOMER') {
+    query.reviewerId = currentUser._id.toString();
+  } else if (currentUser.role === 'DELIVERY_PARTNER') {
     query.targetId = currentUser._id.toString();
   }
 
-  const ratingQuery = new QueryBuilder(Rating.find(), query)
+  const ratingQuery = new QueryBuilder(
+    Rating.find().populate('productId', 'name image'),
+    query,
+  )
     .filter()
     .sort()
     .paginate()
