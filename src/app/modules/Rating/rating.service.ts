@@ -164,6 +164,61 @@ const getAllRatings = async (
   return { meta, data };
 };
 
+// get single rating
+const getSingleRating = async (ratingId: string, currentUser: AuthUser) => {
+  const rating = await Rating.findById(ratingId)
+    .populate('reviewerId', 'name image role userId')
+    .populate('targetId', 'name image role userId')
+    .populate('productId', 'name image');
+
+  if (!rating) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Rating not found');
+  }
+
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+
+  const isReviewer =
+    rating.reviewerId?._id.toString() === currentUser._id.toString();
+  const isTarget =
+    rating.targetId?._id.toString() === currentUser._id.toString();
+
+  let isProductOwner = false;
+  if (currentUser.role === 'VENDOR' && rating.ratingType === 'PRODUCT') {
+    const product = await Product.findOne({
+      _id: rating.productId,
+      vendorId: currentUser._id,
+    });
+    if (product) isProductOwner = true;
+  }
+
+  let isFleetManagerOfPartner = false;
+  if (
+    currentUser.role === 'FLEET_MANAGER' &&
+    rating.ratingType === 'DELIVERY_PARTNER'
+  ) {
+    const partner = await DeliveryPartner.findOne({
+      _id: rating.targetId,
+      'registeredBy.id': currentUser._id,
+    });
+    if (partner) isFleetManagerOfPartner = true;
+  }
+
+  if (
+    !isAdmin &&
+    !isReviewer &&
+    !isTarget &&
+    !isProductOwner &&
+    !isFleetManagerOfPartner
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You do not have permission to view this rating detail',
+    );
+  }
+
+  return rating;
+};
+
 const getRatingSummary = async (currentUser: AuthUser) => {
   const myProducts = await Product.find({
     vendorId: currentUser._id,
@@ -392,5 +447,6 @@ const getRatingSummary = async (currentUser: AuthUser) => {
 export const RatingServices = {
   createRating,
   getAllRatings,
+  getSingleRating,
   getRatingSummary,
 };

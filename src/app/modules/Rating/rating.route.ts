@@ -29,6 +29,22 @@ router.get(
   RatingControllers.getAllRatings,
 );
 
+// get single rating
+router.get(
+  '/:ratingId',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'CUSTOMER',
+  ),
+  RatingControllers.getSingleRating,
+);
+
+// get rating summary
 router.get(
   '/get-rating-summary',
   auth(
