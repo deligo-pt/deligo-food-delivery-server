@@ -98,7 +98,6 @@ const updateDeliveryPartner = async (
 };
 
 // update delivery partner live location
-
 const updateDeliveryPartnerLiveLocation = async (
   payload: TLiveLocationPayload,
   currentUser: AuthUser,
@@ -171,6 +170,55 @@ const updateDeliveryPartnerLiveLocation = async (
     success: true,
     message: 'Live location updated successfully',
     data: updated.currentSessionLocation,
+  };
+};
+
+const changeDeliveryPartnerStatus = async (
+  currentUser: AuthUser,
+  payload: { status: 'IDLE' | 'OFFLINE' },
+) => {
+  if (currentUser.role !== 'DELIVERY_PARTNER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only delivery partners can change their status',
+    );
+  }
+
+  const partner = await DeliveryPartner.findOne({ userId: currentUser.userId });
+
+  if (!partner) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery partner not found');
+  }
+
+  const currentStatus = partner.operationalData?.currentStatus;
+
+  if (payload.status === 'OFFLINE' && currentStatus !== 'IDLE') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You can only go OFFLINE if your current status is IDLE',
+    );
+  }
+
+  if (payload.status === 'IDLE' && currentStatus !== 'OFFLINE') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You can only go IDLE if your current status is OFFLINE',
+    );
+  }
+
+  await DeliveryPartner.findOneAndUpdate(
+    { userId: currentUser.userId },
+    {
+      $set: {
+        'operationalData.currentStatus': payload.status,
+        'operationalData.isWorking': payload.status === 'IDLE' ? true : false,
+      },
+    },
+    { new: true, runValidators: true },
+  );
+
+  return {
+    message: `Status successfully changed from ${currentStatus} to ${payload.status}`,
   };
 };
 
@@ -309,6 +357,7 @@ const getSingleDeliveryPartnerFromDB = async (
 export const DeliveryPartnerServices = {
   updateDeliveryPartner,
   updateDeliveryPartnerLiveLocation,
+  changeDeliveryPartnerStatus,
   deliverPartnerDocImageUpload,
   getAllDeliveryPartnersFromDB,
   getSingleDeliveryPartnerFromDB,
