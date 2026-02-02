@@ -46,13 +46,7 @@ const ratingSchema = new Schema<TRating>(
     targetModel: {
       type: String,
       required: true,
-      enum: [
-        'Customer',
-        'Vendor',
-        'FleetManager',
-        'DeliveryPartner',
-        'Product',
-      ],
+      enum: ['Customer', 'Vendor', 'DeliveryPartner', 'Product'],
     },
 
     productId: { type: Schema.Types.ObjectId, ref: 'Product' },
@@ -75,7 +69,7 @@ const ratingSchema = new Schema<TRating>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 ratingSchema.pre('save', function (next) {
