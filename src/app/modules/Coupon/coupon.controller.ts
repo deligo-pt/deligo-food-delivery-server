@@ -46,7 +46,7 @@ const applyCoupon = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: result?.discount,
+    data: result?.data,
   });
 });
 

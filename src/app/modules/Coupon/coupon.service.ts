@@ -383,12 +383,15 @@ const applyCoupon = async (
 
   targetDoc.discount = discountAmount;
   targetDoc.couponId = new Types.ObjectId(couponId);
+  targetDoc.offerId = null;
+  targetDoc.promoType = 'COUPON';
 
   const finalSubtotal = parseFloat(
     (
       currentBaseAmount +
       (targetDoc.taxAmount || 0) +
-      (targetDoc.deliveryCharge || 0) -
+      (targetDoc.deliveryCharge || 0) +
+      (targetDoc.deliveryVatAmount || 0) -
       discountAmount
     ).toFixed(2),
   );
@@ -398,7 +401,11 @@ const applyCoupon = async (
   await targetDoc.save();
   return {
     message: 'Coupon applied successfully',
-    discount: `Discount: ${discountAmount}`,
+    data: {
+      discount: discountAmount,
+      subtotal: targetDoc.subtotal,
+      promoType: 'COUPON',
+    },
   };
 };
 
