@@ -26,8 +26,12 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   if (isVendor) {
     payload.vendorId = currentUser._id;
+    payload.isGlobal = false;
+    payload.adminId = null;
   } else {
-    payload.vendorId = payload.vendorId ?? null;
+    payload.adminId = currentUser._id;
+    payload.isGlobal = true;
+    payload.vendorId = null;
   }
 
   // --------------------------------------------
@@ -106,16 +110,16 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   // --------------------------------------------
   //  Date validation
   // --------------------------------------------
-  const start = new Date(payload.startDate);
-  const end = new Date(payload.endDate);
-  if (end <= start) {
+  const validFrom = new Date(payload.validFrom);
+  const expiresAt = new Date(payload.expiresAt);
+  if (expiresAt <= validFrom) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'End date must be after start date',
     );
   }
 
-  if (end <= new Date()) {
+  if (expiresAt <= new Date()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'End date cannot be in the past',
@@ -131,8 +135,8 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   // --------------------------------------------
   const offer = await Offer.create({
     ...payload,
-    startDate: start,
-    endDate: end,
+    validFrom,
+    expiresAt,
     usageCount: 0,
     isActive: payload.isActive ?? true,
     isDeleted: false,
@@ -601,36 +605,6 @@ const getSingleOffer = async (id: string, currentUser: AuthUser) => {
   return offer;
 };
 
-// validate promo code
-const validatePromoCode = async (
-  promoCode: string,
-  vendorId: string,
-  subtotal: number,
-  currentUser: AuthUser,
-) => {
-  const offer = await getApplicableOffer(
-    { vendorId, subtotal, offerCode: promoCode },
-    currentUser,
-  );
-
-  const calculation = applyOffer({
-    offer,
-    items: [],
-    totalPriceBeforeTax: subtotal,
-    taxAmount: 0,
-    deliveryCharge: 0,
-  });
-
-  return {
-    message: offer ? 'Promo code applied successfully' : 'Invalid promo code',
-    data: {
-      isValid: !!offer,
-      discountAmount: calculation.discount,
-      offerDetails: calculation.appliedOffer,
-    },
-  };
-};
-
 // soft delete offer service
 const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
@@ -750,7 +724,6 @@ export const OfferServices = {
   applyOffer,
   getAllOffers,
   getSingleOffer,
-  validatePromoCode,
   softDeleteOffer,
   permanentDeleteOffer,
 };

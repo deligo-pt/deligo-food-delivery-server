@@ -51,14 +51,6 @@ router.get(
   OfferControllers.getSingleOffer,
 );
 
-// validate Promo Code
-router.post(
-  '/validate-promo-code',
-  auth('CUSTOMER'),
-  validateRequest(OfferValidation.validatePromoCodeValidationSchema),
-  OfferControllers.validatePromoCode,
-);
-
 // Soft Delete Offer
 router.delete(
   '/soft-delete/:offerId',

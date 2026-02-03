@@ -101,23 +101,6 @@ const getSingleOffer = catchAsync(async (req, res) => {
   });
 });
 
-// validate promo code controller
-const validatePromoCode = catchAsync(async (req, res) => {
-  const { promoCode, vendorId, subtotal } = req.body;
-  const result = await OfferServices.validatePromoCode(
-    promoCode,
-    vendorId,
-    subtotal,
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
-  });
-});
-
 // soft delete offer controller
 const softDeleteOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
@@ -155,7 +138,6 @@ export const OfferControllers = {
   getApplicableOffer,
   getAllOffers,
   getSingleOffer,
-  validatePromoCode,
   softDeleteOffer,
   permanentDeleteOffer,
 };
