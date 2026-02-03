@@ -121,6 +121,7 @@ const createOrderAfterPayment = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
+      'default',
       'ORDER',
     );
 
@@ -339,6 +340,7 @@ const updateOrderStatusByVendor = async (
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
+        'default',
         'ORDER',
       );
     }
@@ -351,6 +353,7 @@ const updateOrderStatusByVendor = async (
         'Order is being prepared',
         `Your order is now being prepared by ${currentUser.businessDetails?.businessName}.`,
         { orderId: order.orderId.toString(), status: ORDER_STATUS.PREPARING },
+        'default',
         'ORDER',
       );
     }
@@ -367,6 +370,7 @@ const updateOrderStatusByVendor = async (
           orderId: order.orderId,
           status: ORDER_STATUS.READY_FOR_PICKUP,
         },
+        'default',
         'ORDER',
       );
     }
@@ -405,6 +409,7 @@ const updateOrderStatusByVendor = async (
           notificationPayload.title,
           notificationPayload.body,
           notificationPayload.data,
+          'order_notification',
           'ORDER',
         );
       }
@@ -413,6 +418,7 @@ const updateOrderStatusByVendor = async (
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
+        'default',
         'ORDER',
       );
     }
@@ -439,6 +445,7 @@ const updateOrderStatusByVendor = async (
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
+        'default',
         'ORDER',
       );
     }
@@ -607,6 +614,7 @@ const broadcastOrderToPartners = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
+      'order_notification',
       'ORDER',
     );
   }
@@ -865,6 +873,7 @@ const otpVerificationByVendor = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
+      'default',
       'ORDER',
     );
   }
@@ -874,6 +883,7 @@ const otpVerificationByVendor = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
+      'order_notification',
       'ORDER',
     );
   }
@@ -1014,6 +1024,7 @@ const updateOrderStatusByDeliveryPartner = async (
     notificationPayload.title,
     notificationPayload.body,
     notificationPayload.data,
+    'default',
     'ORDER',
   );
 

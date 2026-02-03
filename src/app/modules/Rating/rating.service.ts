@@ -152,6 +152,7 @@ const getAllRatings = async (
   const populateOptions = getPopulateOptions(currentUser.role, {
     reviewerId: 'name userId role',
     targetId: 'name userId role',
+    orderId: 'orderId',
   });
 
   populateOptions.forEach((option) => {
@@ -169,7 +170,8 @@ const getSingleRating = async (ratingId: string, currentUser: AuthUser) => {
   const rating = await Rating.findById(ratingId)
     .populate('reviewerId', 'name image role userId')
     .populate('targetId', 'name image role userId')
-    .populate('productId', 'name image');
+    .populate('productId', 'name image')
+    .populate('orderId', 'orderId');
 
   if (!rating) {
     throw new AppError(httpStatus.NOT_FOUND, 'Rating not found');

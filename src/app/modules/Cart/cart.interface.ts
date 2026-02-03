@@ -11,7 +11,7 @@ export type TCart = {
   totalItems: number;
   totalPrice: number;
   taxAmount?: number;
-  discount?: number;
+  totalProductDiscount?: number;
   subtotal: number;
 
   isDeleted: boolean;

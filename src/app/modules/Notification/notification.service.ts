@@ -38,7 +38,12 @@ const logNotification = async ({
 //  Helper: Send Push Notification
 const sendPushSafely = async (
   tokens: string[],
-  payload: { title: string; body: string; data?: Record<string, string> },
+  payload: {
+    title: string;
+    body: string;
+    data?: Record<string, string>;
+    channelId?: 'order_notification' | 'default';
+  },
 ) => {
   if (!tokens.length) return;
 
@@ -57,6 +62,7 @@ const sendToUser = (
   title: string,
   message: string,
   data?: Record<string, string>,
+  channelId?: 'order_notification' | 'default',
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER',
 ) => {
   //  Detach from request lifecycle
@@ -75,6 +81,7 @@ const sendToUser = (
         title,
         body: message,
         data,
+        channelId: channelId || 'default',
       });
 
       // Save log (DB)
@@ -99,6 +106,7 @@ const sendToRole = (
   title: string,
   message: string,
   data?: Record<string, string>,
+  channelId?: 'order_notification' | 'default',
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER',
 ) => {
   setImmediate(async () => {
@@ -119,6 +127,7 @@ const sendToRole = (
           title,
           body: message,
           data,
+          channelId: channelId || 'default',
         });
 
         await logNotification({
