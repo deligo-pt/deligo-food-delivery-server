@@ -114,12 +114,8 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
     },
 
     // --------------------------------------------------
-    // Coupons & Offers
+    //  Offers
     // --------------------------------------------------
-    isCouponEnabled: {
-      type: Boolean,
-      default: true,
-    },
 
     isOfferEnabled: {
       type: Boolean,

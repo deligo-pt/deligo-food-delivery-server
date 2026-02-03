@@ -106,7 +106,15 @@ const deliveryPartnerDocImageValidationSchema = z.object({
       'drivingLicenseBack',
       'vehicleRegistration',
       'criminalRecordCertificate',
+      'activity',
+      'insurancePolicy',
     ]),
+  }),
+});
+
+const deliveryPartnerStatusChangeValidationSchema = z.object({
+  body: z.object({
+    status: z.enum(['IDLE', 'OFFLINE']),
   }),
 });
 
@@ -114,4 +122,5 @@ const deliveryPartnerDocImageValidationSchema = z.object({
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
   deliveryPartnerDocImageValidationSchema,
+  deliveryPartnerStatusChangeValidationSchema,
 };

@@ -602,7 +602,6 @@ const clearCart = async (currentUser: AuthUser) => {
         taxAmount: 0,
         subtotal: 0,
         discount: 0,
-        couponId: null,
       },
     },
     { new: true },
@@ -672,10 +671,9 @@ const viewCart = async (currentUser: AuthUser, cartCustomerId?: string) => {
   const populateOptions = getPopulateOptions(currentUser.role, {
     customer: 'name',
     itemVendor: 'name userId',
-    product: 'productId name',
   });
   populateOptions.forEach((option) => {
-    query.populate(option);
+    query = query.populate(option);
   });
 
   const cart = await query;

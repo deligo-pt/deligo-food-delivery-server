@@ -10,7 +10,6 @@ import { PaymentRoutes } from '../modules/Payment/payment.route';
 import { FleetManagerRoutes } from '../modules/Fleet-Manager/fleet-manager.route';
 import { AdminRoutes } from '../modules/Admin/admin.route';
 import { DeliveryPartnerRoutes } from '../modules/Delivery-Partner/delivery-partner.route';
-import { CouponRoutes } from '../modules/Coupon/coupon.route';
 import { NotificationRoutes } from '../modules/Notification/notification.route';
 import { CategoryRoutes } from '../modules/Category/category.route';
 import { OfferRoutes } from '../modules/Offer/offer.route';
@@ -59,10 +58,6 @@ const moduleRoutes = [
   {
     path: '/carts',
     route: CartRoutes,
-  },
-  {
-    path: '/coupons',
-    route: CouponRoutes,
   },
   {
     path: '/checkout',

@@ -6,22 +6,41 @@ import { addressSchema } from '../../constant/address.constant';
 const orderItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
+    vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor' },
     name: { type: String, required: true },
     image: { type: String },
-    variantName: { type: String },
+    hasVariations: { type: Boolean, required: true },
+    variationSku: { type: String, default: null },
     addons: [
       {
+        optionId: { type: String },
         name: { type: String },
         price: { type: Number },
         quantity: { type: Number },
+        taxRate: { type: Number },
+        taxAmount: { type: Number },
       },
     ],
     quantity: { type: Number, required: true },
+
+    originalPrice: { type: Number },
+    discountAmount: { type: Number, default: 0 },
     price: { type: Number, required: true },
+
+    productTotalBeforeTax: { type: Number },
+    productTaxAmount: { type: Number },
+    totalBeforeTax: { type: Number, required: true },
+
     taxRate: { type: Number, default: 0 },
     taxAmount: { type: Number, default: 0 },
-    totalBeforeTax: { type: Number, required: true },
     subtotal: { type: Number, required: true },
+
+    commissionRate: { type: Number, required: true },
+    commissionAmount: { type: Number, required: true },
+    commissionVatRate: { type: Number, required: true },
+    commissionVatAmount: { type: Number, required: true },
+
+    vendorNetEarnings: { type: Number, required: true },
   },
   { _id: false },
 );
@@ -48,10 +67,17 @@ const orderSchema = new Schema<TOrder>(
     totalPrice: { type: Number, required: true },
     taxAmount: { type: Number, default: 0 },
     deliveryCharge: { type: Number, default: 0 },
+    deliveryVatAmount: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
-    subTotal: { type: Number, required: true },
+    subtotal: { type: Number, required: true },
 
-    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
+    deliGoCommission: { type: Number, required: true },
+    commissionVat: { type: Number, required: true },
+    fleetFee: { type: Number, required: true },
+    riderNetEarnings: { type: Number, required: true },
+
+    promoType: { type: String, enum: ['OFFER', 'NONE'], default: 'NONE' },
+    offerApplied: { type: Object, default: null },
 
     paymentMethod: { type: String, enum: ['CARD', 'MOBILE'], required: true },
     paymentStatus: {
@@ -101,18 +127,8 @@ orderSchema.index({
 // Customer History (Optimized for the "My Orders" tab)
 orderSchema.index({ customerId: 1, createdAt: -1 });
 
-// Coupon analytics main index
-orderSchema.index({
-  couponId: 1,
-  vendorId: 1,
-  paymentStatus: 1,
-  isDeleted: 1,
-  createdAt: -1,
-});
-
 // For top items aggregation
 orderSchema.index({
-  couponId: 1,
   vendorId: 1,
   'items.productId': 1,
 });
