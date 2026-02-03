@@ -180,7 +180,7 @@ const updateOffer = async (
   // --------------------------------------------------
   // Prevent update if offer already expired
   // --------------------------------------------------
-  if (offer.endDate < new Date()) {
+  if (offer.expiresAt < new Date()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Expired offer cannot be updated',
@@ -232,12 +232,14 @@ const updateOffer = async (
     );
   }
 
-  const startDate = payload.startDate
-    ? new Date(payload.startDate)
-    : offer.startDate;
-  const endDate = payload.endDate ? new Date(payload.endDate) : offer.endDate;
+  const validFrom = payload.validFrom
+    ? new Date(payload.validFrom)
+    : offer.validFrom;
+  const expiresAt = payload.expiresAt
+    ? new Date(payload.expiresAt)
+    : offer.expiresAt;
 
-  if (endDate <= startDate) {
+  if (expiresAt <= validFrom) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'End date must be after start date',
@@ -336,7 +338,7 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
     );
   }
 
-  if (!offer.isActive && offer.endDate < new Date()) {
+  if (!offer.isActive && offer.expiresAt < new Date()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Cannot activate an expired offer. Please update the end date first.',
@@ -432,17 +434,17 @@ const getApplicableOffer = async (
     );
   }
 
-  if (offer.limitPerUser) {
+  if (offer.userUsageLimit) {
     const userUsageCount = await Order.countDocuments({
       userId: currentUser.userId,
       offerId: offer._id,
       status: { $ne: 'CANCELED' },
     });
 
-    if (userUsageCount >= offer.limitPerUser) {
+    if (userUsageCount >= offer.userUsageLimit) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `You have already used this offer ${offer.limitPerUser} time(s)`,
+        `You have already used this offer ${offer.userUsageLimit} time(s)`,
       );
     }
   }
