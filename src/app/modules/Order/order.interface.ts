@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { OrderStatus } from './order.constant';
 import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
+import { TAppliedOfferSnapshot } from '../Checkout/checkout.interface';
 
 export type TOrder = {
   _id?: mongoose.Types.ObjectId;
@@ -21,7 +22,16 @@ export type TOrder = {
   discount?: number;
   taxAmount?: number;
   deliveryCharge?: number;
-  subTotal: number;
+  deliveryVatAmount: number;
+  subtotal: number;
+
+  deliGoCommission: number;
+  commissionVat: number;
+  fleetFee: number;
+  riderNetEarnings: number;
+
+  promoType: 'OFFER' | 'NONE';
+  offerApplied?: TAppliedOfferSnapshot;
 
   paymentMethod: 'CARD' | 'MOBILE';
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
