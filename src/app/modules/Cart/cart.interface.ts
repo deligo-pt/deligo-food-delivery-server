@@ -14,10 +14,6 @@ export type TCart = {
   discount?: number;
   subtotal: number;
 
-  promoType?: 'COUPON' | 'OFFER' | 'NONE';
-  couponId?: mongoose.Types.ObjectId | null;
-  offerId?: mongoose.Types.ObjectId | null;
-
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;

@@ -9,7 +9,6 @@ import { AuthUser } from '../../constant/user.constant';
 import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
-import { OfferServices } from '../Offer/offer.service';
 
 // Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
@@ -71,13 +70,19 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     activeAddress.latitude,
   );
   const globalSettingsData = await GlobalSettingsService.getGlobalSettings();
-  const deliveryChargePerMeter = globalSettingsData?.deliveryChargePerMeter;
   const deliveryChargeNet =
-    parseFloat((distance.meters * deliveryChargePerMeter).toFixed(2)) || 0;
-  const DELIVERY_VAT_RATE = globalSettingsData?.deliveryVatRate;
+    parseFloat(
+      (
+        distance.meters * (globalSettingsData?.deliveryChargePerMeter || 0)
+      ).toFixed(2),
+    ) || 0;
   const deliveryVatAmount =
-    parseFloat((deliveryChargeNet * (DELIVERY_VAT_RATE! / 100)).toFixed(2)) ||
-    0;
+    parseFloat(
+      (
+        deliveryChargeNet *
+        ((globalSettingsData?.deliveryVatRate || 0) / 100)
+      ).toFixed(2),
+    ) || 0;
 
   let totalFoodVatAccumulator = 0;
   let totalNetFoodPriceAccumulator = 0;
@@ -197,25 +202,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     parseFloat(totalNetFoodPriceAccumulator.toFixed(2)) || 0;
   const totalTaxAmount = parseFloat(totalFoodVatAccumulator.toFixed(2)) || 0;
 
-  const offer = await OfferServices.getApplicableOffer(
-    {
-      vendorId: vendorId.toString(),
-      subtotal: totalPriceGross,
-      offerCode: payload.offerCode,
-    },
-    currentUser,
-  );
-
-  const offerResult = OfferServices.applyOffer({
-    offer,
-    items: orderItems,
-    totalPriceBeforeTax: totalPriceGross,
-    taxAmount: totalTaxAmount,
-    deliveryCharge: deliveryChargeNet,
-  });
-
-  const offerDiscount = offerResult?.discount || 0;
-
   const fleetManagerCommissionPercent = parseFloat(
     (globalSettingsData.fleetManagerCommissionPercent! / 100).toFixed(2),
   );
@@ -236,7 +222,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     totalPrice: totalPriceGross,
     taxAmount: totalTaxAmount,
     deliveryCharge: deliveryChargeNet,
-    deliveryVatRate: DELIVERY_VAT_RATE,
+    deliveryVatRate: globalSettingsData?.deliveryVatRate,
     deliveryVatAmount,
     deliGoCommission: parseFloat(totalDeliGoCommission.toFixed(2)) || 0,
     commissionVat: parseFloat(totalCommissionVat.toFixed(2)) || 0,
@@ -249,19 +235,17 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
           deliveryChargeNet * 0.04
         ).toFixed(2),
       ) || 0,
-    discount: parseFloat(offerDiscount.toFixed(2)) || 0,
+    discount: 0,
     subtotal:
       parseFloat(
         (
           totalPriceGross +
           totalTaxAmount +
           deliveryChargeNet +
-          deliveryVatAmount -
-          offerDiscount
+          deliveryVatAmount
         ).toFixed(2),
       ) || 0,
-    offerApplied: offerResult?.appliedOffer || null,
-    couponId: cart?.couponId || (offer?._id ? offer._id : null),
+    offerApplied: null,
     deliveryAddress: activeAddress,
     estimatedDeliveryTime: payload.estimatedDeliveryTime || '20-30 minutes',
     isConvertedToOrder: false,

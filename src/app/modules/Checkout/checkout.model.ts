@@ -72,10 +72,9 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
 
     promoType: {
       type: String,
-      enum: ['COUPON', 'OFFER', 'NONE'],
+      enum: ['OFFER', 'NONE'],
       default: 'NONE',
     },
-    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
     offerId: { type: Schema.Types.ObjectId, default: null, ref: 'Offer' },
 
     deliGoCommission: { type: Number, required: true, default: 0 }, // Net Commission
@@ -88,7 +87,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         type: Schema.Types.ObjectId,
       },
       title: { type: String },
-      promoType: { type: String, enum: ['COUPON', 'OFFER'] },
+      promoType: { type: String, enum: ['OFFER', 'NONE'] },
       offerType: { type: String },
       discountValue: { type: Number },
       maxDiscountAmount: { type: Number },

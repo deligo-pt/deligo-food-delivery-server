@@ -59,9 +59,8 @@ const createGlobalSettingValidationSchema = z.object({
     refundProcessingDays: z.number().positive().optional(),
 
     // --------------------------------------------------
-    // Coupons & Offers
+    //  Offers
     // --------------------------------------------------
-    isCouponEnabled: z.boolean().optional(),
     isOfferEnabled: z.boolean().optional(),
 
     maxDiscountPercent: z.number().min(0).max(100).optional(),
@@ -140,10 +139,8 @@ const updateGlobalSettingValidationSchema = z.object({
     refundProcessingDays: z.number().positive().optional(),
 
     // --------------------------------------------------
-    // Coupons & Offers
+    //  Offers
     // --------------------------------------------------
-    isCouponEnabled: z.boolean().optional(),
-
     isOfferEnabled: z.boolean().optional(),
 
     maxDiscountPercent: z.number().min(0).max(100).optional(),

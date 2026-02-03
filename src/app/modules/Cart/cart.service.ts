@@ -602,7 +602,6 @@ const clearCart = async (currentUser: AuthUser) => {
         taxAmount: 0,
         subtotal: 0,
         discount: 0,
-        couponId: null,
       },
     },
     { new: true },

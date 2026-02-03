@@ -5,7 +5,7 @@ import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
 export type TAppliedOfferSnapshot = {
   promoId: mongoose.Types.ObjectId;
   title: string;
-  promoType: 'COUPON' | 'OFFER';
+  promoType: 'OFFER' | 'NONE';
   discountType: OfferType;
   discountValue?: number;
   maxDiscountAmount?: number;
@@ -67,8 +67,7 @@ export type TCheckoutSummary = {
   discount: number;
   subtotal: number;
 
-  promoType: 'COUPON' | 'OFFER' | 'NONE';
-  couponId?: mongoose.Types.ObjectId | null;
+  promoType: 'OFFER' | 'NONE';
   offerId?: mongoose.Types.ObjectId | null;
 
   offerApplied?: TAppliedOfferSnapshot;

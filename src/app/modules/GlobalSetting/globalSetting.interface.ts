@@ -24,8 +24,7 @@ export type TGlobalSettings = {
   cancelTimeLimitMinutes?: number;
   refundProcessingDays?: number;
 
-  // Offers & coupons
-  isCouponEnabled: boolean;
+  // Offers
   isOfferEnabled: boolean;
   maxDiscountPercent?: number;
 
