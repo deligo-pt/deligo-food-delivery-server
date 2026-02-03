@@ -13,16 +13,19 @@ export type TProduct = {
   approvedBy?: mongoose.Types.ObjectId;
   remarks?: string;
 
-  category: string;
+  category: mongoose.Types.ObjectId;
   subCategory?: string;
   brand?: string;
 
   variations?: {
-    name: string; // e.g., "Size"
+    name: string;
     options: {
-      label: string; // e.g., "Large"
-      price: number; // e.g., 500
-      sku?: string;
+      label: string;
+      price: number;
+      sku: string;
+      stockQuantity: number;
+      totalAddedQuantity: number;
+      isOutOfStock: boolean;
     }[];
   }[];
 
@@ -30,16 +33,18 @@ export type TProduct = {
 
   pricing: {
     price: number;
-    discount?: number;
-    taxRate?: number;
-    finalPrice?: number;
+    discount: number;
+    taxId: mongoose.Types.ObjectId;
+    taxRate: number;
     currency: string;
   };
 
   stock: {
     quantity: number;
+    totalAddedQuantity: number;
     unit: string;
     availabilityStatus: 'In Stock' | 'Out of Stock' | 'Limited';
+    hasVariations: boolean;
   };
 
   images: string[];

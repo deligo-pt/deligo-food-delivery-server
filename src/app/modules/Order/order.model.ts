@@ -51,8 +51,6 @@ const orderSchema = new Schema<TOrder>(
     discount: { type: Number, default: 0 },
     subTotal: { type: Number, required: true },
 
-    couponId: { type: Schema.Types.ObjectId, default: null, ref: 'Coupon' },
-
     paymentMethod: { type: String, enum: ['CARD', 'MOBILE'], required: true },
     paymentStatus: {
       type: String,
@@ -101,18 +99,8 @@ orderSchema.index({
 // Customer History (Optimized for the "My Orders" tab)
 orderSchema.index({ customerId: 1, createdAt: -1 });
 
-// Coupon analytics main index
-orderSchema.index({
-  couponId: 1,
-  vendorId: 1,
-  paymentStatus: 1,
-  isDeleted: 1,
-  createdAt: -1,
-});
-
 // For top items aggregation
 orderSchema.index({
-  couponId: 1,
   vendorId: 1,
   'items.productId': 1,
 });

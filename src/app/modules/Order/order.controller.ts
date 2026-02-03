@@ -18,6 +18,37 @@ const createOrderAfterPayment = catchAsync(async (req, res) => {
   });
 });
 
+// get all orders
+const getAllOrders = catchAsync(async (req, res) => {
+  const result = await OrderServices.getAllOrders(
+    req.query,
+    req.user as AuthUser,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Orders retrieved successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
+// get single order controller
+const getSingleOrder = catchAsync(async (req, res) => {
+  const result = await OrderServices.getSingleOrder(
+    req.params.orderId,
+    req.user as AuthUser,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Order retrieved successfully',
+    data: result,
+  });
+});
+
 // update order status by vendor controller (accept/reject/preparing/cancel)
 const updateOrderStatusByVendor = catchAsync(async (req, res) => {
   const result = await OrderServices.updateOrderStatusByVendor(
@@ -53,7 +84,6 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.partnerAcceptsDispatchedOrder(
     req.user as AuthUser,
     req.params.orderId,
-    req.body.action,
   );
 
   sendResponse(res, {
@@ -91,37 +121,6 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Order status updated successfully',
-    data: result,
-  });
-});
-
-// get all orders
-const getAllOrders = catchAsync(async (req, res) => {
-  const result = await OrderServices.getAllOrders(
-    req.query,
-    req.user as AuthUser,
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Orders retrieved successfully',
-    meta: result?.meta,
-    data: result?.data,
-  });
-});
-
-// get single order controller
-const getSingleOrder = catchAsync(async (req, res) => {
-  const result = await OrderServices.getSingleOrder(
-    req.params.orderId,
-    req.user as AuthUser,
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Order retrieved successfully',
     data: result,
   });
 });

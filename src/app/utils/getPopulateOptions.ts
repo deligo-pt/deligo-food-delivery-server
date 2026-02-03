@@ -34,7 +34,7 @@ export const getPopulateOptions = (
   const options: PopulateOptions[] = [];
 
   // ---------------- Customer ----------------
-  if (fields.customer) {
+  if (fields.customer && role !== 'CUSTOMER') {
     options.push({
       path: 'customerId',
       select: fields.customer,

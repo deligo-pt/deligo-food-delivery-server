@@ -19,22 +19,36 @@ export type TOrderItemSnapshot = {
   vendorId: mongoose.Types.ObjectId;
   name: string;
   image?: string;
-  variantName?: string;
+  hasVariations: boolean;
+  variationSku?: string | null;
   addons?: {
+    optionId: string;
     name: string;
     price: number;
     quantity: number;
+    taxRate: number;
+    taxAmount: number;
   }[];
   quantity: number;
 
   originalPrice: number;
   discountAmount: number;
-
   price: number;
+
+  productTotalBeforeTax?: number;
+  productTaxAmount?: number;
   totalBeforeTax?: number;
-  taxRate?: number;
-  taxAmount?: number;
+
+  taxRate: number;
+  taxAmount: number;
   subtotal: number;
+
+  commissionRate: number;
+  commissionAmount: number;
+  commissionVatRate: number;
+  commissionVatAmount: number;
+
+  vendorNetEarnings: number;
 };
 
 export type TAppliedOfferSnapshot = {
