@@ -23,7 +23,6 @@ import { NotificationService } from '../Notification/notification.service';
 import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
-import { Coupon } from '../Coupon/coupon.model';
 import { getIO } from '../../lib/Socket';
 
 // Create Order
@@ -77,7 +76,7 @@ const createOrderAfterPayment = async (
             },
           },
         },
-        $set: { couponId: null, discount: 0, totalItems: 0, totalPrice: 0 },
+        $set: { discount: 0, totalItems: 0, totalPrice: 0 },
       },
       { session },
     );
@@ -89,6 +88,7 @@ const createOrderAfterPayment = async (
       items: summary.items.map((i) => ({
         productId: i.productId,
         name: i.name,
+        // variantName: i.variantName,
         addons: i.addons,
         quantity: i.quantity,
         price: i.price,
@@ -102,9 +102,8 @@ const createOrderAfterPayment = async (
       taxAmount: summary.taxAmount,
       discount: summary.discount,
       deliveryCharge: summary.deliveryCharge,
-      subTotal: summary.subtotal,
+      subtotal: summary.subtotal,
 
-      couponId: summary.couponId,
       paymentMethod: 'CARD',
       paymentStatus: 'COMPLETED',
       isPaid: true,
@@ -342,15 +341,6 @@ const updateOrderStatusByVendor = async (
         throw new AppError(
           httpStatus.BAD_REQUEST,
           'Stock check failed. One or more products are out of stock or inventory was insufficient.',
-        );
-      }
-
-      // used coupon count add
-      if (order.couponId) {
-        await Coupon.updateOne(
-          { _id: order.couponId },
-          { $inc: { usedCount: +1 } },
-          { session },
         );
       }
 
@@ -1114,7 +1104,7 @@ const getAllOrders = async (
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer: 'name userId role',
     vendor: 'name userId role',
-    deliveryPartner: 'name userId role',
+    deliveryPartner: 'name userId role contactNumber',
     product: 'productId name',
   });
 
@@ -1176,7 +1166,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer: 'name userId role',
     vendor: 'name userId role',
-    deliveryPartner: 'name userId role',
+    deliveryPartner: 'name userId role contactNumber',
     product: 'productId name',
   });
 

@@ -3,9 +3,10 @@ import { OfferType } from '../Offer/offer.constant';
 import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
 
 export type TAppliedOfferSnapshot = {
-  offerId: mongoose.Types.ObjectId;
+  promoId: mongoose.Types.ObjectId;
   title: string;
-  offerType: OfferType;
+  promoType: 'OFFER' | 'NONE';
+  discountType: OfferType;
   discountValue?: number;
   maxDiscountAmount?: number;
   code?: string;
@@ -14,6 +15,7 @@ export type TAppliedOfferSnapshot = {
     buyQty: number;
     getQty: number;
     productId: mongoose.Types.ObjectId;
+    productName?: string;
   };
 };
 
@@ -65,8 +67,10 @@ export type TCheckoutSummary = {
   discount: number;
   subtotal: number;
 
+  promoType: 'OFFER' | 'NONE';
+  offerId?: mongoose.Types.ObjectId | null;
+
   offerApplied?: TAppliedOfferSnapshot;
-  couponId?: mongoose.Types.ObjectId;
   deliveryAddress: TAddress;
   estimatedDeliveryTime: string;
 

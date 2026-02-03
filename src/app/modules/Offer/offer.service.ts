@@ -386,7 +386,7 @@ const getApplicableOffer = async (
     if (!offer) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Invalid or expired offer code1',
+        'Invalid or expired offer code',
       );
     }
   }
@@ -430,7 +430,7 @@ const getApplicableOffer = async (
 
   if (offer.limitPerUser) {
     const userUsageCount = await Order.countDocuments({
-      userId: currentUser._id,
+      userId: currentUser.userId,
       offerId: offer._id,
       status: { $ne: 'CANCELED' },
     });
@@ -601,6 +601,36 @@ const getSingleOffer = async (id: string, currentUser: AuthUser) => {
   return offer;
 };
 
+// validate promo code
+const validatePromoCode = async (
+  promoCode: string,
+  vendorId: string,
+  subtotal: number,
+  currentUser: AuthUser,
+) => {
+  const offer = await getApplicableOffer(
+    { vendorId, subtotal, offerCode: promoCode },
+    currentUser,
+  );
+
+  const calculation = applyOffer({
+    offer,
+    items: [],
+    totalPriceBeforeTax: subtotal,
+    taxAmount: 0,
+    deliveryCharge: 0,
+  });
+
+  return {
+    message: offer ? 'Promo code applied successfully' : 'Invalid promo code',
+    data: {
+      isValid: !!offer,
+      discountAmount: calculation.discount,
+      offerDetails: calculation.appliedOffer,
+    },
+  };
+};
+
 // soft delete offer service
 const softDeleteOffer = async (id: string, currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
@@ -720,6 +750,7 @@ export const OfferServices = {
   applyOffer,
   getAllOffers,
   getSingleOffer,
+  validatePromoCode,
   softDeleteOffer,
   permanentDeleteOffer,
 };

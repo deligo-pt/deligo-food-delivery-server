@@ -106,8 +106,34 @@ const getApplicableOfferValidation = z.object({
   }),
 });
 
+const validatePromoCodeValidationSchema = z.object({
+  body: z.object({
+    promoCode: z
+      .string({
+        required_error: 'Promo code is required',
+      })
+      .min(1, 'Promo code cannot be empty')
+      .trim()
+      .toUpperCase(),
+
+    vendorId: z
+      .string({
+        required_error: 'Vendor ID is required',
+      })
+      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Vendor ID format'),
+
+    subtotal: z
+      .number({
+        required_error: 'Subtotal is required',
+        invalid_type_error: 'Subtotal must be a number',
+      })
+      .min(0, 'Subtotal cannot be negative'),
+  }),
+});
+
 export const OfferValidation = {
   createOfferValidation,
   updateOfferValidation,
   getApplicableOfferValidation,
+  validatePromoCodeValidationSchema,
 };
