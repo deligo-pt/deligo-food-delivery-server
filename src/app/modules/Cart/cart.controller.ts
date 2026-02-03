@@ -22,7 +22,7 @@ const activateItem = catchAsync(async (req, res) => {
   const result = await CartServices.activateItem(
     req.user as AuthUser,
     productId,
-    req.body.variantName
+    req.body.variationSku,
   );
   sendResponse(res, {
     success: true,
@@ -36,12 +36,26 @@ const activateItem = catchAsync(async (req, res) => {
 const updateCartItemQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateCartItemQuantity(
     req.user as AuthUser,
-    req.body
+    req.body,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Product quantity updated successfully',
+    data: result,
+  });
+});
+
+// update add on quantity Controller
+const updateAddonQuantity = catchAsync(async (req, res) => {
+  const result = await CartServices.updateAddonQuantity(
+    req.user as AuthUser,
+    req.body,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product addon quantity updated successfully',
     data: result,
   });
 });
@@ -52,39 +66,13 @@ const deleteCartItem = catchAsync(async (req, res) => {
 
   const result = await CartServices.deleteCartItem(
     req.user as AuthUser,
-    itemsToDelete
+    itemsToDelete,
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Cart updated: Item(s) removed successfully',
-    data: result,
-  });
-});
-
-// update add on quantity Controller
-const updateAddonQuantity = catchAsync(async (req, res) => {
-  const result = await CartServices.updateAddonQuantity(
-    req.user as AuthUser,
-    req.body
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Product addon quantity updated successfully',
-    data: result,
-  });
-});
-
-// view cart Controller
-const viewCart = catchAsync(async (req, res) => {
-  const result = await CartServices.viewCart(req.user as AuthUser);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Cart retrieved successfully',
     data: result,
   });
 });
@@ -100,12 +88,40 @@ const clearCart = catchAsync(async (req, res) => {
   });
 });
 
+// get all cart Controller
+const getAllCart = catchAsync(async (req, res) => {
+  const result = await CartServices.getAllCart(req.user as AuthUser, req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Cart retrieved successfully',
+    data: result,
+  });
+});
+
+// view cart Controller
+const viewCart = catchAsync(async (req, res) => {
+  const { cartCustomerId } = req.body;
+  const result = await CartServices.viewCart(
+    req.user as AuthUser,
+    cartCustomerId,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Cart retrieved successfully',
+    data: result,
+  });
+});
+
 export const CartControllers = {
   addToCart,
   activateItem,
   updateCartItemQuantity,
-  deleteCartItem,
   updateAddonQuantity,
-  viewCart,
+  deleteCartItem,
   clearCart,
+  getAllCart,
+  viewCart,
 };

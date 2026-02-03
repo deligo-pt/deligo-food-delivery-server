@@ -7,12 +7,12 @@ import { GlobalSettings } from './globalSetting.model';
 // create global settings service
 const createGlobalSettings = async (
   payload: Partial<TGlobalSettings>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -23,7 +23,7 @@ const createGlobalSettings = async (
   if (existingSettings) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'Global settings already exist. Please update instead.'
+      'Global settings already exist. Please update instead.',
     );
   }
 
@@ -37,7 +37,7 @@ const createGlobalSettings = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Platform commission must be between 0 and 100'
+      'Platform commission must be between 0 and 100',
     );
   }
 
@@ -47,7 +47,7 @@ const createGlobalSettings = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Max discount percent must be between 0 and 100'
+      'Max discount percent must be between 0 and 100',
     );
   }
 
@@ -58,7 +58,7 @@ const createGlobalSettings = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Delivery partner commission must be between 0 and 100'
+      'Delivery partner commission must be between 0 and 100',
     );
   }
 
@@ -78,19 +78,19 @@ const createGlobalSettings = async (
 // update global settings service
 const updateGlobalSettings = async (
   payload: Partial<TGlobalSettings>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only admin can update global settings'
+      'Only admin can update global settings',
     );
   }
 
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -102,7 +102,7 @@ const updateGlobalSettings = async (
   if (!existingSettings) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Global settings not found. Please create first.'
+      'Global settings not found. Please create first.',
     );
   }
 
@@ -116,7 +116,7 @@ const updateGlobalSettings = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Platform commission must be between 0 and 100'
+      'Platform commission must be between 0 and 100',
     );
   }
 
@@ -126,7 +126,7 @@ const updateGlobalSettings = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Max discount percent must be between 0 and 100'
+      'Max discount percent must be between 0 and 100',
     );
   }
 
@@ -136,7 +136,7 @@ const updateGlobalSettings = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Free delivery amount cannot be negative'
+      'Free delivery amount cannot be negative',
     );
   }
 
@@ -172,21 +172,21 @@ const getGlobalSettingsForAdmin = async (currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
   if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only admin can access global settings'
+      'Only admin can access global settings',
     );
   }
 
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`
+      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 
@@ -202,19 +202,27 @@ const getGlobalSettingsForAdmin = async (currentUser: AuthUser) => {
   return settings;
 };
 
-// get per meter rate
-const getPerMeterRate = async () => {
-  const result = await GlobalSettings.findOne({}).select('deliveryChargePerKm');
+// get for checkout
+const getGlobalSettings = async () => {
+  const result = await GlobalSettings.findOne({}).select(
+    'platformCommissionPercent platformCommissionVatRate deliveryVatRate deliveryChargePerKm fleetManagerCommissionPercent',
+  );
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Global settings not found');
   }
   const perMeter = result?.deliveryChargePerKm / 1000;
-  return perMeter;
+  return {
+    platformCommissionPercent: result?.platformCommissionPercent,
+    platformCommissionVatRate: result?.platformCommissionVatRate,
+    deliveryVatRate: result?.deliveryVatRate,
+    deliveryChargePerMeter: perMeter,
+    fleetManagerCommissionPercent: result?.fleetManagerCommissionPercent,
+  };
 };
 
 export const GlobalSettingsService = {
   createGlobalSettings,
   updateGlobalSettings,
   getGlobalSettingsForAdmin,
-  getPerMeterRate,
+  getGlobalSettings,
 };

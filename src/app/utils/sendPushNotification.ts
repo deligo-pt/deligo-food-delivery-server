@@ -6,11 +6,12 @@ export type TPushNotificationPayload = {
   body: string;
   data?: Record<string, string>;
   sound?: string;
+  channelId?: 'order_notification' | 'default';
 };
 
 export const sendPushNotification = async (
   token: string,
-  payload: TPushNotificationPayload
+  payload: TPushNotificationPayload,
 ) => {
   try {
     const message = {
@@ -24,7 +25,7 @@ export const sendPushNotification = async (
         priority: 'high' as const,
         notification: {
           sound: payload.sound || 'default',
-          channelId: 'default_channel',
+          channelId: payload.channelId || 'default',
           priority: 'high' as const,
         },
       },

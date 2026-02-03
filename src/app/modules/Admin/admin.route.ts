@@ -3,7 +3,6 @@ import auth from '../../middlewares/auth';
 import { Router } from 'express';
 import { AdminControllers } from './admin.controller';
 import { AdminValidation } from './admin.validation';
-import { GlobalSettingControllers } from '../GlobalSetting/globalSetting.controller';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
 
@@ -14,7 +13,7 @@ router.patch(
   '/:adminId',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AdminValidation.updateAdminDataValidationSchema),
-  AdminControllers.updateAdmin
+  AdminControllers.updateAdmin,
 );
 
 // admin doc image upload route
@@ -24,7 +23,7 @@ router.patch(
   multerUpload.single('file'),
   parseBody,
   validateRequest(AdminValidation.adminDocImageValidationSchema),
-  AdminControllers.adminDocImageUpload
+  AdminControllers.adminDocImageUpload,
 );
 
 // get all admin route
@@ -34,14 +33,7 @@ router.get('/', auth('ADMIN', 'SUPER_ADMIN'), AdminControllers.getAllAdmins);
 router.get(
   '/:adminId',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AdminControllers.getSingleAdmin
-);
-
-// get per meter rate
-router.get(
-  '/perMeterRate',
-  auth('SUPER_ADMIN'),
-  GlobalSettingControllers.getPerMeterRate
+  AdminControllers.getSingleAdmin,
 );
 
 export const AdminRoutes = router;

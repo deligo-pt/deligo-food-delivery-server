@@ -8,7 +8,7 @@ import { AuthUser } from '../../constant/user.constant';
 const createGlobalSettings = catchAsync(async (req, res) => {
   const result = await GlobalSettingsService.createGlobalSettings(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -22,7 +22,7 @@ const createGlobalSettings = catchAsync(async (req, res) => {
 const updateGlobalSettings = catchAsync(async (req, res) => {
   const result = await GlobalSettingsService.updateGlobalSettings(
     req.body,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -35,7 +35,7 @@ const updateGlobalSettings = catchAsync(async (req, res) => {
 // get global settings for admin controller
 const getGlobalSettingsForAdmin = catchAsync(async (req, res) => {
   const result = await GlobalSettingsService.getGlobalSettingsForAdmin(
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -45,20 +45,8 @@ const getGlobalSettingsForAdmin = catchAsync(async (req, res) => {
   });
 });
 
-// get per meter rate controller
-const getPerMeterRate = catchAsync(async (req, res) => {
-  const result = await GlobalSettingsService.getPerMeterRate();
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Per meter rate fetched successfully',
-    data: result,
-  });
-});
-
 export const GlobalSettingControllers = {
   createGlobalSettings,
   updateGlobalSettings,
   getGlobalSettingsForAdmin,
-  getPerMeterRate,
 };

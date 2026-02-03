@@ -1,10 +1,9 @@
-import { findUserByEmailOrId } from './findUserByEmailOrId';
+import { findUserById } from './findUserByEmailOrId';
 
 export const getUserFcmToken = async (
-  userId: string
+  userId: string,
 ): Promise<string[] | null> => {
-  const result = await findUserByEmailOrId({ userId, isDeleted: false });
-  const user = result?.user;
+  const { user } = await findUserById({ userId });
 
   if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
     console.warn(`No fcm tokens found for userId: ${userId}`);

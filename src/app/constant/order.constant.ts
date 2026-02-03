@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { OfferType } from '../modules/Offer/offer.constant';
 
 export type TAddress = {
   label?: 'Home' | 'Work' | 'Other';
@@ -19,29 +18,34 @@ export type TOrderItemSnapshot = {
   vendorId: mongoose.Types.ObjectId;
   name: string;
   image?: string;
-  variantName?: string;
+  hasVariations: boolean;
+  variationSku?: string | null;
   addons?: {
+    optionId: string;
     name: string;
     price: number;
     quantity: number;
+    taxRate: number;
+    taxAmount: number;
   }[];
   quantity: number;
 
   originalPrice: number;
   discountAmount: number;
-
   price: number;
-  totalBeforeTax?: number;
-  taxRate?: number;
-  taxAmount?: number;
-  subtotal: number;
-};
 
-export type TAppliedOfferSnapshot = {
-  offerId: mongoose.Types.ObjectId;
-  title: string;
-  offerType: OfferType;
-  discountValue?: number;
-  maxDiscountAmount?: number;
-  code?: string;
+  productTotalBeforeTax?: number;
+  productTaxAmount?: number;
+  totalBeforeTax?: number;
+
+  taxRate: number;
+  taxAmount: number;
+  subtotal: number;
+
+  commissionRate: number;
+  commissionAmount: number;
+  commissionVatRate: number;
+  commissionVatAmount: number;
+
+  vendorNetEarnings: number;
 };
