@@ -9,7 +9,10 @@ export type TGlobalSettings = {
 
   // Platform commission
   platformCommissionPercent: number;
+  platformCommissionVatRate: number;
+  fleetManagerCommissionPercent?: number;
   deliveryPartnerCommissionPercent?: number;
+  deliveryVatRate?: number;
   vendorVatPercent?: number;
 
   // Order rules
@@ -21,8 +24,7 @@ export type TGlobalSettings = {
   cancelTimeLimitMinutes?: number;
   refundProcessingDays?: number;
 
-  // Offers & coupons
-  isCouponEnabled: boolean;
+  // Offers
   isOfferEnabled: boolean;
   maxDiscountPercent?: number;
 

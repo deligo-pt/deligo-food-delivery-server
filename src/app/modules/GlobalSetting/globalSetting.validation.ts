@@ -40,6 +40,7 @@ const createGlobalSettingValidationSchema = z.object({
     // --------------------------------------------------
     platformCommissionPercent: z.number().min(0).max(100).optional(),
 
+    fleetManagerCommissionPercent: z.number().min(0).max(100).optional(),
     deliveryPartnerCommissionPercent: z.number().min(0).max(100).optional(),
 
     vendorVatPercent: z.number().min(0).max(100).optional(),
@@ -58,9 +59,8 @@ const createGlobalSettingValidationSchema = z.object({
     refundProcessingDays: z.number().positive().optional(),
 
     // --------------------------------------------------
-    // Coupons & Offers
+    //  Offers
     // --------------------------------------------------
-    isCouponEnabled: z.boolean().optional(),
     isOfferEnabled: z.boolean().optional(),
 
     maxDiscountPercent: z.number().min(0).max(100).optional(),
@@ -139,10 +139,8 @@ const updateGlobalSettingValidationSchema = z.object({
     refundProcessingDays: z.number().positive().optional(),
 
     // --------------------------------------------------
-    // Coupons & Offers
+    //  Offers
     // --------------------------------------------------
-    isCouponEnabled: z.boolean().optional(),
-
     isOfferEnabled: z.boolean().optional(),
 
     maxDiscountPercent: z.number().min(0).max(100).optional(),

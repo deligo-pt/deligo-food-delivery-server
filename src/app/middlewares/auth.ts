@@ -6,7 +6,7 @@ import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
 import { TUserRole, USER_STATUS } from '../constant/user.constant';
-import { findUserByEmailOrId } from '../utils/findUserByEmailOrId';
+import { findUserById } from '../utils/findUserByEmailOrId';
 
 const auth = (...requiredRoles: TUserRole[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -35,7 +35,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
 
     const { role, iat, userId } = decoded;
 
-    const result = await findUserByEmailOrId({ userId, isDeleted: false });
+    const result = await findUserById({ userId, isDeleted: false });
 
     const foundModel = result?.model;
 

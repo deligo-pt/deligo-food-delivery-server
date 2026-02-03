@@ -5,6 +5,10 @@ const variationOptionSchema = z.object({
   label: z.string({ required_error: 'Variation label is required' }),
   price: z.number().min(0, 'Variation price must be non-negative'),
   sku: z.string().optional(),
+  stockQuantity: z
+    .number({ required_error: 'Variation stock quantity is required' })
+    .min(0),
+  isOutOfStock: z.boolean().default(false),
 });
 
 // Variation Group Schema (e.g., Size, Color)
@@ -28,11 +32,10 @@ const createProductValidationSchema = z.object({
     addonGroups: z.array(z.string()).optional(),
 
     pricing: z.object({
-      price: z.number().min(0, 'Price must be positive'),
+      price: z.number().optional(),
       discount: z.number().min(0).max(100).default(0),
-      taxRate: z.number().min(0).max(100).default(0),
-      finalPrice: z.number().optional(),
-      currency: z.string().default('BDT'),
+      taxId: z.string({ required_error: 'Tax ID is required' }),
+      currency: z.string().default('EUR'),
     }),
 
     stock: z.object({
@@ -53,7 +56,7 @@ const createProductValidationSchema = z.object({
           z.boolean(),
           z.array(z.string()),
           z.null(),
-        ])
+        ]),
       )
       .optional(),
 
@@ -77,39 +80,64 @@ const updateProductValidationSchema = z.object({
     subCategory: z.string().optional(),
     brand: z.string().optional(),
 
-    // New Fields Added for Update
-    variations: z.array(variationSchema).optional(),
+    variations: z
+      .array(
+        z.object({
+          name: z.string(),
+          options: z.array(
+            z.object({
+              label: z.string(),
+              price: z.number().min(0),
+              sku: z.string().optional(),
+              stockQuantity: z.number().min(0).optional(),
+            }),
+          ),
+        }),
+      )
+      .optional(),
+
     addonGroups: z.array(z.string()).optional(),
 
     pricing: z
       .object({
-        price: z.number().min(0).optional(),
         discount: z.number().min(0).max(100).optional(),
-        taxRate: z.number().min(0).max(100).optional(),
-        finalPrice: z.number().optional(),
+        taxId: z.string().optional(),
         currency: z.string().optional(),
       })
       .optional(),
 
     stock: z
       .object({
-        quantity: z.number().min(0).optional(),
         unit: z.string().optional(),
-        availabilityStatus: z
-          .enum(['In Stock', 'Out of Stock', 'Limited'])
-          .optional(),
       })
       .optional(),
 
     images: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
+    attributes: z.record(z.any()).optional(),
     meta: z
       .object({
         isFeatured: z.boolean().optional(),
+        isAvailableForPreOrder: z.boolean().optional(),
         status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
       })
       .optional(),
   }),
+});
+
+const updateStockAndPriceValidationSchema = z.object({
+  body: z
+    .object({
+      addedQuantity: z.number().optional(),
+      reduceQuantity: z.number().min(1).optional(),
+      newPrice: z.number().min(0, 'Price cannot be negative').optional(),
+      variationSku: z.string().optional(),
+    })
+    .refine((data) => !(data.addedQuantity && data.reduceQuantity), {
+      message:
+        'You cannot provide both addedQuantity and reduceQuantity at the same time',
+      path: ['addedQuantity'],
+    }),
 });
 
 // approveProductValidationSchema
@@ -123,5 +151,6 @@ const approveProductValidationSchema = z.object({
 export const ProductValidation = {
   createProductValidationSchema,
   updateProductValidationSchema,
+  updateStockAndPriceValidationSchema,
   approveProductValidationSchema,
 };

@@ -23,7 +23,6 @@ import { NotificationService } from '../Notification/notification.service';
 import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
-import { Coupon } from '../Coupon/coupon.model';
 import { getIO } from '../../lib/Socket';
 
 // Create Order
@@ -37,19 +36,23 @@ const createOrderAfterPayment = async (
   if (!summary)
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
 
-  const existingVendor = await Vendor.findOne({
-    _id: summary.vendorId.toString(),
-    isDeleted: false,
-  });
+  if (summary.customerId.toString() !== currentUser._id.toString()) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to view',
+    );
+  }
+  if (summary.isConvertedToOrder) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Checkout summary already converted to order',
+    );
+  }
+
+  const existingVendor = await Vendor.findById(summary.vendorId);
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
-
-  if (summary.customerId.toString() !== currentUser._id.toString())
-    throw new AppError(httpStatus.FORBIDDEN, 'Not authorized');
-
-  if (summary.isConvertedToOrder)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Already converted');
 
   // --- Verify Payment ---
   let paymentIntent;
@@ -77,41 +80,21 @@ const createOrderAfterPayment = async (
             },
           },
         },
-        $set: { couponId: null, discount: 0, totalItems: 0, totalPrice: 0 },
+        $set: { discount: 0, totalItems: 0, totalPrice: 0 },
       },
       { session },
     );
 
     const orderData = {
+      ...summary.toObject(),
+      _id: undefined,
       orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      customerId: summary.customerId,
-      vendorId: summary.vendorId,
-      items: summary.items.map((i) => ({
-        productId: i.productId,
-        name: i.name,
-        variantName: i.variantName,
-        addons: i.addons,
-        quantity: i.quantity,
-        price: i.price,
-        taxRate: i.taxRate,
-        taxAmount: i.taxAmount,
-        totalBeforeTax: i.totalBeforeTax,
-        subtotal: i.subtotal,
-      })),
-      totalItems: summary.totalItems,
-      totalPrice: summary.totalPrice,
-      taxAmount: summary.taxAmount,
-      discount: summary.discount,
-      deliveryCharge: summary.deliveryCharge,
-      subTotal: summary.subTotal,
-
-      couponId: summary.couponId,
       paymentMethod: 'CARD',
       paymentStatus: 'COMPLETED',
       isPaid: true,
-      deliveryAddress: summary.deliveryAddress,
-      estimatedDeliveryTime: summary.estimatedDeliveryTime,
       transactionId: paymentIntentId,
+      orderStatus: 'PENDING',
+      isDeleted: false,
     };
 
     const [order] = await Order.create([orderData], { session });
@@ -138,6 +121,7 @@ const createOrderAfterPayment = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
+      'default',
       'ORDER',
     );
 
@@ -346,15 +330,6 @@ const updateOrderStatusByVendor = async (
         );
       }
 
-      // used coupon count add
-      if (order.couponId) {
-        await Coupon.updateOne(
-          { _id: order.couponId },
-          { $inc: { usedCount: +1 } },
-          { session },
-        );
-      }
-
       const notificationPayload = {
         title: 'Order Accepted',
         body: `Your order has been accepted by ${currentUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,
@@ -365,6 +340,7 @@ const updateOrderStatusByVendor = async (
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
+        'default',
         'ORDER',
       );
     }
@@ -377,6 +353,7 @@ const updateOrderStatusByVendor = async (
         'Order is being prepared',
         `Your order is now being prepared by ${currentUser.businessDetails?.businessName}.`,
         { orderId: order.orderId.toString(), status: ORDER_STATUS.PREPARING },
+        'default',
         'ORDER',
       );
     }
@@ -393,6 +370,7 @@ const updateOrderStatusByVendor = async (
           orderId: order.orderId,
           status: ORDER_STATUS.READY_FOR_PICKUP,
         },
+        'default',
         'ORDER',
       );
     }
@@ -431,6 +409,7 @@ const updateOrderStatusByVendor = async (
           notificationPayload.title,
           notificationPayload.body,
           notificationPayload.data,
+          'order_notification',
           'ORDER',
         );
       }
@@ -439,6 +418,7 @@ const updateOrderStatusByVendor = async (
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
+        'default',
         'ORDER',
       );
     }
@@ -465,6 +445,7 @@ const updateOrderStatusByVendor = async (
         notificationPayload.title,
         notificationPayload.body,
         notificationPayload.data,
+        'default',
         'ORDER',
       );
     }
@@ -633,6 +614,7 @@ const broadcastOrderToPartners = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
+      'order_notification',
       'ORDER',
     );
   }
@@ -891,6 +873,7 @@ const otpVerificationByVendor = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
+      'default',
       'ORDER',
     );
   }
@@ -900,6 +883,7 @@ const otpVerificationByVendor = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
+      'order_notification',
       'ORDER',
     );
   }
@@ -1040,6 +1024,7 @@ const updateOrderStatusByDeliveryPartner = async (
     notificationPayload.title,
     notificationPayload.body,
     notificationPayload.data,
+    'default',
     'ORDER',
   );
 

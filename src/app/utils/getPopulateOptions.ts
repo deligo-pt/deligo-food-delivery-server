@@ -25,6 +25,7 @@ type PopulateInput = {
   resolvedBy?: string;
   reviewerId?: string;
   targetId?: string;
+  orderId?: string;
 };
 
 export const getPopulateOptions = (
@@ -34,7 +35,7 @@ export const getPopulateOptions = (
   const options: PopulateOptions[] = [];
 
   // ---------------- Customer ----------------
-  if (fields.customer) {
+  if (fields.customer && role !== 'CUSTOMER') {
     options.push({
       path: 'customerId',
       select: fields.customer,
@@ -60,10 +61,7 @@ export const getPopulateOptions = (
   }
 
   // ---------------- Delivery Partner ----------------
-  if (
-    fields.deliveryPartner &&
-    (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'CUSTOMER')
-  ) {
+  if (fields.deliveryPartner) {
     options.push({
       path: 'deliveryPartnerId',
       select: fields.deliveryPartner,
@@ -169,6 +167,13 @@ export const getPopulateOptions = (
     options.push({
       path: 'targetId',
       select: fields.targetId,
+    });
+  }
+
+  if (fields.orderId) {
+    options.push({
+      path: 'orderId',
+      select: fields.orderId,
     });
   }
 

@@ -17,7 +17,7 @@ const productCreate = catchAsync(async (req, res) => {
   const result = await ProductServices.createProduct(
     req.body,
     req.user as AuthUser,
-    fileUrls
+    fileUrls,
   );
 
   sendResponse(res, {
@@ -43,7 +43,7 @@ const updateProduct = catchAsync(async (req, res) => {
     productId,
     req.body,
     req.user as AuthUser,
-    fileUrls
+    fileUrls,
   );
 
   sendResponse(res, {
@@ -54,13 +54,33 @@ const updateProduct = catchAsync(async (req, res) => {
   });
 });
 
+// update inventory and pricing controller
+const updateInventoryAndPricing = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const { addedQuantity, newPrice, variationSku, reduceQuantity } = req.body;
+  const result = await ProductServices.updateInventoryAndPricing(
+    req.user as AuthUser,
+    productId,
+    addedQuantity,
+    reduceQuantity,
+    newPrice,
+    variationSku,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Inventory and pricing updated successfully',
+    data: result,
+  });
+});
+
 // Approved product controller
 const approvedProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.approvedProduct(
     productId,
     req.user as AuthUser,
-    req.body
+    req.body,
   );
   sendResponse(res, {
     success: true,
@@ -78,7 +98,7 @@ const deleteProductImages = catchAsync(async (req, res) => {
   const result = await ProductServices.deleteProductImages(
     productId,
     images,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -93,7 +113,7 @@ const deleteProductImages = catchAsync(async (req, res) => {
 const getAllProducts = catchAsync(async (req, res) => {
   const result = await ProductServices.getAllProducts(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -110,7 +130,7 @@ const getSingleProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.getSingleProduct(
     productId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -125,7 +145,7 @@ const softDeleteProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.softDeleteProduct(
     productId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -140,7 +160,7 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.permanentDeleteProduct(
     productId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -153,6 +173,7 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
 export const ProductControllers = {
   productCreate,
   updateProduct,
+  updateInventoryAndPricing,
   approvedProduct,
   deleteProductImages,
   getAllProducts,

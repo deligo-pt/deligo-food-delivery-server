@@ -2,11 +2,11 @@
 import httpStatus from 'http-status';
 import { AuthUser, TUserRole } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
-import { findUserByEmailOrId } from '../../utils/findUserByEmailOrId';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
 import { Notification } from './notification.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { findUserById } from '../../utils/findUserByEmailOrId';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -38,7 +38,12 @@ const logNotification = async ({
 //  Helper: Send Push Notification
 const sendPushSafely = async (
   tokens: string[],
-  payload: { title: string; body: string; data?: Record<string, string> }
+  payload: {
+    title: string;
+    body: string;
+    data?: Record<string, string>;
+    channelId?: 'order_notification' | 'default';
+  },
 ) => {
   if (!tokens.length) return;
 
@@ -46,8 +51,8 @@ const sendPushSafely = async (
     tokens.map((token) =>
       sendPushNotification(token, payload).catch((err) => {
         console.error('Push send failed:', err);
-      })
-    )
+      }),
+    ),
   );
 };
 
@@ -57,14 +62,14 @@ const sendToUser = (
   title: string,
   message: string,
   data?: Record<string, string>,
-  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER'
+  channelId?: 'order_notification' | 'default',
+  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER',
 ) => {
   //  Detach from request lifecycle
   setImmediate(async () => {
     try {
-      const { user } = await findUserByEmailOrId({
+      const { user } = await findUserById({
         userId,
-        isDeleted: false,
       });
 
       if (!user) return;
@@ -76,6 +81,7 @@ const sendToUser = (
         title,
         body: message,
         data,
+        channelId: channelId || 'default',
       });
 
       // Save log (DB)
@@ -100,7 +106,8 @@ const sendToRole = (
   title: string,
   message: string,
   data?: Record<string, string>,
-  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER'
+  channelId?: 'order_notification' | 'default',
+  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER',
 ) => {
   setImmediate(async () => {
     try {
@@ -120,6 +127,7 @@ const sendToRole = (
           title,
           body: message,
           data,
+          channelId: channelId || 'default',
         });
 
         await logNotification({
@@ -147,7 +155,7 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
   if (currentUser.userId !== notification.receiverId) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
-      'You are not authorized to perform this action'
+      'You are not authorized to perform this action',
     );
   }
 
@@ -159,20 +167,20 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
 const markAllAsRead = async (currentUser: AuthUser) => {
   await Notification.updateMany(
     { receiverId: currentUser.userId },
-    { isRead: true }
+    { isRead: true },
   );
   return null;
 };
 
 const getMyNotifications = async (
   currentUser: AuthUser,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ) => {
   const notifications = new QueryBuilder(
     Notification.find({
       receiverId: currentUser.userId,
     }),
-    query
+    query,
   )
     .filter()
     .fields()
@@ -190,7 +198,7 @@ const getMyNotifications = async (
 // Get all notifications
 const getAllNotifications = async (
   currentUser: AuthUser,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     query.receiverId = currentUser.userId;
@@ -211,7 +219,7 @@ const getAllNotifications = async (
 // soft delete single notification
 const softDeleteSingleNotification = async (
   id: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // --------------------------------------------------
   // Build query condition
@@ -234,7 +242,7 @@ const softDeleteSingleNotification = async (
   if (!notification) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Notification not found or access denied'
+      'Notification not found or access denied',
     );
   }
 
@@ -252,7 +260,7 @@ const softDeleteSingleNotification = async (
 // soft delete multiple notifications
 const softDeleteMultipleNotifications = async (
   notificationIds: string[],
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (!notificationIds.length) {
     throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
@@ -312,7 +320,7 @@ const softDeleteAllNotifications = async (currentUser: AuthUser) => {
 // permanent delete single notification - only for super admin
 const permanentDeleteSingleNotification = async (
   id: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   // --------------------------------------------------
   // Only SUPER_ADMIN allowed
@@ -320,7 +328,7 @@ const permanentDeleteSingleNotification = async (
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only super admin can permanently delete notifications'
+      'Only super admin can permanently delete notifications',
     );
   }
 
@@ -335,7 +343,7 @@ const permanentDeleteSingleNotification = async (
   if (!notification) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Notification must be soft deleted before permanent delete'
+      'Notification must be soft deleted before permanent delete',
     );
   }
 
@@ -349,12 +357,12 @@ const permanentDeleteSingleNotification = async (
 // permanent delete multiple notifications - only for super admin
 const permanentDeleteMultipleNotifications = async (
   notificationIds: string[],
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only super admin can permanently delete notifications'
+      'Only super admin can permanently delete notifications',
     );
   }
 
@@ -373,7 +381,7 @@ const permanentDeleteMultipleNotifications = async (
   if (result.deletedCount === 0) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Selected notifications must be soft deleted first'
+      'Selected notifications must be soft deleted first',
     );
   }
 
@@ -387,7 +395,7 @@ const permanentDeleteAllNotifications = async (currentUser: AuthUser) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only super admin can permanently delete notifications'
+      'Only super admin can permanently delete notifications',
     );
   }
 
@@ -398,7 +406,7 @@ const permanentDeleteAllNotifications = async (currentUser: AuthUser) => {
   if (result.deletedCount === 0) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'No soft-deleted notifications found to permanently delete'
+      'No soft-deleted notifications found to permanently delete',
     );
   }
 

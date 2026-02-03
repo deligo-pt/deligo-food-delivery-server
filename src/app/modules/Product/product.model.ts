@@ -10,10 +10,13 @@ const variationSchema = new Schema(
         label: { type: String, required: true }, // e.g., "Large"
         price: { type: Number, required: true }, // e.g., 500
         sku: { type: String },
+        stockQuantity: { type: Number, default: 0 },
+        totalAddedQuantity: { type: Number, default: 0 },
+        isOutOfStock: { type: Boolean, default: false },
       },
     ],
   },
-  { _id: false }
+  { _id: false },
 );
 
 const productSchema = new Schema<TProduct>(
@@ -29,7 +32,11 @@ const productSchema = new Schema<TProduct>(
     approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     remarks: { type: String },
 
-    category: { type: String, required: true },
+    category: {
+      type: Schema.Types.ObjectId,
+      ref: 'ProductCategory',
+      required: true,
+    },
     subCategory: { type: String },
     brand: { type: String },
 
@@ -39,19 +46,25 @@ const productSchema = new Schema<TProduct>(
     pricing: {
       price: { type: Number, required: true },
       discount: { type: Number, default: 0 },
+      taxId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Tax',
+        required: [true, 'Tax reference is required for each product'],
+      },
       taxRate: { type: Number, default: 0 },
-      finalPrice: { type: Number },
-      currency: { type: String, default: 'BDT' },
+      currency: { type: String, default: 'EUR' },
     },
 
     stock: {
       quantity: { type: Number, required: true },
+      totalAddedQuantity: { type: Number, default: 0 },
       unit: { type: String },
       availabilityStatus: {
         type: String,
         enum: ['In Stock', 'Out of Stock', 'Limited'],
         default: 'In Stock',
       },
+      hasVariations: { type: Boolean, default: false },
     },
 
     images: [{ type: String }],
@@ -74,48 +87,40 @@ const productSchema = new Schema<TProduct>(
       updatedAt: { type: Date, default: Date.now },
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
 
-productSchema.pre('save', function (next) {
-  const price = this.pricing?.price || 0;
-  const discount = this.pricing?.discount || 0;
-  const discountedPrice = price - (price * discount) / 100;
+const getNetPriceAfterDiscount = (price: number, discount: number) => {
+  return price - (price * discount) / 100;
+};
 
-  this.pricing.finalPrice = parseFloat(discountedPrice.toFixed(2));
-  next();
+productSchema.virtual('pricing.discountedBasePrice').get(function () {
+  const price = this.pricing?.price || 0;
+  const discountPercent = this.pricing?.discount || 0;
+  const discountedBase = price - (price * discountPercent) / 100;
+  return Number(discountedBase.toFixed(2));
 });
 
-productSchema.pre('findOneAndUpdate', async function (next) {
-  const update = this.getUpdate() as any;
-  const pricing =
-    update?.pricing || update['pricing.price'] || update['pricing.discount'];
-  if (pricing) {
-    const currentDoc = (await this.model
-      .findOne(this.getQuery())
-      .lean()) as TProduct | null;
-    if (!currentDoc) return next();
+productSchema.virtual('pricing.taxAmount').get(function () {
+  const netPriceAfterDiscount = getNetPriceAfterDiscount(
+    this.pricing.price,
+    this.pricing.discount || 0,
+  );
+  const tax = netPriceAfterDiscount * (this.pricing.taxRate / 100);
+  return Number(tax.toFixed(2));
+});
 
-    const price =
-      update.pricing?.price ??
-      update['pricing.price'] ??
-      currentDoc.pricing.price ??
-      0;
-    const discount =
-      update.pricing?.discount ??
-      update['pricing.discount'] ??
-      currentDoc.pricing.discount ??
-      0;
-
-    const discountedPrice = price - (price * discount) / 100;
-
-    if (update.pricing) {
-      update.pricing.finalPrice = parseFloat(discountedPrice.toFixed(2));
-    } else {
-      update['pricing.finalPrice'] = parseFloat(discountedPrice.toFixed(2));
-    }
-  }
-  next();
+productSchema.virtual('pricing.finalPrice').get(function () {
+  const netPriceAfterDiscount = getNetPriceAfterDiscount(
+    this.pricing.price,
+    this.pricing.discount || 0,
+  );
+  const tax = netPriceAfterDiscount * (this.pricing.taxRate / 100);
+  return Number((netPriceAfterDiscount + tax).toFixed(2));
 });
 
 export const Product = model<TProduct>('Product', productSchema);
