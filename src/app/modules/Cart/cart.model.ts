@@ -60,7 +60,7 @@ const cartSchema = new Schema<TCart>(
     totalPrice: { type: Number, default: 0 },
     taxAmount: { type: Number, default: 0 },
 
-    discount: { type: Number, default: 0 },
+    totalProductDiscount: { type: Number, default: 0 },
     subtotal: { type: Number, default: 0 },
 
     isDeleted: { type: Boolean, default: false },

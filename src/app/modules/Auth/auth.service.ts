@@ -854,6 +854,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     'New User Submission for Approval',
     `New ${submittedUser?.role} Submission for Approval`,
     { userId: submittedUser?._id.toString(), role: submittedUser?.role },
+    'default',
     'ACCOUNT',
   );
 
@@ -959,6 +960,7 @@ const approvedOrRejectedUser = async (
       userId: submittedUser._id.toString(),
       role: submittedUser.role,
     },
+    'default',
     'ACCOUNT',
   );
 
