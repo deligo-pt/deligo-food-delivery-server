@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { OfferType } from '../modules/Offer/offer.constant';
 
 export type TAddress = {
   label?: 'Home' | 'Work' | 'Other';
@@ -49,13 +48,4 @@ export type TOrderItemSnapshot = {
   commissionVatAmount: number;
 
   vendorNetEarnings: number;
-};
-
-export type TAppliedOfferSnapshot = {
-  offerId: mongoose.Types.ObjectId;
-  title: string;
-  offerType: OfferType;
-  discountValue?: number;
-  maxDiscountAmount?: number;
-  code?: string;
 };
