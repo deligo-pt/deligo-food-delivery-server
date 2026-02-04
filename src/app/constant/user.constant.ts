@@ -149,5 +149,5 @@ export const ROLE_PREFIX_MAP: Record<string, TUserRole> = {
   SV: 'VENDOR',
   C: 'CUSTOMER',
   D: 'DELIVERY_PARTNER',
-  F: 'FLEET_MANAGER',
+  FM: 'FLEET_MANAGER',
 };

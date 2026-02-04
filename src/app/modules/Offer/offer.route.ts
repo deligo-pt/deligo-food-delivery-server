@@ -29,12 +29,12 @@ router.patch(
   OfferControllers.toggleOfferStatus,
 );
 
-// getApplicableOffer
+// Validate and Apply Offer
 router.post(
-  '/get-applicable-offer',
+  '/validate-apply-offer',
   auth('CUSTOMER'),
-  validateRequest(OfferValidation.getApplicableOfferValidation),
-  OfferControllers.getApplicableOffer,
+  validateRequest(OfferValidation.applyOfferSchema),
+  OfferControllers.validateAndApplyOffer,
 );
 
 // Get All Offers

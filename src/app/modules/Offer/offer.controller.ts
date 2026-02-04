@@ -49,25 +49,19 @@ const toggleOfferStatus = catchAsync(async (req, res) => {
   });
 });
 
-// get applicable offer controller
-const getApplicableOffer = catchAsync(async (req, res) => {
-  const { vendorId, subtotal, offerCode } = req.body;
+// validate and apply offer controller
 
-  const result = await OfferServices.getApplicableOffer(
-    {
-      vendorId,
-      subtotal,
-      offerCode,
-    },
+const validateAndApplyOffer = catchAsync(async (req, res) => {
+  const { checkoutId, offerIdentifier } = req.body;
+  const result = await OfferServices.validateAndApplyOffer(
+    checkoutId,
+    offerIdentifier,
     req.user as AuthUser,
   );
-
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result
-      ? 'Applicable offer fetched successfully'
-      : 'No applicable offer found',
+    message: 'Offer applied successfully',
     data: result,
   });
 });
@@ -135,7 +129,7 @@ export const OfferControllers = {
   createOffer,
   updateOffer,
   toggleOfferStatus,
-  getApplicableOffer,
+  validateAndApplyOffer,
   getAllOffers,
   getSingleOffer,
   softDeleteOffer,

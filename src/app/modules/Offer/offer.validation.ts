@@ -106,18 +106,20 @@ const updateOfferValidation = z.object({
   body: offerBody.partial(),
 });
 
-// Applicable Offer Validation
-const getApplicableOfferValidation = z.object({
+const applyOfferSchema = z.object({
   body: z.object({
-    vendorId: objectIdSchema,
-    subtotal: z.number().positive('Subtotal must be greater than 0'),
-    offerCode: z.string().trim().min(1).optional(),
-    cartItems: z.array(objectIdSchema).optional(),
+    checkoutId: z
+      .string({
+        required_error: 'Checkout ID is required',
+      })
+      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Checkout ID format'),
+
+    offerIdentifier: z.string(),
   }),
 });
 
 export const OfferValidation = {
   createOfferValidation,
   updateOfferValidation,
-  getApplicableOfferValidation,
+  applyOfferSchema,
 };

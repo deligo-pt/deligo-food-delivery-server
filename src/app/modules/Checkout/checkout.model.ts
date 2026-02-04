@@ -63,11 +63,12 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     totalPrice: { type: Number, required: true },
     taxAmount: { type: Number, required: true },
 
-    deliveryCharge: { type: Number, required: true }, // Net Delivery
+    deliveryCharge: { type: Number, required: true },
     deliveryVatRate: { type: Number, required: true },
     deliveryVatAmount: { type: Number, required: true, default: 0 },
 
-    discount: { type: Number, default: 0 },
+    offerDiscount: { type: Number, default: 0 },
+    totalProductDiscount: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
 
     promoType: {

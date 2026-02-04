@@ -33,149 +33,46 @@ export const getPopulateOptions = (
   fields: PopulateInput,
 ): PopulateOptions[] => {
   const options: PopulateOptions[] = [];
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(role);
 
-  // ---------------- Customer ----------------
-  if (fields.customer && role !== 'CUSTOMER') {
-    options.push({
-      path: 'customerId',
-      select: fields.customer,
-    });
-  }
+  const addOption = (
+    field: keyof PopulateInput,
+    path: string,
+    condition = true,
+  ) => {
+    if (fields[field] && condition) {
+      options.push({
+        path,
+        select: fields[field]!,
+      });
+    }
+  };
+  addOption('customer', 'customerId', role !== 'CUSTOMER');
+  addOption('vendor', 'vendorId', isAdmin || role === 'CUSTOMER');
+  addOption('itemVendor', 'items.vendorId', isAdmin || role === 'CUSTOMER');
+  addOption('deliveryPartner', 'deliveryPartnerId');
+  addOption('fleetManager', 'fleetManagerId', isAdmin);
+  addOption('admin', 'adminId', isAdmin);
+  addOption('superAdmin', 'superAdminId', role === 'SUPER_ADMIN');
 
-  // ---------------- Vendor ----------------
-  if (
-    fields.vendor &&
-    (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'CUSTOMER')
-  ) {
-    options.push({
-      path: 'vendorId',
-      select: fields.vendor,
-    });
-  }
+  // Admin only fields
+  ['approvedBy', 'rejectedBy', 'blockedBy', 'resolvedBy'].forEach((key) => {
+    addOption(key as keyof PopulateInput, key, isAdmin);
+  });
 
-  if (fields.itemVendor) {
-    options.push({
-      path: 'items.vendorId',
-      select: fields.itemVendor,
-    });
-  }
+  addOption('id', 'userId.id');
+  addOption('product', 'items.productId');
+  addOption('orderId', 'orderId');
+  addOption(
+    'reviewerId',
+    'reviewerId',
+    isAdmin || ['VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'].includes(role),
+  );
 
-  // ---------------- Delivery Partner ----------------
-  if (fields.deliveryPartner) {
-    options.push({
-      path: 'deliveryPartnerId',
-      select: fields.deliveryPartner,
-    });
-  }
-
-  // ---------------- Fleet Manager ----------------
-  if (fields.fleetManager && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
-    options.push({
-      path: 'fleetManagerId',
-      select: fields.fleetManager,
-    });
-  }
-
-  // ---------------- Admin ----------------
-  if (fields.admin && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
-    options.push({
-      path: 'adminId',
-      select: fields.admin,
-    });
-  }
-
-  // ---------------- Super Admin ----------------
-  if (fields.superAdmin && role === 'SUPER_ADMIN') {
-    options.push({
-      path: 'superAdminId',
-      select: fields.superAdmin,
-    });
-  }
-
-  // ---------------- Approved By ----------------
-  if (fields.approvedBy && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
-    options.push({
-      path: 'approvedBy',
-      select: fields.approvedBy,
-    });
-  }
-
-  // ---------------- Rejected By ----------------
-  if (fields.rejectedBy && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
-    options.push({
-      path: 'rejectedBy',
-      select: fields.rejectedBy,
-    });
-  }
-
-  // ---------------- Blocked By ----------------
-  if (fields.blockedBy && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
-    options.push({
-      path: 'blockedBy',
-      select: fields.blockedBy,
-    });
-  }
-
-  // ---------------- Product ----------------
-  if (fields.product) {
-    options.push({
-      path: 'items.productId',
-      select: fields.product,
-    });
-  }
-
-  // ---------------- ID ----------------
-  if (fields.id) {
-    options.push({
-      path: 'userId.id',
-      select: fields.id,
-    });
-  }
-
-  // ---------------- Resolved By ----------------
-  if (fields.resolvedBy && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
-    options.push({
-      path: 'resolvedBy',
-      select: fields.resolvedBy,
-    });
-  }
-
-  // ---------------- Reviewer Id ----------------
-  if (
-    fields.reviewerId &&
-    (role === 'ADMIN' ||
-      role === 'SUPER_ADMIN' ||
-      role === 'FLEET_MANAGER' ||
-      role === 'VENDOR' ||
-      role === 'SUB_VENDOR')
-  ) {
-    options.push({
-      path: 'reviewerId',
-      select: fields.reviewerId,
-    });
-  }
-
-  // ---------------- Target Id ----------------
-  if (
-    fields.targetId &&
-    (role === 'ADMIN' ||
-      role === 'SUPER_ADMIN' ||
-      role === 'FLEET_MANAGER' ||
-      role === 'VENDOR' ||
-      role === 'SUB_VENDOR')
-  ) {
-    options.push({
-      path: 'targetId',
-      select: fields.targetId,
-    });
-  }
-
-  if (fields.orderId) {
-    options.push({
-      path: 'orderId',
-      select: fields.orderId,
-    });
-  }
-
+  addOption(
+    'targetId',
+    'targetId',
+    isAdmin || ['VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'].includes(role),
+  );
   return options;
 };
