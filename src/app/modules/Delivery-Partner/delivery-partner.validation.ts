@@ -23,10 +23,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
         nationality: z.string().optional(),
 
         nifNumber: z.string().optional(),
-        citizenCardNumber: z.string().optional(),
         passportNumber: z.string().optional(),
-
-        idExpiryDate: z.string().optional(),
       })
       .optional(),
 
@@ -70,6 +67,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
       .object({
         certificate: z.boolean().optional(),
         issueDate: z.string().optional(),
+        expiryDate: z.string().optional(),
       })
       .optional(),
 
