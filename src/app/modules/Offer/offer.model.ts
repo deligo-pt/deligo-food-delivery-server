@@ -26,21 +26,6 @@ const offerSchema = new Schema<TOffer>(
       required: true,
     },
 
-    discountValue: {
-      type: Number,
-    },
-    maxDiscountAmount: { type: Number },
-
-    bogo: {
-      type: bogoSchema,
-    },
-
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
-
-    vendorId: { type: Schema.Types.ObjectId, default: null, ref: 'Vendor' },
-    minOrderAmount: { type: Number, default: 0 },
-
     isAutoApply: { type: Boolean, required: true },
     code: {
       type: String,
@@ -52,9 +37,41 @@ const offerSchema = new Schema<TOffer>(
       },
     },
 
+    adminId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Admin',
+      default: null,
+    },
+    isGlobal: { type: Boolean, default: false },
+    vendorId: { type: Schema.Types.ObjectId, default: null, ref: 'Vendor' },
+
+    discountValue: {
+      type: Number,
+    },
+    maxDiscountAmount: { type: Number },
+
+    bogo: {
+      type: bogoSchema,
+    },
+
+    validFrom: { type: Date, required: true },
+    expiresAt: { type: Date, required: true },
+
+    minOrderAmount: { type: Number, default: 0 },
+    applicableCategories: {
+      type: [Schema.Types.ObjectId],
+      ref: 'ProductCategory',
+      default: [],
+    },
+    applicableProducts: {
+      type: [Schema.Types.ObjectId],
+      ref: 'Product',
+      default: [],
+    },
+
     maxUsageCount: { type: Number },
     usageCount: { type: Number, default: 0 },
-    limitPerUser: { type: Number },
+    userUsageLimit: { type: Number, default: 1 },
 
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
@@ -64,7 +81,9 @@ const offerSchema = new Schema<TOffer>(
   },
 );
 
-offerSchema.index({ code: 1, isActive: 1 });
+offerSchema.index({ isGlobal: 1, isActive: 1 });
 offerSchema.index({ vendorId: 1, isActive: 1 });
+offerSchema.index({ code: 1, isActive: 1 });
+offerSchema.index({ validFrom: 1, expiresAt: 1 });
 
 export const Offer = model<TOffer>('Offer', offerSchema);

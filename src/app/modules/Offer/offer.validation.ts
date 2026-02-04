@@ -12,9 +12,11 @@ const offerBody = z.object({
   description: z.string().optional(),
   offerType: z.enum(['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO']),
 
+  // Discount values
   discountValue: z.number().nonnegative().optional(),
   maxDiscountAmount: z.number().nonnegative().optional(),
 
+  // BOGO fields
   bogo: z
     .object({
       buyQty: z.number().int().positive(),
@@ -23,21 +25,30 @@ const offerBody = z.object({
     })
     .optional(),
 
-  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+  validFrom: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid start date',
   }),
-  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+  expiresAt: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid end date',
   }),
 
+  // Ownership & Target
+  adminId: objectIdSchema.nullable().optional(),
+  isGlobal: z.boolean().default(false),
   vendorId: objectIdSchema.nullable().optional(),
   minOrderAmount: z.number().nonnegative().default(0),
 
+  // Applicability
+  applicableCategories: z.array(objectIdSchema).default([]),
+  applicableProducts: z.array(objectIdSchema).default([]),
+
+  // Apply logic
   isAutoApply: z.boolean().default(false),
   code: z.string().trim().toUpperCase().optional(),
 
   maxUsageCount: z.number().int().positive().optional(),
-  limitPerUser: z.number().int().positive().default(1),
+  usageCount: z.number().int().nonnegative().default(0),
+  userUsageLimit: z.number().int().positive().default(1),
 
   isActive: z.boolean().default(true),
 });
@@ -45,19 +56,18 @@ const offerBody = z.object({
 // Create Offer Validation
 const createOfferValidation = z.object({
   body: offerBody.superRefine((data, ctx) => {
-    if (new Date(data.startDate) >= new Date(data.endDate)) {
+    if (new Date(data.validFrom) >= new Date(data.expiresAt)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'End date must be after start date',
-        path: ['endDate'],
+        message: 'Expiration date must be after valid from date',
+        path: ['expiresAt'],
       });
     }
 
     if (data.offerType === 'BOGO' && !data.bogo) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          'BOGO details (buyQty, getQty, productId) are required for BOGO type',
+        message: 'BOGO details (buyQty, getQty, productId) are required',
         path: ['bogo'],
       });
     }
@@ -68,7 +78,7 @@ const createOfferValidation = z.object({
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Discount value is required for ${data.offerType} offers`,
+        message: `Discount value is required for ${data.offerType} type`,
         path: ['discountValue'],
       });
     }
@@ -96,44 +106,20 @@ const updateOfferValidation = z.object({
   body: offerBody.partial(),
 });
 
-// Applicable Offer Validation
-const getApplicableOfferValidation = z.object({
+const applyOfferSchema = z.object({
   body: z.object({
-    vendorId: objectIdSchema,
-    subtotal: z.number().positive('Subtotal must be greater than 0'),
-    offerCode: z.string().trim().min(1).optional(),
-    cartItems: z.array(objectIdSchema).optional(),
-  }),
-});
-
-const validatePromoCodeValidationSchema = z.object({
-  body: z.object({
-    promoCode: z
+    checkoutId: z
       .string({
-        required_error: 'Promo code is required',
+        required_error: 'Checkout ID is required',
       })
-      .min(1, 'Promo code cannot be empty')
-      .trim()
-      .toUpperCase(),
+      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Checkout ID format'),
 
-    vendorId: z
-      .string({
-        required_error: 'Vendor ID is required',
-      })
-      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Vendor ID format'),
-
-    subtotal: z
-      .number({
-        required_error: 'Subtotal is required',
-        invalid_type_error: 'Subtotal must be a number',
-      })
-      .min(0, 'Subtotal cannot be negative'),
+    offerIdentifier: z.string(),
   }),
 });
 
 export const OfferValidation = {
   createOfferValidation,
   updateOfferValidation,
-  getApplicableOfferValidation,
-  validatePromoCodeValidationSchema,
+  applyOfferSchema,
 };

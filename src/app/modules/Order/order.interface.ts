@@ -19,7 +19,8 @@ export type TOrder = {
   // Pricing & Payment
   totalItems: number;
   totalPrice: number;
-  discount?: number;
+  offerDiscount?: number;
+  totalProductDiscount?: number;
   taxAmount?: number;
   deliveryCharge?: number;
   deliveryVatAmount: number;
