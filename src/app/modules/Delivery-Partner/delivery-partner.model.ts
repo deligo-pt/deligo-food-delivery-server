@@ -119,9 +119,7 @@ const deliveryPartnerSchema = new Schema<
       nationality: { type: String, default: '' },
 
       NIF: { type: String, default: '' },
-      citizenCardNumber: { type: String, default: '' },
       passportNumber: { type: String, default: '' },
-      idExpiryDate: { type: Date },
     },
 
     //-------------------------------------------------
@@ -168,6 +166,7 @@ const deliveryPartnerSchema = new Schema<
     criminalRecord: {
       certificate: { type: Boolean },
       issueDate: { type: Date },
+      expiryDate: { type: Date },
     },
 
     //-------------------------------------------------

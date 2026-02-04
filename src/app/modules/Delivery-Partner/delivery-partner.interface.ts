@@ -73,9 +73,7 @@ export type TDeliveryPartner = {
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     nationality?: string;
     NIF?: string;
-    citizenCardNumber?: string;
     passportNumber?: string;
-    idExpiryDate?: Date;
   };
 
   // -------------------------------------------------
@@ -117,6 +115,7 @@ export type TDeliveryPartner = {
   criminalRecord?: {
     certificate?: boolean;
     issueDate?: Date;
+    expiryDate?: Date;
   };
 
   // -------------------------------------------------
