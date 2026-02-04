@@ -64,7 +64,8 @@ export type TCheckoutSummary = {
   fleetFee: number; // €0.08 (4% of Net Delivery)
   riderNetEarnings: number; // €2.38 (Payout to partner after fleet fee)
 
-  discount: number;
+  offerDiscount: number;
+  totalProductDiscount: number;
   subtotal: number;
 
   promoType: 'OFFER' | 'NONE';
@@ -103,6 +104,6 @@ export type TCheckoutPayload = {
   }[];
 
   offerCode?: string;
-  discount?: number;
+  offerDiscount?: number;
   estimatedDeliveryTime?: string;
 };

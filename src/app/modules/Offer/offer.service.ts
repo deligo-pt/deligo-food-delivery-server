@@ -5,15 +5,9 @@ import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';
-import { TCheckoutItem } from '../Checkout/checkout.interface';
 import { Product } from '../Product/product.model';
-import { Order } from '../Order/order.model';
-
-type TApplyOfferPayload = {
-  vendorId: string;
-  subtotal: number;
-  offerCode?: string;
-};
+import { CheckoutSummary } from '../Checkout/checkout.model';
+import mongoose from 'mongoose';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
@@ -26,8 +20,12 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   if (isVendor) {
     payload.vendorId = currentUser._id;
+    payload.isGlobal = false;
+    payload.adminId = null;
   } else {
-    payload.vendorId = payload.vendorId ?? null;
+    payload.adminId = currentUser._id;
+    payload.isGlobal = true;
+    payload.vendorId = null;
   }
 
   // --------------------------------------------
@@ -106,16 +104,16 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   // --------------------------------------------
   //  Date validation
   // --------------------------------------------
-  const start = new Date(payload.startDate);
-  const end = new Date(payload.endDate);
-  if (end <= start) {
+  const validFrom = new Date(payload.validFrom);
+  const expiresAt = new Date(payload.expiresAt);
+  if (expiresAt <= validFrom) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'End date must be after start date',
     );
   }
 
-  if (end <= new Date()) {
+  if (expiresAt <= new Date()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'End date cannot be in the past',
@@ -131,8 +129,8 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   // --------------------------------------------
   const offer = await Offer.create({
     ...payload,
-    startDate: start,
-    endDate: end,
+    validFrom,
+    expiresAt,
     usageCount: 0,
     isActive: payload.isActive ?? true,
     isDeleted: false,
@@ -176,7 +174,7 @@ const updateOffer = async (
   // --------------------------------------------------
   // Prevent update if offer already expired
   // --------------------------------------------------
-  if (offer.endDate < new Date()) {
+  if (offer.expiresAt < new Date()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Expired offer cannot be updated',
@@ -187,63 +185,58 @@ const updateOffer = async (
   // OfferType based validation
   // --------------------------------------------------
   const offerType = payload.offerType ?? offer.offerType;
-  const productId = payload.bogo?.productId;
 
-  if (offerType === 'BOGO' && productId) {
-    const product = await Product.findById(productId);
-    if (!product) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'Specified BOGO product not found',
-      );
-    }
-    if (
-      isVendor &&
-      product.vendorId.toString() !== currentUser._id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You can only use your own products for BOGO offers',
-      );
+  if (offerType === 'BOGO') {
+    const productId = payload.bogo?.productId || offer.bogo?.productId;
+    if (productId && payload.bogo?.productId) {
+      const product = await Product.findById(productId);
+      if (
+        !product ||
+        (isVendor && product.vendorId.toString() !== currentUser._id.toString())
+      ) {
+        throw new AppError(httpStatus.FORBIDDEN, 'Invalid product for BOGO');
+      }
     }
   }
 
-  if (payload.isAutoApply === true) {
+  const currentAutoApply = payload.isAutoApply ?? offer.isAutoApply;
+  if (currentAutoApply) {
     payload.code = undefined;
-  } else if (payload.code) {
-    payload.code = payload.code.toUpperCase();
-    if (payload.code !== offer.code) {
+  } else {
+    if (payload.code) {
+      payload.code = payload.code.toUpperCase();
       const duplicate = await Offer.findOne({
         code: payload.code,
         isDeleted: false,
         _id: { $ne: id },
       });
       if (duplicate)
-        throw new AppError(httpStatus.CONFLICT, 'Promo code already in use');
+        throw new AppError(httpStatus.CONFLICT, 'Code already in use');
+    } else if (!offer.code) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Code is required for manual offers',
+      );
     }
-  } else if (payload.isAutoApply === false && !offer.code) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Code required when auto-apply is disabled',
-    );
   }
 
-  const startDate = payload.startDate
-    ? new Date(payload.startDate)
-    : offer.startDate;
-  const endDate = payload.endDate ? new Date(payload.endDate) : offer.endDate;
+  const validFrom = payload.validFrom
+    ? new Date(payload.validFrom)
+    : offer.validFrom;
+  const expiresAt = payload.expiresAt
+    ? new Date(payload.expiresAt)
+    : offer.expiresAt;
 
-  if (endDate <= startDate) {
+  if (expiresAt <= validFrom) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'End date must be after start date',
     );
   }
 
-  if (payload.offerType) {
+  if (payload.offerType && payload.offerType !== offer.offerType) {
     if (payload.offerType === 'BOGO') {
       payload.discountValue = 0;
-      payload.maxDiscountAmount = 0;
     } else {
       (payload as any).bogo = null;
     }
@@ -258,19 +251,19 @@ const updateOffer = async (
     }
   }
 
-  if (
-    offerType === 'FLAT' &&
-    payload.discountValue !== undefined &&
-    payload.discountValue <= 0
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Flat discount must be positive',
-    );
+  if (offerType === 'FLAT' && payload.discountValue !== undefined) {
+    if (payload.discountValue <= 0) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Flat discount must be positive',
+      );
+    }
   }
+
   if (offerType === 'FREE_DELIVERY') {
     payload.discountValue = 0;
     payload.maxDiscountAmount = 0;
+    (payload as any).bogo = null;
   }
 
   if (payload.bogo && offer.bogo) {
@@ -332,7 +325,7 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
     );
   }
 
-  if (!offer.isActive && offer.endDate < new Date()) {
+  if (!offer.isActive && offer.expiresAt < new Date()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Cannot activate an expired offer. Please update the end date first.',
@@ -349,193 +342,181 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
   };
 };
 
-// get applicable offer for checkout
-const getApplicableOffer = async (
-  { vendorId, subtotal, offerCode }: TApplyOfferPayload,
+// validate and apply offer service
+const validateAndApplyOffer = async (
+  checkoutId: string,
+  offerIdentifier: string,
   currentUser: AuthUser,
 ) => {
-  if (currentUser.status !== 'APPROVED') {
+  const checkoutData = await CheckoutSummary.findById(checkoutId);
+  if (!checkoutData) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Checkout session not found');
+  }
+
+  if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status}. You cannot apply offers.`,
+      "This checkout session doesn't belong to you",
     );
   }
+
+  if (checkoutData.isConvertedToOrder) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Cannot apply offer to completed checkout',
+    );
+  }
+
+  const {
+    vendorId,
+    totalPrice,
+    deliveryCharge,
+    items,
+    taxAmount,
+    deliveryVatAmount,
+  } = checkoutData;
   const now = new Date();
-  // --------------------------------------------
-  // Base query (vendor + global offers)
-  // --------------------------------------------
+
   const baseQuery = {
     isActive: true,
     isDeleted: false,
-    startDate: { $lte: now },
-    endDate: { $gte: now },
-    $or: [{ vendorId }, { vendorId: { $eq: null } }],
+    validFrom: { $lte: now },
+    expiresAt: { $gte: now },
+    $or: [{ vendorId: vendorId }, { vendorId: null }],
   };
+
   let offer = null;
+  if (offerIdentifier && offerIdentifier.trim() !== '') {
+    const isObjectId = mongoose.Types.ObjectId.isValid(offerIdentifier);
 
-  // --------------------------------------------
-  // Manual offer → code is REQUIRED
-  // --------------------------------------------
-  if (offerCode) {
-    offer = await Offer.findOne({
-      ...baseQuery,
-      code: offerCode.toUpperCase(),
-      isAutoApply: false,
-    }).sort({ vendorId: -1 });
+    if (isObjectId) {
+      offer = await Offer.findOne({ ...baseQuery, _id: offerIdentifier });
+    } else {
+      offer = await Offer.findOne({
+        ...baseQuery,
+        code: offerIdentifier.toUpperCase(),
+      });
+    }
 
-    if (!offer) {
+    if (!offer)
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer or promo code');
+  }
+
+  if (offer) {
+    if (offer.maxUsageCount && (offer.usageCount || 0) >= offer.maxUsageCount) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Offer limit reached');
+    }
+
+    if (offer.minOrderAmount && totalPrice < offer.minOrderAmount) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Invalid or expired offer code',
+        `Min order €${offer.minOrderAmount} required`,
       );
     }
   }
 
-  // --------------------------------------------
-  // Auto-apply offer (only if NO code)
-  // --------------------------------------------
-  else {
-    offer = await Offer.findOne({
-      ...baseQuery,
-      isAutoApply: true,
-    }).sort({ vendorId: -1 });
-
-    // No auto-apply offer → OK, continue checkout
-    if (!offer) return null;
-  }
-
-  // --------------------------------------------
-  // Minimum order amount validation
-  // --------------------------------------------
-  if (offer.minOrderAmount && subtotal < offer.minOrderAmount) {
-    if (!offerCode) return null;
-
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Minimum order amount of ${offer.minOrderAmount} is required for this offer`,
-    );
-  }
-
-  // --------------------------------------------
-  // Usage limit validation
-  // --------------------------------------------
-  const usageCount = offer.usageCount ?? 0;
-
-  if (offer.maxUsageCount !== undefined && usageCount >= offer.maxUsageCount) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Offer usage limit has been reached',
-    );
-  }
-
-  if (offer.limitPerUser) {
-    const userUsageCount = await Order.countDocuments({
-      userId: currentUser.userId,
-      offerId: offer._id,
-      status: { $ne: 'CANCELED' },
-    });
-
-    if (userUsageCount >= offer.limitPerUser) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `You have already used this offer ${offer.limitPerUser} time(s)`,
-      );
-    }
-  }
-
-  return offer;
-};
-
-// apply offer to checkout
-const applyOffer = ({
-  offer,
-  items,
-  totalPriceBeforeTax,
-  taxAmount,
-  deliveryCharge,
-}: {
-  offer: TOffer | null;
-  items: TCheckoutItem[];
-  totalPriceBeforeTax: number;
-  taxAmount: number;
-  deliveryCharge: number;
-}) => {
   if (!offer) {
-    return {
-      discount: 0,
-      deliveryCharge,
-      subTotal: Number(
-        (totalPriceBeforeTax + taxAmount + deliveryCharge).toFixed(2),
-      ),
-      appliedOffer: null,
-    };
+    const resetSubtotal = Number(
+      (
+        totalPrice +
+        taxAmount +
+        deliveryCharge +
+        (deliveryVatAmount || 0)
+      ).toFixed(2),
+    );
+    return await CheckoutSummary.findByIdAndUpdate(
+      checkoutId,
+      {
+        $set: {
+          offerDiscount: 0,
+          offerId: null,
+          promoType: 'NONE',
+          offerApplied: null,
+          subtotal: resetSubtotal,
+        },
+      },
+      { new: true },
+    ).lean();
   }
 
   let discount = 0;
   let finalDeliveryCharge = deliveryCharge;
+  let bogoSnapshot = null;
 
   switch (offer.offerType) {
     case 'PERCENT': {
-      const calculatedPercent =
-        (totalPriceBeforeTax * (offer.discountValue || 0)) / 100;
+      const calculated = (totalPrice * (offer.discountValue || 0)) / 100;
       discount = offer.maxDiscountAmount
-        ? Math.min(calculatedPercent, offer.maxDiscountAmount)
-        : calculatedPercent;
+        ? Math.min(calculated, offer.maxDiscountAmount)
+        : calculated;
       break;
     }
-
     case 'FLAT': {
-      discount = offer.discountValue!;
+      discount = offer.discountValue || 0;
       break;
     }
-
     case 'FREE_DELIVERY': {
       finalDeliveryCharge = 0;
       break;
     }
-
     case 'BOGO': {
       const bogo = offer.bogo!;
-      // Find the item eligible for BOGO
-      const item = items.find(
-        (i) => i.productId.toString() === bogo.productId.toString(),
+      const targetItem = items.find(
+        (i: any) => i.productId?.toString() === bogo.productId.toString(),
       );
-
-      if (item) {
-        const groupSize = bogo.buyQty + bogo.getQty;
-        const eligibleFreeSets = Math.floor(item.quantity / groupSize);
-        const freeQty = eligibleFreeSets * bogo.getQty;
-
-        // Apply discount based on the item's price
-        discount = freeQty * item.price;
+      if (targetItem) {
+        const freeQty =
+          Math.floor(targetItem.quantity / (bogo.buyQty + bogo.getQty)) *
+          bogo.getQty;
+        discount = freeQty * targetItem.price;
+        bogoSnapshot = {
+          buyQty: bogo.buyQty,
+          getQty: bogo.getQty,
+          productId: bogo.productId,
+          productName: targetItem.name,
+        };
       }
       break;
     }
   }
 
-  // Discount cannot exceed total item price
-  discount = Math.max(0, Math.min(discount, totalPriceBeforeTax));
+  discount = Number(Math.min(discount, totalPrice).toFixed(2));
 
-  // Calculate subtotal
-  const subtotal = parseFloat(
-    (totalPriceBeforeTax - discount + taxAmount + finalDeliveryCharge).toFixed(
-      2,
-    ),
+  const newSubtotal = Number(
+    (
+      totalPrice -
+      discount +
+      taxAmount +
+      finalDeliveryCharge +
+      (deliveryVatAmount || 0)
+    ).toFixed(2),
   );
 
-  return {
-    discount: Number(discount.toFixed(2)),
-    deliveryCharge: Number(finalDeliveryCharge.toFixed(2)),
-    subtotal,
-    appliedOffer: {
-      offerId: offer._id,
+  const offerUpdateData = {
+    offerDiscount: discount,
+    deliveryCharge: finalDeliveryCharge,
+    subtotal: newSubtotal,
+    offerId: offer._id,
+    promoType: 'OFFER',
+    offerApplied: {
+      promoId: offer._id,
       title: offer.title,
+      promoType: 'OFFER',
       offerType: offer.offerType,
       discountValue: offer.discountValue,
       maxDiscountAmount: offer.maxDiscountAmount,
       code: offer.code,
+      bogoSnapshot: bogoSnapshot,
     },
   };
+
+  const result = await CheckoutSummary.findByIdAndUpdate(
+    checkoutId,
+    { $set: offerUpdateData },
+    { new: true, runValidators: true },
+  ).lean();
+
+  return result;
 };
 
 // get all offers service
@@ -545,7 +526,7 @@ const getAllOffers = async (
 ) => {
   const now = new Date();
 
-  if (currentUser.role === 'VENDOR') {
+  if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
     query.vendorId = currentUser._id;
     query.isDeleted = false;
   }
@@ -553,8 +534,8 @@ const getAllOffers = async (
     query.isActive = true;
     query.isDeleted = false;
 
-    query.startDate = { $lte: now };
-    query.endDate = { $gte: now };
+    query.validFrom = { $lte: now };
+    query.expiresAt = { $gte: now };
   }
   const offers = new QueryBuilder(Offer.find(), query)
     .fields()
@@ -591,7 +572,11 @@ const getSingleOffer = async (id: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Offer not found or unavailable');
   }
 
-  if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
+  if (
+    isVendor &&
+    offer.vendorId?.toString() !== currentUser._id.toString() &&
+    !offer.isGlobal
+  ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to view this offer',
@@ -599,36 +584,6 @@ const getSingleOffer = async (id: string, currentUser: AuthUser) => {
   }
 
   return offer;
-};
-
-// validate promo code
-const validatePromoCode = async (
-  promoCode: string,
-  vendorId: string,
-  subtotal: number,
-  currentUser: AuthUser,
-) => {
-  const offer = await getApplicableOffer(
-    { vendorId, subtotal, offerCode: promoCode },
-    currentUser,
-  );
-
-  const calculation = applyOffer({
-    offer,
-    items: [],
-    totalPriceBeforeTax: subtotal,
-    taxAmount: 0,
-    deliveryCharge: 0,
-  });
-
-  return {
-    message: offer ? 'Promo code applied successfully' : 'Invalid promo code',
-    data: {
-      isValid: !!offer,
-      discountAmount: calculation.discount,
-      offerDetails: calculation.appliedOffer,
-    },
-  };
 };
 
 // soft delete offer service
@@ -746,11 +701,9 @@ export const OfferServices = {
   createOffer,
   updateOffer,
   toggleOfferStatus,
-  getApplicableOffer,
-  applyOffer,
+  validateAndApplyOffer,
   getAllOffers,
   getSingleOffer,
-  validatePromoCode,
   softDeleteOffer,
   permanentDeleteOffer,
 };

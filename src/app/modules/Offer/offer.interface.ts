@@ -5,8 +5,18 @@ export type TOffer = {
   _id?: string;
   title: string;
   description?: string;
+
   // Offer type
   offerType: OfferType;
+
+  // Auto apply or manual code (optional)
+  code?: string;
+  isAutoApply: boolean;
+
+  adminId: mongoose.Types.ObjectId | null;
+  isGlobal: boolean;
+  vendorId?: mongoose.Types.ObjectId | null;
+
   // Discount values
   discountValue?: number;
   maxDiscountAmount?: number;
@@ -19,21 +29,18 @@ export type TOffer = {
   };
 
   // Validity period
-  startDate: Date;
-  endDate: Date;
+  validFrom: Date;
+  expiresAt: Date;
 
   // Eligibility
-  vendorId?: mongoose.Types.ObjectId | null; // null = global offer
   minOrderAmount?: number;
-
-  // Auto apply or manual code (optional)
-  isAutoApply: boolean;
-  code?: string; // if offer requires a code (optional)
+  applicableCategories?: mongoose.Types.ObjectId[];
+  applicableProducts?: mongoose.Types.ObjectId[];
 
   // Usage control
   maxUsageCount?: number;
   usageCount?: number;
-  limitPerUser?: number;
+  userUsageLimit: number;
 
   // Status
   isActive: boolean;

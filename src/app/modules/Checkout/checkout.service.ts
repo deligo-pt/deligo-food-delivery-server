@@ -88,6 +88,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   let totalNetFoodPriceAccumulator = 0;
   let totalDeliGoCommission = 0;
   let totalCommissionVat = 0;
+  let totalProductDiscountAccumulator = 0;
 
   const PLATFORM_COMMISSION_RATE =
     globalSettingsData?.platformCommissionPercent;
@@ -111,6 +112,11 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       parseFloat((basePrice * (discountPercent / 100)).toFixed(2)) || 0;
     const unitPriceAfterDiscount = basePrice - discountAmountPerUnit;
     const quantity = item.quantity || 1;
+
+    const itemTotalProductDiscount = parseFloat(
+      (discountAmountPerUnit * quantity).toFixed(2),
+    );
+    totalProductDiscountAccumulator += itemTotalProductDiscount;
 
     const productTotalBeforeTax =
       parseFloat((unitPriceAfterDiscount * quantity).toFixed(2)) || 0;
@@ -235,7 +241,10 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
           deliveryChargeNet * 0.04
         ).toFixed(2),
       ) || 0,
-    discount: 0,
+    offerDiscount: 0,
+    totalProductDiscount: parseFloat(
+      totalProductDiscountAccumulator.toFixed(2),
+    ),
     subtotal:
       parseFloat(
         (

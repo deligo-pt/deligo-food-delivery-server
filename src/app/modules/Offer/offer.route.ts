@@ -29,12 +29,12 @@ router.patch(
   OfferControllers.toggleOfferStatus,
 );
 
-// getApplicableOffer
+// Validate and Apply Offer
 router.post(
-  '/get-applicable-offer',
+  '/validate-apply-offer',
   auth('CUSTOMER'),
-  validateRequest(OfferValidation.getApplicableOfferValidation),
-  OfferControllers.getApplicableOffer,
+  validateRequest(OfferValidation.applyOfferSchema),
+  OfferControllers.validateAndApplyOffer,
 );
 
 // Get All Offers
@@ -49,14 +49,6 @@ router.get(
   '/:offerId',
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
   OfferControllers.getSingleOffer,
-);
-
-// validate Promo Code
-router.post(
-  '/validate-promo-code',
-  auth('CUSTOMER'),
-  validateRequest(OfferValidation.validatePromoCodeValidationSchema),
-  OfferControllers.validatePromoCode,
 );
 
 // Soft Delete Offer
