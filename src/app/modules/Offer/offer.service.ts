@@ -534,8 +534,22 @@ const getAllOffers = async (
     query.isActive = true;
     query.isDeleted = false;
 
-    query.validFrom = { $lte: now };
-    query.expiresAt = { $gte: now };
+    if (query.isExpired === undefined) {
+      query.validFrom = { $lte: now };
+      query.expiresAt = { $gte: now };
+    }
+  }
+
+  if (query.isExpired !== undefined) {
+    const isExpired = query.isExpired === 'true' || query.isExpired === true;
+
+    if (isExpired) {
+      query.expiresAt = { $lt: now };
+    } else {
+      query.expiresAt = { $gte: now };
+    }
+
+    delete query.isExpired;
   }
   const offers = new QueryBuilder(Offer.find(), query)
     .fields()
