@@ -16,7 +16,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     { field: currentUser.name?.firstName, label: 'First Name' },
     { field: currentUser.contactNumber, label: 'Contact Number' },
     { field: currentUser.address?.city, label: 'City' },
-    { field: currentUser.address?.street, label: 'Street' },
+    // { field: currentUser.address?.street, label: 'Street' },
   ];
 
   for (const item of requiredFields) {
