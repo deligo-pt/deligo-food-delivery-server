@@ -1,0 +1,44 @@
+name:  Deploy DeliGo Food Server
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ---------- CI STEP ----------
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 23.11.0
+
+      - name: Install dependencies
+        run: npm install --frozen-lockfile
+
+      - name: Build project
+        run: npm run build
+
+  # ---------- DEPLOY STEP ----------
+  deploy:
+    needs: build   
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ubuntu
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /deligoFoodPT/www/deligo-food-server
+            git pull origin main
+            npm install
+            npm run build
+            pm2 reload deligo-food-server
