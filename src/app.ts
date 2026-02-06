@@ -40,7 +40,7 @@ app.use('/api/v1', routes);
 app.get('/', (req: Request, res: Response, next: NextFunction) => {
   res.status(httpStatus.OK).json({
     success: true,
-    message: 'Welcome to the Deligo Food Delivery Server 2',
+    message: 'Welcome to the Deligo Food Delivery Server2',
   });
 });
 
