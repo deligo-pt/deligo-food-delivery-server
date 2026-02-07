@@ -18,6 +18,7 @@ import { customAlphabet } from 'nanoid';
 import { cleanForSKU, generateSlug } from './product.utils';
 import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
+import { SageService } from '../Sage/SageService';
 
 const generateShortId = customAlphabet(
   '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -128,11 +129,11 @@ const createProduct = async (
 
   const newProduct = await Product.create({ ...payload, images });
 
-  // if (newProduct) {
-  //   SageService.syncProductToSage(newProduct).catch((error) => {
-  //     console.error('Error syncing product to Sage:', error);
-  //   });
-  // }
+  if (newProduct) {
+    SageService.syncProductToSage(newProduct).catch((error) => {
+      console.error('Error syncing product to Sage:', error);
+    });
+  }
 
   return newProduct;
 };
@@ -539,6 +540,7 @@ const getAllProducts = async (
   const populateOptions = getPopulateOptions(role, {
     vendor:
       'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+    productCategory: 'name ',
   });
 
   populateOptions.forEach((option) => {
@@ -584,6 +586,7 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
   const populateOptions = getPopulateOptions(currentUser.role, {
     vendor:
       'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+    productCategory: 'name',
   });
 
   populateOptions.forEach((option) => {
