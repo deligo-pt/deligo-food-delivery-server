@@ -18,7 +18,7 @@ import { TTax } from '../Tax/tax.interface';
 // import { SageService } from '../Sage/SageService';
 
 const generateShortId = customAlphabet(
-  '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', // Use uppercase letters and digits for better readability
   6,
 );
 
