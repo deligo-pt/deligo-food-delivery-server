@@ -1,17 +1,20 @@
 import { Request, Response } from "express";
 import httpStatus from "http-status";
 import { ContactService } from "./contact.service";
+import { catchAsync } from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
 
-const createContact = async (req: Request, res: Response) => {
+
+const createContact = catchAsync(async (req, res) => {
     const result = await ContactService.createContact(req.body);
 
-    res.status(httpStatus.CREATED).json({
+    sendResponse(res, {
         success: true,
-        message: "Contact message sent successfully",
+        statusCode: httpStatus.CREATED,
+        message: 'Contact message sent successfully',
         data: result,
     });
-};
-
+});
 export const ContactController = {
     createContact,
 };
