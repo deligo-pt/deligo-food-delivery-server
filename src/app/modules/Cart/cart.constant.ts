@@ -23,25 +23,25 @@ export const recalculateCartTotals = async (cart: TCart) => {
     0,
   );
 
-  cart.totalProductDiscount = Number(totalDiscount.toFixed(2));
+  cart.totalProductDiscount = parseFloat(totalDiscount.toFixed(2));
 
   const totalTax = activeItems.reduce(
-    (sum: number, i: any) => sum + (Number(i.taxAmount) || 0),
+    (sum: number, i: any) => sum + (parseFloat(i.taxAmount.toFixed(2)) || 0),
     0,
   );
-  cart.taxAmount = Number(totalTax.toFixed(2));
+  cart.taxAmount = parseFloat(totalTax.toFixed(2));
 
   const totalBasePrice = activeItems.reduce(
     (sum: number, i: any) => sum + (Number(i.totalBeforeTax) || 0),
     0,
   );
 
-  cart.totalPrice = Number(totalBasePrice.toFixed(2));
+  cart.totalPrice = parseFloat(totalBasePrice.toFixed(2));
 
   const finalSubtotal = cart.totalPrice + cart.taxAmount;
 
   // Set final subtotal (Net Total)
-  cart.subtotal = Number(Math.max(0, finalSubtotal).toFixed(2));
+  cart.subtotal = parseFloat(Math.max(0, finalSubtotal).toFixed(2));
 
   return cart;
 };

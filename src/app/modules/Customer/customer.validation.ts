@@ -19,13 +19,14 @@ const updateCustomerDataValidationSchema = z.object({
 
     // Main Customer Address
     address: addressValidationSchema.optional(),
+    NIF: z.string().optional(),
 
     // Delivery Addresses (multiple saved addresses)
     deliveryAddresses: z
       .array(
         addressValidationSchema.extend({
           isActive: z.boolean().optional(),
-        })
+        }),
       )
       .optional(),
   }),
