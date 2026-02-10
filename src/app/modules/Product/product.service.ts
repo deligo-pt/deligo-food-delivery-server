@@ -11,11 +11,10 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { customAlphabet } from 'nanoid';
-// import { SageService } from '../Sage/SageService';
 import { cleanForSKU, generateSlug } from './product.utils';
 import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
-// import { SageService } from '../Sage/SageService';
+// import { ProductPdService } from '../PdInvoice/Services/productPd.service';
 
 const generateShortId = customAlphabet(
   '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', // Use uppercase letters and digits for better readability
@@ -131,8 +130,8 @@ const createProduct = async (
   //     ...newProduct.toObject(),
   //     category: category.name,
   //   } as any;
-  //   SageService.syncProductToSage(syncData).catch((error) => {
-  //     console.error('Error syncing product to Sage:', error);
+  //   ProductPdService.syncProductToPd(syncData).catch((error) => {
+  //     console.error('Error syncing product to Pasta Digital:', error);
   //   });
   // }
 
@@ -158,7 +157,7 @@ const updateProduct = async (
     throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
 
   const modifiedData: Record<string, any> = {};
-  const productNamePart = cleanForSKU(payload.name || existingProduct.name);
+  // const productNamePart = cleanForSKU(payload.name || existingProduct.name);
 
   // Basic Information Update (Name, Slug, Category, etc.)
   if (payload.name) {
@@ -171,7 +170,6 @@ const updateProduct = async (
   if (payload.brand) modifiedData.brand = payload.brand;
   if (payload.tags) modifiedData.tags = payload.tags;
   if (payload.attributes) modifiedData.attributes = payload.attributes;
-  if (payload.addonGroups) modifiedData.addonGroups = payload.addonGroups;
 
   // Pricing & Tax Update
   if (payload.pricing) {
@@ -188,42 +186,42 @@ const updateProduct = async (
   }
 
   // Variation and Stock Management
-  if (payload.variations && payload.variations.length > 0) {
-    let currentVariationStockSum = 0;
-    let minPrice = Infinity;
+  // if (payload.variations && payload.variations.length > 0) {
+  //   let currentVariationStockSum = 0;
+  //   let minPrice = Infinity;
 
-    const processedVariations = payload.variations.map((v) => ({
-      name: v.name,
-      options: v.options.map((opt) => {
-        const sQuantity = opt.stockQuantity || 0;
-        currentVariationStockSum += sQuantity;
-        if (opt.price < minPrice) minPrice = opt.price;
+  //   const processedVariations = payload.variations.map((v) => ({
+  //     name: v.name,
+  //     options: v.options.map((opt) => {
+  //       const sQuantity = opt.stockQuantity || 0;
+  //       currentVariationStockSum += sQuantity;
+  //       if (opt.price < minPrice) minPrice = opt.price;
 
-        return {
-          ...opt,
-          sku:
-            opt.sku ||
-            `VAR-${productNamePart}-${cleanForSKU(opt.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
-          stockQuantity: sQuantity,
-          totalAddedQuantity: sQuantity,
-          isOutOfStock: sQuantity <= 0,
-        };
-      }),
-    }));
+  //       return {
+  //         ...opt,
+  //         sku:
+  //           opt.sku ||
+  //           `VAR-${productNamePart}-${cleanForSKU(opt.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+  //         stockQuantity: sQuantity,
+  //         totalAddedQuantity: sQuantity,
+  //         isOutOfStock: sQuantity <= 0,
+  //       };
+  //     }),
+  //   }));
 
-    // --- Stock Calculation Logic ---
-    const finalQuantity = currentVariationStockSum;
+  //   // --- Stock Calculation Logic ---
+  //   const finalQuantity = currentVariationStockSum;
 
-    const previousTotalAdded = existingProduct.stock.totalAddedQuantity || 0;
-    const finalTotalAddedQuantity =
-      previousTotalAdded + currentVariationStockSum;
+  //   const previousTotalAdded = existingProduct.stock.totalAddedQuantity || 0;
+  //   const finalTotalAddedQuantity =
+  //     previousTotalAdded + currentVariationStockSum;
 
-    modifiedData.variations = processedVariations;
-    modifiedData['stock.hasVariations'] = true;
-    modifiedData['stock.quantity'] = finalQuantity;
-    modifiedData['stock.totalAddedQuantity'] = finalTotalAddedQuantity;
-    modifiedData['pricing.price'] = minPrice;
-  }
+  //   modifiedData.variations = processedVariations;
+  //   modifiedData['stock.hasVariations'] = true;
+  //   modifiedData['stock.quantity'] = finalQuantity;
+  //   modifiedData['stock.totalAddedQuantity'] = finalTotalAddedQuantity;
+  //   modifiedData['pricing.price'] = minPrice;
+  // }
 
   // Meta & Stock Unit Update
   if (payload.stock?.unit) modifiedData['stock.unit'] = payload.stock.unit;
@@ -235,6 +233,9 @@ const updateProduct = async (
 
   // Database Update Query
   const updateQuery: any = { $set: modifiedData };
+  if (payload.addonGroups && payload.addonGroups.length > 0) {
+    updateQuery.$addToSet = { addonGroups: { $each: payload.addonGroups } };
+  }
   if (images && images.length > 0) {
     updateQuery.$push = { images: { $each: images } };
   }
@@ -459,77 +460,6 @@ const getAllProducts = async (
     query.isApproved = true;
     query.isDeleted = false;
   }
-
-  // ------------------------------------
-  // CUSTOMER → nearest vendors first
-  // ------------------------------------
-
-  // if (role === 'CUSTOMER') {
-  //   // Build base query WITH filter/search/fields but WITHOUT paginate/sort
-  //   const productsQB = new QueryBuilder(
-  //     Product.find().populate({
-  //       path: 'vendorId',
-  //       select:
-  //         'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
-  //     }),
-  //     query,
-  //   )
-  //     .fields()
-  //     .filter()
-  //     .search(ProductSearchableFields);
-
-  //   // Use QueryBuilder to get total/page/limit, but NOT DB pagination
-  //   const [customer, meta, products] = await Promise.all([
-  //     Customer.findOne({
-  //       userId: currentUser.userId,
-  //       isDeleted: false,
-  //     }).lean(),
-  //     productsQB.countTotal(), // uses query.page + query.limit
-  //     productsQB.modelQuery.lean<TProduct[]>({ virtuals: true }), // NO skip/limit applied here
-  //   ]);
-
-  //   const coords = customer ? getCustomerCoordinates(customer) : null;
-
-  //   let sortedProducts: (TProduct & { distance?: number })[] = products;
-
-  //   if (coords) {
-  //     const [custLng, custLat] = coords;
-
-  //     sortedProducts = products
-  //       .map((product) => {
-  //         const vLng = (product as any).vendorId?.businessLocation?.longitude;
-  //         const vLat = (product as any).vendorId?.businessLocation?.latitude;
-
-  //         if (typeof vLng === 'number' && typeof vLat === 'number') {
-  //           const { meters } = calculateDistance(custLng, custLat, vLng, vLat);
-  //           return { ...product, distance: meters };
-  //         }
-
-  //         // No vendor coordinates → send to bottom
-  //         return { ...product, distance: Number.POSITIVE_INFINITY };
-  //       })
-  //       .sort((a, b) => {
-  //         const dA = a.distance ?? Number.POSITIVE_INFINITY;
-  //         const dB = b.distance ?? Number.POSITIVE_INFINITY;
-  //         return dA - dB;
-  //       });
-  //   }
-
-  //   // Manual paginate AFTER distance sort
-  //   const page = meta.page;
-  //   const limit = meta.limit;
-  //   const skip = (page - 1) * limit;
-
-  //   const paginated = sortedProducts.slice(skip, skip + limit);
-
-  //   return {
-  //     meta: {
-  //       ...meta,
-  //       totalPages: meta.totalPage,
-  //     },
-  //     data: paginated,
-  //   };
-  // }
 
   const products = new QueryBuilder(Product.find(), query)
     .fields()
