@@ -9,6 +9,7 @@ import { Product } from '../Product/product.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
+import { roundTo4 } from '../../utils/mathProvider';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
@@ -54,8 +55,21 @@ const getAdminDashboardAnalytics = async () => {
     { $sort: { total: -1 } },
     { $limit: 5 },
     {
+      $lookup: {
+        from: 'productcategories',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'categoryDetails',
+      },
+    },
+    { $unwind: { path: '$categoryDetails', preserveNullAndEmptyArrays: true } },
+    {
       $project: {
-        name: '$_id',
+        _id: 0,
+        categoryId: '$_id',
+        name: { $ifNull: ['$categoryDetails.name', 'Unknown'] },
+        icon: { $ifNull: ['$categoryDetails.icon', ''] },
+        slug: { $ifNull: ['$categoryDetails.slug', ''] },
         percentage: {
           $round: [
             { $multiply: [{ $divide: ['$total', totalOrders] }, 100] },
@@ -177,6 +191,21 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
             },
           },
 
+          {
+            $lookup: {
+              from: 'productcategories',
+              localField: '_id',
+              foreignField: '_id',
+              as: 'categoryDetails',
+            },
+          },
+          {
+            $unwind: {
+              path: '$categoryDetails',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
           // Calculate TOTAL of all category orders
           {
             $group: {
@@ -191,7 +220,12 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
           {
             $project: {
               _id: 0,
-              name: '$categories._id',
+              categoryId: '$categories._id',
+              name: {
+                $ifNull: ['$categories.categoryDetails.name', 'Unknown'],
+              },
+              icon: { $ifNull: ['$categories.categoryDetails.icon', ''] },
+              slug: { $ifNull: ['$categories.categoryDetails.slug', ''] },
               totalOrders: '$categories.orderCount',
               percentage: {
                 $round: [
@@ -485,7 +519,7 @@ const getPartnerPerformanceAnalytics = async (
       topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
       avgDeliveryTime: `${avgDeliveryTimeMin} min`,
       avgAcceptanceRate: `${avgAcceptanceRate}%`,
-      totalEarnings: `€${stats.totalEarnings.toFixed(2)}`,
+      totalEarnings: `€${roundTo4(stats.totalEarnings)}`,
     },
     table: {
       data: tableData.map((partner: TDeliveryPartner) => {
@@ -516,7 +550,7 @@ const getPartnerPerformanceAnalytics = async (
           deliveries: opData?.completedDeliveries || 0,
           avgMins: `${rowAvgMins} min`,
           acceptance: rowAcceptance,
-          earnings: `€${(partner?.earnings?.totalEarnings || 0).toFixed(2)}`,
+          earnings: `€${roundTo4(partner?.earnings?.totalEarnings || 0)}`,
         };
       }),
       meta,
