@@ -39,7 +39,7 @@ const createProductValidationSchema = z.object({
     }),
 
     stock: z.object({
-      quantity: z.number().min(0, 'Quantity must be non-negative'),
+      quantity: z.number().min(0, 'Quantity must be non-negative').optional(),
       unit: z.string().optional(),
       availabilityStatus: z
         .enum(['In Stock', 'Out of Stock', 'Limited'])
@@ -80,37 +80,20 @@ const updateProductValidationSchema = z.object({
     subCategory: z.string().optional(),
     brand: z.string().optional(),
 
-    variations: z
-      .array(
-        z.object({
-          name: z.string(),
-          options: z.array(
-            z.object({
-              label: z.string(),
-              price: z.number().min(0),
-              sku: z.string().optional(),
-              stockQuantity: z.number().min(0).optional(),
-            }),
-          ),
-        }),
-      )
-      .optional(),
+    // variations: z
+    //   .array(
+    //     z.object({
+    //       name: z.string(),
+    //       options: z.array(
+    //         z.object({
+    //           label: z.string(),
+    //         }),
+    //       ),
+    //     }),
+    //   )
+    //   .optional(),
 
     addonGroups: z.array(z.string()).optional(),
-
-    pricing: z
-      .object({
-        discount: z.number().min(0).max(100).optional(),
-        taxId: z.string().optional(),
-        currency: z.string().optional(),
-      })
-      .optional(),
-
-    stock: z
-      .object({
-        unit: z.string().optional(),
-      })
-      .optional(),
 
     images: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
