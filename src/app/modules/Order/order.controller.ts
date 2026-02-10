@@ -3,7 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/user.constant';
-import { InvoicePdService } from '../PdInvoice/Services/invoicePdfPd.service';
+import { InvoicePdService } from '../PdInvoice/invoicePd.service';
 
 // order after payment secure controller
 const createOrderAfterPayment = catchAsync(async (req, res) => {
