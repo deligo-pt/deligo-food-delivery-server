@@ -10,6 +10,8 @@ const addonGroupSchema = new Schema<TAddonGroup>(
     options: [
       {
         name: { type: String, required: true },
+        sku: { type: String, unique: true },
+        pdItemId: { type: String, default: null },
         price: { type: Number, required: true },
         tax: {
           type: Schema.Types.ObjectId,

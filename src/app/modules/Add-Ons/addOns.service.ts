@@ -6,6 +6,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Tax } from '../Tax/tax.model';
+import { AddonPdService } from '../PdInvoice/addonPd.service';
 
 // create addon group service
 const createAddonGroup = async (
@@ -52,12 +53,36 @@ const createAddonGroup = async (
     }
   }
 
+  payload.options = payload.options.map((opt) => {
+    if (!opt.sku) {
+      const cleanTitle = payload.title.substring(0, 3).toUpperCase();
+      const cleanName = opt.name.substring(0, 3).toUpperCase();
+      const randomStr = Math.random()
+        .toString(36)
+        .substring(2, 5)
+        .toUpperCase();
+      opt.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
+    }
+    return opt;
+  });
+
   const addonData = {
     ...payload,
     vendorId: currentUser._id,
   };
 
-  const result = (await AddonGroup.create(addonData)).populate('options.tax');
+  const createdRecord = await AddonGroup.create(addonData);
+
+  const result = await AddonGroup.findById(createdRecord._id).populate(
+    'options.tax',
+  );
+
+  if (result) {
+    AddonPdService.syncAddonToPd(result).catch((err) => {
+      console.error('Failed to sync addon group with Pasta Digital:', err);
+    });
+  }
+
   return result;
 };
 
@@ -107,6 +132,19 @@ const updateAddonGroup = async (
     }
   }
 
+  payload.options = payload?.options?.map((opt) => {
+    if (!opt.sku) {
+      const cleanTitle = (payload.title || 'ADD').substring(0, 3).toUpperCase();
+      const cleanName = opt.name.substring(0, 3).toUpperCase();
+      const randomStr = Math.random()
+        .toString(36)
+        .substring(2, 5)
+        .toUpperCase();
+      opt.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
+    }
+    return opt;
+  });
+
   const { options, ...remainingData } = payload;
   const modifiedUpdatedData: Record<string, unknown> = { ...remainingData };
 
@@ -140,7 +178,7 @@ const updateAddonGroup = async (
 // add option to addon group service
 const addOptionToAddonGroup = async (
   groupId: string,
-  newOption: { name: string; price: number; tax: string },
+  newOption: { name: string; price: number; tax: string; sku?: string },
   currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -180,6 +218,13 @@ const addOptionToAddonGroup = async (
       httpStatus.CONFLICT,
       'An option with this name already exists in this group',
     );
+  }
+
+  if (!newOption.sku) {
+    const cleanTitle = group.title.substring(0, 3).toUpperCase();
+    const cleanName = newOption.name.substring(0, 3).toUpperCase();
+    const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+    newOption.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
   }
 
   const result = await AddonGroup.findOneAndUpdate(

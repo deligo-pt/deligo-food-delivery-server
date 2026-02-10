@@ -24,6 +24,7 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { getIO } from '../../lib/Socket';
+import { OrderPdService } from '../PdInvoice/orderPd.service';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -114,6 +115,10 @@ const createOrderAfterPayment = async (
     await summary.save({ session });
 
     await session.commitTransaction();
+
+    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
+      console.log(err);
+    });
 
     const notificationPayload = {
       title: 'You have a new order',

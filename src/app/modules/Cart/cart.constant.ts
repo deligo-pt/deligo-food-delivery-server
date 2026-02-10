@@ -1,3 +1,4 @@
+import { roundTo4 } from '../../utils/mathProvider';
 import { TCart } from './cart.interface';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -13,35 +14,26 @@ export const recalculateCartTotals = async (cart: TCart) => {
     return cart;
   }
 
-  cart.totalItems = activeItems.reduce(
-    (sum: number, i: any) => sum + i.quantity,
-    0,
+  const totals = activeItems.reduce(
+    (acc, item) => {
+      acc.totalItems += item.quantity;
+      acc.totalDiscount += (Number(item.discountAmount) || 0) * item.quantity;
+      acc.totalTax += Number(item.taxAmount) || 0;
+      acc.totalBasePrice += Number(item.totalBeforeTax) || 0;
+      return acc;
+    },
+    { totalItems: 0, totalDiscount: 0, totalTax: 0, totalBasePrice: 0 },
   );
 
-  const totalDiscount = activeItems.reduce(
-    (sum: number, i: any) => sum + Number(i.discountAmount || 0) * i.quantity,
-    0,
-  );
-
-  cart.totalProductDiscount = parseFloat(totalDiscount.toFixed(2));
-
-  const totalTax = activeItems.reduce(
-    (sum: number, i: any) => sum + (parseFloat(i.taxAmount.toFixed(2)) || 0),
-    0,
-  );
-  cart.taxAmount = parseFloat(totalTax.toFixed(2));
-
-  const totalBasePrice = activeItems.reduce(
-    (sum: number, i: any) => sum + (Number(i.totalBeforeTax) || 0),
-    0,
-  );
-
-  cart.totalPrice = parseFloat(totalBasePrice.toFixed(2));
+  cart.totalItems = totals.totalItems;
+  cart.totalProductDiscount = roundTo4(totals.totalDiscount);
+  cart.taxAmount = roundTo4(totals.totalTax);
+  cart.totalPrice = roundTo4(totals.totalBasePrice);
 
   const finalSubtotal = cart.totalPrice + cart.taxAmount;
 
   // Set final subtotal (Net Total)
-  cart.subtotal = parseFloat(Math.max(0, finalSubtotal).toFixed(2));
+  cart.subtotal = roundTo4(Math.max(0, finalSubtotal));
 
   return cart;
 };

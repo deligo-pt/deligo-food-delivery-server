@@ -9,6 +9,7 @@ import { AuthUser } from '../../constant/user.constant';
 import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { roundTo4 } from '../../utils/mathProvider';
 
 // Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
@@ -109,28 +110,22 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
 
     const discountPercent = product.pricing?.discount || 0;
     const discountAmountPerUnit =
-      parseFloat((basePrice * (discountPercent / 100)).toFixed(2)) || 0;
+      roundTo4(basePrice * (discountPercent / 100)) || 0;
     const unitPriceAfterDiscount = basePrice - discountAmountPerUnit;
     const quantity = item.quantity || 1;
 
-    const itemTotalProductDiscount = parseFloat(
-      (discountAmountPerUnit * quantity).toFixed(2),
-    );
+    const itemTotalProductDiscount = roundTo4(discountAmountPerUnit * quantity);
     totalProductDiscountAccumulator += itemTotalProductDiscount;
 
-    const productTotalBeforeTax =
-      parseFloat((unitPriceAfterDiscount * quantity).toFixed(2)) || 0;
+    const productTotalBeforeTax = roundTo4(unitPriceAfterDiscount * quantity);
     const taxRate = product.pricing?.taxRate || 13;
-    const productTaxAmount =
-      parseFloat((productTotalBeforeTax * (taxRate / 100)).toFixed(2)) || 0;
+    const productTaxAmount = roundTo4(productTotalBeforeTax * (taxRate / 100));
 
     const processedAddons = (item.addons || []).map((a: any) => {
       const addonPrice = a.price || 0;
       const addonQty = a.quantity || 0;
       const addonTaxRate = a.taxRate || 23;
-      const addonTax =
-        parseFloat((addonPrice * addonQty * (addonTaxRate / 100)).toFixed(2)) ||
-        0;
+      const addonTax = roundTo4(addonPrice * addonQty * (addonTaxRate / 100));
       return {
         ...a,
         price: addonPrice,
@@ -150,25 +145,19 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         0,
       ) || 0;
 
-    const itemTotalBeforeTax =
-      parseFloat((productTotalBeforeTax + addonsTotalNet).toFixed(2)) || 0;
-    const itemTaxAmount =
-      parseFloat((productTaxAmount + addonsTotalTax).toFixed(2)) || 0;
-    const itemSubtotal =
-      parseFloat((itemTotalBeforeTax + itemTaxAmount).toFixed(2)) || 0;
+    const itemTotalBeforeTax = roundTo4(productTotalBeforeTax + addonsTotalNet);
+    const itemTaxAmount = roundTo4(productTaxAmount + addonsTotalTax);
+    const itemSubtotal = roundTo4(itemTotalBeforeTax + itemTaxAmount);
 
-    const itemCommissionNet =
-      parseFloat(
-        (itemTotalBeforeTax * (PLATFORM_COMMISSION_RATE / 100)).toFixed(2),
-      ) || 0;
-    const itemCommissionVat =
-      parseFloat(
-        (itemCommissionNet * (COMMISSION_VAT_RATE / 100)).toFixed(2),
-      ) || 0;
-    const itemVendorEarnings =
-      parseFloat(
-        (itemSubtotal - (itemCommissionNet + itemCommissionVat)).toFixed(2),
-      ) || 0;
+    const itemCommissionNet = roundTo4(
+      itemTotalBeforeTax * (PLATFORM_COMMISSION_RATE / 100),
+    );
+    const itemCommissionVat = roundTo4(
+      itemCommissionNet * (COMMISSION_VAT_RATE / 100),
+    );
+    const itemVendorEarnings = roundTo4(
+      itemSubtotal - (itemCommissionNet + itemCommissionVat),
+    );
 
     totalFoodVatAccumulator += itemTaxAmount;
     totalNetFoodPriceAccumulator += itemTotalBeforeTax;
@@ -191,7 +180,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       price: unitPriceAfterDiscount,
       addons: processedAddons,
       productTotalBeforeTax,
-      productTaxAmount: parseFloat(productTaxAmount.toFixed(2)),
+      productTaxAmount: roundTo4(productTaxAmount),
       totalBeforeTax: itemTotalBeforeTax,
       taxRate,
       taxAmount: itemTaxAmount,
@@ -204,19 +193,14 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     };
   });
 
-  const totalPriceGross =
-    parseFloat(totalNetFoodPriceAccumulator.toFixed(2)) || 0;
-  const totalTaxAmount = parseFloat(totalFoodVatAccumulator.toFixed(2)) || 0;
+  const totalPriceGross = roundTo4(totalNetFoodPriceAccumulator);
+  const totalTaxAmount = roundTo4(totalFoodVatAccumulator);
 
-  const fleetManagerCommissionPercent = parseFloat(
-    (globalSettingsData.fleetManagerCommissionPercent! / 100).toFixed(2),
+  const fleetManagerCommissionPercent = roundTo4(
+    globalSettingsData.fleetManagerCommissionPercent! / 100,
   );
 
-  const fleetFee =
-    parseFloat(
-      (deliveryChargeNet * fleetManagerCommissionPercent).toFixed(2),
-    ) || 0;
-
+  const fleetFee = roundTo4(deliveryChargeNet * fleetManagerCommissionPercent);
   const summaryData = {
     customerId,
     vendorId,
@@ -230,30 +214,18 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     deliveryCharge: deliveryChargeNet,
     deliveryVatRate: globalSettingsData?.deliveryVatRate,
     deliveryVatAmount,
-    deliGoCommission: parseFloat(totalDeliGoCommission.toFixed(2)) || 0,
-    commissionVat: parseFloat(totalCommissionVat.toFixed(2)) || 0,
+    deliGoCommission: roundTo4(totalDeliGoCommission),
+    commissionVat: roundTo4(totalCommissionVat),
     fleetFee,
     riderNetEarnings:
-      parseFloat(
-        (
-          deliveryChargeNet +
-          deliveryVatAmount -
-          deliveryChargeNet * 0.04
-        ).toFixed(2),
+      roundTo4(
+        deliveryChargeNet + deliveryVatAmount - deliveryChargeNet * 0.04,
       ) || 0,
     offerDiscount: 0,
-    totalProductDiscount: parseFloat(
-      totalProductDiscountAccumulator.toFixed(2),
+    totalProductDiscount: roundTo4(totalProductDiscountAccumulator),
+    subtotal: roundTo4(
+      totalPriceGross + totalTaxAmount + deliveryChargeNet + deliveryVatAmount,
     ),
-    subtotal:
-      parseFloat(
-        (
-          totalPriceGross +
-          totalTaxAmount +
-          deliveryChargeNet +
-          deliveryVatAmount
-        ).toFixed(2),
-      ) || 0,
     offerApplied: null,
     deliveryAddress: activeAddress,
     estimatedDeliveryTime: payload.estimatedDeliveryTime || '20-30 minutes',

@@ -3,6 +3,15 @@ import { OrderStatus } from './order.constant';
 import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
 import { TAppliedOfferSnapshot } from '../Checkout/checkout.interface';
 
+export type TInvoiceSync = {
+  isSynced: boolean;
+  invoiceNo?: string;
+  atcud?: string;
+  signature?: string;
+  syncedAt?: Date;
+  syncError?: string;
+};
+
 export type TOrder = {
   _id?: mongoose.Types.ObjectId;
 
@@ -34,7 +43,7 @@ export type TOrder = {
   promoType: 'OFFER' | 'NONE';
   offerApplied?: TAppliedOfferSnapshot;
 
-  paymentMethod: 'CARD' | 'MOBILE';
+  paymentMethod: 'CARD' | 'MB_WAY';
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
   transactionId?: string;
   isPaid: boolean;
@@ -61,11 +70,13 @@ export type TOrder = {
   deliveredAt?: Date;
   preparationTime?: number;
 
+  isRated?: boolean;
+
   // Status Tracking
   isDeleted: boolean;
 
-  // Ratings (optional, for later)
-  isRated?: boolean;
+  invoiceSync?: TInvoiceSync;
+
   createdAt: Date;
   updatedAt: Date;
 };

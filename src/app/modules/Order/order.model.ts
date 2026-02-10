@@ -1,7 +1,19 @@
 import { model, Schema } from 'mongoose';
-import { TOrder } from './order.interface';
+import { TOrder, TInvoiceSync } from './order.interface';
 import { ORDER_STATUS } from './order.constant';
 import { addressSchema } from '../../constant/address.constant';
+
+const invoiceSyncSchema = new Schema<TInvoiceSync>(
+  {
+    isSynced: { type: Boolean, default: false },
+    invoiceNo: { type: String },
+    atcud: { type: String },
+    signature: { type: String },
+    syncedAt: { type: Date },
+    syncError: { type: String },
+  },
+  { _id: false },
+);
 
 const orderItemSchema = new Schema(
   {
@@ -15,6 +27,7 @@ const orderItemSchema = new Schema(
       {
         optionId: { type: String },
         name: { type: String },
+        sku: { type: String },
         price: { type: Number },
         quantity: { type: Number },
         taxRate: { type: Number },
@@ -80,7 +93,7 @@ const orderSchema = new Schema<TOrder>(
     promoType: { type: String, enum: ['OFFER', 'NONE'], default: 'NONE' },
     offerApplied: { type: Object, default: null },
 
-    paymentMethod: { type: String, enum: ['CARD', 'MOBILE'], required: true },
+    paymentMethod: { type: String, enum: ['CARD', 'MB_WAY'], required: true },
     paymentStatus: {
       type: String,
       enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'],
@@ -114,6 +127,7 @@ const orderSchema = new Schema<TOrder>(
     isDeleted: { type: Boolean, default: false },
 
     isRated: { type: Boolean, default: false },
+    invoiceSync: { type: invoiceSyncSchema, default: null },
   },
   { timestamps: true },
 );

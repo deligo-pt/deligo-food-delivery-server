@@ -17,9 +17,9 @@ router.get(
     'DELIVERY_PARTNER',
     'FLEET_MANAGER',
     'VENDOR',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
-  ProfileController.getMyProfile
+  ProfileController.getMyProfile,
 );
 
 // update my profile route
@@ -31,12 +31,12 @@ router.patch(
     'DELIVERY_PARTNER',
     'FLEET_MANAGER',
     'VENDOR',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
   multerUpload.single('file'),
   parseBody,
   validateRequest(ProfileValidation.userProfileUpdateValidationSchema),
-  ProfileController.updateMyProfile
+  ProfileController.updateMyProfile,
 );
 
 // send otp route
@@ -49,10 +49,10 @@ router.patch(
     'FLEET_MANAGER',
     'VENDOR',
     'SUB_VENDOR',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
   validateRequest(ProfileValidation.updateContactNumberValidationSchema),
-  ProfileController.sendOtp
+  ProfileController.sendOtp,
 );
 
 // update email or contact number route
@@ -65,9 +65,9 @@ router.patch(
     'FLEET_MANAGER',
     'VENDOR',
     'SUB_VENDOR',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
-  ProfileController.updateEmailOrContactNumber
+  ProfileController.updateEmailOrContactNumber,
 );
 
 export const ProfileRoutes = router;

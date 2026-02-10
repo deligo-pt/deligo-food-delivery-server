@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 
 export type TAddonOption = {
   name: string;
+  sku: string;
+  pdItemId?: string;
   price: number;
   tax: mongoose.Types.ObjectId;
   isActive: boolean;

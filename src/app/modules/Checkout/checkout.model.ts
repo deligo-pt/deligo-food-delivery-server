@@ -32,6 +32,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           {
             optionId: { type: String },
             name: { type: String },
+            sku: { type: String },
             price: { type: Number },
             quantity: { type: Number },
             taxRate: { type: Number },

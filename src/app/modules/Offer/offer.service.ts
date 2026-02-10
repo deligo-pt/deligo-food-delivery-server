@@ -8,6 +8,7 @@ import { Offer } from './offer.model';
 import { Product } from '../Product/product.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import mongoose from 'mongoose';
+import { roundTo4 } from '../../utils/mathProvider';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
@@ -416,13 +417,8 @@ const validateAndApplyOffer = async (
   }
 
   if (!offer) {
-    const resetSubtotal = Number(
-      (
-        totalPrice +
-        taxAmount +
-        deliveryCharge +
-        (deliveryVatAmount || 0)
-      ).toFixed(2),
+    const resetSubtotal = roundTo4(
+      totalPrice + taxAmount + deliveryCharge + (deliveryVatAmount || 0),
     );
     return await CheckoutSummary.findByIdAndUpdate(
       checkoutId,
@@ -445,7 +441,8 @@ const validateAndApplyOffer = async (
 
   switch (offer.offerType) {
     case 'PERCENT': {
-      const calculated = (totalPrice * (offer.discountValue || 0)) / 100;
+      const subtotal = totalPrice + taxAmount;
+      const calculated = (subtotal * (offer.discountValue || 0)) / 100;
       discount = offer.maxDiscountAmount
         ? Math.min(calculated, offer.maxDiscountAmount)
         : calculated;
@@ -480,16 +477,14 @@ const validateAndApplyOffer = async (
     }
   }
 
-  discount = Number(Math.min(discount, totalPrice).toFixed(2));
+  discount = roundTo4(Math.min(discount, totalPrice));
 
-  const newSubtotal = Number(
-    (
-      totalPrice -
+  const newSubtotal = roundTo4(
+    totalPrice -
       discount +
       taxAmount +
       finalDeliveryCharge +
-      (deliveryVatAmount || 0)
-    ).toFixed(2),
+      (deliveryVatAmount || 0),
   );
 
   const offerUpdateData = {

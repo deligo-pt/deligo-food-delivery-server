@@ -9,6 +9,7 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { recalculateCartTotals } from './cart.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { roundTo4 } from '../../utils/mathProvider';
 
 // Add cart Service
 const addToCart = async (payload: TCart, currentUser: AuthUser) => {
@@ -92,15 +93,14 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
   const { discount = 0, taxRate = 0 } = existingProduct.pricing;
 
-  const priceAfterDiscount = parseFloat(
-    (selectedPrice - (selectedPrice * discount) / 100).toFixed(2),
+  const priceAfterDiscount = roundTo4(
+    selectedPrice - (selectedPrice * discount) / 100,
   );
 
-  const totalBeforeTax = parseFloat((priceAfterDiscount * quantity).toFixed(2));
-  const itemTaxAmount = parseFloat(
-    (totalBeforeTax * (taxRate / 100)).toFixed(2),
-  );
-  const itemSubtotal = parseFloat((totalBeforeTax + itemTaxAmount).toFixed(2));
+  const totalBeforeTax = roundTo4(priceAfterDiscount * quantity);
+  const itemTaxAmount = roundTo4(totalBeforeTax * (taxRate / 100));
+
+  const itemSubtotal = roundTo4(totalBeforeTax + itemTaxAmount);
 
   const newItem = {
     productId: existingProduct._id,
@@ -112,17 +112,17 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     hasVariations: existingProduct.stock.hasVariations,
     variationSku: finalVariationSku,
     quantity,
-    originalPrice: parseFloat(selectedPrice.toFixed(2)),
-    discountAmount: Number((selectedPrice - priceAfterDiscount).toFixed(2)),
-    price: parseFloat(priceAfterDiscount.toFixed(2)),
+    originalPrice: roundTo4(selectedPrice),
+    discountAmount: roundTo4(selectedPrice - priceAfterDiscount),
+    price: roundTo4(priceAfterDiscount),
 
-    productTotalBeforeTax: parseFloat(totalBeforeTax.toFixed(2)),
-    productTaxAmount: parseFloat(itemTaxAmount.toFixed(2)),
+    productTotalBeforeTax: roundTo4(totalBeforeTax),
+    productTaxAmount: roundTo4(itemTaxAmount),
 
     taxRate,
-    taxAmount: parseFloat(itemTaxAmount.toFixed(2)),
-    totalBeforeTax: parseFloat(totalBeforeTax.toFixed(2)),
-    subtotal: parseFloat(itemSubtotal.toFixed(2)),
+    taxAmount: roundTo4(itemTaxAmount),
+    totalBeforeTax: roundTo4(totalBeforeTax),
+    subtotal: roundTo4(itemSubtotal),
     isActive: true,
     addons: [],
   };
@@ -159,29 +159,31 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
       if (currentItem.addons && currentItem.addons.length > 0) {
         currentItem.addons.forEach((addon: any) => {
-          const addonSubtotal =
-            (Number(addon.price) || 0) * (Number(addon.quantity) || 0);
-          const addonTax = addonSubtotal * ((Number(addon.taxRate) || 0) / 100);
+          const addonSubtotal = roundTo4(
+            (addon.price || 0) * (addon.quantity || 0),
+          );
+          const addonTax = roundTo4(
+            addonSubtotal * ((addon.taxRate || 0) / 100),
+          );
 
           totalAddonsPrice += addonSubtotal;
           totalAddonsTax += addonTax;
 
-          addon.taxAmount = parseFloat(addonTax.toFixed(2));
+          addon.taxAmount = roundTo4(addonTax);
         });
       }
 
-      const baseProductPrice = currentItem.price * finalQuantity;
-      const baseProductTax =
-        baseProductPrice * ((currentItem.taxRate || 0) / 100);
+      const baseProductPrice = roundTo4(currentItem.price * finalQuantity);
+      const baseProductTax = roundTo4(
+        baseProductPrice * ((currentItem.taxRate || 0) / 100),
+      );
 
-      currentItem.totalBeforeTax = parseFloat(
-        (baseProductPrice + totalAddonsPrice).toFixed(2),
+      currentItem.totalBeforeTax = roundTo4(
+        roundTo4(baseProductPrice) + roundTo4(totalAddonsPrice),
       );
-      currentItem.taxAmount = parseFloat(
-        (baseProductTax + totalAddonsTax).toFixed(2),
-      );
-      currentItem.subtotal = parseFloat(
-        (currentItem.totalBeforeTax + currentItem.taxAmount).toFixed(2),
+      currentItem.taxAmount = roundTo4(baseProductTax + totalAddonsTax);
+      currentItem.subtotal = roundTo4(
+        currentItem.totalBeforeTax + currentItem.taxAmount,
       );
     } else {
       const activeItem = cart.items.find((i) => i.isActive === true);
@@ -334,33 +336,31 @@ const updateCartItemQuantity = async (
 
   if (targetItem.addons && targetItem.addons.length > 0) {
     targetItem.addons.forEach((addon: any) => {
-      const addonSubtotal =
-        (Number(addon.price) || 0) * (Number(addon.quantity) || 0);
-      const addonTaxValue =
-        addonSubtotal * ((Number(addon.taxRate) || 0) / 100);
+      const addonSubtotal = roundTo4(
+        (Number(addon.price) || 0) * (Number(addon.quantity) || 0),
+      );
+      const addonTaxValue = roundTo4(
+        addonSubtotal * ((Number(addon.taxRate) || 0) / 100),
+      );
 
       totalAddonsPrice += addonSubtotal;
       totalAddonsTax += addonTaxValue;
-      addon.taxAmount = Number(addonTaxValue.toFixed(2));
+      addon.taxAmount = addonTaxValue;
     });
   }
 
-  const mainProductBasePrice = Number(
-    (targetItem.price * targetItem.quantity).toFixed(2),
-  );
-  const mainProductTax = Number(
-    (mainProductBasePrice * ((targetItem.taxRate || 0) / 100)).toFixed(2),
+  const mainProductBasePrice = roundTo4(targetItem.price * targetItem.quantity);
+  const mainProductTax = roundTo4(
+    mainProductBasePrice * ((targetItem.taxRate || 0) / 100),
   );
 
   targetItem.productTotalBeforeTax = mainProductBasePrice;
   targetItem.productTaxAmount = mainProductTax;
 
-  targetItem.totalBeforeTax = Number(
-    (mainProductBasePrice + totalAddonsPrice).toFixed(2),
-  );
-  targetItem.taxAmount = Number((mainProductTax + totalAddonsTax).toFixed(2));
-  targetItem.subtotal = Number(
-    (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
+  targetItem.totalBeforeTax = roundTo4(mainProductBasePrice + totalAddonsPrice);
+  targetItem.taxAmount = roundTo4(mainProductTax + totalAddonsTax);
+  targetItem.subtotal = roundTo4(
+    targetItem.totalBeforeTax + targetItem.taxAmount,
   );
   // re-calculate active total
   await recalculateCartTotals(cart);
@@ -421,6 +421,7 @@ const updateAddonQuantity = async (
     price: number;
     optionId: string;
     taxRate: number;
+    sku?: string;
   } | null = null;
 
   let parentGroup: any = null;
@@ -434,6 +435,7 @@ const updateAddonQuantity = async (
         addonData = {
           optionId: option._id.toString(),
           name: option.name,
+          sku: option.sku,
           price: option.price,
           taxRate: option.tax?.taxRate || 0,
         };
@@ -451,6 +453,7 @@ const updateAddonQuantity = async (
   const selectedAddon = addonData as {
     optionId: string;
     name: string;
+    sku?: string;
     price: number;
     taxRate: number;
   };
@@ -478,6 +481,7 @@ const updateAddonQuantity = async (
     } else {
       targetItem.addons.push({
         optionId: selectedAddon.optionId,
+        sku: selectedAddon.sku,
         name: selectedAddon.name,
         price: selectedAddon.price,
         taxRate: selectedAddon.taxRate,
@@ -505,33 +509,32 @@ const updateAddonQuantity = async (
     const aQty = Number(addon.quantity) || 0;
     const aTaxRate = Number(addon.taxRate) || 0;
 
-    const addonSubtotal = aPrice * aQty;
-    const addonTaxValue = addonSubtotal * (aTaxRate / 100);
+    const addonSubtotal = roundTo4(aPrice * aQty);
+    const addonTaxValue = roundTo4(addonSubtotal * (aTaxRate / 100));
 
-    addon.taxAmount = Number(addonTaxValue.toFixed(2));
+    addon.taxAmount = addonTaxValue;
 
     totalAddonsPrice += addonSubtotal;
     totalAddonsTaxAmount += addonTaxValue;
   });
 
-  const itemsBasePrice =
-    (Number(targetItem.price) || 0) * (Number(targetItem.quantity) || 0);
+  const itemsBasePrice = roundTo4(
+    (targetItem.price || 0) * (targetItem.quantity || 0),
+  );
   const mainProductTaxRate = Number(targetItem.taxRate) || 0;
-  const mainProductTaxAmount = itemsBasePrice * (mainProductTaxRate / 100);
+  const mainProductTaxAmount = roundTo4(
+    itemsBasePrice * (mainProductTaxRate / 100),
+  );
 
   targetItem.productTotalBeforeTax = itemsBasePrice;
   targetItem.productTaxAmount = mainProductTaxAmount;
 
-  targetItem.totalBeforeTax = Number(
-    (itemsBasePrice + totalAddonsPrice).toFixed(2),
-  );
+  targetItem.totalBeforeTax = roundTo4(itemsBasePrice + totalAddonsPrice);
 
-  targetItem.taxAmount = Number(
-    (mainProductTaxAmount + totalAddonsTaxAmount).toFixed(2),
-  );
+  targetItem.taxAmount = roundTo4(mainProductTaxAmount + totalAddonsTaxAmount);
 
-  targetItem.subtotal = Number(
-    (targetItem.totalBeforeTax + targetItem.taxAmount).toFixed(2),
+  targetItem.subtotal = roundTo4(
+    targetItem.totalBeforeTax + targetItem.taxAmount,
   );
 
   await recalculateCartTotals(cart);

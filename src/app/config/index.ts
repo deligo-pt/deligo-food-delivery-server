@@ -49,11 +49,11 @@ export default {
   },
   firebase_service_account: process.env.FIREBASE_SERVICE_ACCOUNT,
   redis: {
-    upstash_redis_rest_url: process.env.UPSTASH_REDIS_REST_URL,
-    upstash_redis_rest_token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    local_url: process.env.REDIS_LOCAL_URL,
   },
-  sage: {
-    api_url: process.env.SAGE_API_URL,
-    access_key: process.env.SAGE_ACCESS_KEY,
+  pastaDigital: {
+    api_url: process.env.PD_API_URL,
+    email: process.env.PD_EMAIL,
+    password: process.env.PD_PASSWORD,
   },
 };

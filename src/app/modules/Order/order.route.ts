@@ -75,4 +75,11 @@ router.get(
   OrderControllers.getSingleOrder,
 );
 
+// download invoice pdf from pasta digital
+router.get(
+  '/:orderId/download-invoice-pdf',
+  auth('CUSTOMER', 'VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  OrderControllers.downloadInvoicePdfFromPd,
+);
+
 export const OrderRoutes = router;
