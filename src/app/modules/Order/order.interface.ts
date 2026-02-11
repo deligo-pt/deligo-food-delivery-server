@@ -77,6 +77,11 @@ export type TOrder = {
 
   invoiceSync?: TInvoiceSync;
 
+  ratingStatus?: {
+    isProductRated: boolean;
+    isVendorRated: boolean;
+    isDeliveryRated: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 };

@@ -54,6 +54,21 @@ const updateProduct = catchAsync(async (req, res) => {
   });
 });
 
+const manageProductVariations = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.manageProductVariations(
+    productId,
+    req.body,
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product variations updated successfully',
+    data: result,
+  });
+});
+
 // update inventory and pricing controller
 const updateInventoryAndPricing = catchAsync(async (req, res) => {
   const { productId } = req.params;
@@ -173,6 +188,7 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
 export const ProductControllers = {
   productCreate,
   updateProduct,
+  manageProductVariations,
   updateInventoryAndPricing,
   approvedProduct,
   deleteProductImages,

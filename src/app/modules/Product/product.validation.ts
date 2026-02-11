@@ -108,6 +108,41 @@ const updateProductValidationSchema = z.object({
   }),
 });
 
+// manageVariationValidationSchema
+const manageVariationValidationSchema = z.object({
+  body: z.object({
+    name: z
+      .string({
+        required_error: 'Variation group name is required',
+      })
+      .min(1, 'Name cannot be empty')
+      .trim(),
+    options: z
+      .array(
+        z.object({
+          label: z
+            .string({
+              required_error: 'Option label is required (e.g., Small, Red)',
+            })
+            .min(1)
+            .trim(),
+          price: z
+            .number({
+              required_error: 'Price is required',
+            })
+            .min(0, 'Price cannot be negative'),
+          sku: z.string().optional(),
+          stockQuantity: z
+            .number()
+            .min(0, 'Stock cannot be negative')
+            .default(0),
+        }),
+      )
+      .min(1, 'At least one option must be provided'),
+  }),
+});
+
+// updateStockAndPriceValidationSchema
 const updateStockAndPriceValidationSchema = z.object({
   body: z
     .object({
@@ -134,6 +169,7 @@ const approveProductValidationSchema = z.object({
 export const ProductValidation = {
   createProductValidationSchema,
   updateProductValidationSchema,
+  manageVariationValidationSchema,
   updateStockAndPriceValidationSchema,
   approveProductValidationSchema,
 };

@@ -21,11 +21,14 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
-    const exists = await Rating.findOne({
-      orderId: payload.orderId,
-      reviewerId: currentUser._id,
-      ratingType: payload.ratingType,
-    }).session(session);
+    const [exists, existsOrder] = await Promise.all([
+      Rating.findOne({
+        orderId: payload.orderId,
+        reviewerId: currentUser._id,
+        ratingType: payload.ratingType,
+      }).session(session),
+      Order.findById(payload.orderId).session(session),
+    ]);
 
     if (exists) {
       throw new AppError(
@@ -34,7 +37,6 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
       );
     }
 
-    const existsOrder = await Order.findById(payload.orderId).session(session);
     if (!existsOrder) {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
     }
@@ -45,6 +47,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
     payload.reviewerModel = reviewerModel as TRefModel;
 
     let result;
+    const updateFields: Record<string, boolean> = {};
 
     if (payload.ratingType === 'PRODUCT') {
       if (!existsOrder.items || existsOrder.items.length === 0) {
@@ -62,6 +65,8 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
       }));
 
       result = await Rating.insertMany(productRatings, { session });
+      updateFields['ratingStatus.isProductRated'] = true;
+      updateFields['ratingStatus.isVendorRated'] = true;
 
       await Promise.all(
         existsOrder.items.map((item) =>
@@ -85,9 +90,11 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
         }
         targetId = existsOrder.deliveryPartnerId.toString();
         targetModel = 'DeliveryPartner';
+        updateFields['ratingStatus.isDeliveryRated'] = true;
       } else if (payload.ratingType === 'VENDOR') {
         targetId = existsOrder.vendorId.toString();
         targetModel = 'Vendor';
+        updateFields['ratingStatus.isVendorRated'] = true;
       }
 
       if (!targetId || !targetModel) {
@@ -104,7 +111,11 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
         await calcAndUpdateDeliveryPartner(targetId, session);
       }
     }
-    await existsOrder.updateOne({ $set: { isRated: true } }, { session });
+    await Order.findByIdAndUpdate(
+      payload.orderId,
+      { $set: updateFields },
+      { session },
+    );
     await session.commitTransaction();
     await session.endSession();
     return result;
