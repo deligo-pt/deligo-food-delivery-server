@@ -111,9 +111,13 @@ const orderSchema = new Schema<TOrder>(
     deliveredAt: { type: Date },
     preparationTime: { type: Number, default: 0 },
 
-    isDeleted: { type: Boolean, default: false },
+    ratingStatus: {
+      isProductRated: { type: Boolean, default: false },
+      isVendorRated: { type: Boolean, default: false },
+      isDeliveryRated: { type: Boolean, default: false },
+    },
 
-    isRated: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

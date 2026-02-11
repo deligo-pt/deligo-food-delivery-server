@@ -64,8 +64,11 @@ export type TOrder = {
   // Status Tracking
   isDeleted: boolean;
 
-  // Ratings (optional, for later)
-  isRated?: boolean;
+  ratingStatus?: {
+    isProductRated: boolean;
+    isVendorRated: boolean;
+    isDeliveryRated: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 };

@@ -28,6 +28,14 @@ router.patch(
   ProductControllers.updateProduct,
 );
 
+// manageProductVariations route
+router.patch(
+  '/manage-product-variations/:productId',
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  validateRequest(ProductValidation.manageVariationValidationSchema),
+  ProductControllers.manageProductVariations,
+);
+
 // Update inventory and pricing route
 router.patch(
   '/update-inventory-and-pricing/:productId',

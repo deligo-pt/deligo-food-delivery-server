@@ -17,7 +17,7 @@ import { TTax } from '../Tax/tax.interface';
 // import { ProductPdService } from '../PdInvoice/Services/productPd.service';
 
 const generateShortId = customAlphabet(
-  '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', // Use uppercase letters and digits for better readability
+  '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
   6,
 );
 
@@ -255,6 +255,130 @@ const updateProduct = async (
   }
 
   return updatedProduct;
+};
+
+const manageProductVariations = async (
+  productId: string,
+  payload: { name: string; options: any[] },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (currentUser?.status !== 'APPROVED')
+    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+
+  const { name, options } = payload;
+  const normalizedName = name.trim();
+  const productNamePart = cleanForSKU(existingProduct.name);
+
+  if (!existingProduct.variations) {
+    existingProduct.variations = [];
+  }
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+  );
+
+  const finalOptionsToPush: any[] = [];
+
+  for (const opt of options) {
+    const normalizedLabel = opt.label.trim();
+    const inputStockQty = opt.stockQuantity || 0;
+
+    if (variationIndex > -1) {
+      const isOptionExists = existingProduct.variations[
+        variationIndex
+      ].options.some(
+        (o: any) => o.label.toLowerCase() === normalizedLabel.toLowerCase(),
+      );
+
+      if (isOptionExists) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Option '${normalizedLabel}' already exists in '${normalizedName}'. Use update API to change stock or price.`,
+        );
+      }
+    }
+
+    const generatedSku =
+      opt.sku ||
+      `VAR-${productNamePart}-${cleanForSKU(normalizedLabel)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+
+    const isSkuTaken = await Product.findOne({
+      'variations.options.sku': generatedSku,
+    });
+
+    if (isSkuTaken) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Generated SKU ${generatedSku} is already in use.`,
+      );
+    }
+
+    finalOptionsToPush.push({
+      ...opt,
+      label: normalizedLabel,
+      sku: generatedSku,
+      stockQuantity: inputStockQty,
+      totalAddedQuantity: inputStockQty,
+      isOutOfStock: inputStockQty <= 0,
+    });
+  }
+
+  if (variationIndex > -1) {
+    if (finalOptionsToPush.length > 0) {
+      existingProduct.variations[variationIndex].options.push(
+        ...finalOptionsToPush,
+      );
+    }
+  } else {
+    existingProduct.variations.push({
+      name: normalizedName,
+      options: finalOptionsToPush,
+    });
+  }
+
+  let totalQty = 0;
+  let totalAddedAcrossVariations = 0;
+  let minPrice = Infinity;
+
+  existingProduct.variations.forEach((v) => {
+    if (v.options && Array.isArray(v.options)) {
+      v.options.forEach((o: any) => {
+        const optionPrice = typeof o.price === 'number' ? o.price : 0;
+        const optionQty =
+          typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
+        const optionAddedQty =
+          typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
+
+        totalQty += optionQty;
+        totalAddedAcrossVariations += optionAddedQty;
+
+        if (optionPrice > 0 && optionPrice < minPrice) {
+          minPrice = optionPrice;
+        }
+      });
+    }
+  });
+
+  existingProduct.stock.quantity = totalQty;
+  existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
+  existingProduct.stock.hasVariations = true;
+  existingProduct.stock.availabilityStatus =
+    totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
+  }
+
+  await existingProduct.save();
+  return existingProduct;
 };
 
 // update inventory and pricing service
@@ -600,6 +724,7 @@ const permanentDeleteProduct = async (
 export const ProductServices = {
   createProduct,
   updateProduct,
+  manageProductVariations,
   updateInventoryAndPricing,
   approvedProduct,
   deleteProductImages,
