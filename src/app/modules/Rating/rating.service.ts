@@ -104,6 +104,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
         await calcAndUpdateDeliveryPartner(targetId, session);
       }
     }
+    await existsOrder.updateOne({ $set: { isRated: true } }, { session });
     await session.commitTransaction();
     await session.endSession();
     return result;
