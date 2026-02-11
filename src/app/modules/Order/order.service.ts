@@ -742,7 +742,7 @@ const partnerAcceptsDispatchedOrder = async (
   if (!claimedOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Too late! Another partner already accepted this order.',
+      'Too late! Another partner already accepted this order. Or it has expired.',
     );
   }
 
