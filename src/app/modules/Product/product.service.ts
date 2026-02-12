@@ -257,6 +257,7 @@ const updateProduct = async (
   return updatedProduct;
 };
 
+// manage product variations service
 const manageProductVariations = async (
   productId: string,
   payload: { name: string; options: any[] },
@@ -370,6 +371,103 @@ const manageProductVariations = async (
   existingProduct.stock.quantity = totalQty;
   existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
   existingProduct.stock.hasVariations = true;
+  existingProduct.stock.availabilityStatus =
+    totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
+  }
+
+  await existingProduct.save();
+  return existingProduct;
+};
+
+const removeProductVariations = async (
+  productId: string,
+  payload: {
+    name: string;
+    labelToRemove?: string;
+  },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (currentUser?.status !== 'APPROVED')
+    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+
+  const { name, labelToRemove } = payload;
+  const normalizedName = name.trim();
+
+  if (!existingProduct.variations || existingProduct.variations.length === 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'No variations found to remove');
+  }
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+  );
+
+  if (variationIndex === -1) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `Variation group '${normalizedName}' not found`,
+    );
+  }
+
+  if (labelToRemove) {
+    const optionIndex = existingProduct.variations[
+      variationIndex
+    ].options.findIndex(
+      (o: any) => o.label.toLowerCase() === labelToRemove.trim().toLowerCase(),
+    );
+
+    if (optionIndex === -1) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        `Option '${labelToRemove}' not found in '${normalizedName}'`,
+      );
+    }
+
+    existingProduct.variations[variationIndex].options.splice(optionIndex, 1);
+
+    if (existingProduct.variations[variationIndex].options.length === 0) {
+      existingProduct.variations.splice(variationIndex, 1);
+    }
+  } else {
+    existingProduct.variations.splice(variationIndex, 1);
+  }
+
+  let totalQty = 0;
+  let totalAddedAcrossVariations = 0;
+  let minPrice = Infinity;
+
+  existingProduct.variations.forEach((v) => {
+    if (v.options && Array.isArray(v.options)) {
+      v.options.forEach((o: any) => {
+        const optionPrice = typeof o.price === 'number' ? o.price : 0;
+        const optionQty =
+          typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
+        const optionAddedQty =
+          typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
+
+        totalQty += optionQty;
+        totalAddedAcrossVariations += optionAddedQty;
+
+        if (optionPrice > 0 && optionPrice < minPrice) {
+          minPrice = optionPrice;
+        }
+      });
+    }
+  });
+
+  existingProduct.stock.quantity = totalQty;
+  existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
+  existingProduct.stock.hasVariations = existingProduct.variations.length > 0;
   existingProduct.stock.availabilityStatus =
     totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
 
@@ -725,6 +823,7 @@ export const ProductServices = {
   createProduct,
   updateProduct,
   manageProductVariations,
+  removeProductVariations,
   updateInventoryAndPricing,
   approvedProduct,
   deleteProductImages,

@@ -142,6 +142,19 @@ const manageVariationValidationSchema = z.object({
   }),
 });
 
+// removeVariationValidationSchema
+const removeVariationValidationSchema = z.object({
+  body: z.object({
+    name: z
+      .string({
+        required_error: 'Variation name is required',
+      })
+      .min(1, 'Variation name cannot be empty'),
+
+    labelToRemove: z.string().optional(),
+  }),
+});
+
 // updateStockAndPriceValidationSchema
 const updateStockAndPriceValidationSchema = z.object({
   body: z
@@ -170,6 +183,7 @@ export const ProductValidation = {
   createProductValidationSchema,
   updateProductValidationSchema,
   manageVariationValidationSchema,
+  removeVariationValidationSchema,
   updateStockAndPriceValidationSchema,
   approveProductValidationSchema,
 };

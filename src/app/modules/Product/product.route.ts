@@ -36,6 +36,14 @@ router.patch(
   ProductControllers.manageProductVariations,
 );
 
+// remove product variations route
+router.patch(
+  '/remove-product-variations/:productId',
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  validateRequest(ProductValidation.removeVariationValidationSchema),
+  ProductControllers.removeProductVariations,
+);
+
 // Update inventory and pricing route
 router.patch(
   '/update-inventory-and-pricing/:productId',
