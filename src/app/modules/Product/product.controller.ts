@@ -54,6 +54,7 @@ const updateProduct = catchAsync(async (req, res) => {
   });
 });
 
+// manage product variations controller
 const manageProductVariations = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.manageProductVariations(
@@ -65,6 +66,22 @@ const manageProductVariations = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Product variations updated successfully',
+    data: result,
+  });
+});
+
+// remove product variations controller
+const removeProductVariations = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.removeProductVariations(
+    productId,
+    req.body,
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product variations removed successfully',
     data: result,
   });
 });
@@ -189,6 +206,7 @@ export const ProductControllers = {
   productCreate,
   updateProduct,
   manageProductVariations,
+  removeProductVariations,
   updateInventoryAndPricing,
   approvedProduct,
   deleteProductImages,
