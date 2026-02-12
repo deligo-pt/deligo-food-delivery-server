@@ -80,19 +80,6 @@ const updateProductValidationSchema = z.object({
     subCategory: z.string().optional(),
     brand: z.string().optional(),
 
-    // variations: z
-    //   .array(
-    //     z.object({
-    //       name: z.string(),
-    //       options: z.array(
-    //         z.object({
-    //           label: z.string(),
-    //         }),
-    //       ),
-    //     }),
-    //   )
-    //   .optional(),
-
     addonGroups: z.array(z.string()).optional(),
 
     images: z.array(z.string()).optional(),
@@ -142,6 +129,37 @@ const manageVariationValidationSchema = z.object({
   }),
 });
 
+const renameVariationValidationSchema = z.object({
+  body: z
+    .object({
+      oldName: z
+        .string({
+          required_error: 'Current variation group name (oldName) is required',
+        })
+        .min(1, 'Old name cannot be empty'),
+
+      newName: z.string().optional(),
+
+      oldLabel: z.string().optional(),
+
+      newLabel: z.string().optional(),
+    })
+    .refine(
+      (data) => {
+        const isRenamingGroup = !!data.newName;
+
+        const isRenamingOption = !!(data.oldLabel && data.newLabel);
+
+        return isRenamingGroup || isRenamingOption;
+      },
+      {
+        message:
+          "You must provide 'newName' to rename the group, or both 'oldLabel' and 'newLabel' to rename an option.",
+        path: ['newName'],
+      },
+    ),
+});
+
 // removeVariationValidationSchema
 const removeVariationValidationSchema = z.object({
   body: z.object({
@@ -183,6 +201,7 @@ export const ProductValidation = {
   createProductValidationSchema,
   updateProductValidationSchema,
   manageVariationValidationSchema,
+  renameVariationValidationSchema,
   removeVariationValidationSchema,
   updateStockAndPriceValidationSchema,
   approveProductValidationSchema,

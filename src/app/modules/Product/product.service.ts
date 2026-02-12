@@ -157,9 +157,7 @@ const updateProduct = async (
     throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
 
   const modifiedData: Record<string, any> = {};
-  // const productNamePart = cleanForSKU(payload.name || existingProduct.name);
 
-  // Basic Information Update (Name, Slug, Category, etc.)
   if (payload.name) {
     modifiedData.name = payload.name;
     modifiedData.slug = generateSlug(payload.name);
@@ -184,44 +182,6 @@ const updateProduct = async (
     if (payload.pricing.discount !== undefined)
       modifiedData['pricing.discount'] = payload.pricing.discount;
   }
-
-  // Variation and Stock Management
-  // if (payload.variations && payload.variations.length > 0) {
-  //   let currentVariationStockSum = 0;
-  //   let minPrice = Infinity;
-
-  //   const processedVariations = payload.variations.map((v) => ({
-  //     name: v.name,
-  //     options: v.options.map((opt) => {
-  //       const sQuantity = opt.stockQuantity || 0;
-  //       currentVariationStockSum += sQuantity;
-  //       if (opt.price < minPrice) minPrice = opt.price;
-
-  //       return {
-  //         ...opt,
-  //         sku:
-  //           opt.sku ||
-  //           `VAR-${productNamePart}-${cleanForSKU(opt.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
-  //         stockQuantity: sQuantity,
-  //         totalAddedQuantity: sQuantity,
-  //         isOutOfStock: sQuantity <= 0,
-  //       };
-  //     }),
-  //   }));
-
-  //   // --- Stock Calculation Logic ---
-  //   const finalQuantity = currentVariationStockSum;
-
-  //   const previousTotalAdded = existingProduct.stock.totalAddedQuantity || 0;
-  //   const finalTotalAddedQuantity =
-  //     previousTotalAdded + currentVariationStockSum;
-
-  //   modifiedData.variations = processedVariations;
-  //   modifiedData['stock.hasVariations'] = true;
-  //   modifiedData['stock.quantity'] = finalQuantity;
-  //   modifiedData['stock.totalAddedQuantity'] = finalTotalAddedQuantity;
-  //   modifiedData['pricing.price'] = minPrice;
-  // }
 
   // Meta & Stock Unit Update
   if (payload.stock?.unit) modifiedData['stock.unit'] = payload.stock.unit;
@@ -265,7 +225,8 @@ const manageProductVariations = async (
 ) => {
   const existingProduct = await Product.findOne({
     productId,
-    ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
   });
 
   if (!existingProduct)
@@ -382,6 +343,69 @@ const manageProductVariations = async (
   return existingProduct;
 };
 
+const renameProductVariation = async (
+  productId: string,
+  payload: {
+    oldName: string;
+    newName?: string;
+    oldLabel?: string;
+    newLabel?: string;
+  },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && {
+      vendorId: currentUser._id,
+    }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (!existingProduct.variations) {
+    existingProduct.variations = [];
+  }
+
+  const { oldName, newName, oldLabel, newLabel } = payload;
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === oldName.trim().toLowerCase(),
+  );
+
+  if (variationIndex === -1)
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `Variation group '${oldName}' not found`,
+    );
+
+  if (newName && !oldLabel) {
+    existingProduct.variations[variationIndex].name = newName.trim();
+  }
+
+  if (oldLabel && newLabel) {
+    const optionIndex = existingProduct.variations[
+      variationIndex
+    ].options.findIndex(
+      (o: any) => o.label.toLowerCase() === oldLabel.trim().toLowerCase(),
+    );
+
+    if (optionIndex === -1)
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        `Option '${oldLabel}' not found`,
+      );
+
+    existingProduct.variations[variationIndex].options[optionIndex].label =
+      newLabel.trim();
+  }
+
+  await existingProduct.save();
+  return existingProduct;
+};
+
+// remove product variations service
 const removeProductVariations = async (
   productId: string,
   payload: {
@@ -392,7 +416,8 @@ const removeProductVariations = async (
 ) => {
   const existingProduct = await Product.findOne({
     productId,
-    ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
   });
 
   if (!existingProduct)
@@ -823,6 +848,7 @@ export const ProductServices = {
   createProduct,
   updateProduct,
   manageProductVariations,
+  renameProductVariation,
   removeProductVariations,
   updateInventoryAndPricing,
   approvedProduct,

@@ -36,6 +36,14 @@ router.patch(
   ProductControllers.manageProductVariations,
 );
 
+// rename product variations route
+router.patch(
+  '/rename-product-variations/:productId',
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  validateRequest(ProductValidation.renameVariationValidationSchema),
+  ProductControllers.renameProductVariation,
+);
+
 // remove product variations route
 router.patch(
   '/remove-product-variations/:productId',
