@@ -513,7 +513,10 @@ const broadcastOrderToPartners = async (
     orderId,
     vendorId: currentUser._id.toString(),
     isDeleted: false,
-  });
+  }).populate(
+    'customerId',
+    'name userId role contactNumber currentSessionLocation profilePhoto',
+  );
 
   if (order?.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
     throw new AppError(
@@ -741,6 +744,9 @@ const partnerAcceptsDispatchedOrder = async (
       },
     },
     { new: true },
+  ).populate(
+    'customerId',
+    'name userId role contactNumber currentSessionLocation profilePhoto',
   );
 
   // If null, another partner claimed it
@@ -824,6 +830,9 @@ const otpVerificationByVendor = async (
       },
     },
     { new: true },
+  ).populate(
+    'deliveryPartnerId customerId',
+    'name userId role contactNumber currentSessionLocation profilePhoto',
   );
 
   if (!updatedOrder) {
@@ -963,6 +972,9 @@ const updateOrderStatusByDeliveryPartner = async (
       },
     },
     { new: true },
+  ).populate(
+    'customerId vendorId',
+    'name userId role contactNumber currentSessionLocation profilePhoto',
   );
 
   if (!updatedOrder) {
@@ -1112,7 +1124,8 @@ const getAllOrders = async (
     .search(OrderSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
-    customer: 'name userId role',
+    customer:
+      'name userId role contactNumber currentSessionLocation profilePhoto',
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
@@ -1175,7 +1188,8 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   const query = Order.findOne({ orderId: orderId, ...filter });
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
-    customer: 'name userId role',
+    customer:
+      'name userId role contactNumber currentSessionLocation profilePhoto',
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
