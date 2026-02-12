@@ -54,6 +54,22 @@ const updateProduct = catchAsync(async (req, res) => {
   });
 });
 
+// rename product variations controller
+const renameProductVariation = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.renameProductVariation(
+    productId,
+    req.body,
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product variations renamed successfully',
+    data: result,
+  });
+});
+
 // manage product variations controller
 const manageProductVariations = catchAsync(async (req, res) => {
   const { productId } = req.params;
@@ -206,6 +222,7 @@ export const ProductControllers = {
   productCreate,
   updateProduct,
   manageProductVariations,
+  renameProductVariation,
   removeProductVariations,
   updateInventoryAndPricing,
   approvedProduct,
