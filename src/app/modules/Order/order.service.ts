@@ -973,10 +973,20 @@ const updateOrderStatusByDeliveryPartner = async (
   );
 
   if (!updatedOrder) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
-    );
+    if (
+      requiredCurrentStatus === 'PICKED_UP' &&
+      payload.orderStatus === 'ON_THE_WAY'
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Please verify the OTP first to start delivery.',
+      );
+    } else {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+      );
+    }
   }
 
   // Update partner record
