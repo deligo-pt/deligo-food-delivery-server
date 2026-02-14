@@ -93,6 +93,13 @@ export type TFleetManager = {
     swiftCode: string;
   };
 
+  wallet?: {
+    lastSettlementDate?: Date;
+    totalUnpaidEarnings: number;
+    totalCommissionEarned: number; // 4%
+    totalRiderPayable: number;
+  };
+
   // ---------------------------------------------
   // Documents & Verification
   // ---------------------------------------------

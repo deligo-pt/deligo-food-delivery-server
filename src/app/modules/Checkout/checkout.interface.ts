@@ -57,10 +57,17 @@ export type TCheckoutSummary = {
   deliveryCharge: number;
   deliveryVatRate: number;
   deliveryVatAmount: number;
+  totalDeliveryCharge: number;
 
-  deliGoCommission: number; // €1.50 (Total Net Commission)
+  deliGoCommissionRate: number;
+  deliGoCommission: number;
   commissionVat: number; // €0.35 (Total VAT collected from vendor)
+  deliGoCommissionNet: number; // €1.50 (Total Net Commission)
+  totalVendorDeduction: number;
 
+  vendorNetPayout: number;
+
+  fleetCommissionRate: number;
   fleetFee: number; // €0.08 (4% of Net Delivery)
   riderNetEarnings: number; // €2.38 (Payout to partner after fleet fee)
 

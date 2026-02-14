@@ -136,6 +136,13 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       swiftCode: { type: String, default: '' },
     },
 
+    wallet: {
+      lastSettlementDate: { type: Date, default: null },
+      totalUnpaidEarnings: { type: Number, default: 0 },
+      totalCommissionEarned: { type: Number, default: 0 },
+      totalRiderPayable: { type: Number, default: 0 },
+    },
+
     // ------------------------------------------
     // Documents
     // ------------------------------------------

@@ -83,10 +83,18 @@ const orderSchema = new Schema<TOrder>(
     deliveryVatAmount: { type: Number, default: 0 },
     offerDiscount: { type: Number, default: 0 },
     totalProductDiscount: { type: Number, default: 0 },
+    totalDeliveryCharge: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
 
+    deliGoCommissionRate: { type: Number },
     deliGoCommission: { type: Number, required: true },
     commissionVat: { type: Number, required: true },
+    deliGoCommissionNet: { type: Number, required: true },
+    totalVendorDeduction: { type: Number, required: true },
+
+    vendorNetPayout: { type: Number, required: true },
+
+    fleetCommissionRate: { type: Number },
     fleetFee: { type: Number, required: true },
     riderNetEarnings: { type: Number, required: true },
 
@@ -96,7 +104,7 @@ const orderSchema = new Schema<TOrder>(
     paymentMethod: { type: String, enum: ['CARD', 'MB_WAY'], required: true },
     paymentStatus: {
       type: String,
-      enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'],
+      enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
     },
     transactionId: { type: String },

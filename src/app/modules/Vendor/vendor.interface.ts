@@ -127,6 +127,15 @@ export type TVendor = {
     swiftCode: string;
   };
 
+  // -----------------------------------------------------
+  // Vendor Wallet
+  // -----------------------------------------------------
+  wallet?: {
+    lastSettlementDate: Date;
+    totalUnpaidEarnings: number;
+    totalEarnings: number;
+  };
+
   // --------------------------------------------------------
   // Documents & Verification
   // --------------------------------------------------------

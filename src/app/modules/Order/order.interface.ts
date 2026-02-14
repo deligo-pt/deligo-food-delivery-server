@@ -28,23 +28,34 @@ export type TOrder = {
   // Pricing & Payment
   totalItems: number;
   totalPrice: number;
+  taxAmount?: number;
+
   offerDiscount?: number;
   totalProductDiscount?: number;
-  taxAmount?: number;
+
   deliveryCharge?: number;
+  deliveryVatRate?: number;
   deliveryVatAmount: number;
+  totalDeliveryCharge: number;
+
   subtotal: number;
 
+  deliGoCommissionRate?: number;
   deliGoCommission: number;
   commissionVat: number;
+  deliGoCommissionNet: number;
+  totalVendorDeduction: number;
+  vendorNetPayout: number;
+
+  fleetCommissionRate?: number;
   fleetFee: number;
   riderNetEarnings: number;
 
   promoType: 'OFFER' | 'NONE';
   offerApplied?: TAppliedOfferSnapshot;
 
-  paymentMethod: 'CARD' | 'MB_WAY';
-  paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+  paymentMethod: 'CARD' | 'MOBILE';
+  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   transactionId?: string;
   isPaid: boolean;
 

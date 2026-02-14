@@ -550,7 +550,7 @@ const getPartnerPerformanceAnalytics = async (
           deliveries: opData?.completedDeliveries || 0,
           avgMins: `${rowAvgMins} min`,
           acceptance: rowAcceptance,
-          earnings: `€${roundTo4(partner?.earnings?.totalEarnings || 0)}`,
+          // earnings: `€${roundTo4(partner?.earnings?.totalEarnings || 0)}`,
         };
       }),
       meta,

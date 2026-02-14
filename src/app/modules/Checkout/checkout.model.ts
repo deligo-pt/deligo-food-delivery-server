@@ -67,6 +67,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     deliveryCharge: { type: Number, required: true },
     deliveryVatRate: { type: Number, required: true },
     deliveryVatAmount: { type: Number, required: true, default: 0 },
+    totalDeliveryCharge: { type: Number, required: true, default: 0 },
 
     offerDiscount: { type: Number, default: 0 },
     totalProductDiscount: { type: Number, default: 0 },
@@ -79,8 +80,15 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     },
     offerId: { type: Schema.Types.ObjectId, default: null, ref: 'Offer' },
 
-    deliGoCommission: { type: Number, required: true, default: 0 }, // Net Commission
+    deliGoCommissionRate: { type: Number, required: true, default: 0 },
+    deliGoCommission: { type: Number, required: true, default: 0 },
     commissionVat: { type: Number, required: true, default: 0 }, // VAT on Commission
+    deliGoCommissionNet: { type: Number, required: true, default: 0 }, // Net Commission
+    totalVendorDeduction: { type: Number, required: true, default: 0 },
+
+    vendorNetPayout: { type: Number, required: true, default: 0 },
+
+    fleetCommissionRate: { type: Number, required: true, default: 0 },
     fleetFee: { type: Number, required: true, default: 0 },
     riderNetEarnings: { type: Number, required: true, default: 0 },
 
@@ -90,7 +98,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       },
       title: { type: String },
       promoType: { type: String, enum: ['OFFER', 'NONE'] },
-      offerType: { type: String },
+      discountType: { type: String },
       discountValue: { type: Number },
       maxDiscountAmount: { type: Number },
       code: { type: String },
