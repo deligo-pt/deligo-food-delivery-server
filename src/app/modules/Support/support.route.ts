@@ -20,9 +20,9 @@ router.post(
     'CUSTOMER',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
-  SupportControllers.openOrCreateConversationController
+  SupportControllers.openOrCreateConversation,
 );
 
 /**
@@ -41,9 +41,9 @@ router.get(
     'SUB_VENDOR',
     'CUSTOMER',
     'FLEET_MANAGER',
-    'DELIVERY_PARTNER'
+    'DELIVERY_PARTNER',
   ),
-  SupportControllers.getAllSupportConversationsController
+  SupportControllers.getAllSupportConversations,
 );
 
 /**
@@ -62,9 +62,9 @@ router.get(
     'SUB_VENDOR',
     'CUSTOMER',
     'FLEET_MANAGER',
-    'DELIVERY_PARTNER'
+    'DELIVERY_PARTNER',
   ),
-  SupportControllers.getSingleSupportConversationController
+  SupportControllers.getSingleSupportConversation,
 );
 
 /**
@@ -81,9 +81,9 @@ router.get(
     'VENDOR',
     'CUSTOMER',
     'FLEET_MANAGER',
-    'DELIVERY_PARTNER'
+    'DELIVERY_PARTNER',
   ),
-  SupportControllers.getMessagesByRoomController
+  SupportControllers.getMessagesByRoom,
 );
 
 /**
@@ -100,9 +100,25 @@ router.patch(
     'VENDOR',
     'CUSTOMER',
     'FLEET_MANAGER',
-    'DELIVERY_PARTNER'
+    'DELIVERY_PARTNER',
   ),
-  SupportControllers.markReadByAdminOrUserController
+  SupportControllers.markReadByAdminOrUser,
+);
+
+// ------------------------------------------------------
+//  Get total unread count
+// ------------------------------------------------------
+router.get(
+  '/unread-count',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'VENDOR',
+    'CUSTOMER',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+  ),
+  SupportControllers.getTotalUnreadCount,
 );
 
 /**
@@ -114,7 +130,7 @@ router.patch(
 router.patch(
   '/conversations/:room/close',
   auth('ADMIN', 'SUPER_ADMIN'),
-  SupportControllers.closeConversationController
+  SupportControllers.closeConversation,
 );
 
 export const SupportRoutes = router;
