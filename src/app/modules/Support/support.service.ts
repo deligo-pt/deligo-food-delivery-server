@@ -10,13 +10,13 @@ import { TConversationType } from './support.interface';
 
 const ensureParticipant = (conversation: any, userId: string) => {
   const isParticipant = conversation.participants.some(
-    (p: TConversationParticipant) => p.userId === userId
+    (p: TConversationParticipant) => p.userId === userId,
   );
 
   if (!isParticipant) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not a participant of this conversation'
+      'You are not a participant of this conversation',
     );
   }
 };
@@ -24,7 +24,7 @@ const ensureParticipant = (conversation: any, userId: string) => {
 const ensureConversationLock = async (
   conversation: any,
   userId: string,
-  role: string
+  role: string,
 ) => {
   if (conversation.status === 'CLOSED') {
     throw new AppError(httpStatus.BAD_REQUEST, 'Conversation is closed');
@@ -34,7 +34,7 @@ const ensureConversationLock = async (
     if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'This conversation is locked by another admin'
+        'This conversation is locked by another admin',
       );
     }
   }
@@ -60,7 +60,7 @@ const openOrCreateConversation = async (
       role: TUserRole;
       name?: string;
     };
-  }
+  },
 ) => {
   const type = payload?.type ?? 'SUPPORT';
 
@@ -78,7 +78,7 @@ const openOrCreateConversation = async (
   } else {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Target user is required for DIRECT or ORDER conversations'
+      'Target user is required for DIRECT or ORDER conversations',
     );
   }
 
@@ -132,7 +132,7 @@ const openOrCreateConversation = async (
 
 const getAllSupportConversations = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const baseFilter: Record<string, any> = { isDeleted: false };
 
@@ -162,9 +162,9 @@ const getAllSupportConversations = async (
 // Get Conversation (GENERIC)
 // ------------------------------------------------------------------
 
-const getSingleSupportConversationController = async (
+const getSingleSupportConversation = async (
   room: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const conversation = await SupportConversation.findOne({
     room,
@@ -270,7 +270,7 @@ const createMessage = async ({
 const getMessagesByRoom = async (
   query: Record<string, unknown>,
   room: string,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const conversation = await SupportConversation.findOne({
     room,
@@ -287,7 +287,7 @@ const getMessagesByRoom = async (
 
   const qb = new QueryBuilder(
     SupportMessage.find({ room, isDeleted: false }),
-    query
+    query,
   )
     .sort()
     .paginate()
@@ -318,13 +318,30 @@ const markReadByAdminOrUser = async (room: string, currentUser: AuthUser) => {
 
   await SupportMessage.updateMany(
     { room, [`readBy.${currentUser.userId}`]: false },
-    { $set: { [`readBy.${currentUser.userId}`]: true } }
+    { $set: { [`readBy.${currentUser.userId}`]: true } },
   );
 
   conversation.unreadCount.set(currentUser.userId, 0);
   await conversation.save();
 
   return true;
+};
+
+// ------------------------------------------------------------------
+// Get Total Unread Count (GENERIC)
+// ------------------------------------------------------------------
+const getTotalUnreadCount = async (currentUser: AuthUser) => {
+  const conversations = await SupportConversation.find({
+    'participants.userId': currentUser.userId,
+    isDeleted: false,
+  });
+
+  const totalUnread = conversations.reduce((acc, conv) => {
+    const count = conv.unreadCount.get(currentUser.userId) || 0;
+    return acc + count;
+  }, 0);
+
+  return { totalUnread };
 };
 
 // ------------------------------------------------------------------
@@ -344,7 +361,7 @@ const closeConversation = async (room: string, currentUser: AuthUser) => {
   if (conversation.handledBy !== currentUser.userId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only handler can close conversation'
+      'Only handler can close conversation',
     );
   }
 
@@ -358,9 +375,10 @@ const closeConversation = async (room: string, currentUser: AuthUser) => {
 export const SupportService = {
   openOrCreateConversation,
   getAllSupportConversations,
-  getSingleSupportConversationController,
+  getSingleSupportConversation,
   createMessage, // socket only
   getMessagesByRoom,
   markReadByAdminOrUser,
+  getTotalUnreadCount,
   closeConversation,
 };
