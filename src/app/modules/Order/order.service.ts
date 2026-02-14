@@ -70,6 +70,27 @@ const createOrderAfterPayment = async (
   session.startTransaction();
 
   try {
+    const orderData = {
+      ...summary.toObject(),
+      _id: undefined,
+      orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      paymentMethod: 'CARD',
+      paymentStatus: 'PAID',
+      isPaid: true,
+      transactionId: paymentIntentId,
+      orderStatus: 'PENDING',
+      isDeleted: false,
+    };
+
+    const [order] = await Order.create([orderData], { session });
+
+    summary.isConvertedToOrder = true;
+    summary.paymentStatus = 'PAID';
+    summary.transactionId = paymentIntentId;
+    summary.orderId = new mongoose.Types.ObjectId(order._id);
+
+    await summary.save({ session });
+
     await Cart.updateOne(
       { customerId: summary.customerId },
       {
@@ -91,27 +112,6 @@ const createOrderAfterPayment = async (
       },
       { session },
     );
-
-    const orderData = {
-      ...summary.toObject(),
-      _id: undefined,
-      orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      paymentMethod: 'CARD',
-      paymentStatus: 'COMPLETED',
-      isPaid: true,
-      transactionId: paymentIntentId,
-      orderStatus: 'PENDING',
-      isDeleted: false,
-    };
-
-    const [order] = await Order.create([orderData], { session });
-
-    summary.isConvertedToOrder = true;
-    summary.paymentStatus = 'PAID';
-    summary.transactionId = paymentIntentId;
-    summary.orderId = new mongoose.Types.ObjectId(order._id);
-
-    await summary.save({ session });
 
     await session.commitTransaction();
 

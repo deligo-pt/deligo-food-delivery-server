@@ -229,9 +229,10 @@ const deliveryPartnerSchema = new Schema<
     //-------------------------------------------------
     // Earnings
     //-------------------------------------------------
-    earnings: {
+    wallet: {
+      lastSettlementDate: { type: Date, default: null },
+      totalUnpaidEarnings: { type: Number, default: 0 },
       totalEarnings: { type: Number, default: 0 },
-      pendingEarnings: { type: Number, default: 0 },
     },
 
     //-------------------------------------------------
@@ -286,6 +287,7 @@ const deliveryPartnerSchema = new Schema<
 deliveryPartnerSchema.index({
   currentSessionLocation: '2dsphere',
 });
+deliveryPartnerSchema.index({ 'registeredBy.id': 1 });
 deliveryPartnerSchema.plugin(passwordPlugin);
 
 export const DeliveryPartner = model<

@@ -159,9 +159,10 @@ export type TDeliveryPartner = {
   // -------------------------------------------------
   // 8) Earnings Summary
   // -------------------------------------------------
-  earnings?: {
-    totalEarnings?: number;
-    pendingEarnings?: number;
+  wallet?: {
+    lastSettlementDate: Date;
+    totalUnpaidEarnings: number;
+    totalEarnings: number;
   };
 
   // -------------------------------------------------

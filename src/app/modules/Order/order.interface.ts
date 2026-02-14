@@ -19,15 +19,26 @@ export type TOrder = {
   // Pricing & Payment
   totalItems: number;
   totalPrice: number;
+  taxAmount?: number;
+
   offerDiscount?: number;
   totalProductDiscount?: number;
-  taxAmount?: number;
+
   deliveryCharge?: number;
+  deliveryVatRate?: number;
   deliveryVatAmount: number;
+  totalDeliveryCharge: number;
+
   subtotal: number;
 
+  deliGoCommissionRate?: number;
   deliGoCommission: number;
   commissionVat: number;
+  deliGoCommissionNet: number;
+  totalVendorDeduction: number;
+  vendorNetPayout: number;
+
+  fleetCommissionRate?: number;
   fleetFee: number;
   riderNetEarnings: number;
 
@@ -35,7 +46,7 @@ export type TOrder = {
   offerApplied?: TAppliedOfferSnapshot;
 
   paymentMethod: 'CARD' | 'MOBILE';
-  paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   transactionId?: string;
   isPaid: boolean;
 
