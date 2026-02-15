@@ -39,4 +39,11 @@ router.get(
   AnalyticsControllers.getVendorSalesAnalytics
 );
 
+// get customer insights
+router.get(
+  '/customer-insights',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getCustomerInsights
+);
+
 export const AnalyticsRoutes = router;

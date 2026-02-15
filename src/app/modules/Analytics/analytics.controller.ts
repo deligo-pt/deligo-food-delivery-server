@@ -55,6 +55,7 @@ const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
 // get vendor sales analytics controller
 const getVendorSalesAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorSalesAnalytics(
@@ -68,10 +69,24 @@ const getVendorSalesAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get customer insights controller
+const getCustomerInsights = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getCustomerInsights(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Customer insights fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
   getPartnerPerformanceAnalytics,
-  getVendorSalesAnalytics
+  getVendorSalesAnalytics,
+  getCustomerInsights,
 };
