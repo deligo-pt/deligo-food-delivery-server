@@ -151,104 +151,104 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-          // Vendor filter
-          {
-            $match: {
-              vendorId,
-              isDeleted: false,
+        // Vendor filter
+        {
+          $match: {
+            vendorId,
+            isDeleted: false,
+          },
+        },
+
+        // Unwind items
+        { $unwind: '$items' },
+
+        // Join products to get category
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'items.productId',
+            foreignField: '_id',
+            as: 'product',
+          },
+        },
+        { $unwind: '$product' },
+
+        // One order = one count per category
+        {
+          $group: {
+            _id: {
+              category: '$product.category',
+              orderId: '$_id',
             },
           },
+        },
 
-          // Unwind items
-          { $unwind: '$items' },
+        // Count orders per category
+        {
+          $group: {
+            _id: '$_id.category',
+            orderCount: { $sum: 1 },
+          },
+        },
 
-          // Join products to get category
-          {
-            $lookup: {
-              from: 'products',
-              localField: 'items.productId',
-              foreignField: '_id',
-              as: 'product',
+        {
+          $lookup: {
+            from: 'productcategories',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'categoryDetails',
+          },
+        },
+        {
+          $unwind: {
+            path: '$categoryDetails',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
+        // Calculate TOTAL of all category orders
+        {
+          $group: {
+            _id: null,
+            totalCategoryOrders: { $sum: '$orderCount' },
+            categories: { $push: '$$ROOT' },
+          },
+        },
+
+        // Calculate percentage (SUM = 100%)
+        { $unwind: '$categories' },
+        {
+          $project: {
+            _id: 0,
+            categoryId: '$categories._id',
+            name: {
+              $ifNull: ['$categories.categoryDetails.name', 'Unknown'],
+            },
+            icon: { $ifNull: ['$categories.categoryDetails.icon', ''] },
+            slug: { $ifNull: ['$categories.categoryDetails.slug', ''] },
+            totalOrders: '$categories.orderCount',
+            percentage: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        '$categories.orderCount',
+                        '$totalCategoryOrders',
+                      ],
+                    },
+                    100,
+                  ],
+                },
+                2,
+              ],
             },
           },
-          { $unwind: '$product' },
+        },
 
-          // One order = one count per category
-          {
-            $group: {
-              _id: {
-                category: '$product.category',
-                orderId: '$_id',
-              },
-            },
-          },
-
-          // Count orders per category
-          {
-            $group: {
-              _id: '$_id.category',
-              orderCount: { $sum: 1 },
-            },
-          },
-
-          {
-            $lookup: {
-              from: 'productcategories',
-              localField: '_id',
-              foreignField: '_id',
-              as: 'categoryDetails',
-            },
-          },
-          {
-            $unwind: {
-              path: '$categoryDetails',
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          // Calculate TOTAL of all category orders
-          {
-            $group: {
-              _id: null,
-              totalCategoryOrders: { $sum: '$orderCount' },
-              categories: { $push: '$$ROOT' },
-            },
-          },
-
-          // Calculate percentage (SUM = 100%)
-          { $unwind: '$categories' },
-          {
-            $project: {
-              _id: 0,
-              categoryId: '$categories._id',
-              name: {
-                $ifNull: ['$categories.categoryDetails.name', 'Unknown'],
-              },
-              icon: { $ifNull: ['$categories.categoryDetails.icon', ''] },
-              slug: { $ifNull: ['$categories.categoryDetails.slug', ''] },
-              totalOrders: '$categories.orderCount',
-              percentage: {
-                $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          '$categories.orderCount',
-                          '$totalCategoryOrders',
-                        ],
-                      },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-            },
-          },
-
-          // Top category first
-          { $sort: { percentage: -1 } },
-        ]);
+        // Top category first
+        { $sort: { percentage: -1 } },
+      ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -510,8 +510,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-        )
+        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+      )
       : 0;
 
   return {
@@ -528,17 +528,17 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-              ) + '%'
+              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+            ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-          opData.completedDeliveries > 0 &&
-          opData.totalDeliveryMinutes
+            opData.completedDeliveries > 0 &&
+            opData.totalDeliveryMinutes
             ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries,
-              )
+              opData.totalDeliveryMinutes / opData.completedDeliveries,
+            )
             : 0;
 
         return {
@@ -558,9 +558,94 @@ const getPartnerPerformanceAnalytics = async (
   };
 };
 
+// get vendor sales analytics
+const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const vendorId = new Types.ObjectId(currentUser._id);
+
+  // 1. Weekly Sales Trend Aggregation
+  const salesAnalytics = await Order.aggregate([
+    {
+      $match: {
+        vendorId,
+        orderStatus: 'DELIVERED',
+        isPaid: true,
+        createdAt: {
+          $gte: sevenDaysAgo
+        },
+        isDeleted: false
+      }
+    },
+    {
+      $group: {
+        _id: {
+          $dayOfWeek: {
+            date: "$createdAt",
+            timezone: "Europe/Lisbon"
+          }
+        },
+        dailyTotal: {
+          $sum: "$subtotal"
+        }
+      }
+    }
+  ]);
+
+  // 2. Top Selling Items Aggregation
+  const topItems = await Order.aggregate([
+    {
+      $match: {
+        vendorId,
+        orderStatus: 'DELIVERED',
+        createdAt: { $gte: sevenDaysAgo },
+        isDeleted: false
+      }
+    },
+    { $unwind: "$items" },
+    {
+      $group: {
+        _id: "$items.name",
+        totalSold: { $sum: "$items.quantity" }
+      }
+    },
+    { $sort: { totalSold: -1 } },
+    { $limit: 5 }
+  ]);
+
+  // Data Processing for Weekly Chart
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weeklyTrend = dayNames.map(day => ({ day, total: 0 }));
+  let totalSales = 0;
+
+  salesAnalytics.forEach(item => {
+    const dayIndex = item._id - 1;
+    weeklyTrend[dayIndex].total = Number(item.dailyTotal.toFixed(2));
+    totalSales += item.dailyTotal;
+  });
+
+  // Calculate Best and Slowest day
+  const sortedTrend = [...weeklyTrend].sort((a, b) => b.total - a.total);
+  const bestDay = totalSales > 0 ? sortedTrend[0].day : "N/A";
+  const slowestDay = totalSales > 0 ? sortedTrend[6].day : "N/A";
+
+  return {
+    totalSales: totalSales.toFixed(2),
+    bestPerformingDay: bestDay,
+    slowestDay: slowestDay,
+    weeklyTrend: weeklyTrend,
+    topSellingItems: topItems.map(item => ({
+      name: item._id,
+      sold: item.totalSold
+    }))
+  };
+};
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
   getPartnerPerformanceAnalytics,
+  getVendorSalesAnalytics
 };

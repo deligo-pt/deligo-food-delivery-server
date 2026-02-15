@@ -32,4 +32,11 @@ router.get(
   AnalyticsControllers.getPartnerPerformanceAnalytics
 );
 
+// get vendor sales analytics
+router.get(
+  '/vendor-sales-analytics',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getVendorSalesAnalytics
+);
+
 export const AnalyticsRoutes = router;
