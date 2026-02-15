@@ -86,11 +86,37 @@ const getAdminDashboardAnalytics = async () => {
     .populate('customerId', 'name')
     .select('orderId orderStatus createdAt');
 
-  const topRatedItems = await Product.find({ 'rating.average': { $gte: 4 } })
-    .sort({ 'rating.average': -1 })
-    .limit(4)
-    .select('name rating images totalOrders')
-    .lean();
+  const topRatedItems = await Product.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        'rating.average': { $gte: 4 },
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'items.productId',
+        as: 'orderData',
+      },
+    },
+
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        rating: { average: '$rating.average' },
+        totalOrders: { $size: '$orderData' },
+      },
+    },
+
+    { $sort: { 'rating.average': -1, totalOrders: -1 } },
+
+    { $limit: 4 },
+  ]);
 
   const topRatedDeliveryPartners = await DeliveryPartner.find({
     rating: { $gte: 4 },
