@@ -86,10 +86,11 @@ const getAdminDashboardAnalytics = async () => {
     .populate('customerId', 'name')
     .select('orderId orderStatus createdAt');
 
-  const topRatedItems = await Product.find({ rating: { $gte: 4 } })
-    .sort({ rating: -1 })
+  const topRatedItems = await Product.find({ 'rating.average': { $gte: 4 } })
+    .sort({ 'rating.average': -1 })
     .limit(4)
-    .select('name rating images totalOrders');
+    .select('name rating images totalOrders')
+    .lean();
 
   const topRatedDeliveryPartners = await DeliveryPartner.find({
     rating: { $gte: 4 },
@@ -128,8 +129,11 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   // --------------------------------------------------
   const products = await Product.find(
     { vendorId },
-    '_id category rating meta.status',
-  );
+    '_id category rating meta.status images',
+  ).populate({
+    path: 'category',
+    select: 'name icon',
+  });
 
   const productIds = products.map((p) => p._id);
 
@@ -268,7 +272,14 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   const topRatedItems = products
     .filter((p) => p.rating?.average && p.rating.average >= 4)
     .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0))
-    .slice(0, 4);
+    .slice(0, 4)
+    .map((p) => ({
+      _id: p._id,
+      category: p.category,
+      images: p.images,
+      rating: p.rating,
+      meta: p.meta,
+    }));
 
   // --------------------------------------------------
   // Final Response
