@@ -80,6 +80,7 @@ export type TCheckoutSummary = {
 
   offerApplied?: TAppliedOfferSnapshot;
   deliveryAddress: TAddress;
+  deliveryDistance: number;
   estimatedDeliveryTime: string;
 
   paymentMethod?: 'CARD' | 'MOBILE';

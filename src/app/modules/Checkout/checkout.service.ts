@@ -70,6 +70,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     activeAddress.longitude,
     activeAddress.latitude,
   );
+  const distanceInKM = roundTo4(distance.km) || 0;
   const globalSettingsData = await GlobalSettingsService.getGlobalSettings();
   const deliveryChargeNet =
     roundTo4(
@@ -239,6 +240,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       roundTo4(totalPriceGross + totalTaxAmount + totalDeliveryGross) || 0,
     offerApplied: null,
     deliveryAddress: activeAddress,
+    deliveryDistance: distanceInKM,
     estimatedDeliveryTime: payload.estimatedDeliveryTime || '20-30 minutes',
     isConvertedToOrder: false,
   };
