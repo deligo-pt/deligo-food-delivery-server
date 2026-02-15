@@ -25,9 +25,17 @@ const transactionSchema = new Schema<TTransaction>(
     userModel: {
       type: String,
       required: true,
-      enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'],
+      enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner', 'Admin'],
     },
-    amount: {
+    baseAmount: {
+      type: Number,
+      default: 0,
+    },
+    taxAmount: {
+      type: Number,
+      default: 0,
+    },
+    totalAmount: {
       type: Number,
       required: true,
       min: 0,
@@ -43,6 +51,7 @@ const transactionSchema = new Schema<TTransaction>(
         'VENDOR_SETTLEMENT',
         'FLEET_SETTLEMENT',
         'DELIVERY_PARTNER_SETTLEMENT',
+        'PLATFORM_COMMISSION',
       ],
     },
     status: {
@@ -71,7 +80,7 @@ const transactionSchema = new Schema<TTransaction>(
 const walletSchema = new Schema<TWallet>(
   {
     userId: {
-      type: Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId || String,
       required: true,
       unique: true,
       refPath: 'userModel',

@@ -11,7 +11,7 @@ const globalRatelimit = new Ratelimit({
   analytics: true,
 });
 
-// Auth Rate Limiter: 3 requests every 60 seconds
+// Auth Rate Limiter: 5 requests every 60 seconds
 const authRatelimit = new Ratelimit({
   redis: redis,
   limiter: Ratelimit.slidingWindow(5, '60 s'),
@@ -25,9 +25,8 @@ export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
 
     const limiter = type === 'auth' ? authRatelimit : globalRatelimit;
 
-    const { success, limit, reset, remaining } = await limiter.limit(
-      identifier
-    );
+    const { success, limit, reset, remaining } =
+      await limiter.limit(identifier);
     const waitTimeInSeconds = Math.ceil((reset - Date.now()) / 1000);
     res.set({
       'X-RateLimit-Limit': limit.toString(),
@@ -43,8 +42,8 @@ export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
       return next(
         new AppError(
           httpStatus.TOO_MANY_REQUESTS,
-          `Too many requests. Please try again after ${waitMessage}`
-        )
+          `Too many requests. Please try again after ${waitMessage}`,
+        ),
       );
     }
 

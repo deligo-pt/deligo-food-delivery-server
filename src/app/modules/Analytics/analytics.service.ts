@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { currentStatusOptions } from '../Delivery-Partner/delivery-partner.constant';
@@ -269,17 +269,34 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   // --------------------------------------------------
   // Top Rated Items
   // --------------------------------------------------
-  const topRatedItems = products
-    .filter((p) => p.rating?.average && p.rating.average >= 4)
-    .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0))
-    .slice(0, 4)
-    .map((p) => ({
-      _id: p._id,
-      category: p.category,
-      images: p.images,
-      rating: p.rating,
-      meta: p.meta,
-    }));
+
+  const topRatedItems = await Product.aggregate([
+    {
+      $match: {
+        vendorId: new mongoose.Types.ObjectId(vendorId),
+        'rating.average': { $gte: 4 },
+      },
+    },
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'items.productId',
+        as: 'orderData',
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        rating: { average: '$rating.average' },
+        totalOrders: { $size: '$orderData' },
+      },
+    },
+    { $sort: { 'rating.average': -1, totalOrders: -1 } },
+    { $limit: 4 },
+  ]);
 
   // --------------------------------------------------
   // Final Response
