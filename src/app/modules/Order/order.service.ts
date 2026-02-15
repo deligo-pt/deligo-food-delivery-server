@@ -24,6 +24,7 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { getIO } from '../../lib/Socket';
+import { Transaction, Wallet } from '../Payment/payment.model';
 
 // Create Order
 const createOrderAfterPayment = async (
@@ -83,6 +84,23 @@ const createOrderAfterPayment = async (
     };
 
     const [order] = await Order.create([orderData], { session });
+
+    await Transaction.create(
+      [
+        {
+          transactionId: paymentIntentId,
+          orderId: order._id,
+          userId: currentUser?._id,
+          userModel: 'Customer',
+          amount: order.subtotal,
+          type: 'ORDER_PAYMENT',
+          status: 'SUCCESS',
+          paymentMethod: 'CARD',
+          remarks: `Order payment successful for Order ID: ${order.orderId}`,
+        },
+      ],
+      { session },
+    );
 
     summary.isConvertedToOrder = true;
     summary.paymentStatus = 'PAID';
@@ -946,123 +964,256 @@ const updateOrderStatusByDeliveryPartner = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'Reason is required.');
   }
 
-  // Atomic update attempt
-  const updatedOrder = await Order.findOneAndUpdate(
-    {
-      orderId,
-      deliveryPartnerId: currentUser._id.toString(),
-      orderStatus: requiredCurrentStatus,
-      isDeleted: false,
-    },
-    {
-      $set: {
-        orderStatus: payload.orderStatus,
-        ...(payload.orderStatus === ORDER_STATUS.DELIVERED && {
-          deliveredAt: new Date(),
-        }),
-        ...(payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
-          deliveryPartnerId: null,
-          deliveryPartnerCancelReason: payload.reason,
-        }),
-      },
-    },
-    { new: true },
-  ).populate(
-    'customerId vendorId',
-    'name userId role contactNumber currentSessionLocation profilePhoto',
-  );
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!updatedOrder) {
-    if (
-      requiredCurrentStatus === 'PICKED_UP' &&
-      payload.orderStatus === 'ON_THE_WAY'
-    ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Please verify the OTP first to start delivery.',
+  try {
+    // Atomic update attempt
+    const updatedOrder = await Order.findOneAndUpdate(
+      {
+        orderId,
+        deliveryPartnerId: currentUser._id.toString(),
+        orderStatus: requiredCurrentStatus,
+        isDeleted: false,
+      },
+      {
+        $set: {
+          orderStatus: payload.orderStatus,
+          ...(payload.orderStatus === ORDER_STATUS.DELIVERED && {
+            deliveredAt: new Date(),
+          }),
+          ...(payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
+            deliveryPartnerId: null,
+            deliveryPartnerCancelReason: payload.reason,
+          }),
+        },
+      },
+      { new: true, session },
+    ).populate(
+      'customerId vendorId',
+      'name userId role contactNumber currentSessionLocation profilePhoto',
+    );
+
+    if (!updatedOrder) {
+      const orderCheck = await Order.findOne({
+        orderId,
+        isDeleted: false,
+      }).select('orderStatus');
+
+      if (orderCheck?.orderStatus === payload.orderStatus) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Order status is already ${payload.orderStatus}.`,
+        );
+      }
+      if (
+        requiredCurrentStatus === 'PICKED_UP' &&
+        payload.orderStatus === 'ON_THE_WAY'
+      ) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'Please verify the OTP first to start delivery.',
+        );
+      } else {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+        );
+      }
+    }
+
+    // Update partner record
+    if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
+      const partner = await DeliveryPartner.findById(
+        updatedOrder.deliveryPartnerId,
       );
-    } else {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+      if (!partner) {
+        throw new AppError(
+          httpStatus.NOT_FOUND,
+          'Delivery Partner not found for this order.',
+        );
+      }
+      const {
+        vendorNetPayout,
+        riderNetEarnings,
+        totalDeliveryCharge,
+        _id: orderDbId,
+      } = updatedOrder;
+
+      const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
+      const fleetManagerId = isManagedByFleet
+        ? partner?.registeredBy?.id
+        : null;
+
+      const riderEarningAmount = isManagedByFleet
+        ? riderNetEarnings
+        : totalDeliveryCharge;
+
+      // --- Vendor Wallet Update ---
+      await Wallet.findOneAndUpdate(
+        { userId: updatedOrder.vendorId, userModel: 'Vendor' },
+        {
+          $inc: {
+            totalUnpaidEarnings: vendorNetPayout || 0,
+            totalEarnings: vendorNetPayout || 0,
+          },
+        },
+        { session, upsert: true },
+      );
+
+      // --- Delivery Partner Wallet Update ---
+      await Wallet.findOneAndUpdate(
+        { userId: partner?._id, userModel: 'DeliveryPartner' },
+        {
+          $inc: {
+            totalUnpaidEarnings: riderEarningAmount || 0,
+            totalEarnings: riderEarningAmount || 0,
+          },
+        },
+        { session, upsert: true },
+      );
+
+      // Fleet Manager Wallet (If applicable)
+      if (isManagedByFleet && fleetManagerId) {
+        await Wallet.findOneAndUpdate(
+          { userId: fleetManagerId, userModel: 'FleetManager' },
+          {
+            $inc: {
+              totalUnpaidEarnings: totalDeliveryCharge || 0,
+              totalRiderPayable: riderNetEarnings || 0,
+              totalEarnings: totalDeliveryCharge || 0,
+            },
+          },
+          { session, upsert: true },
+        );
+      }
+
+      // --- Transaction Records ---
+      const timestamp = Date.now();
+      const transactionsToCreate = [
+        {
+          transactionId: `TXN-V-${timestamp}-${orderId}`,
+          orderId: orderDbId,
+          userId: updatedOrder.vendorId,
+          userModel: 'Vendor',
+          amount: vendorNetPayout,
+          type: 'VENDOR_EARNING',
+          status: 'SUCCESS',
+          paymentMethod: 'CARD', // Since no COD
+          remarks: `Earnings for Order: ${orderId}`,
+        },
+        {
+          transactionId: `TXN-DP-${timestamp}-${orderId}`,
+          orderId: orderDbId,
+          userId: partner._id,
+          userModel: 'DeliveryPartner',
+          amount: riderEarningAmount,
+          type: 'DELIVERY_PARTNER_EARNING',
+          status: 'SUCCESS',
+          paymentMethod: 'CARD',
+          remarks: isManagedByFleet
+            ? 'Fleet Managed Earning'
+            : 'Direct Earning',
+        },
+      ];
+
+      if (isManagedByFleet && fleetManagerId) {
+        transactionsToCreate.push({
+          transactionId: `TXN-F-${timestamp}-${orderId}`,
+          orderId: orderDbId,
+          userId: fleetManagerId,
+          userModel: 'FleetManager',
+          amount: totalDeliveryCharge,
+          type: 'FLEET_EARNING',
+          status: 'SUCCESS',
+          paymentMethod: 'CARD',
+          remarks: `Managed Revenue for Order: ${orderId}`,
+        });
+      }
+
+      await Transaction.insertMany(transactionsToCreate, { session });
+
+      const pickupTime = updatedOrder.pickedUpAt
+        ? new Date(updatedOrder.pickedUpAt).getTime()
+        : Date.now();
+      const deliveryTime = new Date().getTime();
+      const durationMinutes = Math.max(
+        1,
+        Math.round((deliveryTime - pickupTime) / 60000),
+      );
+
+      await DeliveryPartner.updateOne(
+        { userId: currentUser.userId },
+        {
+          $set: {
+            'operationalData.currentOrderId': null,
+            'operationalData.currentStatus': 'IDLE',
+          },
+          $inc: {
+            'operationalData.completedDeliveries': 1,
+            'operationalData.totalDeliveryMinutes': durationMinutes,
+          },
+        },
+        {
+          session,
+        },
+      );
+    } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
+      await DeliveryPartner.updateOne(
+        { userId: currentUser.userId },
+        {
+          $set: {
+            'operationalData.currentOrderId': null,
+            'operationalData.currentStatus': 'IDLE',
+          },
+          $inc: {
+            'operationalData.canceledDeliveries': 1,
+            'operationalData.totalRejectedOrders': 1,
+          },
+        },
+        {
+          session,
+        },
       );
     }
-  }
+    await session.commitTransaction();
+    session.endSession();
 
-  // Update partner record
-  if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
-    const pickupTime = updatedOrder.pickedUpAt
-      ? new Date(updatedOrder.pickedUpAt).getTime()
-      : Date.now();
-    const deliveryTime = new Date().getTime();
-    const durationMinutes = Math.max(
-      1,
-      Math.round((deliveryTime - pickupTime) / 60000),
-    );
-    const deliveryFee = updatedOrder.deliveryCharge || 0;
-
-    await DeliveryPartner.updateOne(
-      { userId: currentUser.userId },
-      {
-        $set: {
-          'operationalData.currentOrderId': null,
-          'operationalData.currentStatus': 'IDLE',
-        },
-        $inc: {
-          'operationalData.completedDeliveries': 1,
-          'operationalData.totalDeliveryMinutes': durationMinutes,
-          'earnings.totalEarnings': deliveryFee,
-        },
+    // TODO: Notify Customer (Order is now ON_THE_WAY)
+    const customer = await Customer.findById(updatedOrder.customerId).lean();
+    const customerId = customer?.userId;
+    const notificationPayload = {
+      title: `Order is now ${payload.orderStatus}`,
+      body: `${
+        payload.orderStatus === 'ON_THE_WAY'
+          ? `Your order ${orderId} is now ON_THE_WAY.`
+          : payload.orderStatus === 'DELIVERED'
+            ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
+            : `Your order ${orderId} is  ${payload.orderStatus}.`
+      } `,
+      data: {
+        orderId,
+        orderStatus: payload.orderStatus,
       },
+    };
+    NotificationService.sendToUser(
+      customerId!,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'default',
+      'ORDER',
     );
-  } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
-    await DeliveryPartner.updateOne(
-      { userId: currentUser.userId },
-      {
-        $set: {
-          'operationalData.currentOrderId': null,
-          'operationalData.currentStatus': 'IDLE',
-        },
-        $inc: {
-          'operationalData.canceledDeliveries': 1,
-          'operationalData.totalRejectedOrders': 1,
-        },
-      },
-    );
+
+    return {
+      message: 'Order status updated successfully.',
+      data: updatedOrder,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  //
-
-  // TODO: Notify Customer (Order is now ON_THE_WAY)
-  const customer = await Customer.findById(updatedOrder.customerId).lean();
-  const customerId = customer?.userId;
-  const notificationPayload = {
-    title: `Order is now ${payload.orderStatus}`,
-    body: `${
-      payload.orderStatus === 'ON_THE_WAY'
-        ? `Your order ${orderId} is now ON_THE_WAY.`
-        : payload.orderStatus === 'DELIVERED'
-          ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
-          : `Your order ${orderId} is  ${payload.orderStatus}.`
-    } `,
-    data: {
-      orderId,
-      orderStatus: payload.orderStatus,
-    },
-  };
-  NotificationService.sendToUser(
-    customerId!,
-    notificationPayload.title,
-    notificationPayload.body,
-    notificationPayload.data,
-    'default',
-    'ORDER',
-  );
-
-  return {
-    message: 'Order status updated successfully.',
-    data: updatedOrder,
-  };
 };
 
 // get all order service
