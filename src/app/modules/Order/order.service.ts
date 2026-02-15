@@ -93,7 +93,7 @@ const createOrderAfterPayment = async (
           orderId: order._id,
           userId: currentUser?._id,
           userModel: 'Customer',
-          amount: order.subtotal,
+          totalAmount: order.subtotal,
           type: 'ORDER_PAYMENT',
           status: 'SUCCESS',
           paymentMethod: 'CARD',
@@ -1042,6 +1042,9 @@ const updateOrderStatusByDeliveryPartner = async (
         vendorNetPayout,
         riderNetEarnings,
         totalDeliveryCharge,
+        deliGoCommission,
+        commissionVat,
+        deliGoCommissionNet,
         _id: orderDbId,
       } = updatedOrder;
 
@@ -1078,6 +1081,19 @@ const updateOrderStatusByDeliveryPartner = async (
         { session, upsert: true },
       );
 
+      const SYSTEM_ADMIN = '694a088c43ee1acbe0e9c87d';
+      // Admin Wallet
+      await Wallet.findOneAndUpdate(
+        { userId: SYSTEM_ADMIN, userModel: 'Admin' },
+        {
+          $inc: {
+            totalUnpaidEarnings: deliGoCommissionNet || 0,
+            totalEarnings: deliGoCommissionNet || 0,
+          },
+        },
+        { session, upsert: true },
+      );
+
       // Fleet Manager Wallet (If applicable)
       if (isManagedByFleet && fleetManagerId) {
         await Wallet.findOneAndUpdate(
@@ -1101,10 +1117,10 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: updatedOrder.vendorId,
           userModel: 'Vendor',
-          amount: vendorNetPayout,
+          totalAmount: vendorNetPayout,
           type: 'VENDOR_EARNING',
           status: 'SUCCESS',
-          paymentMethod: 'CARD', // Since no COD
+          paymentMethod: 'CARD',
           remarks: `Earnings for Order: ${orderId}`,
         },
         {
@@ -1112,13 +1128,26 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: partner._id,
           userModel: 'DeliveryPartner',
-          amount: riderEarningAmount,
+          totalAmount: riderEarningAmount,
           type: 'DELIVERY_PARTNER_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'CARD',
           remarks: isManagedByFleet
             ? 'Fleet Managed Earning'
             : 'Direct Earning',
+        },
+        {
+          transactionId: `TXN-DELIGO-${timestamp}-${orderId}`,
+          orderId: orderDbId,
+          userId: SYSTEM_ADMIN,
+          userModel: 'Admin',
+          baseAmount: deliGoCommission,
+          taxAmount: commissionVat,
+          totalAmount: deliGoCommissionNet,
+          type: 'PLATFORM_COMMISSION',
+          status: 'SUCCESS',
+          paymentMethod: 'CARD',
+          remarks: `Commission from Order: ${orderId}`,
         },
       ];
 
@@ -1128,7 +1157,7 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: fleetManagerId,
           userModel: 'FleetManager',
-          amount: totalDeliveryCharge,
+          totalAmount: totalDeliveryCharge,
           type: 'FLEET_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'CARD',
