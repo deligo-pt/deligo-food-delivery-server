@@ -124,6 +124,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         type: String,
       },
     },
+    deliveryDistance: { type: Number, required: true, default: 0 },
 
     estimatedDeliveryTime: { type: String, default: 'N/A' },
 
