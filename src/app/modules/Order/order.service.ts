@@ -1280,7 +1280,7 @@ const updateOrderStatusByDeliveryPartner = async (
           totalAmount: vendorNetPayout,
           type: 'VENDOR_EARNING',
           status: 'SUCCESS',
-          paymentMethod: 'CARD',
+          paymentMethod: 'WALLET',
           remarks: `Earnings for Order: ${orderId}`,
         },
         {
@@ -1291,7 +1291,7 @@ const updateOrderStatusByDeliveryPartner = async (
           totalAmount: riderEarningAmount,
           type: 'DELIVERY_PARTNER_EARNING',
           status: 'SUCCESS',
-          paymentMethod: 'CARD',
+          paymentMethod: 'WALLET',
           remarks: isManagedByFleet
             ? 'Fleet Managed Earning'
             : 'Direct Earning',
@@ -1306,7 +1306,7 @@ const updateOrderStatusByDeliveryPartner = async (
           totalAmount: deliGoCommissionNet,
           type: 'PLATFORM_COMMISSION',
           status: 'SUCCESS',
-          paymentMethod: 'CARD',
+          paymentMethod: 'WALLET',
           remarks: `Commission from Order: ${orderId}`,
         },
       ];
@@ -1320,7 +1320,7 @@ const updateOrderStatusByDeliveryPartner = async (
           totalAmount: totalDeliveryCharge,
           type: 'FLEET_EARNING',
           status: 'SUCCESS',
-          paymentMethod: 'CARD',
+          paymentMethod: 'WALLET',
           remarks: `Managed Revenue for Order: ${orderId}`,
         });
       }
