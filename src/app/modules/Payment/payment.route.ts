@@ -11,4 +11,11 @@ router.post(
   PaymentController.createPaymentIntent,
 );
 
+// create reduniq payment intent
+router.post(
+  '/reduniq/create-payment-intent',
+  auth('CUSTOMER'),
+  PaymentController.createReduniqPayment,
+);
+
 export const PaymentRoutes = router;
