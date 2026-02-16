@@ -82,6 +82,19 @@ const getCustomerInsights = catchAsync(async (req, res) => {
   });
 });
 
+// get order trend insights controller
+const getOrderTrendInsights = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getOrderTrendInsights(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Order trend insights fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -89,4 +102,5 @@ export const AnalyticsControllers = {
   getPartnerPerformanceAnalytics,
   getVendorSalesAnalytics,
   getCustomerInsights,
+  getOrderTrendInsights,
 };

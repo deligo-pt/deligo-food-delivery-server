@@ -46,4 +46,11 @@ router.get(
   AnalyticsControllers.getCustomerInsights
 );
 
+// get order trend insights
+router.get(
+  '/order-trend-insights',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getOrderTrendInsights
+);
+
 export const AnalyticsRoutes = router;
