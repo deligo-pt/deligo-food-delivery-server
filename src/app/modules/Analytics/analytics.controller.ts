@@ -68,10 +68,24 @@ const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// Fleet manager earning analytics controller
+const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getFleetManagerEarningAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Fleet manager earning analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
   getPartnerPerformanceAnalytics,
   getDeliveryPartnerEarningAnalytics,
+  getFleetManagerEarningAnalytics,
 };

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose, { Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
@@ -684,10 +685,130 @@ const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
   };
 };
 
+// Fleet manager earning analytics service
+const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
+  const fleetObjectId = new mongoose.Types.ObjectId(currentUser._id);
+  const now = new Date();
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = now.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const stats = await Transaction.aggregate([
+    {
+      $match: {
+        userId: fleetObjectId,
+        userModel: 'FleetManager',
+        status: 'SUCCESS',
+        type: 'FLEET_EARNING',
+      },
+    },
+    {
+      $facet: {
+        cardStats: [
+          {
+            $group: {
+              _id: null,
+              totalEarnings: { $sum: '$totalAmount' },
+              monthlyEarnings: {
+                $sum: {
+                  $cond: [
+                    { $gte: ['$createdAt', startOfMonth] },
+                    '$totalAmount',
+                    0,
+                  ],
+                },
+              },
+              weeklyEarnings: {
+                $sum: {
+                  $cond: [
+                    { $gte: ['$createdAt', startOfWeek] },
+                    '$totalAmount',
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        ],
+        weeklyGraph: [
+          {
+            $match: {
+              createdAt: {
+                $gte: new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate() - 364,
+                ),
+              },
+            },
+          },
+          {
+            $project: {
+              totalAmount: 1,
+              weekNum: { $isoWeek: '$createdAt' },
+              yearNum: { $isoWeekYear: '$createdAt' },
+            },
+          },
+          {
+            $group: {
+              _id: { week: '$weekNum', year: '$yearNum' },
+              earnings: { $sum: '$totalAmount' },
+            },
+          },
+          { $sort: { '_id.year': 1, '_id.week': 1 } },
+        ],
+      },
+    },
+  ]);
+
+  const wallet = await Wallet.findOne({
+    userId: fleetObjectId,
+    userModel: 'FleetManager',
+  }).select('totalUnpaidEarnings totalRiderPayable totalEarnings');
+
+  const cardData = stats[0].cardStats[0] || {
+    totalEarnings: 0,
+    monthlyEarnings: 0,
+    weeklyEarnings: 0,
+  };
+
+  const graphData = stats[0].weeklyGraph.map((item: any) => ({
+    week: `Week ${item._id.week}`,
+    earnings: item.earnings,
+    year: item._id.year,
+  }));
+
+  const totalRiderPayable = wallet?.totalRiderPayable || 0;
+  const totalRevenue = cardData.totalEarnings;
+  const netEarnings = totalRevenue - totalRiderPayable;
+
+  return {
+    overview: {
+      totalRevenue: totalRevenue,
+      riderPayable: totalRiderPayable,
+      netEarnings: roundTo4(netEarnings),
+      monthlyEarnings: cardData.monthlyEarnings,
+      weeklyEarnings: cardData.weeklyEarnings,
+      currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,
+    },
+    graph: graphData,
+  };
+};
+
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
   getPartnerPerformanceAnalytics,
   getDeliveryPartnerEarningAnalytics,
+  getFleetManagerEarningAnalytics,
 };

@@ -39,4 +39,11 @@ router.get(
   AnalyticsControllers.getDeliveryPartnerEarningAnalytics,
 );
 
+// Fleet manager earning analytics route
+router.get(
+  '/fleet-manager-earning-analytics',
+  auth('FLEET_MANAGER'),
+  AnalyticsControllers.getFleetManagerEarningAnalytics,
+);
+
 export const AnalyticsRoutes = router;
