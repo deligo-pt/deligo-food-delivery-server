@@ -13,7 +13,7 @@ const syncProductToPd = async (product: TProduct) => {
   const sendRequest = async (
     id: string,
     name: string,
-    originalPrice: number,
+    // originalPrice: number,
     isVariation: boolean = false,
     sku: string = '',
   ) => {
@@ -37,14 +37,14 @@ const syncProductToPd = async (product: TProduct) => {
       pos_text_color: '#092c4c',
       supplier_id: 0,
       exemption_code: null,
-      prices: [
-        {
-          price: originalPrice,
-          price_line_id: 2,
-          fixed_margin: 0,
-          tax_price: 0,
-        },
-      ],
+      // prices: [
+      //   {
+      //     price: originalPrice,
+      //     price_line_id: 2,
+      //     fixed_margin: 0,
+      //     tax_price: 0,
+      //   },
+      // ],
     };
 
     try {
@@ -68,6 +68,8 @@ const syncProductToPd = async (product: TProduct) => {
         await Product.findByIdAndUpdate(product._id, { pdItemId: id });
       }
 
+      console.log({ data });
+
       return data;
     } catch (error: any) {
       console.error(
@@ -89,7 +91,7 @@ const syncProductToPd = async (product: TProduct) => {
           await sendRequest(
             option.sku || `${product.productId}-${option.label.toUpperCase()}`,
             variationName,
-            option.price,
+            // option.price,
             true,
             option.sku,
           );
@@ -97,7 +99,8 @@ const syncProductToPd = async (product: TProduct) => {
       }
     }
   } else {
-    await sendRequest(product.productId, product.name, product.pricing.price);
+    // await sendRequest(product.productId, product.name, product.pricing.price);
+    await sendRequest(product.productId, product.name);
   }
 };
 

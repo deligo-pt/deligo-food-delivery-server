@@ -15,15 +15,16 @@ const mapOrderToPdPayload = (order: any) => {
         productRef = item.productId;
       }
     }
-    const discountPercent =
-      item.originalPrice > 0
-        ? (item.discountAmount / item.originalPrice) * 100
-        : 0;
+    // const discountPercent =
+    //   item.originalPrice > 0
+    //     ? (item.discountAmount / item.originalPrice) * 100
+    //     : 0;
 
     const mainItem = {
       product_reference: productRef,
       quantity: Number(item.quantity),
-      discount_percent: Number(discountPercent || 0),
+      price: Number(item.price).toFixed(2),
+      // discount_percent: Number(discountPercent || 0),
     };
 
     let addons: any[] = [];
