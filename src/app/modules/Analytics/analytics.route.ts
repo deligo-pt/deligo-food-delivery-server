@@ -53,4 +53,11 @@ router.get(
   AnalyticsControllers.getOrderTrendInsights
 );
 
+// get top selling items analytics
+router.get(
+  '/top-selling-analytics',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getTopSellingItemsAnalytics
+);
+
 export const AnalyticsRoutes = router;

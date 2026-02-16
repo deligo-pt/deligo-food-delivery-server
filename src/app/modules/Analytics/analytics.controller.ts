@@ -95,6 +95,19 @@ const getOrderTrendInsights = catchAsync(async (req, res) => {
   });
 });
 
+// get top selling items analytics controller
+const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getTopSellingItemsAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Top selling items analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -103,4 +116,5 @@ export const AnalyticsControllers = {
   getVendorSalesAnalytics,
   getCustomerInsights,
   getOrderTrendInsights,
+  getTopSellingItemsAnalytics
 };

@@ -1020,6 +1020,130 @@ const getOrderTrendInsights = async (currentUser: AuthUser) => {
   };
 };
 
+// get top performing items analytics
+const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
+  const vendorId = new Types.ObjectId(currentUser._id);
+
+  const now = new Date();
+
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(now.getDate() - 7);
+
+  const fourteenDaysAgo = new Date(now);
+  fourteenDaysAgo.setDate(now.getDate() - 14);
+
+  const [facet] = await Order.aggregate([
+    {
+      $match: {
+        vendorId,
+        orderStatus: "DELIVERED",
+        isPaid: true,
+        isDeleted: false,
+        createdAt: { $gte: fourteenDaysAgo }
+      }
+    },
+    {
+      $facet: {
+        // total items sold
+        totalItemsSold: [
+          { $match: { createdAt: { $gte: sevenDaysAgo } } },
+          { $unwind: "$items" },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: "$items.quantity" }
+            }
+          }
+        ],
+        // current period (0–7 days)
+        currentPeriod: [
+          {
+            $match: {
+              createdAt: {
+                $gte: sevenDaysAgo
+              }
+            }
+          },
+          { $unwind: "$items" },
+          {
+            $group: {
+              _id: "$items.name",
+              name: { $first: "$items.name" },
+              image: { $first: "$items.image" },
+              sold: { $sum: "$items.quantity" },
+              rating: { $avg: "$items.rating" }
+            }
+          }
+        ],
+
+        // previous period (7–14 days)
+        previousPeriod: [
+          {
+            $match: {
+              createdAt: {
+                $gte: fourteenDaysAgo,
+                $lt: sevenDaysAgo
+              }
+            }
+          },
+          { $unwind: "$items" },
+          {
+            $group: {
+              _id: "$items.name",
+              sold: { $sum: "$items.quantity" }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+
+  const totalItemsSold =
+    facet.totalItemsSold[0]?.total || 0;
+
+  const previousMap = new Map(
+    facet.previousPeriod.map((p: any) => [String(p._id), p.sold])
+  );
+
+  // merge current and previous data to calculate growth
+  const topItems = facet.currentPeriod
+    .map((item: any) => {
+      const previousSold = (previousMap.get(String(item._id)) || 0) as number;
+
+      let growthPercentage = 0;
+      let trend: "up" | "down" | "neutral" = "neutral";
+
+      if (previousSold > 0) {
+        growthPercentage =
+          ((item.sold - previousSold) / previousSold) * 100;
+        trend = growthPercentage > 0 ? "up" : growthPercentage < 0 ? "down" : "neutral";
+      } else if (item.sold > 0) {
+        growthPercentage = 100;
+        trend = "up";
+      }
+
+      return {
+        name: item.name,
+        image: item.image || null,
+        sold: item.sold,
+        rating: Number((item.rating || 0).toFixed(1)),
+        growthPercentage: Math.round(growthPercentage),
+        trend
+      };
+    })
+    .sort((a: any, b: any) => b.sold - a.sold)
+    .slice(0, 4);
+
+  return {
+    summary: {
+      totalItemsSold
+    },
+    topItems
+  };
+};
+
+
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -1028,4 +1152,5 @@ export const AnalyticsServices = {
   getVendorSalesAnalytics,
   getCustomerInsights,
   getOrderTrendInsights,
+  getTopSellingItemsAnalytics
 };
