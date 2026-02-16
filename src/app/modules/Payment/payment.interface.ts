@@ -24,7 +24,7 @@ export type TTransaction = {
     | 'PLATFORM_COMMISSION';
 
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
-  paymentMethod: 'CARD' | 'MOBILE';
+  paymentMethod: 'CARD' | 'MOBILE' | 'WALLET' | 'CASH' | 'BANK_TRANSFER';
   remarks: string;
 };
 
