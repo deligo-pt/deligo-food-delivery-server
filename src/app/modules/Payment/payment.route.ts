@@ -8,7 +8,7 @@ const router = Router();
 router.post(
   '/stripe/create-payment-intent',
   auth('CUSTOMER'),
-  PaymentController.createPaymentIntent
+  PaymentController.createPaymentIntent,
 );
 
 export const PaymentRoutes = router;
