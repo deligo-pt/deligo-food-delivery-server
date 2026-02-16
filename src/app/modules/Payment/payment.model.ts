@@ -114,6 +114,7 @@ const walletSchema = new Schema<TWallet>(
 
 transactionSchema.index({ userId: 1, type: 1 });
 transactionSchema.index({ transactionId: 1 });
+transactionSchema.index({ userId: 1, createdAt: -1 });
 
 export const Transaction = model<TTransaction>(
   'Transaction',

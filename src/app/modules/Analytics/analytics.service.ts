@@ -10,6 +10,7 @@ import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { roundTo4 } from '../../utils/mathProvider';
+import { Transaction, Wallet } from '../Payment/payment.model';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
@@ -612,9 +613,81 @@ const getPartnerPerformanceAnalytics = async (
   };
 };
 
+// Delivery Partner earning analytics service
+const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
+  const riderObjectId = new mongoose.Types.ObjectId(currentUser._id);
+
+  const today = new Date();
+
+  const startOfToday = new Date(today);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = today.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const earnings = await Transaction.aggregate([
+    {
+      $match: {
+        userId: riderObjectId,
+        userModel: 'DeliveryPartner',
+        status: 'SUCCESS',
+        type: 'DELIVERY_PARTNER_EARNING',
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalEarnings: { $sum: '$totalAmount' },
+        dailyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfToday] }, '$totalAmount', 0],
+          },
+        },
+        weeklyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
+          },
+        },
+        monthlyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfMonth] }, '$totalAmount', 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const wallet = await Wallet.findOne({
+    userId: riderObjectId,
+    userModel: 'DeliveryPartner',
+  }).select('totalUnpaidEarnings');
+
+  const report = earnings[0] || {
+    totalEarnings: 0,
+    dailyEarnings: 0,
+    weeklyEarnings: 0,
+    monthlyEarnings: 0,
+  };
+
+  return {
+    daily: report.dailyEarnings,
+    weekly: report.weeklyEarnings,
+    monthly: report.monthlyEarnings,
+    total: report.totalEarnings,
+    unpaid: wallet?.totalUnpaidEarnings || 0,
+  };
+};
+
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
   getPartnerPerformanceAnalytics,
+  getDeliveryPartnerEarningAnalytics,
 };
