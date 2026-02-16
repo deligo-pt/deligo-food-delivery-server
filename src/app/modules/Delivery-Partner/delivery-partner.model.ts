@@ -227,15 +227,6 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // Earnings
-    //-------------------------------------------------
-    wallet: {
-      lastSettlementDate: { type: Date, default: null },
-      totalUnpaidEarnings: { type: Number, default: 0 },
-      totalEarnings: { type: Number, default: 0 },
-    },
-
-    //-------------------------------------------------
     // Documents
     //-------------------------------------------------
     documents: {

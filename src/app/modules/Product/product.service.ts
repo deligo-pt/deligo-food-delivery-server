@@ -717,7 +717,7 @@ const getAllProducts = async (
 
   const populateOptions = getPopulateOptions(role, {
     vendor:
-      'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+      'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
     productCategory: 'name ',
   });
 
@@ -763,7 +763,7 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
   }
   const populateOptions = getPopulateOptions(currentUser.role, {
     vendor:
-      'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+      'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
     productCategory: 'name',
   });
 

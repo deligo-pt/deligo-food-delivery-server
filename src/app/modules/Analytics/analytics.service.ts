@@ -1,4 +1,5 @@
-import { Types } from 'mongoose';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import mongoose, { Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { currentStatusOptions } from '../Delivery-Partner/delivery-partner.constant';
@@ -10,6 +11,7 @@ import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { roundTo4 } from '../../utils/mathProvider';
+import { Transaction, Wallet } from '../Payment/payment.model';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
@@ -86,10 +88,37 @@ const getAdminDashboardAnalytics = async () => {
     .populate('customerId', 'name')
     .select('orderId orderStatus createdAt');
 
-  const topRatedItems = await Product.find({ rating: { $gte: 4 } })
-    .sort({ rating: -1 })
-    .limit(4)
-    .select('name rating images totalOrders');
+  const topRatedItems = await Product.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        'rating.average': { $gte: 4 },
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'items.productId',
+        as: 'orderData',
+      },
+    },
+
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        rating: { average: '$rating.average' },
+        totalOrders: { $size: '$orderData' },
+      },
+    },
+
+    { $sort: { 'rating.average': -1, totalOrders: -1 } },
+
+    { $limit: 4 },
+  ]);
 
   const topRatedDeliveryPartners = await DeliveryPartner.find({
     rating: { $gte: 4 },
@@ -128,8 +157,11 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   // --------------------------------------------------
   const products = await Product.find(
     { vendorId },
-    '_id category rating meta.status',
-  );
+    '_id category rating meta.status images',
+  ).populate({
+    path: 'category',
+    select: 'name icon',
+  });
 
   const productIds = products.map((p) => p._id);
 
@@ -265,10 +297,34 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   // --------------------------------------------------
   // Top Rated Items
   // --------------------------------------------------
-  const topRatedItems = products
-    .filter((p) => p.rating?.average && p.rating.average >= 4)
-    .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0))
-    .slice(0, 4);
+
+  const topRatedItems = await Product.aggregate([
+    {
+      $match: {
+        vendorId: new mongoose.Types.ObjectId(vendorId),
+        'rating.average': { $gte: 4 },
+      },
+    },
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'items.productId',
+        as: 'orderData',
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        rating: { average: '$rating.average' },
+        totalOrders: { $size: '$orderData' },
+      },
+    },
+    { $sort: { 'rating.average': -1, totalOrders: -1 } },
+    { $limit: 4 },
+  ]);
 
   // --------------------------------------------------
   // Final Response
@@ -550,11 +606,200 @@ const getPartnerPerformanceAnalytics = async (
           deliveries: opData?.completedDeliveries || 0,
           avgMins: `${rowAvgMins} min`,
           acceptance: rowAcceptance,
-          //earnings: `€${roundTo4(partner?.earnings?.totalEarnings || 0)}`,
         };
       }),
       meta,
     },
+  };
+};
+
+// Delivery Partner earning analytics service
+const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
+  const riderObjectId = new mongoose.Types.ObjectId(currentUser._id);
+
+  const today = new Date();
+
+  const startOfToday = new Date(today);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = today.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const earnings = await Transaction.aggregate([
+    {
+      $match: {
+        userId: riderObjectId,
+        userModel: 'DeliveryPartner',
+        status: 'SUCCESS',
+        type: 'DELIVERY_PARTNER_EARNING',
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalEarnings: { $sum: '$totalAmount' },
+        dailyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfToday] }, '$totalAmount', 0],
+          },
+        },
+        weeklyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
+          },
+        },
+        monthlyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfMonth] }, '$totalAmount', 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const wallet = await Wallet.findOne({
+    userId: riderObjectId,
+    userModel: 'DeliveryPartner',
+  }).select('totalUnpaidEarnings');
+
+  const report = earnings[0] || {
+    totalEarnings: 0,
+    dailyEarnings: 0,
+    weeklyEarnings: 0,
+    monthlyEarnings: 0,
+  };
+
+  return {
+    daily: report.dailyEarnings,
+    weekly: report.weeklyEarnings,
+    monthly: report.monthlyEarnings,
+    total: report.totalEarnings,
+    unpaid: wallet?.totalUnpaidEarnings || 0,
+  };
+};
+
+// Fleet manager earning analytics service
+const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
+  const fleetObjectId = new mongoose.Types.ObjectId(currentUser._id);
+  const now = new Date();
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = now.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const stats = await Transaction.aggregate([
+    {
+      $match: {
+        userId: fleetObjectId,
+        userModel: 'FleetManager',
+        status: 'SUCCESS',
+        type: 'FLEET_EARNING',
+      },
+    },
+    {
+      $facet: {
+        cardStats: [
+          {
+            $group: {
+              _id: null,
+              totalEarnings: { $sum: '$totalAmount' },
+              monthlyEarnings: {
+                $sum: {
+                  $cond: [
+                    { $gte: ['$createdAt', startOfMonth] },
+                    '$totalAmount',
+                    0,
+                  ],
+                },
+              },
+              weeklyEarnings: {
+                $sum: {
+                  $cond: [
+                    { $gte: ['$createdAt', startOfWeek] },
+                    '$totalAmount',
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        ],
+        weeklyGraph: [
+          {
+            $match: {
+              createdAt: {
+                $gte: new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate() - 364,
+                ),
+              },
+            },
+          },
+          {
+            $project: {
+              totalAmount: 1,
+              weekNum: { $isoWeek: '$createdAt' },
+              yearNum: { $isoWeekYear: '$createdAt' },
+            },
+          },
+          {
+            $group: {
+              _id: { week: '$weekNum', year: '$yearNum' },
+              earnings: { $sum: '$totalAmount' },
+            },
+          },
+          { $sort: { '_id.year': 1, '_id.week': 1 } },
+        ],
+      },
+    },
+  ]);
+
+  const wallet = await Wallet.findOne({
+    userId: fleetObjectId,
+    userModel: 'FleetManager',
+  }).select('totalUnpaidEarnings totalRiderPayable totalEarnings');
+
+  const cardData = stats[0].cardStats[0] || {
+    totalEarnings: 0,
+    monthlyEarnings: 0,
+    weeklyEarnings: 0,
+  };
+
+  const graphData = stats[0].weeklyGraph.map((item: any) => ({
+    week: `Week ${item._id.week}`,
+    earnings: item.earnings,
+    year: item._id.year,
+  }));
+
+  const totalRiderPayable = wallet?.totalRiderPayable || 0;
+  const totalRevenue = cardData.totalEarnings;
+  const netEarnings = totalRevenue - totalRiderPayable;
+
+  return {
+    overview: {
+      totalRevenue: totalRevenue,
+      riderPayable: totalRiderPayable,
+      netEarnings: roundTo4(netEarnings),
+      monthlyEarnings: cardData.monthlyEarnings,
+      weeklyEarnings: cardData.weeklyEarnings,
+      currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,
+    },
+    graph: graphData,
   };
 };
 
@@ -563,4 +808,6 @@ export const AnalyticsServices = {
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
   getPartnerPerformanceAnalytics,
+  getDeliveryPartnerEarningAnalytics,
+  getFleetManagerEarningAnalytics,
 };

@@ -67,6 +67,7 @@ export type TOrder = {
   dispatchPartnerPool?: string[];
   dispatchExpiresAt?: Date;
   // Delivery Details
+  deliveryDistance?: number;
   estimatedDeliveryTime?: string; // e.g., "30 mins"
   pickedUpAt?: Date;
   deliveredAt?: Date;
