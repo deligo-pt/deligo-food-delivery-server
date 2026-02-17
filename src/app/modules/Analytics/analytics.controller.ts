@@ -55,7 +55,33 @@ const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   });
 });
 
-// Delivery Partner earning analytics controller
+// get vendor sales analytics controller
+const getVendorSalesAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getVendorSalesAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor sales analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get customer insights controller
+const getCustomerInsights = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getCustomerInsights(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Customer insights fetched successfully',
+    data: result,
+  });
+});
+
+// get delivery partner earnings analytics  controller
 const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getDeliveryPartnerEarningAnalytics(
     req.user as AuthUser,
@@ -68,7 +94,7 @@ const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
   });
 });
 
-// Fleet manager earning analytics controller
+// get fleet manager earning analytics controller
 const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getFleetManagerEarningAnalytics(
     req.user as AuthUser,
@@ -81,11 +107,41 @@ const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get order trend insights controller
+const getOrderTrendInsights = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getOrderTrendInsights(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Order trend insights fetched successfully',
+    data: result,
+  });
+});
+
+// get top selling items analytics controller
+const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getTopSellingItemsAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Top selling items analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
   getPartnerPerformanceAnalytics,
+  getVendorSalesAnalytics,
+  getCustomerInsights,
+  getOrderTrendInsights,
+  getTopSellingItemsAnalytics,
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
 };
