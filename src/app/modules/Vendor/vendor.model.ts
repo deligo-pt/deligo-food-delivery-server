@@ -159,16 +159,6 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     },
 
     // -------------------------------------------------------
-    // Wallet
-    // -------------------------------------------------------
-
-    wallet: {
-      lastSettlementDate: { type: Date, default: null },
-      totalUnpaidEarnings: { type: Number, default: 0 },
-      totalEarnings: { type: Number, default: 0 },
-    },
-
-    // -------------------------------------------------------
     // Documents * verification
     // -------------------------------------------------------
     documents: {

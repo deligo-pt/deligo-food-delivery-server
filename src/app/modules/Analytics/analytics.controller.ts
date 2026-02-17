@@ -18,7 +18,7 @@ const getAdminDashboardAnalytics = catchAsync(async (req, res) => {
 // get vendor dashboard analytics controller
 const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorDashboardAnalytics(
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -29,10 +29,9 @@ const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
 });
 
 // get fleet dashboard analytics controller
-
 const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getFleetDashboardAnalytics(
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -46,7 +45,7 @@ const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
 const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getPartnerPerformanceAnalytics(
     req.user as AuthUser,
-    req.query
+    req.query,
   );
   sendResponse(res, {
     success: true,
@@ -78,6 +77,32 @@ const getCustomerInsights = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Customer insights fetched successfully',
+    data: result,
+  });
+});
+
+// get delivery partner earnings analytics  controller
+const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getDeliveryPartnerEarningAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery partner earning analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get fleet manager earning analytics controller
+const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getFleetManagerEarningAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Fleet manager earning analytics fetched successfully',
     data: result,
   });
 });
@@ -116,5 +141,7 @@ export const AnalyticsControllers = {
   getVendorSalesAnalytics,
   getCustomerInsights,
   getOrderTrendInsights,
-  getTopSellingItemsAnalytics
+  getTopSellingItemsAnalytics,
+  getDeliveryPartnerEarningAnalytics,
+  getFleetManagerEarningAnalytics,
 };

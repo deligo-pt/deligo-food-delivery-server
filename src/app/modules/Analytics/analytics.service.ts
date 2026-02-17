@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { currentStatusOptions } from '../Delivery-Partner/delivery-partner.constant';
@@ -11,6 +11,7 @@ import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { roundTo4 } from '../../utils/mathProvider';
+import { Transaction, Wallet } from '../Payment/payment.model';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
@@ -87,10 +88,37 @@ const getAdminDashboardAnalytics = async () => {
     .populate('customerId', 'name')
     .select('orderId orderStatus createdAt');
 
-  const topRatedItems = await Product.find({ rating: { $gte: 4 } })
-    .sort({ rating: -1 })
-    .limit(4)
-    .select('name rating images totalOrders');
+  const topRatedItems = await Product.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        'rating.average': { $gte: 4 },
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'items.productId',
+        as: 'orderData',
+      },
+    },
+
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        rating: { average: '$rating.average' },
+        totalOrders: { $size: '$orderData' },
+      },
+    },
+
+    { $sort: { 'rating.average': -1, totalOrders: -1 } },
+
+    { $limit: 4 },
+  ]);
 
   const topRatedDeliveryPartners = await DeliveryPartner.find({
     rating: { $gte: 4 },
@@ -129,8 +157,11 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   // --------------------------------------------------
   const products = await Product.find(
     { vendorId },
-    '_id category rating meta.status',
-  );
+    '_id category rating meta.status images',
+  ).populate({
+    path: 'category',
+    select: 'name icon',
+  });
 
   const productIds = products.map((p) => p._id);
 
@@ -266,10 +297,34 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   // --------------------------------------------------
   // Top Rated Items
   // --------------------------------------------------
-  const topRatedItems = products
-    .filter((p) => p.rating?.average && p.rating.average >= 4)
-    .sort((a, b) => (b.rating?.average ?? 0) - (a.rating?.average ?? 0))
-    .slice(0, 4);
+
+  const topRatedItems = await Product.aggregate([
+    {
+      $match: {
+        vendorId: new mongoose.Types.ObjectId(vendorId),
+        'rating.average': { $gte: 4 },
+      },
+    },
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'items.productId',
+        as: 'orderData',
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        rating: { average: '$rating.average' },
+        totalOrders: { $size: '$orderData' },
+      },
+    },
+    { $sort: { 'rating.average': -1, totalOrders: -1 } },
+    { $limit: 4 },
+  ]);
 
   // --------------------------------------------------
   // Final Response
@@ -551,7 +606,6 @@ const getPartnerPerformanceAnalytics = async (
           deliveries: opData?.completedDeliveries || 0,
           avgMins: `${rowAvgMins} min`,
           acceptance: rowAcceptance,
-          //earnings: `€${roundTo4(partner?.earnings?.totalEarnings || 0)}`,
         };
       }),
       meta,
@@ -665,7 +719,7 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
   };
 };
 
-// get customer insights analytics
+// get customer insights controller
 const getCustomerInsights = async (currentUser: AuthUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
@@ -674,7 +728,6 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
 
   const [facet] = await Order.aggregate([
     {
-      // Common filter for all analytics
       $match: {
         vendorId,
         orderStatus: "DELIVERED",
@@ -683,7 +736,6 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
       }
     },
 
-    // Convert orders → customers
     {
       $group: {
         _id: "$customerId",
@@ -696,7 +748,285 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
 
     {
       $facet: {
-        // Summary Cards Data
+        // summary cards
+        cardStats: [
+          {
+            $group: {
+              _id: null,
+              totalCustomers: { $sum: 1 },
+              newCustomers: {
+                $sum: {
+                  $cond: [{ $gte: ["$firstOrderDate", thirtyDaysAgo] }, 1, 0]
+                }
+              },
+              returningCustomers: {
+                $sum: {
+                  $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0]
+                }
+              },
+              avgOrders: { $avg: "$totalOrders" }
+            }
+          }
+        ],
+
+        // demographics - top cities
+        demographics: [
+          { $group: { _id: "$city", count: { $sum: 1 } } },
+          { $sort: { count: -1 } }
+        ],
+
+        // customer value segmentation
+        customerValueRaw: [
+          {
+            $project: {
+              avgOrderValue: {
+                $cond: [
+                  { $gt: ["$totalOrders", 0] },
+                  { $divide: ["$totalSpent", "$totalOrders"] },
+                  0
+                ]
+              },
+              totalSpent: 1
+            }
+          },
+          { $sort: { totalSpent: -1 } }
+        ],
+
+        // retention ratio
+        retentionTrend: [
+          {
+            $project: {
+              isReturning: {
+                $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0]
+              },
+              weekIndex: {
+                $floor: {
+                  $divide: [
+                    { $subtract: [new Date(), "$firstOrderDate"] },
+                    1000 * 60 * 60 * 24 * 7
+                  ]
+                }
+              }
+            }
+          },
+          {
+            $group: {
+              _id: "$weekIndex",
+              rate: { $avg: "$isReturning" }
+            }
+          },
+          { $sort: { _id: 1 } },
+          { $limit: 4 }
+        ],
+        // peak order heatmap (day of week + hour)
+        heatmap: [
+          {
+            $group: {
+              _id: {
+                day: {
+                  $dayOfWeek: {
+                    date: "$firstOrderDate",
+                    timezone: "Europe/Lisbon"
+                  }
+                },
+                hour: {
+                  $hour: {
+                    date: "$firstOrderDate",
+                    timezone: "Europe/Lisbon"
+                  }
+                }
+              },
+              orders: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+
+  const cards = facet?.cardStats?.[0] || {};
+  const demographicsRaw = facet?.demographics || [];
+  const valueRaw = facet?.customerValueRaw || [];
+  const retentionRaw = facet?.retentionTrend || [];
+  const heatmapRaw = facet?.heatmap || [];
+  const totalCustomers = cards.totalCustomers || 0;
+
+  const getSegmentAvg = (percent: number) => {
+    if (!valueRaw.length) return "0.00";
+
+    const limit = Math.ceil(valueRaw.length * (percent / 100));
+    const segment = valueRaw.slice(0, limit);
+
+    const sum = segment.reduce(
+      (acc: number, curr: any) => acc + curr.avgOrderValue,
+      0
+    );
+
+    return (sum / segment.length).toFixed(2);
+  };
+
+
+  return {
+    summaryCards: {
+      totalCustomers: {
+        value: totalCustomers,
+        subValue: `${cards.newCustomers || 0} new`
+      },
+
+      returningCustomers: {
+        value: cards.returningCustomers || 0,
+        subValue: `${(cards.avgOrders || 0).toFixed(1)} orders/avg`
+      },
+
+      topCity: {
+        value: demographicsRaw[0]?._id || "N/A",
+        subValue:
+          totalCustomers > 0
+            ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
+              0
+            )}% of customers`
+            : "0%"
+      },
+
+      retentionRate: {
+        value:
+          totalCustomers > 0
+            ? `${(
+              (cards.returningCustomers / totalCustomers) *
+              100
+            ).toFixed(0)}%`
+            : "0%",
+        subValue: "Avg. Repeat"
+      }
+    },
+
+    demographics: demographicsRaw.map((d: any) => ({
+      city: d._id,
+      percentage:
+        totalCustomers > 0
+          ? `${((d.count / totalCustomers) * 100).toFixed(0)}%`
+          : "0%"
+    })),
+
+    customerValue: [
+      { segment: "Top 1%", avgOrder: `€${getSegmentAvg(1)}` },
+      { segment: "Top 5%", avgOrder: `€${getSegmentAvg(5)}` },
+      { segment: "Top 10%", avgOrder: `€${getSegmentAvg(10)}` }
+    ],
+
+    retentionTrend: retentionRaw.map((r: any) => ({
+      week: `Week ${r._id + 1}`,
+      rate: `${(r.rate * 100).toFixed(0)}%`
+    })),
+
+    heatmap: heatmapRaw.map((h: any) => ({
+      day: h._id.day,
+      hour: h._id.hour,
+      orderCount: h.orders
+    }))
+  };
+};
+
+// Delivery Partner earning analytics service
+const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
+  const riderObjectId = new mongoose.Types.ObjectId(currentUser._id);
+
+  const today = new Date();
+
+  const startOfToday = new Date(today);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = today.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const earnings = await Transaction.aggregate([
+    {
+      $match: {
+        userId: riderObjectId,
+        userModel: 'DeliveryPartner',
+        status: 'SUCCESS',
+        type: 'DELIVERY_PARTNER_EARNING',
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalEarnings: { $sum: '$totalAmount' },
+        dailyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfToday] }, '$totalAmount', 0],
+          },
+        },
+        weeklyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
+          },
+        },
+        monthlyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfMonth] }, '$totalAmount', 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const wallet = await Wallet.findOne({
+    userId: riderObjectId,
+    userModel: 'DeliveryPartner',
+  }).select('totalUnpaidEarnings');
+
+  const report = earnings[0] || {
+    totalEarnings: 0,
+    dailyEarnings: 0,
+    weeklyEarnings: 0,
+    monthlyEarnings: 0,
+  };
+
+  return {
+    daily: report.dailyEarnings,
+    weekly: report.weeklyEarnings,
+    monthly: report.monthlyEarnings,
+    total: report.totalEarnings,
+    unpaid: wallet?.totalUnpaidEarnings || 0,
+  };
+};
+
+// Fleet manager earning analytics service
+const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
+  const fleetObjectId = new mongoose.Types.ObjectId(currentUser._id);
+  const now = new Date();
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = now.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const stats = await Transaction.aggregate([
+    {
+      $match: {
+        userId: fleetObjectId,
+        userModel: 'FleetManager',
+        status: 'SUCCESS',
+        type: 'FLEET_EARNING',
+      },
+    },
+    {
+      $facet: {
         cardStats: [
           {
             $group: {
@@ -1152,5 +1482,7 @@ export const AnalyticsServices = {
   getVendorSalesAnalytics,
   getCustomerInsights,
   getOrderTrendInsights,
-  getTopSellingItemsAnalytics
+  getTopSellingItemsAnalytics,
+  getDeliveryPartnerEarningAnalytics,
+  getFleetManagerEarningAnalytics,
 };

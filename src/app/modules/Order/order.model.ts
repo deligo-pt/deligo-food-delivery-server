@@ -114,6 +114,10 @@ const orderSchema = new Schema<TOrder>(
     deliveryAddress: { type: addressSchema, required: true },
     pickupAddress: { type: addressSchema },
 
+    deliveryDistance: {
+      type: Number,
+      default: 0,
+    },
     estimatedDeliveryTime: { type: String },
     pickedUpAt: { type: Date },
     deliveredAt: { type: Date },
