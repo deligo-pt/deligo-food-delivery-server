@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import mongoose, { Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { currentStatusOptions } from '../Delivery-Partner/delivery-partner.constant';
@@ -301,7 +301,7 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   const topRatedItems = await Product.aggregate([
     {
       $match: {
-        vendorId: new mongoose.Types.ObjectId(vendorId),
+        vendorId: new Types.ObjectId(vendorId),
         'rating.average': { $gte: 4 },
       },
     },
@@ -930,7 +930,7 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
 
 // Delivery Partner earning analytics service
 const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
-  const riderObjectId = new mongoose.Types.ObjectId(currentUser._id);
+  const riderObjectId = new Types.ObjectId(currentUser._id);
 
   const today = new Date();
 
@@ -1001,7 +1001,7 @@ const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
 
 // Fleet manager earning analytics service
 const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
-  const fleetObjectId = new mongoose.Types.ObjectId(currentUser._id);
+  const fleetObjectId = new Types.ObjectId(currentUser._id);
   const now = new Date();
 
   const startOfToday = new Date(now);
@@ -1031,174 +1031,90 @@ const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
           {
             $group: {
               _id: null,
-              totalCustomers: { $sum: 1 },
-              newCustomers: {
+              totalEarnings: { $sum: '$totalAmount' },
+              monthlyEarnings: {
                 $sum: {
-                  $cond: [{ $gte: ["$firstOrderDate", thirtyDaysAgo] }, 1, 0]
-                }
-              },
-              returningCustomers: {
-                $sum: {
-                  $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0]
-                }
-              },
-              avgOrders: { $avg: "$totalOrders" }
-            }
-          }
-        ],
-        // City Demographics List
-        demographics: [
-          { $group: { _id: "$city", count: { $sum: 1 } } },
-          { $sort: { count: -1 } }
-        ],
-        // Customer Value Segmentation
-        customerValueRaw: [
-          {
-            $project: {
-              avgOrderValue: {
-                $cond: [
-                  { $gt: ["$totalOrders", 0] },
-                  { $divide: ["$totalSpent", "$totalOrders"] },
-                  0
-                ]
-              },
-              totalSpent: 1
-            }
-          },
-          { $sort: { totalSpent: -1 } }
-        ],
-        // retention trend
-        retentionTrend: [
-          {
-            $project: {
-              isReturning: {
-                $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0]
-              },
-              weekIndex: {
-                $floor: {
-                  $divide: [
-                    { $subtract: [new Date(), "$firstOrderDate"] },
-                    1000 * 60 * 60 * 24 * 7
-                  ]
-                }
-              }
-            }
-          },
-          {
-            $group: {
-              _id: "$weekIndex",
-              rate: { $avg: "$isReturning" }
-            }
-          },
-          { $sort: { _id: 1 } },
-          { $limit: 4 }
-        ],
-        // heatmap
-        heatmap: [
-          {
-            $group: {
-              _id: {
-                day: {
-                  $dayOfWeek: {
-                    date: "$firstOrderDate",
-                    timezone: "Europe/Lisbon"
-                  }
+                  $cond: [
+                    { $gte: ['$createdAt', startOfMonth] },
+                    '$totalAmount',
+                    0,
+                  ],
                 },
-                hour: {
-                  $hour: {
-                    date: "$firstOrderDate",
-                    timezone: "Europe/Lisbon"
-                  }
-                }
               },
-              orders: { $sum: 1 }
-            }
-          }
-        ]
-      }
-    }
+              weeklyEarnings: {
+                $sum: {
+                  $cond: [
+                    { $gte: ['$createdAt', startOfWeek] },
+                    '$totalAmount',
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        ],
+        weeklyGraph: [
+          {
+            $match: {
+              createdAt: {
+                $gte: new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate() - 364,
+                ),
+              },
+            },
+          },
+          {
+            $project: {
+              totalAmount: 1,
+              weekNum: { $isoWeek: '$createdAt' },
+              yearNum: { $isoWeekYear: '$createdAt' },
+            },
+          },
+          {
+            $group: {
+              _id: { week: '$weekNum', year: '$yearNum' },
+              earnings: { $sum: '$totalAmount' },
+            },
+          },
+          { $sort: { '_id.year': 1, '_id.week': 1 } },
+        ],
+      },
+    },
   ]);
 
+  const wallet = await Wallet.findOne({
+    userId: fleetObjectId,
+    userModel: 'FleetManager',
+  }).select('totalUnpaidEarnings totalRiderPayable totalEarnings');
 
-  const cards = facet?.cardStats?.[0] || {};
-  const demographicsRaw = facet?.demographics || [];
-  const valueRaw = facet?.customerValueRaw || [];
-  const retentionRaw = facet?.retentionTrend || [];
-  const heatmapRaw = facet?.heatmap || [];
-  const totalCustomers = cards.totalCustomers || 0;
-
-  const getSegmentAvg = (percent: number) => {
-    if (!valueRaw.length) return "0.00";
-
-    const limit = Math.ceil(valueRaw.length * (percent / 100));
-    const segment = valueRaw.slice(0, limit);
-
-    const sum = segment.reduce(
-      (acc: number, curr: any) => acc + curr.avgOrderValue,
-      0
-    );
-
-    return (sum / segment.length).toFixed(2);
+  const cardData = stats[0].cardStats[0] || {
+    totalEarnings: 0,
+    monthlyEarnings: 0,
+    weeklyEarnings: 0,
   };
 
+  const graphData = stats[0].weeklyGraph.map((item: any) => ({
+    week: `Week ${item._id.week}`,
+    earnings: item.earnings,
+    year: item._id.year,
+  }));
+
+  const totalRiderPayable = wallet?.totalRiderPayable || 0;
+  const totalRevenue = cardData.totalEarnings;
+  const netEarnings = totalRevenue - totalRiderPayable;
+
   return {
-    summaryCards: {
-      totalCustomers: {
-        value: totalCustomers,
-        subValue: `${cards.newCustomers || 0} new`
-      },
-
-      returningCustomers: {
-        value: cards.returningCustomers || 0,
-        subValue: `${(cards.avgOrders || 0).toFixed(1)}`
-      },
-
-      topCity: {
-        value: demographicsRaw[0]?._id || "N/A",
-        subValue:
-          totalCustomers > 0
-            ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
-              0
-            )}%`
-            : "0%"
-      },
-
-      retentionRate: {
-        value:
-          totalCustomers > 0
-            ? `${(
-              (cards.returningCustomers / totalCustomers) *
-              100
-            ).toFixed(0)}%`
-            : "0%",
-        subValue: "Avg. Repeat"
-      }
+    overview: {
+      totalRevenue: totalRevenue,
+      riderPayable: totalRiderPayable,
+      netEarnings: roundTo4(netEarnings),
+      monthlyEarnings: cardData.monthlyEarnings,
+      weeklyEarnings: cardData.weeklyEarnings,
+      currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,
     },
-
-    demographics: demographicsRaw.map((d: any) => ({
-      city: d._id,
-      percentage:
-        totalCustomers > 0
-          ? `${((d.count / totalCustomers) * 100).toFixed(0)}%`
-          : "0%"
-    })),
-
-    customerValue: [
-      { segment: "Top 1%", avgOrder: `€${getSegmentAvg(1)}` },
-      { segment: "Top 5%", avgOrder: `€${getSegmentAvg(5)}` },
-      { segment: "Top 10%", avgOrder: `€${getSegmentAvg(10)}` }
-    ],
-
-    retentionTrend: retentionRaw.map((r: any) => ({
-      week: `Week ${r._id + 1}`,
-      rate: `${(r.rate * 100).toFixed(0)}%`
-    })),
-
-    heatmap: heatmapRaw.map((h: any) => ({
-      day: h._id.day,
-      hour: h._id.hour,
-      orderCount: h.orders
-    }))
+    graph: graphData,
   };
 };
 
