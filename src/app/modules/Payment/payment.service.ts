@@ -19,7 +19,7 @@ const createPaymentIntent = async (checkoutSummaryId: string) => {
   }
 
   const paymentIntentPayload: Stripe.PaymentIntentCreateParams = {
-    amount: Math.round(summary.subtotal * 100),
+    amount: Math.round(summary.payoutSummary.grandTotal * 100),
     currency: 'eur',
     description: 'Order Payment',
     metadata: {
@@ -62,14 +62,14 @@ const createReduniqPayment = async (checkoutSummaryId: string) => {
       password: process.env.REDUNIQ_PASSWORD,
     },
     payment: {
-      amount: Math.round(summary.subtotal * 100),
+      amount: Math.round(summary.payoutSummary.grandTotal * 100),
       action: 101, // 101 means immediate sale
       currency: '978', // EUR
       description: 'Order Payment',
     },
     order: {
       ref: checkoutSummaryId,
-      amount: Math.round(summary.subtotal * 100),
+      amount: Math.round(summary.payoutSummary.grandTotal * 100),
       date: new Date().toISOString().slice(0, 19).replace('T', ' '),
     },
     returnUrlOk: `${process.env.FRONTEND_URL}/payment-success?token={token}&summaryId=${checkoutSummaryId}`,

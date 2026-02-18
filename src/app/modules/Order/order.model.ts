@@ -78,12 +78,18 @@ const orderSchema = new Schema<TOrder>(
 
     totalItems: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
-    taxAmount: { type: Number, default: 0 },
-    deliveryCharge: { type: Number, default: 0 },
-    deliveryVatAmount: { type: Number, default: 0 },
-    offerDiscount: { type: Number, default: 0 },
+
     totalProductDiscount: { type: Number, default: 0 },
+    totalOfferDiscount: { type: Number, default: 0 },
+
+    taxableAmount: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
+
+    deliveryCharge: { type: Number, default: 0 },
+    deliveryVatRate: { type: Number, default: 0 },
+    deliveryVatAmount: { type: Number, default: 0 },
     totalDeliveryCharge: { type: Number, default: 0 },
+
     subtotal: { type: Number, required: true },
 
     deliGoCommissionRate: { type: Number },

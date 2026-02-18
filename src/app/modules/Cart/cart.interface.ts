@@ -7,14 +7,33 @@ export type TCartItem = TOrderItemSnapshot & {
 
 export type TCart = {
   customerId: mongoose.Types.ObjectId;
+
   items: TCartItem[];
+
   totalItems: number;
-  totalPrice: number;
-  taxAmount?: number;
-  totalProductDiscount?: number;
-  subtotal: number;
+
+  cartCalculation: {
+    totalOriginalPrice: number;
+    totalProductDiscount: number;
+    taxableAmount: number;
+    totalTaxAmount: number;
+    grandTotal: number;
+  };
 
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
+// export type TCart = {
+//   customerId: mongoose.Types.ObjectId;
+//   items: TCartItem[];
+//   totalItems: number;
+//   totalPrice: number;
+//   taxAmount?: number;
+//   totalProductDiscount?: number;
+//   subtotal: number;
+
+//   isDeleted: boolean;
+//   createdAt: Date;
+//   updatedAt: Date;
+// };

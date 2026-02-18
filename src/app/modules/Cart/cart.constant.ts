@@ -7,33 +7,47 @@ export const recalculateCartTotals = async (cart: TCart) => {
 
   if (activeItems.length === 0) {
     cart.totalItems = 0;
-    cart.totalPrice = 0;
-    cart.taxAmount = 0;
-    cart.totalProductDiscount = 0;
-    cart.subtotal = 0;
+    cart.cartCalculation = {
+      totalOriginalPrice: 0,
+      totalProductDiscount: 0,
+      taxableAmount: 0,
+      totalTaxAmount: 0,
+      grandTotal: 0,
+    };
     return cart;
   }
 
   const totals = activeItems.reduce(
     (acc, item) => {
-      acc.totalItems += item.quantity;
-      acc.totalDiscount += (Number(item.discountAmount) || 0) * item.quantity;
-      acc.totalTax += Number(item.taxAmount) || 0;
-      acc.totalBasePrice += Number(item.totalBeforeTax) || 0;
+      const { itemSummary, productPricing } = item;
+
+      acc.totalItems += itemSummary.quantity || 0;
+      acc.totalOriginalPrice +=
+        (productPricing.originalPrice || 0) * (itemSummary.quantity || 0);
+      acc.totalProductDiscount += itemSummary.totalProductDiscount || 0;
+      acc.taxableAmount += itemSummary.totalBeforeTax || 0;
+      acc.totalTaxAmount += itemSummary.totalTaxAmount || 0;
+
       return acc;
     },
-    { totalItems: 0, totalDiscount: 0, totalTax: 0, totalBasePrice: 0 },
+    {
+      totalItems: 0,
+      totalOriginalPrice: 0,
+      totalProductDiscount: 0,
+      taxableAmount: 0,
+      totalTaxAmount: 0,
+    },
   );
 
   cart.totalItems = totals.totalItems;
-  cart.totalProductDiscount = roundTo4(totals.totalDiscount);
-  cart.taxAmount = roundTo4(totals.totalTax);
-  cart.totalPrice = roundTo4(totals.totalBasePrice);
 
-  const finalSubtotal = cart.totalPrice + cart.taxAmount;
-
-  // Set final subtotal (Net Total)
-  cart.subtotal = roundTo4(Math.max(0, finalSubtotal));
+  cart.cartCalculation = {
+    totalOriginalPrice: roundTo4(totals.totalOriginalPrice),
+    totalProductDiscount: roundTo4(totals.totalProductDiscount),
+    taxableAmount: roundTo4(totals.taxableAmount),
+    totalTaxAmount: roundTo4(totals.totalTaxAmount),
+    grandTotal: roundTo4(totals.taxableAmount + totals.totalTaxAmount),
+  };
 
   return cart;
 };

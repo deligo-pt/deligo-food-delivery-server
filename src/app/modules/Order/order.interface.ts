@@ -28,10 +28,12 @@ export type TOrder = {
   // Pricing & Payment
   totalItems: number;
   totalPrice: number;
-  taxAmount?: number;
 
-  offerDiscount?: number;
   totalProductDiscount?: number;
+  totalOfferDiscount?: number; // new (old offerDiscount)
+
+  taxableAmount: number;
+  taxAmount?: number;
 
   deliveryCharge?: number;
   deliveryVatRate?: number;
@@ -45,6 +47,7 @@ export type TOrder = {
   commissionVat: number;
   deliGoCommissionNet: number;
   totalVendorDeduction: number;
+
   vendorNetPayout: number;
 
   fleetCommissionRate?: number;
