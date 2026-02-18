@@ -133,6 +133,19 @@ const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get vendor earnings analytics controller
+const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getVendorEarningsAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor earnings analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -144,4 +157,5 @@ export const AnalyticsControllers = {
   getTopSellingItemsAnalytics,
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
+  getVendorEarningsAnalytics,
 };

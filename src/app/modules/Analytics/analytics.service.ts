@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { currentStatusOptions } from '../Delivery-Partner/delivery-partner.constant';
@@ -183,104 +183,104 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-        // Vendor filter
-        {
-          $match: {
-            vendorId,
-            isDeleted: false,
-          },
-        },
-
-        // Unwind items
-        { $unwind: '$items' },
-
-        // Join products to get category
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'items.productId',
-            foreignField: '_id',
-            as: 'product',
-          },
-        },
-        { $unwind: '$product' },
-
-        // One order = one count per category
-        {
-          $group: {
-            _id: {
-              category: '$product.category',
-              orderId: '$_id',
+          // Vendor filter
+          {
+            $match: {
+              vendorId,
+              isDeleted: false,
             },
           },
-        },
 
-        // Count orders per category
-        {
-          $group: {
-            _id: '$_id.category',
-            orderCount: { $sum: 1 },
-          },
-        },
+          // Unwind items
+          { $unwind: '$items' },
 
-        {
-          $lookup: {
-            from: 'productcategories',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'categoryDetails',
-          },
-        },
-        {
-          $unwind: {
-            path: '$categoryDetails',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-
-        // Calculate TOTAL of all category orders
-        {
-          $group: {
-            _id: null,
-            totalCategoryOrders: { $sum: '$orderCount' },
-            categories: { $push: '$$ROOT' },
-          },
-        },
-
-        // Calculate percentage (SUM = 100%)
-        { $unwind: '$categories' },
-        {
-          $project: {
-            _id: 0,
-            categoryId: '$categories._id',
-            name: {
-              $ifNull: ['$categories.categoryDetails.name', 'Unknown'],
-            },
-            icon: { $ifNull: ['$categories.categoryDetails.icon', ''] },
-            slug: { $ifNull: ['$categories.categoryDetails.slug', ''] },
-            totalOrders: '$categories.orderCount',
-            percentage: {
-              $round: [
-                {
-                  $multiply: [
-                    {
-                      $divide: [
-                        '$categories.orderCount',
-                        '$totalCategoryOrders',
-                      ],
-                    },
-                    100,
-                  ],
-                },
-                2,
-              ],
+          // Join products to get category
+          {
+            $lookup: {
+              from: 'products',
+              localField: 'items.productId',
+              foreignField: '_id',
+              as: 'product',
             },
           },
-        },
+          { $unwind: '$product' },
 
-        // Top category first
-        { $sort: { percentage: -1 } },
-      ]);
+          // One order = one count per category
+          {
+            $group: {
+              _id: {
+                category: '$product.category',
+                orderId: '$_id',
+              },
+            },
+          },
+
+          // Count orders per category
+          {
+            $group: {
+              _id: '$_id.category',
+              orderCount: { $sum: 1 },
+            },
+          },
+
+          {
+            $lookup: {
+              from: 'productcategories',
+              localField: '_id',
+              foreignField: '_id',
+              as: 'categoryDetails',
+            },
+          },
+          {
+            $unwind: {
+              path: '$categoryDetails',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
+          // Calculate TOTAL of all category orders
+          {
+            $group: {
+              _id: null,
+              totalCategoryOrders: { $sum: '$orderCount' },
+              categories: { $push: '$$ROOT' },
+            },
+          },
+
+          // Calculate percentage (SUM = 100%)
+          { $unwind: '$categories' },
+          {
+            $project: {
+              _id: 0,
+              categoryId: '$categories._id',
+              name: {
+                $ifNull: ['$categories.categoryDetails.name', 'Unknown'],
+              },
+              icon: { $ifNull: ['$categories.categoryDetails.icon', ''] },
+              slug: { $ifNull: ['$categories.categoryDetails.slug', ''] },
+              totalOrders: '$categories.orderCount',
+              percentage: {
+                $round: [
+                  {
+                    $multiply: [
+                      {
+                        $divide: [
+                          '$categories.orderCount',
+                          '$totalCategoryOrders',
+                        ],
+                      },
+                      100,
+                    ],
+                  },
+                  2,
+                ],
+              },
+            },
+          },
+
+          // Top category first
+          { $sort: { percentage: -1 } },
+        ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -566,8 +566,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-      )
+          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+        )
       : 0;
 
   return {
@@ -584,17 +584,17 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-            ) + '%'
+                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+              ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-            opData.completedDeliveries > 0 &&
-            opData.totalDeliveryMinutes
+          opData.completedDeliveries > 0 &&
+          opData.totalDeliveryMinutes
             ? Math.round(
-              opData.totalDeliveryMinutes / opData.completedDeliveries,
-            )
+                opData.totalDeliveryMinutes / opData.completedDeliveries,
+              )
             : 0;
 
         return {
@@ -626,11 +626,11 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
       // common filter for all
       $match: {
         vendorId,
-        orderStatus: "DELIVERED",
+        orderStatus: 'DELIVERED',
         isPaid: true,
         isDeleted: false,
-        createdAt: { $gte: sevenDaysAgo }
-      }
+        createdAt: { $gte: sevenDaysAgo },
+      },
     },
     {
       $facet: {
@@ -640,27 +640,27 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
             $group: {
               _id: {
                 $dayOfWeek: {
-                  date: "$createdAt",
-                  timezone: "Europe/Lisbon"
-                }
+                  date: '$createdAt',
+                  timezone: 'Europe/Lisbon',
+                },
               },
-              total: { $sum: "$subtotal" }
-            }
-          }
+              total: { $sum: '$subtotal' },
+            },
+          },
         ],
 
         // top selling items
         topItems: [
-          { $unwind: "$items" },
+          { $unwind: '$items' },
           {
             $group: {
-              _id: "$items.productId",
-              name: { $first: "$items.name" },
-              sold: { $sum: "$items.quantity" }
-            }
+              _id: '$items.productId',
+              name: { $first: '$items.name' },
+              sold: { $sum: '$items.quantity' },
+            },
           },
           { $sort: { sold: -1 } },
-          { $limit: 5 }
+          { $limit: 5 },
         ],
 
         // total sales
@@ -668,18 +668,18 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
           {
             $group: {
               _id: null,
-              total: { $sum: "$subtotal" }
-            }
-          }
-        ]
-      }
-    }
+              total: { $sum: '$subtotal' },
+            },
+          },
+        ],
+      },
+    },
   ]);
 
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const weeklyTrend = dayNames.map(day => ({
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weeklyTrend = dayNames.map((day) => ({
     day,
-    total: 0
+    total: 0,
   }));
 
   let totalSales = 0;
@@ -694,17 +694,17 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
   });
 
   // for Best & Slowest day
-  const nonZeroDays = weeklyTrend.filter(d => d.total > 0);
+  const nonZeroDays = weeklyTrend.filter((d) => d.total > 0);
 
   const bestPerformingDay =
     nonZeroDays.length > 0
       ? [...nonZeroDays].sort((a, b) => b.total - a.total)[0].day
-      : "N/A";
+      : 'N/A';
 
   const slowestDay =
     nonZeroDays.length > 0
       ? [...nonZeroDays].sort((a, b) => a.total - b.total)[0].day
-      : "N/A";
+      : 'N/A';
 
   return {
     totalSales: totalSales.toFixed(2),
@@ -714,8 +714,8 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
     topSellingItems: result.topItems.map((item: any) => ({
       id: item._id,
       name: item.name,
-      sold: item.sold
-    }))
+      sold: item.sold,
+    })),
   };
 };
 
@@ -730,20 +730,20 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
     {
       $match: {
         vendorId,
-        orderStatus: "DELIVERED",
+        orderStatus: 'DELIVERED',
         isPaid: true,
-        isDeleted: false
-      }
+        isDeleted: false,
+      },
     },
 
     {
       $group: {
-        _id: "$customerId",
+        _id: '$customerId',
         totalOrders: { $sum: 1 },
-        totalSpent: { $sum: "$subtotal" },
-        firstOrderDate: { $min: "$createdAt" },
-        city: { $first: "$deliveryAddress.city" }
-      }
+        totalSpent: { $sum: '$subtotal' },
+        firstOrderDate: { $min: '$createdAt' },
+        city: { $first: '$deliveryAddress.city' },
+      },
     },
 
     {
@@ -756,23 +756,23 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
               totalCustomers: { $sum: 1 },
               newCustomers: {
                 $sum: {
-                  $cond: [{ $gte: ["$firstOrderDate", thirtyDaysAgo] }, 1, 0]
-                }
+                  $cond: [{ $gte: ['$firstOrderDate', thirtyDaysAgo] }, 1, 0],
+                },
               },
               returningCustomers: {
                 $sum: {
-                  $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0]
-                }
+                  $cond: [{ $gt: ['$totalOrders', 1] }, 1, 0],
+                },
               },
-              avgOrders: { $avg: "$totalOrders" }
-            }
-          }
+              avgOrders: { $avg: '$totalOrders' },
+            },
+          },
         ],
 
         // demographics - top cities
         demographics: [
-          { $group: { _id: "$city", count: { $sum: 1 } } },
-          { $sort: { count: -1 } }
+          { $group: { _id: '$city', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
         ],
 
         // customer value segmentation
@@ -781,15 +781,15 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
             $project: {
               avgOrderValue: {
                 $cond: [
-                  { $gt: ["$totalOrders", 0] },
-                  { $divide: ["$totalSpent", "$totalOrders"] },
-                  0
-                ]
+                  { $gt: ['$totalOrders', 0] },
+                  { $divide: ['$totalSpent', '$totalOrders'] },
+                  0,
+                ],
               },
-              totalSpent: 1
-            }
+              totalSpent: 1,
+            },
           },
-          { $sort: { totalSpent: -1 } }
+          { $sort: { totalSpent: -1 } },
         ],
 
         // retention ratio
@@ -797,26 +797,26 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
           {
             $project: {
               isReturning: {
-                $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0]
+                $cond: [{ $gt: ['$totalOrders', 1] }, 1, 0],
               },
               weekIndex: {
                 $floor: {
                   $divide: [
-                    { $subtract: [new Date(), "$firstOrderDate"] },
-                    1000 * 60 * 60 * 24 * 7
-                  ]
-                }
-              }
-            }
+                    { $subtract: [new Date(), '$firstOrderDate'] },
+                    1000 * 60 * 60 * 24 * 7,
+                  ],
+                },
+              },
+            },
           },
           {
             $group: {
-              _id: "$weekIndex",
-              rate: { $avg: "$isReturning" }
-            }
+              _id: '$weekIndex',
+              rate: { $avg: '$isReturning' },
+            },
           },
           { $sort: { _id: 1 } },
-          { $limit: 4 }
+          { $limit: 4 },
         ],
         // peak order heatmap (day of week + hour)
         heatmap: [
@@ -825,25 +825,24 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
               _id: {
                 day: {
                   $dayOfWeek: {
-                    date: "$firstOrderDate",
-                    timezone: "Europe/Lisbon"
-                  }
+                    date: '$firstOrderDate',
+                    timezone: 'Europe/Lisbon',
+                  },
                 },
                 hour: {
                   $hour: {
-                    date: "$firstOrderDate",
-                    timezone: "Europe/Lisbon"
-                  }
-                }
+                    date: '$firstOrderDate',
+                    timezone: 'Europe/Lisbon',
+                  },
+                },
               },
-              orders: { $sum: 1 }
-            }
-          }
-        ]
-      }
-    }
+              orders: { $sum: 1 },
+            },
+          },
+        ],
+      },
+    },
   ]);
-
 
   const cards = facet?.cardStats?.[0] || {};
   const demographicsRaw = facet?.demographics || [];
@@ -853,52 +852,50 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
   const totalCustomers = cards.totalCustomers || 0;
 
   const getSegmentAvg = (percent: number) => {
-    if (!valueRaw.length) return "0.00";
+    if (!valueRaw.length) return '0.00';
 
     const limit = Math.ceil(valueRaw.length * (percent / 100));
     const segment = valueRaw.slice(0, limit);
 
     const sum = segment.reduce(
       (acc: number, curr: any) => acc + curr.avgOrderValue,
-      0
+      0,
     );
 
     return (sum / segment.length).toFixed(2);
   };
 
-
   return {
     summaryCards: {
       totalCustomers: {
         value: totalCustomers,
-        subValue: `${cards.newCustomers || 0} new`
+        subValue: `${cards.newCustomers || 0} new`,
       },
 
       returningCustomers: {
         value: cards.returningCustomers || 0,
-        subValue: `${(cards.avgOrders || 0).toFixed(1)} orders/avg`
+        subValue: `${(cards.avgOrders || 0).toFixed(1)} orders/avg`,
       },
 
       topCity: {
-        value: demographicsRaw[0]?._id || "N/A",
+        value: demographicsRaw[0]?._id || 'N/A',
         subValue:
           totalCustomers > 0
             ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
-              0
-            )}% of customers`
-            : "0%"
+                0,
+              )}% of customers`
+            : '0%',
       },
 
       retentionRate: {
         value:
           totalCustomers > 0
-            ? `${(
-              (cards.returningCustomers / totalCustomers) *
-              100
-            ).toFixed(0)}%`
-            : "0%",
-        subValue: "Avg. Repeat"
-      }
+            ? `${((cards.returningCustomers / totalCustomers) * 100).toFixed(
+                0,
+              )}%`
+            : '0%',
+        subValue: 'Avg. Repeat',
+      },
     },
 
     demographics: demographicsRaw.map((d: any) => ({
@@ -906,25 +903,25 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
       percentage:
         totalCustomers > 0
           ? `${((d.count / totalCustomers) * 100).toFixed(0)}%`
-          : "0%"
+          : '0%',
     })),
 
     customerValue: [
-      { segment: "Top 1%", avgOrder: `€${getSegmentAvg(1)}` },
-      { segment: "Top 5%", avgOrder: `€${getSegmentAvg(5)}` },
-      { segment: "Top 10%", avgOrder: `€${getSegmentAvg(10)}` }
+      { segment: 'Top 1%', avgOrder: `€${getSegmentAvg(1)}` },
+      { segment: 'Top 5%', avgOrder: `€${getSegmentAvg(5)}` },
+      { segment: 'Top 10%', avgOrder: `€${getSegmentAvg(10)}` },
     ],
 
     retentionTrend: retentionRaw.map((r: any) => ({
       week: `Week ${r._id + 1}`,
-      rate: `${(r.rate * 100).toFixed(0)}%`
+      rate: `${(r.rate * 100).toFixed(0)}%`,
     })),
 
     heatmap: heatmapRaw.map((h: any) => ({
       day: h._id.day,
       hour: h._id.hour,
-      orderCount: h.orders
-    }))
+      orderCount: h.orders,
+    })),
   };
 };
 
@@ -1133,11 +1130,11 @@ const getOrderTrendInsights = async (currentUser: AuthUser) => {
     {
       $match: {
         vendorId,
-        orderStatus: "DELIVERED",
+        orderStatus: 'DELIVERED',
         isPaid: true,
         isDeleted: false,
-        createdAt: { $gte: twentyEightDaysAgo }
-      }
+        createdAt: { $gte: twentyEightDaysAgo },
+      },
     },
     {
       $facet: {
@@ -1149,20 +1146,20 @@ const getOrderTrendInsights = async (currentUser: AuthUser) => {
               dayIndex: {
                 $ceil: {
                   $divide: [
-                    { $subtract: ["$createdAt", fourteenDaysAgo] },
-                    1000 * 60 * 60 * 24
-                  ]
-                }
-              }
-            }
+                    { $subtract: ['$createdAt', fourteenDaysAgo] },
+                    1000 * 60 * 60 * 24,
+                  ],
+                },
+              },
+            },
           },
           {
             $group: {
-              _id: "$dayIndex",
-              orders: { $sum: 1 }
-            }
+              _id: '$dayIndex',
+              orders: { $sum: 1 },
+            },
           },
-          { $sort: { _id: 1 } }
+          { $sort: { _id: 1 } },
         ],
 
         //  growth comparison for 14 days
@@ -1171,14 +1168,14 @@ const getOrderTrendInsights = async (currentUser: AuthUser) => {
             $group: {
               _id: {
                 $cond: [
-                  { $gte: ["$createdAt", fourteenDaysAgo] },
-                  "current",
-                  "previous"
-                ]
+                  { $gte: ['$createdAt', fourteenDaysAgo] },
+                  'current',
+                  'previous',
+                ],
               },
-              count: { $sum: 1 }
-            }
-          }
+              count: { $sum: 1 },
+            },
+          },
         ],
         // Peak Ordering Times
         peakTimes: [
@@ -1186,83 +1183,80 @@ const getOrderTrendInsights = async (currentUser: AuthUser) => {
           {
             $group: {
               _id: {
-                $hour: { date: "$createdAt", timezone: "Europe/Lisbon" }
+                $hour: { date: '$createdAt', timezone: 'Europe/Lisbon' },
               },
-              count: { $sum: 1 }
-            }
+              count: { $sum: 1 },
+            },
           },
           { $sort: { count: -1 } },
-          { $limit: 4 }
+          { $limit: 4 },
         ],
         // Category Growth
         categoryPerformance: [
           { $match: { createdAt: { $gte: fourteenDaysAgo } } },
-          { $unwind: "$items" },
+          { $unwind: '$items' },
           {
             $group: {
-              _id: "$items.name",
-              count: { $sum: "$items.quantity" }
-            }
+              _id: '$items.name',
+              count: { $sum: '$items.quantity' },
+            },
           },
-          { $sort: { count: -1 } }
-        ]
-      }
-    }
+          { $sort: { count: -1 } },
+        ],
+      },
+    },
   ]);
 
-
   const currentCount =
-    facet.growthComparison.find((g: any) => g._id === "current")?.count || 0;
+    facet.growthComparison.find((g: any) => g._id === 'current')?.count || 0;
   const previousCount =
-    facet.growthComparison.find((g: any) => g._id === "previous")?.count || 0;
-
+    facet.growthComparison.find((g: any) => g._id === 'previous')?.count || 0;
 
   let percentageChange = 0;
-  let trend: "up" | "down" | "neutral" = "neutral";
+  let trend: 'up' | 'down' | 'neutral' = 'neutral';
 
   if (previousCount > 0) {
-    percentageChange =
-      ((currentCount - previousCount) / previousCount) * 100;
-    trend = percentageChange >= 0 ? "up" : "down";
+    percentageChange = ((currentCount - previousCount) / previousCount) * 100;
+    trend = percentageChange >= 0 ? 'up' : 'down';
   } else if (currentCount > 0) {
     percentageChange = 100;
-    trend = "up";
+    trend = 'up';
   }
 
   return {
     summary: {
       totalOrders: currentCount,
       percentage: `${Math.abs(percentageChange).toFixed(0)}%`,
-      trend
+      trend,
     },
 
     dailyVolume: Array.from({ length: 14 }, (_, i) => {
       const found = facet.dailyVolume.find((d: any) => d._id === i + 1);
       return {
         day: `D${i + 1}`,
-        orders: found ? found.orders : 0
+        orders: found ? found.orders : 0,
       };
     }),
 
     peakOrderingTimes: facet.peakTimes.map((p: any) => ({
       time:
         p._id === 0
-          ? "12 AM"
+          ? '12 AM'
           : p._id < 12
             ? `${p._id} AM`
             : p._id === 12
-              ? "12 PM"
+              ? '12 PM'
               : `${p._id - 12} PM`,
-      orderCount: p.count
+      orderCount: p.count,
     })),
 
     categoryGrowth: facet.categoryPerformance.map((c: any) => ({
-      category: c._id || "Other",
+      category: c._id || 'Other',
       percentage:
         currentCount > 0
           ? `${((c.count / currentCount) * 100).toFixed(0)}%`
-          : "0%"
-    }))
+          : '0%',
+    })),
   };
 };
 
@@ -1282,44 +1276,44 @@ const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
     {
       $match: {
         vendorId,
-        orderStatus: "DELIVERED",
+        orderStatus: 'DELIVERED',
         isPaid: true,
         isDeleted: false,
-        createdAt: { $gte: fourteenDaysAgo }
-      }
+        createdAt: { $gte: fourteenDaysAgo },
+      },
     },
     {
       $facet: {
         // total items sold
         totalItemsSold: [
           { $match: { createdAt: { $gte: sevenDaysAgo } } },
-          { $unwind: "$items" },
+          { $unwind: '$items' },
           {
             $group: {
               _id: null,
-              total: { $sum: "$items.quantity" }
-            }
-          }
+              total: { $sum: '$items.quantity' },
+            },
+          },
         ],
         // current period (0–7 days)
         currentPeriod: [
           {
             $match: {
               createdAt: {
-                $gte: sevenDaysAgo
-              }
-            }
+                $gte: sevenDaysAgo,
+              },
+            },
           },
-          { $unwind: "$items" },
+          { $unwind: '$items' },
           {
             $group: {
-              _id: "$items.name",
-              name: { $first: "$items.name" },
-              image: { $first: "$items.image" },
-              sold: { $sum: "$items.quantity" },
-              rating: { $avg: "$items.rating" }
-            }
-          }
+              _id: '$items.name',
+              name: { $first: '$items.name' },
+              image: { $first: '$items.image' },
+              sold: { $sum: '$items.quantity' },
+              rating: { $avg: '$items.rating' },
+            },
+          },
         ],
 
         // previous period (7–14 days)
@@ -1328,28 +1322,26 @@ const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
             $match: {
               createdAt: {
                 $gte: fourteenDaysAgo,
-                $lt: sevenDaysAgo
-              }
-            }
+                $lt: sevenDaysAgo,
+              },
+            },
           },
-          { $unwind: "$items" },
+          { $unwind: '$items' },
           {
             $group: {
-              _id: "$items.name",
-              sold: { $sum: "$items.quantity" }
-            }
-          }
-        ]
-      }
-    }
+              _id: '$items.name',
+              sold: { $sum: '$items.quantity' },
+            },
+          },
+        ],
+      },
+    },
   ]);
 
-
-  const totalItemsSold =
-    facet.totalItemsSold[0]?.total || 0;
+  const totalItemsSold = facet.totalItemsSold[0]?.total || 0;
 
   const previousMap = new Map(
-    facet.previousPeriod.map((p: any) => [String(p._id), p.sold])
+    facet.previousPeriod.map((p: any) => [String(p._id), p.sold]),
   );
 
   // merge current and previous data to calculate growth
@@ -1358,15 +1350,19 @@ const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
       const previousSold = (previousMap.get(String(item._id)) || 0) as number;
 
       let growthPercentage = 0;
-      let trend: "up" | "down" | "neutral" = "neutral";
+      let trend: 'up' | 'down' | 'neutral' = 'neutral';
 
       if (previousSold > 0) {
-        growthPercentage =
-          ((item.sold - previousSold) / previousSold) * 100;
-        trend = growthPercentage > 0 ? "up" : growthPercentage < 0 ? "down" : "neutral";
+        growthPercentage = ((item.sold - previousSold) / previousSold) * 100;
+        trend =
+          growthPercentage > 0
+            ? 'up'
+            : growthPercentage < 0
+              ? 'down'
+              : 'neutral';
       } else if (item.sold > 0) {
         growthPercentage = 100;
-        trend = "up";
+        trend = 'up';
       }
 
       return {
@@ -1375,7 +1371,7 @@ const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
         sold: item.sold,
         rating: Number((item.rating || 0).toFixed(1)),
         growthPercentage: Math.round(growthPercentage),
-        trend
+        trend,
       };
     })
     .sort((a: any, b: any) => b.sold - a.sold)
@@ -1383,12 +1379,152 @@ const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
 
   return {
     summary: {
-      totalItemsSold
+      totalItemsSold,
     },
-    topItems
+    topItems,
   };
 };
 
+// get vendor earnings analytics service
+const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
+  const vendorObjectId = new mongoose.Types.ObjectId(currentUser._id);
+  const now = new Date();
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = now.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const [earningStats, orderStats, productStats] = await Promise.all([
+    Transaction.aggregate([
+      {
+        $match: {
+          userId: vendorObjectId,
+          userModel: 'Vendor',
+          status: 'SUCCESS',
+          type: 'VENDOR_EARNING',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalIncome: { $sum: '$totalAmount' },
+          todayIncome: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', startOfToday] },
+                '$totalAmount',
+                0,
+              ],
+            },
+          },
+          weekIncome: {
+            $sum: {
+              $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
+            },
+          },
+          monthIncome: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', startOfMonth] },
+                '$totalAmount',
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    Order.aggregate([
+      { $match: { vendorId: vendorObjectId } },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          completedOrders: {
+            $sum: { $cond: [{ $eq: ['$orderStatus', 'DELIVERED'] }, 1, 0] },
+          },
+          pendingOrders: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$orderStatus', 'DELIVERED'] },
+                    { $ne: ['$orderStatus', 'CANCELED'] },
+                    { $ne: ['$orderStatus', 'REJECTED'] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    Product.aggregate([
+      { $match: { vendorId: vendorObjectId } },
+      {
+        $group: {
+          _id: null,
+          totalProducts: { $sum: 1 },
+          activeProducts: {
+            $sum: { $cond: [{ $eq: ['$meta.status', 'ACTIVE'] }, 1, 0] },
+          },
+          inactiveProducts: {
+            $sum: { $cond: [{ $eq: ['$meta.status', 'INACTIVE'] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const earnings = earningStats[0] || {
+    todayIncome: 0,
+    weekIncome: 0,
+    monthIncome: 0,
+    totalIncome: 0,
+  };
+  const orders = orderStats[0] || {
+    totalOrders: 0,
+    completedOrders: 0,
+    pendingOrders: 0,
+  };
+  const products = productStats[0] || {
+    totalProducts: 0,
+    activeProducts: 0,
+    inactiveProducts: 0,
+  };
+
+  return {
+    topCard: {
+      totalEarnings: earnings.totalIncome.toFixed(2),
+      orders: orders.totalOrders,
+      completed: orders.completedOrders,
+      pending: orders.pendingOrders,
+    },
+    earningsOverview: {
+      today: earnings.todayIncome.toFixed(2),
+      thisWeek: earnings.weekIncome.toFixed(2),
+      thisMonth: earnings.monthIncome.toFixed(2),
+      totalIncome: earnings.totalIncome.toFixed(2),
+    },
+    products: {
+      total: products.totalProducts,
+      active: products.activeProducts,
+      inactive: products.inactiveProducts,
+    },
+  };
+};
 
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
@@ -1401,4 +1537,5 @@ export const AnalyticsServices = {
   getTopSellingItemsAnalytics,
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
+  getVendorEarningsAnalytics,
 };
