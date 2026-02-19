@@ -677,16 +677,14 @@ const broadcastOrderToPartners = async (
   }
 
   // Vendor location check
-  const loc = currentUser.businessLocation;
-  if (
-    !loc ||
-    typeof loc.longitude !== 'number' ||
-    typeof loc.latitude !== 'number'
-  ) {
+  const loc = currentUser.currentSessionLocation?.coordinates;
+  const longitude = loc?.[0];
+  const latitude = loc?.[1];
+  if (!loc || typeof longitude !== 'number' || typeof latitude !== 'number') {
     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not set.');
   }
 
-  const vendorCoordinates: [number, number] = [loc.longitude, loc.latitude];
+  const vendorCoordinates: [number, number] = [longitude, latitude];
   const io = getIO();
   // Fetch order AND ensure this vendor owns it
   const order = await Order.findOne({
