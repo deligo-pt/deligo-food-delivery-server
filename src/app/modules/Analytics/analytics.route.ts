@@ -73,12 +73,19 @@ router.get(
   auth('VENDOR', 'SUB_VENDOR'),
   AnalyticsControllers.getTopSellingItemsAnalytics
 );
-  
+
 // get admin sales report analytics
 router.get(
   '/admin-sales-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminSalesReportAnalytics
+);
+
+// get admin order report analytics
+router.get(
+  '/admin-order-report-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getAdminOrderReportAnalytics
 );
 
 export const AnalyticsRoutes = router;

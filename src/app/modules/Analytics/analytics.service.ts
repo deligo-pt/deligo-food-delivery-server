@@ -12,7 +12,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { roundTo4 } from '../../utils/mathProvider';
 import { Transaction, Wallet } from '../Payment/payment.model';
-import { DailyRevenueFacet, SalesAnalyticsQuery, SalesAnalyticsResponse, SummaryFacet } from './analytics.interface';
+import { DailyRevenueFacet, OrderReportAnalyticsResponse, SalesAnalyticsResponse, SummaryFacet, TimeframeQuery } from './analytics.interface';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
@@ -1391,8 +1391,7 @@ const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
 };
 
 // admin sales report
-const getAdminSalesReportAnalytics = async (currentUser: AuthUser, query: SalesAnalyticsQuery): Promise<SalesAnalyticsResponse> => {
-  const vendorId = new Types.ObjectId(currentUser._id);
+const getAdminSalesReportAnalytics = async (query: TimeframeQuery): Promise<SalesAnalyticsResponse> => {
 
   const timeframe = query?.timeframe ?? "last7days";
   const endDate = new Date();
@@ -1412,7 +1411,7 @@ const getAdminSalesReportAnalytics = async (currentUser: AuthUser, query: SalesA
   }>([
     {
       $match: {
-        vendorId,
+        isPaid: true,
         isDeleted: false
       }
     },
@@ -1428,7 +1427,7 @@ const getAdminSalesReportAnalytics = async (currentUser: AuthUser, query: SalesA
                 $sum: {
                   $cond: [
                     { $eq: ["$orderStatus", "DELIVERED"] },
-                    "$subtotal",
+                    "$totalPrice",
                     0
                   ]
                 }
@@ -1462,7 +1461,7 @@ const getAdminSalesReportAnalytics = async (currentUser: AuthUser, query: SalesA
                   date: "$createdAt"
                 }
               },
-              revenue: { $sum: "$subtotal" }
+              revenue: { $sum: "$totalPrice" }
             }
           },
           { $sort: { _id: 1 } }
@@ -1521,6 +1520,146 @@ const getAdminSalesReportAnalytics = async (currentUser: AuthUser, query: SalesA
   };
 };
 
+// admin order report
+const getAdminOrderReportAnalytics = async (query: TimeframeQuery): Promise<OrderReportAnalyticsResponse> => {
+
+  const now = new Date();
+  const timeframe = query?.timeframe;
+
+  let timeframeMatch: any = {};
+  if (timeframe) {
+    const days =
+      timeframe === "last30days" ? 30 :
+        timeframe === "last14days" ? 14 : 7;
+
+    const start = new Date();
+    start.setDate(now.getDate() - days);
+
+    timeframeMatch = { createdAt: { $gte: start } };
+  }
+
+  const last10Days = new Date();
+  last10Days.setDate(now.getDate() - 10);
+
+  const last30Days = new Date();
+  last30Days.setDate(now.getDate() - 30);
+
+  const result = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+      }
+    },
+    {
+      $facet: {
+        // summery cards
+        summary: [
+          ...(timeframe ? [{ $match: timeframeMatch }] : []),
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$orderStatus", "DELIVERED"] },
+                    "$totalPrice",
+                    0
+                  ]
+                }
+              },
+              totalOrders: { $sum: 1 }
+            }
+          }
+        ],
+        // orders by zone
+        ordersByZone: [
+          {
+            $group: {
+              _id: "$deliveryAddress.city",
+              orders: { $sum: 1 }
+            }
+          },
+          { $sort: { orders: -1 } }
+        ],
+        // revenue trend - 10 days
+        revenueTrend: [
+          { $match: { createdAt: { $gte: last10Days } } },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$createdAt"
+                }
+              },
+              revenue: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$orderStatus", "DELIVERED"] },
+                    "$totalPrice",
+                    0
+                  ]
+                }
+              }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ],
+        // zone heat map
+        zoneHeatmap: [
+          { $match: { createdAt: { $gte: last30Days } } },
+          {
+            $group: {
+              _id: {
+                zone: "$deliveryAddress.city",
+                hour: {
+                  $hour: {
+                    date: "$createdAt",
+                    timezone: "Europe/Lisbon"
+                  }
+                }
+              },
+              orderCount: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  const summary = result[0].summary[0] ?? {
+    totalRevenue: 0,
+    totalOrders: 0
+  };
+
+  return {
+    summary: {
+      totalRevenue: summary.totalRevenue.toFixed(2),
+      totalOrders: summary.totalOrders,
+      avgOrderValue:
+        summary.totalOrders > 0
+          ? (summary.totalRevenue / summary.totalOrders).toFixed(2)
+          : "0.00"
+    },
+
+    ordersByZone: result[0].ordersByZone.map((z: any) => ({
+      zone: z._id ?? "Unknown",
+      orders: z.orders
+    })),
+
+    revenueTrend: result[0].revenueTrend.map((d: any) => ({
+      date: d._id,
+      revenue: d.revenue
+    })),
+
+    zoneHeatmap: result[0].zoneHeatmap.map((h: any) => ({
+      zone: h._id.zone ?? "Unknown",
+      hour: h._id.hour,
+      orderCount: h.orderCount
+    }))
+  };
+};
+
 
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
@@ -1533,5 +1672,6 @@ export const AnalyticsServices = {
   getTopSellingItemsAnalytics,
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
-  getAdminSalesReportAnalytics
+  getAdminSalesReportAnalytics,
+  getAdminOrderReportAnalytics
 };
