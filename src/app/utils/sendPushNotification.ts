@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fcm } from '../config/firebase';
+import { Admin } from '../modules/Admin/admin.model';
+import { Customer } from '../modules/Customer/customer.model';
+import { DeliveryPartner } from '../modules/Delivery-Partner/delivery-partner.model';
+import { FleetManager } from '../modules/Fleet-Manager/fleet-manager.model';
+import { Vendor } from '../modules/Vendor/vendor.model';
 
 export type TPushNotificationPayload = {
   title: string;
@@ -54,6 +59,26 @@ export const sendPushNotification = async (
       error.code === 'messaging/invalid-registration-token'
     ) {
       console.log('Cleanup needed: Token is no longer valid.');
+
+      await Promise.all([
+        DeliveryPartner.updateMany(
+          { fcmTokens: token },
+          { $pull: { fcmTokens: token } },
+        ),
+        Vendor.updateMany(
+          { fcmTokens: token },
+          { $pull: { fcmTokens: token } },
+        ),
+        Admin.updateMany({ fcmTokens: token }, { $pull: { fcmTokens: token } }),
+        Customer.updateMany(
+          { fcmTokens: token },
+          { $pull: { fcmTokens: token } },
+        ),
+        FleetManager.updateMany(
+          { fcmTokens: token },
+          { $pull: { fcmTokens: token } },
+        ),
+      ]);
     }
 
     return { success: false, error: error.message };
