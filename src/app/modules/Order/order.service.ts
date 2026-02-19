@@ -120,7 +120,7 @@ const createOrderAfterReduinqPayment = async (
           orderId: order._id,
           userId: currentUser?._id,
           userModel: 'Customer',
-          totalAmount: order.subtotal,
+          totalAmount: order.payoutSummary.grandTotal,
           type: 'ORDER_PAYMENT',
           status: 'SUCCESS',
           paymentMethod: 'CARD',
@@ -163,7 +163,7 @@ const createOrderAfterReduinqPayment = async (
 
     const notificationPayload = {
       title: 'You have a new order',
-      body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
+      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
       data: {
         orderId: order.orderId,
       },
@@ -236,7 +236,7 @@ const createOrderAfterPayment = async (
       ...summary.toObject(),
       _id: undefined,
       orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      paymentMethod: 'CARD',
+      paymentMethod: summary.paymentMethod || 'CARD',
       paymentStatus: 'PAID',
       isPaid: true,
       transactionId: paymentIntentId,
@@ -253,10 +253,10 @@ const createOrderAfterPayment = async (
           orderId: order._id,
           userId: currentUser?._id,
           userModel: 'Customer',
-          totalAmount: order.subtotal,
+          totalAmount: order.payoutSummary.grandTotal,
           type: 'ORDER_PAYMENT',
           status: 'SUCCESS',
-          paymentMethod: 'CARD',
+          paymentMethod: summary.paymentMethod,
           remarks: `Order payment successful for Order ID: ${order.orderId}`,
         },
       ],
@@ -281,12 +281,14 @@ const createOrderAfterPayment = async (
           },
         },
         $set: {
-          discount: 0,
           totalItems: 0,
-          totalPrice: 0,
-          taxAmount: 0,
-          totalProductDiscount: 0,
-          subtotal: 0,
+          cartCalculation: {
+            totalOriginalPrice: 0,
+            totalProductDiscount: 0,
+            taxableAmount: 0,
+            totalTaxAmount: 0,
+            grandTotal: 0,
+          },
         },
       },
       { session },
@@ -300,7 +302,7 @@ const createOrderAfterPayment = async (
 
     const notificationPayload = {
       title: 'You have a new order',
-      body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
+      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
       data: {
         orderId: order.orderId,
       },
@@ -507,10 +509,10 @@ const updateOrderStatusByVendor = async (
         updateOne: {
           filter: {
             _id: new mongoose.Types.ObjectId(item.productId),
-            'stock.quantity': { $gte: item.quantity },
+            'stock.quantity': { $gte: item.itemSummary.quantity },
           },
           update: {
-            $inc: { 'stock.quantity': -item.quantity },
+            $inc: { 'stock.quantity': -item.itemSummary.quantity },
           },
         },
       }));
@@ -585,7 +587,7 @@ const updateOrderStatusByVendor = async (
         updateOne: {
           filter: { _id: new mongoose.Types.ObjectId(item.productId) },
           update: {
-            $inc: { 'stock.quantity': item.quantity },
+            $inc: { 'stock.quantity': item.itemSummary.quantity },
           },
         },
       }));
@@ -1165,16 +1167,19 @@ const updateOrderStatusByDeliveryPartner = async (
         isDeleted: false,
       }).select('orderStatus');
 
+      if (!orderCheck) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+      }
+
       if (orderCheck?.orderStatus === payload.orderStatus) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
           `Order status is already ${payload.orderStatus}.`,
         );
       }
-      if (
-        requiredCurrentStatus === 'PICKED_UP' &&
-        payload.orderStatus === 'ON_THE_WAY'
-      ) {
+
+      console.log(orderCheck, payload.orderStatus);
+      if (!orderCheck.isOtpVerified && payload.orderStatus === 'ON_THE_WAY') {
         throw new AppError(
           httpStatus.BAD_REQUEST,
           'Please verify the OTP first to start delivery.',
@@ -1198,15 +1203,15 @@ const updateOrderStatusByDeliveryPartner = async (
           'Delivery Partner not found for this order.',
         );
       }
-      const {
-        vendorNetPayout,
-        riderNetEarnings,
-        totalDeliveryCharge,
-        deliGoCommission,
-        commissionVat,
-        deliGoCommissionNet,
-        _id: orderDbId,
-      } = updatedOrder;
+      const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
+
+      const vendorNetPayout = payoutSummary?.vendorNetPayout || 0;
+      const riderNetEarnings = payoutSummary?.riderNetEarnings || 0;
+      const totalDeliveryCharge = delivery?.totalDeliveryCharge || 0;
+      const deliGoCommission = payoutSummary?.deliGoCommission?.amount || 0;
+      const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
+      const deliGoCommissionNet =
+        payoutSummary?.deliGoCommission?.totalDeduction || 0;
 
       const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
       const fleetManagerId = isManagedByFleet
@@ -1390,14 +1395,16 @@ const updateOrderStatusByDeliveryPartner = async (
         orderStatus: payload.orderStatus,
       },
     };
-    NotificationService.sendToUser(
-      customerId!,
-      notificationPayload.title,
-      notificationPayload.body,
-      notificationPayload.data,
-      'default',
-      'ORDER',
-    );
+    if (customerId) {
+      NotificationService.sendToUser(
+        customerId,
+        notificationPayload.title,
+        notificationPayload.body,
+        notificationPayload.data,
+        'default',
+        'ORDER',
+      );
+    }
 
     return {
       message: 'Order status updated successfully.',

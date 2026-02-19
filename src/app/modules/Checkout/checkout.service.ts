@@ -105,15 +105,15 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     const priceAfterStoreDiscount = roundTo4(basePrice - storeDiscountUnit);
 
     const processedAddons = (item.addons || []).map((a: any) => {
-      const addonLineTotal = roundTo4(a.price * a.quantity);
+      const addonLineTotal = roundTo4(a.unitPrice * a.quantity);
       const addonTax = roundTo4(addonLineTotal * ((a.taxRate || 0) / 100));
       return {
         optionId: a.optionId,
         name: a.name,
         sku: a.sku,
-        originalPrice: a.price,
+        originalPrice: a.originalPrice,
         promoDiscountAmount: 0,
-        unitPrice: a.price,
+        unitPrice: a.unitPrice,
         quantity: a.quantity,
         lineTotal: addonLineTotal,
         taxRate: a.taxRate || 0,

@@ -14,7 +14,6 @@ import { customAlphabet } from 'nanoid';
 import { cleanForSKU, generateSlug } from './product.utils';
 import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
-import { ProductPdService } from '../PdInvoice/productPd.service';
 
 const generateShortId = customAlphabet(
   '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -125,17 +124,17 @@ const createProduct = async (
 
   const newProduct = await Product.create({ ...payload, images });
 
-  if (newProduct) {
-    console.log('In ');
-    const syncData = {
-      ...newProduct.toObject(),
-      category: category.name,
-    } as any;
-    const res = ProductPdService.syncProductToPd(syncData).catch((error) => {
-      console.error('Error syncing product to Pasta Digital:', error);
-    });
-    console.log({ res });
-  }
+  // if (newProduct) {
+  //   console.log('In ');
+  //   const syncData = {
+  //     ...newProduct.toObject(),
+  //     category: category.name,
+  //   } as any;
+  //   const res = ProductPdService.syncProductToPd(syncData).catch((error) => {
+  //     console.error('Error syncing product to Pasta Digital:', error);
+  //   });
+  //   console.log({ res });
+  // }
 
   return newProduct;
 };

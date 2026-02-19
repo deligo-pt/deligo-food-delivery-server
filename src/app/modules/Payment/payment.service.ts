@@ -8,7 +8,10 @@ import { CheckoutSummary } from '../Checkout/checkout.model';
 export const stripe = new Stripe(config.stripe.stripe_secret_key as string);
 
 // create stripe payment intent service
-const createPaymentIntent = async (checkoutSummaryId: string) => {
+const createPaymentIntent = async (
+  checkoutSummaryId: string,
+  paymentMethod?: 'CARD' | 'MB_WAY',
+) => {
   if (!checkoutSummaryId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Checkout summary not found');
   }
@@ -17,6 +20,9 @@ const createPaymentIntent = async (checkoutSummaryId: string) => {
   if (!summary) {
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
   }
+
+  summary.paymentMethod = paymentMethod;
+  await summary.save();
 
   const paymentIntentPayload: Stripe.PaymentIntentCreateParams = {
     amount: Math.round(summary.payoutSummary.grandTotal * 100),
@@ -44,9 +50,15 @@ const createPaymentIntent = async (checkoutSummaryId: string) => {
   };
 };
 
-const createReduniqPayment = async (checkoutSummaryId: string) => {
+const createReduniqPayment = async (
+  checkoutSummaryId: string,
+  paymentMethod: 'CARD' | 'MB_WAY',
+) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'Summary not found');
+
+  summary.paymentMethod = paymentMethod;
+  await summary.save();
 
   if (!process.env.REDUNIQ_API_URL) {
     throw new AppError(

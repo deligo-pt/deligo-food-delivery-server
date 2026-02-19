@@ -369,14 +369,10 @@ const validateAndApplyOffer = async (
     );
   }
 
-  const {
-    vendorId,
-    totalPrice,
-    deliveryCharge,
-    items,
-    taxAmount,
-    deliveryVatAmount,
-  } = checkoutData;
+  const { vendorId, orderCalculation, delivery, items } = checkoutData;
+  const taxableAmount = orderCalculation.taxableAmount;
+  const currentTaxAmount = orderCalculation.totalTaxAmount;
+  const deliveryChargeBase = delivery.charge;
   const now = new Date();
 
   const baseQuery = {
@@ -404,46 +400,50 @@ const validateAndApplyOffer = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer or promo code');
   }
 
-  if (offer) {
-    if (offer.maxUsageCount && (offer.usageCount || 0) >= offer.maxUsageCount) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Offer limit reached');
-    }
+  // if (offer) {
+  //   if (offer.maxUsageCount && (offer.usageCount || 0) >= offer.maxUsageCount) {
+  //     throw new AppError(httpStatus.BAD_REQUEST, 'Offer limit reached');
+  //   }
 
-    if (offer.minOrderAmount && totalPrice < offer.minOrderAmount) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Min order €${offer.minOrderAmount} required`,
-      );
-    }
-  }
+  //   if (offer.minOrderAmount && totalPrice < offer.minOrderAmount) {
+  //     throw new AppError(
+  //       httpStatus.BAD_REQUEST,
+  //       `Min order €${offer.minOrderAmount} required`,
+  //     );
+  //   }
+  // }
 
   if (!offer) {
-    const resetSubtotal = roundTo4(
-      totalPrice + taxAmount + deliveryCharge + (deliveryVatAmount || 0),
-    );
     return await CheckoutSummary.findByIdAndUpdate(
       checkoutId,
       {
         $set: {
-          totalOfferDiscount: 0,
-          offerId: null,
-          promoType: 'NONE',
-          offerApplied: null,
-          subtotal: resetSubtotal,
+          'orderCalculation.totalOfferDiscount': 0,
+          'offer.isApplied': false,
+          'offer.offerApplied': null,
         },
       },
       { new: true },
     ).lean();
   }
 
+  if (offer.maxUsageCount && (offer.usageCount || 0) >= offer.maxUsageCount) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Offer limit reached');
+  }
+  if (offer.minOrderAmount && taxableAmount < offer.minOrderAmount) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Min order €${offer.minOrderAmount} required`,
+    );
+  }
+
   let totalOfferDiscount = 0;
-  let finalDeliveryChargeNet = deliveryCharge;
+  let finalDeliveryChargeNet = deliveryChargeBase;
   let bogoSnapshot = null;
 
   switch (offer.offerType) {
     case 'PERCENT': {
-      const calculated =
-        (checkoutData.taxableAmount * (offer.discountValue || 0)) / 100;
+      const calculated = (taxableAmount * (offer.discountValue || 0)) / 100;
       totalOfferDiscount = offer.maxDiscountAmount
         ? Math.min(calculated, offer.maxDiscountAmount)
         : calculated;
@@ -478,12 +478,8 @@ const validateAndApplyOffer = async (
     }
   }
 
-  totalOfferDiscount = roundTo4(
-    Math.min(totalOfferDiscount, checkoutData.taxableAmount),
-  );
-  const newTaxableAmount = roundTo4(
-    checkoutData.taxableAmount - totalOfferDiscount,
-  );
+  totalOfferDiscount = roundTo4(Math.min(totalOfferDiscount, taxableAmount));
+  const newTaxableAmount = roundTo4(taxableAmount - totalOfferDiscount);
 
   const newTaxAmount =
     checkoutData.taxableAmount > 0

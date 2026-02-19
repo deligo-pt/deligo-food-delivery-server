@@ -79,6 +79,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           _id: false,
         },
         vendorNetEarnings: { type: Number, required: true },
+        _id: false,
       },
     ],
 
@@ -172,7 +173,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
 
     paymentMethod: {
       type: String,
-      enum: ['CARD', 'MOBILE'],
+      enum: ['CARD', 'MB_WAY'],
     },
 
     transactionId: { type: String, default: null },

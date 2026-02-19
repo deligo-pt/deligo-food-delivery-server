@@ -2,9 +2,10 @@ import axios from 'axios';
 import { getPdAccessToken } from './getPdAccessToken';
 import config from '../../config';
 import { Order } from '../Order/order.model';
+import { TOrder } from '../Order/order.interface';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const mapOrderToPdPayload = (order: any) => {
+const mapOrderToPdPayload = (order: TOrder) => {
   const details = order.items.flatMap((item: any) => {
     let productRef = item.variationSku || item.sku;
 
@@ -19,11 +20,19 @@ const mapOrderToPdPayload = (order: any) => {
     //   item.originalPrice > 0
     //     ? (item.discountAmount / item.originalPrice) * 100
     //     : 0;
+    const pdTaxId =
+      item.productPricing.taxRate === 13
+        ? 2
+        : item.productPricing.taxRate === 23
+          ? 1
+          : 3;
 
     const mainItem = {
-      product_reference: productRef,
-      quantity: Number(item.quantity),
-      price: Number(item.price).toFixed(2),
+      product_reference: 'General Product',
+      description: item.name,
+      quantity: Number(item.itemSummary.quantity),
+      price: Number(item.productPricing.unitPrice).toFixed(2),
+      tax_id: pdTaxId,
       // discount_percent: Number(discountPercent || 0),
     };
 
@@ -32,14 +41,15 @@ const mapOrderToPdPayload = (order: any) => {
       addons = (item.addons || []).map((addon: any) => ({
         product_reference: addon.sku,
         quantity: Number(addon.quantity),
+        price: Number(addon.unitPrice).toFixed(2),
       }));
     }
 
     return [mainItem, ...addons];
   });
 
-  if ((order.deliveryCharge ?? 0) > 0) {
-    const deliveryGrossPrice = order.deliveryCharge;
+  if ((order.delivery.charge ?? 0) > 0) {
+    const deliveryGrossPrice = order.delivery.charge;
     details.push({
       product_reference: 'DELIVERY',
       quantity: 1,
@@ -57,7 +67,7 @@ const mapOrderToPdPayload = (order: any) => {
 
   const payments = [
     {
-      amount: Number(order.subtotal || 0).toFixed(2),
+      amount: Number(order.payoutSummary.grandTotal || 0).toFixed(2),
       payment_method_id: paymentMethodId,
     },
   ];
@@ -71,7 +81,6 @@ const mapOrderToPdPayload = (order: any) => {
     tax_included: false,
     details: details,
     // TotalPaymentDiscountAmount: Number(order.offerDiscount || 0).toFixed(2),
-    discount_value: Number(order.offerDiscount || 0).toFixed(2),
     payments: payments,
   };
 };
