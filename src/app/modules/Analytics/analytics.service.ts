@@ -12,6 +12,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { roundTo4 } from '../../utils/mathProvider';
 import { Transaction, Wallet } from '../Payment/payment.model';
+import { DailyRevenueFacet, SalesAnalyticsQuery, SalesAnalyticsResponse, SummaryFacet } from './analytics.interface';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
@@ -1389,6 +1390,137 @@ const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
   };
 };
 
+// admin sales report
+const getAdminSalesReportAnalytics = async (currentUser: AuthUser, query: SalesAnalyticsQuery): Promise<SalesAnalyticsResponse> => {
+  const vendorId = new Types.ObjectId(currentUser._id);
+
+  const timeframe = query?.timeframe ?? "last7days";
+  const endDate = new Date();
+  const startDate = new Date();
+
+  const days =
+    timeframe === "last30days" ? 30 :
+      timeframe === "last14days" ? 14 : 7;
+  startDate.setDate(endDate.getDate() - days);
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(endDate.getDate() - 7);
+
+  const analytics = await Order.aggregate<{
+    summary: SummaryFacet[];
+    last7Days: DailyRevenueFacet[];
+  }>([
+    {
+      $match: {
+        vendorId,
+        isDeleted: false
+      }
+    },
+    {
+      $facet: {
+        // summery cards
+        summary: [
+          { $match: { createdAt: { $gte: startDate } } },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$orderStatus", "DELIVERED"] },
+                    "$subtotal",
+                    0
+                  ]
+                }
+              },
+              completedOrders: {
+                $sum: {
+                  $cond: [{ $eq: ["$orderStatus", "DELIVERED"] }, 1, 0]
+                }
+              },
+              cancelledOrders: {
+                $sum: {
+                  $cond: [{ $eq: ["$orderStatus", "CANCELLED"] }, 1, 0]
+                }
+              }
+            }
+          }
+        ],
+        // last 7 days revenue trend
+        last7Days: [
+          {
+            $match: {
+              orderStatus: "DELIVERED",
+              createdAt: { $gte: sevenDaysAgo }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$createdAt"
+                }
+              },
+              revenue: { $sum: "$subtotal" }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ]
+      }
+    }
+  ]);
+
+  const summary = analytics[0]?.summary[0] ?? {
+    totalRevenue: 0,
+    completedOrders: 0,
+    cancelledOrders: 0
+  };
+
+  const last7Days = analytics[0]?.last7Days ?? [];
+
+  const total7DayRevenue = last7Days.reduce(
+    (acc, day) => acc + day.revenue,
+    0
+  );
+
+  const topEarningDay =
+    last7Days.length > 0
+      ? last7Days.reduce((max, d) =>
+        d.revenue > max.revenue ? d : max
+      )._id
+      : "N/A";
+
+  return {
+    summary: {
+      totalRevenue: summary.totalRevenue.toFixed(2),
+      completedOrders: summary.completedOrders,
+      cancelledOrders: summary.cancelledOrders,
+      avgOrderValue:
+        summary.completedOrders > 0
+          ? (summary.totalRevenue / summary.completedOrders).toFixed(2)
+          : "0.00"
+    },
+
+    revenueCards: {
+      thisWeek: total7DayRevenue.toFixed(2),
+      thisMonth: total7DayRevenue.toFixed(2),
+      topEarningDay
+    },
+
+    charts: {
+      revenueTrend: last7Days.map(d => ({
+        date: d._id,
+        revenue: d.revenue
+      })),
+      earningsByDay: last7Days.map(d => ({
+        date: d._id,
+        revenue: d.revenue
+      }))
+    }
+  };
+};
+
 
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
@@ -1401,4 +1533,5 @@ export const AnalyticsServices = {
   getTopSellingItemsAnalytics,
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
+  getAdminSalesReportAnalytics
 };

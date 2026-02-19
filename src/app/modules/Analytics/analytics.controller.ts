@@ -133,6 +133,20 @@ const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get admin sales report analytics controller
+const getAdminSalesReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminSalesReportAnalytics(
+    req.user as AuthUser,
+    req.query,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin sales report analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -144,4 +158,5 @@ export const AnalyticsControllers = {
   getTopSellingItemsAnalytics,
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
+  getAdminSalesReportAnalytics
 };
