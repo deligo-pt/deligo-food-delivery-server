@@ -16,10 +16,7 @@ const mapOrderToPdPayload = (order: TOrder) => {
         productRef = item.productId;
       }
     }
-    // const discountPercent =
-    //   item.originalPrice > 0
-    //     ? (item.discountAmount / item.originalPrice) * 100
-    //     : 0;
+
     const pdTaxId =
       item.productPricing.taxRate === 13
         ? 2
@@ -28,20 +25,21 @@ const mapOrderToPdPayload = (order: TOrder) => {
           : 3;
 
     const mainItem = {
-      product_reference: 'General Product',
+      product_reference: 'Food Items',
       description: item.name,
       quantity: Number(item.itemSummary.quantity),
       price: Number(item.productPricing.unitPrice).toFixed(2),
       tax_id: pdTaxId,
-      // discount_percent: Number(discountPercent || 0),
     };
 
     let addons: any[] = [];
     if (item.addons && item.addons.length > 0) {
       addons = (item.addons || []).map((addon: any) => ({
-        product_reference: addon.sku,
+        product_reference: 'Add Ons',
+        description: addon.name,
         quantity: Number(addon.quantity),
         price: Number(addon.unitPrice).toFixed(2),
+        tax_id: pdTaxId,
       }));
     }
 
@@ -80,7 +78,6 @@ const mapOrderToPdPayload = (order: TOrder) => {
     transaction_serial: 'A',
     tax_included: false,
     details: details,
-    // TotalPaymentDiscountAmount: Number(order.offerDiscount || 0).toFixed(2),
     payments: payments,
   };
 };

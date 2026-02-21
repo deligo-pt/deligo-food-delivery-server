@@ -6,7 +6,6 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Tax } from '../Tax/tax.model';
-import { AddonPdService } from '../PdInvoice/addonPd.service';
 
 // create addon group service
 const createAddonGroup = async (
@@ -76,12 +75,6 @@ const createAddonGroup = async (
   const result = await AddonGroup.findById(createdRecord._id).populate(
     'options.tax',
   );
-
-  if (result) {
-    AddonPdService.syncAddonToPd(result).catch((err) => {
-      console.error('Failed to sync addon group with Pasta Digital:', err);
-    });
-  }
 
   return result;
 };

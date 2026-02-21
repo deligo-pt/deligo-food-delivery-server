@@ -12,7 +12,6 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo4 } from '../../utils/mathProvider';
 
 // Checkout Service
-
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const requiredFields = [
     { field: currentUser.name?.firstName, label: 'First Name' },
@@ -98,7 +97,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       if (selectedOption) basePrice = selectedOption.price;
     }
 
-    const qty = item.quantity || 1;
+    const qty = item.itemSummary.quantity || 1;
     const storeDiscountUnit = roundTo4(
       basePrice * ((product.pricing?.discount || 0) / 100),
     );
@@ -183,7 +182,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     };
   });
 
-  // ৬. এগ্রিগেটেড সামারি তৈরি (Final TCheckoutSummary structure)
   const totalOriginalPrice = orderItems.reduce(
     (sum, i) => sum + i.productPricing.originalPrice * i.itemSummary.quantity,
     0,
