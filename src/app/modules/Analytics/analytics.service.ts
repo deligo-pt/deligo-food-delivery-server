@@ -1662,6 +1662,12 @@ const getAdminOrderReportAnalytics = async (query: TimeframeQuery): Promise<Orde
 
 // admin customer report analytics
 const getAdminCustomerReportAnalytics = async () => {
+
+  const startOf12MonthsWindow = new Date();
+  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
+  startOf12MonthsWindow.setDate(1);
+  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+
   const [analytics] = await Customer.aggregate([
     { $match: { isDeleted: false } },
 
@@ -1686,8 +1692,11 @@ const getAdminCustomerReportAnalytics = async () => {
           }
         ],
 
-        // CUSTOMER GROWTH
+        // CUSTOMER GROWTH - only 12 months
         growth: [
+          {
+            $match: { createdAt: { $gte: startOf12MonthsWindow } }
+          },
           {
             $group: {
               _id: {
@@ -1721,7 +1730,7 @@ const getAdminCustomerReportAnalytics = async () => {
     totalRevenue: 0
   };
 
-  // ---- CUMULATIVE GROWTH TRANSFORMATION ----
+  // CUMULATIVE GROWTH TRANSFORMATION
   let cumulative = 0;
   const customerGrowth = analytics.growth.map((item: any) => {
     cumulative += item.monthlyCount;
@@ -1811,7 +1820,7 @@ const getAdminVendorReportAnalytics = async () => {
           }
         ],
 
-        // MONTHLY SIGNUPS
+        // MONTHLY SIGNUPS - only lastest 12 months
         monthlySignups: [
           {
             $match: {
@@ -1891,6 +1900,127 @@ const getAdminVendorReportAnalytics = async () => {
   };
 };
 
+// admin fleet manager report analytics
+const getAdminFleetManagerReportAnalytics = async () => {
+  const startOf12MonthsWindow = new Date();
+  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
+  startOf12MonthsWindow.setDate(1);
+  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+
+  const [analytics] = await FleetManager.aggregate([
+    {
+      $match: {
+        isDeleted: false
+      }
+    },
+
+    {
+      $facet: {
+        // SUMMARY CARDS
+        summary: [
+          {
+            $group: {
+              _id: null,
+
+              totalFleetManagers: { $sum: 1 },
+
+              approvedFleetManagers: {
+                $sum: {
+                  $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0]
+                }
+              },
+
+              totalDrivers: {
+                $sum: {
+                  $ifNull: ["$operationalData.totalDrivers", 0]
+                }
+              },
+
+              totalDeliveries: {
+                $sum: {
+                  $ifNull: ["$operationalData.totalDeliveries", 0]
+                }
+              }
+            }
+          }
+        ],
+
+        // MONTHLY SIGNUPS (LAST 12 MONTHS)
+        monthlySignups: [
+          {
+            $match: {
+              createdAt: { $gte: startOf12MonthsWindow }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$createdAt" },
+                month: { $month: "$createdAt" }
+              },
+              count: { $sum: 1 }
+            }
+          },
+          { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ],
+
+        // STATUS DISTRIBUTION
+        statusStats: [
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  const summary = analytics.summary[0] || {
+    totalFleetManagers: 0,
+    approvedFleetManagers: 0,
+    totalDrivers: 0,
+    totalDeliveries: 0
+  };
+
+  const monthlySignups = analytics.monthlySignups.map((item: any) => ({
+    label: new Date(item._id.year, item._id.month - 1).toLocaleString(
+      'en-US',
+      { month: 'short' }
+    ),
+    value: item.count
+  }));
+
+  return {
+    // TOP CARDS
+    cards: {
+      totalFleetManagers: summary.totalFleetManagers,
+      approvedFleetManagers: summary.approvedFleetManagers,
+      totalDrivers: summary.totalDrivers,
+      totalDeliveries: summary.totalDeliveries
+    },
+
+    // BAR / LINE CHART
+    monthlySignups,
+
+    // DONUT CHART
+    statusDistribution: {
+      approved:
+        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
+
+      pending:
+        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+
+      rejected:
+        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count || 0,
+
+      blocked:
+        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0
+    }
+  };
+};
+
 
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
@@ -1906,5 +2036,6 @@ export const AnalyticsServices = {
   getAdminSalesReportAnalytics,
   getAdminOrderReportAnalytics,
   getAdminCustomerReportAnalytics,
-  getAdminVendorReportAnalytics
+  getAdminVendorReportAnalytics,
+  getAdminFleetManagerReportAnalytics,
 };

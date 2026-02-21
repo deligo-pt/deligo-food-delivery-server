@@ -183,6 +183,18 @@ const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get admin fleet manager report analytics controller
+const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminFleetManagerReportAnalytics();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin fleet manager report analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -198,4 +210,5 @@ export const AnalyticsControllers = {
   getAdminOrderReportAnalytics,
   getAdminCustomerReportAnalytics,
   getAdminVendorReportAnalytics,
+  getAdminFleetManagerReportAnalytics,
 };
