@@ -171,6 +171,18 @@ const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get admin vendor report analytics controller
+const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminVendorReportAnalytics();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin vendor report analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -185,4 +197,5 @@ export const AnalyticsControllers = {
   getAdminSalesReportAnalytics,
   getAdminOrderReportAnalytics,
   getAdminCustomerReportAnalytics,
+  getAdminVendorReportAnalytics,
 };

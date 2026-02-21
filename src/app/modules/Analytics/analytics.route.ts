@@ -95,4 +95,11 @@ router.get(
   AnalyticsControllers.getAdminCustomerReportAnalytics
 );
 
+// get admin vendor report analytics
+router.get(
+  '/admin-vendor-report-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getAdminVendorReportAnalytics
+);
+
 export const AnalyticsRoutes = router;
