@@ -109,4 +109,11 @@ router.get(
   AnalyticsControllers.getAdminFleetManagerReportAnalytics
 );
 
+// get admin delivery partner report analytics
+router.get(
+  '/admin-delivery-partner-report-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getAdminDeliveryPartnerReportAnalytics
+);
+
 export const AnalyticsRoutes = router;

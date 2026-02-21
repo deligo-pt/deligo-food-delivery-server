@@ -1680,7 +1680,7 @@ const getAdminCustomerReportAnalytics = async () => {
               _id: null,
               totalCustomers: { $sum: 1 },
               activeCustomers: {
-                $sum: { $cond: [{ $eq: ["$status", "ACTIVE"] }, 1, 0] }
+                $sum: { $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0] }
               },
               totalOrders: {
                 $sum: { $ifNull: ["$orders.totalOrders", 0] }
@@ -1754,20 +1754,11 @@ const getAdminCustomerReportAnalytics = async () => {
     customerGrowth,
 
     statusDistribution: {
-      active:
-        analytics.statusStats.find((s: any) => s._id === 'ACTIVE')?.count || 0,
-
       approved:
         analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
 
       pending:
         analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
-
-      submitted:
-        analytics.statusStats.find((s: any) => s._id === 'SUBMITTED')?.count || 0,
-
-      rejected:
-        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count || 0,
 
       blocked:
         analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0
@@ -1902,6 +1893,7 @@ const getAdminVendorReportAnalytics = async () => {
 
 // admin fleet manager report analytics
 const getAdminFleetManagerReportAnalytics = async () => {
+
   const startOf12MonthsWindow = new Date();
   startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
   startOf12MonthsWindow.setDate(1);
@@ -1930,15 +1922,19 @@ const getAdminFleetManagerReportAnalytics = async () => {
                 }
               },
 
-              totalDrivers: {
+              submittedFleetManagers: {
                 $sum: {
-                  $ifNull: ["$operationalData.totalDrivers", 0]
+                  $cond: [{ $eq: ["$status", "SUBMITTED"] }, 1, 0]
                 }
               },
 
-              totalDeliveries: {
+              blockedOrRejectedFleetManagers: {
                 $sum: {
-                  $ifNull: ["$operationalData.totalDeliveries", 0]
+                  $cond: [
+                    { $in: ["$status", ["BLOCKED", "REJECTED"]] },
+                    1,
+                    0
+                  ]
                 }
               }
             }
@@ -1997,8 +1993,8 @@ const getAdminFleetManagerReportAnalytics = async () => {
     cards: {
       totalFleetManagers: summary.totalFleetManagers,
       approvedFleetManagers: summary.approvedFleetManagers,
-      totalDrivers: summary.totalDrivers,
-      totalDeliveries: summary.totalDeliveries
+      submittedFleetManagers: summary.submittedFleetManagers,
+      blockedOrRejectedFleetManagers: summary.blockedOrRejectedFleetManagers
     },
 
     // BAR / LINE CHART
@@ -2021,6 +2017,141 @@ const getAdminFleetManagerReportAnalytics = async () => {
   };
 };
 
+// admin fleet manager report analytics
+const getAdminDeliveryPartnerReportAnalytics = async () => {
+
+  const startOf12MonthsWindow = new Date();
+  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
+  startOf12MonthsWindow.setDate(1);
+  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+
+  const [analytics] = await DeliveryPartner.aggregate([
+    {
+      $match: {
+        isDeleted: false
+      }
+    },
+
+    {
+      $facet: {
+        // SUMMARY CARDS
+        summary: [
+          {
+            $group: {
+              _id: null,
+
+              totalPartners: { $sum: 1 },
+
+              activePartners: {
+                $sum: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $eq: ["$status", "APPROVED"] },
+                        { $eq: ["$operationalData.isWorking", true] }
+                      ]
+                    },
+                    1,
+                    0
+                  ]
+                }
+              },
+
+              totalDeliveries: {
+                $sum: {
+                  $ifNull: ["$operationalData.totalDeliveries", 0]
+                }
+              },
+
+              // total earnings from all delivery partners
+              totalEarnings: {
+                $sum: {
+                  $ifNull: ["$operationalData.totalEarnings", 0]
+                }
+              }
+            }
+          }
+        ],
+
+        // PARTNER GROWTH (LAST 12 MONTHS)
+        growth: [
+          {
+            $match: {
+              createdAt: { $gte: startOf12MonthsWindow }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$createdAt" },
+                month: { $month: "$createdAt" }
+              },
+              count: { $sum: 1 }
+            }
+          },
+          { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ],
+
+        // VEHICLE TYPES
+        vehicleTypes: [
+          {
+            $group: {
+              _id: "$vehicleInfo.vehicleType",
+              count: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  const summary = analytics.summary[0] || {
+    totalPartners: 0,
+    activePartners: 0,
+    totalDeliveries: 0,
+    totalEarnings: 0
+  };
+
+  // CUMULATIVE GROWTH TRANSFORMATION
+  let cumulative = 0;
+  const partnerGrowth = analytics.growth.map((item: any) => {
+    cumulative += item.count;
+    return {
+      label: new Date(item._id.year, item._id.month - 1).toLocaleString(
+        'en-US',
+        { month: 'short' }
+      ),
+      value: cumulative
+    };
+  });
+
+  return {
+    // TOP CARDS
+    cards: {
+      totalPartners: summary.totalPartners,
+      activePartners: summary.activePartners,
+      totalDeliveries: summary.totalDeliveries,
+      totalEarnings: `€${summary.totalEarnings.toFixed(2)}`
+    },
+
+    // LINE CHART
+    partnerGrowth,
+
+    // VEHICLE TYPES
+    vehicleTypes: {
+      motorbike:
+        analytics.vehicleTypes.find((v: any) => v._id === 'MOTORBIKE')?.count || 0,
+      eBike:
+        analytics.vehicleTypes.find((v: any) => v._id === 'E-BIKE')?.count || 0,
+      scooter:
+        analytics.vehicleTypes.find((v: any) => v._id === 'SCOOTER')?.count || 0,
+      bicycle:
+        analytics.vehicleTypes.find((v: any) => v._id === 'BICYCLE')?.count || 0,
+      car:
+        analytics.vehicleTypes.find((v: any) => v._id === 'CAR')?.count || 0
+    }
+  };
+};
 
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
@@ -2038,4 +2169,5 @@ export const AnalyticsServices = {
   getAdminCustomerReportAnalytics,
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
+  getAdminDeliveryPartnerReportAnalytics
 };
