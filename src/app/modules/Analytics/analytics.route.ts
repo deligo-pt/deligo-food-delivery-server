@@ -88,4 +88,11 @@ router.get(
   AnalyticsControllers.getAdminOrderReportAnalytics
 );
 
+// get admin customer report analytics
+router.get(
+  '/admin-customer-report-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getAdminCustomerReportAnalytics
+);
+
 export const AnalyticsRoutes = router;

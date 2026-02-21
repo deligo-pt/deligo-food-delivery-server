@@ -1660,6 +1660,112 @@ const getAdminOrderReportAnalytics = async (query: TimeframeQuery): Promise<Orde
   };
 };
 
+// customer report analytics
+const getAdminCustomerReportAnalytics = async () => {
+  const [analytics] = await Customer.aggregate([
+    { $match: { isDeleted: false } },
+
+    {
+      $facet: {
+        // SUMMARY CARDS
+        summary: [
+          {
+            $group: {
+              _id: null,
+              totalCustomers: { $sum: 1 },
+              activeCustomers: {
+                $sum: { $cond: [{ $eq: ["$status", "ACTIVE"] }, 1, 0] }
+              },
+              totalOrders: {
+                $sum: { $ifNull: ["$orders.totalOrders", 0] }
+              },
+              totalRevenue: {
+                $sum: { $ifNull: ["$orders.totalSpent", 0] }
+              }
+            }
+          }
+        ],
+
+        // CUSTOMER GROWTH
+        growth: [
+          {
+            $group: {
+              _id: {
+                year: { $year: "$createdAt" },
+                month: { $month: "$createdAt" }
+              },
+              monthlyCount: { $sum: 1 }
+            }
+          },
+          { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ],
+
+        // STATUS DISTRIBUTION
+        statusStats: [
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+
+  const summary = analytics.summary[0] || {
+    totalCustomers: 0,
+    activeCustomers: 0,
+    totalOrders: 0,
+    totalRevenue: 0
+  };
+
+  // ---- CUMULATIVE GROWTH TRANSFORMATION ----
+  let cumulative = 0;
+  const customerGrowth = analytics.growth.map((item: any) => {
+    cumulative += item.monthlyCount;
+    return {
+      label: new Date(item._id.year, item._id.month - 1).toLocaleString(
+        'en-US',
+        { month: 'short' }
+      ),
+      value: cumulative
+    };
+  });
+
+  return {
+    cards: {
+      totalCustomers: summary.totalCustomers,
+      activeCustomers: summary.activeCustomers,
+      totalOrders: summary.totalOrders,
+      totalRevenue: `€${summary.totalRevenue.toFixed(2)}`
+    },
+
+    customerGrowth,
+
+    statusDistribution: {
+      active:
+        analytics.statusStats.find((s: any) => s._id === 'ACTIVE')?.count || 0,
+
+      approved:
+        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
+
+      pending:
+        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+
+      submitted:
+        analytics.statusStats.find((s: any) => s._id === 'SUBMITTED')?.count || 0,
+
+      rejected:
+        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count || 0,
+
+      blocked:
+        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0
+    }
+  };
+};
+
 
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
@@ -1673,5 +1779,6 @@ export const AnalyticsServices = {
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
   getAdminSalesReportAnalytics,
-  getAdminOrderReportAnalytics
+  getAdminOrderReportAnalytics,
+  getAdminCustomerReportAnalytics
 };
