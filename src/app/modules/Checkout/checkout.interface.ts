@@ -91,7 +91,7 @@ export type TCheckoutSummary = {
 
   deliveryAddress: TAddress;
 
-  paymentMethod?: 'CARD' | 'MB_WAY';
+  paymentMethod?: 'CARD' | 'MB_WAY' | 'APPLE_PAY' | 'OTHER';
   paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
   transactionId?: string; // Stripe PaymentIntent ID
 

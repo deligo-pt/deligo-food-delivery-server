@@ -128,7 +128,11 @@ const orderSchema = new Schema<TOrder>(
       offerApplied: { type: Object, default: null },
     },
 
-    paymentMethod: { type: String, enum: ['CARD', 'MB_WAY'], required: true },
+    paymentMethod: {
+      type: String,
+      enum: ['CARD', 'MB_WAY', 'APPLE_PAY', 'OTHER'],
+      required: true,
+    },
     paymentStatus: {
       type: String,
       enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],

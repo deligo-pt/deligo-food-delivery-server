@@ -65,7 +65,7 @@ export type TOrder = {
     offerApplied?: TAppliedOfferSnapshot;
   };
 
-  paymentMethod: 'CARD' | 'MB_WAY';
+  paymentMethod: 'CARD' | 'MB_WAY' | 'APPLE_PAY' | 'OTHER';
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   transactionId?: string;
   isPaid: boolean;

@@ -28,6 +28,7 @@ import { Transaction, Wallet } from '../Payment/payment.model';
 import { OrderPdService } from '../PdInvoice/orderPd.service';
 import axios from 'axios';
 import { stripe } from '../Payment/payment.service';
+import config from '../../config';
 
 // Create Order after reduinq payment
 const createOrderAfterReduinqPayment = async (
@@ -50,16 +51,18 @@ const createOrderAfterReduinqPayment = async (
   const verifyPayload = {
     method: 'getResult',
     api: {
-      username: process.env.REDUNIQ_USERNAME,
-      password: process.env.REDUNIQ_PASSWORD,
+      username: config.reduniq.username,
+      password: config.reduniq.password,
     },
     token: paymentToken,
   };
   const verifyRes = await axios.post(
-    process.env.REDUNIQ_API_URL,
+    config.reduniq.api_url as string,
     verifyPayload,
   );
+  console.log({ verifyRes });
   const paymentData = verifyRes.data;
+  console.log({ paymentData });
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
     throw new AppError(
@@ -79,10 +82,12 @@ const createOrderAfterReduinqPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
+  const successCodes = ['00000000', '17000000000'];
+
   if (
     !paymentData ||
     !paymentData.result ||
-    paymentData.result.code !== '00000000' ||
+    !successCodes.includes(paymentData.result.code) ||
     !paymentData.transaction ||
     paymentData.transaction.status !== '4'
   ) {
@@ -103,7 +108,7 @@ const createOrderAfterReduinqPayment = async (
       ...summary.toObject(),
       _id: undefined,
       orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      paymentMethod: 'CARD',
+      paymentMethod: summary.paymentMethod,
       paymentStatus: 'PAID',
       isPaid: true,
       transactionId: transactionId,
@@ -123,7 +128,7 @@ const createOrderAfterReduinqPayment = async (
           totalAmount: order.payoutSummary.grandTotal,
           type: 'ORDER_PAYMENT',
           status: 'SUCCESS',
-          paymentMethod: 'CARD',
+          paymentMethod: summary.paymentMethod,
           remarks: `Order payment successful for Order ID: ${order.orderId}`,
         },
       ],
@@ -160,6 +165,10 @@ const createOrderAfterReduinqPayment = async (
     );
 
     await session.commitTransaction();
+
+    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
+      console.log(err);
+    });
 
     const notificationPayload = {
       title: 'You have a new order',
