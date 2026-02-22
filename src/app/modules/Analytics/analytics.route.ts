@@ -50,28 +50,35 @@ router.get(
 router.get(
   '/vendor-sales-analytics',
   auth('VENDOR', 'SUB_VENDOR'),
-  AnalyticsControllers.getVendorSalesAnalytics
+  AnalyticsControllers.getVendorSalesAnalytics,
 );
 
 // get customer insights
 router.get(
   '/customer-insights',
   auth('VENDOR', 'SUB_VENDOR'),
-  AnalyticsControllers.getCustomerInsights
+  AnalyticsControllers.getCustomerInsights,
 );
 
 // get order trend insights
 router.get(
   '/order-trend-insights',
   auth('VENDOR', 'SUB_VENDOR'),
-  AnalyticsControllers.getOrderTrendInsights
+  AnalyticsControllers.getOrderTrendInsights,
 );
 
 // get top selling items analytics
 router.get(
   '/top-selling-analytics',
   auth('VENDOR', 'SUB_VENDOR'),
-  AnalyticsControllers.getTopSellingItemsAnalytics
+  AnalyticsControllers.getTopSellingItemsAnalytics,
+);
+
+// get vendor earnings analytics
+router.get(
+  '/vendor-earnings-analytics',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getVendorEarningsAnalytics,
 );
 
 // get admin sales report analytics
