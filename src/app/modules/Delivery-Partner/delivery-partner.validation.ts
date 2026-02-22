@@ -106,6 +106,7 @@ const deliveryPartnerDocImageValidationSchema = z.object({
       'criminalRecordCertificate',
       'activity',
       'insurancePolicy',
+      'myPhoto',
     ]),
   }),
 });

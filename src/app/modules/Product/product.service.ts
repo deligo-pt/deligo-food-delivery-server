@@ -8,16 +8,13 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { Customer } from '../Customer/customer.model';
-import { getCustomerCoordinates } from '../../utils/getCustomerCoordinates';
-import { calculateDistance } from '../../utils/calculateDistance';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { customAlphabet } from 'nanoid';
-// import { SageService } from '../Sage/SageService';
 import { cleanForSKU, generateSlug } from './product.utils';
 import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
+// import { ProductPdService } from '../PdInvoice/Services/productPd.service';
 
 const generateShortId = customAlphabet(
   '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -129,8 +126,12 @@ const createProduct = async (
   const newProduct = await Product.create({ ...payload, images });
 
   // if (newProduct) {
-  //   SageService.syncProductToSage(newProduct).catch((error) => {
-  //     console.error('Error syncing product to Sage:', error);
+  //   const syncData = {
+  //     ...newProduct.toObject(),
+  //     category: category.name,
+  //   } as any;
+  //   ProductPdService.syncProductToPd(syncData).catch((error) => {
+  //     console.error('Error syncing product to Pasta Digital:', error);
   //   });
   // }
 
@@ -156,9 +157,7 @@ const updateProduct = async (
     throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
 
   const modifiedData: Record<string, any> = {};
-  const productNamePart = cleanForSKU(payload.name || existingProduct.name);
 
-  // Basic Information Update (Name, Slug, Category, etc.)
   if (payload.name) {
     modifiedData.name = payload.name;
     modifiedData.slug = generateSlug(payload.name);
@@ -169,7 +168,6 @@ const updateProduct = async (
   if (payload.brand) modifiedData.brand = payload.brand;
   if (payload.tags) modifiedData.tags = payload.tags;
   if (payload.attributes) modifiedData.attributes = payload.attributes;
-  if (payload.addonGroups) modifiedData.addonGroups = payload.addonGroups;
 
   // Pricing & Tax Update
   if (payload.pricing) {
@@ -185,44 +183,6 @@ const updateProduct = async (
       modifiedData['pricing.discount'] = payload.pricing.discount;
   }
 
-  // Variation and Stock Management
-  if (payload.variations && payload.variations.length > 0) {
-    let currentVariationStockSum = 0;
-    let minPrice = Infinity;
-
-    const processedVariations = payload.variations.map((v) => ({
-      name: v.name,
-      options: v.options.map((opt) => {
-        const sQuantity = opt.stockQuantity || 0;
-        currentVariationStockSum += sQuantity;
-        if (opt.price < minPrice) minPrice = opt.price;
-
-        return {
-          ...opt,
-          sku:
-            opt.sku ||
-            `VAR-${productNamePart}-${cleanForSKU(opt.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
-          stockQuantity: sQuantity,
-          totalAddedQuantity: sQuantity,
-          isOutOfStock: sQuantity <= 0,
-        };
-      }),
-    }));
-
-    // --- Stock Calculation Logic ---
-    const finalQuantity = currentVariationStockSum;
-
-    const previousTotalAdded = existingProduct.stock.totalAddedQuantity || 0;
-    const finalTotalAddedQuantity =
-      previousTotalAdded + currentVariationStockSum;
-
-    modifiedData.variations = processedVariations;
-    modifiedData['stock.hasVariations'] = true;
-    modifiedData['stock.quantity'] = finalQuantity;
-    modifiedData['stock.totalAddedQuantity'] = finalTotalAddedQuantity;
-    modifiedData['pricing.price'] = minPrice;
-  }
-
   // Meta & Stock Unit Update
   if (payload.stock?.unit) modifiedData['stock.unit'] = payload.stock.unit;
   if (payload.meta) {
@@ -233,6 +193,9 @@ const updateProduct = async (
 
   // Database Update Query
   const updateQuery: any = { $set: modifiedData };
+  if (payload.addonGroups && payload.addonGroups.length > 0) {
+    updateQuery.$addToSet = { addonGroups: { $each: payload.addonGroups } };
+  }
   if (images && images.length > 0) {
     updateQuery.$push = { images: { $each: images } };
   }
@@ -252,6 +215,293 @@ const updateProduct = async (
   }
 
   return updatedProduct;
+};
+
+// manage product variations service
+const manageProductVariations = async (
+  productId: string,
+  payload: { name: string; options: any[] },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (currentUser?.status !== 'APPROVED')
+    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+
+  const { name, options } = payload;
+  const normalizedName = name.trim();
+  const productNamePart = cleanForSKU(existingProduct.name);
+
+  if (!existingProduct.variations) {
+    existingProduct.variations = [];
+  }
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+  );
+
+  const finalOptionsToPush: any[] = [];
+
+  for (const opt of options) {
+    const normalizedLabel = opt.label.trim();
+    const inputStockQty = opt.stockQuantity || 0;
+
+    if (variationIndex > -1) {
+      const isOptionExists = existingProduct.variations[
+        variationIndex
+      ].options.some(
+        (o: any) => o.label.toLowerCase() === normalizedLabel.toLowerCase(),
+      );
+
+      if (isOptionExists) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Option '${normalizedLabel}' already exists in '${normalizedName}'. Use update API to change stock or price.`,
+        );
+      }
+    }
+
+    const generatedSku =
+      opt.sku ||
+      `VAR-${productNamePart}-${cleanForSKU(normalizedLabel)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+
+    const isSkuTaken = await Product.findOne({
+      'variations.options.sku': generatedSku,
+    });
+
+    if (isSkuTaken) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Generated SKU ${generatedSku} is already in use.`,
+      );
+    }
+
+    finalOptionsToPush.push({
+      ...opt,
+      label: normalizedLabel,
+      sku: generatedSku,
+      stockQuantity: inputStockQty,
+      totalAddedQuantity: inputStockQty,
+      isOutOfStock: inputStockQty <= 0,
+    });
+  }
+
+  if (variationIndex > -1) {
+    if (finalOptionsToPush.length > 0) {
+      existingProduct.variations[variationIndex].options.push(
+        ...finalOptionsToPush,
+      );
+    }
+  } else {
+    existingProduct.variations.push({
+      name: normalizedName,
+      options: finalOptionsToPush,
+    });
+  }
+
+  let totalQty = 0;
+  let totalAddedAcrossVariations = 0;
+  let minPrice = Infinity;
+
+  existingProduct.variations.forEach((v) => {
+    if (v.options && Array.isArray(v.options)) {
+      v.options.forEach((o: any) => {
+        const optionPrice = typeof o.price === 'number' ? o.price : 0;
+        const optionQty =
+          typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
+        const optionAddedQty =
+          typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
+
+        totalQty += optionQty;
+        totalAddedAcrossVariations += optionAddedQty;
+
+        if (optionPrice > 0 && optionPrice < minPrice) {
+          minPrice = optionPrice;
+        }
+      });
+    }
+  });
+
+  existingProduct.stock.quantity = totalQty;
+  existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
+  existingProduct.stock.hasVariations = true;
+  existingProduct.stock.availabilityStatus =
+    totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
+  }
+
+  await existingProduct.save();
+  return existingProduct;
+};
+
+const renameProductVariation = async (
+  productId: string,
+  payload: {
+    oldName: string;
+    newName?: string;
+    oldLabel?: string;
+    newLabel?: string;
+  },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && {
+      vendorId: currentUser._id,
+    }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (!existingProduct.variations) {
+    existingProduct.variations = [];
+  }
+
+  const { oldName, newName, oldLabel, newLabel } = payload;
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === oldName.trim().toLowerCase(),
+  );
+
+  if (variationIndex === -1)
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `Variation group '${oldName}' not found`,
+    );
+
+  if (newName && !oldLabel) {
+    existingProduct.variations[variationIndex].name = newName.trim();
+  }
+
+  if (oldLabel && newLabel) {
+    const optionIndex = existingProduct.variations[
+      variationIndex
+    ].options.findIndex(
+      (o: any) => o.label.toLowerCase() === oldLabel.trim().toLowerCase(),
+    );
+
+    if (optionIndex === -1)
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        `Option '${oldLabel}' not found`,
+      );
+
+    existingProduct.variations[variationIndex].options[optionIndex].label =
+      newLabel.trim();
+  }
+
+  await existingProduct.save();
+  return existingProduct;
+};
+
+// remove product variations service
+const removeProductVariations = async (
+  productId: string,
+  payload: {
+    name: string;
+    labelToRemove?: string;
+  },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (currentUser?.status !== 'APPROVED')
+    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+
+  const { name, labelToRemove } = payload;
+  const normalizedName = name.trim();
+
+  if (!existingProduct.variations || existingProduct.variations.length === 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'No variations found to remove');
+  }
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+  );
+
+  if (variationIndex === -1) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `Variation group '${normalizedName}' not found`,
+    );
+  }
+
+  if (labelToRemove) {
+    const optionIndex = existingProduct.variations[
+      variationIndex
+    ].options.findIndex(
+      (o: any) => o.label.toLowerCase() === labelToRemove.trim().toLowerCase(),
+    );
+
+    if (optionIndex === -1) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        `Option '${labelToRemove}' not found in '${normalizedName}'`,
+      );
+    }
+
+    existingProduct.variations[variationIndex].options.splice(optionIndex, 1);
+
+    if (existingProduct.variations[variationIndex].options.length === 0) {
+      existingProduct.variations.splice(variationIndex, 1);
+    }
+  } else {
+    existingProduct.variations.splice(variationIndex, 1);
+  }
+
+  let totalQty = 0;
+  let totalAddedAcrossVariations = 0;
+  let minPrice = Infinity;
+
+  existingProduct.variations.forEach((v) => {
+    if (v.options && Array.isArray(v.options)) {
+      v.options.forEach((o: any) => {
+        const optionPrice = typeof o.price === 'number' ? o.price : 0;
+        const optionQty =
+          typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
+        const optionAddedQty =
+          typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
+
+        totalQty += optionQty;
+        totalAddedAcrossVariations += optionAddedQty;
+
+        if (optionPrice > 0 && optionPrice < minPrice) {
+          minPrice = optionPrice;
+        }
+      });
+    }
+  });
+
+  existingProduct.stock.quantity = totalQty;
+  existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
+  existingProduct.stock.hasVariations = existingProduct.variations.length > 0;
+  existingProduct.stock.availabilityStatus =
+    totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
+  }
+
+  await existingProduct.save();
+  return existingProduct;
 };
 
 // update inventory and pricing service
@@ -458,77 +708,6 @@ const getAllProducts = async (
     query.isDeleted = false;
   }
 
-  // ------------------------------------
-  // CUSTOMER → nearest vendors first
-  // ------------------------------------
-
-  if (role === 'CUSTOMER') {
-    // Build base query WITH filter/search/fields but WITHOUT paginate/sort
-    const productsQB = new QueryBuilder(
-      Product.find().populate({
-        path: 'vendorId',
-        select:
-          'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
-      }),
-      query,
-    )
-      .fields()
-      .filter()
-      .search(ProductSearchableFields);
-
-    // Use QueryBuilder to get total/page/limit, but NOT DB pagination
-    const [customer, meta, products] = await Promise.all([
-      Customer.findOne({
-        userId: currentUser.userId,
-        isDeleted: false,
-      }).lean(),
-      productsQB.countTotal(), // uses query.page + query.limit
-      productsQB.modelQuery.lean<TProduct[]>(), // NO skip/limit applied here
-    ]);
-
-    const coords = customer ? getCustomerCoordinates(customer) : null;
-
-    let sortedProducts: (TProduct & { distance?: number })[] = products;
-
-    if (coords) {
-      const [custLng, custLat] = coords;
-
-      sortedProducts = products
-        .map((product) => {
-          const vLng = (product as any).vendorId?.businessLocation?.longitude;
-          const vLat = (product as any).vendorId?.businessLocation?.latitude;
-
-          if (typeof vLng === 'number' && typeof vLat === 'number') {
-            const { meters } = calculateDistance(custLng, custLat, vLng, vLat);
-            return { ...product, distance: meters };
-          }
-
-          // No vendor coordinates → send to bottom
-          return { ...product, distance: Number.POSITIVE_INFINITY };
-        })
-        .sort((a, b) => {
-          const dA = a.distance ?? Number.POSITIVE_INFINITY;
-          const dB = b.distance ?? Number.POSITIVE_INFINITY;
-          return dA - dB;
-        });
-    }
-
-    // Manual paginate AFTER distance sort
-    const page = meta.page;
-    const limit = meta.limit;
-    const skip = (page - 1) * limit;
-
-    const paginated = sortedProducts.slice(skip, skip + limit);
-
-    return {
-      meta: {
-        ...meta,
-        totalPages: meta.totalPage,
-      },
-      data: paginated,
-    };
-  }
-
   const products = new QueryBuilder(Product.find(), query)
     .fields()
     .paginate()
@@ -538,7 +717,8 @@ const getAllProducts = async (
 
   const populateOptions = getPopulateOptions(role, {
     vendor:
-      'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+      'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
+    productCategory: 'name ',
   });
 
   populateOptions.forEach((option) => {
@@ -583,7 +763,8 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
   }
   const populateOptions = getPopulateOptions(currentUser.role, {
     vendor:
-      'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+      'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
+    productCategory: 'name',
   });
 
   populateOptions.forEach((option) => {
@@ -666,6 +847,9 @@ const permanentDeleteProduct = async (
 export const ProductServices = {
   createProduct,
   updateProduct,
+  manageProductVariations,
+  renameProductVariation,
+  removeProductVariations,
   updateInventoryAndPricing,
   approvedProduct,
   deleteProductImages,

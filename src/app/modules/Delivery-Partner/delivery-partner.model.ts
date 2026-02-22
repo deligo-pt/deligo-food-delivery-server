@@ -227,14 +227,6 @@ const deliveryPartnerSchema = new Schema<
     },
 
     //-------------------------------------------------
-    // Earnings
-    //-------------------------------------------------
-    earnings: {
-      totalEarnings: { type: Number, default: 0 },
-      pendingEarnings: { type: Number, default: 0 },
-    },
-
-    //-------------------------------------------------
     // Documents
     //-------------------------------------------------
     documents: {
@@ -246,6 +238,7 @@ const deliveryPartnerSchema = new Schema<
       criminalRecordCertificate: { type: String, default: '' },
       activity: { type: String, default: '' },
       insurancePolicy: { type: String, default: '' },
+      myPhoto: { type: String, default: '' },
     },
 
     //-------------------------------------------------
@@ -285,6 +278,7 @@ const deliveryPartnerSchema = new Schema<
 deliveryPartnerSchema.index({
   currentSessionLocation: '2dsphere',
 });
+deliveryPartnerSchema.index({ 'registeredBy.id': 1 });
 deliveryPartnerSchema.plugin(passwordPlugin);
 
 export const DeliveryPartner = model<

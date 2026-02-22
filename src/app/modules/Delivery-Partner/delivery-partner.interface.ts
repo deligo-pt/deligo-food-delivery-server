@@ -157,14 +157,6 @@ export type TDeliveryPartner = {
   };
 
   // -------------------------------------------------
-  // 8) Earnings Summary
-  // -------------------------------------------------
-  earnings?: {
-    totalEarnings?: number;
-    pendingEarnings?: number;
-  };
-
-  // -------------------------------------------------
   // 9) Documents
   // -------------------------------------------------
   documents?: {
@@ -176,6 +168,7 @@ export type TDeliveryPartner = {
     criminalRecordCertificate?: string;
     activity?: string;
     insurancePolicy?: string;
+    myPhoto?: string;
   };
 
   // -------------------------------------------------

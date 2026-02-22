@@ -100,6 +100,7 @@ export type TFleetManager = {
     idProofFront?: string;
     idProofBack?: string;
     businessLicense?: string;
+    myPhoto?: string;
   };
 
   // ---------------------------------------------

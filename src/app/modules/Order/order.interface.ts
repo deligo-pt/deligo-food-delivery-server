@@ -19,15 +19,26 @@ export type TOrder = {
   // Pricing & Payment
   totalItems: number;
   totalPrice: number;
+  taxAmount?: number;
+
   offerDiscount?: number;
   totalProductDiscount?: number;
-  taxAmount?: number;
+
   deliveryCharge?: number;
+  deliveryVatRate?: number;
   deliveryVatAmount: number;
+  totalDeliveryCharge: number;
+
   subtotal: number;
 
+  deliGoCommissionRate?: number;
   deliGoCommission: number;
   commissionVat: number;
+  deliGoCommissionNet: number;
+  totalVendorDeduction: number;
+  vendorNetPayout: number;
+
+  fleetCommissionRate?: number;
   fleetFee: number;
   riderNetEarnings: number;
 
@@ -35,7 +46,7 @@ export type TOrder = {
   offerApplied?: TAppliedOfferSnapshot;
 
   paymentMethod: 'CARD' | 'MOBILE';
-  paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   transactionId?: string;
   isPaid: boolean;
 
@@ -56,6 +67,7 @@ export type TOrder = {
   dispatchPartnerPool?: string[];
   dispatchExpiresAt?: Date;
   // Delivery Details
+  deliveryDistance?: number;
   estimatedDeliveryTime?: string; // e.g., "30 mins"
   pickedUpAt?: Date;
   deliveredAt?: Date;
@@ -64,8 +76,11 @@ export type TOrder = {
   // Status Tracking
   isDeleted: boolean;
 
-  // Ratings (optional, for later)
-  isRated?: boolean;
+  ratingStatus?: {
+    isProductRated: boolean;
+    isVendorRated: boolean;
+    isDeliveryRated: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 };
