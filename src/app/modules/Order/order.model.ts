@@ -70,18 +70,10 @@ const orderSchema = new Schema<TOrder>(
     deliveryVatAmount: { type: Number, default: 0 },
     offerDiscount: { type: Number, default: 0 },
     totalProductDiscount: { type: Number, default: 0 },
-    totalDeliveryCharge: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
 
-    deliGoCommissionRate: { type: Number },
     deliGoCommission: { type: Number, required: true },
     commissionVat: { type: Number, required: true },
-    deliGoCommissionNet: { type: Number, required: true },
-    totalVendorDeduction: { type: Number, required: true },
-
-    vendorNetPayout: { type: Number, required: true },
-
-    fleetCommissionRate: { type: Number },
     fleetFee: { type: Number, required: true },
     riderNetEarnings: { type: Number, required: true },
 
@@ -91,7 +83,7 @@ const orderSchema = new Schema<TOrder>(
     paymentMethod: { type: String, enum: ['CARD', 'MOBILE'], required: true },
     paymentStatus: {
       type: String,
-      enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
+      enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
     },
     transactionId: { type: String },
@@ -114,22 +106,14 @@ const orderSchema = new Schema<TOrder>(
     deliveryAddress: { type: addressSchema, required: true },
     pickupAddress: { type: addressSchema },
 
-    deliveryDistance: {
-      type: Number,
-      default: 0,
-    },
     estimatedDeliveryTime: { type: String },
     pickedUpAt: { type: Date },
     deliveredAt: { type: Date },
     preparationTime: { type: Number, default: 0 },
 
-    ratingStatus: {
-      isProductRated: { type: Boolean, default: false },
-      isVendorRated: { type: Boolean, default: false },
-      isDeliveryRated: { type: Boolean, default: false },
-    },
-
     isDeleted: { type: Boolean, default: false },
+
+    isRated: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

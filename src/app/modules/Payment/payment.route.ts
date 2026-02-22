@@ -8,14 +8,7 @@ const router = Router();
 router.post(
   '/stripe/create-payment-intent',
   auth('CUSTOMER'),
-  PaymentController.createPaymentIntent,
-);
-
-// create reduniq payment intent
-router.post(
-  '/reduniq/create-payment-intent',
-  auth('CUSTOMER'),
-  PaymentController.createReduniqPayment,
+  PaymentController.createPaymentIntent
 );
 
 export const PaymentRoutes = router;

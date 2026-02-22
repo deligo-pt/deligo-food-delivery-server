@@ -112,17 +112,17 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     hasVariations: existingProduct.stock.hasVariations,
     variationSku: finalVariationSku,
     quantity,
-    originalPrice: parseFloat(selectedPrice.toFixed(2)),
+    originalPrice: selectedPrice,
     discountAmount: Number((selectedPrice - priceAfterDiscount).toFixed(2)),
-    price: parseFloat(priceAfterDiscount.toFixed(2)),
+    price: priceAfterDiscount,
 
-    productTotalBeforeTax: parseFloat(totalBeforeTax.toFixed(2)),
-    productTaxAmount: parseFloat(itemTaxAmount.toFixed(2)),
+    productTotalBeforeTax: totalBeforeTax,
+    productTaxAmount: itemTaxAmount,
 
     taxRate,
-    taxAmount: parseFloat(itemTaxAmount.toFixed(2)),
-    totalBeforeTax: parseFloat(totalBeforeTax.toFixed(2)),
-    subtotal: parseFloat(itemSubtotal.toFixed(2)),
+    taxAmount: itemTaxAmount,
+    totalBeforeTax: totalBeforeTax,
+    subtotal: itemSubtotal,
     isActive: true,
     addons: [],
   };
@@ -166,7 +166,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
           totalAddonsPrice += addonSubtotal;
           totalAddonsTax += addonTax;
 
-          addon.taxAmount = parseFloat(addonTax.toFixed(2));
+          addon.taxAmount = Number(addonTax.toFixed(2));
         });
       }
 
@@ -174,13 +174,13 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       const baseProductTax =
         baseProductPrice * ((currentItem.taxRate || 0) / 100);
 
-      currentItem.totalBeforeTax = parseFloat(
+      currentItem.totalBeforeTax = Number(
         (baseProductPrice + totalAddonsPrice).toFixed(2),
       );
-      currentItem.taxAmount = parseFloat(
+      currentItem.taxAmount = Number(
         (baseProductTax + totalAddonsTax).toFixed(2),
       );
-      currentItem.subtotal = parseFloat(
+      currentItem.subtotal = Number(
         (currentItem.totalBeforeTax + currentItem.taxAmount).toFixed(2),
       );
     } else {

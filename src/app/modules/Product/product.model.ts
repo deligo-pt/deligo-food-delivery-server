@@ -2,20 +2,22 @@
 import { model, Schema } from 'mongoose';
 import { TProduct } from './product.interface';
 
-const variationSchema = new Schema({
-  name: { type: String, required: true }, // e.g., "Size"
-  options: [
-    {
-      _id: false,
-      label: { type: String, required: true }, // e.g., "Large"
-      price: { type: Number, required: true }, // e.g., 500
-      sku: { type: String, unique: true },
-      stockQuantity: { type: Number, default: 0 },
-      totalAddedQuantity: { type: Number, default: 0 },
-      isOutOfStock: { type: Boolean, default: false },
-    },
-  ],
-});
+const variationSchema = new Schema(
+  {
+    name: { type: String, required: true }, // e.g., "Size"
+    options: [
+      {
+        label: { type: String, required: true }, // e.g., "Large"
+        price: { type: Number, required: true }, // e.g., 500
+        sku: { type: String },
+        stockQuantity: { type: Number, default: 0 },
+        totalAddedQuantity: { type: Number, default: 0 },
+        isOutOfStock: { type: Boolean, default: false },
+      },
+    ],
+  },
+  { _id: false },
+);
 
 const productSchema = new Schema<TProduct>(
   {

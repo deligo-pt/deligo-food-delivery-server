@@ -16,20 +16,7 @@ const createPaymentIntent = catchAsync(async (req, res) => {
     data: session,
   });
 });
-const createReduniqPayment = catchAsync(async (req, res) => {
-  const { checkoutSummaryId } = req.body;
-
-  const session = await PaymentServices.createReduniqPayment(checkoutSummaryId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Reduniq payment session created',
-    data: session,
-  });
-});
 
 export const PaymentController = {
   createPaymentIntent,
-  createReduniqPayment,
 };

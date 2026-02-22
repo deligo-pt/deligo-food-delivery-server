@@ -57,17 +57,10 @@ export type TCheckoutSummary = {
   deliveryCharge: number;
   deliveryVatRate: number;
   deliveryVatAmount: number;
-  totalDeliveryCharge: number;
 
-  deliGoCommissionRate: number;
-  deliGoCommission: number;
+  deliGoCommission: number; // €1.50 (Total Net Commission)
   commissionVat: number; // €0.35 (Total VAT collected from vendor)
-  deliGoCommissionNet: number; // €1.50 (Total Net Commission)
-  totalVendorDeduction: number;
 
-  vendorNetPayout: number;
-
-  fleetCommissionRate: number;
   fleetFee: number; // €0.08 (4% of Net Delivery)
   riderNetEarnings: number; // €2.38 (Payout to partner after fleet fee)
 
@@ -80,7 +73,6 @@ export type TCheckoutSummary = {
 
   offerApplied?: TAppliedOfferSnapshot;
   deliveryAddress: TAddress;
-  deliveryDistance: number;
   estimatedDeliveryTime: string;
 
   paymentMethod?: 'CARD' | 'MOBILE';

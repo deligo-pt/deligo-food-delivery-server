@@ -6,19 +6,12 @@ import { OrderValidation } from './order.validation';
 
 const router = Router();
 
-// Create order after stripe payment
+// Create order
 router.post(
   '/create-order',
   auth('CUSTOMER'),
   OrderControllers.createOrderAfterPayment,
 );
-
-// Create order after reduniq payment
-// router.post(
-//   '/create-order',
-//   auth('CUSTOMER'),
-//   OrderControllers.createOrderAfterReduniqPayment,
-// );
 
 // Accept / Reject / Preparing / Ready for pickup/ Cancel order
 router.patch(

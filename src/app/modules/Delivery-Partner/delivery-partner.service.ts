@@ -206,7 +206,7 @@ const changeDeliveryPartnerStatus = async (
     );
   }
 
-  const result = await DeliveryPartner.findOneAndUpdate(
+  await DeliveryPartner.findOneAndUpdate(
     { userId: currentUser.userId },
     {
       $set: {
@@ -219,7 +219,6 @@ const changeDeliveryPartnerStatus = async (
 
   return {
     message: `Status successfully changed from ${currentStatus} to ${payload.status}`,
-    data: result?.operationalData?.currentStatus,
   };
 };
 

@@ -18,7 +18,7 @@ const getAdminDashboardAnalytics = catchAsync(async (req, res) => {
 // get vendor dashboard analytics controller
 const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorDashboardAnalytics(
-    req.user as AuthUser,
+    req.user as AuthUser
   );
   sendResponse(res, {
     success: true,
@@ -29,9 +29,10 @@ const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
 });
 
 // get fleet dashboard analytics controller
+
 const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getFleetDashboardAnalytics(
-    req.user as AuthUser,
+    req.user as AuthUser
   );
   sendResponse(res, {
     success: true,
@@ -45,7 +46,7 @@ const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
 const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getPartnerPerformanceAnalytics(
     req.user as AuthUser,
-    req.query,
+    req.query
   );
   sendResponse(res, {
     success: true,
@@ -55,186 +56,9 @@ const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   });
 });
 
-// get vendor sales analytics controller
-const getVendorSalesAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getVendorSalesAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Vendor sales analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get customer insights controller
-const getCustomerInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getCustomerInsights(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Customer insights fetched successfully',
-    data: result,
-  });
-});
-
-// get delivery partner earnings analytics  controller
-const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getDeliveryPartnerEarningAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Delivery partner earning analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get fleet manager earning analytics controller
-const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getFleetManagerEarningAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Fleet manager earning analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get order trend insights controller
-const getOrderTrendInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getOrderTrendInsights(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Order trend insights fetched successfully',
-    data: result,
-  });
-});
-
-// get top selling items analytics controller
-const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getTopSellingItemsAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Top selling items analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get admin sales report analytics controller
-const getAdminSalesReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminSalesReportAnalytics(
-    req.query,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin sales report analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get admin order report analytics controller
-const getAdminOrderReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminOrderReportAnalytics(
-    req.query,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin order report analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get admin customer report analytics controller
-const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminCustomerReportAnalytics();
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin customer report analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get admin vendor report analytics controller
-const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminVendorReportAnalytics();
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin vendor report analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get admin fleet manager report analytics controller
-const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminFleetManagerReportAnalytics();
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin fleet manager report analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get admin delivery partner report analytics controller
-const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminDeliveryPartnerReportAnalytics();
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin delivery partner report analytics fetched successfully',
-    data: result,
-  });
-});
-// get vendor earnings analytics controller
-const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getVendorEarningsAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Vendor earnings analytics fetched successfully',
-    data: result,
-  });
-});
-
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
   getFleetDashboardAnalytics,
   getPartnerPerformanceAnalytics,
-  getVendorSalesAnalytics,
-  getCustomerInsights,
-  getOrderTrendInsights,
-  getTopSellingItemsAnalytics,
-  getDeliveryPartnerEarningAnalytics,
-  getFleetManagerEarningAnalytics,
-  getAdminSalesReportAnalytics,
-  getAdminOrderReportAnalytics,
-  getAdminCustomerReportAnalytics,
-  getAdminVendorReportAnalytics,
-  getAdminFleetManagerReportAnalytics,
-  getAdminDeliveryPartnerReportAnalytics,
-  getVendorEarningsAnalytics,
 };
