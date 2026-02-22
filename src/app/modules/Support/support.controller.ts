@@ -7,10 +7,10 @@ import { AuthUser } from '../../constant/user.constant';
 // ------------------------------------------------------
 //  Open or Create Conversation
 // ------------------------------------------------------
-const openOrCreateConversationController = catchAsync(async (req, res) => {
+const openOrCreateConversation = catchAsync(async (req, res) => {
   const conversation = await SupportService.openOrCreateConversation(
     req.user as AuthUser,
-    req.body
+    req.body,
   );
 
   sendResponse(res, {
@@ -24,10 +24,10 @@ const openOrCreateConversationController = catchAsync(async (req, res) => {
 // ------------------------------------------------------
 //  Get Conversations (Generic)
 // ------------------------------------------------------
-const getAllSupportConversationsController = catchAsync(async (req, res) => {
+const getAllSupportConversations = catchAsync(async (req, res) => {
   const { meta, data } = await SupportService.getAllSupportConversations(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -42,11 +42,11 @@ const getAllSupportConversationsController = catchAsync(async (req, res) => {
 // ------------------------------------------------------
 //  Get Single Conversation
 // ------------------------------------------------------
-const getSingleSupportConversationController = catchAsync(async (req, res) => {
+const getSingleSupportConversation = catchAsync(async (req, res) => {
   const { room } = req.params;
-  const result = await SupportService.getSingleSupportConversationController(
+  const result = await SupportService.getSingleSupportConversation(
     room,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -59,13 +59,13 @@ const getSingleSupportConversationController = catchAsync(async (req, res) => {
 // ------------------------------------------------------
 //  Get Messages by Room
 // ------------------------------------------------------
-const getMessagesByRoomController = catchAsync(async (req, res) => {
+const getMessagesByRoom = catchAsync(async (req, res) => {
   const { room } = req.params;
 
   const result = await SupportService.getMessagesByRoom(
     req.query,
     room,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -80,12 +80,12 @@ const getMessagesByRoomController = catchAsync(async (req, res) => {
 // ------------------------------------------------------
 //  Mark Messages as Read
 // ------------------------------------------------------
-const markReadByAdminOrUserController = catchAsync(async (req, res) => {
+const markReadByAdminOrUser = catchAsync(async (req, res) => {
   const { room } = req.params;
 
   const result = await SupportService.markReadByAdminOrUser(
     room,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -97,14 +97,28 @@ const markReadByAdminOrUserController = catchAsync(async (req, res) => {
 });
 
 // ------------------------------------------------------
+// Get total unread count
+// ------------------------------------------------------
+const getTotalUnreadCount = catchAsync(async (req, res) => {
+  const result = await SupportService.getTotalUnreadCount(req.user as AuthUser);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Total unread count retrieved successfully',
+    data: result?.totalUnread,
+  });
+});
+
+// ------------------------------------------------------
 //  Close Conversation (Generic Lock Release)
 // ------------------------------------------------------
-const closeConversationController = catchAsync(async (req, res) => {
+const closeConversation = catchAsync(async (req, res) => {
   const { room } = req.params;
 
   const result = await SupportService.closeConversation(
     room,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -116,10 +130,11 @@ const closeConversationController = catchAsync(async (req, res) => {
 });
 
 export const SupportControllers = {
-  openOrCreateConversationController,
-  getAllSupportConversationsController,
-  getSingleSupportConversationController,
-  getMessagesByRoomController,
-  markReadByAdminOrUserController,
-  closeConversationController,
+  openOrCreateConversation,
+  getAllSupportConversations,
+  getSingleSupportConversation,
+  getMessagesByRoom,
+  markReadByAdminOrUser,
+  getTotalUnreadCount,
+  closeConversation,
 };

@@ -128,12 +128,6 @@ const createProduct = async (
 
   const newProduct = await Product.create({ ...payload, images });
 
-  // if (newProduct) {
-  //   SageService.syncProductToSage(newProduct).catch((error) => {
-  //     console.error('Error syncing product to Sage:', error);
-  //   });
-  // }
-
   return newProduct;
 };
 
@@ -156,9 +150,7 @@ const updateProduct = async (
     throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
 
   const modifiedData: Record<string, any> = {};
-  const productNamePart = cleanForSKU(payload.name || existingProduct.name);
 
-  // Basic Information Update (Name, Slug, Category, etc.)
   if (payload.name) {
     modifiedData.name = payload.name;
     modifiedData.slug = generateSlug(payload.name);
@@ -183,44 +175,6 @@ const updateProduct = async (
       modifiedData['pricing.currency'] = payload.pricing.currency;
     if (payload.pricing.discount !== undefined)
       modifiedData['pricing.discount'] = payload.pricing.discount;
-  }
-
-  // Variation and Stock Management
-  if (payload.variations && payload.variations.length > 0) {
-    let currentVariationStockSum = 0;
-    let minPrice = Infinity;
-
-    const processedVariations = payload.variations.map((v) => ({
-      name: v.name,
-      options: v.options.map((opt) => {
-        const sQuantity = opt.stockQuantity || 0;
-        currentVariationStockSum += sQuantity;
-        if (opt.price < minPrice) minPrice = opt.price;
-
-        return {
-          ...opt,
-          sku:
-            opt.sku ||
-            `VAR-${productNamePart}-${cleanForSKU(opt.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
-          stockQuantity: sQuantity,
-          totalAddedQuantity: sQuantity,
-          isOutOfStock: sQuantity <= 0,
-        };
-      }),
-    }));
-
-    // --- Stock Calculation Logic ---
-    const finalQuantity = currentVariationStockSum;
-
-    const previousTotalAdded = existingProduct.stock.totalAddedQuantity || 0;
-    const finalTotalAddedQuantity =
-      previousTotalAdded + currentVariationStockSum;
-
-    modifiedData.variations = processedVariations;
-    modifiedData['stock.hasVariations'] = true;
-    modifiedData['stock.quantity'] = finalQuantity;
-    modifiedData['stock.totalAddedQuantity'] = finalTotalAddedQuantity;
-    modifiedData['pricing.price'] = minPrice;
   }
 
   // Meta & Stock Unit Update
@@ -252,6 +206,293 @@ const updateProduct = async (
   }
 
   return updatedProduct;
+};
+
+// manage product variations service
+const manageProductVariations = async (
+  productId: string,
+  payload: { name: string; options: any[] },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (currentUser?.status !== 'APPROVED')
+    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+
+  const { name, options } = payload;
+  const normalizedName = name.trim();
+  const productNamePart = cleanForSKU(existingProduct.name);
+
+  if (!existingProduct.variations) {
+    existingProduct.variations = [];
+  }
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+  );
+
+  const finalOptionsToPush: any[] = [];
+
+  for (const opt of options) {
+    const normalizedLabel = opt.label.trim();
+    const inputStockQty = opt.stockQuantity || 0;
+
+    if (variationIndex > -1) {
+      const isOptionExists = existingProduct.variations[
+        variationIndex
+      ].options.some(
+        (o: any) => o.label.toLowerCase() === normalizedLabel.toLowerCase(),
+      );
+
+      if (isOptionExists) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Option '${normalizedLabel}' already exists in '${normalizedName}'. Use update API to change stock or price.`,
+        );
+      }
+    }
+
+    const generatedSku =
+      opt.sku ||
+      `VAR-${productNamePart}-${cleanForSKU(normalizedLabel)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+
+    const isSkuTaken = await Product.findOne({
+      'variations.options.sku': generatedSku,
+    });
+
+    if (isSkuTaken) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Generated SKU ${generatedSku} is already in use.`,
+      );
+    }
+
+    finalOptionsToPush.push({
+      ...opt,
+      label: normalizedLabel,
+      sku: generatedSku,
+      stockQuantity: inputStockQty,
+      totalAddedQuantity: inputStockQty,
+      isOutOfStock: inputStockQty <= 0,
+    });
+  }
+
+  if (variationIndex > -1) {
+    if (finalOptionsToPush.length > 0) {
+      existingProduct.variations[variationIndex].options.push(
+        ...finalOptionsToPush,
+      );
+    }
+  } else {
+    existingProduct.variations.push({
+      name: normalizedName,
+      options: finalOptionsToPush,
+    });
+  }
+
+  let totalQty = 0;
+  let totalAddedAcrossVariations = 0;
+  let minPrice = Infinity;
+
+  existingProduct.variations.forEach((v) => {
+    if (v.options && Array.isArray(v.options)) {
+      v.options.forEach((o: any) => {
+        const optionPrice = typeof o.price === 'number' ? o.price : 0;
+        const optionQty =
+          typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
+        const optionAddedQty =
+          typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
+
+        totalQty += optionQty;
+        totalAddedAcrossVariations += optionAddedQty;
+
+        if (optionPrice > 0 && optionPrice < minPrice) {
+          minPrice = optionPrice;
+        }
+      });
+    }
+  });
+
+  existingProduct.stock.quantity = totalQty;
+  existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
+  existingProduct.stock.hasVariations = true;
+  existingProduct.stock.availabilityStatus =
+    totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
+  }
+
+  await existingProduct.save();
+  return existingProduct;
+};
+
+const renameProductVariation = async (
+  productId: string,
+  payload: {
+    oldName: string;
+    newName?: string;
+    oldLabel?: string;
+    newLabel?: string;
+  },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && {
+      vendorId: currentUser._id,
+    }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (!existingProduct.variations) {
+    existingProduct.variations = [];
+  }
+
+  const { oldName, newName, oldLabel, newLabel } = payload;
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === oldName.trim().toLowerCase(),
+  );
+
+  if (variationIndex === -1)
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `Variation group '${oldName}' not found`,
+    );
+
+  if (newName && !oldLabel) {
+    existingProduct.variations[variationIndex].name = newName.trim();
+  }
+
+  if (oldLabel && newLabel) {
+    const optionIndex = existingProduct.variations[
+      variationIndex
+    ].options.findIndex(
+      (o: any) => o.label.toLowerCase() === oldLabel.trim().toLowerCase(),
+    );
+
+    if (optionIndex === -1)
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        `Option '${oldLabel}' not found`,
+      );
+
+    existingProduct.variations[variationIndex].options[optionIndex].label =
+      newLabel.trim();
+  }
+
+  await existingProduct.save();
+  return existingProduct;
+};
+
+// remove product variations service
+const removeProductVariations = async (
+  productId: string,
+  payload: {
+    name: string;
+    labelToRemove?: string;
+  },
+  currentUser: AuthUser,
+) => {
+  const existingProduct = await Product.findOne({
+    productId,
+    ...((currentUser.role === 'VENDOR' ||
+      currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
+  });
+
+  if (!existingProduct)
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+
+  if (currentUser?.status !== 'APPROVED')
+    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+
+  const { name, labelToRemove } = payload;
+  const normalizedName = name.trim();
+
+  if (!existingProduct.variations || existingProduct.variations.length === 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'No variations found to remove');
+  }
+
+  const variationIndex = existingProduct.variations.findIndex(
+    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+  );
+
+  if (variationIndex === -1) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      `Variation group '${normalizedName}' not found`,
+    );
+  }
+
+  if (labelToRemove) {
+    const optionIndex = existingProduct.variations[
+      variationIndex
+    ].options.findIndex(
+      (o: any) => o.label.toLowerCase() === labelToRemove.trim().toLowerCase(),
+    );
+
+    if (optionIndex === -1) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        `Option '${labelToRemove}' not found in '${normalizedName}'`,
+      );
+    }
+
+    existingProduct.variations[variationIndex].options.splice(optionIndex, 1);
+
+    if (existingProduct.variations[variationIndex].options.length === 0) {
+      existingProduct.variations.splice(variationIndex, 1);
+    }
+  } else {
+    existingProduct.variations.splice(variationIndex, 1);
+  }
+
+  let totalQty = 0;
+  let totalAddedAcrossVariations = 0;
+  let minPrice = Infinity;
+
+  existingProduct.variations.forEach((v) => {
+    if (v.options && Array.isArray(v.options)) {
+      v.options.forEach((o: any) => {
+        const optionPrice = typeof o.price === 'number' ? o.price : 0;
+        const optionQty =
+          typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
+        const optionAddedQty =
+          typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
+
+        totalQty += optionQty;
+        totalAddedAcrossVariations += optionAddedQty;
+
+        if (optionPrice > 0 && optionPrice < minPrice) {
+          minPrice = optionPrice;
+        }
+      });
+    }
+  });
+
+  existingProduct.stock.quantity = totalQty;
+  existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
+  existingProduct.stock.hasVariations = existingProduct.variations.length > 0;
+  existingProduct.stock.availabilityStatus =
+    totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
+  }
+
+  await existingProduct.save();
+  return existingProduct;
 };
 
 // update inventory and pricing service
@@ -538,7 +779,8 @@ const getAllProducts = async (
 
   const populateOptions = getPopulateOptions(role, {
     vendor:
-      'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+      'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
+    productCategory: 'name ',
   });
 
   populateOptions.forEach((option) => {
@@ -583,7 +825,8 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
   }
   const populateOptions = getPopulateOptions(currentUser.role, {
     vendor:
-      'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessLocation.latitude businessLocation.longitude',
+      'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
+    productCategory: 'name',
   });
 
   populateOptions.forEach((option) => {
@@ -666,6 +909,9 @@ const permanentDeleteProduct = async (
 export const ProductServices = {
   createProduct,
   updateProduct,
+  manageProductVariations,
+  renameProductVariation,
+  removeProductVariations,
   updateInventoryAndPricing,
   approvedProduct,
   deleteProductImages,

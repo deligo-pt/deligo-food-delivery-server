@@ -5,9 +5,12 @@ import sendResponse from '../../utils/sendResponse';
 
 // create stripe payment intent controller
 const createPaymentIntent = catchAsync(async (req, res) => {
-  const { checkoutSummaryId } = req.body;
+  const { checkoutSummaryId, paymentMethod = 'CARD' } = req.body;
 
-  const session = await PaymentServices.createPaymentIntent(checkoutSummaryId);
+  const session = await PaymentServices.createPaymentIntent(
+    checkoutSummaryId,
+    paymentMethod,
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -16,7 +19,23 @@ const createPaymentIntent = catchAsync(async (req, res) => {
     data: session,
   });
 });
+const createReduniqPayment = catchAsync(async (req, res) => {
+  const { checkoutSummaryId, paymentMethod } = req.body;
+
+  const session = await PaymentServices.createReduniqPayment(
+    checkoutSummaryId,
+    paymentMethod,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Reduniq payment session created',
+    data: session,
+  });
+});
 
 export const PaymentController = {
   createPaymentIntent,
+  createReduniqPayment,
 };

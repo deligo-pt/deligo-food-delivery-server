@@ -13,7 +13,7 @@ import {
 } from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
-import { stripe } from '../Payment/payment.service';
+// import { stripe } from '../Payment/payment.service';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
 import generateOtp from '../../utils/generateOtp';
@@ -24,8 +24,170 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { getIO } from '../../lib/Socket';
+import { Transaction, Wallet } from '../Payment/payment.model';
+import { OrderPdService } from '../PdInvoice/orderPd.service';
+import axios from 'axios';
+import { stripe } from '../Payment/payment.service';
+import config from '../../config';
 
-// Create Order
+// Create Order after reduinq payment
+const createOrderAfterReduinqPayment = async (
+  payload: { checkoutSummaryId: string; paymentToken: string },
+  currentUser: AuthUser,
+) => {
+  const { checkoutSummaryId, paymentToken } = payload;
+
+  const summary = await CheckoutSummary.findById(checkoutSummaryId);
+  if (!summary)
+    throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
+
+  if (!process.env.REDUNIQ_API_URL) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'REDUNIQ API URL is not configured',
+    );
+  }
+
+  const verifyPayload = {
+    method: 'getResult',
+    api: {
+      username: config.reduniq.username,
+      password: config.reduniq.password,
+    },
+    token: paymentToken,
+  };
+  const verifyRes = await axios.post(
+    config.reduniq.api_url as string,
+    verifyPayload,
+  );
+  const paymentData = verifyRes.data;
+
+  if (summary.customerId.toString() !== currentUser._id.toString()) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to view',
+    );
+  }
+  if (summary.isConvertedToOrder) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Checkout summary already converted to order',
+    );
+  }
+
+  const existingVendor = await Vendor.findById(summary.vendorId);
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  const successCodes = ['00000000', '17000000000'];
+
+  if (
+    !paymentData ||
+    !paymentData.result ||
+    !successCodes.includes(paymentData.result.code) ||
+    !paymentData.transaction ||
+    paymentData.transaction.status !== '4'
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Payment not completed or failed',
+    );
+  }
+
+  const transactionId = paymentData.transaction.id;
+
+  // --- Transaction ---
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const orderData = {
+      ...summary.toObject(),
+      _id: undefined,
+      orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      paymentMethod: summary.paymentMethod,
+      paymentStatus: 'PAID',
+      isPaid: true,
+      transactionId: transactionId,
+      orderStatus: 'PENDING',
+      isDeleted: false,
+    };
+
+    const [order] = await Order.create([orderData], { session });
+
+    await Transaction.create(
+      [
+        {
+          transactionId: transactionId,
+          orderId: order._id,
+          userId: currentUser?._id,
+          userModel: 'Customer',
+          totalAmount: order.payoutSummary.grandTotal,
+          type: 'ORDER_PAYMENT',
+          status: 'SUCCESS',
+          paymentMethod: summary.paymentMethod,
+          remarks: `Order payment successful for Order ID: ${order.orderId}`,
+        },
+      ],
+      { session },
+    );
+
+    summary.isConvertedToOrder = true;
+    summary.paymentStatus = 'PAID';
+    summary.transactionId = transactionId;
+    summary.orderId = new mongoose.Types.ObjectId(order._id);
+
+    await summary.save({ session });
+
+    await Cart.updateOne(
+      { customerId: summary.customerId },
+      {
+        $pull: {
+          items: {
+            productId: {
+              $in: summary.items.map((i) => i.productId.toString()),
+            },
+          },
+        },
+        $set: { discount: 0, totalItems: 0, totalPrice: 0 },
+      },
+      { session },
+    );
+
+    await session.commitTransaction();
+
+    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
+      console.log(err);
+    });
+
+    const notificationPayload = {
+      title: 'You have a new order',
+      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
+      data: {
+        orderId: order.orderId,
+      },
+    };
+
+    NotificationService.sendToUser(
+      existingVendor.userId,
+      notificationPayload.title,
+      notificationPayload.body,
+      notificationPayload.data,
+      'default',
+      'ORDER',
+    );
+
+    return order;
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+};
+
+// Create Order after Stripe payment
 const createOrderAfterPayment = async (
   payload: { checkoutSummaryId: string; paymentIntentId: string },
   currentUser: AuthUser,
@@ -70,6 +232,44 @@ const createOrderAfterPayment = async (
   session.startTransaction();
 
   try {
+    const orderData = {
+      ...summary.toObject(),
+      _id: undefined,
+      orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      paymentMethod: summary.paymentMethod || 'CARD',
+      paymentStatus: 'PAID',
+      isPaid: true,
+      transactionId: paymentIntentId,
+      orderStatus: 'PENDING',
+      isDeleted: false,
+    };
+
+    const [order] = await Order.create([orderData], { session });
+
+    await Transaction.create(
+      [
+        {
+          transactionId: paymentIntentId,
+          orderId: order._id,
+          userId: currentUser?._id,
+          userModel: 'Customer',
+          totalAmount: order.payoutSummary.grandTotal,
+          type: 'ORDER_PAYMENT',
+          status: 'SUCCESS',
+          paymentMethod: summary.paymentMethod,
+          remarks: `Order payment successful for Order ID: ${order.orderId}`,
+        },
+      ],
+      { session },
+    );
+
+    summary.isConvertedToOrder = true;
+    summary.paymentStatus = 'PAID';
+    summary.transactionId = paymentIntentId;
+    summary.orderId = new mongoose.Types.ObjectId(order._id);
+
+    await summary.save({ session });
+
     await Cart.updateOne(
       { customerId: summary.customerId },
       {
@@ -80,37 +280,29 @@ const createOrderAfterPayment = async (
             },
           },
         },
-        $set: { discount: 0, totalItems: 0, totalPrice: 0 },
+        $set: {
+          totalItems: 0,
+          cartCalculation: {
+            totalOriginalPrice: 0,
+            totalProductDiscount: 0,
+            taxableAmount: 0,
+            totalTaxAmount: 0,
+            grandTotal: 0,
+          },
+        },
       },
       { session },
     );
 
-    const orderData = {
-      ...summary.toObject(),
-      _id: undefined,
-      orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      paymentMethod: 'CARD',
-      paymentStatus: 'COMPLETED',
-      isPaid: true,
-      transactionId: paymentIntentId,
-      orderStatus: 'PENDING',
-      isDeleted: false,
-    };
-
-    const [order] = await Order.create([orderData], { session });
-
-    summary.isConvertedToOrder = true;
-    summary.paymentStatus = 'PAID';
-    summary.transactionId = paymentIntentId;
-    summary.orderId = new mongoose.Types.ObjectId(order._id);
-
-    await summary.save({ session });
-
     await session.commitTransaction();
+
+    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
+      console.log(err);
+    });
 
     const notificationPayload = {
       title: 'You have a new order',
-      body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
+      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
       data: {
         orderId: order.orderId,
       },
@@ -315,10 +507,10 @@ const updateOrderStatusByVendor = async (
         updateOne: {
           filter: {
             _id: new mongoose.Types.ObjectId(item.productId),
-            'stock.quantity': { $gte: item.quantity },
+            'stock.quantity': { $gte: item.itemSummary.quantity },
           },
           update: {
-            $inc: { 'stock.quantity': -item.quantity },
+            $inc: { 'stock.quantity': -item.itemSummary.quantity },
           },
         },
       }));
@@ -393,7 +585,7 @@ const updateOrderStatusByVendor = async (
         updateOne: {
           filter: { _id: new mongoose.Types.ObjectId(item.productId) },
           update: {
-            $inc: { 'stock.quantity': item.quantity },
+            $inc: { 'stock.quantity': item.itemSummary.quantity },
           },
         },
       }));
@@ -483,23 +675,24 @@ const broadcastOrderToPartners = async (
   }
 
   // Vendor location check
-  const loc = currentUser.businessLocation;
-  if (
-    !loc ||
-    typeof loc.longitude !== 'number' ||
-    typeof loc.latitude !== 'number'
-  ) {
+  const loc = currentUser.currentSessionLocation?.coordinates;
+  const longitude = loc?.[0];
+  const latitude = loc?.[1];
+  if (!loc || typeof longitude !== 'number' || typeof latitude !== 'number') {
     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not set.');
   }
 
-  const vendorCoordinates: [number, number] = [loc.longitude, loc.latitude];
+  const vendorCoordinates: [number, number] = [longitude, latitude];
   const io = getIO();
   // Fetch order AND ensure this vendor owns it
   const order = await Order.findOne({
     orderId,
     vendorId: currentUser._id.toString(),
     isDeleted: false,
-  });
+  }).populate(
+    'customerId',
+    'name userId role contactNumber currentSessionLocation profilePhoto',
+  );
 
   if (order?.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
     throw new AppError(
@@ -727,13 +920,16 @@ const partnerAcceptsDispatchedOrder = async (
       },
     },
     { new: true },
+  ).populate(
+    'customerId',
+    'name userId role contactNumber currentSessionLocation profilePhoto',
   );
 
   // If null, another partner claimed it
   if (!claimedOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Too late! Another partner already accepted this order.',
+      'Too late! Another partner already accepted this order. Or it has expired.',
     );
   }
 
@@ -810,6 +1006,9 @@ const otpVerificationByVendor = async (
       },
     },
     { new: true },
+  ).populate(
+    'deliveryPartnerId customerId',
+    'name userId role contactNumber currentSessionLocation profilePhoto',
   );
 
   if (!updatedOrder) {
@@ -897,8 +1096,12 @@ const otpVerificationByVendor = async (
 // update order status by delivery partner service
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
-  payload: { orderStatus: OrderStatus; reason?: string },
   currentUser: AuthUser,
+  deliveryProofImage: string | null,
+  payload: {
+    orderStatus: OrderStatus;
+    reason?: string;
+  },
 ) => {
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(httpStatus.FORBIDDEN, 'Delivery Partner not found.');
@@ -928,110 +1131,299 @@ const updateOrderStatusByDeliveryPartner = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'Reason is required.');
   }
 
-  // Atomic update attempt
-  const updatedOrder = await Order.findOneAndUpdate(
-    {
-      orderId,
-      deliveryPartnerId: currentUser._id.toString(),
-      orderStatus: requiredCurrentStatus,
-      isDeleted: false,
-    },
-    {
-      $set: {
-        orderStatus: payload.orderStatus,
-        ...(payload.orderStatus === ORDER_STATUS.DELIVERED && {
-          deliveredAt: new Date(),
-        }),
-        ...(payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
-          deliveryPartnerId: null,
-          deliveryPartnerCancelReason: payload.reason,
-        }),
-      },
-    },
-    { new: true },
-  );
-
-  if (!updatedOrder) {
+  if (payload.orderStatus === ORDER_STATUS.DELIVERED && !deliveryProofImage) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+      'Delivery proof image is required.',
     );
   }
 
-  // Update partner record
-  if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
-    const pickupTime = updatedOrder.pickedUpAt
-      ? new Date(updatedOrder.pickedUpAt).getTime()
-      : Date.now();
-    const deliveryTime = new Date().getTime();
-    const durationMinutes = Math.max(
-      1,
-      Math.round((deliveryTime - pickupTime) / 60000),
-    );
-    const deliveryFee = updatedOrder.deliveryCharge || 0;
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    await DeliveryPartner.updateOne(
-      { userId: currentUser.userId },
+  try {
+    // Atomic update attempt
+    const updatedOrder = await Order.findOneAndUpdate(
+      {
+        orderId,
+        deliveryPartnerId: currentUser._id.toString(),
+        orderStatus: requiredCurrentStatus,
+        isDeleted: false,
+      },
       {
         $set: {
-          'operationalData.currentOrderId': null,
-          'operationalData.currentStatus': 'IDLE',
-        },
-        $inc: {
-          'operationalData.completedDeliveries': 1,
-          'operationalData.totalDeliveryMinutes': durationMinutes,
-          'earnings.totalEarnings': deliveryFee,
-        },
-      },
-    );
-  } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
-    await DeliveryPartner.updateOne(
-      { userId: currentUser.userId },
-      {
-        $set: {
-          'operationalData.currentOrderId': null,
-          'operationalData.currentStatus': 'IDLE',
-        },
-        $inc: {
-          'operationalData.canceledDeliveries': 1,
-          'operationalData.totalRejectedOrders': 1,
+          orderStatus: payload.orderStatus,
+          ...(payload.orderStatus === ORDER_STATUS.DELIVERED && {
+            deliveredAt: new Date(),
+            ...(deliveryProofImage && {
+              'delivery.deliveryProofImage': deliveryProofImage,
+            }),
+          }),
+          ...(payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
+            deliveryPartnerId: null,
+            deliveryPartnerCancelReason: payload.reason,
+          }),
         },
       },
+      { new: true, session },
+    ).populate(
+      'customerId vendorId',
+      'name userId role contactNumber currentSessionLocation profilePhoto',
     );
+
+    if (!updatedOrder) {
+      const orderCheck = await Order.findOne({
+        orderId,
+        isDeleted: false,
+      }).select('orderStatus');
+
+      if (!orderCheck) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+      }
+
+      if (orderCheck?.orderStatus === payload.orderStatus) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Order status is already ${payload.orderStatus}.`,
+        );
+      }
+
+      if (!orderCheck.isOtpVerified && payload.orderStatus === 'ON_THE_WAY') {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'Please verify the OTP first to start delivery.',
+        );
+      } else {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+        );
+      }
+    }
+
+    // Update partner record
+    if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
+      const partner = await DeliveryPartner.findById(
+        updatedOrder.deliveryPartnerId,
+      );
+      if (!partner) {
+        throw new AppError(
+          httpStatus.NOT_FOUND,
+          'Delivery Partner not found for this order.',
+        );
+      }
+      const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
+
+      const vendorNetPayout = payoutSummary?.vendorNetPayout || 0;
+      const riderNetEarnings = payoutSummary?.riderNetEarnings || 0;
+      const totalDeliveryCharge = delivery?.totalDeliveryCharge || 0;
+      const deliGoCommission = payoutSummary?.deliGoCommission?.amount || 0;
+      const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
+      const deliGoCommissionNet =
+        payoutSummary?.deliGoCommission?.totalDeduction || 0;
+
+      const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
+      const fleetManagerId = isManagedByFleet
+        ? partner?.registeredBy?.id
+        : null;
+
+      const riderEarningAmount = isManagedByFleet
+        ? riderNetEarnings
+        : totalDeliveryCharge;
+
+      // --- Vendor Wallet Update ---
+      await Wallet.findOneAndUpdate(
+        { userId: updatedOrder.vendorId, userModel: 'Vendor' },
+        {
+          $inc: {
+            totalUnpaidEarnings: vendorNetPayout || 0,
+            totalEarnings: vendorNetPayout || 0,
+          },
+        },
+        { session, upsert: true },
+      );
+
+      // --- Delivery Partner Wallet Update ---
+      await Wallet.findOneAndUpdate(
+        { userId: partner?._id, userModel: 'DeliveryPartner' },
+        {
+          $inc: {
+            totalUnpaidEarnings: riderEarningAmount || 0,
+            totalEarnings: riderEarningAmount || 0,
+          },
+        },
+        { session, upsert: true },
+      );
+
+      const SYSTEM_ADMIN = '694a088c43ee1acbe0e9c87d';
+      // Admin Wallet
+      await Wallet.findOneAndUpdate(
+        { userId: SYSTEM_ADMIN, userModel: 'Admin' },
+        {
+          $inc: {
+            totalUnpaidEarnings: deliGoCommissionNet || 0,
+            totalEarnings: deliGoCommissionNet || 0,
+          },
+        },
+        { session, upsert: true },
+      );
+
+      // Fleet Manager Wallet (If applicable)
+      if (isManagedByFleet && fleetManagerId) {
+        await Wallet.findOneAndUpdate(
+          { userId: fleetManagerId, userModel: 'FleetManager' },
+          {
+            $inc: {
+              totalUnpaidEarnings: totalDeliveryCharge || 0,
+              totalRiderPayable: riderNetEarnings || 0,
+              totalEarnings: totalDeliveryCharge || 0,
+            },
+          },
+          { session, upsert: true },
+        );
+      }
+
+      // --- Transaction Records ---
+      const timestamp = Date.now();
+      const transactionsToCreate = [
+        {
+          transactionId: `TXN-V-${timestamp}-${orderId}`,
+          orderId: orderDbId,
+          userId: updatedOrder.vendorId,
+          userModel: 'Vendor',
+          totalAmount: vendorNetPayout,
+          type: 'VENDOR_EARNING',
+          status: 'SUCCESS',
+          paymentMethod: 'WALLET',
+          remarks: `Earnings for Order: ${orderId}`,
+        },
+        {
+          transactionId: `TXN-DP-${timestamp}-${orderId}`,
+          orderId: orderDbId,
+          userId: partner._id,
+          userModel: 'DeliveryPartner',
+          totalAmount: riderEarningAmount,
+          type: 'DELIVERY_PARTNER_EARNING',
+          status: 'SUCCESS',
+          paymentMethod: 'WALLET',
+          remarks: isManagedByFleet
+            ? 'Fleet Managed Earning'
+            : 'Direct Earning',
+        },
+        {
+          transactionId: `TXN-DELIGO-${timestamp}-${orderId}`,
+          orderId: orderDbId,
+          userId: SYSTEM_ADMIN,
+          userModel: 'Admin',
+          baseAmount: deliGoCommission,
+          taxAmount: commissionVat,
+          totalAmount: deliGoCommissionNet,
+          type: 'PLATFORM_COMMISSION',
+          status: 'SUCCESS',
+          paymentMethod: 'WALLET',
+          remarks: `Commission from Order: ${orderId}`,
+        },
+      ];
+
+      if (isManagedByFleet && fleetManagerId) {
+        transactionsToCreate.push({
+          transactionId: `TXN-F-${timestamp}-${orderId}`,
+          orderId: orderDbId,
+          userId: fleetManagerId,
+          userModel: 'FleetManager',
+          totalAmount: totalDeliveryCharge,
+          type: 'FLEET_EARNING',
+          status: 'SUCCESS',
+          paymentMethod: 'WALLET',
+          remarks: `Managed Revenue for Order: ${orderId}`,
+        });
+      }
+
+      await Transaction.insertMany(transactionsToCreate, { session });
+
+      const pickupTime = updatedOrder.pickedUpAt
+        ? new Date(updatedOrder.pickedUpAt).getTime()
+        : Date.now();
+      const deliveryTime = new Date().getTime();
+      const durationMinutes = Math.max(
+        1,
+        Math.round((deliveryTime - pickupTime) / 60000),
+      );
+
+      await DeliveryPartner.updateOne(
+        { userId: currentUser.userId },
+        {
+          $set: {
+            'operationalData.currentOrderId': null,
+            'operationalData.currentStatus': 'IDLE',
+          },
+          $inc: {
+            'operationalData.completedDeliveries': 1,
+            'operationalData.totalDeliveryMinutes': durationMinutes,
+          },
+        },
+        {
+          session,
+        },
+      );
+    } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
+      await DeliveryPartner.updateOne(
+        { userId: currentUser.userId },
+        {
+          $set: {
+            'operationalData.currentOrderId': null,
+            'operationalData.currentStatus': 'IDLE',
+          },
+          $inc: {
+            'operationalData.canceledDeliveries': 1,
+            'operationalData.totalRejectedOrders': 1,
+          },
+        },
+        {
+          session,
+        },
+      );
+    }
+    await session.commitTransaction();
+    session.endSession();
+
+    // TODO: Notify Customer (Order is now ON_THE_WAY)
+    const customer = await Customer.findById(updatedOrder.customerId).lean();
+    const customerId = customer?.userId;
+    const notificationPayload = {
+      title: `Order is now ${payload.orderStatus}`,
+      body: `${
+        payload.orderStatus === 'ON_THE_WAY'
+          ? `Your order ${orderId} is now ON_THE_WAY.`
+          : payload.orderStatus === 'DELIVERED'
+            ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
+            : `Your order ${orderId} is  ${payload.orderStatus}.`
+      } `,
+      data: {
+        orderId,
+        orderStatus: payload.orderStatus,
+      },
+    };
+    if (customerId) {
+      NotificationService.sendToUser(
+        customerId,
+        notificationPayload.title,
+        notificationPayload.body,
+        notificationPayload.data,
+        'default',
+        'ORDER',
+      );
+    }
+
+    return {
+      message: 'Order status updated successfully.',
+      data: updatedOrder,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  //
-
-  // TODO: Notify Customer (Order is now ON_THE_WAY)
-  const customer = await Customer.findById(updatedOrder.customerId).lean();
-  const customerId = customer?.userId;
-  const notificationPayload = {
-    title: `Order is now ${payload.orderStatus}`,
-    body: `${
-      payload.orderStatus === 'ON_THE_WAY'
-        ? `Your order ${orderId} is now ON_THE_WAY.`
-        : payload.orderStatus === 'DELIVERED'
-          ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
-          : `Your order ${orderId} is  ${payload.orderStatus}.`
-    } `,
-    data: {
-      orderId,
-      orderStatus: payload.orderStatus,
-    },
-  };
-  NotificationService.sendToUser(
-    customerId!,
-    notificationPayload.title,
-    notificationPayload.body,
-    notificationPayload.data,
-    'default',
-    'ORDER',
-  );
-
-  return {
-    message: 'Order status updated successfully.',
-    data: updatedOrder,
-  };
 };
 
 // get all order service
@@ -1098,9 +1490,11 @@ const getAllOrders = async (
     .search(OrderSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
-    customer: 'name userId role',
+    customer:
+      'name userId role contactNumber currentSessionLocation profilePhoto',
     vendor: 'name userId role',
-    deliveryPartner: 'name userId role contactNumber currentSessionLocation',
+    deliveryPartner:
+      'name userId role contactNumber currentSessionLocation profilePhoto',
     product: 'productId name',
   });
 
@@ -1160,9 +1554,11 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   const query = Order.findOne({ orderId: orderId, ...filter });
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
-    customer: 'name userId role',
+    customer:
+      'name userId role contactNumber currentSessionLocation profilePhoto',
     vendor: 'name userId role',
-    deliveryPartner: 'name userId role contactNumber currentSessionLocation',
+    deliveryPartner:
+      'name userId role contactNumber currentSessionLocation profilePhoto',
     product: 'productId name',
   });
 
@@ -1181,6 +1577,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 
 export const OrderServices = {
   createOrderAfterPayment,
+  createOrderAfterReduinqPayment,
   getAllOrders,
   getSingleOrder,
   updateOrderStatusByVendor,

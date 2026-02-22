@@ -3,10 +3,26 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/user.constant';
+import { InvoicePdService } from '../PdInvoice/invoicePd.service';
+import { TImageFile } from '../../interfaces/image.interface';
 
-// order after payment secure controller
+// create order after stripe payment
 const createOrderAfterPayment = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderAfterPayment(
+    req.body,
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Order created successfully',
+    data: result,
+  });
+});
+
+// create order after reduniq payment
+const createOrderAfterReduniqPayment = catchAsync(async (req, res) => {
+  const result = await OrderServices.createOrderAfterReduinqPayment(
     req.body,
     req.user as AuthUser,
   );
@@ -112,10 +128,12 @@ const otpVerificationByVendor = catchAsync(async (req, res) => {
 
 // update order status by delivery partner controller
 const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
+  const file = req.file as TImageFile | undefined;
   const result = await OrderServices.updateOrderStatusByDeliveryPartner(
     req.params.orderId,
-    req.body,
     req.user as AuthUser,
+    file?.path ?? null,
+    req.body,
   );
   sendResponse(res, {
     success: true,
@@ -125,8 +143,21 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
   });
 });
 
+// download invoice pdf from pasta digital controller
+const downloadInvoicePdfFromPd = catchAsync(async (req, res) => {
+  const result = await InvoicePdService.getInvoicePdfFromPd(req.params.orderId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Invoice PDF downloaded successfully',
+    data: result,
+  });
+});
+
 export const OrderControllers = {
   createOrderAfterPayment,
+  createOrderAfterReduniqPayment,
   getAllOrders,
   getSingleOrder,
   updateOrderStatusByVendor,
@@ -134,4 +165,5 @@ export const OrderControllers = {
   partnerAcceptsDispatchedOrder,
   otpVerificationByVendor,
   updateOrderStatusByDeliveryPartner,
+  downloadInvoicePdfFromPd,
 };

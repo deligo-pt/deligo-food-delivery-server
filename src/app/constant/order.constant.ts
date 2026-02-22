@@ -23,29 +23,79 @@ export type TOrderItemSnapshot = {
   addons?: {
     optionId: string;
     name: string;
-    price: number;
+    sku: string;
+    originalPrice: number;
+    promoDiscountAmount: number;
+    unitPrice: number;
     quantity: number;
+    lineTotal: number;
     taxRate: number;
     taxAmount: number;
   }[];
-  quantity: number;
 
-  originalPrice: number;
-  discountAmount: number;
-  price: number;
+  productPricing: {
+    originalPrice: number;
+    productDiscountAmount: number;
+    priceAfterProductDiscount: number;
+    promoDiscountAmount: number;
+    unitPrice: number;
+    lineTotal: number;
+    taxRate: number;
+    taxAmount: number;
+  };
 
-  productTotalBeforeTax?: number;
-  productTaxAmount?: number;
-  totalBeforeTax?: number;
+  itemSummary: {
+    quantity: number;
+    totalBeforeTax: number;
+    totalTaxAmount: number;
+    totalPromoDiscount: number;
+    totalProductDiscount: number;
+    grandTotal: number;
+  };
 
-  taxRate: number;
-  taxAmount: number;
-  subtotal: number;
-
-  commissionRate: number;
-  commissionAmount: number;
-  commissionVatRate: number;
-  commissionVatAmount: number;
+  commission: {
+    deliGoCommissionRate: number;
+    deliGoCommissionAmount: number;
+    deliGoCommissionVatRate: number;
+    deliGoCommissionVatAmount: number;
+  };
 
   vendorNetEarnings: number;
 };
+// export type TOrderItemSnapshot = {
+//   productId: mongoose.Types.ObjectId;
+//   vendorId: mongoose.Types.ObjectId;
+//   name: string;
+//   image?: string;
+//   hasVariations: boolean;
+//   variationSku?: string | null;
+//   addons?: {
+//     optionId: string;
+//     name: string;
+//     sku: string;
+//     price: number;
+//     quantity: number;
+//     taxRate: number;
+//     taxAmount: number;
+//   }[];
+//   quantity: number;
+
+//   originalPrice: number;
+//   discountAmount: number;
+//   price: number;
+
+//   productTotalBeforeTax?: number;
+//   productTaxAmount?: number;
+//   totalBeforeTax?: number;
+
+//   taxRate: number;
+//   taxAmount: number;
+//   subtotal: number;
+
+//   commissionRate: number;
+//   commissionAmount: number;
+//   commissionVatRate: number;
+//   commissionVatAmount: number;
+
+//   vendorNetEarnings: number;
+// };
