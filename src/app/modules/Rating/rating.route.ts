@@ -29,20 +29,6 @@ router.get(
   RatingControllers.getAllRatings,
 );
 
-// get rating summary
-router.get(
-  '/get-rating-summary',
-  auth(
-    'ADMIN',
-    'SUPER_ADMIN',
-    'DELIVERY_PARTNER',
-    'FLEET_MANAGER',
-    'VENDOR',
-    'SUB_VENDOR',
-  ),
-  RatingControllers.getRatingSummary,
-);
-
 // get single rating
 router.get(
   '/:ratingId',
@@ -56,6 +42,20 @@ router.get(
     'CUSTOMER',
   ),
   RatingControllers.getSingleRating,
+);
+
+// get rating summary
+router.get(
+  '/get-rating-summary',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUB_VENDOR',
+  ),
+  RatingControllers.getRatingSummary,
 );
 
 export const RatingRoutes = router;

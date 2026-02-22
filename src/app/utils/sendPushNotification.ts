@@ -10,7 +10,7 @@ export type TPushNotificationPayload = {
   title: string;
   body: string;
   data?: Record<string, string>;
-  sound?: 'notification' | 'default';
+  sound?: string;
   channelId?: 'order_notification' | 'default';
 };
 
@@ -29,10 +29,7 @@ export const sendPushNotification = async (
       android: {
         priority: 'high' as const,
         notification: {
-          sound:
-            payload.sound || payload.channelId === 'order_notification'
-              ? 'notification'
-              : 'default',
+          sound: payload.sound || 'default',
           channelId: payload.channelId || 'default',
           priority: 'high' as const,
         },

@@ -57,21 +57,8 @@ const getAdminDashboardAnalytics = async () => {
     { $sort: { total: -1 } },
     { $limit: 5 },
     {
-      $lookup: {
-        from: 'productcategories',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'categoryDetails',
-      },
-    },
-    { $unwind: { path: '$categoryDetails', preserveNullAndEmptyArrays: true } },
-    {
       $project: {
-        _id: 0,
-        categoryId: '$_id',
-        name: { $ifNull: ['$categoryDetails.name', 'Unknown'] },
-        icon: { $ifNull: ['$categoryDetails.icon', ''] },
-        slug: { $ifNull: ['$categoryDetails.slug', ''] },
+        name: '$_id',
         percentage: {
           $round: [
             { $multiply: [{ $divide: ['$total', totalOrders] }, 100] },
@@ -223,21 +210,6 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
             },
           },
 
-          {
-            $lookup: {
-              from: 'productcategories',
-              localField: '_id',
-              foreignField: '_id',
-              as: 'categoryDetails',
-            },
-          },
-          {
-            $unwind: {
-              path: '$categoryDetails',
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
           // Calculate TOTAL of all category orders
           {
             $group: {
@@ -252,12 +224,7 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
           {
             $project: {
               _id: 0,
-              categoryId: '$categories._id',
-              name: {
-                $ifNull: ['$categories.categoryDetails.name', 'Unknown'],
-              },
-              icon: { $ifNull: ['$categories.categoryDetails.icon', ''] },
-              slug: { $ifNull: ['$categories.categoryDetails.slug', ''] },
+              name: '$categories._id',
               totalOrders: '$categories.orderCount',
               percentage: {
                 $round: [
@@ -575,7 +542,7 @@ const getPartnerPerformanceAnalytics = async (
       topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
       avgDeliveryTime: `${avgDeliveryTimeMin} min`,
       avgAcceptanceRate: `${avgAcceptanceRate}%`,
-      totalEarnings: `€${roundTo4(stats.totalEarnings)}`,
+      totalEarnings: `€${stats.totalEarnings.toFixed(2)}`,
     },
     table: {
       data: tableData.map((partner: TDeliveryPartner) => {

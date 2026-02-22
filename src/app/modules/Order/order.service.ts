@@ -150,14 +150,7 @@ const createOrderAfterReduinqPayment = async (
             },
           },
         },
-        $set: {
-          discount: 0,
-          totalItems: 0,
-          totalPrice: 0,
-          taxAmount: 0,
-          totalProductDiscount: 0,
-          subtotal: 0,
-        },
+        $set: { discount: 0, totalItems: 0, totalPrice: 0 },
       },
       { session },
     );
@@ -487,8 +480,6 @@ const updateOrderStatusByVendor = async (
     // If ACCEPTED → set pickup address from vendor location and reduce product stock
     // ---------------------------------------------------------
     if (action.type === 'ACCEPTED') {
-      const currentSessionLocation =
-        currentUser?.currentSessionLocation?.coordinates;
       if (!order.pickupAddress) {
         order.pickupAddress = {
           street: currentUser?.businessLocation?.street || '',
@@ -496,9 +487,9 @@ const updateOrderStatusByVendor = async (
           state: currentUser?.businessLocation?.state || '',
           country: currentUser?.businessLocation?.country || '',
           postalCode: currentUser?.businessLocation?.postalCode || '',
-          longitude: currentSessionLocation?.[0] || 0,
-          latitude: currentSessionLocation?.[1] || 0,
-          geoAccuracy: currentUser?.currentSessionLocation?.geoAccuracy || 0,
+          longitude: currentUser?.businessLocation?.longitude || 0,
+          latitude: currentUser?.businessLocation?.latitude || 0,
+          geoAccuracy: currentUser?.businessLocation?.geoAccuracy,
           detailedAddress: currentUser?.businessLocation?.detailedAddress || '',
         };
       }
@@ -809,7 +800,7 @@ const broadcastOrderToPartners = async (
     const notificationPayload = {
       title: 'New Order Available',
       body: 'A new order is available for you.',
-      data: { orderId: order.orderId, orderStatus: ORDER_STATUS.DISPATCHING },
+      data: { orderId: order.orderId },
     };
     NotificationService.sendToUser(
       partnerId,

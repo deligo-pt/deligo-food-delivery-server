@@ -65,12 +65,9 @@ const fleetManagerUpdateValidationSchema = z.object({
 // ----------------------------------------------------
 const fleetManagerDocImageValidationSchema = z.object({
   body: z.object({
-    docImageTitle: z.enum(
-      ['idProofFront', 'idProofBack', 'businessLicense', 'myPhoto'],
-      {
-        required_error: 'Document title is required',
-      },
-    ),
+    docImageTitle: z.enum(['idProofFront', 'idProofBack', 'businessLicense'], {
+      required_error: 'Document title is required',
+    }),
   }),
 });
 
