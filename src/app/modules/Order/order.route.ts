@@ -3,22 +3,24 @@ import auth from '../../middlewares/auth';
 import { OrderControllers } from './order.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { OrderValidation } from './order.validation';
+import { multerUpload } from '../../config/multer.config';
+import { parseBody } from '../../middlewares/bodyParser';
 
 const router = Router();
 
 // Create order after stripe payment
-router.post(
-  '/create-order',
-  auth('CUSTOMER'),
-  OrderControllers.createOrderAfterPayment,
-);
-
-// Create order after reduniq payment
 // router.post(
 //   '/create-order',
 //   auth('CUSTOMER'),
-//   OrderControllers.createOrderAfterReduniqPayment,
+//   OrderControllers.createOrderAfterPayment,
 // );
+
+// Create order after reduniq payment
+router.post(
+  '/create-order',
+  auth('CUSTOMER'),
+  OrderControllers.createOrderAfterReduniqPayment,
+);
 
 // Accept / Reject / Preparing / Ready for pickup/ Cancel order
 router.patch(
@@ -54,6 +56,8 @@ router.patch(
 router.patch(
   '/:orderId/update-order-status',
   auth('DELIVERY_PARTNER'),
+  multerUpload.single('file'),
+  parseBody,
   validateRequest(
     OrderValidation.updateOrderStatusByDeliveryPartnerValidationSchema,
   ),
@@ -80,6 +84,13 @@ router.get(
   '/:orderId',
   auth('CUSTOMER', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER'),
   OrderControllers.getSingleOrder,
+);
+
+// download invoice pdf from pasta digital
+router.get(
+  '/:orderId/download-invoice-pdf',
+  auth('CUSTOMER', 'VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  OrderControllers.downloadInvoicePdfFromPd,
 );
 
 export const OrderRoutes = router;

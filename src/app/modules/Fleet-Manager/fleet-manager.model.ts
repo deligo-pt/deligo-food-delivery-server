@@ -143,7 +143,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       idProofFront: { type: String, default: '' },
       idProofBack: { type: String, default: '' },
       businessLicense: { type: String, default: '' },
-      myPhoto: { type: String, default: '' },
     },
 
     // ------------------------------------------

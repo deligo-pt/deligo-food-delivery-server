@@ -11,6 +11,7 @@ export default {
     frontend_url_admin: process.env.FRONTEND_URL_ADMIN,
     frontend_url_admin_admin: process.env.FRONTEND_URL_ADMIN_WITH_DOMAIN,
     frontend_url_fleet_manager: process.env.FRONTEND_URL_FLEET_MANAGER,
+    frontend_url_test_payment: process.env.FRONTEND_URL_TEST_PAYMENT,
   },
   bulkgate: {
     bulkgate_send_api_url: process.env.BULKGATE_SEND_API_URL,
@@ -49,11 +50,16 @@ export default {
   },
   firebase_service_account: process.env.FIREBASE_SERVICE_ACCOUNT,
   redis: {
-    upstash_redis_rest_url: process.env.UPSTASH_REDIS_REST_URL,
-    upstash_redis_rest_token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    local_url: process.env.REDIS_LOCAL_URL,
   },
-  sage: {
-    api_url: process.env.SAGE_API_URL,
-    access_key: process.env.SAGE_ACCESS_KEY,
+  pastaDigital: {
+    api_url: process.env.PD_API_URL,
+    email: process.env.PD_EMAIL,
+    password: process.env.PD_PASSWORD,
+  },
+  reduniq: {
+    api_url: process.env.REDUNIQ_API_URL,
+    username: process.env.REDUNIQ_USERNAME,
+    password: process.env.REDUNIQ_PASSWORD,
   },
 };

@@ -23,7 +23,6 @@ import { AddOnsRoutes } from '../modules/Add-Ons/addOns.route';
 import { sosRoutes } from '../modules/Sos/sos.route';
 import { TaxRoutes } from '../modules/Tax/tax.route';
 import { SponsorshipsRoutes } from '../modules/Sponsorships/sponsorships.route';
-import { ContactRoutes } from '../modules/ContactUs/contact.route';
 import { TestRoutes } from '../modules/Test/test.route';
 
 const router = express.Router();
@@ -125,10 +124,7 @@ const moduleRoutes = [
     path: '/sponsorships',
     route: SponsorshipsRoutes,
   },
-  {
-    path: '/contact-us',
-    route: ContactRoutes,
-  },
+
   {
     path: '/test',
     route: TestRoutes,

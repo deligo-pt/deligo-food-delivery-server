@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { model, Schema } from 'mongoose';
 import { TProduct } from './product.interface';
+import { roundTo4 } from '../../utils/mathProvider';
 
 const variationSchema = new Schema({
   name: { type: String, required: true }, // e.g., "Size"
@@ -20,6 +21,7 @@ const variationSchema = new Schema({
 const productSchema = new Schema<TProduct>(
   {
     productId: { type: String, required: true, unique: true },
+    pdItemId: { type: String, default: null },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     sku: { type: String, required: true, unique: true },
     name: { type: String, required: true },
@@ -100,7 +102,7 @@ productSchema.virtual('pricing.discountedBasePrice').get(function () {
   const price = this.pricing?.price || 0;
   const discountPercent = this.pricing?.discount || 0;
   const discountedBase = price - (price * discountPercent) / 100;
-  return Number(discountedBase.toFixed(2));
+  return roundTo4(discountedBase);
 });
 
 productSchema.virtual('pricing.taxAmount').get(function () {
@@ -109,7 +111,7 @@ productSchema.virtual('pricing.taxAmount').get(function () {
     this.pricing.discount || 0,
   );
   const tax = netPriceAfterDiscount * (this.pricing.taxRate / 100);
-  return Number(tax.toFixed(2));
+  return roundTo4(tax);
 });
 
 productSchema.virtual('pricing.finalPrice').get(function () {
@@ -118,7 +120,7 @@ productSchema.virtual('pricing.finalPrice').get(function () {
     this.pricing.discount || 0,
   );
   const tax = netPriceAfterDiscount * (this.pricing.taxRate / 100);
-  return Number((netPriceAfterDiscount + tax).toFixed(2));
+  return roundTo4(netPriceAfterDiscount + tax);
 });
 
 export const Product = model<TProduct>('Product', productSchema);

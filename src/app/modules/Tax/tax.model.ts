@@ -10,7 +10,7 @@ const taxSchema = new Schema<TTax>(
     },
     taxCode: {
       type: String,
-      required: [true, 'Sage Tax Code is required'],
+      required: [true, 'Tax Code is required'],
       enum: ['NOR', 'INT', 'RED', 'ISE'],
       uppercase: true,
     },

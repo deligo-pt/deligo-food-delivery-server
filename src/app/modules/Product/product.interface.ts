@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 export type TProduct = {
   _id: mongoose.Types.ObjectId;
   productId: string;
+  pdItemId?: string;
   vendorId: mongoose.Types.ObjectId;
   sku: string;
   name: string;
@@ -23,6 +24,7 @@ export type TProduct = {
       label: string;
       price: number;
       sku: string;
+      pdItemId?: string;
       stockQuantity: number;
       totalAddedQuantity: number;
       isOutOfStock: boolean;

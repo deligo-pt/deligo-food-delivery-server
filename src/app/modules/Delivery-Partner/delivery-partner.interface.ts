@@ -168,7 +168,6 @@ export type TDeliveryPartner = {
     criminalRecordCertificate?: string;
     activity?: string;
     insurancePolicy?: string;
-    myPhoto?: string;
   };
 
   // -------------------------------------------------

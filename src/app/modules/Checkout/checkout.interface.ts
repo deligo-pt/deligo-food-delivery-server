@@ -51,39 +51,47 @@ export type TCheckoutSummary = {
   items: TOrderItemSnapshot[];
   totalItems: number;
 
-  totalPrice: number;
-  taxAmount: number;
+  orderCalculation: {
+    totalOriginalPrice: number;
+    totalProductDiscount: number;
+    totalOfferDiscount: number;
+    taxableAmount: number;
+    totalTaxAmount: number;
+  };
 
-  deliveryCharge: number;
-  deliveryVatRate: number;
-  deliveryVatAmount: number;
-  totalDeliveryCharge: number;
+  delivery: {
+    charge: number;
+    vatRate: number;
+    vatAmount: number;
+    totalDeliveryCharge: number;
+    distance: number;
+    estimatedTime: string;
+  };
 
-  deliGoCommissionRate: number;
-  deliGoCommission: number;
-  commissionVat: number; // €0.35 (Total VAT collected from vendor)
-  deliGoCommissionNet: number; // €1.50 (Total Net Commission)
-  totalVendorDeduction: number;
+  payoutSummary: {
+    grandTotal: number;
+    deliGoCommission: {
+      rate: number;
+      amount: number;
+      vatAmount: number;
+      totalDeduction: number;
+    };
+    fleet: {
+      rate: number;
+      fee: number;
+    };
+    vendorNetPayout: number;
+    riderNetEarnings: number;
+  };
 
-  vendorNetPayout: number;
+  offer: {
+    isApplied: boolean;
+    offerApplied?: TAppliedOfferSnapshot;
+  };
 
-  fleetCommissionRate: number;
-  fleetFee: number; // €0.08 (4% of Net Delivery)
-  riderNetEarnings: number; // €2.38 (Payout to partner after fleet fee)
-
-  offerDiscount: number;
-  totalProductDiscount: number;
-  subtotal: number;
-
-  promoType: 'OFFER' | 'NONE';
-  offerId?: mongoose.Types.ObjectId | null;
-
-  offerApplied?: TAppliedOfferSnapshot;
   deliveryAddress: TAddress;
-  deliveryDistance: number;
-  estimatedDeliveryTime: string;
 
-  paymentMethod?: 'CARD' | 'MOBILE';
+  paymentMethod?: 'CARD' | 'MB_WAY' | 'APPLE_PAY' | 'OTHER';
   paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
   transactionId?: string; // Stripe PaymentIntent ID
 
@@ -93,6 +101,57 @@ export type TCheckoutSummary = {
   createdAt?: Date;
   updatedAt?: Date;
 };
+// export type TCheckoutSummary = {
+//   customerId: mongoose.Types.ObjectId;
+//   vendorId: mongoose.Types.ObjectId;
+//   customerEmail?: string; // will check is it need?
+//   contactNumber?: string; // will check is it need?
+
+//   items: TOrderItemSnapshot[];
+//   totalItems: number;
+
+//   totalPrice: number;
+//   taxAmount: number;
+
+//   deliveryCharge: number;
+//   deliveryVatRate: number;
+//   deliveryVatAmount: number;
+//   totalDeliveryCharge: number;
+
+//   deliGoCommissionRate: number;
+//   deliGoCommission: number;
+//   commissionVat: number; // €0.35 (Total VAT collected from vendor)
+//   deliGoCommissionNet: number; // €1.50 (Total Net Commission)
+//   totalVendorDeduction: number;
+
+//   vendorNetPayout: number;
+
+//   fleetCommissionRate: number;
+//   fleetFee: number; // €0.08 (4% of Net Delivery)
+//   riderNetEarnings: number; // €2.38 (Payout to partner after fleet fee)
+
+//   offerDiscount: number;
+//   totalProductDiscount: number;
+//   subtotal: number;
+
+//   promoType: 'OFFER' | 'NONE';
+//   offerId?: mongoose.Types.ObjectId | null;
+
+//   offerApplied?: TAppliedOfferSnapshot;
+//   deliveryAddress: TAddress;
+//   deliveryDistance: number;
+//   estimatedDeliveryTime: string;
+
+//   paymentMethod?: 'CARD' | 'MOBILE';
+//   paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
+//   transactionId?: string; // Stripe PaymentIntent ID
+
+//   isConvertedToOrder?: boolean;
+//   orderId?: mongoose.Types.ObjectId; // Linked Order ID
+
+//   createdAt?: Date;
+//   updatedAt?: Date;
+// };
 
 export type TCheckoutPayload = {
   useCart?: boolean;

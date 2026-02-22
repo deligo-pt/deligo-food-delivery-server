@@ -238,7 +238,6 @@ const deliveryPartnerSchema = new Schema<
       criminalRecordCertificate: { type: String, default: '' },
       activity: { type: String, default: '' },
       insurancePolicy: { type: String, default: '' },
-      myPhoto: { type: String, default: '' },
     },
 
     //-------------------------------------------------

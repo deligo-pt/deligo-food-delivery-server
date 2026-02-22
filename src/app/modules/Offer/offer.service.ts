@@ -8,6 +8,8 @@ import { Offer } from './offer.model';
 import { Product } from '../Product/product.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import mongoose from 'mongoose';
+import { roundTo4 } from '../../utils/mathProvider';
+import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
@@ -343,12 +345,247 @@ const toggleOfferStatus = async (id: string, currentUser: AuthUser) => {
 };
 
 // validate and apply offer service
+// const validateAndApplyOffer = async (
+//   checkoutId: string,
+//   offerIdentifier: string,
+//   currentUser: AuthUser,
+// ) => {
+//   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
+//   if (!checkoutData) {
+//     throw new AppError(httpStatus.NOT_FOUND, 'Checkout session not found');
+//   }
+
+//   if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
+//     throw new AppError(
+//       httpStatus.FORBIDDEN,
+//       "This checkout session doesn't belong to you",
+//     );
+//   }
+
+//   if (checkoutData.isConvertedToOrder) {
+//     throw new AppError(
+//       httpStatus.BAD_REQUEST,
+//       'Cannot apply offer to completed checkout',
+//     );
+//   }
+
+//   const { vendorId, orderCalculation, delivery, items } = checkoutData;
+//   const taxableAmount = orderCalculation.taxableAmount;
+//   const currentTaxAmount = orderCalculation.totalTaxAmount;
+//   const deliveryChargeBase = delivery.charge;
+//   const now = new Date();
+
+//   const baseQuery = {
+//     isActive: true,
+//     isDeleted: false,
+//     validFrom: { $lte: now },
+//     expiresAt: { $gte: now },
+//     $or: [{ vendorId: vendorId }, { vendorId: null }],
+//   };
+
+//   let offer = null;
+//   if (offerIdentifier && offerIdentifier.trim() !== '') {
+//     const isObjectId = mongoose.Types.ObjectId.isValid(offerIdentifier);
+
+//     if (isObjectId) {
+//       offer = await Offer.findOne({ ...baseQuery, _id: offerIdentifier });
+//     } else {
+//       offer = await Offer.findOne({
+//         ...baseQuery,
+//         code: offerIdentifier.toUpperCase(),
+//       });
+//     }
+
+//     if (!offer)
+//       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer or promo code');
+//   }
+
+//   if (!offer) {
+//     return await CheckoutSummary.findByIdAndUpdate(
+//       checkoutId,
+//       {
+//         $set: {
+//           'orderCalculation.totalOfferDiscount': 0,
+//           'offer.isApplied': false,
+//           'offer.offerApplied': null,
+//         },
+//       },
+//       { new: true },
+//     ).lean();
+//   }
+
+//   if (offer.maxUsageCount && (offer.usageCount || 0) >= offer.maxUsageCount) {
+//     throw new AppError(httpStatus.BAD_REQUEST, 'Offer limit reached');
+//   }
+//   if (offer.minOrderAmount && taxableAmount < offer.minOrderAmount) {
+//     throw new AppError(
+//       httpStatus.BAD_REQUEST,
+//       `Min order €${offer.minOrderAmount} required`,
+//     );
+//   }
+
+//   let totalOfferDiscount = 0;
+//   let finalDeliveryChargeNet = deliveryChargeBase;
+//   let bogoSnapshot = null;
+
+//   switch (offer.offerType) {
+//     case 'PERCENT': {
+//       const calculated = (taxableAmount * (offer.discountValue || 0)) / 100;
+//       totalOfferDiscount = offer.maxDiscountAmount
+//         ? Math.min(calculated, offer.maxDiscountAmount)
+//         : calculated;
+//       break;
+//     }
+//     case 'FLAT': {
+//       totalOfferDiscount = offer.discountValue || 0;
+//       break;
+//     }
+//     case 'FREE_DELIVERY': {
+//       finalDeliveryChargeNet = 0;
+//       break;
+//     }
+//     case 'BOGO': {
+//       const bogo = offer.bogo!;
+//       const targetItem = items.find(
+//         (i: any) => i.productId?.toString() === bogo.productId.toString(),
+//       );
+//       if (targetItem) {
+//         const freeQty =
+//           Math.floor(
+//             targetItem.itemSummary.quantity / (bogo.buyQty + bogo.getQty),
+//           ) * bogo.getQty;
+//         totalOfferDiscount =
+//           freeQty * targetItem.productPricing.priceAfterProductDiscount;
+//         bogoSnapshot = {
+//           buyQty: bogo.buyQty,
+//           getQty: bogo.getQty,
+//           productId: bogo.productId,
+//           productName: targetItem.name,
+//         };
+//       }
+//       break;
+//     }
+//   }
+
+//   totalOfferDiscount = roundTo4(Math.min(totalOfferDiscount, taxableAmount));
+//   const newTaxableAmount = roundTo4(taxableAmount - totalOfferDiscount);
+//   const newTaxAmount =
+//     taxableAmount > 0
+//       ? roundTo4((currentTaxAmount / taxableAmount) * newTaxableAmount)
+//       : 0;
+
+//   const globalSettings = await GlobalSettingsService.getGlobalSettings();
+//   const deliveryVatRate = globalSettings?.deliveryVatRate || 0;
+//   const newDeliveryVat = roundTo4(
+//     finalDeliveryChargeNet * (deliveryVatRate / 100),
+//   );
+//   const totalDeliveryCharge = roundTo4(finalDeliveryChargeNet + newDeliveryVat);
+
+//   const commRate = globalSettings?.platformCommissionPercent || 0;
+//   const commVatRate = globalSettings?.platformCommissionVatRate || 0;
+//   const newCommAmt = roundTo4(newTaxableAmount * (commRate / 100));
+//   const newCommVat = roundTo4(newCommAmt * (commVatRate / 100));
+//   const totalDeduction = roundTo4(newCommAmt + newCommVat);
+
+//   const vendorNetPayout = roundTo4(
+//     newTaxableAmount + newTaxAmount - totalDeduction,
+//   );
+//   const grandTotal = roundTo4(
+//     newTaxableAmount + newTaxAmount + totalDeliveryCharge,
+//   );
+
+//   const fleetRate = globalSettings?.fleetManagerCommissionPercent || 0;
+//   const fleetFee = roundTo4(finalDeliveryChargeNet * (fleetRate / 100));
+//   const riderNetEarnings = roundTo4(totalDeliveryCharge - fleetFee);
+
+//   const updatedItems = items.map((item: any) => {
+//     const discountRatio =
+//       taxableAmount > 0 ? totalOfferDiscount / taxableAmount : 0;
+//     const itemOfferDiscount = roundTo4(
+//       item.itemSummary.totalBeforeTax * discountRatio,
+//     );
+//     const newItemTaxable = roundTo4(
+//       item.itemSummary.totalBeforeTax - itemOfferDiscount,
+//     );
+//     const newItemTax =
+//       item.itemSummary.totalBeforeTax > 0
+//         ? roundTo4(
+//             (item.itemSummary.totalTaxAmount /
+//               item.itemSummary.totalBeforeTax) *
+//               newItemTaxable,
+//           )
+//         : 0;
+
+//     const itemComm = roundTo4(
+//       newItemTaxable * (item.commission.deliGoCommissionRate / 100),
+//     );
+//     const itemCommVat = roundTo4(
+//       itemComm * (item.commission.deliGoCommissionVatRate / 100),
+//     );
+
+//     return {
+//       ...item,
+//       itemSummary: {
+//         ...item.itemSummary,
+//         totalPromoDiscount: itemOfferDiscount,
+//         totalBeforeTax: newItemTaxable,
+//         totalTaxAmount: newItemTax,
+//         grandTotal: roundTo4(newItemTaxable + newItemTax),
+//       },
+//       commission: {
+//         ...item.commission,
+//         deliGoCommissionAmount: itemComm,
+//         deliGoCommissionVatAmount: itemCommVat,
+//       },
+//       vendorNetEarnings: roundTo4(
+//         newItemTaxable + newItemTax - (itemComm + itemCommVat),
+//       ),
+//     };
+//   });
+
+//   const updatePayload = {
+//     items: updatedItems,
+//     'orderCalculation.taxableAmount': newTaxableAmount,
+//     'orderCalculation.totalTaxAmount': newTaxAmount,
+//     'orderCalculation.totalOfferDiscount': totalOfferDiscount,
+
+//     'delivery.charge': finalDeliveryChargeNet,
+//     'delivery.vatAmount': newDeliveryVat,
+//     'delivery.totalDeliveryCharge': totalDeliveryCharge,
+
+//     'payoutSummary.grandTotal': grandTotal,
+//     'payoutSummary.deliGoCommission.amount': newCommAmt,
+//     'payoutSummary.deliGoCommission.vatAmount': newCommVat,
+//     'payoutSummary.deliGoCommission.totalDeduction': totalDeduction,
+//     'payoutSummary.vendorNetPayout': vendorNetPayout,
+//     'payoutSummary.riderNetEarnings': riderNetEarnings,
+//     'payoutSummary.fleet.fee': fleetFee,
+
+//     'offer.isApplied': true,
+//     'offer.offerApplied': {
+//       promoId: offer._id,
+//       title: offer.title,
+//       code: offer.code,
+//       offerType: offer.offerType,
+//       discountValue: offer.discountValue,
+//       maxDiscountAmount: offer.maxDiscountAmount,
+//       bogoSnapshot: bogoSnapshot,
+//     },
+//   };
+
+//   return await CheckoutSummary.findByIdAndUpdate(
+//     checkoutId,
+//     { $set: updatePayload },
+//     { new: true, runValidators: true },
+//   ).lean();
+// };
+
 const validateAndApplyOffer = async (
   checkoutId: string,
   offerIdentifier: string,
   currentUser: AuthUser,
 ) => {
-  const checkoutData = await CheckoutSummary.findById(checkoutId);
+  const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData) {
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout session not found');
   }
@@ -367,14 +604,14 @@ const validateAndApplyOffer = async (
     );
   }
 
-  const {
-    vendorId,
-    totalPrice,
-    deliveryCharge,
-    items,
-    taxAmount,
-    deliveryVatAmount,
-  } = checkoutData;
+  const { vendorId, items, delivery } = checkoutData;
+
+  const originalTaxableAmount = roundTo4(
+    checkoutData.orderCalculation.taxableAmount +
+      (checkoutData.orderCalculation.totalOfferDiscount || 0),
+  );
+
+  const deliveryChargeBase = delivery.charge;
   const now = new Date();
 
   const baseQuery = {
@@ -388,75 +625,53 @@ const validateAndApplyOffer = async (
   let offer = null;
   if (offerIdentifier && offerIdentifier.trim() !== '') {
     const isObjectId = mongoose.Types.ObjectId.isValid(offerIdentifier);
-
-    if (isObjectId) {
-      offer = await Offer.findOne({ ...baseQuery, _id: offerIdentifier });
-    } else {
-      offer = await Offer.findOne({
-        ...baseQuery,
-        code: offerIdentifier.toUpperCase(),
-      });
-    }
+    offer = isObjectId
+      ? await Offer.findOne({ ...baseQuery, _id: offerIdentifier })
+      : await Offer.findOne({
+          ...baseQuery,
+          code: offerIdentifier.toUpperCase(),
+        });
 
     if (!offer)
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer or promo code');
   }
 
-  if (offer) {
-    if (offer.maxUsageCount && (offer.usageCount || 0) >= offer.maxUsageCount) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Offer limit reached');
-    }
-
-    if (offer.minOrderAmount && totalPrice < offer.minOrderAmount) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Min order €${offer.minOrderAmount} required`,
-      );
-    }
-  }
-
   if (!offer) {
-    const resetSubtotal = Number(
-      (
-        totalPrice +
-        taxAmount +
-        deliveryCharge +
-        (deliveryVatAmount || 0)
-      ).toFixed(2),
-    );
     return await CheckoutSummary.findByIdAndUpdate(
       checkoutId,
       {
         $set: {
-          offerDiscount: 0,
-          offerId: null,
-          promoType: 'NONE',
-          offerApplied: null,
-          subtotal: resetSubtotal,
+          'orderCalculation.totalOfferDiscount': 0,
+          'offer.isApplied': false,
+          'offer.offerApplied': null,
         },
       },
       { new: true },
     ).lean();
   }
 
-  let discount = 0;
-  let finalDeliveryCharge = deliveryCharge;
+  let totalOfferDiscount = 0;
+  let finalDeliveryChargeNet = deliveryChargeBase;
   let bogoSnapshot = null;
 
   switch (offer.offerType) {
     case 'PERCENT': {
-      const calculated = (totalPrice * (offer.discountValue || 0)) / 100;
-      discount = offer.maxDiscountAmount
+      const calculated =
+        (originalTaxableAmount * (offer.discountValue || 0)) / 100;
+      totalOfferDiscount = offer.maxDiscountAmount
         ? Math.min(calculated, offer.maxDiscountAmount)
         : calculated;
       break;
     }
     case 'FLAT': {
-      discount = offer.discountValue || 0;
+      totalOfferDiscount = Math.min(
+        offer.discountValue || 0,
+        originalTaxableAmount,
+      );
       break;
     }
     case 'FREE_DELIVERY': {
-      finalDeliveryCharge = 0;
+      finalDeliveryChargeNet = 0;
       break;
     }
     case 'BOGO': {
@@ -466,9 +681,11 @@ const validateAndApplyOffer = async (
       );
       if (targetItem) {
         const freeQty =
-          Math.floor(targetItem.quantity / (bogo.buyQty + bogo.getQty)) *
-          bogo.getQty;
-        discount = freeQty * targetItem.price;
+          Math.floor(
+            targetItem.itemSummary.quantity / (bogo.buyQty + bogo.getQty),
+          ) * bogo.getQty;
+        totalOfferDiscount =
+          freeQty * targetItem.productPricing.priceAfterProductDiscount;
         bogoSnapshot = {
           buyQty: bogo.buyQty,
           getQty: bogo.getQty,
@@ -480,43 +697,182 @@ const validateAndApplyOffer = async (
     }
   }
 
-  discount = Number(Math.min(discount, totalPrice).toFixed(2));
+  totalOfferDiscount = roundTo4(totalOfferDiscount);
+  const discountRatio =
+    originalTaxableAmount > 0 ? totalOfferDiscount / originalTaxableAmount : 0;
+  let distributedDiscountSum = 0;
 
-  const newSubtotal = Number(
-    (
-      totalPrice -
-      discount +
-      taxAmount +
-      finalDeliveryCharge +
-      (deliveryVatAmount || 0)
-    ).toFixed(2),
+  const updatedItems = items.map((item: any, index: number) => {
+    const itemOriginalBeforeTax = roundTo4(
+      item.itemSummary.totalBeforeTax +
+        (item.itemSummary.totalPromoDiscount || 0),
+    );
+
+    let itemOfferDiscount = roundTo4(itemOriginalBeforeTax * discountRatio);
+    if (index === items.length - 1) {
+      itemOfferDiscount = roundTo4(totalOfferDiscount - distributedDiscountSum);
+    }
+    distributedDiscountSum += itemOfferDiscount;
+
+    const itemInternalDiscountRatio =
+      itemOriginalBeforeTax > 0 ? itemOfferDiscount / itemOriginalBeforeTax : 0;
+
+    const productBase = item.productPricing.priceAfterProductDiscount;
+    const productPromoDisc = roundTo4(productBase * itemInternalDiscountRatio);
+    const newProductUnitPrice = roundTo4(productBase - productPromoDisc);
+    const newProductTax = roundTo4(
+      newProductUnitPrice * (item.productPricing.taxRate / 100),
+    );
+
+    const updatedAddons = item.addons.map((addon: any) => {
+      const addonPromoDisc = roundTo4(
+        addon.originalPrice * itemInternalDiscountRatio,
+      );
+      const newAddonUnitPrice = roundTo4(addon.originalPrice - addonPromoDisc);
+      return {
+        ...addon,
+        promoDiscountAmount: addonPromoDisc,
+        unitPrice: newAddonUnitPrice,
+        lineTotal: newAddonUnitPrice * addon.quantity,
+        taxAmount: roundTo4(newAddonUnitPrice * (addon.taxRate / 100)),
+      };
+    });
+
+    const newAddonsTaxTotal = updatedAddons.reduce(
+      (sum: number, a: any) => sum + a.taxAmount * a.quantity,
+      0,
+    );
+    const newAddonsPriceTotal = updatedAddons.reduce(
+      (sum: number, a: any) => sum + a.unitPrice * a.quantity,
+      0,
+    );
+
+    const newItemTaxableTotal = roundTo4(
+      (newProductUnitPrice + newAddonsPriceTotal) * item.itemSummary.quantity,
+    );
+    const newItemTaxTotal = roundTo4(
+      (newProductTax + newAddonsTaxTotal) * item.itemSummary.quantity,
+    );
+
+    const itemComm = roundTo4(
+      newItemTaxableTotal * (item.commission.deliGoCommissionRate / 100),
+    );
+    const itemCommVat = roundTo4(
+      itemComm * (item.commission.deliGoCommissionVatRate / 100),
+    );
+
+    return {
+      ...item,
+      addons: updatedAddons,
+      productPricing: {
+        ...item.productPricing,
+        promoDiscountAmount: productPromoDisc,
+        unitPrice: newProductUnitPrice,
+        lineTotal: newProductUnitPrice,
+        taxAmount: newProductTax,
+      },
+      itemSummary: {
+        ...item.itemSummary,
+        totalPromoDiscount: itemOfferDiscount,
+        totalBeforeTax: newItemTaxableTotal,
+        totalTaxAmount: newItemTaxTotal,
+        grandTotal: roundTo4(newItemTaxableTotal + newItemTaxTotal),
+      },
+      commission: {
+        ...item.commission,
+        deliGoCommissionAmount: itemComm,
+        deliGoCommissionVatAmount: itemCommVat,
+      },
+      vendorNetEarnings: roundTo4(
+        newItemTaxableTotal + newItemTaxTotal - (itemComm + itemCommVat),
+      ),
+    };
+  });
+
+  const globalSettings = await GlobalSettingsService.getGlobalSettings();
+  const finalGlobalTaxableAmount = updatedItems.reduce(
+    (sum, i) => sum + i.itemSummary.totalBeforeTax,
+    0,
+  );
+  const finalGlobalTaxAmount = updatedItems.reduce(
+    (sum, i) => sum + i.itemSummary.totalTaxAmount,
+    0,
   );
 
-  const offerUpdateData = {
-    offerDiscount: discount,
-    deliveryCharge: finalDeliveryCharge,
-    subtotal: newSubtotal,
-    offerId: offer._id,
-    promoType: 'OFFER',
-    offerApplied: {
-      promoId: offer._id,
-      title: offer.title,
-      promoType: 'OFFER',
-      offerType: offer.offerType,
-      discountValue: offer.discountValue,
-      maxDiscountAmount: offer.maxDiscountAmount,
-      code: offer.code,
-      bogoSnapshot: bogoSnapshot,
+  const newDeliveryVat = roundTo4(
+    finalDeliveryChargeNet * ((globalSettings?.deliveryVatRate || 0) / 100),
+  );
+  const totalDeliveryCharge = roundTo4(finalDeliveryChargeNet + newDeliveryVat);
+
+  const totalCommAmt = updatedItems.reduce(
+    (sum, i) => sum + i.commission.deliGoCommissionAmount,
+    0,
+  );
+  const totalCommVat = updatedItems.reduce(
+    (sum, i) => sum + i.commission.deliGoCommissionVatAmount,
+    0,
+  );
+  const totalDeduction = roundTo4(totalCommAmt + totalCommVat);
+
+  const grandTotal = roundTo4(
+    finalGlobalTaxableAmount + finalGlobalTaxAmount + totalDeliveryCharge,
+  );
+  const fleetFee = roundTo4(
+    finalDeliveryChargeNet *
+      ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
+  );
+
+  const updatePayload = {
+    items: updatedItems,
+    orderCalculation: {
+      ...checkoutData.orderCalculation,
+      taxableAmount: finalGlobalTaxableAmount,
+      totalTaxAmount: finalGlobalTaxAmount,
+      totalOfferDiscount: totalOfferDiscount,
+    },
+    delivery: {
+      ...checkoutData.delivery,
+      charge: finalDeliveryChargeNet,
+      vatAmount: newDeliveryVat,
+      totalDeliveryCharge,
+    },
+    payoutSummary: {
+      ...checkoutData.payoutSummary,
+      grandTotal,
+      deliGoCommission: {
+        rate: globalSettings?.platformCommissionPercent || 0,
+        amount: totalCommAmt,
+        vatAmount: totalCommVat,
+        totalDeduction,
+      },
+      vendorNetPayout: roundTo4(
+        finalGlobalTaxableAmount + finalGlobalTaxAmount - totalDeduction,
+      ),
+      riderNetEarnings: roundTo4(totalDeliveryCharge - fleetFee),
+      fleet: {
+        rate: globalSettings?.fleetManagerCommissionPercent || 0,
+        fee: fleetFee,
+      },
+    },
+    offer: {
+      isApplied: true,
+      offerApplied: {
+        promoId: offer._id,
+        title: offer.title,
+        code: offer.code,
+        offerType: offer.offerType,
+        discountValue: offer.discountValue,
+        maxDiscountAmount: offer.maxDiscountAmount,
+        bogoSnapshot,
+      },
     },
   };
 
-  const result = await CheckoutSummary.findByIdAndUpdate(
+  return await CheckoutSummary.findByIdAndUpdate(
     checkoutId,
-    { $set: offerUpdateData },
+    { $set: updatePayload },
     { new: true, runValidators: true },
   ).lean();
-
-  return result;
 };
 
 // get all offers service

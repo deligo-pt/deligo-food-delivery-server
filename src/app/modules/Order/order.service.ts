@@ -25,8 +25,10 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { getIO } from '../../lib/Socket';
 import { Transaction, Wallet } from '../Payment/payment.model';
+import { OrderPdService } from '../PdInvoice/orderPd.service';
 import axios from 'axios';
 import { stripe } from '../Payment/payment.service';
+import config from '../../config';
 
 // Create Order after reduinq payment
 const createOrderAfterReduinqPayment = async (
@@ -49,13 +51,13 @@ const createOrderAfterReduinqPayment = async (
   const verifyPayload = {
     method: 'getResult',
     api: {
-      username: process.env.REDUNIQ_USERNAME,
-      password: process.env.REDUNIQ_PASSWORD,
+      username: config.reduniq.username,
+      password: config.reduniq.password,
     },
     token: paymentToken,
   };
   const verifyRes = await axios.post(
-    process.env.REDUNIQ_API_URL,
+    config.reduniq.api_url as string,
     verifyPayload,
   );
   const paymentData = verifyRes.data;
@@ -78,10 +80,12 @@ const createOrderAfterReduinqPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
+  const successCodes = ['00000000', '17000000000'];
+
   if (
     !paymentData ||
     !paymentData.result ||
-    paymentData.result.code !== '00000000' ||
+    !successCodes.includes(paymentData.result.code) ||
     !paymentData.transaction ||
     paymentData.transaction.status !== '4'
   ) {
@@ -102,7 +106,7 @@ const createOrderAfterReduinqPayment = async (
       ...summary.toObject(),
       _id: undefined,
       orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      paymentMethod: 'CARD',
+      paymentMethod: summary.paymentMethod,
       paymentStatus: 'PAID',
       isPaid: true,
       transactionId: transactionId,
@@ -119,10 +123,10 @@ const createOrderAfterReduinqPayment = async (
           orderId: order._id,
           userId: currentUser?._id,
           userModel: 'Customer',
-          totalAmount: order.subtotal,
+          totalAmount: order.payoutSummary.grandTotal,
           type: 'ORDER_PAYMENT',
           status: 'SUCCESS',
-          paymentMethod: 'CARD',
+          paymentMethod: summary.paymentMethod,
           remarks: `Order payment successful for Order ID: ${order.orderId}`,
         },
       ],
@@ -146,23 +150,20 @@ const createOrderAfterReduinqPayment = async (
             },
           },
         },
-        $set: {
-          discount: 0,
-          totalItems: 0,
-          totalPrice: 0,
-          taxAmount: 0,
-          totalProductDiscount: 0,
-          subtotal: 0,
-        },
+        $set: { discount: 0, totalItems: 0, totalPrice: 0 },
       },
       { session },
     );
 
     await session.commitTransaction();
 
+    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
+      console.log(err);
+    });
+
     const notificationPayload = {
       title: 'You have a new order',
-      body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
+      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
       data: {
         orderId: order.orderId,
       },
@@ -235,7 +236,7 @@ const createOrderAfterPayment = async (
       ...summary.toObject(),
       _id: undefined,
       orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      paymentMethod: 'CARD',
+      paymentMethod: summary.paymentMethod || 'CARD',
       paymentStatus: 'PAID',
       isPaid: true,
       transactionId: paymentIntentId,
@@ -252,10 +253,10 @@ const createOrderAfterPayment = async (
           orderId: order._id,
           userId: currentUser?._id,
           userModel: 'Customer',
-          totalAmount: order.subtotal,
+          totalAmount: order.payoutSummary.grandTotal,
           type: 'ORDER_PAYMENT',
           status: 'SUCCESS',
-          paymentMethod: 'CARD',
+          paymentMethod: summary.paymentMethod,
           remarks: `Order payment successful for Order ID: ${order.orderId}`,
         },
       ],
@@ -280,12 +281,14 @@ const createOrderAfterPayment = async (
           },
         },
         $set: {
-          discount: 0,
           totalItems: 0,
-          totalPrice: 0,
-          taxAmount: 0,
-          totalProductDiscount: 0,
-          subtotal: 0,
+          cartCalculation: {
+            totalOriginalPrice: 0,
+            totalProductDiscount: 0,
+            taxableAmount: 0,
+            totalTaxAmount: 0,
+            grandTotal: 0,
+          },
         },
       },
       { session },
@@ -293,9 +296,13 @@ const createOrderAfterPayment = async (
 
     await session.commitTransaction();
 
+    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
+      console.log(err);
+    });
+
     const notificationPayload = {
       title: 'You have a new order',
-      body: `You have a new order with order id ${order.orderId} and total amount ${order.totalPrice}. Please check your orders to accept or reject the order.`,
+      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
       data: {
         orderId: order.orderId,
       },
@@ -473,8 +480,6 @@ const updateOrderStatusByVendor = async (
     // If ACCEPTED → set pickup address from vendor location and reduce product stock
     // ---------------------------------------------------------
     if (action.type === 'ACCEPTED') {
-      const currentSessionLocation =
-        currentUser?.currentSessionLocation?.coordinates;
       if (!order.pickupAddress) {
         order.pickupAddress = {
           street: currentUser?.businessLocation?.street || '',
@@ -482,9 +487,9 @@ const updateOrderStatusByVendor = async (
           state: currentUser?.businessLocation?.state || '',
           country: currentUser?.businessLocation?.country || '',
           postalCode: currentUser?.businessLocation?.postalCode || '',
-          longitude: currentSessionLocation?.[0] || 0,
-          latitude: currentSessionLocation?.[1] || 0,
-          geoAccuracy: currentUser?.currentSessionLocation?.geoAccuracy || 0,
+          longitude: currentUser?.businessLocation?.longitude || 0,
+          latitude: currentUser?.businessLocation?.latitude || 0,
+          geoAccuracy: currentUser?.businessLocation?.geoAccuracy,
           detailedAddress: currentUser?.businessLocation?.detailedAddress || '',
         };
       }
@@ -502,10 +507,10 @@ const updateOrderStatusByVendor = async (
         updateOne: {
           filter: {
             _id: new mongoose.Types.ObjectId(item.productId),
-            'stock.quantity': { $gte: item.quantity },
+            'stock.quantity': { $gte: item.itemSummary.quantity },
           },
           update: {
-            $inc: { 'stock.quantity': -item.quantity },
+            $inc: { 'stock.quantity': -item.itemSummary.quantity },
           },
         },
       }));
@@ -580,7 +585,7 @@ const updateOrderStatusByVendor = async (
         updateOne: {
           filter: { _id: new mongoose.Types.ObjectId(item.productId) },
           update: {
-            $inc: { 'stock.quantity': item.quantity },
+            $inc: { 'stock.quantity': item.itemSummary.quantity },
           },
         },
       }));
@@ -795,7 +800,7 @@ const broadcastOrderToPartners = async (
     const notificationPayload = {
       title: 'New Order Available',
       body: 'A new order is available for you.',
-      data: { orderId: order.orderId, orderStatus: ORDER_STATUS.DISPATCHING },
+      data: { orderId: order.orderId },
     };
     NotificationService.sendToUser(
       partnerId,
@@ -1091,8 +1096,12 @@ const otpVerificationByVendor = async (
 // update order status by delivery partner service
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
-  payload: { orderStatus: OrderStatus; reason?: string },
   currentUser: AuthUser,
+  deliveryProofImage: string | null,
+  payload: {
+    orderStatus: OrderStatus;
+    reason?: string;
+  },
 ) => {
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(httpStatus.FORBIDDEN, 'Delivery Partner not found.');
@@ -1122,6 +1131,13 @@ const updateOrderStatusByDeliveryPartner = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'Reason is required.');
   }
 
+  if (payload.orderStatus === ORDER_STATUS.DELIVERED && !deliveryProofImage) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Delivery proof image is required.',
+    );
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -1139,6 +1155,9 @@ const updateOrderStatusByDeliveryPartner = async (
           orderStatus: payload.orderStatus,
           ...(payload.orderStatus === ORDER_STATUS.DELIVERED && {
             deliveredAt: new Date(),
+            ...(deliveryProofImage && {
+              'delivery.deliveryProofImage': deliveryProofImage,
+            }),
           }),
           ...(payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
             deliveryPartnerId: null,
@@ -1158,16 +1177,18 @@ const updateOrderStatusByDeliveryPartner = async (
         isDeleted: false,
       }).select('orderStatus');
 
+      if (!orderCheck) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+      }
+
       if (orderCheck?.orderStatus === payload.orderStatus) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
           `Order status is already ${payload.orderStatus}.`,
         );
       }
-      if (
-        requiredCurrentStatus === 'PICKED_UP' &&
-        payload.orderStatus === 'ON_THE_WAY'
-      ) {
+
+      if (!orderCheck.isOtpVerified && payload.orderStatus === 'ON_THE_WAY') {
         throw new AppError(
           httpStatus.BAD_REQUEST,
           'Please verify the OTP first to start delivery.',
@@ -1191,15 +1212,15 @@ const updateOrderStatusByDeliveryPartner = async (
           'Delivery Partner not found for this order.',
         );
       }
-      const {
-        vendorNetPayout,
-        riderNetEarnings,
-        totalDeliveryCharge,
-        deliGoCommission,
-        commissionVat,
-        deliGoCommissionNet,
-        _id: orderDbId,
-      } = updatedOrder;
+      const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
+
+      const vendorNetPayout = payoutSummary?.vendorNetPayout || 0;
+      const riderNetEarnings = payoutSummary?.riderNetEarnings || 0;
+      const totalDeliveryCharge = delivery?.totalDeliveryCharge || 0;
+      const deliGoCommission = payoutSummary?.deliGoCommission?.amount || 0;
+      const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
+      const deliGoCommissionNet =
+        payoutSummary?.deliGoCommission?.totalDeduction || 0;
 
       const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
       const fleetManagerId = isManagedByFleet
@@ -1383,14 +1404,16 @@ const updateOrderStatusByDeliveryPartner = async (
         orderStatus: payload.orderStatus,
       },
     };
-    NotificationService.sendToUser(
-      customerId!,
-      notificationPayload.title,
-      notificationPayload.body,
-      notificationPayload.data,
-      'default',
-      'ORDER',
-    );
+    if (customerId) {
+      NotificationService.sendToUser(
+        customerId,
+        notificationPayload.title,
+        notificationPayload.body,
+        notificationPayload.data,
+        'default',
+        'ORDER',
+      );
+    }
 
     return {
       message: 'Order status updated successfully.',
