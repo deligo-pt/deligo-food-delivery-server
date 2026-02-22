@@ -57,6 +57,7 @@ const createPaymentIntent = async (
   };
 };
 
+// create reduniq payment intent service
 const createReduniqPayment = async (
   checkoutSummaryId: string,
   paymentMethod: 'CARD' | 'MB_WAY' | 'APPLE_PAY' | 'OTHER',
