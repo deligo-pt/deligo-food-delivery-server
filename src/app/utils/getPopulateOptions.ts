@@ -21,6 +21,7 @@ type PopulateInput = {
   blockedBy?: string;
   itemVendor?: string;
   product?: string;
+  productCategory?: string;
   id?: string;
   resolvedBy?: string;
   reviewerId?: string;
@@ -62,6 +63,7 @@ export const getPopulateOptions = (
 
   addOption('id', 'userId.id');
   addOption('product', 'items.productId');
+  addOption('productCategory', 'category');
   addOption('orderId', 'orderId');
   addOption(
     'reviewerId',

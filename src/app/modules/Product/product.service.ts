@@ -780,7 +780,7 @@ const getAllProducts = async (
   const populateOptions = getPopulateOptions(role, {
     vendor:
       'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
-    productCategory: 'name ',
+    productCategory: 'name',
   });
 
   populateOptions.forEach((option) => {
