@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/user.constant';
 import { InvoicePdService } from '../PdInvoice/invoicePd.service';
+import { TImageFile } from '../../interfaces/image.interface';
 
 // create order after stripe payment
 const createOrderAfterPayment = catchAsync(async (req, res) => {
@@ -127,10 +128,12 @@ const otpVerificationByVendor = catchAsync(async (req, res) => {
 
 // update order status by delivery partner controller
 const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
+  const file = req.file as TImageFile | undefined;
   const result = await OrderServices.updateOrderStatusByDeliveryPartner(
     req.params.orderId,
-    req.body,
     req.user as AuthUser,
+    file?.path ?? null,
+    req.body,
   );
   sendResponse(res, {
     success: true,

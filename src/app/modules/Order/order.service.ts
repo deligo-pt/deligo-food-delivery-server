@@ -60,9 +60,7 @@ const createOrderAfterReduinqPayment = async (
     config.reduniq.api_url as string,
     verifyPayload,
   );
-  console.log({ verifyRes });
   const paymentData = verifyRes.data;
-  console.log({ paymentData });
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
     throw new AppError(
@@ -1107,8 +1105,12 @@ const otpVerificationByVendor = async (
 // update order status by delivery partner service
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
-  payload: { orderStatus: OrderStatus; reason?: string },
   currentUser: AuthUser,
+  deliveryProofImage: string | null,
+  payload: {
+    orderStatus: OrderStatus;
+    reason?: string;
+  },
 ) => {
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(httpStatus.FORBIDDEN, 'Delivery Partner not found.');
@@ -1138,6 +1140,13 @@ const updateOrderStatusByDeliveryPartner = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'Reason is required.');
   }
 
+  if (payload.orderStatus === ORDER_STATUS.DELIVERED && !deliveryProofImage) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Delivery proof image is required.',
+    );
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -1155,6 +1164,9 @@ const updateOrderStatusByDeliveryPartner = async (
           orderStatus: payload.orderStatus,
           ...(payload.orderStatus === ORDER_STATUS.DELIVERED && {
             deliveredAt: new Date(),
+            ...(deliveryProofImage && {
+              'delivery.deliveryProofImage': deliveryProofImage,
+            }),
           }),
           ...(payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
             deliveryPartnerId: null,
@@ -1185,7 +1197,6 @@ const updateOrderStatusByDeliveryPartner = async (
         );
       }
 
-      console.log(orderCheck, payload.orderStatus);
       if (!orderCheck.isOtpVerified && payload.orderStatus === 'ON_THE_WAY') {
         throw new AppError(
           httpStatus.BAD_REQUEST,

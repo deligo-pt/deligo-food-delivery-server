@@ -105,6 +105,7 @@ const orderSchema = new Schema<TOrder>(
       totalDeliveryCharge: { type: Number, required: true },
       distance: { type: Number, default: 0 },
       estimatedTime: { type: String },
+      deliveryProofImage: { type: String },
     },
 
     payoutSummary: {
