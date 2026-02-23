@@ -24,16 +24,3 @@ export type TCart = {
   createdAt: Date;
   updatedAt: Date;
 };
-// export type TCart = {
-//   customerId: mongoose.Types.ObjectId;
-//   items: TCartItem[];
-//   totalItems: number;
-//   totalPrice: number;
-//   taxAmount?: number;
-//   totalProductDiscount?: number;
-//   subtotal: number;
-
-//   isDeleted: boolean;
-//   createdAt: Date;
-//   updatedAt: Date;
-// };
