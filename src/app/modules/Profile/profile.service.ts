@@ -85,8 +85,7 @@ const updateMyProfile = async (
     if (currentUser.profilePhoto) {
       const oldPhoto = currentUser.profilePhoto;
       deleteSingleImageFromCloudinary(oldPhoto).catch((err) => {
-        // throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-        console.log(err);
+        console.error(err);
       });
     }
 

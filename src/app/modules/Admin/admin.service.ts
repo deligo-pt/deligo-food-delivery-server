@@ -125,7 +125,7 @@ const adminDocImageUpload = async (
     const oldImage = existingAdmin?.documents?.[docTitle];
     deleteSingleImageFromCloudinary(oldImage).catch((err) => {
       // throw new AppError(httpStatus.BAD_REQUEST, err.message);
-      console.log(err);
+      console.error(err);
     });
   }
 

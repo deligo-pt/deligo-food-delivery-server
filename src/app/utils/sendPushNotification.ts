@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import config from '../config';
 import { fcm } from '../config/firebase';
 import { Admin } from '../modules/Admin/admin.model';
 import { Customer } from '../modules/Customer/customer.model';
@@ -55,7 +56,9 @@ export const sendPushNotification = async (
       error.code === 'messaging/registration-token-not-registered' ||
       error.code === 'messaging/invalid-registration-token'
     ) {
-      console.log('Cleanup needed: Token is no longer valid.');
+      if (config.NODE_ENV === 'development') {
+        console.log('Cleanup needed: Token is no longer valid.');
+      }
 
       await Promise.all([
         DeliveryPartner.updateMany(
@@ -122,7 +125,9 @@ export const sendTestPushNotification = async (
       error.code === 'messaging/registration-token-not-registered' ||
       error.code === 'messaging/invalid-registration-token'
     ) {
-      console.log('Cleanup needed: Token is no longer valid.');
+      if (config.NODE_ENV === 'development') {
+        console.log('Cleanup needed: Token is no longer valid.');
+      }
     }
 
     return { success: false, error: error.message };

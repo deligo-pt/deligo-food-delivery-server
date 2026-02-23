@@ -3,6 +3,7 @@ import cron from 'node-cron';
 import { Order } from '../modules/Order/order.model';
 import { getIO } from '../lib/Socket';
 import { Vendor } from '../modules/Vendor/vendor.model';
+import config from '../config';
 export const initOrderCronJobs = () => {
   cron.schedule('* * * * *', async () => {
     try {
@@ -51,9 +52,11 @@ export const initOrderCronJobs = () => {
             });
           }
 
-          console.log(
-            `Cron: Order ${order.orderId} reset and vendor notified.`,
-          );
+          if (config.NODE_ENV === 'development') {
+            console.log(
+              `Cron: Order ${order.orderId} reset and vendor notified.`,
+            );
+          }
         }
       }
     } catch (error) {

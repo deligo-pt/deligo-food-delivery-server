@@ -26,9 +26,6 @@ export const getPdAccessToken = async () => {
     const ttl = 100 * 60;
     await RedisService.set(REDIS_KEY, token, ttl);
 
-    console.log(
-      'New Pasta Digital Token generated and cached for 100 minutes.',
-    );
     return token;
   } catch (error: any) {
     console.error(

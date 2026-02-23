@@ -158,7 +158,7 @@ const createOrderAfterReduinqPayment = async (
     await session.commitTransaction();
 
     OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
-      console.log(err);
+      console.error(err);
     });
 
     const notificationPayload = {
@@ -297,7 +297,7 @@ const createOrderAfterPayment = async (
     await session.commitTransaction();
 
     OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
-      console.log(err);
+      console.error(err);
     });
 
     const notificationPayload = {

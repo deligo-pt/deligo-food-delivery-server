@@ -8,9 +8,6 @@ export const registerOrderEvents = (io: Server, socket: Socket) => {
   if (userId) {
     const personalRoom = `user_${userId}`;
     socket.join(personalRoom);
-    console.log(
-      `User ${userId} joined personal notification room: ${personalRoom}`,
-    );
   }
 
   socket.on('join-order-pool', (orderId: string) => {
@@ -19,7 +16,5 @@ export const registerOrderEvents = (io: Server, socket: Socket) => {
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log(`User ${userId} disconnected from order events`);
-  });
+  socket.on('disconnect', () => {});
 };

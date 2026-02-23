@@ -155,8 +155,7 @@ const fleetManagerDocImageUpload = async (
   if (docTitle && existingFleetManager?.documents?.[docTitle]) {
     const oldImage = existingFleetManager?.documents?.[docTitle];
     deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.log(err);
-      // throw new AppError(httpStatus.BAD_REQUEST, err.message);
+      console.error(err);
     });
   }
 

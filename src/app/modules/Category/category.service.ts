@@ -9,7 +9,7 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 //  Create Business Category
 const createBusinessCategory = async (
   payload: TBusinessCategory,
-  icon: string | null
+  icon: string | null,
 ) => {
   const exists = await BusinessCategory.findOne({ name: payload.name });
   if (exists) {
@@ -31,7 +31,7 @@ const createBusinessCategory = async (
 const updateBusinessCategory = async (
   id: string,
   payload: Partial<TBusinessCategory>,
-  icon: string | null
+  icon: string | null,
 ) => {
   if (payload.name)
     payload.slug = payload.name
@@ -46,7 +46,7 @@ const updateBusinessCategory = async (
   if (payload?.isActive === category.isActive) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `Business category is already ${category.isActive}`
+      `Business category is already ${category.isActive}`,
     );
   }
 
@@ -54,7 +54,7 @@ const updateBusinessCategory = async (
     if (category.icon) {
       const oldIcon = category.icon;
       deleteSingleImageFromCloudinary(oldIcon).catch((error) => {
-        console.log(error);
+        console.error(error);
       });
     }
   }
@@ -70,10 +70,10 @@ const updateBusinessCategory = async (
 //  Get All Business Categories
 const getAllBusinessCategories = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    (query.isActive = true), (query.isDeleted = false);
+    ((query.isActive = true), (query.isDeleted = false));
   }
   const businessCategories = new QueryBuilder(BusinessCategory.find(), query)
     .fields()
@@ -114,14 +114,14 @@ const softDeleteBusinessCategory = async (id: string) => {
   if (category.isDeleted === true) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'Business category already deleted'
+      'Business category already deleted',
     );
   }
 
   if (category.isActive) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'Business category is active, cannot delete'
+      'Business category is active, cannot delete',
     );
   }
 
@@ -151,13 +151,13 @@ const permanentDeleteBusinessCategory = async (id: string) => {
 //  Create Product Category (Linked to Business)
 const createProductCategory = async (
   payload: TProductCategory,
-  icon: string | null
+  icon: string | null,
 ) => {
   const business = await BusinessCategory.findById(payload.businessCategoryId);
   if (!business) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Invalid Business Category reference'
+      'Invalid Business Category reference',
     );
   }
 
@@ -183,7 +183,7 @@ const createProductCategory = async (
 const updateProductCategory = async (
   id: string,
   payload: Partial<TProductCategory>,
-  icon: string | null
+  icon: string | null,
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
@@ -199,12 +199,12 @@ const updateProductCategory = async (
 
   if (payload?.businessCategoryId) {
     const business = await BusinessCategory.findById(
-      payload.businessCategoryId
+      payload.businessCategoryId,
     );
     if (!business) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'Invalid Business Category reference'
+        'Invalid Business Category reference',
       );
     }
   }
@@ -212,7 +212,7 @@ const updateProductCategory = async (
   if (payload?.isActive === category.isActive) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `Product category is already ${category.isActive}`
+      `Product category is already ${category.isActive}`,
     );
   }
 
@@ -220,7 +220,7 @@ const updateProductCategory = async (
     if (category.icon) {
       const oldIcon = category.icon;
       deleteSingleImageFromCloudinary(oldIcon).catch((error) => {
-        console.log(error);
+        console.error(error);
       });
     }
     category.icon = icon;
@@ -235,7 +235,7 @@ const updateProductCategory = async (
 //  Get All Product Categories (with Business ref)
 const getAllProductCategories = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role === 'VENDOR') {
     query.isActive = true;

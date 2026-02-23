@@ -31,8 +31,10 @@ export const initializeSocket = (httpServer: HTTPServer) => {
   io.use(socketAuthMiddleware);
 
   io.on('connection', (socket) => {
-    const user = socket.data.user;
-    console.log(`Socket connected: ${user?.userId}`);
+    if (config.NODE_ENV === 'development') {
+      const user = socket.data.user;
+      console.log(`Socket connected: ${user?.userId}`);
+    }
 
     registerSupportEvents(io, socket);
     registerDriverLiveLocationEvents(io, socket);

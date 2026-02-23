@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose from 'mongoose';
+import config from '../config';
 
 export const convertFieldType = async ({
   collectionName,
@@ -12,12 +13,15 @@ export const convertFieldType = async ({
 }) => {
   const col = mongoose.connection.collection(collectionName);
 
-  console.log(`Converting "${fieldName}" → (${targetType}) ...`);
+  if (config.NODE_ENV === 'development') {
+    console.log(`Converting "${fieldName}" → (${targetType}) ...`);
+  }
 
   const docs = await col.find({ [fieldName]: { $exists: true } }).toArray();
 
-  console.log(`Found ${docs.length} documents to process.`);
-
+  if (config.NODE_ENV === 'development') {
+    console.log(`Found ${docs.length} documents to process.`);
+  }
   for (const doc of docs) {
     const oldValue = doc[fieldName];
     let newValue: any = null;
@@ -83,14 +87,19 @@ export const convertFieldType = async ({
 
       await col.updateOne(
         { _id: doc._id },
-        { $set: { [fieldName]: newValue } }
+        { $set: { [fieldName]: newValue } },
       );
 
-      console.log(`Converted _id=${doc._id}`);
+      if (config.NODE_ENV === 'development') {
+        console.log(`Converted _id=${doc._id}`);
+      }
     } catch (err) {
-      console.log(`Skip _id=${doc._id} | Reason: ${(err as Error).message}`);
+      if (config.NODE_ENV === 'development') {
+        console.log(`Skip _id=${doc._id} | Reason: ${(err as Error).message}`);
+      }
     }
   }
-
-  console.log('Type conversion completed!');
+  if (config.NODE_ENV === 'development') {
+    console.log('Type conversion completed!');
+  }
 };

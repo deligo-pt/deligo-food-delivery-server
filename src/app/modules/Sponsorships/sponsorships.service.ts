@@ -76,7 +76,7 @@ const updateSponsorship = async (
     const oldPhoto = isExist.bannerImage;
     if (oldPhoto) {
       deleteSingleImageFromCloudinary(oldPhoto).catch((err) => {
-        console.log(err);
+        console.error(err);
       });
     }
     payload.bannerImage = bannerImage;

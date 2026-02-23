@@ -14,12 +14,8 @@ export const addMissingField = async ({
 }: TAddFieldInput) => {
   const collection = mongoose.connection.collection(collectionName);
 
-  console.log(`Adding missing field "${fieldName}" to old documents...`);
-
   await collection.updateMany(
     { [fieldName]: { $exists: false } },
-    { $set: { [fieldName]: defaultValue } }
+    { $set: { [fieldName]: defaultValue } },
   );
-
-  console.log(`Field "${fieldName}" added successfully!`);
 };
