@@ -3,6 +3,7 @@ import { getPdAccessToken } from './getPdAccessToken';
 import config from '../../config';
 import { Order } from '../Order/order.model';
 import { TOrder } from '../Order/order.interface';
+import { roundTo2 } from '../../utils/mathProvider';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const mapOrderToPdPayload = (order: TOrder) => {
@@ -28,7 +29,7 @@ const mapOrderToPdPayload = (order: TOrder) => {
       product_reference: 'Food Items',
       description: item.name,
       quantity: Number(item.itemSummary.quantity),
-      price: Number(item.productPricing.unitPrice).toFixed(2),
+      price: roundTo2(item.productPricing.unitPrice),
       tax_id: pdTaxId,
     };
 
@@ -38,7 +39,7 @@ const mapOrderToPdPayload = (order: TOrder) => {
         product_reference: 'Add Ons',
         description: addon.name,
         quantity: Number(addon.quantity),
-        price: Number(addon.unitPrice).toFixed(2),
+        price: roundTo2(addon.unitPrice),
         tax_id: pdTaxId,
       }));
     }
@@ -51,7 +52,7 @@ const mapOrderToPdPayload = (order: TOrder) => {
     details.push({
       product_reference: 'DELIVERY',
       quantity: 1,
-      price: deliveryGrossPrice.toFixed(2),
+      price: roundTo2(deliveryGrossPrice),
       tax_id: 1,
     });
   }
