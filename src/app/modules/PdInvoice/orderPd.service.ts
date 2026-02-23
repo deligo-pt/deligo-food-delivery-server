@@ -66,11 +66,10 @@ const mapOrderToPdPayload = (order: TOrder) => {
 
   const payments = [
     {
-      amount: Number(order.payoutSummary.grandTotal || 0).toFixed(2),
+      amount: roundTo2(order.payoutSummary.grandTotal || 0),
       payment_method_id: paymentMethodId,
     },
   ];
-  console.log({ details, payments });
 
   return {
     customer_id: 5,
@@ -91,7 +90,6 @@ const syncOrderWithPd = async (orderId: string) => {
   try {
     const pdToken = await getPdAccessToken();
     const payload = mapOrderToPdPayload(order);
-    console.log(JSON.stringify(payload));
 
     const response = await axios.post(
       `${config.pastaDigital.api_url}/sales`,
@@ -104,8 +102,6 @@ const syncOrderWithPd = async (orderId: string) => {
         },
       },
     );
-
-    console.log(response.data.data);
 
     const {
       transaction_document,
@@ -128,7 +124,6 @@ const syncOrderWithPd = async (orderId: string) => {
         },
       },
     });
-    console.log(`Order Synced to Pasta Digital: ${orderId}`);
   } catch (error: any) {
     const errorDetail = error.response?.data || error.message;
     console.error('Pasta Digital Sync Failed:', errorDetail);

@@ -11,7 +11,9 @@ redisClient.on('error', (err) => console.error('Redis Client Error', err));
 (async () => {
   if (!redisClient.isOpen) {
     await redisClient.connect();
-    console.log('Successfully connected to Redis');
+    if (config.NODE_ENV === 'development') {
+      console.log('Successfully connected to Redis');
+    }
   }
 })();
 

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import config from '../config';
 
 type TDeleteFieldOptions = {
   collectionName: string;
@@ -11,14 +12,18 @@ export const deleteField = async ({
 }: TDeleteFieldOptions) => {
   const col = mongoose.connection.collection(collectionName);
 
-  console.log(`Deleting field "${fieldName}" from "${collectionName}"...`);
+  if (config.NODE_ENV === 'development') {
+    console.log(`Deleting field "${fieldName}" from "${collectionName}"...`);
+  }
 
   const result = await col.updateMany(
     { [fieldName]: { $exists: true } },
-    { $unset: { [fieldName]: '' } }
+    { $unset: { [fieldName]: '' } },
   );
 
-  console.log(
-    `Deleted field "${fieldName}" from ${result.modifiedCount} documents.`
-  );
+  if (config.NODE_ENV === 'development') {
+    console.log(
+      `Deleted field "${fieldName}" from ${result.modifiedCount} documents.`,
+    );
+  }
 };

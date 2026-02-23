@@ -14,8 +14,6 @@ export const seed = async () => {
       status: USER_STATUS.APPROVED,
     });
     if (!superAdmin) {
-      console.log('Seeding started...');
-
       const id = `SA-${uuidv4().split('-')[0]}`;
 
       await Admin.create({
@@ -29,11 +27,8 @@ export const seed = async () => {
         status: USER_STATUS.APPROVED,
         isEmailVerified: true,
       });
-
-      console.log('Super Admin created successfully...');
-      console.log('Seeding completed...');
     }
   } catch (error) {
-    console.log('Error in seeding', error);
+    console.error('Error in seeding', error);
   }
 };

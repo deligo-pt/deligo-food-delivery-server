@@ -403,8 +403,6 @@ const updateAddonQuantity = async (
     return isSameProduct && (i.variationSku || null) === effectiveSku;
   });
 
-  console.log({ itemIndex });
-
   if (itemIndex === -1)
     throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');
 

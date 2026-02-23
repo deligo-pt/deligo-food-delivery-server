@@ -16,7 +16,6 @@ export const registerSosSocketEvents = (io: Server, socket: Socket) => {
   socket.on('join-sos-monitoring', () => {
     if (['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'].includes(userRole)) {
       socket.join('SOS_ALERTS_POOL');
-      console.log(`Admin ${userId} joined SOS monitoring pool`);
     }
   });
 

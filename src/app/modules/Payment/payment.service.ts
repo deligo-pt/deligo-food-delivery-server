@@ -113,8 +113,6 @@ const createReduniqPayment = async (
   const response = await axios.post(config.reduniq.api_url, payload);
   const { result, token, redirectUrl } = response.data;
 
-  console.log(response.data);
-
   if (response.data.token) {
     summary.paymentMethod = paymentMethod;
     await summary.save();

@@ -68,8 +68,6 @@ const syncProductToPd = async (product: TProduct) => {
         await Product.findByIdAndUpdate(product._id, { pdItemId: id });
       }
 
-      console.log({ data });
-
       return data;
     } catch (error: any) {
       console.error(

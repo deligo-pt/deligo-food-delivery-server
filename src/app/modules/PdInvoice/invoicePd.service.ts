@@ -38,8 +38,6 @@ const getInvoicePdfFromPd = async (orderId: string) => {
       },
     });
 
-    console.log({ response });
-
     if (response.data && response.data.PDF) {
       return response.data.PDF;
     }

@@ -33,20 +33,24 @@ const arg3 = args[2];
 const arg4 = args[3];
 
 if (!command || !collectionName) {
-  console.log('Usage:');
-  console.log('List indexes  : npm run migration:run -- list <collection>');
-  console.log(
-    'Drop index    : npm run migration:run -- drop <collection> <indexName>'
-  );
-  console.log(
-    'Add field     : npm run migration:run -- add-field <collection> <field> <defaultValue>'
-  );
+  if (config.NODE_ENV === 'development') {
+    console.log('Usage:');
+    console.log('List indexes  : npm run migration:run -- list <collection>');
+    console.log(
+      'Drop index    : npm run migration:run -- drop <collection> <indexName>',
+    );
+    console.log(
+      'Add field     : npm run migration:run -- add-field <collection> <field> <defaultValue>',
+    );
+  }
   process.exit(1);
 }
 
 const run = async () => {
   try {
-    console.log('Connecting to MongoDB...');
+    if (config.NODE_ENV === 'development') {
+      console.log('Connecting to MongoDB...');
+    }
     await mongoose.connect(config.db_url as string);
 
     // 1) List indexes
@@ -94,7 +98,10 @@ const run = async () => {
       });
     }
 
-    console.log('Migration finished successfully!');
+    if (config.NODE_ENV === 'development') {
+      console.log('Migration finished successfully!');
+    }
+
     process.exit(0);
   } catch (err) {
     console.error('Migration Error:', err);

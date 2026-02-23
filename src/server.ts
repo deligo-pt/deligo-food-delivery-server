@@ -32,22 +32,21 @@ async function bootstrap() {
   try {
     // Connect database
     await mongoose.connect(config.db_url as string);
-    console.log('Database connected successfully');
 
     // Seed database
     if (config.NODE_ENV === 'development') {
       await seed();
-      console.log('DB Seed complete');
     }
 
     // Initialize Socket.IO
     initializeSocket(server);
 
     initOrderCronJobs();
-    console.log('Order expiry cron job started');
 
     server.listen(config.port, () => {
-      console.log(`Application is running on port ${config.port}`);
+      if (config.NODE_ENV === 'development') {
+        console.log(`Application is running on port ${config.port}`);
+      }
     });
   } catch (err) {
     console.error('Failed to connect to database:', err);
@@ -58,10 +57,14 @@ async function bootstrap() {
 bootstrap();
 
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received');
+  if (config.NODE_ENV === 'development') {
+    console.log('SIGTERM received');
+  }
   if (server) {
     server.close(() => {
-      console.log('Server closed due to SIGTERM');
+      if (config.NODE_ENV === 'development') {
+        console.log('Server closed due to SIGTERM');
+      }
       process.exit(0);
     });
   } else {
@@ -70,10 +73,14 @@ process.on('SIGTERM', () => {
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received');
+  if (config.NODE_ENV === 'development') {
+    console.log('SIGINT received');
+  }
   if (server) {
     server.close(() => {
-      console.log('Server closed due to SIGINT');
+      if (config.NODE_ENV === 'development') {
+        console.log('Server closed due to SIGINT');
+      }
       process.exit(0);
     });
   } else {
