@@ -12,6 +12,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { roundTo4 } from '../../utils/mathProvider';
 import { Transaction, Wallet } from '../Payment/payment.model';
+import { DailyRevenueFacet, OrderReportAnalyticsResponse, SalesAnalyticsResponse, SummaryFacet, TimeframeQuery } from './analytics.interface';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
@@ -170,84 +171,84 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-          // Vendor filter
-          {
-            $match: {
-              vendorId,
-              isDeleted: false,
+        // Vendor filter
+        {
+          $match: {
+            vendorId,
+            isDeleted: false,
+          },
+        },
+
+        // Unwind items
+        { $unwind: '$items' },
+
+        // Join products to get category
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'items.productId',
+            foreignField: '_id',
+            as: 'product',
+          },
+        },
+        { $unwind: '$product' },
+
+        // One order = one count per category
+        {
+          $group: {
+            _id: {
+              category: '$product.category',
+              orderId: '$_id',
             },
           },
+        },
 
-          // Unwind items
-          { $unwind: '$items' },
+        // Count orders per category
+        {
+          $group: {
+            _id: '$_id.category',
+            orderCount: { $sum: 1 },
+          },
+        },
 
-          // Join products to get category
-          {
-            $lookup: {
-              from: 'products',
-              localField: 'items.productId',
-              foreignField: '_id',
-              as: 'product',
+        // Calculate TOTAL of all category orders
+        {
+          $group: {
+            _id: null,
+            totalCategoryOrders: { $sum: '$orderCount' },
+            categories: { $push: '$$ROOT' },
+          },
+        },
+
+        // Calculate percentage (SUM = 100%)
+        { $unwind: '$categories' },
+        {
+          $project: {
+            _id: 0,
+            name: '$categories._id',
+            totalOrders: '$categories.orderCount',
+            percentage: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        '$categories.orderCount',
+                        '$totalCategoryOrders',
+                      ],
+                    },
+                    100,
+                  ],
+                },
+                2,
+              ],
             },
           },
-          { $unwind: '$product' },
+        },
 
-          // One order = one count per category
-          {
-            $group: {
-              _id: {
-                category: '$product.category',
-                orderId: '$_id',
-              },
-            },
-          },
-
-          // Count orders per category
-          {
-            $group: {
-              _id: '$_id.category',
-              orderCount: { $sum: 1 },
-            },
-          },
-
-          // Calculate TOTAL of all category orders
-          {
-            $group: {
-              _id: null,
-              totalCategoryOrders: { $sum: '$orderCount' },
-              categories: { $push: '$$ROOT' },
-            },
-          },
-
-          // Calculate percentage (SUM = 100%)
-          { $unwind: '$categories' },
-          {
-            $project: {
-              _id: 0,
-              name: '$categories._id',
-              totalOrders: '$categories.orderCount',
-              percentage: {
-                $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          '$categories.orderCount',
-                          '$totalCategoryOrders',
-                        ],
-                      },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-            },
-          },
-
-          // Top category first
-          { $sort: { percentage: -1 } },
-        ]);
+        // Top category first
+        { $sort: { percentage: -1 } },
+      ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -533,8 +534,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-        )
+        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+      )
       : 0;
 
   return {
@@ -551,17 +552,17 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-              ) + '%'
+              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+            ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-          opData.completedDeliveries > 0 &&
-          opData.totalDeliveryMinutes
+            opData.completedDeliveries > 0 &&
+            opData.totalDeliveryMinutes
             ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries,
-              )
+              opData.totalDeliveryMinutes / opData.completedDeliveries,
+            )
             : 0;
 
         return {
@@ -849,8 +850,8 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
         subValue:
           totalCustomers > 0
             ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
-                0,
-              )}% of customers`
+              0,
+            )}% of customers`
             : '0%',
       },
 
@@ -858,8 +859,8 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
         value:
           totalCustomers > 0
             ? `${((cards.returningCustomers / totalCustomers) * 100).toFixed(
-                0,
-              )}%`
+              0,
+            )}%`
             : '0%',
         subValue: 'Avg. Repeat',
       },
@@ -1493,6 +1494,769 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
   };
 };
 
+// admin sales report
+const getAdminSalesReportAnalytics = async (query: TimeframeQuery): Promise<SalesAnalyticsResponse> => {
+
+  const timeframe = query?.timeframe ?? "last7days";
+  const endDate = new Date();
+  const startDate = new Date();
+
+  const days =
+    timeframe === "last30days" ? 30 :
+      timeframe === "last14days" ? 14 : 7;
+  startDate.setDate(endDate.getDate() - days);
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(endDate.getDate() - 7);
+
+  const analytics = await Order.aggregate<{
+    summary: SummaryFacet[];
+    last7Days: DailyRevenueFacet[];
+  }>([
+    {
+      $match: {
+        isPaid: true,
+        isDeleted: false
+      }
+    },
+    {
+      $facet: {
+        // summery cards
+        summary: [
+          { $match: { createdAt: { $gte: startDate } } },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$orderStatus", "DELIVERED"] },
+                    "$totalPrice",
+                    0
+                  ]
+                }
+              },
+              completedOrders: {
+                $sum: {
+                  $cond: [{ $eq: ["$orderStatus", "DELIVERED"] }, 1, 0]
+                }
+              },
+              cancelledOrders: {
+                $sum: {
+                  $cond: [{ $eq: ["$orderStatus", "CANCELLED"] }, 1, 0]
+                }
+              }
+            }
+          }
+        ],
+        // last 7 days revenue trend
+        last7Days: [
+          {
+            $match: {
+              orderStatus: "DELIVERED",
+              createdAt: { $gte: sevenDaysAgo }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$createdAt"
+                }
+              },
+              revenue: { $sum: "$totalPrice" }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ]
+      }
+    }
+  ]);
+
+  const summary = analytics[0]?.summary[0] ?? {
+    totalRevenue: 0,
+    completedOrders: 0,
+    cancelledOrders: 0
+  };
+
+  const last7Days = analytics[0]?.last7Days ?? [];
+
+  const total7DayRevenue = last7Days.reduce(
+    (acc, day) => acc + day.revenue,
+    0
+  );
+
+  const topEarningDay =
+    last7Days.length > 0
+      ? last7Days.reduce((max, d) =>
+        d.revenue > max.revenue ? d : max
+      )._id
+      : "N/A";
+
+  return {
+    summary: {
+      totalRevenue: summary.totalRevenue.toFixed(2),
+      completedOrders: summary.completedOrders,
+      cancelledOrders: summary.cancelledOrders,
+      avgOrderValue:
+        summary.completedOrders > 0
+          ? (summary.totalRevenue / summary.completedOrders).toFixed(2)
+          : "0.00"
+    },
+
+    revenueCards: {
+      thisWeek: total7DayRevenue.toFixed(2),
+      thisMonth: total7DayRevenue.toFixed(2),
+      topEarningDay
+    },
+
+    charts: {
+      revenueTrend: last7Days.map(d => ({
+        date: d._id,
+        revenue: d.revenue
+      })),
+      earningsByDay: last7Days.map(d => ({
+        date: d._id,
+        revenue: d.revenue
+      }))
+    }
+  };
+};
+
+// admin order report
+const getAdminOrderReportAnalytics = async (query: TimeframeQuery): Promise<OrderReportAnalyticsResponse> => {
+
+  const now = new Date();
+  const timeframe = query?.timeframe;
+
+  let timeframeMatch: any = {};
+  if (timeframe) {
+    const days =
+      timeframe === "last30days" ? 30 :
+        timeframe === "last14days" ? 14 : 7;
+
+    const start = new Date();
+    start.setDate(now.getDate() - days);
+
+    timeframeMatch = { createdAt: { $gte: start } };
+  }
+
+  const last10Days = new Date();
+  last10Days.setDate(now.getDate() - 10);
+
+  const last30Days = new Date();
+  last30Days.setDate(now.getDate() - 30);
+
+  const result = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+      }
+    },
+    {
+      $facet: {
+        // summery cards
+        summary: [
+          ...(timeframe ? [{ $match: timeframeMatch }] : []),
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$orderStatus", "DELIVERED"] },
+                    "$totalPrice",
+                    0
+                  ]
+                }
+              },
+              totalOrders: { $sum: 1 }
+            }
+          }
+        ],
+        // orders by zone
+        ordersByZone: [
+          {
+            $group: {
+              _id: "$deliveryAddress.city",
+              orders: { $sum: 1 }
+            }
+          },
+          { $sort: { orders: -1 } }
+        ],
+        // revenue trend - 10 days
+        revenueTrend: [
+          { $match: { createdAt: { $gte: last10Days } } },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$createdAt"
+                }
+              },
+              revenue: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$orderStatus", "DELIVERED"] },
+                    "$totalPrice",
+                    0
+                  ]
+                }
+              }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ],
+        // zone heat map
+        zoneHeatmap: [
+          { $match: { createdAt: { $gte: last30Days } } },
+          {
+            $group: {
+              _id: {
+                zone: "$deliveryAddress.city",
+                hour: {
+                  $hour: {
+                    date: "$createdAt",
+                    timezone: "Europe/Lisbon"
+                  }
+                }
+              },
+              orderCount: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  const summary = result[0].summary[0] ?? {
+    totalRevenue: 0,
+    totalOrders: 0
+  };
+
+  return {
+    summary: {
+      totalRevenue: summary.totalRevenue.toFixed(2),
+      totalOrders: summary.totalOrders,
+      avgOrderValue:
+        summary.totalOrders > 0
+          ? (summary.totalRevenue / summary.totalOrders).toFixed(2)
+          : "0.00"
+    },
+
+    ordersByZone: result[0].ordersByZone.map((z: any) => ({
+      zone: z._id ?? "Unknown",
+      orders: z.orders
+    })),
+
+    revenueTrend: result[0].revenueTrend.map((d: any) => ({
+      date: d._id,
+      revenue: d.revenue
+    })),
+
+    zoneHeatmap: result[0].zoneHeatmap.map((h: any) => ({
+      zone: h._id.zone ?? "Unknown",
+      hour: h._id.hour,
+      orderCount: h.orderCount
+    }))
+  };
+};
+
+// admin customer report analytics
+const getAdminCustomerReportAnalytics = async () => {
+
+  const startOf12MonthsWindow = new Date();
+  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
+  startOf12MonthsWindow.setDate(1);
+  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+
+  const [analytics] = await Customer.aggregate([
+    { $match: { isDeleted: false } },
+
+    {
+      $facet: {
+        // SUMMARY CARDS
+        summary: [
+          {
+            $group: {
+              _id: null,
+              totalCustomers: { $sum: 1 },
+              activeCustomers: {
+                $sum: { $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0] }
+              },
+              totalOrders: {
+                $sum: { $ifNull: ["$orders.totalOrders", 0] }
+              },
+              totalRevenue: {
+                $sum: { $ifNull: ["$orders.totalSpent", 0] }
+              }
+            }
+          }
+        ],
+
+        // CUSTOMER GROWTH - only 12 months
+        growth: [
+          {
+            $match: { createdAt: { $gte: startOf12MonthsWindow } }
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$createdAt" },
+                month: { $month: "$createdAt" }
+              },
+              monthlyCount: { $sum: 1 }
+            }
+          },
+          { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ],
+
+        // STATUS DISTRIBUTION
+        statusStats: [
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+
+  const summary = analytics.summary[0] || {
+    totalCustomers: 0,
+    activeCustomers: 0,
+    totalOrders: 0,
+    totalRevenue: 0
+  };
+
+  // CUMULATIVE GROWTH TRANSFORMATION
+  let cumulative = 0;
+  const customerGrowth = analytics.growth.map((item: any) => {
+    cumulative += item.monthlyCount;
+    return {
+      label: new Date(item._id.year, item._id.month - 1).toLocaleString(
+        'en-US',
+        { month: 'short' }
+      ),
+      value: cumulative
+    };
+  });
+
+  return {
+    cards: {
+      totalCustomers: summary.totalCustomers,
+      activeCustomers: summary.activeCustomers,
+      totalOrders: summary.totalOrders,
+      totalRevenue: `€${summary.totalRevenue.toFixed(2)}`
+    },
+
+    customerGrowth,
+
+    statusDistribution: {
+      approved:
+        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
+
+      pending:
+        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+
+      blocked:
+        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0
+    }
+  };
+};
+
+// admin vendor report analytics
+const getAdminVendorReportAnalytics = async () => {
+
+  const startOf12MonthsWindow = new Date();
+  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
+  startOf12MonthsWindow.setDate(1);
+  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+
+  const [analytics] = await Vendor.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+      }
+    },
+
+    {
+      $facet: {
+        // SUMMARY CARDS
+        summary: [
+          {
+            $group: {
+              _id: null,
+              totalVendors: { $sum: 1 },
+
+              approvedVendors: {
+                $sum: { $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0] }
+              },
+
+              submittedVendors: {
+                $sum: { $cond: [{ $eq: ["$status", "SUBMITTED"] }, 1, 0] }
+              },
+
+              blockedOrRejectedVendors: {
+                $sum: {
+                  $cond: [
+                    { $in: ["$status", ["BLOCKED", "REJECTED"]] },
+                    1,
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        ],
+
+        // MONTHLY SIGNUPS - only lastest 12 months
+        monthlySignups: [
+          {
+            $match: {
+              createdAt: { $gte: startOf12MonthsWindow }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$createdAt" },
+                month: { $month: "$createdAt" }
+              },
+              count: { $sum: 1 }
+            }
+          },
+          { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ],
+
+        // STATUS DISTRIBUTION
+        statusStats: [
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  const summary = analytics.summary[0] || {
+    totalVendors: 0,
+    approvedVendors: 0,
+    submittedVendors: 0,
+    blockedOrRejectedVendors: 0
+  };
+
+  // MONTHLY SIGNUPS TRANSFORMATION
+  const monthlySignups = analytics.monthlySignups.map((item: any) => ({
+    label: new Date(item._id.year, item._id.month - 1).toLocaleString(
+      'en-US',
+      { month: 'short' }
+    ),
+    value: item.count
+  }));
+
+  return {
+    // TOP CARDS
+    cards: {
+      totalVendors: summary.totalVendors,
+      approvedVendors: summary.approvedVendors,
+      submittedVendors: summary.submittedVendors,
+      blockedOrRejectedVendors: summary.blockedOrRejectedVendors
+    },
+
+    // BAR CHART
+    monthlySignups,
+
+    // DONUT CHART
+    statusDistribution: {
+      approved:
+        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
+
+      pending:
+        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+
+      submitted:
+        analytics.statusStats.find((s: any) => s._id === 'SUBMITTED')?.count || 0,
+
+      rejected:
+        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count || 0,
+
+      blocked:
+        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0
+    }
+  };
+};
+
+// admin fleet manager report analytics
+const getAdminFleetManagerReportAnalytics = async () => {
+
+  const startOf12MonthsWindow = new Date();
+  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
+  startOf12MonthsWindow.setDate(1);
+  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+
+  const [analytics] = await FleetManager.aggregate([
+    {
+      $match: {
+        isDeleted: false
+      }
+    },
+
+    {
+      $facet: {
+        // SUMMARY CARDS
+        summary: [
+          {
+            $group: {
+              _id: null,
+
+              totalFleetManagers: { $sum: 1 },
+
+              approvedFleetManagers: {
+                $sum: {
+                  $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0]
+                }
+              },
+
+              submittedFleetManagers: {
+                $sum: {
+                  $cond: [{ $eq: ["$status", "SUBMITTED"] }, 1, 0]
+                }
+              },
+
+              blockedOrRejectedFleetManagers: {
+                $sum: {
+                  $cond: [
+                    { $in: ["$status", ["BLOCKED", "REJECTED"]] },
+                    1,
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        ],
+
+        // MONTHLY SIGNUPS (LAST 12 MONTHS)
+        monthlySignups: [
+          {
+            $match: {
+              createdAt: { $gte: startOf12MonthsWindow }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$createdAt" },
+                month: { $month: "$createdAt" }
+              },
+              count: { $sum: 1 }
+            }
+          },
+          { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ],
+
+        // STATUS DISTRIBUTION
+        statusStats: [
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  const summary = analytics.summary[0] || {
+    totalFleetManagers: 0,
+    approvedFleetManagers: 0,
+    totalDrivers: 0,
+    totalDeliveries: 0
+  };
+
+  const monthlySignups = analytics.monthlySignups.map((item: any) => ({
+    label: new Date(item._id.year, item._id.month - 1).toLocaleString(
+      'en-US',
+      { month: 'short' }
+    ),
+    value: item.count
+  }));
+
+  return {
+    // TOP CARDS
+    cards: {
+      totalFleetManagers: summary.totalFleetManagers,
+      approvedFleetManagers: summary.approvedFleetManagers,
+      submittedFleetManagers: summary.submittedFleetManagers,
+      blockedOrRejectedFleetManagers: summary.blockedOrRejectedFleetManagers
+    },
+
+    // BAR / LINE CHART
+    monthlySignups,
+
+    // DONUT CHART
+    statusDistribution: {
+      approved:
+        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
+
+      pending:
+        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+
+      rejected:
+        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count || 0,
+
+      blocked:
+        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0
+    }
+  };
+};
+
+// admin fleet manager report analytics
+const getAdminDeliveryPartnerReportAnalytics = async () => {
+
+  const startOf12MonthsWindow = new Date();
+  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
+  startOf12MonthsWindow.setDate(1);
+  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+
+  const [analytics] = await DeliveryPartner.aggregate([
+    {
+      $match: {
+        isDeleted: false
+      }
+    },
+
+    {
+      $facet: {
+        // SUMMARY CARDS
+        summary: [
+          {
+            $group: {
+              _id: null,
+
+              totalPartners: { $sum: 1 },
+
+              activePartners: {
+                $sum: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $eq: ["$status", "APPROVED"] },
+                        { $eq: ["$operationalData.isWorking", true] }
+                      ]
+                    },
+                    1,
+                    0
+                  ]
+                }
+              },
+
+              totalDeliveries: {
+                $sum: {
+                  $ifNull: ["$operationalData.totalDeliveries", 0]
+                }
+              },
+
+              // total earnings from all delivery partners
+              totalEarnings: {
+                $sum: {
+                  $ifNull: ["$operationalData.totalEarnings", 0]
+                }
+              }
+            }
+          }
+        ],
+
+        // PARTNER GROWTH (LAST 12 MONTHS)
+        growth: [
+          {
+            $match: {
+              createdAt: { $gte: startOf12MonthsWindow }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$createdAt" },
+                month: { $month: "$createdAt" }
+              },
+              count: { $sum: 1 }
+            }
+          },
+          { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ],
+
+        // VEHICLE TYPES
+        vehicleTypes: [
+          {
+            $group: {
+              _id: "$vehicleInfo.vehicleType",
+              count: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  const summary = analytics.summary[0] || {
+    totalPartners: 0,
+    activePartners: 0,
+    totalDeliveries: 0,
+    totalEarnings: 0
+  };
+
+  // CUMULATIVE GROWTH TRANSFORMATION
+  let cumulative = 0;
+  const partnerGrowth = analytics.growth.map((item: any) => {
+    cumulative += item.count;
+    return {
+      label: new Date(item._id.year, item._id.month - 1).toLocaleString(
+        'en-US',
+        { month: 'short' }
+      ),
+      value: cumulative
+    };
+  });
+
+  return {
+    // TOP CARDS
+    cards: {
+      totalPartners: summary.totalPartners,
+      activePartners: summary.activePartners,
+      totalDeliveries: summary.totalDeliveries,
+      totalEarnings: `€${summary.totalEarnings.toFixed(2)}`
+    },
+
+    // LINE CHART
+    partnerGrowth,
+
+    // VEHICLE TYPES
+    vehicleTypes: {
+      motorbike:
+        analytics.vehicleTypes.find((v: any) => v._id === 'MOTORBIKE')?.count || 0,
+      eBike:
+        analytics.vehicleTypes.find((v: any) => v._id === 'E-BIKE')?.count || 0,
+      scooter:
+        analytics.vehicleTypes.find((v: any) => v._id === 'SCOOTER')?.count || 0,
+      bicycle:
+        analytics.vehicleTypes.find((v: any) => v._id === 'BICYCLE')?.count || 0,
+      car:
+        analytics.vehicleTypes.find((v: any) => v._id === 'CAR')?.count || 0
+    }
+  }
+}
+
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -1505,4 +2269,10 @@ export const AnalyticsServices = {
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
   getVendorEarningsAnalytics,
+  getAdminSalesReportAnalytics,
+  getAdminOrderReportAnalytics,
+  getAdminCustomerReportAnalytics,
+  getAdminVendorReportAnalytics,
+  getAdminFleetManagerReportAnalytics,
+  getAdminDeliveryPartnerReportAnalytics,
 };

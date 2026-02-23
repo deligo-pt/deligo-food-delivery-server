@@ -146,6 +146,80 @@ const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get admin sales report analytics controller
+const getAdminSalesReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminSalesReportAnalytics(
+    req.query,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin sales report analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get admin order report analytics controller
+const getAdminOrderReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminOrderReportAnalytics(
+    req.query,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin order report analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get admin customer report analytics controller
+const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminCustomerReportAnalytics();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin customer report analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get admin vendor report analytics controller
+const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminVendorReportAnalytics();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin vendor report analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get admin fleet manager report analytics controller
+const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminFleetManagerReportAnalytics();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin fleet manager report analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get admin delivery partner report analytics controller
+const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminDeliveryPartnerReportAnalytics();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin delivery partner report analytics fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -158,4 +232,10 @@ export const AnalyticsControllers = {
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
   getVendorEarningsAnalytics,
+  getAdminSalesReportAnalytics,
+  getAdminOrderReportAnalytics,
+  getAdminCustomerReportAnalytics,
+  getAdminVendorReportAnalytics,
+  getAdminFleetManagerReportAnalytics,
+  getAdminDeliveryPartnerReportAnalytics,
 };
