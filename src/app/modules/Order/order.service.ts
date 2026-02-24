@@ -13,7 +13,6 @@ import {
 } from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
-// import { stripe } from '../Payment/payment.service';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
 import generateOtp from '../../utils/generateOtp';
@@ -27,7 +26,6 @@ import { getIO } from '../../lib/Socket';
 import { Transaction, Wallet } from '../Payment/payment.model';
 import { OrderPdService } from '../PdInvoice/orderPd.service';
 import axios from 'axios';
-import { stripe } from '../Payment/payment.service';
 import config from '../../config';
 
 // Create Order after reduinq payment
@@ -151,145 +149,6 @@ const createOrderAfterReduinqPayment = async (
           },
         },
         $set: { discount: 0, totalItems: 0, totalPrice: 0 },
-      },
-      { session },
-    );
-
-    await session.commitTransaction();
-
-    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
-      console.error(err);
-    });
-
-    const notificationPayload = {
-      title: 'You have a new order',
-      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
-      data: {
-        orderId: order.orderId,
-      },
-    };
-
-    NotificationService.sendToUser(
-      existingVendor.userId,
-      notificationPayload.title,
-      notificationPayload.body,
-      notificationPayload.data,
-      'default',
-      'ORDER',
-    );
-
-    return order;
-  } catch (err) {
-    await session.abortTransaction();
-    throw err;
-  } finally {
-    session.endSession();
-  }
-};
-
-// Create Order after Stripe payment
-const createOrderAfterPayment = async (
-  payload: { checkoutSummaryId: string; paymentIntentId: string },
-  currentUser: AuthUser,
-) => {
-  const { checkoutSummaryId, paymentIntentId } = payload;
-
-  const summary = await CheckoutSummary.findById(checkoutSummaryId);
-  if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
-
-  if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to view',
-    );
-  }
-  if (summary.isConvertedToOrder) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order',
-    );
-  }
-
-  const existingVendor = await Vendor.findById(summary.vendorId);
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  // --- Verify Payment ---
-  let paymentIntent;
-  try {
-    paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-  } catch {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Unable to verify payment');
-  }
-
-  if (paymentIntent.status !== 'succeeded')
-    throw new AppError(httpStatus.BAD_REQUEST, 'Payment not completed');
-
-  // --- Transaction ---
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const orderData = {
-      ...summary.toObject(),
-      _id: undefined,
-      orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      paymentMethod: summary.paymentMethod || 'CARD',
-      paymentStatus: 'PAID',
-      isPaid: true,
-      transactionId: paymentIntentId,
-      orderStatus: 'PENDING',
-      isDeleted: false,
-    };
-
-    const [order] = await Order.create([orderData], { session });
-
-    await Transaction.create(
-      [
-        {
-          transactionId: paymentIntentId,
-          orderId: order._id,
-          userId: currentUser?._id,
-          userModel: 'Customer',
-          totalAmount: order.payoutSummary.grandTotal,
-          type: 'ORDER_PAYMENT',
-          status: 'SUCCESS',
-          paymentMethod: summary.paymentMethod,
-          remarks: `Order payment successful for Order ID: ${order.orderId}`,
-        },
-      ],
-      { session },
-    );
-
-    summary.isConvertedToOrder = true;
-    summary.paymentStatus = 'PAID';
-    summary.transactionId = paymentIntentId;
-    summary.orderId = new mongoose.Types.ObjectId(order._id);
-
-    await summary.save({ session });
-
-    await Cart.updateOne(
-      { customerId: summary.customerId },
-      {
-        $pull: {
-          items: {
-            productId: {
-              $in: summary.items.map((i) => i.productId.toString()),
-            },
-          },
-        },
-        $set: {
-          totalItems: 0,
-          cartCalculation: {
-            totalOriginalPrice: 0,
-            totalProductDiscount: 0,
-            taxableAmount: 0,
-            totalTaxAmount: 0,
-            grandTotal: 0,
-          },
-        },
       },
       { session },
     );
@@ -1576,7 +1435,6 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 };
 
 export const OrderServices = {
-  createOrderAfterPayment,
   createOrderAfterReduinqPayment,
   getAllOrders,
   getSingleOrder,

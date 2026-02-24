@@ -8,13 +8,6 @@ import { parseBody } from '../../middlewares/bodyParser';
 
 const router = Router();
 
-// Create order after stripe payment
-// router.post(
-//   '/create-order',
-//   auth('CUSTOMER'),
-//   OrderControllers.createOrderAfterPayment,
-// );
-
 // Create order after reduniq payment
 router.post(
   '/create-order',

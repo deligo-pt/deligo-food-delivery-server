@@ -1,61 +1,8 @@
 import axios from 'axios';
-import Stripe from 'stripe';
 import config from '../../config';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
-
-export const stripe = new Stripe(config.stripe.stripe_secret_key as string);
-
-// create stripe payment intent service
-const createPaymentIntent = async (
-  checkoutSummaryId: string,
-  paymentMethod?: 'CARD' | 'MB_WAY',
-) => {
-  if (!checkoutSummaryId) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Checkout summary not found');
-  }
-
-  const summary = await CheckoutSummary.findById(checkoutSummaryId);
-  if (!summary) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
-  }
-
-  if (summary.isConvertedToOrder) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order',
-    );
-  }
-
-  summary.paymentMethod = paymentMethod;
-  await summary.save();
-
-  const paymentIntentPayload: Stripe.PaymentIntentCreateParams = {
-    amount: Math.round(summary.payoutSummary.grandTotal * 100),
-    currency: 'eur',
-    description: 'Order Payment',
-    metadata: {
-      checkoutSummaryId: checkoutSummaryId,
-      customerId: summary.customerId.toString(),
-      vendorId: summary.vendorId.toString(),
-    },
-    payment_method_types: ['card'],
-  };
-
-  if (summary?.customerEmail) {
-    paymentIntentPayload.receipt_email = summary.customerEmail;
-  }
-
-  // Create PaymentIntent
-  const paymentIntent =
-    await stripe.paymentIntents.create(paymentIntentPayload);
-
-  return {
-    clientSecret: paymentIntent.client_secret,
-    paymentIntentId: paymentIntent.id,
-  };
-};
 
 // create reduniq payment intent service
 const createReduniqPayment = async (
@@ -132,6 +79,5 @@ const createReduniqPayment = async (
 };
 
 export const PaymentServices = {
-  createPaymentIntent,
   createReduniqPayment,
 };
