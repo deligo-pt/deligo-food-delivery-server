@@ -6,8 +6,8 @@ import { redisClient } from '../utils/redis';
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
 export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
-  const windowMs = type === 'auth' ? 60 * 1000 : 10 * 1000;
-  const max = type === 'auth' ? 5 : 10;
+  const windowMs = 1 * 60 * 1000;
+  const max = type === 'auth' ? 10 : 100;
 
   return rateLimit({
     windowMs,
@@ -23,12 +23,15 @@ export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
     },
     store: new RedisStore({
       sendCommand: (...args: string[]) => redisClient.sendCommand(args),
+      prefix: `rl:${type}:`,
     }),
     handler: (req: Request, res: Response, next: NextFunction) => {
+      const resetTime = (req as any).rateLimit.resetTime;
+      const secondsLeft = Math.ceil((resetTime.getTime() - Date.now()) / 1000);
       next(
         new AppError(
           httpStatus.TOO_MANY_REQUESTS,
-          'Too many requests, please try again later.',
+          `Too many requests. Please try again after ${secondsLeft} seconds.`,
         ),
       );
     },
