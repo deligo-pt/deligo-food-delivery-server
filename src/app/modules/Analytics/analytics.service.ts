@@ -102,6 +102,7 @@ const getAdminDashboardAnalytics = async () => {
     {
       $project: {
         _id: 1,
+        productId: 1,
         name: 1,
         images: 1,
         rating: { average: '$rating.average' },
@@ -290,6 +291,7 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     {
       $project: {
         _id: 1,
+        productId: 1,
         name: 1,
         images: 1,
         rating: { average: '$rating.average' },
