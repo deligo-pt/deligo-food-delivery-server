@@ -1,4 +1,4 @@
-import { roundTo4 } from '../../utils/mathProvider';
+import { roundTo2 } from '../../utils/mathProvider';
 import { TCart } from './cart.interface';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -42,11 +42,11 @@ export const recalculateCartTotals = async (cart: TCart) => {
   cart.totalItems = totals.totalItems;
 
   cart.cartCalculation = {
-    totalOriginalPrice: roundTo4(totals.totalOriginalPrice),
-    totalProductDiscount: roundTo4(totals.totalProductDiscount),
-    taxableAmount: roundTo4(totals.taxableAmount),
-    totalTaxAmount: roundTo4(totals.totalTaxAmount),
-    grandTotal: roundTo4(totals.taxableAmount + totals.totalTaxAmount),
+    totalOriginalPrice: roundTo2(totals.totalOriginalPrice),
+    totalProductDiscount: roundTo2(totals.totalProductDiscount),
+    taxableAmount: roundTo2(totals.taxableAmount),
+    totalTaxAmount: roundTo2(totals.totalTaxAmount),
+    grandTotal: roundTo2(totals.taxableAmount + totals.totalTaxAmount),
   };
 
   return cart;

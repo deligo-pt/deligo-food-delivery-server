@@ -72,6 +72,12 @@ router.get(
   OrderControllers.getAllOrders,
 );
 
+router.get(
+  '/delivery-partner-dispatch-order',
+  auth('DELIVERY_PARTNER'),
+  OrderControllers.getDeliveryPartnersDispatchOrder,
+);
+
 // Get single order
 router.get(
   '/:orderId',
@@ -84,6 +90,13 @@ router.get(
   '/:orderId/download-invoice-pdf',
   auth('CUSTOMER', 'VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
   OrderControllers.downloadInvoicePdfFromPd,
+);
+
+// get delivery partner dispatch order
+router.get(
+  '/delivery-partner/dispatch-order',
+  auth('DELIVERY_PARTNER'),
+  OrderControllers.getDeliveryPartnersDispatchOrder,
 );
 
 export const OrderRoutes = router;
