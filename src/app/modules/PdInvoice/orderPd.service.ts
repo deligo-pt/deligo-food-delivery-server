@@ -71,6 +71,8 @@ const mapOrderToPdPayload = (order: TOrder) => {
     },
   ];
 
+  console.log({ details, payments });
+
   return {
     customer_id: 5,
     terminal_id: 1,
@@ -102,6 +104,8 @@ const syncOrderWithPd = async (orderId: string) => {
         },
       },
     );
+
+    console.log(response.data.data);
 
     const {
       transaction_document,

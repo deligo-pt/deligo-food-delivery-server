@@ -10,7 +10,7 @@ import { Product } from '../Product/product.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
-import { roundTo2, roundTo4 } from '../../utils/mathProvider';
+import { roundTo2 } from '../../utils/mathProvider';
 import { Transaction, Wallet } from '../Payment/payment.model';
 import {
   DailyRevenueFacet,
@@ -1080,7 +1080,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
     overview: {
       totalRevenue: totalRevenue,
       riderPayable: totalRiderPayable,
-      netEarnings: roundTo4(netEarnings),
+      netEarnings: roundTo2(netEarnings),
       monthlyEarnings: cardData.monthlyEarnings,
       weeklyEarnings: cardData.weeklyEarnings,
       currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,

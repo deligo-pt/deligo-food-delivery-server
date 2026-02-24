@@ -141,6 +141,19 @@ const downloadInvoicePdfFromPd = catchAsync(async (req, res) => {
   });
 });
 
+// get delivery partner dispatch order
+const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
+  const result = await OrderServices.getDeliveryPartnersDispatchOrder(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery partner dispatch order fetched successfully',
+    data: result,
+  });
+});
+
 export const OrderControllers = {
   createOrderAfterReduniqPayment,
   getAllOrders,
@@ -151,4 +164,5 @@ export const OrderControllers = {
   otpVerificationByVendor,
   updateOrderStatusByDeliveryPartner,
   downloadInvoicePdfFromPd,
+  getDeliveryPartnersDispatchOrder,
 };

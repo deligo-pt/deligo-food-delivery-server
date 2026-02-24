@@ -1217,6 +1217,7 @@ const updateOrderStatusByDeliveryPartner = async (
             'operationalData.currentStatus': 'IDLE',
           },
           $inc: {
+            'operationalData.totalDeliveries': 1,
             'operationalData.completedDeliveries': 1,
             'operationalData.totalDeliveryMinutes': durationMinutes,
           },
@@ -1434,13 +1435,26 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
   return order;
 };
 
+// get delivery partners dispatch order service
+const getDeliveryPartnersDispatchOrder = async (currentUser: AuthUser) => {
+  const order = await Order.findOne({
+    dispatchPartnerPool: { $in: [currentUser.userId] },
+  });
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+  }
+  return order;
+};
+
 export const OrderServices = {
   createOrderAfterReduinqPayment,
-  getAllOrders,
-  getSingleOrder,
   updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
   otpVerificationByVendor,
   updateOrderStatusByDeliveryPartner,
+  getAllOrders,
+  getSingleOrder,
+  getDeliveryPartnersDispatchOrder,
 };

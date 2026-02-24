@@ -9,7 +9,7 @@ import { AuthUser } from '../../constant/user.constant';
 import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
-import { roundTo4 } from '../../utils/mathProvider';
+import { roundTo2 } from '../../utils/mathProvider';
 
 // Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
@@ -71,13 +71,13 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   );
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
-  const deliveryChargeBase = roundTo4(
+  const deliveryChargeBase = roundTo2(
     distance.meters * (globalSettings?.deliveryChargePerMeter || 0),
   );
-  const deliveryVat = roundTo4(
+  const deliveryVat = roundTo2(
     deliveryChargeBase * ((globalSettings?.deliveryVatRate || 0) / 100),
   );
-  const totalDeliveryCharge = roundTo4(deliveryChargeBase + deliveryVat);
+  const totalDeliveryCharge = roundTo2(deliveryChargeBase + deliveryVat);
 
   const PLATFORM_COMMISSION_RATE =
     globalSettings?.platformCommissionPercent || 0;
@@ -90,22 +90,26 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
     let basePrice = product.pricing?.price || 0;
+    let selectedVariantLabel = '';
     if (item.variationSku && product.variations?.length) {
       const selectedOption = product.variations
         .flatMap((v: any) => v.options || [])
         .find((opt: any) => opt.sku === item.variationSku);
-      if (selectedOption) basePrice = selectedOption.price;
+      if (selectedOption) {
+        basePrice = selectedOption.price;
+        selectedVariantLabel = selectedOption.label;
+      }
     }
 
     const qty = item.itemSummary.quantity || 1;
-    const storeDiscountUnit = roundTo4(
+    const storeDiscountUnit = roundTo2(
       basePrice * ((product.pricing?.discount || 0) / 100),
     );
-    const priceAfterStoreDiscount = roundTo4(basePrice - storeDiscountUnit);
+    const priceAfterStoreDiscount = roundTo2(basePrice - storeDiscountUnit);
 
     const processedAddons = (item.addons || []).map((a: any) => {
-      const addonLineTotal = roundTo4(a.unitPrice * a.quantity);
-      const addonTax = roundTo4(addonLineTotal * ((a.taxRate || 0) / 100));
+      const addonLineTotal = roundTo2(a.unitPrice * a.quantity);
+      const addonTax = roundTo2(addonLineTotal * ((a.taxRate || 0) / 100));
       return {
         optionId: a.optionId,
         name: a.name,
@@ -129,25 +133,27 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       0,
     );
 
-    const productLineTotal = roundTo4(priceAfterStoreDiscount * qty);
-    const productTaxAmount = roundTo4(
+    const productLineTotal = roundTo2(priceAfterStoreDiscount * qty);
+    const productTaxAmount = roundTo2(
       productLineTotal * ((product.pricing?.taxRate || 0) / 100),
     );
 
-    const itemTotalBeforeTax = roundTo4(
+    const itemTotalBeforeTax = roundTo2(
       productLineTotal + totalAddonsLineTotal,
     );
-    const itemTotalTax = roundTo4(productTaxAmount + totalAddonsTax);
+    const itemTotalTax = roundTo2(productTaxAmount + totalAddonsTax);
 
-    const commAmt = roundTo4(
+    const commAmt = roundTo2(
       itemTotalBeforeTax * (PLATFORM_COMMISSION_RATE / 100),
     );
-    const commVat = roundTo4(commAmt * (COMMISSION_VAT_RATE / 100));
+    const commVat = roundTo2(commAmt * (COMMISSION_VAT_RATE / 100));
 
     return {
       productId: product._id,
       vendorId: product.vendorId,
-      name: product.name,
+      name: selectedVariantLabel
+        ? `${product.name} - ${selectedVariantLabel}`
+        : product.name,
       image: product.images?.[0] || '',
       hasVariations: product.stock?.hasVariations || false,
       variationSku: item.variationSku || null,
@@ -167,8 +173,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         totalBeforeTax: itemTotalBeforeTax,
         totalTaxAmount: itemTotalTax,
         totalPromoDiscount: 0,
-        totalProductDiscount: roundTo4(storeDiscountUnit * qty),
-        grandTotal: roundTo4(itemTotalBeforeTax + itemTotalTax),
+        totalProductDiscount: roundTo2(storeDiscountUnit * qty),
+        grandTotal: roundTo2(itemTotalBeforeTax + itemTotalTax),
       },
       commission: {
         deliGoCommissionRate: PLATFORM_COMMISSION_RATE,
@@ -176,7 +182,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         deliGoCommissionVatRate: COMMISSION_VAT_RATE,
         deliGoCommissionVatAmount: commVat,
       },
-      vendorNetEarnings: roundTo4(
+      vendorNetEarnings: roundTo2(
         itemTotalBeforeTax + itemTotalTax - (commAmt + commVat),
       ),
     };
@@ -208,11 +214,11 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     0,
   );
 
-  const fleetFee = roundTo4(
+  const fleetFee = roundTo2(
     deliveryChargeBase *
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
-  const grandTotal = roundTo4(
+  const grandTotal = roundTo2(
     taxableAmount + totalTaxAmount + totalDeliveryCharge,
   );
 
@@ -228,11 +234,11 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     ),
 
     orderCalculation: {
-      totalOriginalPrice: roundTo4(totalOriginalPrice),
-      totalProductDiscount: roundTo4(totalProductDiscount),
+      totalOriginalPrice: roundTo2(totalOriginalPrice),
+      totalProductDiscount: roundTo2(totalProductDiscount),
       totalOfferDiscount: 0,
-      taxableAmount: roundTo4(taxableAmount),
-      totalTaxAmount: roundTo4(totalTaxAmount),
+      taxableAmount: roundTo2(taxableAmount),
+      totalTaxAmount: roundTo2(totalTaxAmount),
     },
 
     delivery: {
@@ -240,7 +246,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       vatRate: globalSettings?.deliveryVatRate || 0,
       vatAmount: deliveryVat,
       totalDeliveryCharge: totalDeliveryCharge,
-      distance: roundTo4(distance.km),
+      distance: roundTo2(distance.km),
       estimatedTime: payload.estimatedDeliveryTime || '20-30 minutes',
     },
 
@@ -248,18 +254,18 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       grandTotal,
       deliGoCommission: {
         rate: PLATFORM_COMMISSION_RATE,
-        amount: roundTo4(totalCommAmt),
-        vatAmount: roundTo4(totalCommVat),
-        totalDeduction: roundTo4(totalCommAmt + totalCommVat),
+        amount: roundTo2(totalCommAmt),
+        vatAmount: roundTo2(totalCommVat),
+        totalDeduction: roundTo2(totalCommAmt + totalCommVat),
       },
       fleet: {
         rate: globalSettings?.fleetManagerCommissionPercent || 0,
         fee: fleetFee,
       },
-      vendorNetPayout: roundTo4(
+      vendorNetPayout: roundTo2(
         taxableAmount + totalTaxAmount - (totalCommAmt + totalCommVat),
       ),
-      riderNetEarnings: roundTo4(totalDeliveryCharge - fleetFee),
+      riderNetEarnings: roundTo2(totalDeliveryCharge - fleetFee),
     },
 
     offer: {
@@ -279,266 +285,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   });
   return await CheckoutSummary.create(finalSummaryData);
 };
-
-// const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
-//   const requiredFields = [
-//     { field: currentUser.name?.firstName, label: 'First Name' },
-//     { field: currentUser.contactNumber, label: 'Contact Number' },
-//     { field: currentUser.address?.city, label: 'City' },
-//     // { field: currentUser.address?.street, label: 'Street' },
-//   ];
-
-//   for (const item of requiredFields) {
-//     if (!item.field)
-//       throw new AppError(httpStatus.BAD_REQUEST, `${item.label} is required.`);
-//   }
-
-//   const customerId = currentUser._id.toString();
-//   let selectedItems = [];
-//   const cart = await Cart.findOne({ customerId, isDeleted: false });
-
-//   if (payload.useCart) {
-//     if (!cart || cart.items.length === 0)
-//       throw new AppError(httpStatus.BAD_REQUEST, 'Cart is empty');
-//     selectedItems = cart.items.filter((i: any) => i.isActive === true);
-//     if (selectedItems.length === 0)
-//       throw new AppError(httpStatus.BAD_REQUEST, 'No active items in cart');
-//   } else {
-//     if (!payload.items || payload.items.length !== 1)
-//       throw new AppError(
-//         httpStatus.BAD_REQUEST,
-//         'Direct checkout supports 1 item',
-//       );
-//     selectedItems = payload.items;
-//   }
-
-//   const productIds = selectedItems.map((i: any) => i.productId.toString());
-//   const products = await Product.find({ _id: { $in: productIds } });
-//   if (products.length === 0)
-//     throw new AppError(httpStatus.NOT_FOUND, 'Products not found');
-
-//   const vendorId = products[0].vendorId;
-//   const existingVendor = await Vendor.findById(vendorId);
-//   if (!existingVendor || !existingVendor.businessDetails?.isStoreOpen) {
-//     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor is closed');
-//   }
-
-//   const activeAddress = currentUser?.deliveryAddresses?.find(
-//     (i: any) => i.isActive === true,
-//   );
-//   const vendorCoords = existingVendor.currentSessionLocation?.coordinates;
-
-//   if (!activeAddress || !vendorCoords || vendorCoords.length < 2) {
-//     throw new AppError(httpStatus.BAD_REQUEST, 'Location data missing');
-//   }
-
-//   const distance = calculateDistance(
-//     vendorCoords[0],
-//     vendorCoords[1],
-//     activeAddress.longitude,
-//     activeAddress.latitude,
-//   );
-//   const distanceInKM = roundTo4(distance.km) || 0;
-//   const globalSettingsData = await GlobalSettingsService.getGlobalSettings();
-//   const deliveryChargeNet =
-//     roundTo4(
-//       distance.meters * (globalSettingsData?.deliveryChargePerMeter || 0),
-//     ) || 0;
-//   const deliveryVatAmount =
-//     roundTo4(
-//       deliveryChargeNet * ((globalSettingsData?.deliveryVatRate || 0) / 100),
-//     ) || 0;
-
-//   let totalFoodVatAccumulator = 0;
-//   let totalNetFoodPriceAccumulator = 0;
-//   let totalDeliGoCommission = 0;
-//   let totalCommissionVat = 0;
-//   let totalProductDiscountAccumulator = 0;
-
-//   const PLATFORM_COMMISSION_RATE =
-//     globalSettingsData?.platformCommissionPercent;
-//   const COMMISSION_VAT_RATE = globalSettingsData?.platformCommissionVatRate;
-
-//   const orderItems = selectedItems.map((item: any) => {
-//     const product = products.find(
-//       (p) => p._id.toString() === item.productId.toString(),
-//     );
-//     if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-
-//     let basePrice = product.pricing?.price || 0;
-//     if (item.variationSku && product.variations?.length) {
-//       const selectedOption = product.variations
-//         .flatMap((v: any) => v.options || [])
-//         .find((opt: any) => opt.sku === item.variationSku);
-//       if (selectedOption) basePrice = selectedOption.price || basePrice;
-//     }
-
-//     const discountPercent = product.pricing?.discount || 0;
-//     const discountAmountPerUnit =
-//       roundTo4(basePrice * (discountPercent / 100)) || 0;
-//     const unitPriceAfterDiscount = basePrice - discountAmountPerUnit;
-//     const quantity = item.quantity || 1;
-
-//     const itemTotalProductDiscount = roundTo4(discountAmountPerUnit * quantity);
-
-//     totalProductDiscountAccumulator += itemTotalProductDiscount;
-
-//     const productTotalBeforeTax =
-//       roundTo4(unitPriceAfterDiscount * quantity) || 0;
-//     const taxRate = product.pricing?.taxRate || 13;
-//     const productTaxAmount =
-//       roundTo4(productTotalBeforeTax * (taxRate / 100)) || 0;
-
-//     const processedAddons = (item.addons || []).map((a: any) => {
-//       const addonOriginalPrice = a.price || 0;
-//       const addonQty = a.quantity || 0;
-//       const addonPromoDiscount = 0;
-//       const addonNetPrice = addonOriginalPrice - addonPromoDiscount;
-//       const addonTaxRate = a.taxRate || 23;
-//       const addonTax =
-//         roundTo4(addonNetPrice * addonQty * (addonTaxRate / 100)) || 0;
-//       return {
-//         optionId: a.optionId,
-//         name: a.name,
-//         sku: a.sku,
-//         originalPrice: addonOriginalPrice,
-//         promoDiscountAmount: addonPromoDiscount,
-//         price: addonNetPrice,
-//         quantity: addonQty,
-//         taxRate: addonTaxRate,
-//         taxAmount: addonTax,
-//       };
-//     });
-
-//     const addonsTotalNet =
-//       processedAddons.reduce(
-//         (sum: number, a: any) => sum + a.price * a.quantity,
-//         0,
-//       ) || 0;
-//     const addonsTotalTax =
-//       processedAddons.reduce(
-//         (sum: number, a: any) => sum + (a.taxAmount || 0),
-//         0,
-//       ) || 0;
-
-//     const itemTotalBeforeTax =
-//       roundTo4(productTotalBeforeTax + addonsTotalNet) || 0;
-//     const itemTaxAmount = roundTo4(productTaxAmount + addonsTotalTax) || 0;
-//     const itemSubtotal = roundTo4(itemTotalBeforeTax + itemTaxAmount) || 0;
-
-//     const itemCommissionNet =
-//       roundTo4(itemTotalBeforeTax * (PLATFORM_COMMISSION_RATE / 100)) || 0;
-//     const itemCommissionVat =
-//       roundTo4(itemCommissionNet * (COMMISSION_VAT_RATE / 100)) || 0;
-//     const itemVendorEarnings =
-//       roundTo4(itemSubtotal - (itemCommissionNet + itemCommissionVat)) || 0;
-
-//     totalFoodVatAccumulator += itemTaxAmount;
-//     totalNetFoodPriceAccumulator += itemTotalBeforeTax;
-//     totalDeliGoCommission += itemCommissionNet;
-//     totalCommissionVat += itemCommissionVat;
-
-//     return {
-//       productId: product._id,
-//       vendorId: product.vendorId,
-//       name:
-//         item.variationSku && product.variations
-//           ? `${product.name} - ${product.variations.flatMap((v) => v.options).find((o) => o.sku === item.variationSku)?.label || ''}`
-//           : product.name,
-//       image: product.images?.[0] || '',
-//       hasVariations: product.stock?.hasVariations || false,
-//       variationSku: item.variationSku || null,
-//       quantity,
-//       originalPrice: basePrice,
-//       productDiscountAmount: discountAmountPerUnit,
-//       promoDiscountAmount: 0,
-//       totalDiscountAmount: discountAmountPerUnit,
-//       price: unitPriceAfterDiscount,
-//       addons: processedAddons,
-//       productTotalBeforeTax,
-//       productTaxAmount: roundTo4(productTaxAmount),
-//       totalBeforeTax: itemTotalBeforeTax,
-//       taxRate,
-//       taxAmount: itemTaxAmount,
-//       subtotal: itemSubtotal,
-//       commissionRate: PLATFORM_COMMISSION_RATE,
-//       commissionAmount: itemCommissionNet,
-//       commissionVatRate: COMMISSION_VAT_RATE,
-//       commissionVatAmount: itemCommissionVat,
-//       vendorNetEarnings: itemVendorEarnings,
-//     };
-//   });
-
-//   const totalDeliveryGross = deliveryChargeNet + deliveryVatAmount;
-//   const taxableAmount = roundTo4(totalNetFoodPriceAccumulator) || 0;
-
-//   // const totalPriceGross = roundTo4(totalNetFoodPriceAccumulator) || 0;
-//   const totalPriceGross = roundTo4(
-//     taxableAmount + totalProductDiscountAccumulator,
-//   );
-//   const totalTaxAmount = roundTo4(totalFoodVatAccumulator) || 0;
-
-//   const fleetManagerCommissionPercent = roundTo4(
-//     globalSettingsData.fleetManagerCommissionPercent! / 100,
-//   );
-
-//   const fleetFee =
-//     roundTo4(deliveryChargeNet * fleetManagerCommissionPercent) || 0;
-
-//   const riderNetEarnings = roundTo4(totalDeliveryGross - fleetFee);
-
-//   const summaryData = {
-//     customerId,
-//     vendorId,
-//     customerEmail: currentUser?.email || '',
-//     contactNumber: currentUser?.contactNumber || '',
-//     items: orderItems,
-//     totalItems:
-//       orderItems.reduce((s: number, i: any) => s + i.quantity, 0) || 0,
-
-//     totalPrice: totalPriceGross,
-//     totalProductDiscount: roundTo4(totalProductDiscountAccumulator),
-//     totalOfferDiscount: 0,
-
-//     taxableAmount,
-//     taxAmount: totalTaxAmount,
-
-//     deliveryCharge: deliveryChargeNet,
-//     deliveryVatRate: globalSettingsData?.deliveryVatRate,
-//     deliveryVatAmount,
-//     totalDeliveryCharge: totalDeliveryGross,
-
-//     deliGoCommissionRate: PLATFORM_COMMISSION_RATE,
-//     deliGoCommission: roundTo4(totalDeliGoCommission) || 0,
-//     commissionVat: roundTo4(totalCommissionVat) || 0,
-//     deliGoCommissionNet: roundTo4(totalDeliGoCommission + totalCommissionVat),
-//     totalVendorDeduction: roundTo4(totalDeliGoCommission + totalCommissionVat),
-
-//     vendorNetPayout: roundTo4(
-//       taxableAmount +
-//         totalTaxAmount -
-//         (totalDeliGoCommission + totalCommissionVat),
-//     ),
-
-//     fleetCommissionRate: globalSettingsData.fleetManagerCommissionPercent,
-//     fleetFee,
-//     riderNetEarnings: riderNetEarnings || 0,
-//     subtotal:
-//       roundTo4(taxableAmount + totalTaxAmount + totalDeliveryGross) || 0,
-//     offerApplied: null,
-//     deliveryAddress: activeAddress,
-//     deliveryDistance: distanceInKM,
-//     estimatedDeliveryTime: payload.estimatedDeliveryTime || '20-30 minutes',
-//     isConvertedToOrder: false,
-//   };
-
-//   await CheckoutSummary.deleteMany({
-//     customerId,
-//     vendorId,
-//     isConvertedToOrder: false,
-//   });
-//   return await CheckoutSummary.create(summaryData);
-// };
 
 // get checkout summary
 const getCheckoutSummary = async (
