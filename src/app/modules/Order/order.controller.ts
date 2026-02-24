@@ -6,20 +6,6 @@ import { AuthUser } from '../../constant/user.constant';
 import { InvoicePdService } from '../PdInvoice/invoicePd.service';
 import { TImageFile } from '../../interfaces/image.interface';
 
-// create order after stripe payment
-const createOrderAfterPayment = catchAsync(async (req, res) => {
-  const result = await OrderServices.createOrderAfterPayment(
-    req.body,
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Order created successfully',
-    data: result,
-  });
-});
-
 // create order after reduniq payment
 const createOrderAfterReduniqPayment = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderAfterReduinqPayment(
@@ -156,7 +142,6 @@ const downloadInvoicePdfFromPd = catchAsync(async (req, res) => {
 });
 
 export const OrderControllers = {
-  createOrderAfterPayment,
   createOrderAfterReduniqPayment,
   getAllOrders,
   getSingleOrder,

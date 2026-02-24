@@ -3,22 +3,8 @@ import { catchAsync } from '../../utils/catchAsync';
 import { PaymentServices } from './payment.service';
 import sendResponse from '../../utils/sendResponse';
 
-// create stripe payment intent controller
-const createPaymentIntent = catchAsync(async (req, res) => {
-  const { checkoutSummaryId, paymentMethod = 'CARD' } = req.body;
+// create reduniq payment intent controller
 
-  const session = await PaymentServices.createPaymentIntent(
-    checkoutSummaryId,
-    paymentMethod,
-  );
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Stripe payment session created',
-    data: session,
-  });
-});
 const createReduniqPayment = catchAsync(async (req, res) => {
   const { checkoutSummaryId, paymentMethod } = req.body;
 
@@ -36,6 +22,5 @@ const createReduniqPayment = catchAsync(async (req, res) => {
 });
 
 export const PaymentController = {
-  createPaymentIntent,
   createReduniqPayment,
 };

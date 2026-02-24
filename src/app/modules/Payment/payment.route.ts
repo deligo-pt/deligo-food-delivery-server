@@ -4,13 +4,6 @@ import auth from '../../middlewares/auth';
 
 const router = Router();
 
-// create stripe payment intent
-router.post(
-  '/stripe/create-payment-intent',
-  auth('CUSTOMER'),
-  PaymentController.createPaymentIntent,
-);
-
 // create reduniq payment intent
 router.post(
   '/reduniq/create-payment-intent',
