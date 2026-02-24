@@ -210,13 +210,28 @@ const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
 
 // get admin delivery partner report analytics controller
 const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminDeliveryPartnerReportAnalytics();
+  const result =
+    await AnalyticsServices.getAdminDeliveryPartnerReportAnalytics();
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Admin delivery partner report analytics fetched successfully',
     data: result,
+  });
+});
+
+// get vendor performance analytics controller
+const getVendorPerformanceAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getVendorPerformanceAnalytics(
+    req.query,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor performance analytics fetched successfully',
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -238,4 +253,5 @@ export const AnalyticsControllers = {
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
+  getVendorPerformanceAnalytics,
 };

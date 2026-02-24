@@ -100,7 +100,6 @@ const walletSchema = new Schema<TWallet>(
     },
     totalRiderPayable: {
       type: Number,
-      default: 0,
     },
     totalEarnings: {
       type: Number,

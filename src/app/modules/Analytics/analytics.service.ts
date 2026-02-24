@@ -2253,6 +2253,215 @@ const getAdminDeliveryPartnerReportAnalytics = async () => {
   };
 };
 
+// vendor performance analytics
+const getVendorPerformanceAnalytics = async (
+  query: Record<string, unknown>,
+) => {
+  const { page = 1, limit = 10 } = query;
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const results = await Vendor.aggregate([
+    { $match: { isDeleted: false } },
+
+    {
+      $lookup: {
+        from: 'orders',
+        let: { vendorId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$vendorId', '$$vendorId'] },
+                  { $eq: ['$orderStatus', 'DELIVERED'] },
+                  { $eq: ['$isDeleted', false] },
+                ],
+              },
+            },
+          },
+        ],
+        as: 'vendorOrders',
+      },
+    },
+
+    {
+      $addFields: {
+        totalRevenue: {
+          $round: [{ $sum: '$vendorOrders.orderCalculation.taxableAmount' }, 2],
+        },
+        totalItems: { $sum: '$vendorOrders.totalItems' },
+        totalOrdersCount: { $size: '$vendorOrders' },
+      },
+    },
+
+    {
+      $facet: {
+        vendorPerformance: [
+          { $skip: skip },
+          { $limit: Number(limit) },
+          {
+            $project: {
+              _id: 1,
+              profilePhoto: 1,
+              userId: 1,
+              email: 1,
+              status: 1,
+              name: 1,
+              businessDetails: 1,
+              businessLocation: 1,
+              rating: 1,
+              totalOrders: '$totalOrdersCount',
+              totalRevenue: 1,
+              totalItems: 1,
+            },
+          },
+        ],
+
+        vendorPerformanceStat: [
+          {
+            $group: {
+              _id: null,
+              mostOrders: {
+                $push: {
+                  vendorName: {
+                    $concat: ['$name.firstName', ' ', '$name.lastName'],
+                  },
+                  vendorPhoto: '$profilePhoto',
+                  ordersCount: '$totalOrdersCount',
+                },
+              },
+              highestRating: {
+                $push: {
+                  vendorName: {
+                    $concat: ['$name.firstName', ' ', '$name.lastName'],
+                  },
+                  vendorPhoto: '$profilePhoto',
+                  rating: '$rating',
+                },
+              },
+              highestRevenue: {
+                $push: {
+                  vendorName: {
+                    $concat: ['$name.firstName', ' ', '$name.lastName'],
+                  },
+                  vendorPhoto: '$profilePhoto',
+                  revenue: '$totalRevenue',
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              mostOrders: {
+                $arrayElemAt: [
+                  {
+                    $sortArray: {
+                      input: '$mostOrders',
+                      sortBy: { ordersCount: -1 },
+                    },
+                  },
+                  0,
+                ],
+              },
+              highestRating: {
+                $arrayElemAt: [
+                  {
+                    $sortArray: {
+                      input: '$highestRating',
+                      sortBy: { 'rating.average': -1 },
+                    },
+                  },
+                  0,
+                ],
+              },
+              highestRevenue: {
+                $arrayElemAt: [
+                  {
+                    $sortArray: {
+                      input: '$highestRevenue',
+                      sortBy: { revenue: -1 },
+                    },
+                  },
+                  0,
+                ],
+              },
+            },
+          },
+        ],
+
+        vendorMonthlyPerformance: [
+          { $unwind: '$vendorOrders' },
+          { $match: { 'vendorOrders.createdAt': { $gte: sixMonthsAgo } } },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: '%Y-%m',
+                  date: '$vendorOrders.createdAt',
+                },
+              },
+              totalOrders: { $sum: 1 },
+              totalRevenue: {
+                $sum: '$vendorOrders.orderCalculation.taxableAmount',
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+          {
+            $project: {
+              _id: 0,
+              month: '$_id',
+              totalOrders: 1,
+              totalRevenue: { $round: ['$totalRevenue', 2] },
+            },
+          },
+        ],
+
+        topVendorPerformers: [
+          { $sort: { 'rating.average': -1, totalRevenue: -1 } },
+          { $limit: 3 },
+          {
+            $project: {
+              _id: 0,
+              vendorName: {
+                $concat: ['$name.firstName', ' ', '$name.lastName'],
+              },
+              vendorPhoto: '$profilePhoto',
+              rating: '$rating.average',
+              totalRevenue: 1,
+            },
+          },
+        ],
+
+        totalCount: [{ $count: 'count' }],
+      },
+    },
+  ]);
+
+  const data = results[0];
+  const total = data.totalCount[0]?.count || 0;
+
+  return {
+    data: {
+      vendorPerformance: data.vendorPerformance,
+      vendorPerformanceStat: data.vendorPerformanceStat[0] || {},
+      vendorMonthlyPerformance: data.vendorMonthlyPerformance,
+      topVendorPerformers: data.topVendorPerformers,
+    },
+    meta: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      totalPage: Math.ceil(total / Number(limit)),
+    },
+  };
+};
+
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -2271,4 +2480,5 @@ export const AnalyticsServices = {
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
+  getVendorPerformanceAnalytics,
 };

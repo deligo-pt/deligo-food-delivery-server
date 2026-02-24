@@ -60,42 +60,9 @@ export type TOrderItemSnapshot = {
     deliGoCommissionVatAmount: number;
   };
 
-  vendorNetEarnings: number;
+  vendor: {
+    vendorEarningsWithoutTax: number;
+    payableTax: number;
+    vendorNetEarnings: number;
+  };
 };
-// export type TOrderItemSnapshot = {
-//   productId: mongoose.Types.ObjectId;
-//   vendorId: mongoose.Types.ObjectId;
-//   name: string;
-//   image?: string;
-//   hasVariations: boolean;
-//   variationSku?: string | null;
-//   addons?: {
-//     optionId: string;
-//     name: string;
-//     sku: string;
-//     price: number;
-//     quantity: number;
-//     taxRate: number;
-//     taxAmount: number;
-//   }[];
-//   quantity: number;
-
-//   originalPrice: number;
-//   discountAmount: number;
-//   price: number;
-
-//   productTotalBeforeTax?: number;
-//   productTaxAmount?: number;
-//   totalBeforeTax?: number;
-
-//   taxRate: number;
-//   taxAmount: number;
-//   subtotal: number;
-
-//   commissionRate: number;
-//   commissionAmount: number;
-//   commissionVatRate: number;
-//   commissionVatAmount: number;
-
-//   vendorNetEarnings: number;
-// };

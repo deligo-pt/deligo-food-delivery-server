@@ -85,42 +85,49 @@ router.get(
 router.get(
   '/admin-sales-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAdminSalesReportAnalytics
+  AnalyticsControllers.getAdminSalesReportAnalytics,
 );
 
 // get admin order report analytics
 router.get(
   '/admin-order-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAdminOrderReportAnalytics
+  AnalyticsControllers.getAdminOrderReportAnalytics,
 );
 
 // get admin customer report analytics
 router.get(
   '/admin-customer-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAdminCustomerReportAnalytics
+  AnalyticsControllers.getAdminCustomerReportAnalytics,
 );
 
 // get admin vendor report analytics
 router.get(
   '/admin-vendor-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAdminVendorReportAnalytics
+  AnalyticsControllers.getAdminVendorReportAnalytics,
 );
 
 // get admin fleet manager report analytics
 router.get(
   '/admin-fleet-manager-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAdminFleetManagerReportAnalytics
+  AnalyticsControllers.getAdminFleetManagerReportAnalytics,
 );
 
 // get admin delivery partner report analytics
 router.get(
   '/admin-delivery-partner-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAdminDeliveryPartnerReportAnalytics
+  AnalyticsControllers.getAdminDeliveryPartnerReportAnalytics,
+);
+
+// get vendor performance analytics
+router.get(
+  '/vendor-performance-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getVendorPerformanceAnalytics,
 );
 
 export const AnalyticsRoutes = router;
