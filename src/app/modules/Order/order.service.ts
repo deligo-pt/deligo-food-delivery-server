@@ -1363,7 +1363,7 @@ const getAllOrders = async (
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
-      'name userId role contactNumber currentSessionLocation profilePhoto',
+      'name userId role contactNumber currentSessionLocation profilePhoto NIF',
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
@@ -1427,7 +1427,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
-      'name userId role contactNumber currentSessionLocation profilePhoto',
+      'name userId role contactNumber currentSessionLocation profilePhoto NIF',
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
