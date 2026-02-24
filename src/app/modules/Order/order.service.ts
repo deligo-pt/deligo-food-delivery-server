@@ -1449,14 +1449,18 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 
 // get delivery partners dispatch order service
 const getDeliveryPartnersDispatchOrder = async (currentUser: AuthUser) => {
-  const order = await Order.findOne({
+  const orders = await Order.find({
     dispatchPartnerPool: { $in: [currentUser.userId] },
-  });
+    isDeleted: false,
+  }).sort({ createdAt: -1 });
 
-  if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+  if (!orders || orders.length === 0) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'No dispatch orders found for this partner',
+    );
   }
-  return order;
+  return orders;
 };
 
 export const OrderServices = {
