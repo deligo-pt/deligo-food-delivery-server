@@ -44,10 +44,6 @@ export default {
   //   meilisearch_master_key: process.env.MEILISEARCH_MASTER_KEY,
   sender_email: process.env.SENDER_EMAIL,
   sender_app_password: process.env.SENDER_APP_PASS,
-  stripe: {
-    stripe_secret_key: process.env.STRIPE_SECRET_KEY,
-    stripe_webhook_secret: process.env.STRIPE_WEBHOOK_SECRET,
-  },
   firebase_service_account: process.env.FIREBASE_SERVICE_ACCOUNT,
   redis: {
     local_url: process.env.REDIS_LOCAL_URL,
