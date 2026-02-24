@@ -148,6 +148,13 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     );
     const commVat = roundTo2(commAmt * (COMMISSION_VAT_RATE / 100));
 
+    const totalVendorDeduction = roundTo2(commAmt + commVat);
+
+    const vendorNetEarnings = roundTo2(
+      itemTotalBeforeTax + itemTotalTax - totalVendorDeduction,
+    );
+    const vendorEarningsWithoutTax = roundTo2(vendorNetEarnings - itemTotalTax);
+
     return {
       productId: product._id,
       vendorId: product.vendorId,
@@ -182,9 +189,11 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         deliGoCommissionVatRate: COMMISSION_VAT_RATE,
         deliGoCommissionVatAmount: commVat,
       },
-      vendorNetEarnings: roundTo2(
-        itemTotalBeforeTax + itemTotalTax - (commAmt + commVat),
-      ),
+      vendor: {
+        vendorEarningsWithoutTax,
+        payableTax: itemTotalTax,
+        vendorNetEarnings,
+      },
     };
   });
 
@@ -221,6 +230,14 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const grandTotal = roundTo2(
     taxableAmount + totalTaxAmount + totalDeliveryCharge,
   );
+
+  const vendorNetPayout = roundTo2(
+    taxableAmount + totalTaxAmount - (totalCommAmt + totalCommVat),
+  );
+  const vendorEarningsWithoutTax = roundTo2(vendorNetPayout - totalTaxAmount);
+
+  const riderNetEarnings = roundTo2(totalDeliveryCharge - fleetFee);
+  const riderEarningsWithoutTax = roundTo2(riderNetEarnings - deliveryVat);
 
   const finalSummaryData = {
     customerId,
@@ -262,10 +279,16 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         rate: globalSettings?.fleetManagerCommissionPercent || 0,
         fee: fleetFee,
       },
-      vendorNetPayout: roundTo2(
-        taxableAmount + totalTaxAmount - (totalCommAmt + totalCommVat),
-      ),
-      riderNetEarnings: roundTo2(totalDeliveryCharge - fleetFee),
+      vendor: {
+        earningsWithoutTax: vendorEarningsWithoutTax,
+        payableTax: roundTo2(totalTaxAmount),
+        vendorNetPayout,
+      },
+      rider: {
+        earningsWithoutTax: riderEarningsWithoutTax,
+        payableTax: deliveryVat,
+        riderNetEarnings,
+      },
     },
 
     offer: {

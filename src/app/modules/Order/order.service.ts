@@ -1073,8 +1073,14 @@ const updateOrderStatusByDeliveryPartner = async (
       }
       const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
 
-      const vendorNetPayout = payoutSummary?.vendorNetPayout || 0;
-      const riderNetEarnings = payoutSummary?.riderNetEarnings || 0;
+      const vendorEarningsBeforeTax =
+        payoutSummary?.vendor?.earningsWithoutTax || 0;
+      const vendorPayableTax = payoutSummary?.vendor?.payableTax || 0;
+      const vendorNetPayout = payoutSummary?.vendor?.vendorNetPayout || 0;
+      const riderEarningsBeforeTax =
+        payoutSummary?.rider?.earningsWithoutTax || 0;
+      const riderPayableTax = payoutSummary?.rider?.payableTax || 0;
+      const riderNetEarnings = payoutSummary?.rider?.riderNetEarnings || 0;
       const totalDeliveryCharge = delivery?.totalDeliveryCharge || 0;
       const deliGoCommission = payoutSummary?.deliGoCommission?.amount || 0;
       const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
@@ -1150,6 +1156,8 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: updatedOrder.vendorId,
           userModel: 'Vendor',
+          baseAmount: vendorEarningsBeforeTax,
+          taxAmount: vendorPayableTax,
           totalAmount: vendorNetPayout,
           type: 'VENDOR_EARNING',
           status: 'SUCCESS',
@@ -1161,6 +1169,8 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: partner._id,
           userModel: 'DeliveryPartner',
+          baseAmount: riderEarningsBeforeTax,
+          taxAmount: riderPayableTax,
           totalAmount: riderEarningAmount,
           type: 'DELIVERY_PARTNER_EARNING',
           status: 'SUCCESS',
@@ -1190,6 +1200,8 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: fleetManagerId,
           userModel: 'FleetManager',
+          baseAmount: totalDeliveryCharge,
+          taxAmount: 0,
           totalAmount: totalDeliveryCharge,
           type: 'FLEET_EARNING',
           status: 'SUCCESS',

@@ -65,7 +65,11 @@ const orderItemSchema = new Schema(
       deliGoCommissionVatRate: { type: Number, required: true },
       deliGoCommissionVatAmount: { type: Number, required: true },
     },
-    vendorNetEarnings: { type: Number, required: true },
+    vendor: {
+      vendorEarningsWithoutTax: { type: Number, required: true },
+      payableTax: { type: Number, required: true },
+      vendorNetEarnings: { type: Number, required: true },
+    },
   },
   { _id: false },
 );
@@ -120,8 +124,16 @@ const orderSchema = new Schema<TOrder>(
         rate: { type: Number, required: true },
         fee: { type: Number, required: true },
       },
-      vendorNetPayout: { type: Number, required: true },
-      riderNetEarnings: { type: Number, required: true },
+      vendor: {
+        earningsWithoutTax: { type: Number, required: true },
+        payableTax: { type: Number, required: true },
+        vendorNetPayout: { type: Number, required: true },
+      },
+      rider: {
+        earningsWithoutTax: { type: Number, required: true },
+        payableTax: { type: Number, required: true },
+        riderNetEarnings: { type: Number, required: true },
+      },
     },
 
     offer: {
