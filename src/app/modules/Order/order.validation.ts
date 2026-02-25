@@ -23,7 +23,7 @@ const updateOrderStatusByDeliveryPartnerValidationSchema = z.object({
 
 const partnerAcceptDispatchOrder = z.object({
   body: z.object({
-    action: z.enum(['reject']).optional(),
+    action: z.enum(['ACCEPT', 'REJECT']),
   }),
 });
 
