@@ -86,6 +86,7 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.partnerAcceptsDispatchedOrder(
     req.user as AuthUser,
     req.params.orderId,
+    req.body,
   );
 
   sendResponse(res, {
