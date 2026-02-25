@@ -659,7 +659,7 @@ const broadcastOrderToPartners = async (
     const notificationPayload = {
       title: 'New Order Available',
       body: 'A new order is available for you.',
-      data: { orderId: order.orderId },
+      data: { orderId: order.orderId, orderStatus: ORDER_STATUS.DISPATCHING },
     };
     NotificationService.sendToUser(
       partnerId,
