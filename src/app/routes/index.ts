@@ -24,6 +24,8 @@ import { sosRoutes } from '../modules/Sos/sos.route';
 import { TaxRoutes } from '../modules/Tax/tax.route';
 import { SponsorshipsRoutes } from '../modules/Sponsorships/sponsorships.route';
 import { TestRoutes } from '../modules/Test/test.route';
+import { PayoutRoutes } from '../modules/Payout/payout.route';
+import { WalletRoutes } from '../modules/Wallet/wallet.route';
 
 const router = express.Router();
 
@@ -71,6 +73,14 @@ const moduleRoutes = [
   {
     path: '/payment',
     route: PaymentRoutes,
+  },
+  {
+    path: '/payout',
+    route: PayoutRoutes,
+  },
+  {
+    path: '/wallets',
+    route: WalletRoutes,
   },
   {
     path: '/profile',

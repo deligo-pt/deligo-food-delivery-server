@@ -1,5 +1,5 @@
 import { Schema, model } from 'mongoose';
-import { TTransaction, TWallet } from './payment.interface';
+import { TTransaction } from './transaction.interface';
 
 // -------------------------------------------------------------------------
 // Transaction Schema
@@ -15,7 +15,11 @@ const transactionSchema = new Schema<TTransaction>(
     orderId: {
       type: Schema.Types.ObjectId,
       ref: 'Order',
-      required: true,
+      required: false,
+    },
+    payoutId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Payout',
     },
     userId: {
       type: Schema.Types.ObjectId,
@@ -29,11 +33,9 @@ const transactionSchema = new Schema<TTransaction>(
     },
     baseAmount: {
       type: Number,
-      default: 0,
     },
     taxAmount: {
       type: Number,
-      default: 0,
     },
     totalAmount: {
       type: Number,
@@ -68,42 +70,14 @@ const transactionSchema = new Schema<TTransaction>(
       type: String,
       default: '',
     },
-  },
-  {
-    timestamps: true,
-  },
-);
-
-// -------------------------------------------------------------------------
-// Wallet Schema
-// -------------------------------------------------------------------------
-const walletSchema = new Schema<TWallet>(
-  {
-    userId: {
-      type: Schema.Types.ObjectId || String,
-      required: true,
-      unique: true,
-      refPath: 'userModel',
+    processedBy: {
+      type: Schema.Types.ObjectId,
+      refPath: 'processorModel',
     },
-    userModel: {
+    processorModel: {
       type: String,
-      required: true,
-      enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'],
-    },
-    lastSettlementDate: {
-      type: Date,
-      default: null,
-    },
-    totalUnpaidEarnings: {
-      type: Number,
-      default: 0,
-    },
-    totalRiderPayable: {
-      type: Number,
-    },
-    totalEarnings: {
-      type: Number,
-      default: 0,
+      enum: ['Admin', 'FleetManager'],
+      required: false,
     },
   },
   {
@@ -119,4 +93,3 @@ export const Transaction = model<TTransaction>(
   'Transaction',
   transactionSchema,
 );
-export const Wallet = model<TWallet>('Wallet', walletSchema);

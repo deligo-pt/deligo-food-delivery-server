@@ -8,7 +8,7 @@ import { TImageFile } from '../../interfaces/image.interface';
 
 // create order after reduniq payment
 const createOrderAfterReduniqPayment = catchAsync(async (req, res) => {
-  const result = await OrderServices.createOrderAfterReduinqPayment(
+  const result = await OrderServices.createOrderAfterReduniqPayment(
     req.body,
     req.user as AuthUser,
   );
@@ -125,8 +125,8 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Order status updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

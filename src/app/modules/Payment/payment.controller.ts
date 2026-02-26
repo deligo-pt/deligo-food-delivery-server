@@ -4,7 +4,6 @@ import { PaymentServices } from './payment.service';
 import sendResponse from '../../utils/sendResponse';
 
 // create reduniq payment intent controller
-
 const createReduniqPayment = catchAsync(async (req, res) => {
   const { checkoutSummaryId, paymentMethod } = req.body;
 
