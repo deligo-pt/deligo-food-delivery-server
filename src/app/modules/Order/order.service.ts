@@ -23,13 +23,15 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { getIO } from '../../lib/Socket';
-import { Transaction, Wallet } from '../Payment/payment.model';
 import { OrderPdService } from '../PdInvoice/orderPd.service';
 import axios from 'axios';
 import config from '../../config';
+import { Transaction } from '../Transaction/transaction.model';
+import { Wallet } from '../Wallet/wallet.model';
+import { roundTo2 } from '../../utils/mathProvider';
 
-// Create Order after reduinq payment
-const createOrderAfterReduinqPayment = async (
+// Create Order after reduniq payment
+const createOrderAfterReduniqPayment = async (
   payload: { checkoutSummaryId: string; paymentToken: string },
   currentUser: AuthUser,
 ) => {
@@ -1106,8 +1108,8 @@ const updateOrderStatusByDeliveryPartner = async (
         { userId: updatedOrder.vendorId, userModel: 'Vendor' },
         {
           $inc: {
-            totalUnpaidEarnings: vendorNetPayout || 0,
-            totalEarnings: vendorNetPayout || 0,
+            totalUnpaidEarnings: roundTo2(vendorNetPayout) || 0,
+            totalEarnings: roundTo2(vendorNetPayout) || 0,
           },
         },
         { session, upsert: true },
@@ -1118,8 +1120,8 @@ const updateOrderStatusByDeliveryPartner = async (
         { userId: partner?._id, userModel: 'DeliveryPartner' },
         {
           $inc: {
-            totalUnpaidEarnings: riderEarningAmount || 0,
-            totalEarnings: riderEarningAmount || 0,
+            totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
+            totalEarnings: roundTo2(riderEarningAmount) || 0,
           },
         },
         { session, upsert: true },
@@ -1131,8 +1133,8 @@ const updateOrderStatusByDeliveryPartner = async (
         { userId: SYSTEM_ADMIN, userModel: 'Admin' },
         {
           $inc: {
-            totalUnpaidEarnings: deliGoCommissionNet || 0,
-            totalEarnings: deliGoCommissionNet || 0,
+            totalUnpaidEarnings: roundTo2(deliGoCommissionNet) || 0,
+            totalEarnings: roundTo2(deliGoCommissionNet) || 0,
           },
         },
         { session, upsert: true },
@@ -1146,6 +1148,7 @@ const updateOrderStatusByDeliveryPartner = async (
             $inc: {
               totalUnpaidEarnings: totalDeliveryCharge || 0,
               totalRiderPayable: riderNetEarnings || 0,
+              totalFleetEarnings: payoutSummary.fleet.fee || 0,
               totalEarnings: totalDeliveryCharge || 0,
             },
           },
@@ -1161,9 +1164,9 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: updatedOrder.vendorId,
           userModel: 'Vendor',
-          baseAmount: vendorEarningsBeforeTax,
-          taxAmount: vendorPayableTax,
-          totalAmount: vendorNetPayout,
+          baseAmount: roundTo2(vendorEarningsBeforeTax),
+          taxAmount: roundTo2(vendorPayableTax),
+          totalAmount: roundTo2(vendorNetPayout),
           type: 'VENDOR_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
@@ -1174,9 +1177,9 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: partner._id,
           userModel: 'DeliveryPartner',
-          baseAmount: riderEarningsBeforeTax,
-          taxAmount: riderPayableTax,
-          totalAmount: riderEarningAmount,
+          baseAmount: roundTo2(riderEarningsBeforeTax),
+          taxAmount: roundTo2(riderPayableTax),
+          totalAmount: roundTo2(riderEarningAmount),
           type: 'DELIVERY_PARTNER_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
@@ -1189,9 +1192,9 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: SYSTEM_ADMIN,
           userModel: 'Admin',
-          baseAmount: deliGoCommission,
-          taxAmount: commissionVat,
-          totalAmount: deliGoCommissionNet,
+          baseAmount: roundTo2(deliGoCommission),
+          taxAmount: roundTo2(commissionVat),
+          totalAmount: roundTo2(deliGoCommissionNet),
           type: 'PLATFORM_COMMISSION',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
@@ -1205,9 +1208,9 @@ const updateOrderStatusByDeliveryPartner = async (
           orderId: orderDbId,
           userId: fleetManagerId,
           userModel: 'FleetManager',
-          baseAmount: totalDeliveryCharge,
+          baseAmount: roundTo2(totalDeliveryCharge),
           taxAmount: 0,
-          totalAmount: totalDeliveryCharge,
+          totalAmount: roundTo2(totalDeliveryCharge),
           type: 'FLEET_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
@@ -1469,7 +1472,7 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: AuthUser) => {
 };
 
 export const OrderServices = {
-  createOrderAfterReduinqPayment,
+  createOrderAfterReduniqPayment,
   updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,

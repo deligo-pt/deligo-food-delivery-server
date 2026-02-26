@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 
 export type TTransaction = {
   transactionId: string;
-  orderId: mongoose.Types.ObjectId;
+  orderId?: mongoose.Types.ObjectId;
+  payoutId?: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   userModel:
     | 'Customer'
@@ -26,13 +27,6 @@ export type TTransaction = {
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
   paymentMethod: 'CARD' | 'MOBILE' | 'WALLET' | 'CASH' | 'BANK_TRANSFER';
   remarks: string;
-};
-
-export type TWallet = {
-  userId: mongoose.Types.ObjectId | string;
-  userModel: 'Customer' | 'Vendor' | 'FleetManager' | 'DeliveryPartner';
-  lastSettlementDate?: Date;
-  totalUnpaidEarnings: number;
-  totalRiderPayable: number;
-  totalEarnings: number;
+  processedBy?: mongoose.Types.ObjectId;
+  processorModel?: 'Admin' | 'FleetManager';
 };
