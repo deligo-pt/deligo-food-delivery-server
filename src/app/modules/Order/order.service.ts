@@ -663,7 +663,9 @@ const broadcastOrderToPartners = async (
       data: {
         orderId: order.orderId,
         orderStatus: ORDER_STATUS.DISPATCHING,
-        riderEarning: order.payoutSummary.rider,
+        riderEarning: String(
+          order.payoutSummary.rider.earningsWithoutTax || '0',
+        ),
       },
     };
     NotificationService.sendToUser(
