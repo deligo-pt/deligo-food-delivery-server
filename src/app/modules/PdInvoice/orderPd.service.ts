@@ -17,13 +17,8 @@ const mapOrderToPdPayload = (order: TOrder) => {
         productRef = item.productId;
       }
     }
-
-    const pdTaxId =
-      item.productPricing.taxRate === 13
-        ? 2
-        : item.productPricing.taxRate === 23
-          ? 1
-          : 3;
+    const taxRate = item.productPricing.taxRate || 0;
+    const pdTaxId = taxRate === 13 ? 2 : taxRate === 23 ? 1 : 3;
 
     const mainItem = {
       product_reference: 'Food Items',

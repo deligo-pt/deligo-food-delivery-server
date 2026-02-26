@@ -11,7 +11,6 @@ import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { roundTo2 } from '../../utils/mathProvider';
-import { Transaction, Wallet } from '../Payment/payment.model';
 import {
   DailyRevenueFacet,
   OrderReportAnalyticsResponse,
@@ -19,6 +18,8 @@ import {
   SummaryFacet,
   TimeframeQuery,
 } from './analytics.interface';
+import { Transaction } from '../Transaction/transaction.model';
+import { Wallet } from '../Wallet/wallet.model';
 
 // get admin dashboard analytics
 const getAdminDashboardAnalytics = async () => {
