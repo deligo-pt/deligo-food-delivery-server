@@ -61,7 +61,7 @@ const sendToUser = (
   userId: string,
   title: string,
   message: string,
-  data?: any,
+  data?: Record<string, string>,
   channelId?: 'order_notification' | 'default',
   type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER',
 ) => {
