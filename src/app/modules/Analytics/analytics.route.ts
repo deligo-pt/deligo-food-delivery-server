@@ -130,4 +130,11 @@ router.get(
   AnalyticsControllers.getVendorPerformanceAnalytics,
 );
 
+// get all customer analytics
+router.get(
+  '/all-customers-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getAllCustomerAnalytics,
+);
+
 export const AnalyticsRoutes = router;
