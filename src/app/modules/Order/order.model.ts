@@ -151,7 +151,7 @@ const orderSchema = new Schema<TOrder>(
       enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
     },
-    transactionId: { type: String },
+    transactionId: { type: String, unique: true, sparse: true },
     isPaid: { type: Boolean, default: false },
 
     orderStatus: {

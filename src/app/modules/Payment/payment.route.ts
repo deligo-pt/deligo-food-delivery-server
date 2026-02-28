@@ -11,4 +11,11 @@ router.post(
   PaymentController.createReduniqPayment,
 );
 
+// handle payment failure
+router.post(
+  '/reduniq/handle-payment-failure/:checkoutSummaryId',
+  auth('CUSTOMER'),
+  PaymentController.handlePaymentFailure,
+);
+
 export const PaymentRoutes = router;
