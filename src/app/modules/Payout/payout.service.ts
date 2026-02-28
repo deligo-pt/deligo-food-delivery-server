@@ -122,7 +122,7 @@ const rejectPayout = async (
   session.startTransaction();
 
   try {
-    const payout = await Payout.findById(payoutId)
+    const payout = await Payout.findOne({ payoutId })
       .populate('userId', 'userId')
       .session(session);
 
@@ -182,7 +182,7 @@ const rejectPayout = async (
 
 // retry failed payout service
 const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
-  const payout = await Payout.findById(payoutId).populate(
+  const payout = await Payout.findOne({ payoutId }).populate(
     'userId',
     'userId bankDetails',
   );
@@ -257,7 +257,7 @@ const finalizeSettlement = async (
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
 
   try {
-    const payout = await Payout.findById(payoutId)
+    const payout = await Payout.findOne({ payoutId })
       .populate('userId', 'userId bankDetails')
       .session(session);
 
@@ -434,7 +434,7 @@ const getAllPayouts = async (
 const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
   const { role, _id: currentUserId } = currentUser;
 
-  const payout = await Payout.findById(payoutId)
+  const payout = await Payout.findOne({ payoutId })
     .populate('userId', 'name profilePhoto userId email phone bankDetails')
     .populate('senderId', 'name role profilePhoto');
 

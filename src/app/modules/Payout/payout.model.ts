@@ -7,6 +7,11 @@ import { TPayout } from './payout.interface';
 
 const payoutSchema = new Schema<TPayout>(
   {
+    payoutId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     userId: {
       type: Schema.Types.ObjectId,
       required: true,
