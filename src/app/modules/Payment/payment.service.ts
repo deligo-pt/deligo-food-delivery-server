@@ -4,6 +4,7 @@ import config from '../../config';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
+import { AuthUser } from '../../constant/user.constant';
 // create reduniq payment intent service
 const createReduniqPayment = async (
   checkoutSummaryId: string,
@@ -16,6 +17,20 @@ const createReduniqPayment = async (
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Checkout summary already converted to order',
+    );
+  }
+
+  if (summary.paymentStatus === 'PROCESSING') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Payment already in process for this checkout.',
+    );
+  }
+
+  if (summary.paymentStatus === 'PAID') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Payment already completed for this checkout',
     );
   }
 
@@ -62,6 +77,7 @@ const createReduniqPayment = async (
 
   if (response.data.token) {
     summary.paymentMethod = paymentMethod;
+    summary.paymentStatus = 'PROCESSING';
     await summary.save();
   }
 
@@ -78,6 +94,31 @@ const createReduniqPayment = async (
   };
 };
 
+// handle payment failure
+const handlePaymentFailure = async (
+  checkoutSummaryId: string,
+  currentUser: AuthUser,
+) => {
+  const summary = await CheckoutSummary.findById(checkoutSummaryId);
+
+  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'Summary not found');
+
+  if (summary.customerId.toString() !== currentUser._id.toString()) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to view',
+    );
+  }
+
+  if (!summary.isConvertedToOrder) {
+    summary.paymentStatus = 'FAILED';
+    await summary.save();
+  }
+
+  return { message: 'Payment status reset successfully' };
+};
+
 export const PaymentServices = {
   createReduniqPayment,
+  handlePaymentFailure,
 };
