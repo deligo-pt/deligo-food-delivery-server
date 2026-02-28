@@ -75,7 +75,7 @@ const moduleRoutes = [
     route: PaymentRoutes,
   },
   {
-    path: '/payout',
+    path: '/payouts',
     route: PayoutRoutes,
   },
   {

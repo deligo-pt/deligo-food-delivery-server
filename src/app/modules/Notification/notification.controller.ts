@@ -8,7 +8,7 @@ import { AuthUser } from '../../constant/user.constant';
 const getMyNotifications = catchAsync(async (req, res) => {
   const result = await NotificationService.getMyNotifications(
     req.user as AuthUser,
-    req.query
+    req.query,
   );
 
   sendResponse(res, {
@@ -47,7 +47,7 @@ const markAllAsRead = catchAsync(async (req, res) => {
 const getAllNotifications = catchAsync(async (req, res) => {
   const result = await NotificationService.getAllNotifications(
     req.user as AuthUser,
-    req.query
+    req.query,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -63,7 +63,7 @@ const softDeleteSingleNotification = catchAsync(async (req, res) => {
   const { id } = req.params;
   const result = await NotificationService.softDeleteSingleNotification(
     id,
-    req?.user as AuthUser
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -78,7 +78,7 @@ const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
   const { notificationIds } = req.body;
   const result = await NotificationService.softDeleteMultipleNotifications(
     notificationIds,
-    req?.user as AuthUser
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -91,7 +91,7 @@ const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
 // soft delete all notifications controller
 const softDeleteAllNotifications = catchAsync(async (req, res) => {
   const result = await NotificationService.softDeleteAllNotifications(
-    req?.user as AuthUser
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -106,7 +106,7 @@ const permanentDeleteSingleNotification = catchAsync(async (req, res) => {
   const { id } = req.params;
   const result = await NotificationService.permanentDeleteSingleNotification(
     id,
-    req?.user as AuthUser
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -121,7 +121,7 @@ const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
   const { notificationIds } = req.body;
   const result = await NotificationService.permanentDeleteMultipleNotifications(
     notificationIds,
-    req?.user as AuthUser
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -134,7 +134,7 @@ const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
 // Permanent Delete All Notification Controller
 const permanentDeleteAllNotifications = catchAsync(async (req, res) => {
   const result = await NotificationService.permanentDeleteAllNotifications(
-    req?.user as AuthUser
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,

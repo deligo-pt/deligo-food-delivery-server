@@ -16,6 +16,21 @@ router.post(
   PayoutController.initiateSettlement,
 );
 
+// reject payout
+router.post(
+  '/reject-payout/:payoutId',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  validateRequest(PayoutValidation.RejectPayoutValidationSchema),
+  PayoutController.rejectPayout,
+);
+
+// retry failed payout
+router.post(
+  '/retry-failed-payout/:payoutId',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  PayoutController.retryFailedPayout,
+);
+
 // finalize payout
 router.post(
   '/finalize-settlement/:payoutId',
@@ -24,6 +39,34 @@ router.post(
   parseBody,
   validateRequest(PayoutValidation.FinalizeSettlementValidationSchema),
   PayoutController.finalizeSettlement,
+);
+
+// get all payout
+router.get(
+  '/',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'SUB_VENDOR',
+  ),
+  PayoutController.getAllPayouts,
+);
+
+// get single payout
+router.get(
+  '/:payoutId',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+    'VENDOR',
+    'SUB_VENDOR',
+  ),
+  PayoutController.getSinglePayout,
 );
 
 export const PayoutRoutes = router;

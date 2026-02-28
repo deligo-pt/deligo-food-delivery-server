@@ -6,6 +6,12 @@ const InitiateSettlementValidationSchema = z.object({
   }),
 });
 
+const RejectPayoutValidationSchema = z.object({
+  body: z.object({
+    reason: z.string({ required_error: 'Reason is required.' }),
+  }),
+});
+
 const FinalizeSettlementValidationSchema = z.object({
   body: z.object({
     bankReferenceId: z.string().min(1, 'Bank Reference ID is required.'),
@@ -15,5 +21,6 @@ const FinalizeSettlementValidationSchema = z.object({
 
 export const PayoutValidation = {
   InitiateSettlementValidationSchema,
+  RejectPayoutValidationSchema,
   FinalizeSettlementValidationSchema,
 };
