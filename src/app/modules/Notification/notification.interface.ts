@@ -7,7 +7,7 @@ export type TNotification = {
   title: string;
   message: string;
   data?: Record<string, string>; // optional metadata
-  type?: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER';
+  type?: 'ORDER' | 'SYSTEM' | 'PROMO' | 'PAYOUT' | 'ACCOUNT' | 'OTHER';
   isRead: boolean;
   isDeleted: boolean;
   createdAt: Date;

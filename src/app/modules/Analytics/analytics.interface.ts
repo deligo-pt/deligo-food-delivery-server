@@ -14,14 +14,14 @@ export interface DailyRevenueFacet {
 
 export interface SalesAnalyticsResponse {
     summary: {
-        totalRevenue: string;
+        totalRevenue: number;
         completedOrders: number;
         cancelledOrders: number;
-        avgOrderValue: string;
+        avgOrderValue: number;
     };
     revenueCards: {
-        thisWeek: string;
-        thisMonth: string;
+        thisWeek: number;
+        thisMonth: number;
         topEarningDay: string;
     };
     charts: {
@@ -33,9 +33,9 @@ export interface SalesAnalyticsResponse {
 
 export interface OrderReportAnalyticsResponse {
     summary: {
-        totalRevenue: string;
+        totalRevenue: number;
         totalOrders: number;
-        avgOrderValue: string;
+        avgOrderValue: number;
     };
 
     ordersByZone: {
