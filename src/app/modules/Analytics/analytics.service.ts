@@ -1840,11 +1840,39 @@ const getAdminCustomerReportAnalytics = async () => {
               activeCustomers: {
                 $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
               },
+            },
+          },
+          {
+            $lookup: {
+              from: 'orders',
+              pipeline: [{ $match: { isDeleted: false } }, { $count: 'count' }],
+              as: 'totalOrderCount',
+            },
+          },
+          {
+            $lookup: {
+              from: 'wallets',
+              pipeline: [
+                { $match: { userModel: 'Admin' } },
+                {
+                  $group: {
+                    _id: null,
+                    totalRev: { $sum: '$totalEarnings' },
+                  },
+                },
+              ],
+              as: 'walletStats',
+            },
+          },
+          {
+            $project: {
+              totalCustomers: 1,
+              activeCustomers: 1,
               totalOrders: {
-                $sum: { $ifNull: ['$orders.totalOrders', 0] },
+                $ifNull: [{ $arrayElemAt: ['$totalOrderCount.count', 0] }, 0],
               },
               totalRevenue: {
-                $sum: { $ifNull: ['$orders.totalSpent', 0] },
+                $ifNull: [{ $arrayElemAt: ['$walletStats.totalRev', 0] }, 0],
               },
             },
           },

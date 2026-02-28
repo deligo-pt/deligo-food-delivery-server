@@ -1134,7 +1134,6 @@ const updateOrderStatusByDeliveryPartner = async (
         {
           $inc: {
             totalUnpaidEarnings: roundTo2(deliGoCommissionNet) || 0,
-            totalEarnings: roundTo2(deliGoCommissionNet) || 0,
           },
         },
         { session, upsert: true },
