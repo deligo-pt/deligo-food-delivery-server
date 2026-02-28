@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 export type TPayout = {
+  payoutId: string;
   userId: mongoose.Types.ObjectId;
   userModel: 'Vendor' | 'DeliveryPartner' | 'FleetManager';
 
