@@ -2240,12 +2240,33 @@ const getAdminDeliveryPartnerReportAnalytics = async () => {
                   $ifNull: ['$operationalData.totalDeliveries', 0],
                 },
               },
-
-              // total earnings from all delivery partners
-              totalEarnings: {
-                $sum: {
-                  $ifNull: ['$operationalData.totalEarnings', 0],
+            },
+          },
+          {
+            $lookup: {
+              from: 'wallets',
+              pipeline: [
+                { $match: { userModel: 'DeliveryPartner' } },
+                {
+                  $group: {
+                    _id: null,
+                    totalEarningsFromWallet: { $sum: '$totalEarnings' },
+                  },
                 },
+              ],
+              as: 'walletStats',
+            },
+          },
+          {
+            $project: {
+              totalPartners: 1,
+              activePartners: 1,
+              totalDeliveries: 1,
+              totalEarnings: {
+                $ifNull: [
+                  { $arrayElemAt: ['$walletStats.totalEarningsFromWallet', 0] },
+                  0,
+                ],
               },
             },
           },
