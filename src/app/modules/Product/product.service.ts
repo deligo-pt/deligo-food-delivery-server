@@ -8,9 +8,6 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { Customer } from '../Customer/customer.model';
-import { getCustomerCoordinates } from '../../utils/getCustomerCoordinates';
-import { calculateDistance } from '../../utils/calculateDistance';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { customAlphabet } from 'nanoid';
@@ -699,77 +696,6 @@ const getAllProducts = async (
     query.isDeleted = false;
   }
 
-  // ------------------------------------
-  // CUSTOMER → nearest vendors first
-  // ------------------------------------
-
-  if (role === 'CUSTOMER') {
-    // Build base query WITH filter/search/fields but WITHOUT paginate/sort
-    const productsQB = new QueryBuilder(
-      Product.find().populate({
-        path: 'vendorId',
-        select:
-          'userId businessDetails.businessName businessDetails.businessType documents.storePhoto businessDetails.isStoreOpen businessLocation.latitude businessLocation.longitude',
-      }),
-      query,
-    )
-      .fields()
-      .filter()
-      .search(ProductSearchableFields);
-
-    // Use QueryBuilder to get total/page/limit, but NOT DB pagination
-    const [customer, meta, products] = await Promise.all([
-      Customer.findOne({
-        userId: currentUser.userId,
-        isDeleted: false,
-      }).lean(),
-      productsQB.countTotal(), // uses query.page + query.limit
-      productsQB.modelQuery.lean<TProduct[]>(), // NO skip/limit applied here
-    ]);
-
-    const coords = customer ? getCustomerCoordinates(customer) : null;
-
-    let sortedProducts: (TProduct & { distance?: number })[] = products;
-
-    if (coords) {
-      const [custLng, custLat] = coords;
-
-      sortedProducts = products
-        .map((product) => {
-          const vLng = (product as any).vendorId?.businessLocation?.longitude;
-          const vLat = (product as any).vendorId?.businessLocation?.latitude;
-
-          if (typeof vLng === 'number' && typeof vLat === 'number') {
-            const { meters } = calculateDistance(custLng, custLat, vLng, vLat);
-            return { ...product, distance: meters };
-          }
-
-          // No vendor coordinates → send to bottom
-          return { ...product, distance: Number.POSITIVE_INFINITY };
-        })
-        .sort((a, b) => {
-          const dA = a.distance ?? Number.POSITIVE_INFINITY;
-          const dB = b.distance ?? Number.POSITIVE_INFINITY;
-          return dA - dB;
-        });
-    }
-
-    // Manual paginate AFTER distance sort
-    const page = meta.page;
-    const limit = meta.limit;
-    const skip = (page - 1) * limit;
-
-    const paginated = sortedProducts.slice(skip, skip + limit);
-
-    return {
-      meta: {
-        ...meta,
-        totalPages: meta.totalPage,
-      },
-      data: paginated,
-    };
-  }
-
   const products = new QueryBuilder(Product.find(), query)
     .fields()
     .paginate()
@@ -779,7 +705,7 @@ const getAllProducts = async (
 
   const populateOptions = getPopulateOptions(role, {
     vendor:
-      'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
+      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
   });
 
@@ -825,7 +751,7 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
   }
   const populateOptions = getPopulateOptions(currentUser.role, {
     vendor:
-      'userId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen documents.storePhoto businessLocation.latitude businessLocation.longitude',
+      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
   });
 
