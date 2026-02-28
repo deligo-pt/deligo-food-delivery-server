@@ -86,20 +86,6 @@ export type TCustomer = {
   }>;
 
   // ------------------------------------------------------
-  // Orders & Activity (Includes Analytics Metrics)
-  // ------------------------------------------------------
-  orders: {
-    totalOrders?: number;
-    totalSpent?: number;
-    lastOrderDate?: Date;
-    lastLoginAt?: Date;
-
-    // Analytics
-    avgOrderValue?: number;
-    referralsCount?: number;
-  };
-
-  // ------------------------------------------------------
   // Security & Access
   // ------------------------------------------------------
   twoFactorEnabled?: boolean;

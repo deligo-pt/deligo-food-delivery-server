@@ -235,6 +235,18 @@ const getVendorPerformanceAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get all customer analytics controller
+const getAllCustomerAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAllCustomerAnalytics(req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'All customers analytics fetched successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 export const AnalyticsControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -254,4 +266,5 @@ export const AnalyticsControllers = {
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
   getVendorPerformanceAnalytics,
+  getAllCustomerAnalytics,
 };
