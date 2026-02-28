@@ -402,7 +402,8 @@ const getAllPayouts = async (
     .filter()
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search([]);
 
   const rawResult = await payoutQuery.modelQuery;
   const meta = await payoutQuery.countTotal();

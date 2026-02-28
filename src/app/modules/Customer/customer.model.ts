@@ -114,20 +114,6 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     ],
 
     // ----------------------------------------------------------------
-    // ORDER & ACTIVITY DETAILS
-    // ----------------------------------------------------------------
-    orders: {
-      totalOrders: { type: Number, default: 0 },
-      totalSpent: { type: Number, default: 0 },
-      lastOrderDate: { type: Date, default: null },
-      lastLoginAt: { type: Date, default: null },
-
-      // NEW ANALYTICS FIELDS
-      avgOrderValue: { type: Number, default: 0 },
-      referralsCount: { type: Number, default: 0 },
-    },
-
-    // ----------------------------------------------------------------
     // Security & Access
     // ----------------------------------------------------------------
     twoFactorEnabled: { type: Boolean, default: false },

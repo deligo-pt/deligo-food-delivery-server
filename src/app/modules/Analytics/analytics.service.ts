@@ -179,84 +179,84 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-        // Vendor filter
-        {
-          $match: {
-            vendorId,
-            isDeleted: false,
-          },
-        },
-
-        // Unwind items
-        { $unwind: '$items' },
-
-        // Join products to get category
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'items.productId',
-            foreignField: '_id',
-            as: 'product',
-          },
-        },
-        { $unwind: '$product' },
-
-        // One order = one count per category
-        {
-          $group: {
-            _id: {
-              category: '$product.category',
-              orderId: '$_id',
+          // Vendor filter
+          {
+            $match: {
+              vendorId,
+              isDeleted: false,
             },
           },
-        },
 
-        // Count orders per category
-        {
-          $group: {
-            _id: '$_id.category',
-            orderCount: { $sum: 1 },
-          },
-        },
+          // Unwind items
+          { $unwind: '$items' },
 
-        // Calculate TOTAL of all category orders
-        {
-          $group: {
-            _id: null,
-            totalCategoryOrders: { $sum: '$orderCount' },
-            categories: { $push: '$$ROOT' },
-          },
-        },
-
-        // Calculate percentage (SUM = 100%)
-        { $unwind: '$categories' },
-        {
-          $project: {
-            _id: 0,
-            name: '$categories._id',
-            totalOrders: '$categories.orderCount',
-            percentage: {
-              $round: [
-                {
-                  $multiply: [
-                    {
-                      $divide: [
-                        '$categories.orderCount',
-                        '$totalCategoryOrders',
-                      ],
-                    },
-                    100,
-                  ],
-                },
-                2,
-              ],
+          // Join products to get category
+          {
+            $lookup: {
+              from: 'products',
+              localField: 'items.productId',
+              foreignField: '_id',
+              as: 'product',
             },
           },
-        },
+          { $unwind: '$product' },
 
-        // Top category first
-        { $sort: { percentage: -1 } },
-      ]);
+          // One order = one count per category
+          {
+            $group: {
+              _id: {
+                category: '$product.category',
+                orderId: '$_id',
+              },
+            },
+          },
+
+          // Count orders per category
+          {
+            $group: {
+              _id: '$_id.category',
+              orderCount: { $sum: 1 },
+            },
+          },
+
+          // Calculate TOTAL of all category orders
+          {
+            $group: {
+              _id: null,
+              totalCategoryOrders: { $sum: '$orderCount' },
+              categories: { $push: '$$ROOT' },
+            },
+          },
+
+          // Calculate percentage (SUM = 100%)
+          { $unwind: '$categories' },
+          {
+            $project: {
+              _id: 0,
+              name: '$categories._id',
+              totalOrders: '$categories.orderCount',
+              percentage: {
+                $round: [
+                  {
+                    $multiply: [
+                      {
+                        $divide: [
+                          '$categories.orderCount',
+                          '$totalCategoryOrders',
+                        ],
+                      },
+                      100,
+                    ],
+                  },
+                  2,
+                ],
+              },
+            },
+          },
+
+          // Top category first
+          { $sort: { percentage: -1 } },
+        ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -543,8 +543,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-      )
+          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+        )
       : 0;
 
   return {
@@ -561,17 +561,17 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-            ) + '%'
+                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+              ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-            opData.completedDeliveries > 0 &&
-            opData.totalDeliveryMinutes
+          opData.completedDeliveries > 0 &&
+          opData.totalDeliveryMinutes
             ? Math.round(
-              opData.totalDeliveryMinutes / opData.completedDeliveries,
-            )
+                opData.totalDeliveryMinutes / opData.completedDeliveries,
+              )
             : 0;
 
         return {
@@ -859,8 +859,8 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
         subValue:
           totalCustomers > 0
             ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
-              0,
-            )}% of customers`
+                0,
+              )}% of customers`
             : '0%',
       },
 
@@ -868,8 +868,8 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
         value:
           totalCustomers > 0
             ? `${((cards.returningCustomers / totalCustomers) * 100).toFixed(
-              0,
-            )}%`
+                0,
+              )}%`
             : '0%',
         subValue: 'Avg. Repeat',
       },
@@ -1507,7 +1507,6 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
 const getAdminSalesReportAnalytics = async (
   query: TimeframeQuery,
 ): Promise<SalesAnalyticsResponse> => {
-
   const hasTimeframe = Boolean(query?.timeframe);
   const timeframe = query?.timeframe;
 
@@ -1539,7 +1538,6 @@ const getAdminSalesReportAnalytics = async (
   // for this month of revenue trend
   const monthStartDate = new Date();
   monthStartDate.setDate(endDate.getDate() - 30);
-
 
   const [analytics] = await Order.aggregate<{
     summary: SummaryFacet[];
@@ -1625,7 +1623,6 @@ const getAdminSalesReportAnalytics = async (
     },
   ]);
 
-
   const summary = analytics?.summary[0] ?? {
     totalRevenue: 0,
     completedOrders: 0,
@@ -1634,8 +1631,7 @@ const getAdminSalesReportAnalytics = async (
 
   const revenueTrend = analytics?.revenueTrend ?? [];
 
-  const last30DaysRevenue =
-    analytics?.last30DaysRevenue?.[0]?.total ?? 0;
+  const last30DaysRevenue = analytics?.last30DaysRevenue?.[0]?.total ?? 0;
 
   const total7DayRevenue = revenueTrend.reduce(
     (acc, day) => acc + day.revenue,
@@ -1644,9 +1640,7 @@ const getAdminSalesReportAnalytics = async (
 
   const topEarningDay =
     revenueTrend.length > 0
-      ? revenueTrend.reduce((max, d) =>
-        d.revenue > max.revenue ? d : max,
-      )._id
+      ? revenueTrend.reduce((max, d) => (d.revenue > max.revenue ? d : max))._id
       : 'N/A';
 
   return {
@@ -1657,7 +1651,7 @@ const getAdminSalesReportAnalytics = async (
       avgOrderValue:
         summary.completedOrders > 0
           ? roundTo2(summary.totalRevenue / summary.completedOrders)
-          : 0.00,
+          : 0.0,
     },
 
     revenueCards: {
@@ -1717,7 +1711,9 @@ const getAdminOrderReportAnalytics = async (
       $facet: {
         // summery cards
         summary: [
-          ...(timeframe ? [{ $match: { createdAt: { $gte: timeframeMatch } } }] : []),
+          ...(timeframe
+            ? [{ $match: { createdAt: { $gte: timeframeMatch } } }]
+            : []),
           {
             $group: {
               _id: null,
@@ -1802,7 +1798,7 @@ const getAdminOrderReportAnalytics = async (
       avgOrderValue:
         summary.totalOrders > 0
           ? roundTo2(summary.totalRevenue / summary.totalOrders)
-          : 0.00,
+          : 0.0,
     },
 
     ordersByZone: result?.ordersByZone.map((z: any) => ({
@@ -2518,6 +2514,89 @@ const getVendorPerformanceAnalytics = async (
   };
 };
 
+// get all customer analytics
+const getAllCustomerAnalytics = async (query: Record<string, any>) => {
+  const { searchTerm, status, sortBy, page = 1, limit = 10 } = query;
+
+  const pageNumber = Number(page);
+  const limitNumber = Number(limit);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  const pipeline: any[] = [{ $match: { isDeleted: false } }];
+
+  if (searchTerm) {
+    pipeline.push({
+      $match: {
+        $or: [
+          { 'name.firstName': { $regex: searchTerm, $options: 'i' } },
+          { 'name.lastName': { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } },
+        ],
+      },
+    });
+  }
+
+  if (status && status !== 'All') {
+    pipeline.push({ $match: { status } });
+  }
+
+  pipeline.push(
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'customerId',
+        as: 'orderHistory',
+      },
+    },
+    {
+      $project: {
+        customer: {
+          name: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
+          email: '$email',
+          profilePhoto: '$profilePhoto',
+        },
+        totalOrders: { $size: '$orderHistory' },
+        totalSpent: { $sum: '$orderHistory.payoutSummary.grandTotal' },
+        lastOrdered: { $max: '$orderHistory.createdAt' },
+        joinedAt: '$createdAt',
+        status: '$status',
+      },
+    },
+  );
+
+  let sortCondition: any = { totalOrders: -1 };
+  if (sortBy === 'Newest First') sortCondition = { joinedAt: -1 };
+  else if (sortBy === 'Oldest First') sortCondition = { joinedAt: 1 };
+  else if (sortBy === 'Name (A-Z)') sortCondition = { 'customer.name': 1 };
+  else if (sortBy === 'Name (Z-A)') sortCondition = { 'customer.name': -1 };
+
+  pipeline.push({ $sort: sortCondition });
+
+  const finalResult = await Customer.aggregate([
+    ...pipeline,
+    {
+      $facet: {
+        data: [{ $skip: skip }, { $limit: limitNumber }],
+        totalCount: [{ $count: 'count' }],
+      },
+    },
+  ]);
+
+  const result = finalResult[0]?.data || [];
+  const total = finalResult[0]?.totalCount[0]?.count || 0;
+
+  return {
+    meta: {
+      page: pageNumber,
+      limit: limitNumber,
+      total,
+      totalPage: Math.ceil(total / limitNumber),
+    },
+    data: result,
+  };
+};
+
 export const AnalyticsServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -2537,4 +2616,5 @@ export const AnalyticsServices = {
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
   getVendorPerformanceAnalytics,
+  getAllCustomerAnalytics,
 };
