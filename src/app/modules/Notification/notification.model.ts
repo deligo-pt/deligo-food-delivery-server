@@ -15,16 +15,16 @@ const notificationSchema = new Schema<TNotification>(
     data: { type: Object },
     type: {
       type: String,
-      enum: ['ORDER', 'SYSTEM', 'PROMO', 'ACCOUNT', 'OTHER'],
+      enum: ['ORDER', 'SYSTEM', 'PROMO', 'PAYOUT', 'ACCOUNT', 'OTHER'],
       default: 'OTHER',
     },
     isRead: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Notification = model<TNotification>(
   'Notification',
-  notificationSchema
+  notificationSchema,
 );

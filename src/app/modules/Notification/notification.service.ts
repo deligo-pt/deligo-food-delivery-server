@@ -63,7 +63,7 @@ const sendToUser = (
   message: string,
   data?: Record<string, string>,
   channelId?: 'order_notification' | 'default',
-  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER',
+  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'PAYOUT' | 'ACCOUNT' | 'OTHER' = 'OTHER',
 ) => {
   //  Detach from request lifecycle
   setImmediate(async () => {
@@ -107,7 +107,7 @@ const sendToRole = (
   message: string,
   data?: Record<string, string>,
   channelId?: 'order_notification' | 'default',
-  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'ACCOUNT' | 'OTHER' = 'OTHER',
+  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'PAYOUT' | 'ACCOUNT' | 'OTHER' = 'OTHER',
 ) => {
   setImmediate(async () => {
     try {
