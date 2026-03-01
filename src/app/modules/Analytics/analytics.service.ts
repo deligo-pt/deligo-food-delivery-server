@@ -57,8 +57,18 @@ const getAdminDashboardAnalytics = async () => {
     },
     { $unwind: '$product' },
     {
+      $lookup: {
+        from: 'productcategories',
+        localField: 'product.category',
+        foreignField: '_id',
+        as: 'categoryDetails',
+      },
+    },
+    { $unwind: '$categoryDetails' },
+    {
       $group: {
-        _id: '$product.category',
+        _id: '$categoryDetails._id',
+        categoryName: { $first: '$categoryDetails.name' },
         total: { $sum: 1 },
       },
     },
@@ -66,7 +76,8 @@ const getAdminDashboardAnalytics = async () => {
     { $limit: 5 },
     {
       $project: {
-        name: '$_id',
+        _id: 1,
+        name: '$categoryName',
         percentage: {
           $round: [
             { $multiply: [{ $divide: ['$total', totalOrders] }, 100] },
