@@ -89,7 +89,8 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
   const priceAfterDiscount = roundTo2(selectedPrice - unitDiscountAmount);
 
   const productLineTotal = roundTo2(priceAfterDiscount * quantity);
-  const productTaxAmount = roundTo2(productLineTotal * (taxRate / 100));
+  const perUnitTaxAmount = roundTo2(priceAfterDiscount * (taxRate / 100));
+  const productTaxAmount = roundTo2(perUnitTaxAmount * quantity);
 
   const newItem: any = {
     productId: existingProduct._id,
@@ -110,6 +111,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       unitPrice: priceAfterDiscount,
       lineTotal: productLineTotal,
       taxRate,
+      perUnitTaxAmount,
       taxAmount: productTaxAmount,
     },
     itemSummary: {
@@ -145,7 +147,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       }
 
       const newProductLineTotal = roundTo2(priceAfterDiscount * finalQuantity);
-      const newProductTax = roundTo2(newProductLineTotal * (taxRate / 100));
+      const newProductTax = roundTo2(perUnitTaxAmount * finalQuantity);
 
       const existingAddonsNet =
         currentItem.addons?.reduce(
@@ -331,23 +333,32 @@ const updateCartItemQuantity = async (
   if (targetItem.addons && targetItem.addons.length > 0) {
     targetItem.addons.forEach((addon: any) => {
       const price = Number(addon.unitPrice) || Number(addon.price) || 0;
-      const addonSubtotal = roundTo2(price * (Number(addon.quantity) || 0));
-      const addonTaxValue = roundTo2(
-        addonSubtotal * ((Number(addon.taxRate) || 0) / 100),
-      );
+      const qty = Number(addon.quantity) || 0;
+
+      const unitTax =
+        addon.perUnitTaxAmount ||
+        roundTo2(price * ((Number(addon.taxRate) || 0) / 100));
+
+      const addonSubtotal = roundTo2(price * qty);
+      const addonTaxValue = roundTo2(unitTax * qty);
+
+      addon.lineTotal = addonSubtotal;
+      addon.taxAmount = addonTaxValue;
+      addon.perUnitTaxAmount = unitTax;
 
       totalAddonsPrice += addonSubtotal;
       totalAddonsTax += addonTaxValue;
-      addon.lineTotal = addonSubtotal;
-      addon.taxAmount = addonTaxValue;
     });
   }
 
-  const { unitPrice, taxRate, productDiscountAmount } =
+  const { unitPrice, taxRate, productDiscountAmount, perUnitTaxAmount } =
     targetItem.productPricing;
 
+  const unitTaxAmount =
+    perUnitTaxAmount || roundTo2(unitPrice * (taxRate / 100));
+
   const mainProductLineTotal = roundTo2(unitPrice * currentQty);
-  const mainProductTax = roundTo2(mainProductLineTotal * (taxRate / 100));
+  const mainProductTax = roundTo2(unitTaxAmount * currentQty);
 
   targetItem.productPricing.lineTotal = mainProductLineTotal;
   targetItem.productPricing.taxAmount = mainProductTax;
@@ -479,12 +490,16 @@ const updateAddonQuantity = async (
     if (existingAddonIndex > -1) {
       targetItem.addons[existingAddonIndex].quantity += 1;
     } else {
+      const perUnitTax = roundTo2(
+        addonData.unitPrice * (addonData.taxRate / 100),
+      );
       targetItem.addons.push({
         ...addonData,
         originalPrice: addonData.unitPrice,
         quantity: 1,
         lineTotal: addonData.unitPrice,
-        taxAmount: roundTo2(addonData.unitPrice * (addonData.taxRate / 100)),
+        perUnitTaxAmount: perUnitTax,
+        taxAmount: perUnitTax,
       });
     }
   } else if (action === 'decrement') {
@@ -507,11 +522,15 @@ const updateAddonQuantity = async (
     const aQty = Number(addon.quantity) || 0;
     const aTaxRate = Number(addon.taxRate) || 0;
 
+    const perUnitTax =
+      addon.perUnitTaxAmount || roundTo2(aUnitPrice * (aTaxRate / 100));
+
     const addonLineTotal = roundTo2(aUnitPrice * aQty);
-    const addonTaxAmount = roundTo2(addonLineTotal * (aTaxRate / 100));
+    const addonTaxAmount = roundTo2(perUnitTax * aQty);
 
     addon.lineTotal = addonLineTotal;
     addon.taxAmount = addonTaxAmount;
+    addon.perUnitTaxAmount = perUnitTax;
 
     totalAddonsNet += addonLineTotal;
     totalAddonsTax += addonTaxAmount;
