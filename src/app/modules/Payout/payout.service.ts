@@ -9,6 +9,9 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Wallet } from '../Wallet/wallet.model';
 import { Transaction } from '../Transaction/transaction.model';
 import { NotificationService } from '../Notification/notification.service';
+import { customAlphabet } from 'nanoid';
+
+const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
 // initiate payout service
 const initiateSettlement = async (
@@ -63,11 +66,12 @@ const initiateSettlement = async (
     }
 
     const snapshotAmount = wallet.totalUnpaidEarnings;
+    const uniquePayoutId = nanoid();
 
     const [payout] = await Payout.create(
       [
         {
-          payoutId: `PAY-${Date.now()}`,
+          payoutId: `PAY-${uniquePayoutId}`,
           userId,
           userModel: targetUserModel,
           senderId: senderId,
@@ -143,6 +147,8 @@ const rejectPayout = async (
 
     payout.status = 'FAILED';
     payout.remarks = reason || 'Terminated due to incorrect bank details.';
+    payout.failedAt = new Date();
+    payout.failedReason = reason || 'Terminated due to incorrect bank details.';
 
     await payout.save({ session });
 
@@ -214,6 +220,8 @@ const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
 
   payout.status = 'PROCESSING';
   payout.remarks = `Retried by ${currentUser.role} on ${new Date().toLocaleDateString()}`;
+  payout.retryAt = new Date();
+  payout.retryRemarks = `Retried by ${currentUser.role} on ${new Date().toLocaleDateString()}`;
 
   const NotificationPayload = {
     title: 'Payout retried',
@@ -375,7 +383,8 @@ const getAllPayouts = async (
   currentUser: AuthUser,
 ) => {
   const { role, _id: currentUserId } = currentUser;
-  const filter: Record<string, any> = { ...query };
+  const { startDate, endDate, ...remainingQuery } = query;
+  const filter: Record<string, any> = { ...remainingQuery };
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
     if (role === 'FLEET_MANAGER') {
@@ -389,13 +398,23 @@ const getAllPayouts = async (
     }
   }
 
-  if (!filter.status) {
-    filter.status = { $in: ['PAID', 'PROCESSING', 'FAILED'] };
+  if (startDate || endDate) {
+    filter.createdAt = {};
+    if (startDate) {
+      const start = new Date(startDate as string);
+      start.setHours(0, 0, 0, 0);
+      filter.createdAt.$gte = start;
+    }
+    if (endDate) {
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+      filter.createdAt.$lte = end;
+    }
   }
 
   const payoutQuery = new QueryBuilder(
     Payout.find()
-      .populate('userId', 'name profilePhoto userId')
+      .populate('userId', 'name profilePhoto userId role')
       .populate('senderId', 'name role'),
     filter,
   )
@@ -412,9 +431,11 @@ const getAllPayouts = async (
     let payoutCategory = 'GENERAL';
 
     if (role === 'FLEET_MANAGER') {
-      if (payout.userId._id.toString() === currentUserId.toString()) {
+      if (payout.userId?._id?.toString() === currentUserId.toString()) {
         payoutCategory = 'RECEIVED_FROM_ADMIN';
-      } else if (payout.senderId._id.toString() === currentUserId.toString()) {
+      } else if (
+        payout.senderId?._id?.toString() === currentUserId.toString()
+      ) {
         payoutCategory = 'PAID_TO_PARTNER';
       }
     }

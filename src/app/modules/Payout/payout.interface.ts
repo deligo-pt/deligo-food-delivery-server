@@ -20,4 +20,10 @@ export type TPayout = {
   bankReferenceId?: string;
   payoutProof?: string;
   remarks?: string;
+
+  failedAt?: Date;
+  failedReason?: string;
+
+  retryAt?: Date;
+  retryRemarks?: string;
 };
