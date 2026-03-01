@@ -29,6 +29,9 @@ import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
 import { Wallet } from '../Wallet/wallet.model';
 import { roundTo2 } from '../../utils/mathProvider';
+import { customAlphabet } from 'nanoid';
+
+const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
 // Create Order after reduniq payment
 const createOrderAfterReduniqPayment = async (
@@ -100,12 +103,13 @@ const createOrderAfterReduniqPayment = async (
   // --- Transaction ---
   const session = await mongoose.startSession();
   session.startTransaction();
+  const uniqueOrderId = nanoid();
 
   try {
     const orderData = {
       ...summary.toObject(),
       _id: undefined,
-      orderId: `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      orderId: `ORD-${uniqueOrderId}`,
       paymentMethod: summary.paymentMethod,
       paymentStatus: 'PAID',
       isPaid: true,
@@ -1078,6 +1082,7 @@ const updateOrderStatusByDeliveryPartner = async (
           'Delivery Partner not found for this order.',
         );
       }
+      const uniqueWalletId = nanoid();
       const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
 
       const vendorEarningsBeforeTax =
@@ -1111,6 +1116,7 @@ const updateOrderStatusByDeliveryPartner = async (
             totalUnpaidEarnings: roundTo2(vendorNetPayout) || 0,
             totalEarnings: roundTo2(vendorNetPayout) || 0,
           },
+          $setOnInsert: { walletId: uniqueWalletId },
         },
         { session, upsert: true },
       );
@@ -1123,6 +1129,7 @@ const updateOrderStatusByDeliveryPartner = async (
             totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
             totalEarnings: roundTo2(riderEarningAmount) || 0,
           },
+          $setOnInsert: { walletId: uniqueWalletId },
         },
         { session, upsert: true },
       );
@@ -1133,8 +1140,9 @@ const updateOrderStatusByDeliveryPartner = async (
         { userId: SYSTEM_ADMIN, userModel: 'Admin' },
         {
           $inc: {
-            totalUnpaidEarnings: roundTo2(deliGoCommissionNet) || 0,
+            totalEarnings: roundTo2(deliGoCommissionNet) || 0,
           },
+          $setOnInsert: { walletId: uniqueWalletId },
         },
         { session, upsert: true },
       );
@@ -1150,6 +1158,7 @@ const updateOrderStatusByDeliveryPartner = async (
               totalFleetEarnings: payoutSummary.fleet.fee || 0,
               totalEarnings: totalDeliveryCharge || 0,
             },
+            $setOnInsert: { walletId: uniqueWalletId },
           },
           { session, upsert: true },
         );

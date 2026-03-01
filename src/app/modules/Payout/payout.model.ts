@@ -76,6 +76,21 @@ const payoutSchema = new Schema<TPayout>(
       type: String,
       default: '',
     },
+
+    failedAt: {
+      type: Date,
+    },
+    failedReason: {
+      type: String,
+      trim: true,
+    },
+    retryAt: {
+      type: Date,
+    },
+    retryRemarks: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,

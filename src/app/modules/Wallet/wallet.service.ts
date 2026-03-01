@@ -4,6 +4,8 @@ import { Wallet } from './wallet.model';
 import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
+import AppError from '../../errors/AppError';
+import httpStatus from 'http-status';
 
 // get all wallets
 const getAllWallets = async (
@@ -36,6 +38,51 @@ const getAllWallets = async (
   };
 };
 
+// get single wallet
+const getSingleWallet = async (id: string, currentUser: AuthUser) => {
+  const wallet = await Wallet.findById(id).populate(
+    'userId',
+    'name email userId',
+  );
+
+  if (!wallet) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Wallet not found');
+  }
+
+  if (currentUser.role === 'FLEET_MANAGER') {
+    const isPartner = await DeliveryPartner.findOne({
+      _id: wallet.userId,
+      'registeredBy.id': new mongoose.Types.ObjectId(currentUser._id),
+    });
+
+    if (!isPartner) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to view this wallet',
+      );
+    }
+  }
+
+  return wallet;
+};
+
+// get my wallet
+const getMyWallet = async (currentUser: AuthUser) => {
+  const userId = new mongoose.Types.ObjectId(currentUser._id);
+
+  const wallet = await Wallet.findOne({
+    userId: userId,
+  }).populate('userId', 'name email userId');
+
+  if (!wallet) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Wallet not found for this user');
+  }
+
+  return wallet;
+};
+
 export const WalletServices = {
   getAllWallets,
+  getSingleWallet,
+  getMyWallet,
 };
