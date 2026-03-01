@@ -4,48 +4,9 @@ import auth from '../../middlewares/auth';
 
 const router = Router();
 
-// get admin dashboard analytics
-router.get(
-  '/admin-dashboard-analytics',
-  auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAdminDashboardAnalytics,
-);
-
-// get vendor dashboard analytics
-router.get(
-  '/vendor-dashboard-analytics',
-  auth('VENDOR', 'SUB_VENDOR'),
-  AnalyticsControllers.getVendorDashboardAnalytics,
-);
-
-// get fleet dashboard analytics
-router.get(
-  '/fleet-dashboard-analytics',
-  auth('FLEET_MANAGER'),
-  AnalyticsControllers.getFleetDashboardAnalytics,
-);
-
-// get partner performance analytics
-router.get(
-  '/partner-performance-analytics',
-  auth('DELIVERY_PARTNER', 'FLEET_MANAGER'),
-  AnalyticsControllers.getPartnerPerformanceAnalytics,
-);
-
-// Delivery Partner earning analytics route
-router.get(
-  '/delivery-partner-earning-analytics',
-  auth('DELIVERY_PARTNER'),
-  AnalyticsControllers.getDeliveryPartnerEarningAnalytics,
-);
-
-// Fleet manager earning analytics route
-router.get(
-  '/fleet-manager-earning-analytics',
-  auth('FLEET_MANAGER'),
-  AnalyticsControllers.getFleetManagerEarningAnalytics,
-);
-
+// ----------------------------------------------------------------------------------
+// ---------------- ANALYTICS ROUTES (Developer Morshed) ----------------------------
+// ----------------------------------------------------------------------------------
 // get vendor sales analytics
 router.get(
   '/vendor-sales-analytics',
@@ -72,13 +33,6 @@ router.get(
   '/top-selling-analytics',
   auth('VENDOR', 'SUB_VENDOR'),
   AnalyticsControllers.getTopSellingItemsAnalytics,
-);
-
-// get vendor earnings analytics
-router.get(
-  '/vendor-earnings-analytics',
-  auth('VENDOR', 'SUB_VENDOR'),
-  AnalyticsControllers.getVendorEarningsAnalytics,
 );
 
 // get admin sales report analytics
@@ -121,6 +75,59 @@ router.get(
   '/admin-delivery-partner-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminDeliveryPartnerReportAnalytics,
+);
+
+// ----------------------------------------------------------------------------------
+// ---------------- ANALYTICS ROUTES (Developer Umayer) ----------------------------
+// ----------------------------------------------------------------------------------
+
+// get admin dashboard analytics
+router.get(
+  '/admin-dashboard-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getAdminDashboardAnalytics,
+);
+
+// get vendor dashboard analytics
+router.get(
+  '/vendor-dashboard-analytics',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getVendorDashboardAnalytics,
+);
+
+// get fleet dashboard analytics
+router.get(
+  '/fleet-dashboard-analytics',
+  auth('FLEET_MANAGER'),
+  AnalyticsControllers.getFleetDashboardAnalytics,
+);
+
+// get partner performance analytics
+router.get(
+  '/partner-performance-analytics',
+  auth('DELIVERY_PARTNER', 'FLEET_MANAGER'),
+  AnalyticsControllers.getPartnerPerformanceAnalytics,
+);
+
+// Delivery Partner earning analytics route
+router.get(
+  '/delivery-partner-earning-analytics',
+  auth('DELIVERY_PARTNER'),
+  AnalyticsControllers.getDeliveryPartnerEarningAnalytics,
+);
+
+// Fleet manager earning analytics route
+router.get(
+  '/fleet-manager-earning-analytics',
+  auth('FLEET_MANAGER'),
+  AnalyticsControllers.getFleetManagerEarningAnalytics,
+);
+
+// get vendor earnings analytics
+router.get(
+  '/vendor-earnings-analytics',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getVendorEarningsAnalytics,
 );
 
 // get vendor performance analytics

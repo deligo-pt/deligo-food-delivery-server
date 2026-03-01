@@ -4,57 +4,9 @@ import sendResponse from '../../utils/sendResponse';
 import { AnalyticsServices } from './analytics.service';
 import { AuthUser } from '../../constant/user.constant';
 
-// get admin dashboard analytics controller
-const getAdminDashboardAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminDashboardAnalytics();
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin dashboard analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get vendor dashboard analytics controller
-const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getVendorDashboardAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Vendor dashboard analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get fleet dashboard analytics controller
-const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getFleetDashboardAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Fleet dashboard analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get partner performance analytics controller
-const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getPartnerPerformanceAnalytics(
-    req.user as AuthUser,
-    req.query,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Partner performance analytics fetched successfully',
-    data: result,
-  });
-});
-
+// ----------------------------------------------------------------------------------
+// ---------------- ANALYTICS CONTROLLERS (Developer Morshed) -----------------------
+// ----------------------------------------------------------------------------------
 // get vendor sales analytics controller
 const getVendorSalesAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorSalesAnalytics(
@@ -77,32 +29,6 @@ const getCustomerInsights = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Customer insights fetched successfully',
-    data: result,
-  });
-});
-
-// get delivery partner earnings analytics  controller
-const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getDeliveryPartnerEarningAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Delivery partner earning analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get fleet manager earning analytics controller
-const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getFleetManagerEarningAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Fleet manager earning analytics fetched successfully',
     data: result,
   });
 });
@@ -132,20 +58,6 @@ const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
     data: result,
   });
 });
-
-// get vendor earnings analytics controller
-const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getVendorEarningsAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Vendor earnings analytics fetched successfully',
-    data: result,
-  });
-});
-
 // get admin sales report analytics controller
 const getAdminSalesReportAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getAdminSalesReportAnalytics(
@@ -221,6 +133,100 @@ const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// ----------------------------------------------------------------------------------
+// ---------------- ANALYTICS CONTROLLERS (Developer Umayer) -----------------------
+// ----------------------------------------------------------------------------------
+
+// get admin dashboard analytics controller
+const getAdminDashboardAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminDashboardAnalytics();
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin dashboard analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get vendor dashboard analytics controller
+const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getVendorDashboardAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor dashboard analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get fleet dashboard analytics controller
+const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getFleetDashboardAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Fleet dashboard analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get partner performance analytics controller
+const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getPartnerPerformanceAnalytics(
+    req.user as AuthUser,
+    req.query,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Partner performance analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get delivery partner earnings analytics  controller
+const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getDeliveryPartnerEarningAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery partner earning analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get fleet manager earning analytics controller
+const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getFleetManagerEarningAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Fleet manager earning analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get vendor earnings analytics controller
+const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getVendorEarningsAnalytics(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor earnings analytics fetched successfully',
+    data: result,
+  });
+});
+
 // get vendor performance analytics controller
 const getVendorPerformanceAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorPerformanceAnalytics(
@@ -248,23 +254,29 @@ const getAllCustomerAnalytics = catchAsync(async (req, res) => {
 });
 
 export const AnalyticsControllers = {
-  getAdminDashboardAnalytics,
-  getVendorDashboardAnalytics,
-  getFleetDashboardAnalytics,
-  getPartnerPerformanceAnalytics,
+  // ---------------------------------------
+  // Analytics Services (Developer Morshed)
+  // ---------------------------------------
   getVendorSalesAnalytics,
   getCustomerInsights,
   getOrderTrendInsights,
   getTopSellingItemsAnalytics,
-  getDeliveryPartnerEarningAnalytics,
-  getFleetManagerEarningAnalytics,
-  getVendorEarningsAnalytics,
   getAdminSalesReportAnalytics,
   getAdminOrderReportAnalytics,
   getAdminCustomerReportAnalytics,
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
+  // ---------------------------------------
+  // Analytics Services (Developer Umayer)
+  // ---------------------------------------
+  getAdminDashboardAnalytics,
+  getVendorDashboardAnalytics,
+  getFleetDashboardAnalytics,
+  getPartnerPerformanceAnalytics,
+  getDeliveryPartnerEarningAnalytics,
+  getFleetManagerEarningAnalytics,
+  getVendorEarningsAnalytics,
   getVendorPerformanceAnalytics,
   getAllCustomerAnalytics,
 };
