@@ -157,7 +157,7 @@ const getAdminDashboardAnalytics = async () => {
 
 // get vendor dashboard analytics
 const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
-  const vendorId = currentUser._id;
+  const vendorId = new Types.ObjectId(currentUser._id);
 
   // --------------------------------------------------
   // Get Vendor Products
@@ -212,20 +212,31 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
           },
           { $unwind: '$product' },
 
-          // One order = one count per category
+          {
+            $lookup: {
+              from: 'productcategories',
+              localField: 'product.category',
+              foreignField: '_id',
+              as: 'categoryDetails',
+            },
+          },
+          { $unwind: '$categoryDetails' },
+
+          // Count orders per category
           {
             $group: {
               _id: {
-                category: '$product.category',
+                categoryId: '$categoryDetails._id',
+                categoryName: '$categoryDetails.name',
                 orderId: '$_id',
               },
             },
           },
 
-          // Count orders per category
           {
             $group: {
-              _id: '$_id.category',
+              _id: '$_id.categoryId',
+              categoryName: { $first: '$_id.categoryName' },
               orderCount: { $sum: 1 },
             },
           },
@@ -235,7 +246,12 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
             $group: {
               _id: null,
               totalCategoryOrders: { $sum: '$orderCount' },
-              categories: { $push: '$$ROOT' },
+              categories: {
+                $push: {
+                  name: '$categoryName',
+                  orderCount: '$orderCount',
+                },
+              },
             },
           },
 
@@ -244,7 +260,7 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
           {
             $project: {
               _id: 0,
-              name: '$categories._id',
+              name: '$categories.name',
               totalOrders: '$categories.orderCount',
               percentage: {
                 $round: [
