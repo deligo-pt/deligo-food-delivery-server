@@ -11,4 +11,25 @@ router.get(
   WalletControllers.getAllWallets,
 );
 
+// get my wallet
+router.get(
+  '/me',
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'DELIVERY_PARTNER',
+  ),
+  WalletControllers.getMyWallet,
+);
+
+// get single wallet
+router.get(
+  '/:walletId',
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  WalletControllers.getSingleWallet,
+);
+
 export const WalletRoutes = router;

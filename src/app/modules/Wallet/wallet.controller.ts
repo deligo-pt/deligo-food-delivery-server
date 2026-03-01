@@ -19,6 +19,33 @@ const getAllWallets = catchAsync(async (req, res) => {
   });
 });
 
+// get single wallet controller
+const getSingleWallet = catchAsync(async (req, res) => {
+  const walletId = req.params.walletId;
+  const currentUser = req.user as AuthUser;
+  const result = await WalletServices.getSingleWallet(walletId, currentUser);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Wallet retrieved successfully',
+    data: result,
+  });
+});
+
+// get my wallet controller
+const getMyWallet = catchAsync(async (req, res) => {
+  const currentUser = req.user as AuthUser;
+  const result = await WalletServices.getMyWallet(currentUser);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Wallet retrieved successfully',
+    data: result,
+  });
+});
+
 export const WalletControllers = {
   getAllWallets,
+  getSingleWallet,
+  getMyWallet,
 };
