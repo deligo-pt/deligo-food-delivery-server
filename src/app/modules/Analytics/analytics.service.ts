@@ -21,601 +21,9 @@ import {
 import { Transaction } from '../Transaction/transaction.model';
 import { Wallet } from '../Wallet/wallet.model';
 
-// get admin dashboard analytics
-const getAdminDashboardAnalytics = async () => {
-  const [
-    customers,
-    vendors,
-    fleetManagers,
-    deliveryPartners,
-    totalProducts,
-    totalOrders,
-    pendingOrders,
-    completedOrders,
-    canceledOrders,
-  ] = await Promise.all([
-    Customer.countDocuments(),
-    Vendor.countDocuments(),
-    FleetManager.countDocuments(),
-    DeliveryPartner.countDocuments(),
-    Product.countDocuments({ isDeleted: false }),
-    Order.countDocuments(),
-    Order.countDocuments({ orderStatus: 'PENDING' }),
-    Order.countDocuments({ orderStatus: 'DELIVERED' }),
-    Order.countDocuments({ orderStatus: 'CANCELED' }),
-  ]);
-
-  const popularCategories = await Order.aggregate([
-    { $unwind: '$items' },
-    {
-      $lookup: {
-        from: 'products',
-        localField: 'items.productId',
-        foreignField: '_id',
-        as: 'product',
-      },
-    },
-    { $unwind: '$product' },
-    {
-      $lookup: {
-        from: 'productcategories',
-        localField: 'product.category',
-        foreignField: '_id',
-        as: 'categoryDetails',
-      },
-    },
-    { $unwind: '$categoryDetails' },
-    {
-      $group: {
-        _id: '$categoryDetails._id',
-        categoryName: { $first: '$categoryDetails.name' },
-        total: { $sum: 1 },
-      },
-    },
-    { $sort: { total: -1 } },
-    { $limit: 5 },
-    {
-      $project: {
-        _id: 1,
-        name: '$categoryName',
-        percentage: {
-          $round: [
-            { $multiply: [{ $divide: ['$total', totalOrders] }, 100] },
-            2,
-          ],
-        },
-      },
-    },
-  ]);
-
-  const recentOrders = await Order.find()
-    .sort({ createdAt: -1 })
-    .limit(3)
-    .populate('customerId', 'name')
-    .select('orderId orderStatus createdAt');
-
-  const topRatedItems = await Product.aggregate([
-    {
-      $match: {
-        isDeleted: false,
-        'rating.average': { $gte: 4 },
-      },
-    },
-
-    {
-      $lookup: {
-        from: 'orders',
-        localField: '_id',
-        foreignField: 'items.productId',
-        as: 'orderData',
-      },
-    },
-
-    {
-      $project: {
-        _id: 1,
-        productId: 1,
-        name: 1,
-        images: 1,
-        rating: { average: '$rating.average' },
-        totalOrders: { $size: '$orderData' },
-      },
-    },
-
-    { $sort: { 'rating.average': -1, totalOrders: -1 } },
-
-    { $limit: 4 },
-  ]);
-
-  const topRatedDeliveryPartners = await DeliveryPartner.find({
-    rating: { $gte: 4 },
-  })
-    .sort({ rating: -1 })
-    .limit(5)
-    .select('name rating completedDeliveries');
-
-  return {
-    counts: {
-      customers,
-      vendors,
-      fleetManagers,
-      deliveryPartners,
-      totalProducts,
-    },
-    orders: {
-      total: totalOrders,
-      pending: pendingOrders,
-      completed: completedOrders,
-      canceled: canceledOrders,
-    },
-    popularCategories,
-    recentOrders,
-    topRatedItems,
-    topRatedDeliveryPartners,
-  };
-};
-
-// get vendor dashboard analytics
-const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
-  const vendorId = new Types.ObjectId(currentUser._id);
-
-  // --------------------------------------------------
-  // Get Vendor Products
-  // --------------------------------------------------
-  const products = await Product.find(
-    { vendorId },
-    '_id category rating meta.status images',
-  ).populate({
-    path: 'category',
-    select: 'name icon',
-  });
-
-  const productIds = products.map((p) => p._id);
-
-  // --------------------------------------------------
-  // Order Counts
-  // --------------------------------------------------
-  const [totalOrders, pendingOrders, completedOrders, canceledOrders] =
-    await Promise.all([
-      Order.countDocuments({ vendorId }),
-      Order.countDocuments({ vendorId, orderStatus: 'PENDING' }),
-      Order.countDocuments({ vendorId, orderStatus: 'DELIVERED' }),
-      Order.countDocuments({ vendorId, orderStatus: 'CANCELED' }),
-    ]);
-
-  // --------------------------------------------------
-  // Popular Categories (Order-based – FIXED)
-  // --------------------------------------------------
-  const popularCategories =
-    totalOrders === 0
-      ? []
-      : await Order.aggregate([
-          // Vendor filter
-          {
-            $match: {
-              vendorId,
-              isDeleted: false,
-            },
-          },
-
-          // Unwind items
-          { $unwind: '$items' },
-
-          // Join products to get category
-          {
-            $lookup: {
-              from: 'products',
-              localField: 'items.productId',
-              foreignField: '_id',
-              as: 'product',
-            },
-          },
-          { $unwind: '$product' },
-
-          {
-            $lookup: {
-              from: 'productcategories',
-              localField: 'product.category',
-              foreignField: '_id',
-              as: 'categoryDetails',
-            },
-          },
-          { $unwind: '$categoryDetails' },
-
-          // Count orders per category
-          {
-            $group: {
-              _id: {
-                categoryId: '$categoryDetails._id',
-                categoryName: '$categoryDetails.name',
-                orderId: '$_id',
-              },
-            },
-          },
-
-          {
-            $group: {
-              _id: '$_id.categoryId',
-              categoryName: { $first: '$_id.categoryName' },
-              orderCount: { $sum: 1 },
-            },
-          },
-
-          // Calculate TOTAL of all category orders
-          {
-            $group: {
-              _id: null,
-              totalCategoryOrders: { $sum: '$orderCount' },
-              categories: {
-                $push: {
-                  name: '$categoryName',
-                  orderCount: '$orderCount',
-                },
-              },
-            },
-          },
-
-          // Calculate percentage (SUM = 100%)
-          { $unwind: '$categories' },
-          {
-            $project: {
-              _id: 0,
-              name: '$categories.name',
-              totalOrders: '$categories.orderCount',
-              percentage: {
-                $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          '$categories.orderCount',
-                          '$totalCategoryOrders',
-                        ],
-                      },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-            },
-          },
-
-          // Top category first
-          { $sort: { percentage: -1 } },
-        ]);
-
-  // --------------------------------------------------
-  // Recent Orders
-  // --------------------------------------------------
-  const recentOrders = await Order.find({
-    vendorId,
-    'items.productId': { $in: productIds },
-  })
-    .sort({ createdAt: -1 })
-    .limit(3)
-    .populate('customerId', 'name')
-    .select('orderId orderStatus createdAt');
-
-  // --------------------------------------------------
-  // Top Rated Items
-  // --------------------------------------------------
-
-  const topRatedItems = await Product.aggregate([
-    {
-      $match: {
-        vendorId: new Types.ObjectId(vendorId),
-        'rating.average': { $gte: 4 },
-      },
-    },
-    {
-      $lookup: {
-        from: 'orders',
-        localField: '_id',
-        foreignField: 'items.productId',
-        as: 'orderData',
-      },
-    },
-    {
-      $project: {
-        _id: 1,
-        productId: 1,
-        name: 1,
-        images: 1,
-        rating: { average: '$rating.average' },
-        totalOrders: { $size: '$orderData' },
-      },
-    },
-    { $sort: { 'rating.average': -1, totalOrders: -1 } },
-    { $limit: 4 },
-  ]);
-
-  // --------------------------------------------------
-  // Final Response
-  // --------------------------------------------------
-  return {
-    products: {
-      total: products.length,
-      active: products.filter((p) => p.meta.status === 'ACTIVE').length,
-      inactive: products.filter((p) => p.meta.status === 'INACTIVE').length,
-    },
-    orders: {
-      total: totalOrders,
-      pending: pendingOrders,
-      completed: completedOrders,
-      canceled: canceledOrders,
-    },
-    popularCategories,
-    recentOrders,
-    topRatedItems,
-  };
-};
-
-// get fleet dashboard analytics
-const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
-  const managerId = new Types.ObjectId(currentUser._id);
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const myPartners = await DeliveryPartner.find({
-    'registeredBy.id': managerId,
-    isDeleted: false,
-  }).select('_id');
-
-  const partnerIds = myPartners.map((p) => p._id);
-
-  const [
-    totalPartners,
-    onlinePartners,
-    deliveriesToday,
-    vehicleComposition,
-    statusStats,
-  ] = await Promise.all([
-    DeliveryPartner.countDocuments({
-      'registeredBy.id': managerId,
-      isDeleted: false,
-    }),
-
-    DeliveryPartner.countDocuments({
-      'registeredBy.id': managerId,
-      'operationalData.currentStatus': { $ne: currentStatusOptions.OFFLINE },
-      isDeleted: false,
-    }),
-
-    Order.countDocuments({
-      orderStatus: 'DELIVERED',
-      createdAt: { $gte: startOfDay },
-      deliveryPartnerId: { $in: partnerIds },
-    }),
-
-    DeliveryPartner.aggregate([
-      { $match: { 'registeredBy.id': managerId, isDeleted: false } },
-      { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
-    ]),
-
-    DeliveryPartner.aggregate([
-      { $match: { 'registeredBy.id': managerId, isDeleted: false } },
-      { $group: { _id: '$operationalData.currentStatus', count: { $sum: 1 } } },
-    ]),
-  ]);
-
-  const onlinePercentage =
-    totalPartners > 0
-      ? ((onlinePartners / totalPartners) * 100).toFixed(1)
-      : '0';
-
-  const avgDeliveries =
-    totalPartners > 0 ? (deliveriesToday / totalPartners).toFixed(1) : '0';
-
-  const waitingPartners =
-    statusStats.find((s) => s._id === currentStatusOptions.IDLE)?.count || 0;
-
-  const availabilityRate =
-    onlinePartners > 0
-      ? ((waitingPartners / onlinePartners) * 100).toFixed(1)
-      : '0';
-
-  let topDrivers = await DeliveryPartner.find({
-    'registeredBy.id': managerId,
-    isDeleted: false,
-    'rating.average': { $exists: true, $gt: 0 },
-  })
-    .sort({ 'rating.average': -1 })
-    .limit(4)
-    .select(
-      'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo',
-    );
-
-  if (!topDrivers.length) {
-    topDrivers = await DeliveryPartner.find({
-      'registeredBy.id': managerId,
-      isDeleted: false,
-    })
-      .sort({ createdAt: -1 })
-      .limit(4)
-      .select(
-        'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo',
-      );
-  }
-
-  return {
-    cards: {
-      totalPartners,
-      onlineNow: {
-        count: onlinePartners,
-        percentage: `${onlinePercentage}%`,
-      },
-      deliveriesToday: {
-        total: deliveriesToday,
-        avgPerPartner: avgDeliveries,
-      },
-      availabilityRate: `${availabilityRate}%`,
-    },
-    fleetComposition: vehicleComposition.map((item) => ({
-      vehicle: item._id || 'Other',
-      count: item.count,
-    })),
-    partnerStatus: {
-      onDelivery:
-        statusStats.find((s) => s._id === currentStatusOptions.ON_DELIVERY)
-          ?.count || 0,
-      waiting: waitingPartners,
-      offline:
-        statusStats.find((s) => s._id === currentStatusOptions.OFFLINE)
-          ?.count || 0,
-    },
-    topRatedDrivers: topDrivers,
-  };
-};
-
-// get partner performance analytics
-const getPartnerPerformanceAnalytics = async (
-  currentUser: AuthUser,
-  query: Record<string, unknown>,
-) => {
-  const managerId = new Types.ObjectId(currentUser._id);
-
-  const timeframe = (query?.timeframe as string) || 'last30days';
-  const endDate = new Date();
-  const startDate = new Date();
-  const days =
-    timeframe === 'last30days' ? 30 : timeframe === 'last14days' ? 14 : 7;
-  startDate.setDate(endDate.getDate() - days);
-
-  const myPartners = await DeliveryPartner.find({
-    'registeredBy.id': managerId,
-    isDeleted: false,
-  }).select('_id');
-  const partnerIds = myPartners.map((p) => p._id);
-
-  const sortMapping: Record<string, string> = {
-    'top-deliveries': '-operationalData.completedDeliveries',
-    'top-rating': '-rating.average',
-    'top-earnings': '-earnings.totalEarnings',
-  };
-
-  if (query.sortBy && sortMapping[query.sortBy as string]) {
-    query.sortBy = sortMapping[query.sortBy as string];
-  }
-
-  const [orderStats, topPartnerAggregation, overallAcceptance] =
-    await Promise.all([
-      Order.aggregate([
-        {
-          $match: {
-            deliveryPartnerId: { $in: partnerIds },
-            orderStatus: 'DELIVERED',
-            createdAt: { $gte: startDate, $lte: endDate },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            totalEarnings: { $sum: '$pricing.deliveryFee' },
-            avgTimeMs: { $avg: { $subtract: ['$deliveredAt', '$pickedUpAt'] } },
-          },
-        },
-      ]),
-
-      Order.aggregate([
-        {
-          $match: {
-            deliveryPartnerId: { $in: partnerIds },
-            orderStatus: 'DELIVERED',
-            createdAt: { $gte: startDate, $lte: endDate },
-          },
-        },
-        { $group: { _id: '$deliveryPartnerId', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 1 },
-      ]),
-
-      DeliveryPartner.aggregate([
-        { $match: { _id: { $in: partnerIds }, isDeleted: false } },
-        {
-          $group: {
-            _id: null,
-            totalOffered: { $sum: '$operationalData.totalOfferedOrders' },
-            totalAccepted: { $sum: '$operationalData.totalAcceptedOrders' },
-          },
-        },
-      ]),
-    ]);
-
-  const searchableFields = [
-    'name.firstName',
-    'name.lastName',
-    'address.city',
-    'userId',
-  ];
-  const partnerQuery = new QueryBuilder(
-    DeliveryPartner.find({ 'registeredBy.id': managerId, isDeleted: false }),
-    query,
-  )
-    .search(searchableFields)
-    .filter()
-    .sort()
-    .paginate()
-    .fields();
-
-  const tableData = await partnerQuery.modelQuery;
-  const meta = await partnerQuery.countTotal();
-
-  const stats = orderStats[0] || { totalEarnings: 0, avgTimeMs: 0 };
-  const avgDeliveryTimeMin = stats.avgTimeMs
-    ? Math.round(stats.avgTimeMs / 60000)
-    : 0;
-
-  const acceptanceData = overallAcceptance[0];
-  const avgAcceptanceRate =
-    acceptanceData?.totalOffered > 0
-      ? Math.round(
-          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-        )
-      : 0;
-
-  return {
-    cards: {
-      topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
-      avgDeliveryTime: `${avgDeliveryTimeMin} min`,
-      avgAcceptanceRate: `${avgAcceptanceRate}%`,
-      totalEarnings: `€${roundTo2(stats.totalEarnings)}`,
-    },
-    table: {
-      data: tableData.map((partner: TDeliveryPartner) => {
-        const opData = partner.operationalData;
-
-        const rowAcceptance =
-          opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
-            ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-              ) + '%'
-            : '0%';
-
-        const rowAvgMins =
-          opData?.completedDeliveries &&
-          opData.completedDeliveries > 0 &&
-          opData.totalDeliveryMinutes
-            ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries,
-              )
-            : 0;
-
-        return {
-          id: partner._id,
-          name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
-          displayId: partner.userId,
-          vehicle: partner?.vehicleInfo?.vehicleType,
-          city: partner?.address?.city || 'N/A',
-          deliveries: opData?.completedDeliveries || 0,
-          avgMins: `${rowAvgMins} min`,
-          acceptance: rowAcceptance,
-        };
-      }),
-      meta,
-    },
-  };
-};
+// --------------------------------------------------------------------------------------
+// ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
+// --------------------------------------------------------------------------------------
 
 // get vendor sales analytics
 const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
@@ -929,196 +337,6 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
   };
 };
 
-// Delivery Partner earning analytics service
-const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
-  const riderObjectId = new Types.ObjectId(currentUser._id);
-
-  const today = new Date();
-
-  const startOfToday = new Date(today);
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const dayOfWeek = today.getDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const earnings = await Transaction.aggregate([
-    {
-      $match: {
-        userId: riderObjectId,
-        userModel: 'DeliveryPartner',
-        status: 'SUCCESS',
-        type: 'DELIVERY_PARTNER_EARNING',
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        totalEarnings: { $sum: '$totalAmount' },
-        dailyEarnings: {
-          $sum: {
-            $cond: [{ $gte: ['$createdAt', startOfToday] }, '$totalAmount', 0],
-          },
-        },
-        weeklyEarnings: {
-          $sum: {
-            $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
-          },
-        },
-        monthlyEarnings: {
-          $sum: {
-            $cond: [{ $gte: ['$createdAt', startOfMonth] }, '$totalAmount', 0],
-          },
-        },
-      },
-    },
-  ]);
-
-  const wallet = await Wallet.findOne({
-    userId: riderObjectId,
-    userModel: 'DeliveryPartner',
-  }).select('totalUnpaidEarnings');
-
-  const report = earnings[0] || {
-    totalEarnings: 0,
-    dailyEarnings: 0,
-    weeklyEarnings: 0,
-    monthlyEarnings: 0,
-  };
-
-  return {
-    daily: report.dailyEarnings,
-    weekly: report.weeklyEarnings,
-    monthly: report.monthlyEarnings,
-    total: report.totalEarnings,
-    unpaid: wallet?.totalUnpaidEarnings || 0,
-  };
-};
-
-// Fleet manager earning analytics service
-const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
-  const fleetObjectId = new Types.ObjectId(currentUser._id);
-  const now = new Date();
-
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const dayOfWeek = now.getDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const stats = await Transaction.aggregate([
-    {
-      $match: {
-        userId: fleetObjectId,
-        userModel: 'FleetManager',
-        status: 'SUCCESS',
-        type: 'FLEET_EARNING',
-      },
-    },
-    {
-      $facet: {
-        cardStats: [
-          {
-            $group: {
-              _id: null,
-              totalEarnings: { $sum: '$totalAmount' },
-              monthlyEarnings: {
-                $sum: {
-                  $cond: [
-                    { $gte: ['$createdAt', startOfMonth] },
-                    '$totalAmount',
-                    0,
-                  ],
-                },
-              },
-              weeklyEarnings: {
-                $sum: {
-                  $cond: [
-                    { $gte: ['$createdAt', startOfWeek] },
-                    '$totalAmount',
-                    0,
-                  ],
-                },
-              },
-            },
-          },
-        ],
-        weeklyGraph: [
-          {
-            $match: {
-              createdAt: {
-                $gte: new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate() - 364,
-                ),
-              },
-            },
-          },
-          {
-            $project: {
-              totalAmount: 1,
-              weekNum: { $isoWeek: '$createdAt' },
-              yearNum: { $isoWeekYear: '$createdAt' },
-            },
-          },
-          {
-            $group: {
-              _id: { week: '$weekNum', year: '$yearNum' },
-              earnings: { $sum: '$totalAmount' },
-            },
-          },
-          { $sort: { '_id.year': 1, '_id.week': 1 } },
-        ],
-      },
-    },
-  ]);
-
-  const wallet = await Wallet.findOne({
-    userId: fleetObjectId,
-    userModel: 'FleetManager',
-  }).select('totalUnpaidEarnings totalRiderPayable totalEarnings');
-
-  const cardData = stats[0].cardStats[0] || {
-    totalEarnings: 0,
-    monthlyEarnings: 0,
-    weeklyEarnings: 0,
-  };
-
-  const graphData = stats[0].weeklyGraph.map((item: any) => ({
-    week: `Week ${item._id.week}`,
-    earnings: item.earnings,
-    year: item._id.year,
-  }));
-
-  const totalRiderPayable = wallet?.totalRiderPayable || 0;
-  const totalRevenue = cardData.totalEarnings;
-  const netEarnings = totalRevenue - totalRiderPayable;
-
-  return {
-    overview: {
-      totalRevenue: totalRevenue,
-      riderPayable: totalRiderPayable,
-      netEarnings: roundTo2(netEarnings),
-      monthlyEarnings: cardData.monthlyEarnings,
-      weeklyEarnings: cardData.weeklyEarnings,
-      currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,
-    },
-    graph: graphData,
-  };
-};
-
 // get order trend insights
 const getOrderTrendInsights = async (currentUser: AuthUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
@@ -1386,147 +604,6 @@ const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
       totalItemsSold,
     },
     topItems,
-  };
-};
-
-// get vendor earnings analytics service
-const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
-  const vendorObjectId = new mongoose.Types.ObjectId(currentUser._id);
-  const now = new Date();
-
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const dayOfWeek = now.getDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const [earningStats, orderStats, productStats] = await Promise.all([
-    Transaction.aggregate([
-      {
-        $match: {
-          userId: vendorObjectId,
-          userModel: 'Vendor',
-          status: 'SUCCESS',
-          type: 'VENDOR_EARNING',
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalIncome: { $sum: '$totalAmount' },
-          todayIncome: {
-            $sum: {
-              $cond: [
-                { $gte: ['$createdAt', startOfToday] },
-                '$totalAmount',
-                0,
-              ],
-            },
-          },
-          weekIncome: {
-            $sum: {
-              $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
-            },
-          },
-          monthIncome: {
-            $sum: {
-              $cond: [
-                { $gte: ['$createdAt', startOfMonth] },
-                '$totalAmount',
-                0,
-              ],
-            },
-          },
-        },
-      },
-    ]),
-
-    Order.aggregate([
-      { $match: { vendorId: vendorObjectId } },
-      {
-        $group: {
-          _id: null,
-          totalOrders: { $sum: 1 },
-          completedOrders: {
-            $sum: { $cond: [{ $eq: ['$orderStatus', 'DELIVERED'] }, 1, 0] },
-          },
-          pendingOrders: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ['$orderStatus', 'DELIVERED'] },
-                    { $ne: ['$orderStatus', 'CANCELED'] },
-                    { $ne: ['$orderStatus', 'REJECTED'] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-        },
-      },
-    ]),
-
-    Product.aggregate([
-      { $match: { vendorId: vendorObjectId } },
-      {
-        $group: {
-          _id: null,
-          totalProducts: { $sum: 1 },
-          activeProducts: {
-            $sum: { $cond: [{ $eq: ['$meta.status', 'ACTIVE'] }, 1, 0] },
-          },
-          inactiveProducts: {
-            $sum: { $cond: [{ $eq: ['$meta.status', 'INACTIVE'] }, 1, 0] },
-          },
-        },
-      },
-    ]),
-  ]);
-
-  const earnings = earningStats[0] || {
-    todayIncome: 0,
-    weekIncome: 0,
-    monthIncome: 0,
-    totalIncome: 0,
-  };
-  const orders = orderStats[0] || {
-    totalOrders: 0,
-    completedOrders: 0,
-    pendingOrders: 0,
-  };
-  const products = productStats[0] || {
-    totalProducts: 0,
-    activeProducts: 0,
-    inactiveProducts: 0,
-  };
-
-  return {
-    topCard: {
-      totalEarnings: roundTo2(earnings.totalIncome),
-      orders: orders.totalOrders,
-      completed: orders.completedOrders,
-      pending: orders.pendingOrders,
-    },
-    earningsOverview: {
-      today: roundTo2(earnings.todayIncome),
-      thisWeek: roundTo2(earnings.weekIncome),
-      thisMonth: roundTo2(earnings.monthIncome),
-      totalIncome: roundTo2(earnings.totalIncome),
-    },
-    products: {
-      total: products.totalProducts,
-      active: products.activeProducts,
-      inactive: products.inactiveProducts,
-    },
   };
 };
 
@@ -2381,6 +1458,937 @@ const getAdminDeliveryPartnerReportAnalytics = async () => {
   };
 };
 
+// --------------------------------------------------------------------------------------
+// ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
+// --------------------------------------------------------------------------------------
+
+// get admin dashboard analytics
+const getAdminDashboardAnalytics = async () => {
+  const [
+    customers,
+    vendors,
+    fleetManagers,
+    deliveryPartners,
+    totalProducts,
+    totalOrders,
+    pendingOrders,
+    completedOrders,
+    canceledOrders,
+  ] = await Promise.all([
+    Customer.countDocuments(),
+    Vendor.countDocuments(),
+    FleetManager.countDocuments(),
+    DeliveryPartner.countDocuments(),
+    Product.countDocuments({ isDeleted: false }),
+    Order.countDocuments(),
+    Order.countDocuments({ orderStatus: 'PENDING' }),
+    Order.countDocuments({ orderStatus: 'DELIVERED' }),
+    Order.countDocuments({ orderStatus: 'CANCELED' }),
+  ]);
+
+  const popularCategories = await Order.aggregate([
+    { $unwind: '$items' },
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'items.productId',
+        foreignField: '_id',
+        as: 'product',
+      },
+    },
+    { $unwind: '$product' },
+    {
+      $lookup: {
+        from: 'productcategories',
+        localField: 'product.category',
+        foreignField: '_id',
+        as: 'categoryDetails',
+      },
+    },
+    { $unwind: '$categoryDetails' },
+    {
+      $group: {
+        _id: '$categoryDetails._id',
+        categoryName: { $first: '$categoryDetails.name' },
+        total: { $sum: 1 },
+      },
+    },
+    { $sort: { total: -1 } },
+    { $limit: 5 },
+    {
+      $project: {
+        _id: 1,
+        name: '$categoryName',
+        percentage: {
+          $round: [
+            { $multiply: [{ $divide: ['$total', totalOrders] }, 100] },
+            2,
+          ],
+        },
+      },
+    },
+  ]);
+
+  const recentOrders = await Order.find()
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .populate('customerId', 'name')
+    .select('orderId orderStatus createdAt');
+
+  const topRatedItems = await Product.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        'rating.average': { $gte: 4 },
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'items.productId',
+        as: 'orderData',
+      },
+    },
+
+    {
+      $project: {
+        _id: 1,
+        productId: 1,
+        name: 1,
+        images: 1,
+        rating: { average: '$rating.average' },
+        totalOrders: { $size: '$orderData' },
+      },
+    },
+
+    { $sort: { 'rating.average': -1, totalOrders: -1 } },
+
+    { $limit: 4 },
+  ]);
+
+  const topRatedDeliveryPartners = await DeliveryPartner.find({
+    rating: { $gte: 4 },
+  })
+    .sort({ rating: -1 })
+    .limit(5)
+    .select('name rating completedDeliveries');
+
+  return {
+    counts: {
+      customers,
+      vendors,
+      fleetManagers,
+      deliveryPartners,
+      totalProducts,
+    },
+    orders: {
+      total: totalOrders,
+      pending: pendingOrders,
+      completed: completedOrders,
+      canceled: canceledOrders,
+    },
+    popularCategories,
+    recentOrders,
+    topRatedItems,
+    topRatedDeliveryPartners,
+  };
+};
+
+// get vendor dashboard analytics
+const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
+  const vendorId = new Types.ObjectId(currentUser._id);
+
+  // --------------------------------------------------
+  // Get Vendor Products
+  // --------------------------------------------------
+  const products = await Product.find(
+    { vendorId },
+    '_id category rating meta.status images',
+  ).populate({
+    path: 'category',
+    select: 'name icon',
+  });
+
+  const productIds = products.map((p) => p._id);
+
+  // --------------------------------------------------
+  // Order Counts
+  // --------------------------------------------------
+  const [totalOrders, pendingOrders, completedOrders, canceledOrders] =
+    await Promise.all([
+      Order.countDocuments({ vendorId }),
+      Order.countDocuments({ vendorId, orderStatus: 'PENDING' }),
+      Order.countDocuments({ vendorId, orderStatus: 'DELIVERED' }),
+      Order.countDocuments({ vendorId, orderStatus: 'CANCELED' }),
+    ]);
+
+  // --------------------------------------------------
+  // Popular Categories (Order-based – FIXED)
+  // --------------------------------------------------
+  const popularCategories =
+    totalOrders === 0
+      ? []
+      : await Order.aggregate([
+          // Vendor filter
+          {
+            $match: {
+              vendorId,
+              isDeleted: false,
+            },
+          },
+
+          // Unwind items
+          { $unwind: '$items' },
+
+          // Join products to get category
+          {
+            $lookup: {
+              from: 'products',
+              localField: 'items.productId',
+              foreignField: '_id',
+              as: 'product',
+            },
+          },
+          { $unwind: '$product' },
+
+          {
+            $lookup: {
+              from: 'productcategories',
+              localField: 'product.category',
+              foreignField: '_id',
+              as: 'categoryDetails',
+            },
+          },
+          { $unwind: '$categoryDetails' },
+
+          // Count orders per category
+          {
+            $group: {
+              _id: {
+                categoryId: '$categoryDetails._id',
+                categoryName: '$categoryDetails.name',
+                orderId: '$_id',
+              },
+            },
+          },
+
+          {
+            $group: {
+              _id: '$_id.categoryId',
+              categoryName: { $first: '$_id.categoryName' },
+              orderCount: { $sum: 1 },
+            },
+          },
+
+          // Calculate TOTAL of all category orders
+          {
+            $group: {
+              _id: null,
+              totalCategoryOrders: { $sum: '$orderCount' },
+              categories: {
+                $push: {
+                  name: '$categoryName',
+                  orderCount: '$orderCount',
+                },
+              },
+            },
+          },
+
+          // Calculate percentage (SUM = 100%)
+          { $unwind: '$categories' },
+          {
+            $project: {
+              _id: 0,
+              name: '$categories.name',
+              totalOrders: '$categories.orderCount',
+              percentage: {
+                $round: [
+                  {
+                    $multiply: [
+                      {
+                        $divide: [
+                          '$categories.orderCount',
+                          '$totalCategoryOrders',
+                        ],
+                      },
+                      100,
+                    ],
+                  },
+                  2,
+                ],
+              },
+            },
+          },
+
+          // Top category first
+          { $sort: { percentage: -1 } },
+        ]);
+
+  // --------------------------------------------------
+  // Recent Orders
+  // --------------------------------------------------
+  const recentOrders = await Order.find({
+    vendorId,
+    'items.productId': { $in: productIds },
+  })
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .populate('customerId', 'name')
+    .select('orderId orderStatus createdAt');
+
+  // --------------------------------------------------
+  // Top Rated Items
+  // --------------------------------------------------
+
+  const topRatedItems = await Product.aggregate([
+    {
+      $match: {
+        vendorId: new Types.ObjectId(vendorId),
+        'rating.average': { $gte: 4 },
+      },
+    },
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'items.productId',
+        as: 'orderData',
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        productId: 1,
+        name: 1,
+        images: 1,
+        rating: { average: '$rating.average' },
+        totalOrders: { $size: '$orderData' },
+      },
+    },
+    { $sort: { 'rating.average': -1, totalOrders: -1 } },
+    { $limit: 4 },
+  ]);
+
+  // --------------------------------------------------
+  // Final Response
+  // --------------------------------------------------
+  return {
+    products: {
+      total: products.length,
+      active: products.filter((p) => p.meta.status === 'ACTIVE').length,
+      inactive: products.filter((p) => p.meta.status === 'INACTIVE').length,
+    },
+    orders: {
+      total: totalOrders,
+      pending: pendingOrders,
+      completed: completedOrders,
+      canceled: canceledOrders,
+    },
+    popularCategories,
+    recentOrders,
+    topRatedItems,
+  };
+};
+
+// get fleet dashboard analytics
+const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
+  const managerId = new Types.ObjectId(currentUser._id);
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const myPartners = await DeliveryPartner.find({
+    'registeredBy.id': managerId,
+    isDeleted: false,
+  }).select('_id');
+
+  const partnerIds = myPartners.map((p) => p._id);
+
+  const [
+    totalPartners,
+    onlinePartners,
+    deliveriesToday,
+    vehicleComposition,
+    statusStats,
+  ] = await Promise.all([
+    DeliveryPartner.countDocuments({
+      'registeredBy.id': managerId,
+      isDeleted: false,
+    }),
+
+    DeliveryPartner.countDocuments({
+      'registeredBy.id': managerId,
+      'operationalData.currentStatus': { $ne: currentStatusOptions.OFFLINE },
+      isDeleted: false,
+    }),
+
+    Order.countDocuments({
+      orderStatus: 'DELIVERED',
+      createdAt: { $gte: startOfDay },
+      deliveryPartnerId: { $in: partnerIds },
+    }),
+
+    DeliveryPartner.aggregate([
+      { $match: { 'registeredBy.id': managerId, isDeleted: false } },
+      { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
+    ]),
+
+    DeliveryPartner.aggregate([
+      { $match: { 'registeredBy.id': managerId, isDeleted: false } },
+      { $group: { _id: '$operationalData.currentStatus', count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const onlinePercentage =
+    totalPartners > 0
+      ? ((onlinePartners / totalPartners) * 100).toFixed(1)
+      : '0';
+
+  const avgDeliveries =
+    totalPartners > 0 ? (deliveriesToday / totalPartners).toFixed(1) : '0';
+
+  const waitingPartners =
+    statusStats.find((s) => s._id === currentStatusOptions.IDLE)?.count || 0;
+
+  const availabilityRate =
+    onlinePartners > 0
+      ? ((waitingPartners / onlinePartners) * 100).toFixed(1)
+      : '0';
+
+  let topDrivers = await DeliveryPartner.find({
+    'registeredBy.id': managerId,
+    isDeleted: false,
+    'rating.average': { $exists: true, $gt: 0 },
+  })
+    .sort({ 'rating.average': -1 })
+    .limit(4)
+    .select(
+      'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo',
+    );
+
+  if (!topDrivers.length) {
+    topDrivers = await DeliveryPartner.find({
+      'registeredBy.id': managerId,
+      isDeleted: false,
+    })
+      .sort({ createdAt: -1 })
+      .limit(4)
+      .select(
+        'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo',
+      );
+  }
+
+  return {
+    cards: {
+      totalPartners,
+      onlineNow: {
+        count: onlinePartners,
+        percentage: `${onlinePercentage}%`,
+      },
+      deliveriesToday: {
+        total: deliveriesToday,
+        avgPerPartner: avgDeliveries,
+      },
+      availabilityRate: `${availabilityRate}%`,
+    },
+    fleetComposition: vehicleComposition.map((item) => ({
+      vehicle: item._id || 'Other',
+      count: item.count,
+    })),
+    partnerStatus: {
+      onDelivery:
+        statusStats.find((s) => s._id === currentStatusOptions.ON_DELIVERY)
+          ?.count || 0,
+      waiting: waitingPartners,
+      offline:
+        statusStats.find((s) => s._id === currentStatusOptions.OFFLINE)
+          ?.count || 0,
+    },
+    topRatedDrivers: topDrivers,
+  };
+};
+
+// get partner performance analytics
+const getPartnerPerformanceAnalytics = async (
+  currentUser: AuthUser,
+  query: Record<string, unknown>,
+) => {
+  const managerId = new Types.ObjectId(currentUser._id);
+
+  const timeframe = (query?.timeframe as string) || 'last30days';
+  const endDate = new Date();
+  const startDate = new Date();
+  const days =
+    timeframe === 'last30days' ? 30 : timeframe === 'last14days' ? 14 : 7;
+  startDate.setDate(endDate.getDate() - days);
+
+  const myPartners = await DeliveryPartner.find({
+    'registeredBy.id': managerId,
+    isDeleted: false,
+  }).select('_id');
+  const partnerIds = myPartners.map((p) => p._id);
+
+  const sortMapping: Record<string, string> = {
+    'top-deliveries': '-operationalData.completedDeliveries',
+    'top-rating': '-rating.average',
+    'top-earnings': '-earnings.totalEarnings',
+  };
+
+  if (query.sortBy && sortMapping[query.sortBy as string]) {
+    query.sortBy = sortMapping[query.sortBy as string];
+  }
+
+  const [orderStats, topPartnerAggregation, overallAcceptance] =
+    await Promise.all([
+      Order.aggregate([
+        {
+          $match: {
+            deliveryPartnerId: { $in: partnerIds },
+            orderStatus: 'DELIVERED',
+            createdAt: { $gte: startDate, $lte: endDate },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalEarnings: { $sum: '$pricing.deliveryFee' },
+            avgTimeMs: { $avg: { $subtract: ['$deliveredAt', '$pickedUpAt'] } },
+          },
+        },
+      ]),
+
+      Order.aggregate([
+        {
+          $match: {
+            deliveryPartnerId: { $in: partnerIds },
+            orderStatus: 'DELIVERED',
+            createdAt: { $gte: startDate, $lte: endDate },
+          },
+        },
+        { $group: { _id: '$deliveryPartnerId', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+
+      DeliveryPartner.aggregate([
+        { $match: { _id: { $in: partnerIds }, isDeleted: false } },
+        {
+          $group: {
+            _id: null,
+            totalOffered: { $sum: '$operationalData.totalOfferedOrders' },
+            totalAccepted: { $sum: '$operationalData.totalAcceptedOrders' },
+          },
+        },
+      ]),
+    ]);
+
+  const searchableFields = [
+    'name.firstName',
+    'name.lastName',
+    'address.city',
+    'userId',
+  ];
+  const partnerQuery = new QueryBuilder(
+    DeliveryPartner.find({ 'registeredBy.id': managerId, isDeleted: false }),
+    query,
+  )
+    .search(searchableFields)
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const tableData = await partnerQuery.modelQuery;
+  const meta = await partnerQuery.countTotal();
+
+  const stats = orderStats[0] || { totalEarnings: 0, avgTimeMs: 0 };
+  const avgDeliveryTimeMin = stats.avgTimeMs
+    ? Math.round(stats.avgTimeMs / 60000)
+    : 0;
+
+  const acceptanceData = overallAcceptance[0];
+  const avgAcceptanceRate =
+    acceptanceData?.totalOffered > 0
+      ? Math.round(
+          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+        )
+      : 0;
+
+  return {
+    cards: {
+      topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
+      avgDeliveryTime: `${avgDeliveryTimeMin} min`,
+      avgAcceptanceRate: `${avgAcceptanceRate}%`,
+      totalEarnings: `€${roundTo2(stats.totalEarnings)}`,
+    },
+    table: {
+      data: tableData.map((partner: TDeliveryPartner) => {
+        const opData = partner.operationalData;
+
+        const rowAcceptance =
+          opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
+            ? Math.round(
+                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+              ) + '%'
+            : '0%';
+
+        const rowAvgMins =
+          opData?.completedDeliveries &&
+          opData.completedDeliveries > 0 &&
+          opData.totalDeliveryMinutes
+            ? Math.round(
+                opData.totalDeliveryMinutes / opData.completedDeliveries,
+              )
+            : 0;
+
+        return {
+          id: partner._id,
+          name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
+          displayId: partner.userId,
+          vehicle: partner?.vehicleInfo?.vehicleType,
+          city: partner?.address?.city || 'N/A',
+          deliveries: opData?.completedDeliveries || 0,
+          avgMins: `${rowAvgMins} min`,
+          acceptance: rowAcceptance,
+        };
+      }),
+      meta,
+    },
+  };
+};
+
+// Delivery Partner earning analytics service
+const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
+  const riderObjectId = new Types.ObjectId(currentUser._id);
+
+  const today = new Date();
+
+  const startOfToday = new Date(today);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = today.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const earnings = await Transaction.aggregate([
+    {
+      $match: {
+        userId: riderObjectId,
+        userModel: 'DeliveryPartner',
+        status: 'SUCCESS',
+        type: 'DELIVERY_PARTNER_EARNING',
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalEarnings: { $sum: '$totalAmount' },
+        dailyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfToday] }, '$totalAmount', 0],
+          },
+        },
+        weeklyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
+          },
+        },
+        monthlyEarnings: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfMonth] }, '$totalAmount', 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const wallet = await Wallet.findOne({
+    userId: riderObjectId,
+    userModel: 'DeliveryPartner',
+  }).select('totalUnpaidEarnings');
+
+  const report = earnings[0] || {
+    totalEarnings: 0,
+    dailyEarnings: 0,
+    weeklyEarnings: 0,
+    monthlyEarnings: 0,
+  };
+
+  return {
+    daily: report.dailyEarnings,
+    weekly: report.weeklyEarnings,
+    monthly: report.monthlyEarnings,
+    total: report.totalEarnings,
+    unpaid: wallet?.totalUnpaidEarnings || 0,
+  };
+};
+
+// Fleet manager earning analytics service
+const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
+  const fleetObjectId = new Types.ObjectId(currentUser._id);
+  const now = new Date();
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = now.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const stats = await Transaction.aggregate([
+    {
+      $match: {
+        userId: fleetObjectId,
+        userModel: 'FleetManager',
+        status: 'SUCCESS',
+        type: 'FLEET_EARNING',
+      },
+    },
+    {
+      $facet: {
+        cardStats: [
+          {
+            $group: {
+              _id: null,
+              totalEarnings: { $sum: '$totalAmount' },
+              monthlyEarnings: {
+                $sum: {
+                  $cond: [
+                    { $gte: ['$createdAt', startOfMonth] },
+                    '$totalAmount',
+                    0,
+                  ],
+                },
+              },
+              weeklyEarnings: {
+                $sum: {
+                  $cond: [
+                    { $gte: ['$createdAt', startOfWeek] },
+                    '$totalAmount',
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        ],
+        weeklyGraph: [
+          {
+            $match: {
+              createdAt: {
+                $gte: new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate() - 364,
+                ),
+              },
+            },
+          },
+          {
+            $project: {
+              totalAmount: 1,
+              weekNum: { $isoWeek: '$createdAt' },
+              yearNum: { $isoWeekYear: '$createdAt' },
+            },
+          },
+          {
+            $group: {
+              _id: { week: '$weekNum', year: '$yearNum' },
+              earnings: { $sum: '$totalAmount' },
+            },
+          },
+          { $sort: { '_id.year': 1, '_id.week': 1 } },
+        ],
+      },
+    },
+  ]);
+
+  const wallet = await Wallet.findOne({
+    userId: fleetObjectId,
+    userModel: 'FleetManager',
+  }).select('totalUnpaidEarnings totalRiderPayable totalEarnings');
+
+  const cardData = stats[0].cardStats[0] || {
+    totalEarnings: 0,
+    monthlyEarnings: 0,
+    weeklyEarnings: 0,
+  };
+
+  const graphData = stats[0].weeklyGraph.map((item: any) => ({
+    week: `Week ${item._id.week}`,
+    earnings: item.earnings,
+    year: item._id.year,
+  }));
+
+  const totalRiderPayable = wallet?.totalRiderPayable || 0;
+  const totalRevenue = cardData.totalEarnings;
+  const netEarnings = totalRevenue - totalRiderPayable;
+
+  return {
+    overview: {
+      totalRevenue: totalRevenue,
+      riderPayable: totalRiderPayable,
+      netEarnings: roundTo2(netEarnings),
+      monthlyEarnings: cardData.monthlyEarnings,
+      weeklyEarnings: cardData.weeklyEarnings,
+      currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,
+    },
+    graph: graphData,
+  };
+};
+
+// get vendor earnings analytics service
+const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
+  const vendorObjectId = new mongoose.Types.ObjectId(currentUser._id);
+  const now = new Date();
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = now.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const [earningStats, orderStats, productStats] = await Promise.all([
+    Transaction.aggregate([
+      {
+        $match: {
+          userId: vendorObjectId,
+          userModel: 'Vendor',
+          status: 'SUCCESS',
+          type: 'VENDOR_EARNING',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalIncome: { $sum: '$totalAmount' },
+          todayIncome: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', startOfToday] },
+                '$totalAmount',
+                0,
+              ],
+            },
+          },
+          weekIncome: {
+            $sum: {
+              $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
+            },
+          },
+          monthIncome: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', startOfMonth] },
+                '$totalAmount',
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    Order.aggregate([
+      { $match: { vendorId: vendorObjectId } },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          completedOrders: {
+            $sum: { $cond: [{ $eq: ['$orderStatus', 'DELIVERED'] }, 1, 0] },
+          },
+          pendingOrders: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$orderStatus', 'DELIVERED'] },
+                    { $ne: ['$orderStatus', 'CANCELED'] },
+                    { $ne: ['$orderStatus', 'REJECTED'] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    Product.aggregate([
+      { $match: { vendorId: vendorObjectId } },
+      {
+        $group: {
+          _id: null,
+          totalProducts: { $sum: 1 },
+          activeProducts: {
+            $sum: { $cond: [{ $eq: ['$meta.status', 'ACTIVE'] }, 1, 0] },
+          },
+          inactiveProducts: {
+            $sum: { $cond: [{ $eq: ['$meta.status', 'INACTIVE'] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const earnings = earningStats[0] || {
+    todayIncome: 0,
+    weekIncome: 0,
+    monthIncome: 0,
+    totalIncome: 0,
+  };
+  const orders = orderStats[0] || {
+    totalOrders: 0,
+    completedOrders: 0,
+    pendingOrders: 0,
+  };
+  const products = productStats[0] || {
+    totalProducts: 0,
+    activeProducts: 0,
+    inactiveProducts: 0,
+  };
+
+  return {
+    topCard: {
+      totalEarnings: roundTo2(earnings.totalIncome),
+      orders: orders.totalOrders,
+      completed: orders.completedOrders,
+      pending: orders.pendingOrders,
+    },
+    earningsOverview: {
+      today: roundTo2(earnings.todayIncome),
+      thisWeek: roundTo2(earnings.weekIncome),
+      thisMonth: roundTo2(earnings.monthIncome),
+      totalIncome: roundTo2(earnings.totalIncome),
+    },
+    products: {
+      total: products.totalProducts,
+      active: products.activeProducts,
+      inactive: products.inactiveProducts,
+    },
+  };
+};
+
 // vendor performance analytics
 const getVendorPerformanceAnalytics = async (
   query: Record<string, unknown>,
@@ -2674,23 +2682,30 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
 };
 
 export const AnalyticsServices = {
-  getAdminDashboardAnalytics,
-  getVendorDashboardAnalytics,
-  getFleetDashboardAnalytics,
-  getPartnerPerformanceAnalytics,
+  // ----------------------------------
+  // Analytics Services (Developer Morshed)
+  // ----------------------------------
   getVendorSalesAnalytics,
   getCustomerInsights,
   getOrderTrendInsights,
   getTopSellingItemsAnalytics,
-  getDeliveryPartnerEarningAnalytics,
-  getFleetManagerEarningAnalytics,
-  getVendorEarningsAnalytics,
   getAdminSalesReportAnalytics,
   getAdminOrderReportAnalytics,
   getAdminCustomerReportAnalytics,
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
+
+  // ----------------------------------
+  // New Analytics Services (Developer: Umayer)
+  // ----------------------------------
+  getAdminDashboardAnalytics,
+  getVendorDashboardAnalytics,
+  getFleetDashboardAnalytics,
+  getPartnerPerformanceAnalytics,
+  getDeliveryPartnerEarningAnalytics,
+  getFleetManagerEarningAnalytics,
+  getVendorEarningsAnalytics,
   getVendorPerformanceAnalytics,
   getAllCustomerAnalytics,
 };
