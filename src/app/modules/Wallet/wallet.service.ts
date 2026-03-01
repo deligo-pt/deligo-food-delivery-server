@@ -39,8 +39,8 @@ const getAllWallets = async (
 };
 
 // get single wallet
-const getSingleWallet = async (id: string, currentUser: AuthUser) => {
-  const wallet = await Wallet.findById(id).populate(
+const getSingleWallet = async (walletId: string, currentUser: AuthUser) => {
+  const wallet = await Wallet.findOne({ walletId }).populate(
     'userId',
     'name email userId',
   );
@@ -69,11 +69,19 @@ const getSingleWallet = async (id: string, currentUser: AuthUser) => {
 // get my wallet
 const getMyWallet = async (currentUser: AuthUser) => {
   const userId = new mongoose.Types.ObjectId(currentUser._id);
+  const adminUserId = new mongoose.Types.ObjectId('694a088c43ee1acbe0e9c87d');
 
-  const wallet = await Wallet.findOne({
-    userId: userId,
-  }).populate('userId', 'name email userId');
+  let wallet;
 
+  if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') {
+    wallet = await Wallet.findOne({
+      userId: adminUserId,
+    }).populate('userId', 'name email userId');
+  } else {
+    wallet = await Wallet.findOne({
+      userId: userId,
+    }).populate('userId', 'name email userId');
+  }
   if (!wallet) {
     throw new AppError(httpStatus.NOT_FOUND, 'Wallet not found for this user');
   }
