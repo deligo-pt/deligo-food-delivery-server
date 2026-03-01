@@ -34,6 +34,7 @@ const orderItemSchema = new Schema(
         quantity: { type: Number },
         lineTotal: { type: Number },
         taxRate: { type: Number },
+        perUnitTaxAmount: { type: Number },
         taxAmount: { type: Number },
         _id: false,
       },
@@ -47,6 +48,7 @@ const orderItemSchema = new Schema(
       unitPrice: { type: Number, required: true },
       lineTotal: { type: Number, required: true },
       taxRate: { type: Number, default: 0 },
+      perUnitTaxAmount: { type: Number, default: 0 },
       taxAmount: { type: Number, default: 0 },
     },
 
