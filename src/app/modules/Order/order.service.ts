@@ -1082,7 +1082,6 @@ const updateOrderStatusByDeliveryPartner = async (
           'Delivery Partner not found for this order.',
         );
       }
-      const uniqueWalletId = nanoid();
       const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
 
       const vendorEarningsBeforeTax =
@@ -1116,7 +1115,7 @@ const updateOrderStatusByDeliveryPartner = async (
             totalUnpaidEarnings: roundTo2(vendorNetPayout) || 0,
             totalEarnings: roundTo2(vendorNetPayout) || 0,
           },
-          $setOnInsert: { walletId: uniqueWalletId },
+          $setOnInsert: { walletId: `WAL-V-${nanoid()}` },
         },
         { session, upsert: true },
       );
@@ -1129,7 +1128,7 @@ const updateOrderStatusByDeliveryPartner = async (
             totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
             totalEarnings: roundTo2(riderEarningAmount) || 0,
           },
-          $setOnInsert: { walletId: uniqueWalletId },
+          $setOnInsert: { walletId: `WAL-D-${nanoid()}` },
         },
         { session, upsert: true },
       );
@@ -1142,7 +1141,7 @@ const updateOrderStatusByDeliveryPartner = async (
           $inc: {
             totalEarnings: roundTo2(deliGoCommissionNet) || 0,
           },
-          $setOnInsert: { walletId: uniqueWalletId },
+          $setOnInsert: { walletId: `WAL-A-${nanoid()}` },
         },
         { session, upsert: true },
       );
@@ -1158,7 +1157,7 @@ const updateOrderStatusByDeliveryPartner = async (
               totalFleetEarnings: payoutSummary.fleet.fee || 0,
               totalEarnings: totalDeliveryCharge || 0,
             },
-            $setOnInsert: { walletId: uniqueWalletId },
+            $setOnInsert: { walletId: `WAL-F-${nanoid()}` },
           },
           { session, upsert: true },
         );
