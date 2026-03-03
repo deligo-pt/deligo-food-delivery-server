@@ -2389,6 +2389,89 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
   };
 };
 
+// get all customer analytics
+const getAllCustomerAnalytics = async (query: Record<string, any>) => {
+  const { searchTerm, status, sortBy, page = 1, limit = 10 } = query;
+
+  const pageNumber = Number(page);
+  const limitNumber = Number(limit);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  const pipeline: any[] = [{ $match: { isDeleted: false } }];
+
+  if (searchTerm) {
+    pipeline.push({
+      $match: {
+        $or: [
+          { 'name.firstName': { $regex: searchTerm, $options: 'i' } },
+          { 'name.lastName': { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } },
+        ],
+      },
+    });
+  }
+
+  if (status && status !== 'All') {
+    pipeline.push({ $match: { status } });
+  }
+
+  pipeline.push(
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'customerId',
+        as: 'orderHistory',
+      },
+    },
+    {
+      $project: {
+        customer: {
+          name: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
+          email: '$email',
+          profilePhoto: '$profilePhoto',
+        },
+        totalOrders: { $size: '$orderHistory' },
+        totalSpent: { $sum: '$orderHistory.payoutSummary.grandTotal' },
+        lastOrdered: { $max: '$orderHistory.createdAt' },
+        joinedAt: '$createdAt',
+        status: '$status',
+      },
+    },
+  );
+
+  let sortCondition: any = { totalOrders: -1 };
+  if (sortBy === 'Newest First') sortCondition = { joinedAt: -1 };
+  else if (sortBy === 'Oldest First') sortCondition = { joinedAt: 1 };
+  else if (sortBy === 'Name (A-Z)') sortCondition = { 'customer.name': 1 };
+  else if (sortBy === 'Name (Z-A)') sortCondition = { 'customer.name': -1 };
+
+  pipeline.push({ $sort: sortCondition });
+
+  const finalResult = await Customer.aggregate([
+    ...pipeline,
+    {
+      $facet: {
+        data: [{ $skip: skip }, { $limit: limitNumber }],
+        totalCount: [{ $count: 'count' }],
+      },
+    },
+  ]);
+
+  const result = finalResult[0]?.data || [];
+  const total = finalResult[0]?.totalCount[0]?.count || 0;
+
+  return {
+    meta: {
+      page: pageNumber,
+      limit: limitNumber,
+      total,
+      totalPage: Math.ceil(total / limitNumber),
+    },
+    data: result,
+  };
+};
+
 // vendor performance analytics
 const getVendorPerformanceAnalytics = async (
   query: Record<string, unknown>,
@@ -2419,6 +2502,13 @@ const getVendorPerformanceAnalytics = async (
               },
             },
           },
+          {
+            $project: {
+              createdAt: 1,
+              'payoutSummary.vendor': 1,
+              totalItems: 1,
+            },
+          },
         ],
         as: 'vendorOrders',
       },
@@ -2427,7 +2517,10 @@ const getVendorPerformanceAnalytics = async (
     {
       $addFields: {
         totalRevenue: {
-          $round: [{ $sum: '$vendorOrders.orderCalculation.taxableAmount' }, 2],
+          $round: [
+            { $sum: '$vendorOrders.payoutSummary.vendor.earningsWithoutTax' },
+            2,
+          ],
         },
         totalItems: { $sum: '$vendorOrders.totalItems' },
         totalOrdersCount: { $size: '$vendorOrders' },
@@ -2543,7 +2636,7 @@ const getVendorPerformanceAnalytics = async (
               },
               totalOrders: { $sum: 1 },
               totalRevenue: {
-                $sum: '$vendorOrders.orderCalculation.taxableAmount',
+                $sum: '$vendorOrders.payoutSummary.vendor.earningsWithoutTax',
               },
             },
           },
@@ -2595,89 +2688,6 @@ const getVendorPerformanceAnalytics = async (
       total,
       totalPage: Math.ceil(total / Number(limit)),
     },
-  };
-};
-
-// get all customer analytics
-const getAllCustomerAnalytics = async (query: Record<string, any>) => {
-  const { searchTerm, status, sortBy, page = 1, limit = 10 } = query;
-
-  const pageNumber = Number(page);
-  const limitNumber = Number(limit);
-  const skip = (pageNumber - 1) * limitNumber;
-
-  const pipeline: any[] = [{ $match: { isDeleted: false } }];
-
-  if (searchTerm) {
-    pipeline.push({
-      $match: {
-        $or: [
-          { 'name.firstName': { $regex: searchTerm, $options: 'i' } },
-          { 'name.lastName': { $regex: searchTerm, $options: 'i' } },
-          { email: { $regex: searchTerm, $options: 'i' } },
-        ],
-      },
-    });
-  }
-
-  if (status && status !== 'All') {
-    pipeline.push({ $match: { status } });
-  }
-
-  pipeline.push(
-    {
-      $lookup: {
-        from: 'orders',
-        localField: '_id',
-        foreignField: 'customerId',
-        as: 'orderHistory',
-      },
-    },
-    {
-      $project: {
-        customer: {
-          name: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
-          email: '$email',
-          profilePhoto: '$profilePhoto',
-        },
-        totalOrders: { $size: '$orderHistory' },
-        totalSpent: { $sum: '$orderHistory.payoutSummary.grandTotal' },
-        lastOrdered: { $max: '$orderHistory.createdAt' },
-        joinedAt: '$createdAt',
-        status: '$status',
-      },
-    },
-  );
-
-  let sortCondition: any = { totalOrders: -1 };
-  if (sortBy === 'Newest First') sortCondition = { joinedAt: -1 };
-  else if (sortBy === 'Oldest First') sortCondition = { joinedAt: 1 };
-  else if (sortBy === 'Name (A-Z)') sortCondition = { 'customer.name': 1 };
-  else if (sortBy === 'Name (Z-A)') sortCondition = { 'customer.name': -1 };
-
-  pipeline.push({ $sort: sortCondition });
-
-  const finalResult = await Customer.aggregate([
-    ...pipeline,
-    {
-      $facet: {
-        data: [{ $skip: skip }, { $limit: limitNumber }],
-        totalCount: [{ $count: 'count' }],
-      },
-    },
-  ]);
-
-  const result = finalResult[0]?.data || [];
-  const total = finalResult[0]?.totalCount[0]?.count || 0;
-
-  return {
-    meta: {
-      page: pageNumber,
-      limit: limitNumber,
-      total,
-      totalPage: Math.ceil(total / limitNumber),
-    },
-    data: result,
   };
 };
 
