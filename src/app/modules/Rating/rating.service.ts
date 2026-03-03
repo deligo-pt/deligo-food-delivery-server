@@ -307,101 +307,141 @@ const getRatingSummary = async (currentUser: AuthUser) => {
               avgRating: { $round: ['$avgRating', 1] },
               sentimentPercentages: {
                 positive: {
-                  $cond: [
-                    '$totalRatings',
+                  $round: [
                     {
-                      $multiply: [
-                        { $divide: ['$positiveCount', '$totalRatings'] },
-                        100,
+                      $cond: [
+                        '$totalRatings',
+                        {
+                          $multiply: [
+                            { $divide: ['$positiveCount', '$totalRatings'] },
+                            100,
+                          ],
+                        },
+                        0,
                       ],
                     },
-                    0,
+                    2,
                   ],
                 },
                 neutral: {
-                  $cond: [
-                    '$totalRatings',
+                  $round: [
                     {
-                      $multiply: [
-                        { $divide: ['$neutralCount', '$totalRatings'] },
-                        100,
+                      $cond: [
+                        '$totalRatings',
+                        {
+                          $multiply: [
+                            { $divide: ['$neutralCount', '$totalRatings'] },
+                            100,
+                          ],
+                        },
+                        0,
                       ],
                     },
-                    0,
+                    2,
                   ],
                 },
                 negative: {
-                  $cond: [
-                    '$totalRatings',
+                  $round: [
                     {
-                      $multiply: [
-                        { $divide: ['$negativeCount', '$totalRatings'] },
-                        100,
+                      $cond: [
+                        '$totalRatings',
+                        {
+                          $multiply: [
+                            { $divide: ['$negativeCount', '$totalRatings'] },
+                            100,
+                          ],
+                        },
+                        0,
                       ],
                     },
-                    0,
+                    2,
                   ],
                 },
               },
               starPercentages: {
                 five: {
-                  $cond: [
-                    '$totalRatings',
+                  $round: [
                     {
-                      $multiply: [
-                        { $divide: ['$fiveStar', '$totalRatings'] },
-                        100,
+                      $cond: [
+                        '$totalRatings',
+                        {
+                          $multiply: [
+                            { $divide: ['$fiveStar', '$totalRatings'] },
+                            100,
+                          ],
+                        },
+                        0,
                       ],
                     },
-                    0,
+                    2,
                   ],
                 },
                 four: {
-                  $cond: [
-                    '$totalRatings',
+                  $round: [
                     {
-                      $multiply: [
-                        { $divide: ['$fourStar', '$totalRatings'] },
-                        100,
+                      $cond: [
+                        '$totalRatings',
+                        {
+                          $multiply: [
+                            { $divide: ['$fourStar', '$totalRatings'] },
+                            100,
+                          ],
+                        },
+                        0,
                       ],
                     },
-                    0,
+                    2,
                   ],
                 },
                 three: {
-                  $cond: [
-                    '$totalRatings',
+                  $round: [
                     {
-                      $multiply: [
-                        { $divide: ['$threeStar', '$totalRatings'] },
-                        100,
+                      $cond: [
+                        '$totalRatings',
+                        {
+                          $multiply: [
+                            { $divide: ['$threeStar', '$totalRatings'] },
+                            100,
+                          ],
+                        },
+                        0,
                       ],
                     },
-                    0,
+                    2,
                   ],
                 },
                 two: {
-                  $cond: [
-                    '$totalRatings',
+                  $round: [
                     {
-                      $multiply: [
-                        { $divide: ['$twoStar', '$totalRatings'] },
-                        100,
+                      $cond: [
+                        '$totalRatings',
+                        {
+                          $multiply: [
+                            { $divide: ['$twoStar', '$totalRatings'] },
+                            100,
+                          ],
+                        },
+                        0,
                       ],
                     },
-                    0,
+                    2,
                   ],
                 },
                 one: {
-                  $cond: [
-                    '$totalRatings',
+                  $round: [
                     {
-                      $multiply: [
-                        { $divide: ['$oneStar', '$totalRatings'] },
-                        100,
+                      $cond: [
+                        '$totalRatings',
+                        {
+                          $multiply: [
+                            { $divide: ['$oneStar', '$totalRatings'] },
+                            100,
+                          ],
+                        },
+                        0,
                       ],
                     },
-                    0,
+                    2,
                   ],
                 },
               },
