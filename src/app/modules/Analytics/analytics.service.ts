@@ -20,6 +20,8 @@ import {
 } from './analytics.interface';
 import { Transaction } from '../Transaction/transaction.model';
 import { Wallet } from '../Wallet/wallet.model';
+import AppError from '../../errors/AppError';
+import httpStatus from 'http-status';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -2389,6 +2391,89 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
   };
 };
 
+// get all customer analytics
+const getAllCustomerAnalytics = async (query: Record<string, any>) => {
+  const { searchTerm, status, sortBy, page = 1, limit = 10 } = query;
+
+  const pageNumber = Number(page);
+  const limitNumber = Number(limit);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  const pipeline: any[] = [{ $match: { isDeleted: false } }];
+
+  if (searchTerm) {
+    pipeline.push({
+      $match: {
+        $or: [
+          { 'name.firstName': { $regex: searchTerm, $options: 'i' } },
+          { 'name.lastName': { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } },
+        ],
+      },
+    });
+  }
+
+  if (status && status !== 'All') {
+    pipeline.push({ $match: { status } });
+  }
+
+  pipeline.push(
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'customerId',
+        as: 'orderHistory',
+      },
+    },
+    {
+      $project: {
+        customer: {
+          name: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
+          email: '$email',
+          profilePhoto: '$profilePhoto',
+        },
+        totalOrders: { $size: '$orderHistory' },
+        totalSpent: { $sum: '$orderHistory.payoutSummary.grandTotal' },
+        lastOrdered: { $max: '$orderHistory.createdAt' },
+        joinedAt: '$createdAt',
+        status: '$status',
+      },
+    },
+  );
+
+  let sortCondition: any = { totalOrders: -1 };
+  if (sortBy === 'Newest First') sortCondition = { joinedAt: -1 };
+  else if (sortBy === 'Oldest First') sortCondition = { joinedAt: 1 };
+  else if (sortBy === 'Name (A-Z)') sortCondition = { 'customer.name': 1 };
+  else if (sortBy === 'Name (Z-A)') sortCondition = { 'customer.name': -1 };
+
+  pipeline.push({ $sort: sortCondition });
+
+  const finalResult = await Customer.aggregate([
+    ...pipeline,
+    {
+      $facet: {
+        data: [{ $skip: skip }, { $limit: limitNumber }],
+        totalCount: [{ $count: 'count' }],
+      },
+    },
+  ]);
+
+  const result = finalResult[0]?.data || [];
+  const total = finalResult[0]?.totalCount[0]?.count || 0;
+
+  return {
+    meta: {
+      page: pageNumber,
+      limit: limitNumber,
+      total,
+      totalPage: Math.ceil(total / limitNumber),
+    },
+    data: result,
+  };
+};
+
 // vendor performance analytics
 const getVendorPerformanceAnalytics = async (
   query: Record<string, unknown>,
@@ -2419,6 +2504,13 @@ const getVendorPerformanceAnalytics = async (
               },
             },
           },
+          {
+            $project: {
+              createdAt: 1,
+              'payoutSummary.vendor': 1,
+              totalItems: 1,
+            },
+          },
         ],
         as: 'vendorOrders',
       },
@@ -2427,7 +2519,10 @@ const getVendorPerformanceAnalytics = async (
     {
       $addFields: {
         totalRevenue: {
-          $round: [{ $sum: '$vendorOrders.orderCalculation.taxableAmount' }, 2],
+          $round: [
+            { $sum: '$vendorOrders.payoutSummary.vendor.earningsWithoutTax' },
+            2,
+          ],
         },
         totalItems: { $sum: '$vendorOrders.totalItems' },
         totalOrdersCount: { $size: '$vendorOrders' },
@@ -2543,7 +2638,7 @@ const getVendorPerformanceAnalytics = async (
               },
               totalOrders: { $sum: 1 },
               totalRevenue: {
-                $sum: '$vendorOrders.orderCalculation.taxableAmount',
+                $sum: '$vendorOrders.payoutSummary.vendor.earningsWithoutTax',
               },
             },
           },
@@ -2598,86 +2693,141 @@ const getVendorPerformanceAnalytics = async (
   };
 };
 
-// get all customer analytics
-const getAllCustomerAnalytics = async (query: Record<string, any>) => {
-  const { searchTerm, status, sortBy, page = 1, limit = 10 } = query;
+// get single vendor performance details
+const getSingleVendorPerformanceDetails = async (
+  vendorUserId: string,
+  currentUser: AuthUser,
+) => {
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to access this resource',
+    );
+  }
 
-  const pageNumber = Number(page);
-  const limitNumber = Number(limit);
-  const skip = (pageNumber - 1) * limitNumber;
+  const vendor = await Vendor.findOne({
+    userId: vendorUserId,
+    isDeleted: false,
+  });
 
-  const pipeline: any[] = [{ $match: { isDeleted: false } }];
+  if (!vendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
 
-  if (searchTerm) {
-    pipeline.push({
+  const vendorObjectId = vendor._id;
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const results = await Order.aggregate([
+    {
       $match: {
-        $or: [
-          { 'name.firstName': { $regex: searchTerm, $options: 'i' } },
-          { 'name.lastName': { $regex: searchTerm, $options: 'i' } },
-          { email: { $regex: searchTerm, $options: 'i' } },
-        ],
-      },
-    });
-  }
-
-  if (status && status !== 'All') {
-    pipeline.push({ $match: { status } });
-  }
-
-  pipeline.push(
-    {
-      $lookup: {
-        from: 'orders',
-        localField: '_id',
-        foreignField: 'customerId',
-        as: 'orderHistory',
+        vendorId: vendorObjectId,
+        orderStatus: 'DELIVERED',
+        isDeleted: false,
       },
     },
-    {
-      $project: {
-        customer: {
-          name: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
-          email: '$email',
-          profilePhoto: '$profilePhoto',
-        },
-        totalOrders: { $size: '$orderHistory' },
-        totalSpent: { $sum: '$orderHistory.payoutSummary.grandTotal' },
-        lastOrdered: { $max: '$orderHistory.createdAt' },
-        joinedAt: '$createdAt',
-        status: '$status',
-      },
-    },
-  );
-
-  let sortCondition: any = { totalOrders: -1 };
-  if (sortBy === 'Newest First') sortCondition = { joinedAt: -1 };
-  else if (sortBy === 'Oldest First') sortCondition = { joinedAt: 1 };
-  else if (sortBy === 'Name (A-Z)') sortCondition = { 'customer.name': 1 };
-  else if (sortBy === 'Name (Z-A)') sortCondition = { 'customer.name': -1 };
-
-  pipeline.push({ $sort: sortCondition });
-
-  const finalResult = await Customer.aggregate([
-    ...pipeline,
     {
       $facet: {
-        data: [{ $skip: skip }, { $limit: limitNumber }],
-        totalCount: [{ $count: 'count' }],
+        vendorMonthlyPerformance: [
+          { $match: { createdAt: { $gte: sixMonthsAgo } } },
+          {
+            $group: {
+              _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+              totalOrders: { $sum: 1 },
+              totalRevenue: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
+            },
+          },
+          { $sort: { _id: 1 } },
+          {
+            $project: {
+              _id: 0,
+              month: '$_id',
+              totalOrders: 1,
+              totalRevenue: { $round: ['$totalRevenue', 2] },
+            },
+          },
+        ],
+
+        topRatedItems: [
+          { $unwind: '$items' },
+          {
+            $group: {
+              _id: '$items.productId',
+              name: { $first: '$items.name' },
+              image: { $first: '$items.image' },
+              totalOrders: { $sum: 1 },
+            },
+          },
+          {
+            $lookup: {
+              from: 'products',
+              localField: '_id',
+              foreignField: '_id',
+              as: 'productInfo',
+            },
+          },
+          {
+            $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true },
+          },
+          {
+            $project: {
+              _id: 1,
+              productId: { $toString: '$_id' },
+              name: 1,
+              images: {
+                $cond: [{ $ifNull: ['$image', false] }, ['$image'], []],
+              },
+              totalOrders: 1,
+              rating: {
+                average: { $ifNull: ['$productInfo.rating.average', 0] },
+              },
+            },
+          },
+          { $sort: { 'rating.average': -1, totalOrders: -1 } },
+          { $limit: 4 },
+        ],
+
+        overallStats: [
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
+              totalItems: { $sum: '$totalItems' },
+              totalOrders: { $sum: 1 },
+            },
+          },
+        ],
       },
     },
   ]);
 
-  const result = finalResult[0]?.data || [];
-  const total = finalResult[0]?.totalCount[0]?.count || 0;
+  const stats = results[0]?.overallStats[0] || {
+    totalRevenue: 0,
+    totalItems: 0,
+    totalOrders: 0,
+  };
+
+  const vendorMonthlyPerformance = results[0]?.vendorMonthlyPerformance || [];
+  const topRatedItems = results[0]?.topRatedItems || [];
 
   return {
-    meta: {
-      page: pageNumber,
-      limit: limitNumber,
-      total,
-      totalPage: Math.ceil(total / limitNumber),
+    vendorPerformance: {
+      _id: vendor._id,
+      profilePhoto: vendor.profilePhoto,
+      userId: vendor.userId,
+      email: vendor.email,
+      status: vendor.status,
+      name: vendor.name,
+      businessDetails: vendor.businessDetails,
+      businessLocation: vendor.businessLocation,
+      rating: vendor.rating,
+      totalOrders: stats.totalOrders,
+      totalRevenue: Math.round(stats.totalRevenue * 100) / 100,
+      totalItems: stats.totalItems,
     },
-    data: result,
+    vendorMonthlyPerformance,
+    topRatedItems,
   };
 };
 
@@ -2706,6 +2856,7 @@ export const AnalyticsServices = {
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
   getVendorEarningsAnalytics,
-  getVendorPerformanceAnalytics,
   getAllCustomerAnalytics,
+  getVendorPerformanceAnalytics,
+  getSingleVendorPerformanceDetails,
 };

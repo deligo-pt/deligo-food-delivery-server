@@ -83,21 +83,24 @@ router.get(
 
 // get admin dashboard analytics
 router.get(
-  '/admin-dashboard-analytics',
+  // '/admin-dashboard-analytics', //Previous route
+  '/admin/dashboard-analytics', // Updated route
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminDashboardAnalytics,
 );
 
 // get vendor dashboard analytics
 router.get(
-  '/vendor-dashboard-analytics',
+  // '/vendor-dashboard-analytics', // Previous route
+  '/vendor/dashboard-analytics', // Updated route
   auth('VENDOR', 'SUB_VENDOR'),
   AnalyticsControllers.getVendorDashboardAnalytics,
 );
 
 // get fleet dashboard analytics
 router.get(
-  '/fleet-dashboard-analytics',
+  // '/fleet-dashboard-analytics', // Previous route
+  '/fleet/dashboard-analytics', // Updated route
   auth('FLEET_MANAGER'),
   AnalyticsControllers.getFleetDashboardAnalytics,
 );
@@ -118,30 +121,40 @@ router.get(
 
 // Fleet manager earning analytics route
 router.get(
-  '/fleet-manager-earning-analytics',
+  // '/fleet-manager-earning-analytics', // Previous route
+  '/fleet/earning-analytics', // Updated route
   auth('FLEET_MANAGER'),
   AnalyticsControllers.getFleetManagerEarningAnalytics,
 );
 
 // get vendor earnings analytics
 router.get(
-  '/vendor-earnings-analytics',
+  '/vendor-earnings-analytics', // Previous route
+  // '/vendor/earnings-analytics', // Updated route
   auth('VENDOR', 'SUB_VENDOR'),
   AnalyticsControllers.getVendorEarningsAnalytics,
 );
 
+// get all customer analytics
+router.get(
+  '/admin/all-customers-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getAllCustomerAnalytics,
+);
+
 // get vendor performance analytics
 router.get(
-  '/vendor-performance-analytics',
+  // '/vendor-performance-analytics', // Previous route
+  '/admin/vendor-performance-analytics', // Updated route
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getVendorPerformanceAnalytics,
 );
 
-// get all customer analytics
+// get single vendor performance details
 router.get(
-  '/all-customers-analytics',
+  '/admin/vendor-performance-analytics/:vendorUserId',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAllCustomerAnalytics,
+  AnalyticsControllers.getSingleVendorPerformanceDetails,
 );
 
 export const AnalyticsRoutes = router;
