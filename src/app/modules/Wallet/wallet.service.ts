@@ -22,7 +22,7 @@ const getAllWallets = async (
     query.userModel = 'DeliveryPartner';
   }
   const wallets = new QueryBuilder(
-    Wallet.find().populate('userId', 'userId'),
+    Wallet.find().populate('userId', 'userId name email'),
     query,
   )
     .fields()
