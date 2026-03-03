@@ -26,6 +26,7 @@ import { SponsorshipsRoutes } from '../modules/Sponsorships/sponsorships.route';
 import { TestRoutes } from '../modules/Test/test.route';
 import { PayoutRoutes } from '../modules/Payout/payout.route';
 import { WalletRoutes } from '../modules/Wallet/wallet.route';
+import { transactionRoutes } from '../modules/Transaction/transaction.route';
 
 const router = express.Router();
 
@@ -138,6 +139,10 @@ const moduleRoutes = [
   {
     path: '/test',
     route: TestRoutes,
+  },
+  {
+    path: '/transactions',
+    route: transactionRoutes,
   },
 ];
 
