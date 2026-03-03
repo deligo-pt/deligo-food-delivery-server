@@ -20,6 +20,8 @@ import {
 } from './analytics.interface';
 import { Transaction } from '../Transaction/transaction.model';
 import { Wallet } from '../Wallet/wallet.model';
+import AppError from '../../errors/AppError';
+import httpStatus from 'http-status';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -2691,6 +2693,144 @@ const getVendorPerformanceAnalytics = async (
   };
 };
 
+// get single vendor performance details
+const getSingleVendorPerformanceDetails = async (
+  vendorUserId: string,
+  currentUser: AuthUser,
+) => {
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to access this resource',
+    );
+  }
+
+  const vendor = await Vendor.findOne({
+    userId: vendorUserId,
+    isDeleted: false,
+  });
+
+  if (!vendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  const vendorObjectId = vendor._id;
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const results = await Order.aggregate([
+    {
+      $match: {
+        vendorId: vendorObjectId,
+        orderStatus: 'DELIVERED',
+        isDeleted: false,
+      },
+    },
+    {
+      $facet: {
+        vendorMonthlyPerformance: [
+          { $match: { createdAt: { $gte: sixMonthsAgo } } },
+          {
+            $group: {
+              _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+              totalOrders: { $sum: 1 },
+              totalRevenue: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
+            },
+          },
+          { $sort: { _id: 1 } },
+          {
+            $project: {
+              _id: 0,
+              month: '$_id',
+              totalOrders: 1,
+              totalRevenue: { $round: ['$totalRevenue', 2] },
+            },
+          },
+        ],
+
+        topRatedItems: [
+          { $unwind: '$items' },
+          {
+            $group: {
+              _id: '$items.productId',
+              name: { $first: '$items.name' },
+              image: { $first: '$items.image' },
+              totalOrders: { $sum: 1 },
+            },
+          },
+          {
+            $lookup: {
+              from: 'products',
+              localField: '_id',
+              foreignField: '_id',
+              as: 'productInfo',
+            },
+          },
+          {
+            $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true },
+          },
+          {
+            $project: {
+              _id: 1,
+              productId: { $toString: '$_id' },
+              name: 1,
+              images: {
+                $cond: [{ $ifNull: ['$image', false] }, ['$image'], []],
+              },
+              totalOrders: 1,
+              rating: {
+                average: { $ifNull: ['$productInfo.rating.average', 0] },
+              },
+            },
+          },
+          { $sort: { 'rating.average': -1, totalOrders: -1 } },
+          { $limit: 4 },
+        ],
+
+        overallStats: [
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
+              totalItems: { $sum: '$totalItems' },
+              totalOrders: { $sum: 1 },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const stats = results[0]?.overallStats[0] || {
+    totalRevenue: 0,
+    totalItems: 0,
+    totalOrders: 0,
+  };
+
+  const vendorMonthlyPerformance = results[0]?.vendorMonthlyPerformance || [];
+  const topRatedItems = results[0]?.topRatedItems || [];
+
+  return {
+    vendorPerformance: {
+      _id: vendor._id,
+      profilePhoto: vendor.profilePhoto,
+      userId: vendor.userId,
+      email: vendor.email,
+      status: vendor.status,
+      name: vendor.name,
+      businessDetails: vendor.businessDetails,
+      businessLocation: vendor.businessLocation,
+      rating: vendor.rating,
+      totalOrders: stats.totalOrders,
+      totalRevenue: Math.round(stats.totalRevenue * 100) / 100,
+      totalItems: stats.totalItems,
+    },
+    vendorMonthlyPerformance,
+    topRatedItems,
+  };
+};
+
 export const AnalyticsServices = {
   // ----------------------------------
   // Analytics Services (Developer Morshed)
@@ -2716,6 +2856,7 @@ export const AnalyticsServices = {
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
   getVendorEarningsAnalytics,
-  getVendorPerformanceAnalytics,
   getAllCustomerAnalytics,
+  getVendorPerformanceAnalytics,
+  getSingleVendorPerformanceDetails,
 };

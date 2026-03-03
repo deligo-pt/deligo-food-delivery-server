@@ -227,6 +227,18 @@ const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get all customer analytics controller
+const getAllCustomerAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAllCustomerAnalytics(req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'All customers analytics fetched successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 // get vendor performance analytics controller
 const getVendorPerformanceAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorPerformanceAnalytics(
@@ -241,15 +253,18 @@ const getVendorPerformanceAnalytics = catchAsync(async (req, res) => {
   });
 });
 
-// get all customer analytics controller
-const getAllCustomerAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAllCustomerAnalytics(req.query);
+// get single vendor performance details controller
+const getSingleVendorPerformanceDetails = catchAsync(async (req, res) => {
+  const { vendorUserId } = req.params;
+  const result = await AnalyticsServices.getSingleVendorPerformanceDetails(
+    vendorUserId,
+    req.user as AuthUser,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'All customers analytics fetched successfully',
-    meta: result?.meta,
-    data: result?.data,
+    message: 'Single vendor performance details fetched successfully',
+    data: result,
   });
 });
 
@@ -277,6 +292,7 @@ export const AnalyticsControllers = {
   getDeliveryPartnerEarningAnalytics,
   getFleetManagerEarningAnalytics,
   getVendorEarningsAnalytics,
-  getVendorPerformanceAnalytics,
   getAllCustomerAnalytics,
+  getVendorPerformanceAnalytics,
+  getSingleVendorPerformanceDetails,
 };
