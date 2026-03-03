@@ -12,5 +12,12 @@ router.get(
     TransactionController.getMyTransactions
 );
 
+// get transaction by id
+router.get(
+    '/:id',
+    auth('SUPER_ADMIN', 'ADMIN'),
+    TransactionController.getTransactionById
+);
+
 
 export const transactionRoutes = router;
