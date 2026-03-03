@@ -27,12 +27,19 @@ const getMyTransactions = async (user: AuthUser) => {
 
     // 2. Fetch data with full Order population
     const transactions = await Transaction.find(query)
-        .populate('orderId')
+        .populate({
+            path: 'orderId',
+            populate: {
+                path: 'customerId',
+                select : "name"
+            },
+        })
         .sort({ createdAt: -1 });
 
     // 3. Map to Frontend TTransaction Type
     return transactions.map((txn: any) => {
         const order = txn.orderId;
+        const customer = order.customerId;
 
         return {
             _id: txn._id.toString(),
@@ -56,7 +63,7 @@ const getMyTransactions = async (user: AuthUser) => {
             // -> fleet manager
             fleetEarnings: (order?.payoutSummary?.fleet?.fee),
 
-
+            customer: customer || "N/A",
             deliveryAddress: order?.deliveryAddress?.street + ", " + order?.deliveryAddress?.city + ", " + order?.deliveryAddress?.country || 'N/A',
 
             items: order?.items?.map((item: TOrderItemSnapshot) => ({
