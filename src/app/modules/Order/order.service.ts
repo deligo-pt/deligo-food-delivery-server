@@ -466,7 +466,7 @@ const updateOrderStatusByVendor = async (
           notificationPayload.title,
           notificationPayload.body,
           notificationPayload.data,
-          'order_notification',
+          'default',
           'ORDER',
         );
       }
@@ -952,7 +952,7 @@ const otpVerificationByVendor = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
-      'order_notification',
+      'default',
       'ORDER',
     );
   }
