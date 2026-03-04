@@ -133,6 +133,21 @@ const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get admin delivery partner report analytics controller
+const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
+  const result =
+    await AnalyticsServices.getVendorSalesReportAnalytics(
+      req.user as AuthUser
+    );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor sales report analytics fetched successfully',
+    data: result,
+  });
+});
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Umayer) -----------------------
 // ----------------------------------------------------------------------------------
@@ -282,6 +297,7 @@ export const AnalyticsControllers = {
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
+  getVendorSalesReportAnalytics,
   // ---------------------------------------
   // Analytics Services (Developer Umayer)
   // ---------------------------------------

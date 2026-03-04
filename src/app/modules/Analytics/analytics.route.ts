@@ -77,6 +77,13 @@ router.get(
   AnalyticsControllers.getAdminDeliveryPartnerReportAnalytics,
 );
 
+// get vendor sales report analytics
+router.get(
+  '/vendor-sales-report-analytics',
+  auth("VENDOR", "SUB_VENDOR"),
+  AnalyticsControllers.getVendorSalesReportAnalytics,
+);
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS ROUTES (Developer Umayer) ----------------------------
 // ----------------------------------------------------------------------------------

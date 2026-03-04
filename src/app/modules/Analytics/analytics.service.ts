@@ -17,6 +17,7 @@ import {
   SalesAnalyticsResponse,
   SummaryFacet,
   TimeframeQuery,
+  TVendorSalesReport,
 } from './analytics.interface';
 import { Transaction } from '../Transaction/transaction.model';
 import { Wallet } from '../Wallet/wallet.model';
@@ -296,8 +297,8 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
         subValue:
           totalCustomers > 0
             ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
-                0,
-              )}% of customers`
+              0,
+            )}% of customers`
             : '0%',
       },
 
@@ -305,8 +306,8 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
         value:
           totalCustomers > 0
             ? `${((cards.returningCustomers / totalCustomers) * 100).toFixed(
-                0,
-              )}%`
+              0,
+            )}%`
             : '0%',
         subValue: 'Avg. Repeat',
       },
@@ -1460,6 +1461,110 @@ const getAdminDeliveryPartnerReportAnalytics = async () => {
   };
 };
 
+// vendor sales report analytics
+const getVendorSalesReportAnalytics = async (user: AuthUser): Promise<TVendorSalesReport> => {
+  const vendorId = user._id;
+
+  const today = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(today.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const [analytics] = await Order.aggregate([
+    {
+      $match: {
+        vendorId: vendorId,
+        isDeleted: false,
+      },
+    },
+    {
+      $facet: {
+        // --- SUMMARY STATS (Top Cards) ---
+        stats: [
+          {
+            $group: {
+              _id: null,
+              totalSales: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$orderStatus", "DELIVERED"] },
+                    "$payoutSummary.vendor.vendorNetPayout", 0
+                  ]
+                }
+              },
+              totalOrders: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalSales: { $round: ['$totalSales', 2] },
+              totalOrders: 1,
+              avgOrderValue: {
+                $cond: [
+                  { $eq: ['$totalOrders', 0] },
+                  0,
+                  { $round: [{ $divide: ['$totalSales', '$totalOrders'] }, 2] },
+                ],
+              },
+            },
+          },
+        ],
+
+        // --- SALES OVERVIEW (Last 7 Days) ---
+        salesOverview: [
+          {
+            $match: {
+              createdAt: { $gte: sevenDaysAgo },
+            },
+          },
+          {
+            $group: {
+              _id: { $dayOfWeek: '$createdAt' },
+              sales: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
+              orders: { $sum: 1 },
+              date: { $first: '$createdAt' },
+            },
+          },
+          { $sort: { date: 1 } },
+        ],
+      },
+    },
+  ]);
+
+  // 2. Prepare the 7-day name mapping
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // 3. Ensure all 7 days are represented 
+  const last7DaysData = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(today.getDate() - (6 - i));
+    const dayName = dayNames[d.getDay()];
+
+    const dayData = analytics.salesOverview.find((item: any) => {
+      return item._id === d.getDay() + 1;
+    });
+
+    last7DaysData.push({
+      name: dayName,
+      sales: dayData ? Math.round(dayData.sales * 100) / 100 : 0,
+      orders: dayData ? dayData.orders : 0,
+    });
+  }
+
+  const stats = analytics.stats[0] || {
+    totalSales: 0,
+    totalOrders: 0,
+    avgOrderValue: 0,
+  };
+
+  return {
+    stats,
+    salesData: last7DaysData,
+  };
+};
+
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
 // --------------------------------------------------------------------------------------
@@ -1633,100 +1738,100 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-          // Vendor filter
-          {
-            $match: {
-              vendorId,
-              isDeleted: false,
+        // Vendor filter
+        {
+          $match: {
+            vendorId,
+            isDeleted: false,
+          },
+        },
+
+        // Unwind items
+        { $unwind: '$items' },
+
+        // Join products to get category
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'items.productId',
+            foreignField: '_id',
+            as: 'product',
+          },
+        },
+        { $unwind: '$product' },
+
+        {
+          $lookup: {
+            from: 'productcategories',
+            localField: 'product.category',
+            foreignField: '_id',
+            as: 'categoryDetails',
+          },
+        },
+        { $unwind: '$categoryDetails' },
+
+        // Count orders per category
+        {
+          $group: {
+            _id: {
+              categoryId: '$categoryDetails._id',
+              categoryName: '$categoryDetails.name',
+              orderId: '$_id',
             },
           },
+        },
 
-          // Unwind items
-          { $unwind: '$items' },
-
-          // Join products to get category
-          {
-            $lookup: {
-              from: 'products',
-              localField: 'items.productId',
-              foreignField: '_id',
-              as: 'product',
-            },
+        {
+          $group: {
+            _id: '$_id.categoryId',
+            categoryName: { $first: '$_id.categoryName' },
+            orderCount: { $sum: 1 },
           },
-          { $unwind: '$product' },
+        },
 
-          {
-            $lookup: {
-              from: 'productcategories',
-              localField: 'product.category',
-              foreignField: '_id',
-              as: 'categoryDetails',
-            },
-          },
-          { $unwind: '$categoryDetails' },
-
-          // Count orders per category
-          {
-            $group: {
-              _id: {
-                categoryId: '$categoryDetails._id',
-                categoryName: '$categoryDetails.name',
-                orderId: '$_id',
+        // Calculate TOTAL of all category orders
+        {
+          $group: {
+            _id: null,
+            totalCategoryOrders: { $sum: '$orderCount' },
+            categories: {
+              $push: {
+                name: '$categoryName',
+                orderCount: '$orderCount',
               },
             },
           },
+        },
 
-          {
-            $group: {
-              _id: '$_id.categoryId',
-              categoryName: { $first: '$_id.categoryName' },
-              orderCount: { $sum: 1 },
-            },
-          },
-
-          // Calculate TOTAL of all category orders
-          {
-            $group: {
-              _id: null,
-              totalCategoryOrders: { $sum: '$orderCount' },
-              categories: {
-                $push: {
-                  name: '$categoryName',
-                  orderCount: '$orderCount',
+        // Calculate percentage (SUM = 100%)
+        { $unwind: '$categories' },
+        {
+          $project: {
+            _id: 0,
+            name: '$categories.name',
+            totalOrders: '$categories.orderCount',
+            percentage: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        '$categories.orderCount',
+                        '$totalCategoryOrders',
+                      ],
+                    },
+                    100,
+                  ],
                 },
-              },
+                2,
+              ],
             },
           },
+        },
 
-          // Calculate percentage (SUM = 100%)
-          { $unwind: '$categories' },
-          {
-            $project: {
-              _id: 0,
-              name: '$categories.name',
-              totalOrders: '$categories.orderCount',
-              percentage: {
-                $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          '$categories.orderCount',
-                          '$totalCategoryOrders',
-                        ],
-                      },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-            },
-          },
-
-          // Top category first
-          { $sort: { percentage: -1 } },
-        ]);
+        // Top category first
+        { $sort: { percentage: -1 } },
+      ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -2013,8 +2118,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-        )
+        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+      )
       : 0;
 
   return {
@@ -2031,17 +2136,17 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-              ) + '%'
+              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+            ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-          opData.completedDeliveries > 0 &&
-          opData.totalDeliveryMinutes
+            opData.completedDeliveries > 0 &&
+            opData.totalDeliveryMinutes
             ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries,
-              )
+              opData.totalDeliveryMinutes / opData.completedDeliveries,
+            )
             : 0;
 
         return {
@@ -2845,6 +2950,7 @@ export const AnalyticsServices = {
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
+  getVendorSalesReportAnalytics,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)
