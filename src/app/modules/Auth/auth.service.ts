@@ -301,10 +301,8 @@ const loginUser = async (payload: TLoginUser) => {
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
-  const userModel = model;
 
   // checking if the user is blocked
-
   const userStatus = user?.status;
 
   if (userStatus === USER_STATUS.BLOCKED) {
@@ -318,17 +316,24 @@ const loginUser = async (payload: TLoginUser) => {
     );
   }
 
-  //checking if the password is correct
+  if (!payload.password || !model) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Password or Model information missing',
+    );
+  }
 
-  if (payload.password && userModel) {
-    if (
-      !(await userModel?.isPasswordMatched(payload?.password, user?.password))
-    )
-      throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
+  //checking if the password is correct
+  const isPasswordMatched = await model.isPasswordMatched(
+    payload.password,
+    user.password,
+  );
+
+  if (!isPasswordMatched) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'Password did not match');
   }
 
   //create token and sent to the  client
-
   const jwtPayload = {
     userId: user?.userId,
     name: {
