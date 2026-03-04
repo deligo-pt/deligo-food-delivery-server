@@ -80,10 +80,10 @@ const getMyTransactions = async (user: AuthUser) => {
     });
 };
 
-// get transaction by id
+// get transaction by  transactionId
 const getTransactionById = async (id: string) => {
 
-    const txn = await Transaction.findById(id)
+    const txn = await Transaction.findOne({ transactionId: id })
         .populate({
             path: 'orderId',
             populate: {

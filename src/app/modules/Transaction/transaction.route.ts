@@ -12,7 +12,7 @@ router.get(
     TransactionController.getMyTransactions
 );
 
-// get transaction by id
+// get transaction by transactionId
 router.get(
     '/:id',
     auth('SUPER_ADMIN', 'ADMIN'),
