@@ -488,10 +488,19 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  // Add new token if not exists
-  const tokens = new Set([...(currentUser.fcmTokens || []), token]);
-  currentUser.fcmTokens = Array.from(tokens);
-  await (currentUser as any).save();
+  const modelName =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const model = mongoose.model(modelName) as any;
+  const updatedUser = await model.findOneAndUpdate(
+    { _id: currentUser._id },
+    { $addToSet: { fcmTokens: token } },
+    { new: true },
+  );
+
+  if (!updatedUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
   return {
     message: 'FCM token saved successfully',
   };
@@ -499,28 +508,27 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 
 // Logout User
 const logoutUser = async (email: string, token: string) => {
-  const result = await findUserByEmail({ email, isDeleted: false });
-  const user = result?.user;
-
   if (!token) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Fcm token is required');
   }
 
-  if (token && user?.fcmTokens?.length) {
-    user.fcmTokens = user.fcmTokens.filter(
-      (fcmToken: string) => fcmToken !== token,
-    );
-    await user.save();
-  }
+  const result = await findUserByEmail({ email, isDeleted: false });
+  const user = result?.user;
+  const model = result?.model;
 
-  if (!user) {
+  if (!user || !model) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (user?.role === 'CUSTOMER') {
-    user.isEmailVerified = false;
-    await user.save();
+  const updateQuery: any = {
+    $pull: { fcmTokens: token },
+  };
+
+  if (user.role === 'CUSTOMER') {
+    updateQuery.$set = { isEmailVerified: false };
   }
+
+  await model.findOneAndUpdate({ _id: user._id }, updateQuery, { new: true });
 
   return {
     message:
