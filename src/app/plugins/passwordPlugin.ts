@@ -6,7 +6,7 @@ import config from '../config';
 import crypto from 'crypto';
 
 export const passwordPlugin = <T extends { email?: string }>(
-  schema: Schema<T>
+  schema: Schema<T>,
 ): void => {
   // Pre-save Hook: Hash password before saving
   schema.pre('save', async function (next) {
@@ -14,7 +14,7 @@ export const passwordPlugin = <T extends { email?: string }>(
     if (user.password && user.isModified('password')) {
       user.password = await bcryptjs.hash(
         user.password,
-        Number(config.bcrypt_salt_rounds)
+        Number(config.bcrypt_salt_rounds),
       );
     }
     next();
@@ -31,19 +31,29 @@ export const passwordPlugin = <T extends { email?: string }>(
   // Static: Check if user exists by email
   schema.statics.isUserExistsByEmail = async function (
     email: string,
-    isDeleted?: boolean
+    isDeleted?: boolean,
+    fields?: string,
   ) {
     const query: any = { email };
     if (typeof isDeleted === 'boolean') {
       query.isDeleted = isDeleted;
     }
-    return await this.findOne(query).select('+password');
+
+    let dbQuery = this.findOne(query).lean();
+
+    if (fields) {
+      dbQuery = dbQuery.select(fields);
+    } else {
+      dbQuery = dbQuery.select('+password');
+    }
+
+    return await dbQuery;
   };
 
   // Static: Check if user exists by userId
   schema.statics.isUserExistsByUserId = async function (
     userId: string,
-    isDeleted?: boolean
+    isDeleted?: boolean,
   ) {
     const query: any = { userId };
     if (typeof isDeleted === 'boolean') {
@@ -55,7 +65,7 @@ export const passwordPlugin = <T extends { email?: string }>(
   // Static: Compare password
   schema.statics.isPasswordMatched = async function (
     plainTextPassword: string,
-    hashedPassword: string
+    hashedPassword: string,
   ) {
     return await bcryptjs.compare(plainTextPassword, hashedPassword);
   };
@@ -63,7 +73,7 @@ export const passwordPlugin = <T extends { email?: string }>(
   // Static: Check if JWT was issued before password was changed
   schema.statics.isJWTIssuedBeforePasswordChanged = function (
     passwordChangedTimestamp: Date,
-    jwtIssuedTimestamp: number
+    jwtIssuedTimestamp: number,
   ) {
     if (!passwordChangedTimestamp) return false;
     const passwordChangedTime =
