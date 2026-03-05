@@ -40,7 +40,7 @@ const getMyTransactions = async (user: AuthUser) => {
     // 3. Map to Frontend TTransaction Type
     return transactions.map((txn: any) => {
         const order = txn.orderId;
-        const customer = order.customerId;
+        const customer = order?.customerId;
 
         return {
             _id: txn._id.toString(),
@@ -51,6 +51,7 @@ const getMyTransactions = async (user: AuthUser) => {
 
             // Basic Amounts
             amount: roundTo2(txn.totalAmount),
+            order: order,
 
             // Order context
             orderId: order?.orderId,
@@ -80,10 +81,10 @@ const getMyTransactions = async (user: AuthUser) => {
     });
 };
 
-// get transaction by id
+// get transaction by  transactionId
 const getTransactionById = async (id: string) => {
 
-    const txn = await Transaction.findById(id)
+    const txn = await Transaction.findOne({ transactionId: id })
         .populate({
             path: 'orderId',
             populate: {

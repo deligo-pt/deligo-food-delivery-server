@@ -53,4 +53,17 @@ export interface OrderReportAnalyticsResponse {
         hour: number;
         orderCount: number;
     }[];
-}
+};
+
+export type TVendorSalesReport = {
+    stats: {
+        totalSales: number;
+        totalOrders: number;
+        avgOrderValue: number;
+    };
+    salesData: {
+        name: string;
+        sales: number;
+        orders: number;
+    }[];
+};

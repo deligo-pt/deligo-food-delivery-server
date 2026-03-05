@@ -17,6 +17,7 @@ import {
   SalesAnalyticsResponse,
   SummaryFacet,
   TimeframeQuery,
+  TVendorSalesReport,
 } from './analytics.interface';
 import { Transaction } from '../Transaction/transaction.model';
 import { Wallet } from '../Wallet/wallet.model';
@@ -296,8 +297,8 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
         subValue:
           totalCustomers > 0
             ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
-                0,
-              )}% of customers`
+              0,
+            )}% of customers`
             : '0%',
       },
 
@@ -305,8 +306,8 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
         value:
           totalCustomers > 0
             ? `${((cards.returningCustomers / totalCustomers) * 100).toFixed(
-                0,
-              )}%`
+              0,
+            )}%`
             : '0%',
         subValue: 'Avg. Repeat',
       },
@@ -1460,6 +1461,336 @@ const getAdminDeliveryPartnerReportAnalytics = async () => {
   };
 };
 
+// vendor sales report analytics
+const getVendorSalesReportAnalytics = async (user: AuthUser): Promise<TVendorSalesReport> => {
+  const vendorId = user._id;
+
+  const today = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(today.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const [analytics] = await Order.aggregate([
+    {
+      $match: {
+        vendorId: vendorId,
+        isDeleted: false,
+      },
+    },
+    {
+      $facet: {
+        // --- SUMMARY STATS (Top Cards) ---
+        stats: [
+          {
+            $group: {
+              _id: null,
+              totalSales: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$orderStatus", "DELIVERED"] },
+                    "$orderCalculation.totalOriginalPrice", 0
+                  ]
+                }
+              },
+              totalOrders: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalSales: { $round: ['$totalSales', 2] },
+              totalOrders: 1,
+              avgOrderValue: {
+                $cond: [
+                  { $eq: ['$totalOrders', 0] },
+                  0,
+                  { $round: [{ $divide: ['$totalSales', '$totalOrders'] }, 2] },
+                ],
+              },
+            },
+          },
+        ],
+
+        // --- SALES OVERVIEW (Last 7 Days) ---
+        salesOverview: [
+          {
+            $match: {
+              createdAt: { $gte: sevenDaysAgo },
+            },
+          },
+          {
+            $group: {
+              _id: { $dayOfWeek: '$createdAt' },
+              sales: { $sum: '$orderCalculation.totalOriginalPrice' },
+              orders: { $sum: 1 },
+              date: { $first: '$createdAt' },
+            },
+          },
+          { $sort: { date: 1 } },
+        ],
+      },
+    },
+  ]);
+
+  // 2. Prepare the 7-day name mapping
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // 3. Ensure all 7 days are represented 
+  const last7DaysData = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(today.getDate() - (6 - i));
+    const dayName = dayNames[d.getDay()];
+
+    const dayData = analytics.salesOverview.find((item: any) => {
+      return item._id === d.getDay() + 1;
+    });
+
+    last7DaysData.push({
+      name: dayName,
+      sales: dayData ? Math.round(dayData.sales * 100) / 100 : 0,
+      orders: dayData ? dayData.orders : 0,
+    });
+  }
+
+  const stats = analytics.stats[0] || {
+    totalSales: 0,
+    totalOrders: 0,
+    avgOrderValue: 0,
+  };
+
+  return {
+    stats,
+    salesData: last7DaysData,
+  };
+};
+
+// get vendor customer report
+const getVendorCustomerReport = async (
+  user: AuthUser,
+  query: Record<string, unknown>,
+) => {
+  const vendorId = new mongoose.Types.ObjectId(user._id);
+  const now = new Date();
+
+  // Calculate date for 6 months ago
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  // 1. Aggregation for Stats and Monthly Growth
+  const [reportData] = await Order.aggregate([
+    {
+      $match: {
+        vendorId,
+        isDeleted: false,
+        paymentStatus: 'PAID',
+      },
+    },
+    {
+      $facet: {
+        // --- Summary Stats ---
+        stats: [
+          {
+            $group: {
+              _id: '$customerId',
+              totalSpent: { $sum: '$payoutSummary.grandTotal' },
+              orderCount: { $sum: 1 },
+            },
+          },
+          {
+            $lookup: {
+              from: 'customers',
+              localField: '_id',
+              foreignField: '_id',
+              as: 'customer',
+            },
+          },
+          { $unwind: '$customer' },
+          {
+            $group: {
+              _id: null,
+              totalCustomers: { $sum: 1 },
+              allCustomers: {
+                $push: {
+                  name: {
+                    $concat: [
+                      '$customer.name.firstName',
+                      ' ',
+                      '$customer.name.lastName',
+                    ],
+                  },
+                  totalSpent: '$totalSpent',
+                  orderCount: '$orderCount',
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              totalCustomers: 1,
+              highestSpender: {
+                $arrayElemAt: [
+                  {
+                    $sortArray: {
+                      input: '$allCustomers',
+                      sortBy: { totalSpent: -1 },
+                    },
+                  },
+                  0,
+                ],
+              },
+              mostOrders: {
+                $arrayElemAt: [
+                  {
+                    $sortArray: {
+                      input: '$allCustomers',
+                      sortBy: { orderCount: -1 },
+                    },
+                  },
+                  0,
+                ],
+              },
+            },
+          },
+        ],
+
+        // --- Monthly Customer Growth (Last 6 Months) ---
+        monthlyGrowth: [
+          {
+            $match: {
+              createdAt: { $gte: sixMonthsAgo },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+                customer: '$customerId',
+              },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                year: '$_id.year',
+                month: '$_id.month',
+              },
+              uniqueCustomers: { $sum: 1 },
+            },
+          },
+          {
+            $sort: {
+              '_id.year': 1,
+              '_id.month': 1,
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  // 2. Prepare Monthly Chart Data
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const monthlyCustomers = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+
+    const m = d.getMonth();
+    const y = d.getFullYear();
+
+    const found = reportData?.monthlyGrowth?.find(
+      (item: any) => item._id.month === m + 1 && item._id.year === y,
+    );
+
+    monthlyCustomers.push({
+      name: monthNames[m],
+      customers: found ? found.uniqueCustomers : 0,
+    });
+  }
+
+  // Get Vendor Customers
+  const customerIds = await Order.distinct('customerId', {
+    vendorId,
+    isDeleted: false,
+  });
+
+  const customerQuery = {
+    ...query,
+    _id: { $in: customerIds },
+  };
+
+  // customer table
+  const builder = new QueryBuilder(Customer.find(), customerQuery)
+    .search(['name.firstName', 'name.lastName', 'contactNumber'])
+    .filter()
+    .sort()
+    .fields()
+    .paginate();
+
+  const meta = await builder.countTotal();
+  const customers = await builder.modelQuery;
+
+  // Get Order Stats per Customer
+  const stats = await Order.aggregate([
+    {
+      $match: {
+        vendorId,
+        customerId: {
+          $in: customers.map((c) => c._id),
+        },
+      },
+    },
+    {
+      $group: {
+        _id: '$customerId',
+        orderCount: { $sum: 1 },
+        totalSpent: { $sum: '$payoutSummary.grandTotal' },
+        lastOrder: { $max: '$createdAt' },
+      },
+    },
+  ]);
+
+  const statsMap = new Map(
+    stats.map((s) => [s._id.toString(), s]),
+  );
+
+  const customerTable = customers.map((customer: any) => {
+    const stat = statsMap.get(customer._id.toString());
+
+    return {
+      ...customer.toObject(),
+      orderCount: stat?.orderCount || 0,
+      totalSpent: stat?.totalSpent || 0,
+      lastOrder: stat?.lastOrder || null,
+    };
+  });
+
+  // stats formatting
+  const statsData = reportData?.stats?.[0] || {
+    totalCustomers: 0,
+    highestSpender: { name: 'N/A' },
+    mostOrders: { name: 'N/A' },
+  };
+
+  return {
+    stats: {
+      totalCustomers: statsData.totalCustomers,
+      highestSpender: statsData.highestSpender?.name || 'N/A',
+      mostOrders: statsData.mostOrders?.name || 'N/A',
+    },
+    monthlyCustomers,
+    customers: {
+      data: customerTable,
+      meta
+    }
+  };
+};
+
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
 // --------------------------------------------------------------------------------------
@@ -1633,100 +1964,100 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-          // Vendor filter
-          {
-            $match: {
-              vendorId,
-              isDeleted: false,
+        // Vendor filter
+        {
+          $match: {
+            vendorId,
+            isDeleted: false,
+          },
+        },
+
+        // Unwind items
+        { $unwind: '$items' },
+
+        // Join products to get category
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'items.productId',
+            foreignField: '_id',
+            as: 'product',
+          },
+        },
+        { $unwind: '$product' },
+
+        {
+          $lookup: {
+            from: 'productcategories',
+            localField: 'product.category',
+            foreignField: '_id',
+            as: 'categoryDetails',
+          },
+        },
+        { $unwind: '$categoryDetails' },
+
+        // Count orders per category
+        {
+          $group: {
+            _id: {
+              categoryId: '$categoryDetails._id',
+              categoryName: '$categoryDetails.name',
+              orderId: '$_id',
             },
           },
+        },
 
-          // Unwind items
-          { $unwind: '$items' },
-
-          // Join products to get category
-          {
-            $lookup: {
-              from: 'products',
-              localField: 'items.productId',
-              foreignField: '_id',
-              as: 'product',
-            },
+        {
+          $group: {
+            _id: '$_id.categoryId',
+            categoryName: { $first: '$_id.categoryName' },
+            orderCount: { $sum: 1 },
           },
-          { $unwind: '$product' },
+        },
 
-          {
-            $lookup: {
-              from: 'productcategories',
-              localField: 'product.category',
-              foreignField: '_id',
-              as: 'categoryDetails',
-            },
-          },
-          { $unwind: '$categoryDetails' },
-
-          // Count orders per category
-          {
-            $group: {
-              _id: {
-                categoryId: '$categoryDetails._id',
-                categoryName: '$categoryDetails.name',
-                orderId: '$_id',
+        // Calculate TOTAL of all category orders
+        {
+          $group: {
+            _id: null,
+            totalCategoryOrders: { $sum: '$orderCount' },
+            categories: {
+              $push: {
+                name: '$categoryName',
+                orderCount: '$orderCount',
               },
             },
           },
+        },
 
-          {
-            $group: {
-              _id: '$_id.categoryId',
-              categoryName: { $first: '$_id.categoryName' },
-              orderCount: { $sum: 1 },
-            },
-          },
-
-          // Calculate TOTAL of all category orders
-          {
-            $group: {
-              _id: null,
-              totalCategoryOrders: { $sum: '$orderCount' },
-              categories: {
-                $push: {
-                  name: '$categoryName',
-                  orderCount: '$orderCount',
+        // Calculate percentage (SUM = 100%)
+        { $unwind: '$categories' },
+        {
+          $project: {
+            _id: 0,
+            name: '$categories.name',
+            totalOrders: '$categories.orderCount',
+            percentage: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        '$categories.orderCount',
+                        '$totalCategoryOrders',
+                      ],
+                    },
+                    100,
+                  ],
                 },
-              },
+                2,
+              ],
             },
           },
+        },
 
-          // Calculate percentage (SUM = 100%)
-          { $unwind: '$categories' },
-          {
-            $project: {
-              _id: 0,
-              name: '$categories.name',
-              totalOrders: '$categories.orderCount',
-              percentage: {
-                $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          '$categories.orderCount',
-                          '$totalCategoryOrders',
-                        ],
-                      },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-            },
-          },
-
-          // Top category first
-          { $sort: { percentage: -1 } },
-        ]);
+        // Top category first
+        { $sort: { percentage: -1 } },
+      ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -2013,8 +2344,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-        )
+        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+      )
       : 0;
 
   return {
@@ -2031,17 +2362,17 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-              ) + '%'
+              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+            ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-          opData.completedDeliveries > 0 &&
-          opData.totalDeliveryMinutes
+            opData.completedDeliveries > 0 &&
+            opData.totalDeliveryMinutes
             ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries,
-              )
+              opData.totalDeliveryMinutes / opData.completedDeliveries,
+            )
             : 0;
 
         return {
@@ -2267,7 +2598,12 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const [earningStats, orderStats, productStats] = await Promise.all([
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const [earningStats, orderStats, monthlyEarningsAgg] = await Promise.all([
     Transaction.aggregate([
       {
         $match: {
@@ -2336,20 +2672,27 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
       },
     ]),
 
-    Product.aggregate([
-      { $match: { vendorId: vendorObjectId } },
+    // MONTHLY EARNINGS (LAST 6 MONTHS)
+    Transaction.aggregate([
       {
-        $group: {
-          _id: null,
-          totalProducts: { $sum: 1 },
-          activeProducts: {
-            $sum: { $cond: [{ $eq: ['$meta.status', 'ACTIVE'] }, 1, 0] },
-          },
-          inactiveProducts: {
-            $sum: { $cond: [{ $eq: ['$meta.status', 'INACTIVE'] }, 1, 0] },
-          },
+        $match: {
+          userId: vendorObjectId,
+          userModel: 'Vendor',
+          status: 'SUCCESS',
+          type: 'VENDOR_EARNING',
+          createdAt: { $gte: sixMonthsAgo },
         },
       },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+          },
+          earnings: { $sum: '$totalAmount' },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
     ]),
   ]);
 
@@ -2364,11 +2707,14 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
     completedOrders: 0,
     pendingOrders: 0,
   };
-  const products = productStats[0] || {
-    totalProducts: 0,
-    activeProducts: 0,
-    inactiveProducts: 0,
-  };
+
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const monthlyEarnings = monthlyEarningsAgg.map((item) => ({
+    name: MONTHS[item._id.month - 1],
+    earnings: roundTo2(item.earnings),
+  }));
 
   return {
     topCard: {
@@ -2383,11 +2729,7 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
       thisMonth: roundTo2(earnings.monthIncome),
       totalIncome: roundTo2(earnings.totalIncome),
     },
-    products: {
-      total: products.totalProducts,
-      active: products.activeProducts,
-      inactive: products.inactiveProducts,
-    },
+    monthlyEarnings,
   };
 };
 
@@ -2845,6 +3187,8 @@ export const AnalyticsServices = {
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
+  getVendorSalesReportAnalytics,
+  getVendorCustomerReport,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)

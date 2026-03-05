@@ -133,6 +133,37 @@ const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
   });
 });
 
+// get admin delivery partner report analytics controller
+const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
+  const result =
+    await AnalyticsServices.getVendorSalesReportAnalytics(
+      req.user as AuthUser
+    );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor sales report analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get admin delivery partner report analytics controller
+const getVendorCustomerReport = catchAsync(async (req, res) => {
+  const result =
+    await AnalyticsServices.getVendorCustomerReport(
+      req.user as AuthUser,
+      req.query
+    );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor customer report fetched successfully',
+    data: result,
+  });
+});
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Umayer) -----------------------
 // ----------------------------------------------------------------------------------
@@ -282,6 +313,8 @@ export const AnalyticsControllers = {
   getAdminVendorReportAnalytics,
   getAdminFleetManagerReportAnalytics,
   getAdminDeliveryPartnerReportAnalytics,
+  getVendorSalesReportAnalytics,
+  getVendorCustomerReport,
   // ---------------------------------------
   // Analytics Services (Developer Umayer)
   // ---------------------------------------
