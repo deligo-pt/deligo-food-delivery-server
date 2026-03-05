@@ -690,6 +690,7 @@ const broadcastOrderToPartners = async (
   };
 };
 
+// partner accepts or rejects dispatched order
 const partnerAcceptsDispatchedOrder = async (
   currentUser: AuthUser,
   orderId: string,
@@ -718,6 +719,7 @@ const partnerAcceptsDispatchedOrder = async (
 
     const isExpired =
       order.dispatchExpiresAt && new Date() > new Date(order.dispatchExpiresAt);
+
     if (isExpired && order.orderStatus === ORDER_STATUS.DISPATCHING) {
       await Order.updateOne(
         { orderId },
@@ -730,10 +732,14 @@ const partnerAcceptsDispatchedOrder = async (
         { session },
       );
       await session.commitTransaction();
+
       io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
-      throw new AppError(httpStatus.GONE, 'Order request has expired.');
+      return {
+        data: null,
+        message: 'Order request has expired.',
+      };
     }
 
     if (payload.action === 'REJECT') {
@@ -829,7 +835,9 @@ const partnerAcceptsDispatchedOrder = async (
 
     return { data: claimedOrder, message: 'Order accepted.' };
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
     session.endSession();
