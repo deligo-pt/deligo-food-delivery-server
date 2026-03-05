@@ -91,6 +91,20 @@ router.get(
   AnalyticsControllers.getVendorCustomerReport,
 );
 
+// get fleet performance analytics
+router.get(
+  '/fleet-performance-analytics',
+  auth("ADMIN", "SUPER_ADMIN"),
+  AnalyticsControllers.getFleetManagerPerformanceAnalytics,
+);
+
+// get fleet performance details analytics
+router.get(
+  '/fleet-performance-details-analytics/:fleetManagerId',
+  auth("ADMIN", "SUPER_ADMIN"),
+  AnalyticsControllers.getSingleFleetPerformanceDetailsAnalytics,
+);
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS ROUTES (Developer Umayer) ----------------------------
 // ----------------------------------------------------------------------------------
