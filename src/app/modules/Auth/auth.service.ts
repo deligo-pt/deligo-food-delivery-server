@@ -553,6 +553,13 @@ const changePassword = async (
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
   }
 
+  if (payload.oldPassword === payload.newPassword) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'New password must be different from old password',
+    );
+  }
+
   if (currentUser?.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -564,19 +571,22 @@ const changePassword = async (
 
   const userStatus = currentUser?.status;
 
-  if (userStatus === USER_STATUS.REJECTED) {
+  if (
+    userStatus === USER_STATUS.REJECTED ||
+    userStatus === USER_STATUS.BLOCKED
+  ) {
     throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
   }
-  if (userStatus === USER_STATUS.BLOCKED) {
-    throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
-  }
+
+  const isPasswordMatched = await model.isPasswordMatched(
+    payload.oldPassword,
+    currentUser?.password,
+  );
 
   //checking if the password is correct
 
-  if (
-    !(await model.isPasswordMatched(payload.oldPassword, currentUser?.password))
-  )
-    throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
+  if (!isPasswordMatched)
+    throw new AppError(httpStatus.FORBIDDEN, 'Old password does not match');
 
   //hash new password
   const newHashedPassword = await bcryptjs.hash(
@@ -584,7 +594,7 @@ const changePassword = async (
     Number(config.bcrypt_salt_rounds),
   );
 
-  await model.findOneAndUpdate(
+  await model.updateOne(
     {
       userId: currentUser.userId,
       role: currentUser.role,
@@ -595,7 +605,9 @@ const changePassword = async (
     },
   );
 
-  return null;
+  return {
+    message: 'Password updated successfully!',
+  };
 };
 
 // Forgot Password
