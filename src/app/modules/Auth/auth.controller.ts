@@ -37,7 +37,13 @@ const onboardUser = catchAsync(async (req, res) => {
 
 // Login User Controller
 const loginUser = catchAsync(async (req, res) => {
-  const result = await AuthServices.loginUser(req.body);
+  const result = await AuthServices.loginUser({
+    ...req.body,
+    deviceDetails: {
+      ...req.body.deviceDetails,
+      ip: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+    },
+  });
   const { refreshToken, accessToken } = result;
 
   res.cookie('refreshToken', refreshToken, {

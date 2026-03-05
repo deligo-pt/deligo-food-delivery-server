@@ -105,6 +105,7 @@ export type AuthUser = {
 
 export type TLoginDevice = {
   deviceId: string;
+  deviceType: string;
   deviceName?: string;
   userAgent?: string;
   ip?: string;
@@ -115,6 +116,10 @@ export type TLoginDevice = {
 export const loginDeviceSchema = new Schema(
   {
     deviceId: {
+      type: String,
+      required: true,
+    },
+    deviceType: {
       type: String,
       required: true,
     },
