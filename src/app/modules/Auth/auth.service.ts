@@ -13,6 +13,7 @@ import {
 import {
   AuthUser,
   ROLE_COLLECTION_MAP,
+  ROLE_DEVICE_LIMITS,
   TLoginDevice,
   TUserRole,
   USER_ROLE,
@@ -33,8 +34,6 @@ import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../utils/redis';
-
-const SINGLE_DEVICE_ROLES = ['DELIVERY_PARTNER'];
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -338,7 +337,7 @@ const loginUser = async (
     throw new AppError(httpStatus.UNAUTHORIZED, 'Password did not match');
   }
 
-  const isRestrictedRole = SINGLE_DEVICE_ROLES.includes(user.role);
+  const deviceLimit = ROLE_DEVICE_LIMITS[user.role] || 100;
 
   const newDevice: TLoginDevice = {
     deviceId: payload.deviceDetails?.deviceId || 'unknown',
@@ -350,39 +349,38 @@ const loginUser = async (
     lastLogin: new Date(),
   };
 
-  if (isRestrictedRole && user.loginDevices && user.loginDevices.length > 0) {
-    const isSameDevice = user.loginDevices.some(
-      (device: TLoginDevice) => device.deviceId === newDevice.deviceId,
-    );
-    if (!isSameDevice && !payload.forceLogin) {
+  const existingDeviceIndex = user.loginDevices?.findIndex(
+    (device: TLoginDevice) => device.deviceId === newDevice.deviceId,
+  );
+  const isSameDevice = existingDeviceIndex > -1;
+
+  if (!isSameDevice && user.loginDevices?.length >= deviceLimit) {
+    if (!payload.forceLogin) {
       throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
     }
   }
 
   let updateQuery: any;
 
-  if (isRestrictedRole) {
+  if (isSameDevice) {
     updateQuery = {
-      $set: { loginDevices: [newDevice] },
+      $set: { [`loginDevices.${existingDeviceIndex}`]: newDevice },
     };
-  } else {
-    const existingDeviceIndex = user.loginDevices?.findIndex(
-      (device: TLoginDevice) => device.deviceId === newDevice.deviceId,
-    );
-
-    if (existingDeviceIndex > -1) {
-      const updatePath = `loginDevices.${existingDeviceIndex}`;
-      updateQuery = {
-        $set: { [updatePath]: newDevice },
-      };
+  } else if (payload.forceLogin && user.loginDevices?.length >= deviceLimit) {
+    if (deviceLimit === 1) {
+      updateQuery = { $set: { loginDevices: [newDevice] } };
     } else {
-      updateQuery = {
-        $addToSet: { loginDevices: newDevice },
-      };
+      await model.findOneAndUpdate(
+        { _id: user._id },
+        { $pop: { loginDevices: -1 } },
+      );
+      updateQuery = { $push: { loginDevices: newDevice } };
     }
+  } else {
+    updateQuery = { $push: { loginDevices: newDevice } };
   }
-  await model.findOneAndUpdate({ _id: user._id }, updateQuery, { new: true });
 
+  await model.findOneAndUpdate({ _id: user._id }, updateQuery, { new: true });
   //create token and sent to the  client
   const jwtPayload = {
     userId: user?.userId,
@@ -543,8 +541,10 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
   const model = mongoose.model(modelName) as any;
 
+  const deviceLimit = ROLE_DEVICE_LIMITS[currentUser.role] || 100;
+
   const updateOperation =
-    currentUser.role === 'DELIVERY_PARTNER'
+    deviceLimit === 1
       ? { $set: { fcmTokens: [token] } }
       : { $addToSet: { fcmTokens: token } };
 
@@ -564,14 +564,13 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 };
 
 // Logout User
-const logoutUser = async (email: string, token: string) => {
+const logoutUser = async (email: string, token: string, deviceId?: string) => {
   if (!token) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Fcm token is required');
   }
 
   const result = await findUserByEmail({ email, isDeleted: false });
-  const user = result?.user;
-  const model = result?.model;
+  const { user, model } = result || {};
 
   if (!user || !model) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -580,6 +579,10 @@ const logoutUser = async (email: string, token: string) => {
   const updateQuery: any = {
     $pull: { fcmTokens: token },
   };
+
+  if (deviceId) {
+    updateQuery.$pull.loginDevices = { deviceId: deviceId };
+  }
 
   if (user.role === 'CUSTOMER') {
     updateQuery.$set = { isEmailVerified: false };
