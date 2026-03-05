@@ -99,4 +99,11 @@ router.get(
   OrderControllers.getDeliveryPartnersDispatchOrder,
 );
 
+// get delivery partner current order
+router.get(
+  '/delivery-partner/current-order',
+  auth('DELIVERY_PARTNER'),
+  OrderControllers.getDeliveryPartnerCurrentOrder,
+);
+
 export const OrderRoutes = router;

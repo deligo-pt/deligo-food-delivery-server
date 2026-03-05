@@ -1486,6 +1486,29 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: AuthUser) => {
   return orders;
 };
 
+// get delivery partner current order service
+const getDeliveryPartnerCurrentOrder = async (currentUser: AuthUser) => {
+  if (currentUser.role !== 'DELIVERY_PARTNER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only delivery partners can access their current order.',
+    );
+  }
+  if (currentUser.operationalData?.currentOrderId === null) {
+    throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
+  }
+  const order = await Order.findOne({
+    _id: currentUser.operationalData?.currentOrderId,
+    deliveryPartnerId: currentUser._id,
+    isDeleted: false,
+  }).sort({ createdAt: -1 });
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
+  }
+  return order;
+};
+
 export const OrderServices = {
   createOrderAfterReduniqPayment,
   updateOrderStatusByVendor,
@@ -1496,4 +1519,5 @@ export const OrderServices = {
   getAllOrders,
   getSingleOrder,
   getDeliveryPartnersDispatchOrder,
+  getDeliveryPartnerCurrentOrder,
 };
