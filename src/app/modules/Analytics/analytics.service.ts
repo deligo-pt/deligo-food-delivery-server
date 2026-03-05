@@ -1791,6 +1791,316 @@ const getVendorCustomerReport = async (
   };
 };
 
+// get fleet manager performane analytics
+const getFleetManagerPerformanceAnalytics = async () => {
+  const now = new Date();
+
+  const startOfWeek = new Date();
+  startOfWeek.setDate(now.getDate() - 6);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  // Fleet Manager Order Stats
+  const fleetStats = await Order.aggregate([
+    {
+      $match: {
+        orderStatus: 'DELIVERED',
+        isDeleted: false,
+        deliveryPartnerId: { $ne: null },
+      },
+    },
+    {
+      $lookup: {
+        from: 'deliverypartners',
+        localField: 'deliveryPartnerId',
+        foreignField: '_id',
+        as: 'partner',
+      },
+    },
+    { $unwind: '$partner' },
+    {
+      $group: {
+        _id: '$partner.registeredBy.id', // Fleet Manager
+        totalOrders: { $sum: 1 },
+        totalEarnings: { $sum: '$payoutSummary.fleet.fee' },
+      },
+    },
+    {
+      $lookup: {
+        from: 'fleetmanagers',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'manager',
+      },
+    },
+    { $unwind: '$manager' },
+    {
+      $project: {
+        _id: 1,
+        name: {
+          $concat: [
+            '$manager.name.firstName',
+            ' ',
+            '$manager.name.lastName',
+          ],
+        },
+        profilePhoto: '$manager.profilePhoto',
+        totalOrders: 1,
+        totalEarnings: 1,
+        rating: {
+          $ifNull: ['$manager.rating.average', 0],
+        },
+        reviewCount: {
+          $ifNull: ['$manager.rating.totalReviews', 0],
+        },
+      },
+    },
+  ]);
+
+  // Top Cards
+  const mostOrders = [...fleetStats].sort(
+    (a, b) => b.totalOrders - a.totalOrders,
+  )[0];
+
+  const highestRated = [...fleetStats].sort(
+    (a, b) => b.rating - a.rating,
+  )[0];
+
+  const highestEarnings = [...fleetStats].sort(
+    (a, b) => b.totalEarnings - a.totalEarnings,
+  )[0];
+
+  // Earnings Chart
+  const earningsRaw = await Transaction.aggregate([
+    {
+      $match: {
+        userModel: 'FleetManager',
+        type: 'FLEET_EARNING',
+        status: 'SUCCESS',
+        createdAt: { $gte: startOfWeek },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+        },
+        earnings: { $sum: '$totalAmount' },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  // format chart for 7 days
+  const earningsPerformance = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+
+    const key = d.toISOString().split('T')[0];
+
+    const found = earningsRaw.find((e) => e._id === key);
+
+    earningsPerformance.push({
+      name: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      earnings: found ? roundTo2(found.earnings) : 0,
+    });
+  }
+
+  // Top Performers (Right List)
+  const topPerformers = [...fleetStats]
+    .sort((a, b) => b.totalEarnings - a.totalEarnings)
+    .slice(0, 3)
+    .map((f) => ({
+      name: f.name,
+      initials: f.name
+        .split(' ')
+        .map((n: any) => n[0])
+        .join(''),
+      profilePhoto: f.profilePhoto,
+      earnings: roundTo2(f.totalEarnings),
+      rating: f.rating,
+    }));
+
+  return {
+    topCards: {
+      mostOrders: {
+        fleetName: mostOrders?.name || 'N/A',
+        fleetPhoto: mostOrders?.profilePhoto || '',
+        ordersCount: mostOrders?.totalOrders || 0,
+      },
+      highestRated: {
+        fleetName: highestRated?.name || 'N/A',
+        fleetPhoto: highestRated?.profilePhoto || '',
+        rating: {
+          average: highestRated?.rating || 0,
+          totalRatings: highestRated?.reviewCount || 0
+        }
+      },
+      highestEarnings: {
+        fleetName: highestEarnings?.name || 'N/A',
+        fleetPhoto: highestEarnings?.profilePhoto || '',
+        earnings: roundTo2(highestEarnings?.totalEarnings) || 0,
+      },
+    },
+
+    earningsPerformance,
+
+    topPerformers,
+  };
+};
+
+// get single fleet manager performance details analytics
+const getSingleFleetPerformanceDetailsAnalytics = async (
+  fleetManagerId: string
+) => {
+
+  const now = new Date();
+
+  // Fleet Manager Basic Info 
+  const fleetManager = await FleetManager.findOne({ userId: fleetManagerId })
+    .select(
+      "_id profilePhoto userId email status name address operationalData rating"
+    )
+    .lean();
+  if (!fleetManager) {
+    throw new Error("Fleet Manager not found");
+  }
+  const onlyFleet = await FleetManager.findById(fleetManager?._id);
+
+  // Fleet Orders + Earnings
+  const [fleetStats] = await Order.aggregate([
+    {
+      $match: {
+        orderStatus: "DELIVERED",
+        isDeleted: false,
+        deliveryPartnerId: { $ne: null },
+      },
+    },
+    {
+      $lookup: {
+        from: "deliverypartners",
+        localField: "deliveryPartnerId",
+        foreignField: "_id",
+        as: "partner",
+      },
+    },
+    { $unwind: "$partner" },
+
+    {
+      $match: {
+        "partner.registeredBy.id": fleetManager?._id,
+      },
+    },
+
+    {
+      $group: {
+        _id: null,
+        totalOrders: { $sum: 1 },
+        totalEarnings: { $sum: "$payoutSummary.fleet.fee" },
+      },
+    },
+  ]);
+
+  const stats = fleetStats || { totalOrders: 0, totalEarnings: 0 };
+
+  // Fleet Performance (Single Fleet Data)
+  const fleetPerformance = {
+    ...fleetManager,
+    totalEarnings: roundTo2(stats.totalEarnings),
+  };
+
+  // Last 6 Months Performance
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(now.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const monthlyRaw = await Order.aggregate([
+    {
+      $match: {
+        orderStatus: "DELIVERED",
+        isDeleted: false,
+        createdAt: { $gte: sixMonthsAgo },
+      },
+    },
+    {
+      $lookup: {
+        from: "deliverypartners",
+        localField: "deliveryPartnerId",
+        foreignField: "_id",
+        as: "partner",
+      },
+    },
+    { $unwind: "$partner" },
+
+    {
+      $match: {
+        "partner.registeredBy.id": fleetManager?._id,
+      },
+    },
+
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+        },
+        totalOrders: { $sum: 1 },
+        totalEarnings: { $sum: "$payoutSummary.fleet.fee" },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const fleetMonthlyPerformance = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
+
+    const found = monthlyRaw.find(
+      (m) => m._id.month === month && m._id.year === year
+    );
+
+    fleetMonthlyPerformance.push({
+      month: monthNames[d.getMonth()],
+      totalOrders: found?.totalOrders || 0,
+      totalEarnings: roundTo2(found?.totalEarnings) || 0,
+    });
+  }
+
+  // Top Rated Delivery Partners (ONLY 4)
+  const topRatedDriversRaw = await DeliveryPartner.find({
+    "registeredBy.id": fleetManager?._id,
+    isDeleted: false,
+  })
+    .select("_id userId name rating operationalData.totalDeliveries")
+    .sort({ "rating.average": -1 })
+    .limit(4)
+    .lean();
+
+  const topRatedDrivers = topRatedDriversRaw.map((driver) => ({
+    _id: driver._id,
+    userId: driver.userId,
+    name: driver.name,
+    rating: driver.rating?.average || 0,
+    completedDeliveries: driver.operationalData?.totalDeliveries || 0,
+  }));
+
+
+  return {
+    fleetmanager: onlyFleet,
+    fleetPerformance,
+    fleetMonthlyPerformance,
+    topRatedDrivers,
+  };
+};
+
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
 // --------------------------------------------------------------------------------------
@@ -3189,6 +3499,8 @@ export const AnalyticsServices = {
   getAdminDeliveryPartnerReportAnalytics,
   getVendorSalesReportAnalytics,
   getVendorCustomerReport,
+  getFleetManagerPerformanceAnalytics,
+  getSingleFleetPerformanceDetailsAnalytics,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)
