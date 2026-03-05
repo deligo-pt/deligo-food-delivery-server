@@ -15,6 +15,7 @@ export const createToken = (
     contactNumber?: string;
     role: TUserRole;
     status: keyof typeof USER_STATUS;
+    deviceId?: string;
   },
   secret: string,
   expiresIn: string,

@@ -13,6 +13,7 @@ import {
 import {
   AuthUser,
   ROLE_COLLECTION_MAP,
+  TLoginDevice,
   TUserRole,
   USER_ROLE,
   USER_STATUS,
@@ -32,6 +33,8 @@ import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../utils/redis';
+
+const SINGLE_DEVICE_ROLES = ['DELIVERY_PARTNER'];
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -293,7 +296,9 @@ const onboardUser = async <
 };
 
 // Login User
-const loginUser = async (payload: TLoginUser) => {
+const loginUser = async (
+  payload: TLoginUser & { deviceDetails?: TLoginDevice; forceLogin?: boolean },
+) => {
   // checking if the user is exist
   const { user, model } = await findUserByEmail({
     email: payload?.email,
@@ -333,6 +338,51 @@ const loginUser = async (payload: TLoginUser) => {
     throw new AppError(httpStatus.UNAUTHORIZED, 'Password did not match');
   }
 
+  const isRestrictedRole = SINGLE_DEVICE_ROLES.includes(user.role);
+
+  const newDevice: TLoginDevice = {
+    deviceId: payload.deviceDetails?.deviceId || 'unknown',
+    deviceType: payload.deviceDetails?.deviceType || 'unknown',
+    deviceName: payload.deviceDetails?.deviceName || '',
+    userAgent: payload.deviceDetails?.userAgent || '',
+    ip: payload.deviceDetails?.ip || '',
+    isVerified: true,
+    lastLogin: new Date(),
+  };
+
+  if (isRestrictedRole && user.loginDevices && user.loginDevices.length > 0) {
+    const isSameDevice = user.loginDevices.some(
+      (device: TLoginDevice) => device.deviceId === newDevice.deviceId,
+    );
+    if (!isSameDevice && !payload.forceLogin) {
+      throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
+    }
+  }
+
+  let updateQuery: any;
+
+  if (isRestrictedRole) {
+    updateQuery = {
+      $set: { loginDevices: [newDevice] },
+    };
+  } else {
+    const existingDeviceIndex = user.loginDevices?.findIndex(
+      (device: TLoginDevice) => device.deviceId === newDevice.deviceId,
+    );
+
+    if (existingDeviceIndex > -1) {
+      const updatePath = `loginDevices.${existingDeviceIndex}`;
+      updateQuery = {
+        $set: { [updatePath]: newDevice },
+      };
+    } else {
+      updateQuery = {
+        $addToSet: { loginDevices: newDevice },
+      };
+    }
+  }
+  await model.findOneAndUpdate({ _id: user._id }, updateQuery, { new: true });
+
   //create token and sent to the  client
   const jwtPayload = {
     userId: user?.userId,
@@ -344,6 +394,7 @@ const loginUser = async (payload: TLoginUser) => {
     contactNumber: user?.contactNumber,
     role: user?.role,
     status: user?.status,
+    deviceId: newDevice.deviceId,
   };
 
   const accessToken = createToken(
@@ -491,9 +542,15 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
   const modelName =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
   const model = mongoose.model(modelName) as any;
+
+  const updateOperation =
+    currentUser.role === 'DELIVERY_PARTNER'
+      ? { $set: { fcmTokens: [token] } }
+      : { $addToSet: { fcmTokens: token } };
+
   const updatedUser = await model.findOneAndUpdate(
     { _id: currentUser._id },
-    { $addToSet: { fcmTokens: token } },
+    updateOperation,
     { new: true },
   );
 
