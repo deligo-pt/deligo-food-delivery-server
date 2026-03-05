@@ -18,7 +18,7 @@ const getMyTransactions = catchAsync(async (req, res) => {
     });
 });
 
-// get transaction by id
+// get transaction by transactionId
 const getTransactionById = catchAsync(async (req, res) => {
     const { id } = req.params;
     const result = await TransactionServices.getTransactionById(id as string);
