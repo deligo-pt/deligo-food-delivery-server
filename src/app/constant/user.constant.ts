@@ -147,6 +147,16 @@ export const loginDeviceSchema = new Schema(
   { _id: false },
 );
 
+export const ROLE_DEVICE_LIMITS: Record<string, number> = {
+  DELIVERY_PARTNER: 1,
+  SUPER_ADMIN: 100,
+  ADMIN: 100,
+  CUSTOMER: 100,
+  FLEET_MANAGER: 100,
+  VENDOR: 100,
+  SUB_VENDOR: 100,
+};
+
 export const ROLE_PREFIX_MAP: Record<string, TUserRole> = {
   SA: 'ADMIN',
   A: 'ADMIN',
