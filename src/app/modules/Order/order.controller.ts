@@ -155,6 +155,19 @@ const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
   });
 });
 
+// get delivery partner current order
+const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
+  const result = await OrderServices.getDeliveryPartnerCurrentOrder(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery partner current order fetched successfully',
+    data: result,
+  });
+});
+
 export const OrderControllers = {
   createOrderAfterReduniqPayment,
   getAllOrders,
@@ -166,4 +179,5 @@ export const OrderControllers = {
   updateOrderStatusByDeliveryPartner,
   downloadInvoicePdfFromPd,
   getDeliveryPartnersDispatchOrder,
+  getDeliveryPartnerCurrentOrder,
 };

@@ -466,7 +466,7 @@ const updateOrderStatusByVendor = async (
           notificationPayload.title,
           notificationPayload.body,
           notificationPayload.data,
-          'order_notification',
+          'default',
           'ORDER',
         );
       }
@@ -690,6 +690,7 @@ const broadcastOrderToPartners = async (
   };
 };
 
+// partner accepts or rejects dispatched order
 const partnerAcceptsDispatchedOrder = async (
   currentUser: AuthUser,
   orderId: string,
@@ -718,6 +719,7 @@ const partnerAcceptsDispatchedOrder = async (
 
     const isExpired =
       order.dispatchExpiresAt && new Date() > new Date(order.dispatchExpiresAt);
+
     if (isExpired && order.orderStatus === ORDER_STATUS.DISPATCHING) {
       await Order.updateOne(
         { orderId },
@@ -730,10 +732,14 @@ const partnerAcceptsDispatchedOrder = async (
         { session },
       );
       await session.commitTransaction();
+
       io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
-      throw new AppError(httpStatus.GONE, 'Order request has expired.');
+      return {
+        data: null,
+        message: 'Order request has expired.',
+      };
     }
 
     if (payload.action === 'REJECT') {
@@ -829,7 +835,9 @@ const partnerAcceptsDispatchedOrder = async (
 
     return { data: claimedOrder, message: 'Order accepted.' };
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
     session.endSession();
@@ -952,7 +960,7 @@ const otpVerificationByVendor = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
-      'order_notification',
+      'default',
       'ORDER',
     );
   }
@@ -1478,6 +1486,29 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: AuthUser) => {
   return orders;
 };
 
+// get delivery partner current order service
+const getDeliveryPartnerCurrentOrder = async (currentUser: AuthUser) => {
+  if (currentUser.role !== 'DELIVERY_PARTNER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only delivery partners can access their current order.',
+    );
+  }
+  if (currentUser.operationalData?.currentOrderId === null) {
+    throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
+  }
+  const order = await Order.findOne({
+    _id: currentUser.operationalData?.currentOrderId,
+    deliveryPartnerId: currentUser._id,
+    isDeleted: false,
+  }).sort({ createdAt: -1 });
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
+  }
+  return order;
+};
+
 export const OrderServices = {
   createOrderAfterReduniqPayment,
   updateOrderStatusByVendor,
@@ -1488,4 +1519,5 @@ export const OrderServices = {
   getAllOrders,
   getSingleOrder,
   getDeliveryPartnersDispatchOrder,
+  getDeliveryPartnerCurrentOrder,
 };

@@ -31,6 +31,7 @@ import { resendMobileOtp } from '../../utils/resendMobileOtp';
 import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
+import { RedisService } from '../../utils/redis';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -56,63 +57,19 @@ const registerUser = async <
   // Generate userId & OTP
   const userID = generateUserId(userType);
   payload.role = userTypeData.role;
-  const { otp, otpExpires } = generateOtp();
+  const { otp } = generateOtp();
 
-  //  Check existing user in ALL models
-  const checkModels = ALL_USER_MODELS.map((M: any) =>
-    M.isUserExistsByEmail(payload.email).catch(() => null),
+  const checkUserPromise = Promise.all(
+    ALL_USER_MODELS.map((M: any) =>
+      M.isUserExistsByEmail(
+        payload.email,
+        false,
+        'email isEmailVerified role',
+      ).catch(() => null),
+    ),
   );
 
-  const checkUser = await Promise.all(checkModels);
-
-  const existingUser = checkUser.find((user) => user && user.email);
-  if (existingUser && existingUser.isEmailVerified) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      `${existingUser.email} already exists as ${existingUser.role}. Please Login!`,
-    );
-  }
-
-  if (existingUser && !existingUser.isEmailVerified) {
-    const index = checkUser.findIndex(
-      (user) => user && user.email === existingUser.email,
-    );
-
-    if (index !== -1) {
-      const modelToDelete = ALL_USER_MODELS[index];
-      try {
-        await modelToDelete.deleteOne({ email: existingUser.email });
-      } catch (error) {
-        throw new AppError(
-          httpStatus.INTERNAL_SERVER_ERROR,
-          'Error deleting user',
-        );
-      }
-    }
-  }
-
-  let createdUser: any = null;
-  try {
-    const result = await mongooseModel.create([
-      {
-        ...payload,
-        [idField]: userID,
-        otp,
-        isOtpExpired: otpExpires,
-      },
-    ]);
-    createdUser = Array.isArray(result) ? result[0] : result;
-  } catch (err: any) {
-    if (err?.code === 11000) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        'Something went wrong. Please try again',
-      );
-    }
-    throw err;
-  }
-  // create email html
-  const emailHtml = await EmailHelper.createEmailContent(
+  const emailContentPromise = EmailHelper.createEmailContent(
     {
       otp,
       userEmail: payload.email,
@@ -123,19 +80,54 @@ const registerUser = async <
     'verify-email',
   );
 
-  // send email
-  try {
-    await EmailHelper.sendEmail(
-      payload?.email,
-      emailHtml,
-      'Verify your email for DeliGo',
+  const [checkUserResults, emailHtml] = await Promise.all([
+    checkUserPromise,
+    emailContentPromise,
+  ]);
+
+  const existingUser = checkUserResults.find((user) => user && user.email);
+  if (existingUser) {
+    if (existingUser.isEmailVerified) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${existingUser.email} is already registered as ${existingUser.role}.`,
+      );
+    }
+    const index = checkUserResults.findIndex(
+      (user) => user?.email === existingUser.email,
     );
-  } catch (err: any) {
-    console.error('Email sending failed:', err);
+    await ALL_USER_MODELS[index].deleteOne({ email: existingUser.email });
   }
 
+  let createdUser: any = null;
+  try {
+    const result = await mongooseModel.create([
+      {
+        ...payload,
+        [idField]: userID,
+        // otp,
+        // isOtpExpired: otpExpires,
+      },
+    ]);
+    createdUser = result[0];
+
+    const redisOtpKey = `otp:${payload.email}`;
+    await RedisService.set(redisOtpKey, otp, 300); // Store OTP in Redis with 5 minutes expiration
+  } catch (err: any) {
+    if (err?.code === 11000)
+      throw new AppError(httpStatus.CONFLICT, 'Email already in use');
+    throw err;
+  }
+
+  // send email
+  EmailHelper.sendEmail(
+    payload.email,
+    emailHtml,
+    'Verify your email for DeliGo',
+  ).catch((err) => console.error('Email sending failed:', err));
+
   return {
-    message: `${payload.role} registered successfully. Please check your email for verification.1`,
+    message: `${payload.role} registered. Check your email for OTP.`,
     data: createdUser,
   };
 };
@@ -177,7 +169,7 @@ const onboardUser = async <
     'sub-vendor': ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
     'fleet-manager': ['ADMIN', 'SUPER_ADMIN'],
     vendor: ['ADMIN', 'SUPER_ADMIN'],
-    customer: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
+    customer: ['ADMIN', 'SUPER_ADMIN'],
     admin: ['SUPER_ADMIN'],
   };
 
@@ -195,12 +187,39 @@ const onboardUser = async <
 
   const userID = generateUserId(mapKey);
   payload.role = userTypeData.role;
-  const { otp, otpExpires } = generateOtp();
+  const { otp } = generateOtp();
 
-  const checkModels = ALL_USER_MODELS.map((M: any) =>
-    M.isUserExistsByEmail(payload.email).catch(() => null),
+  // const checkModels = ALL_USER_MODELS.map((M: any) =>
+  //   M.isUserExistsByEmail(payload.email).catch(() => null),
+  // );
+  // const checkResults = await Promise.all(checkModels);
+
+  const checkUserPromise = Promise.all(
+    ALL_USER_MODELS.map((M: any) =>
+      M.isUserExistsByEmail(
+        payload.email,
+        false,
+        'email isEmailVerified role',
+      ).catch(() => null),
+    ),
   );
-  const checkResults = await Promise.all(checkModels);
+
+  const emailContentPromise = await EmailHelper.createEmailContent(
+    {
+      otp,
+      userEmail: payload.email,
+      currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
+      user: payload.role.toLowerCase(),
+    },
+    'verify-email',
+  );
+
+  const [checkResults, emailHtml] = await Promise.all([
+    checkUserPromise,
+    emailContentPromise,
+  ]);
+
   const existingUser = checkResults.find((user) => user && user.email);
 
   if (existingUser) {
@@ -245,13 +264,13 @@ const onboardUser = async <
         ...payload,
         [idField]: userID,
         registeredBy: registeredByValue,
-        otp,
-        isOtpExpired: otpExpires,
         isEmailVerified: false,
         status: USER_STATUS.PENDING,
       },
     ]);
-    createdUser = Array.isArray(result) ? result[0] : result;
+    createdUser = result[0];
+    const redisOtpKey = `otp:${payload.email}`;
+    await RedisService.set(redisOtpKey, otp, 300);
   } catch (err: any) {
     if (err?.code === 11000)
       throw new AppError(
@@ -261,26 +280,11 @@ const onboardUser = async <
     throw err;
   }
 
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      otp,
-      userEmail: payload.email,
-      currentYear: new Date().getFullYear(),
-      date: new Date().toDateString(),
-      user: payload.role.toLowerCase(),
-    },
-    'verify-email',
-  );
-
-  try {
-    await EmailHelper.sendEmail(
-      payload.email,
-      emailHtml,
-      'Verify your email for DeliGo',
-    );
-  } catch (err) {
-    console.error('Email sending failed:', err);
-  }
+  EmailHelper.sendEmail(
+    payload.email,
+    emailHtml,
+    'Verify your email for DeliGo',
+  ).catch((err) => console.error('Email sending failed:', err));
 
   return {
     message: `${payload.role} onboarded successfully. Verification email sent to ${payload.email}`,
@@ -297,10 +301,8 @@ const loginUser = async (payload: TLoginUser) => {
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
-  const userModel = model;
 
   // checking if the user is blocked
-
   const userStatus = user?.status;
 
   if (userStatus === USER_STATUS.BLOCKED) {
@@ -314,17 +316,24 @@ const loginUser = async (payload: TLoginUser) => {
     );
   }
 
-  //checking if the password is correct
+  if (!payload.password || !model) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Password or Model information missing',
+    );
+  }
 
-  if (payload.password && userModel) {
-    if (
-      !(await userModel?.isPasswordMatched(payload?.password, user?.password))
-    )
-      throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
+  //checking if the password is correct
+  const isPasswordMatched = await model.isPasswordMatched(
+    payload.password,
+    user.password,
+  );
+
+  if (!isPasswordMatched) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'Password did not match');
   }
 
   //create token and sent to the  client
-
   const jwtPayload = {
     userId: user?.userId,
     name: {
@@ -377,9 +386,9 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       M.isUserExistsByEmail(payload.email).catch(() => null),
     );
     const checkUser = await Promise.all(checkModels);
-    const user = checkUser.find((u) => u);
+    const foundUser = checkUser.find((u) => u);
 
-    if (user && user.role !== 'CUSTOMER') {
+    if (foundUser && foundUser.role !== 'CUSTOMER') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'This email is already registered as a different role',
@@ -387,32 +396,30 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     }
 
     // Fetch existing customer by email
-    const existingUser = await Customer.findOne({ email: payload.email });
+    const existingUser = await Customer.findOne({
+      email: payload.email,
+    }).lean();
 
     // Generate OTP
-    const { otp, otpExpires } = generateOtp();
+    const { otp } = generateOtp();
+    const redisOtpKey = `otp:${payload.email}`;
+    await RedisService.set(redisOtpKey, otp, 300); // Store OTP in Redis with 5 minutes expiration
 
-    if (existingUser) {
-      Object.assign(existingUser, {
-        otp,
-        isOtpExpired: otpExpires,
-        isOtpVerified: false,
-        requiresOtpVerification: true,
-      });
-      await existingUser.save();
-    } else {
+    if (!existingUser) {
       const userId = generateUserId('/create-customer');
       await Customer.create({
         userId,
         role: 'CUSTOMER',
         email: payload.email,
-        otp,
-        isOtpExpired: otpExpires,
         requiresOtpVerification: true,
       });
+    } else {
+      await Customer.updateOne(
+        { _id: existingUser._id },
+        { requiresOtpVerification: true, isOtpVerified: false },
+      );
     }
 
-    // Prepare email content and send
     const emailHtml = await EmailHelper.createEmailContent(
       {
         otp,
@@ -423,15 +430,11 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       },
       'verify-email',
     );
-    try {
-      await EmailHelper.sendEmail(
-        payload.email,
-        emailHtml,
-        'Verify your email for DeliGo',
-      );
-    } catch (err: any) {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-    }
+    EmailHelper.sendEmail(
+      payload.email,
+      emailHtml,
+      'Verify your email for DeliGo',
+    ).catch((err) => console.error('Email send failed:', err));
 
     return { message: 'OTP sent to your email. Please verify to login.' };
   }
@@ -443,19 +446,21 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     // Fetch existing customer by mobile number
     const existingUser = await Customer.findOne({
       contactNumber: payload.contactNumber,
-    });
+    }).lean();
 
     // Send mobile OTP
     const res = await sendMobileOtp(payload.contactNumber);
     const mobileOtpId = res?.data?.id;
 
     if (existingUser) {
-      Object.assign(existingUser, {
-        mobileOtpId,
-        isOtpVerified: false,
-        requiresOtpVerification: true,
-      });
-      await existingUser.save();
+      await Customer.updateOne(
+        { _id: existingUser._id },
+        {
+          mobileOtpId,
+          isOtpVerified: false,
+          requiresOtpVerification: true,
+        },
+      );
     } else {
       const userId = generateUserId('/create-customer');
       await Customer.create({
@@ -483,10 +488,19 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  // Add new token if not exists
-  const tokens = new Set([...(currentUser.fcmTokens || []), token]);
-  currentUser.fcmTokens = Array.from(tokens);
-  await (currentUser as any).save();
+  const modelName =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const model = mongoose.model(modelName) as any;
+  const updatedUser = await model.findOneAndUpdate(
+    { _id: currentUser._id },
+    { $addToSet: { fcmTokens: token } },
+    { new: true },
+  );
+
+  if (!updatedUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
   return {
     message: 'FCM token saved successfully',
   };
@@ -494,28 +508,27 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 
 // Logout User
 const logoutUser = async (email: string, token: string) => {
-  const result = await findUserByEmail({ email, isDeleted: false });
-  const user = result?.user;
-
   if (!token) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Fcm token is required');
   }
 
-  if (token && user?.fcmTokens?.length) {
-    user.fcmTokens = user.fcmTokens.filter(
-      (fcmToken: string) => fcmToken !== token,
-    );
-    await user.save();
-  }
+  const result = await findUserByEmail({ email, isDeleted: false });
+  const user = result?.user;
+  const model = result?.model;
 
-  if (!user) {
+  if (!user || !model) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (user?.role === 'CUSTOMER') {
-    user.isEmailVerified = false;
-    await user.save();
+  const updateQuery: any = {
+    $pull: { fcmTokens: token },
+  };
+
+  if (user.role === 'CUSTOMER') {
+    updateQuery.$set = { isEmailVerified: false };
   }
+
+  await model.findOneAndUpdate({ _id: user._id }, updateQuery, { new: true });
 
   return {
     message:
@@ -540,6 +553,13 @@ const changePassword = async (
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
   }
 
+  if (payload.oldPassword === payload.newPassword) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'New password must be different from old password',
+    );
+  }
+
   if (currentUser?.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -551,19 +571,22 @@ const changePassword = async (
 
   const userStatus = currentUser?.status;
 
-  if (userStatus === USER_STATUS.REJECTED) {
+  if (
+    userStatus === USER_STATUS.REJECTED ||
+    userStatus === USER_STATUS.BLOCKED
+  ) {
     throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
   }
-  if (userStatus === USER_STATUS.BLOCKED) {
-    throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
-  }
+
+  const isPasswordMatched = await model.isPasswordMatched(
+    payload.oldPassword,
+    currentUser?.password,
+  );
 
   //checking if the password is correct
 
-  if (
-    !(await model.isPasswordMatched(payload.oldPassword, currentUser?.password))
-  )
-    throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
+  if (!isPasswordMatched)
+    throw new AppError(httpStatus.FORBIDDEN, 'Old password does not match');
 
   //hash new password
   const newHashedPassword = await bcryptjs.hash(
@@ -571,7 +594,7 @@ const changePassword = async (
     Number(config.bcrypt_salt_rounds),
   );
 
-  await model.findOneAndUpdate(
+  await model.updateOne(
     {
       userId: currentUser.userId,
       role: currentUser.role,
@@ -582,7 +605,9 @@ const changePassword = async (
     },
   );
 
-  return null;
+  return {
+    message: 'Password updated successfully!',
+  };
 };
 
 // Forgot Password
@@ -1021,69 +1046,75 @@ const verifyOtp = async (
     );
   }
 
-  let user: any = undefined;
+  let userData: any = undefined;
+  let userModel: any = undefined;
 
   if (email) {
+    const redisOtpKey = `otp:${email}`;
+    const storedOtp = await RedisService.get(redisOtpKey);
+
+    if (!storedOtp || String(storedOtp) !== String(otp)) {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+    }
+
     const result = await findUserByEmail({ email });
-    user = result?.user;
-    if (!user)
+    userData = result?.user;
+    userModel = result?.model;
+    if (!userData)
       throw new AppError(
         httpStatus.NOT_FOUND,
         'User not found. Please register.',
       );
 
-    if (user.otp !== otp)
-      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
-    if (user.isOtpExpired && user.isOtpExpired < new Date())
-      throw new AppError(httpStatus.UNAUTHORIZED, 'OTP has expired');
+    await userModel.updateOne(
+      { _id: userData._id },
+      {
+        isEmailVerified: true,
+        requiresOtpVerification: false,
+        isOtpVerified: true,
+      },
+    );
 
-    user.isEmailVerified = true;
-    user.otp = undefined;
-    user.isOtpExpired = undefined;
-    if (user.role === 'CUSTOMER') {
-      user.requiresOtpVerification = false;
-      user.isOtpVerified = true;
-    }
+    await RedisService.del(redisOtpKey);
   } else if (contactNumber) {
-    user = await Customer.findOne({ contactNumber, isDeleted: false });
-
-    if (!user)
+    userData = await Customer.findOne({
+      contactNumber,
+      isDeleted: false,
+    }).lean();
+    userModel = Customer;
+    if (!userData)
       throw new AppError(
         httpStatus.NOT_FOUND,
         'User not found. Please register.',
       );
 
     const res = await verifyMobileOtp(
-      user.mobileOtpId as string,
+      userData.mobileOtpId as string,
       otp as string,
     );
     if (!res?.data?.verified) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
     }
 
-    user.isOtpVerified = true;
-    user.requiresOtpVerification = false;
-    user.mobileOtpId = undefined;
-  }
-  if (!user) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'User not found. Please register.',
+    await userModel.updateOne(
+      { _id: userData._id },
+      {
+        isOtpVerified: true,
+        requiresOtpVerification: false,
+      },
     );
   }
 
-  await user.save();
-
   const jwtPayload = {
-    userId: user.userId,
+    userId: userData.userId,
     name: {
-      firstName: user.name.firstName,
-      lastName: user.name.lastName,
+      firstName: userData.name.firstName,
+      lastName: userData.name.lastName,
     },
-    email: user.email,
-    contactNumber: user.contactNumber,
-    role: user.role,
-    status: user.status,
+    email: userData.email,
+    contactNumber: userData.contactNumber,
+    role: userData.role,
+    status: userData.status,
   };
 
   const accessToken = createToken(
@@ -1099,7 +1130,7 @@ const verifyOtp = async (
 
   return {
     message: email
-      ? `${user.role} Email verified successfully`
+      ? `${userData.role} email verified successfully`
       : 'Customer contact number verified successfully',
     accessToken,
     refreshToken,

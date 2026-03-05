@@ -206,6 +206,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
 );
 
 vendorSchema.index({ currentSessionLocation: '2dsphere' });
+vendorSchema.index({ email: 1 }, { unique: true }); //new
 
 vendorSchema.plugin(passwordPlugin);
 

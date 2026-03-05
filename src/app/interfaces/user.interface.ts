@@ -2,19 +2,23 @@
 import { Model } from 'mongoose';
 
 export interface IUserModel<T> extends Model<T> {
-  isUserExistsByEmail(email: string, isDeleted?: boolean): Promise<T | null>;
+  isUserExistsByEmail(
+    email: string,
+    isDeleted?: boolean,
+    fields?: string,
+  ): Promise<T | null>;
   isUserExistsByUserId(userId: string, isDeleted?: boolean): Promise<T | null>;
   isUserExistsByContactNumber(
     contactNumber: string,
-    isDeleted?: boolean
+    isDeleted?: boolean,
   ): Promise<T | null>;
   isPasswordMatched(
     plainTextPassword: string,
-    hashedPassword: string
+    hashedPassword: string,
   ): Promise<boolean>;
   isJWTIssuedBeforePasswordChanged(
     passwordChangedTimestamp: Date,
-    jwtIssuedTimestamp: number
+    jwtIssuedTimestamp: number,
   ): boolean;
   createPasswordResetToken(): string;
 }

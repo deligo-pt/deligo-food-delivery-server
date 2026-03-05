@@ -159,6 +159,8 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
 // GEO INDEX FOR REAL-TIME LOCATION
 customerSchema.index({ currentSessionLocation: '2dsphere' });
 
+customerSchema.index({ email: 1 }, { unique: true }); //new
+
 customerSchema.plugin(passwordPlugin);
 
 export const Customer = model<TCustomer, IUserModel<TCustomer>>(
