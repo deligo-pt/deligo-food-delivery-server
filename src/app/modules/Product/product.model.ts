@@ -95,13 +95,16 @@ const productSchema = new Schema<TProduct>(
 );
 
 const getNetPriceAfterDiscount = (price: number, discount: number) => {
-  return price - (price * discount) / 100;
+  const discountedPrice = roundTo2((price * discount) / 100);
+  const discountedBase = roundTo2(price - discountedPrice);
+  return roundTo2(discountedBase);
 };
 
 productSchema.virtual('pricing.discountedBasePrice').get(function () {
   const price = this.pricing?.price || 0;
   const discountPercent = this.pricing?.discount || 0;
-  const discountedBase = price - (price * discountPercent) / 100;
+  const discountedPrice = roundTo2((price * discountPercent) / 100);
+  const discountedBase = roundTo2(price - discountedPrice);
   return roundTo2(discountedBase);
 });
 
@@ -110,8 +113,8 @@ productSchema.virtual('pricing.taxAmount').get(function () {
     this.pricing.price,
     this.pricing.discount || 0,
   );
-  const tax = netPriceAfterDiscount * (this.pricing.taxRate / 100);
-  return roundTo2(tax);
+  const tax = roundTo2(netPriceAfterDiscount * (this.pricing.taxRate / 100));
+  return tax;
 });
 
 productSchema.virtual('pricing.finalPrice').get(function () {
@@ -119,7 +122,7 @@ productSchema.virtual('pricing.finalPrice').get(function () {
     this.pricing.price,
     this.pricing.discount || 0,
   );
-  const tax = netPriceAfterDiscount * (this.pricing.taxRate / 100);
+  const tax = roundTo2(netPriceAfterDiscount * (this.pricing.taxRate / 100));
   return roundTo2(netPriceAfterDiscount + tax);
 });
 

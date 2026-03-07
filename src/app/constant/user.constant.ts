@@ -149,12 +149,12 @@ export const loginDeviceSchema = new Schema(
 
 export const ROLE_DEVICE_LIMITS: Record<string, number> = {
   DELIVERY_PARTNER: 1,
-  SUPER_ADMIN: 100,
-  ADMIN: 100,
-  CUSTOMER: 100,
-  FLEET_MANAGER: 100,
-  VENDOR: 100,
-  SUB_VENDOR: 100,
+  SUPER_ADMIN: 3,
+  ADMIN: 3,
+  CUSTOMER: 3,
+  FLEET_MANAGER: 3,
+  VENDOR: 3,
+  SUB_VENDOR: 3,
 };
 
 export const ROLE_PREFIX_MAP: Record<string, TUserRole> = {

@@ -337,7 +337,7 @@ const loginUser = async (
     throw new AppError(httpStatus.UNAUTHORIZED, 'Password did not match');
   }
 
-  const deviceLimit = ROLE_DEVICE_LIMITS[user.role] || 100;
+  const deviceLimit = ROLE_DEVICE_LIMITS[user.role] || 3;
 
   const newDevice: TLoginDevice = {
     deviceId: payload.deviceDetails?.deviceId || 'unknown',
@@ -541,7 +541,7 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
   const model = mongoose.model(modelName) as any;
 
-  const deviceLimit = ROLE_DEVICE_LIMITS[currentUser.role] || 100;
+  const deviceLimit = ROLE_DEVICE_LIMITS[currentUser.role] || 3;
 
   const updateOperation =
     deviceLimit === 1
