@@ -167,7 +167,9 @@ const getVendorCustomerReport = catchAsync(async (req, res) => {
 // get fleet performance analytics controller
 const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
   const result =
-    await AnalyticsServices.getFleetManagerPerformanceAnalytics();
+    await AnalyticsServices.getFleetManagerPerformanceAnalytics(
+      req.query as Record<string, unknown>
+    );
 
   sendResponse(res, {
     success: true,

@@ -16,6 +16,7 @@ import {
   OrderReportAnalyticsResponse,
   SalesAnalyticsResponse,
   SummaryFacet,
+  TFleetPerformanceData,
   TimeframeQuery,
   TVendorSalesReport,
 } from './analytics.interface';
@@ -1792,162 +1793,234 @@ const getVendorCustomerReport = async (
 };
 
 // get fleet manager performane analytics
-const getFleetManagerPerformanceAnalytics = async () => {
+const getFleetManagerPerformanceAnalytics = async (
+  query: Record<string, unknown>
+): Promise<TFleetPerformanceData> => {
+
   const now = new Date();
+  const { page = 1, limit = 10 } = query;
+  const skip = (Number(page) - 1) * Number(limit);
 
   const startOfWeek = new Date();
   startOfWeek.setDate(now.getDate() - 6);
   startOfWeek.setHours(0, 0, 0, 0);
 
-  // Fleet Manager Order Stats
-  const fleetStats = await Order.aggregate([
+  const [result] = await FleetManager.aggregate([
+
     {
       $match: {
-        orderStatus: 'DELIVERED',
-        isDeleted: false,
-        deliveryPartnerId: { $ne: null },
-      },
+        role: "FLEET_MANAGER",
+        isDeleted: false
+      }
     },
+
+    // riders
     {
       $lookup: {
-        from: 'deliverypartners',
-        localField: 'deliveryPartnerId',
-        foreignField: '_id',
-        as: 'partner',
-      },
+        from: "deliverypartners",
+        localField: "_id",
+        foreignField: "registeredBy.id",
+        as: "riders"
+      }
     },
-    { $unwind: '$partner' },
-    {
-      $group: {
-        _id: '$partner.registeredBy.id', // Fleet Manager
-        totalOrders: { $sum: 1 },
-        totalEarnings: { $sum: '$payoutSummary.fleet.fee' },
-      },
-    },
+
+    // orders
     {
       $lookup: {
-        from: 'fleetmanagers',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'manager',
-      },
+        from: "orders",
+        let: { riderIds: "$riders._id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $in: ["$deliveryPartnerId", "$$riderIds"] },
+                  { $eq: ["$orderStatus", "DELIVERED"] },
+                  { $eq: ["$isDeleted", false] }
+                ]
+              }
+            }
+          }
+        ],
+        as: "orders"
+      }
     },
-    { $unwind: '$manager' },
+
+    // metrics
     {
-      $project: {
-        _id: 1,
-        name: {
-          $concat: [
-            '$manager.name.firstName',
-            ' ',
-            '$manager.name.lastName',
-          ],
-        },
-        profilePhoto: '$manager.profilePhoto',
-        totalOrders: 1,
-        totalEarnings: 1,
-        rating: {
-          $ifNull: ['$manager.rating.average', 0],
-        },
-        reviewCount: {
-          $ifNull: ['$manager.rating.totalReviews', 0],
-        },
-      },
+      $addFields: {
+        totalDeliveries: { $size: "$orders" },
+        totalEarnings: { $sum: "$orders.payoutSummary.fleet.fee" },
+        fleetName: "$name",
+        fleetPhoto: "$profilePhoto",
+        ratingAvg: { $ifNull: ["$rating.average", 0] }
+      }
     },
+
+    {
+      $facet: {
+
+        // Fleet Table
+        fleetPerformance: [
+          { $sort: { totalEarnings: -1 } },
+          { $skip: skip },
+          { $limit: Number(limit) },
+          {
+            $project: {
+              _id: 1,
+              profilePhoto: 1,
+              userId: 1,
+              email: 1,
+              status: 1,
+              name: 1,
+              address: 1,
+              totalDeliveries: 1,
+              totalEarnings: 1
+            }
+          }
+        ],
+
+        // Stats
+        stats: [
+          {
+            $group: {
+              _id: null,
+
+              mostOrders: {
+                $max: {
+                  deliveries: "$totalDeliveries",
+                  name: "$fleetName",
+                  photo: "$fleetPhoto"
+                }
+              },
+
+              highestEarnings: {
+                $max: {
+                  earnings: "$totalEarnings",
+                  name: "$fleetName",
+                  photo: "$fleetPhoto"
+                }
+              },
+
+              highestRating: {
+                $max: {
+                  rating: "$ratingAvg",
+                  name: "$fleetName",
+                  photo: "$fleetPhoto"
+                }
+              }
+            }
+          }
+        ],
+
+        // Weekly Performance
+        weekly: [
+          { $unwind: "$orders" },
+
+          {
+            $match: {
+              "orders.createdAt": { $gte: startOfWeek }
+            }
+          },
+
+          {
+            $group: {
+              _id: {
+                $dayOfWeek: "$orders.createdAt"
+              },
+              totalOrders: { $sum: 1 },
+              totalEarnings: { $sum: "$orders.payoutSummary.fleet.fee" }
+            }
+          }
+        ],
+
+        // Top Fleets
+        topFleetPerformers: [
+          { $sort: { ratingAvg: -1, totalEarnings: -1 } },
+          { $limit: 3 },
+          {
+            $project: {
+              fleetName: "$name",
+              fleetPhoto: "$profilePhoto",
+              rating: "$ratingAvg",
+              totalEarnings: 1
+            }
+          }
+        ],
+
+        totalCount: [
+          { $count: "count" }
+        ]
+
+      }
+    }
   ]);
 
-  // Top Cards
-  const mostOrders = [...fleetStats].sort(
-    (a, b) => b.totalOrders - a.totalOrders,
-  )[0];
+  const stats = result.stats?.[0] || {};
 
-  const highestRated = [...fleetStats].sort(
-    (a, b) => b.rating - a.rating,
-  )[0];
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  const highestEarnings = [...fleetStats].sort(
-    (a, b) => b.totalEarnings - a.totalEarnings,
-  )[0];
+  const weeklyMap = new Map();
 
-  // Earnings Chart
-  const earningsRaw = await Transaction.aggregate([
-    {
-      $match: {
-        userModel: 'FleetManager',
-        type: 'FLEET_EARNING',
-        status: 'SUCCESS',
-        createdAt: { $gte: startOfWeek },
-      },
-    },
-    {
-      $group: {
-        _id: {
-          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
-        },
-        earnings: { $sum: '$totalAmount' },
-      },
-    },
-    { $sort: { _id: 1 } },
-  ]);
+  result.weekly?.forEach((w: any) => {
+    weeklyMap.set(w._id, w);
+  });
 
-  // format chart for 7 days
-  const earningsPerformance = [];
+  const fleetWeeklyPerformance = days.map((day, index) => {
 
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
+    const mongoDay = index === 0 ? 1 : index + 1;
+    const data = weeklyMap.get(mongoDay);
 
-    const key = d.toISOString().split('T')[0];
+    return {
+      day,
+      totalOrders: data?.totalOrders || 0,
+      totalEarnings: roundTo2(data?.totalEarnings) || 0
+    };
 
-    const found = earningsRaw.find((e) => e._id === key);
-
-    earningsPerformance.push({
-      name: d.toLocaleDateString('en-US', { weekday: 'short' }),
-      earnings: found ? roundTo2(found.earnings) : 0,
-    });
-  }
-
-  // Top Performers (Right List)
-  const topPerformers = [...fleetStats]
-    .sort((a, b) => b.totalEarnings - a.totalEarnings)
-    .slice(0, 3)
-    .map((f) => ({
-      name: f.name,
-      initials: f.name
-        .split(' ')
-        .map((n: any) => n[0])
-        .join(''),
-      profilePhoto: f.profilePhoto,
-      earnings: roundTo2(f.totalEarnings),
-      rating: f.rating,
-    }));
+  });
 
   return {
-    topCards: {
-      mostOrders: {
-        fleetName: mostOrders?.name || 'N/A',
-        fleetPhoto: mostOrders?.profilePhoto || '',
-        ordersCount: mostOrders?.totalOrders || 0,
-      },
-      highestRated: {
-        fleetName: highestRated?.name || 'N/A',
-        fleetPhoto: highestRated?.profilePhoto || '',
-        rating: {
-          average: highestRated?.rating || 0,
-          totalRatings: highestRated?.reviewCount || 0
+
+    data: {
+
+      fleetPerformance: result.fleetPerformance,
+
+      fleetPerformanceStat: {
+
+        mostOrders: {
+          fleetName: stats?.mostOrders?.name || "",
+          fleetPhoto: stats?.mostOrders?.photo || "",
+          ordersCount: stats?.mostOrders?.deliveries || 0
+        },
+
+        highestEarnings: {
+          fleetName: stats?.highestEarnings?.name || "",
+          fleetPhoto: stats?.highestEarnings?.photo || "",
+          earnings: roundTo2(stats?.highestEarnings?.earnings) || 0
+        },
+
+        highestRating: {
+          fleetName: stats?.highestRating?.name || "",
+          fleetPhoto: stats?.highestRating?.photo || "",
+          rating: stats?.highestRating?.rating || 0
         }
       },
-      highestEarnings: {
-        fleetName: highestEarnings?.name || 'N/A',
-        fleetPhoto: highestEarnings?.profilePhoto || '',
-        earnings: roundTo2(highestEarnings?.totalEarnings) || 0,
-      },
+
+      fleetWeeklyPerformance,
+
+      topFleetPerformers: result.topFleetPerformers
+
     },
 
-    earningsPerformance,
+    meta: {
+      page: Number(page),
+      limit: Number(limit),
+      total: result.totalCount?.[0]?.count || 0,
+      totalPage: Math.ceil((result.totalCount?.[0]?.count || 0) / Number(limit))
+    }
 
-    topPerformers,
   };
+
 };
 
 // get single fleet manager performance details analytics
@@ -1957,147 +2030,111 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
 
   const now = new Date();
 
-  // Fleet Manager Basic Info 
+  // Fleet Manager
   const fleetManager = await FleetManager.findOne({ userId: fleetManagerId })
-    .select(
-      "_id profilePhoto userId email status name address operationalData rating"
-    )
+    .select("_id profilePhoto userId email status name address rating")
     .lean();
+
   if (!fleetManager) {
     throw new Error("Fleet Manager not found");
   }
-  const onlyFleet = await FleetManager.findById(fleetManager?._id);
+
+  // Get Fleet Drivers
+  const drivers = await DeliveryPartner.find({
+    "registeredBy.id": fleetManager._id,
+    isDeleted: false
+  })
+    .select("_id userId name rating")
+    .lean();
+
+  const driverIds = drivers.map((d) => d._id);
+
+  const totalDrivers = driverIds.length;
 
   // Fleet Orders + Earnings
-  const [fleetStats] = await Order.aggregate([
+  const [orderStats] = await Order.aggregate([
     {
       $match: {
+        deliveryPartnerId: { $in: driverIds },
         orderStatus: "DELIVERED",
-        isDeleted: false,
-        deliveryPartnerId: { $ne: null },
-      },
+        isDeleted: false
+      }
     },
-    {
-      $lookup: {
-        from: "deliverypartners",
-        localField: "deliveryPartnerId",
-        foreignField: "_id",
-        as: "partner",
-      },
-    },
-    { $unwind: "$partner" },
-
-    {
-      $match: {
-        "partner.registeredBy.id": fleetManager?._id,
-      },
-    },
-
     {
       $group: {
         _id: null,
-        totalOrders: { $sum: 1 },
-        totalEarnings: { $sum: "$payoutSummary.fleet.fee" },
-      },
-    },
+        totalDeliveries: { $sum: 1 },
+        totalEarnings: { $sum: "$payoutSummary.fleet.fee" }
+      }
+    }
   ]);
 
-  const stats = fleetStats || { totalOrders: 0, totalEarnings: 0 };
+  const stats = orderStats || { totalDeliveries: 0, totalEarnings: 0 };
 
-  // Fleet Performance (Single Fleet Data)
+  // Fleet Performance
   const fleetPerformance = {
     ...fleetManager,
-    totalEarnings: roundTo2(stats.totalEarnings),
+    totalDrivers,
+    totalDeliveries: stats.totalDeliveries,
+    totalEarnings: roundTo2(stats.totalEarnings)
   };
 
-  // Last 6 Months Performance
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(now.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
+  // Weekly Performance (Last 7 days)
+  const startOfWeek = new Date();
+  startOfWeek.setDate(now.getDate() - 6);
+  startOfWeek.setHours(0, 0, 0, 0);
 
-  const monthlyRaw = await Order.aggregate([
+  const weeklyRaw = await Order.aggregate([
     {
       $match: {
+        deliveryPartnerId: { $in: driverIds },
         orderStatus: "DELIVERED",
         isDeleted: false,
-        createdAt: { $gte: sixMonthsAgo },
-      },
+        createdAt: { $gte: startOfWeek }
+      }
     },
-    {
-      $lookup: {
-        from: "deliverypartners",
-        localField: "deliveryPartnerId",
-        foreignField: "_id",
-        as: "partner",
-      },
-    },
-    { $unwind: "$partner" },
-
-    {
-      $match: {
-        "partner.registeredBy.id": fleetManager?._id,
-      },
-    },
-
     {
       $group: {
-        _id: {
-          year: { $year: "$createdAt" },
-          month: { $month: "$createdAt" },
-        },
+        _id: { $dayOfWeek: "$createdAt" },
         totalOrders: { $sum: 1 },
-        totalEarnings: { $sum: "$payoutSummary.fleet.fee" },
-      },
-    },
-    { $sort: { "_id.year": 1, "_id.month": 1 } },
+        totalEarnings: { $sum: "$payoutSummary.fleet.fee" }
+      }
+    }
   ]);
 
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  const fleetMonthlyPerformance = [];
+  const weeklyMap = new Map();
+  weeklyRaw.forEach((w: any) => weeklyMap.set(w._id, w));
 
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  const fleetWeeklyPerformance = days.map((day, index) => {
 
-    const month = d.getMonth() + 1;
-    const year = d.getFullYear();
+    const mongoDay = index === 0 ? 1 : index + 1;
+    const found = weeklyMap.get(mongoDay);
 
-    const found = monthlyRaw.find(
-      (m) => m._id.month === month && m._id.year === year
-    );
-
-    fleetMonthlyPerformance.push({
-      month: monthNames[d.getMonth()],
+    return {
+      day,
       totalOrders: found?.totalOrders || 0,
-      totalEarnings: roundTo2(found?.totalEarnings) || 0,
-    });
-  }
+      totalEarnings: roundTo2(found?.totalEarnings || 0)
+    };
 
-  // Top Rated Delivery Partners (ONLY 4)
-  const topRatedDriversRaw = await DeliveryPartner.find({
-    "registeredBy.id": fleetManager?._id,
-    isDeleted: false,
-  })
-    .select("_id userId name rating operationalData.totalDeliveries")
-    .sort({ "rating.average": -1 })
-    .limit(4)
-    .lean();
+  });
 
-  const topRatedDrivers = topRatedDriversRaw.map((driver) => ({
-    _id: driver._id,
-    userId: driver.userId,
-    name: driver.name,
-    rating: driver.rating?.average || 0,
-    completedDeliveries: driver.operationalData?.totalDeliveries || 0,
-  }));
-
+  // Top Rated Drivers
+  const topRatedDrivers = drivers
+    .sort((a, b) => (b.rating?.average || 0) - (a.rating?.average || 0))
+    .slice(0, 4)
+    .map((driver) => ({
+      _id: driver._id,
+      userId: driver.userId,
+      name: driver.name,
+      rating: driver.rating?.average || 0
+    }));
 
   return {
-    fleetmanager: onlyFleet,
     fleetPerformance,
-    fleetMonthlyPerformance,
-    topRatedDrivers,
+    fleetWeeklyPerformance,
+    topRatedDrivers
   };
 };
 

@@ -1,3 +1,5 @@
+import { TFleetManager } from "../Fleet-Manager/fleet-manager.interface";
+
 export interface TimeframeQuery {
     timeframe?: "last7days" | "last14days" | "last30days";
 }
@@ -66,4 +68,66 @@ export type TVendorSalesReport = {
         sales: number;
         orders: number;
     }[];
+};
+
+// for fleet manager performance analysis
+export type TFleetManagerPerformance = Pick<
+    TFleetManager,
+    | "_id"
+    | "profilePhoto"
+    | "userId"
+    | "email"
+    | "status"
+    | "name"
+    | "address"
+    | "operationalData"
+> & {
+    totalDeliveries: number;
+    totalEarnings: number;
+};
+export type TFleetPerformanceStat = {
+    mostOrders: {
+        fleetName: string;
+        fleetPhoto: string;
+        ordersCount: number;
+    };
+    highestRating: {
+        fleetName: string;
+        fleetPhoto: string;
+        rating: {
+            average: number;
+            totalRatings: number;
+        };
+    };
+    highestEarnings: {
+        fleetName: string;
+        fleetPhoto: string;
+        earnings: number;
+    };
+};
+export type TFleetWeeklyPerformance = {
+    day: string;
+    totalOrders: number;
+    totalEarnings: number;
+};
+export type TTopFleetPerformers = {
+    fleetName: string;
+    fleetPhoto: string;
+    rating: number;
+    totalEarnings: number;
+};
+
+export type TFleetPerformanceData = {
+    data: {
+        fleetPerformance: TFleetManagerPerformance[];
+        fleetPerformanceStat: TFleetPerformanceStat;
+        fleetWeeklyPerformance: TFleetWeeklyPerformance[];
+        topFleetPerformers: TTopFleetPerformers[];
+    };
+    meta: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPage: number;
+    };
 };
