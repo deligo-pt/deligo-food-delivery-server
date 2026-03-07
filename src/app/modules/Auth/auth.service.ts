@@ -1098,6 +1098,8 @@ const verifyOtp = async (
   email?: string,
   contactNumber?: string,
   otp?: string,
+  deviceDetails?: TLoginDevice,
+  forceLogin?: boolean,
 ) => {
   if (!email && !contactNumber) {
     throw new AppError(
@@ -1126,15 +1128,6 @@ const verifyOtp = async (
         'User not found. Please register.',
       );
 
-    await userModel.updateOne(
-      { _id: userData._id },
-      {
-        isEmailVerified: true,
-        requiresOtpVerification: false,
-        isOtpVerified: true,
-      },
-    );
-
     await RedisService.del(redisOtpKey);
   } else if (contactNumber) {
     userData = await Customer.findOne({
@@ -1155,26 +1148,78 @@ const verifyOtp = async (
     if (!res?.data?.verified) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
     }
+  }
 
-    await userModel.updateOne(
-      { _id: userData._id },
-      {
-        isOtpVerified: true,
-        requiresOtpVerification: false,
-      },
+  if (!userData) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'User not found. Please register.',
     );
   }
+
+  const deviceLimit = ROLE_DEVICE_LIMITS[userData.role] || 3;
+
+  const newDevice: TLoginDevice = {
+    deviceId: deviceDetails?.deviceId || 'unknown',
+    deviceType: deviceDetails?.deviceType || 'unknown',
+    deviceName: deviceDetails?.deviceName || '',
+    userAgent: deviceDetails?.userAgent || '',
+    ip: deviceDetails?.ip || '',
+    isVerified: true,
+    lastLogin: new Date(),
+  };
+
+  const existingDeviceIndex = userData.loginDevices?.findIndex(
+    (d: TLoginDevice) => d.deviceId === newDevice.deviceId,
+  );
+  const isSameDevice = existingDeviceIndex > -1;
+
+  if (!isSameDevice && (userData.loginDevices?.length || 0) >= deviceLimit) {
+    if (!forceLogin) {
+      throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
+    }
+  }
+
+  const updateQuery: any = {
+    $set: { isOtpVerified: true, requiresOtpVerification: false },
+  };
+
+  if (email) updateQuery.$set.isEmailVerified = true;
+
+  if (isSameDevice) {
+    updateQuery.$set[`loginDevices.${existingDeviceIndex}`] = newDevice;
+  } else if (
+    forceLogin &&
+    (userData.loginDevices?.length || 0) >= deviceLimit
+  ) {
+    if (deviceLimit === 1) {
+      updateQuery.$set.loginDevices = [newDevice];
+    } else {
+      await userModel.findOneAndUpdate(
+        { _id: userData._id },
+        { $pop: { loginDevices: -1 } },
+      );
+      updateQuery.$push = { loginDevices: newDevice };
+    }
+  } else {
+    updateQuery.$push = { loginDevices: newDevice };
+  }
+
+  await userModel.findOneAndUpdate({ _id: userData._id }, updateQuery, {
+    new: true,
+  });
 
   const jwtPayload = {
     userId: userData.userId,
     name: {
-      firstName: userData.name.firstName,
-      lastName: userData.name.lastName,
+      firstName: userData.name.firstName || '',
+      lastName: userData.name.lastName || '',
     },
-    email: userData.email,
-    contactNumber: userData.contactNumber,
+    email: userData.email || '',
+    contactNumber: userData.contactNumber || '',
     role: userData.role,
     status: userData.status,
+    deviceId: newDevice.deviceId,
   };
 
   const accessToken = createToken(
