@@ -33,7 +33,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
       config.jwt.jwt_access_secret as string,
     ) as JwtPayload;
 
-    const { role, iat, userId } = decoded;
+    const { role, iat, userId, deviceId } = decoded;
 
     const result = await findUserById({ userId, isDeleted: false });
 
@@ -57,6 +57,17 @@ const auth = (...requiredRoles: TUserRole[]) => {
       )
     ) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+    }
+
+    const isSessionActive = user.loginDevices?.some(
+      (device: { deviceId: string }) => device.deviceId === deviceId,
+    );
+
+    if (!isSessionActive) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'Your session has expired or you have been logged out from this device.',
+      );
     }
 
     if (requiredRoles && !requiredRoles.includes(role)) {

@@ -22,6 +22,19 @@ const loginValidationSchema = z.object({
       required_error: 'Email is required',
     }),
     password: z.string({ required_error: 'Password is required' }),
+    deviceDetails: z
+      .object({
+        deviceId: z.string({
+          required_error: 'Device ID is required',
+        }),
+        deviceType: z.string({
+          required_error: 'Device Type is required',
+        }),
+        deviceName: z.string().optional(),
+        userAgent: z.string().optional(),
+      })
+      .optional(),
+    forceLogin: z.boolean().optional(),
   }),
 });
 
