@@ -63,7 +63,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
       (device: { deviceId: string }) => device.deviceId === deviceId,
     );
 
-    if (!isSessionActive && user.role !== 'CUSTOMER') {
+    if (!isSessionActive) {
       throw new AppError(
         httpStatus.UNAUTHORIZED,
         'Your session has expired or you have been logged out from this device.',

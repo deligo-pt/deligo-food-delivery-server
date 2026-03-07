@@ -186,8 +186,14 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
 
 // Verify OTP Controller
 const verifyOtp = catchAsync(async (req, res) => {
-  const { email, contactNumber, otp } = req.body;
-  const result = await AuthServices.verifyOtp(email, contactNumber, otp);
+  const { email, contactNumber, otp, deviceDetails, forceLogin } = req.body;
+  const result = await AuthServices.verifyOtp(
+    email,
+    contactNumber,
+    otp,
+    deviceDetails,
+    forceLogin,
+  );
 
   const { accessToken, refreshToken, message } = result;
 
