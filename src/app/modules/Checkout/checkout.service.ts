@@ -73,9 +73,19 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
-  const deliveryChargeBase = roundTo2(
-    distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
-  );
+  const MIN_DISTANCE_THRESHOLD_METERS = 1000; // 1 km threshold for fixed delivery charge
+  const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
+
+  let deliveryChargeBase = 0;
+
+  if (distanceData.meters <= MIN_DISTANCE_THRESHOLD_METERS) {
+    deliveryChargeBase = BASE_FIXED_DELIVERY_CHARGE;
+  } else {
+    deliveryChargeBase = roundTo2(
+      distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
+    );
+  }
+
   const deliveryVat = roundTo2(
     deliveryChargeBase * ((globalSettings?.deliveryVatRate || 0) / 100),
   );
