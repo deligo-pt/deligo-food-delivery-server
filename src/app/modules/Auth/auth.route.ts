@@ -21,7 +21,7 @@ router.post(
   rateLimiter('auth'),
   AuthControllers.registerUser,
 );
-// Register User Route (Registered by Fleet Manager, Admin, Super Admin,Vendor)
+// Register User Route (Registered by Fleet Manager[Delivery Partner], Admin, Super Admin,Vendor[Sub Vendor])
 router.post(
   '/register/onboard/:targetRole',
   auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN', 'VENDOR'),
@@ -31,13 +31,13 @@ router.post(
 );
 
 // Register Sub Vendor Route
-router.post(
-  [UrlPath.SUB_VENDOR],
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
-  validateRequest(AuthValidation.registerValidationSchema),
-  rateLimiter('auth'),
-  AuthControllers.registerUser,
-);
+// router.post(
+//   [UrlPath.SUB_VENDOR],
+//   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+//   validateRequest(AuthValidation.registerValidationSchema),
+//   rateLimiter('auth'),
+//   AuthControllers.registerUser,
+// );
 
 // Login User Route
 router.post(

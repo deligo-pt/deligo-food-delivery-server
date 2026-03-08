@@ -10,6 +10,7 @@ import { CheckoutSummary } from '../Checkout/checkout.model';
 import mongoose from 'mongoose';
 import { roundTo2 } from '../../utils/mathProvider';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { Order } from '../Order/order.model';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
@@ -397,6 +398,40 @@ const validateAndApplyOffer = async (
           code: offerIdentifier.toUpperCase(),
         });
 
+    if (offer) {
+      if (originalTaxableAmount < (offer?.minOrderAmount || 0)) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `This offer requires minimum order amount of ${offer.minOrderAmount}`,
+        );
+      }
+
+      if (
+        originalTaxableAmount < (offer?.discountValue || 0) &&
+        offer.offerType === 'FLAT'
+      ) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `This offer requires minimum order amount of ${offer.discountValue}`,
+        );
+      }
+      const promoId = offer._id.toString();
+
+      const usageCount = await Order.countDocuments({
+        customerId: currentUser._id,
+        $expr: {
+          $eq: [{ $toString: '$offer.offerApplied.promoId' }, promoId],
+        },
+        orderStatus: { $ne: 'CANCELLED' },
+      });
+      if (usageCount >= (offer.userUsageLimit || 0)) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `You have exceeded the usage limit for this offer`,
+        );
+      }
+    }
+
     if (!offer)
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer or promo code');
   }
@@ -465,6 +500,7 @@ const validateAndApplyOffer = async (
   totalOfferDiscount = roundTo2(totalOfferDiscount);
   const discountRatio =
     originalTaxableAmount > 0 ? totalOfferDiscount / originalTaxableAmount : 0;
+
   let distributedDiscountSum = 0;
 
   const updatedItems = items.map((item: any, index: number) => {
@@ -473,10 +509,19 @@ const validateAndApplyOffer = async (
         (item.itemSummary.totalPromoDiscount || 0),
     );
 
-    let itemOfferDiscount = roundTo2(itemOriginalBeforeTax * discountRatio);
+    let itemOfferDiscount = 0;
     if (index === items.length - 1) {
-      itemOfferDiscount = roundTo2(totalOfferDiscount - distributedDiscountSum);
+      itemOfferDiscount = Math.max(
+        0,
+        roundTo2(totalOfferDiscount - distributedDiscountSum),
+      );
+    } else {
+      itemOfferDiscount = roundTo2(itemOriginalBeforeTax * discountRatio);
+      distributedDiscountSum = roundTo2(
+        distributedDiscountSum + itemOfferDiscount,
+      );
     }
+
     distributedDiscountSum += itemOfferDiscount;
 
     const itemInternalDiscountRatio =
@@ -638,6 +683,44 @@ const validateAndApplyOffer = async (
     { $set: updatePayload },
     { new: true, runValidators: true },
   ).lean();
+};
+
+// get available offers for checkout service
+const getAvailableOffersForCheckout = async (checkoutId: string) => {
+  const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
+  if (!checkoutData) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Checkout session not found');
+  }
+
+  const { vendorId, orderCalculation } = checkoutData;
+  const cartTotal =
+    orderCalculation.taxableAmount + (orderCalculation.totalOfferDiscount || 0);
+  const now = new Date();
+
+  const baseQuery = {
+    isActive: true,
+    isDeleted: false,
+    validFrom: { $lte: now },
+    expiresAt: { $gte: now },
+    $or: [{ vendorId: vendorId }, { vendorId: null }],
+  };
+
+  const allOffers = await Offer.find(baseQuery).lean();
+
+  const availableOffers = allOffers.map((offer) => {
+    const minOrderAmount = offer.minOrderAmount || 0;
+    const isEligible = cartTotal >= minOrderAmount;
+    const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
+    return {
+      ...offer,
+      isEligible: isEligible,
+      message: isEligible
+        ? 'Offer is applicable'
+        : `Add ${diff} TK more to unlock this offer`,
+    };
+  });
+
+  return availableOffers;
 };
 
 // get all offers service
@@ -837,6 +920,7 @@ export const OfferServices = {
   updateOffer,
   toggleOfferStatus,
   validateAndApplyOffer,
+  getAvailableOffersForCheckout,
   getAllOffers,
   getSingleOffer,
   softDeleteOffer,
