@@ -1467,7 +1467,9 @@ const getAdminDeliveryPartnerReportAnalytics = async () => {
 };
 
 // vendor sales report analytics
-const getVendorSalesReportAnalytics = async (user: AuthUser): Promise<TVendorSalesReport> => {
+const getVendorSalesReportAnalytics = async (
+  user: AuthUser,
+): Promise<TVendorSalesReport> => {
   const vendorId = user._id;
 
   const today = new Date();
@@ -1492,10 +1494,11 @@ const getVendorSalesReportAnalytics = async (user: AuthUser): Promise<TVendorSal
               totalSales: {
                 $sum: {
                   $cond: [
-                    { $eq: ["$orderStatus", "DELIVERED"] },
-                    "$orderCalculation.totalOriginalPrice", 0
-                  ]
-                }
+                    { $eq: ['$orderStatus', 'DELIVERED'] },
+                    '$orderCalculation.totalOriginalPrice',
+                    0,
+                  ],
+                },
               },
               totalOrders: { $sum: 1 },
             },
@@ -1540,7 +1543,7 @@ const getVendorSalesReportAnalytics = async (user: AuthUser): Promise<TVendorSal
   // 2. Prepare the 7-day name mapping
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // 3. Ensure all 7 days are represented 
+  // 3. Ensure all 7 days are represented
   const last7DaysData = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date();
@@ -1698,7 +1701,20 @@ const getVendorCustomerReport = async (
   ]);
 
   // 2. Prepare Monthly Chart Data
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthNames = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
 
   const monthlyCustomers = [];
 
@@ -1760,9 +1776,7 @@ const getVendorCustomerReport = async (
     },
   ]);
 
-  const statsMap = new Map(
-    stats.map((s) => [s._id.toString(), s]),
-  );
+  const statsMap = new Map(stats.map((s) => [s._id.toString(), s]));
 
   const customerTable = customers.map((customer: any) => {
     const stat = statsMap.get(customer._id.toString());
@@ -1791,8 +1805,8 @@ const getVendorCustomerReport = async (
     monthlyCustomers,
     customers: {
       data: customerTable,
-      meta
-    }
+      meta,
+    },
   };
 };
 
@@ -2029,9 +2043,8 @@ const getFleetManagerPerformanceAnalytics = async (
 
 // get single fleet manager performance details analytics
 const getSingleFleetPerformanceDetailsAnalytics = async (
-  fleetManagerId: string
+  fleetManagerId: string,
 ) => {
-
   const now = new Date();
 
   // Fleet Manager
@@ -2040,7 +2053,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     .lean();
 
   if (!fleetManager) {
-    throw new Error("Fleet Manager not found");
+    throw new Error('Fleet Manager not found');
   }
 
   // Get Fleet Drivers
@@ -2853,19 +2866,19 @@ const getPartnerPerformanceAnalytics = async (
 const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
   const riderObjectId = new Types.ObjectId(currentUser._id);
 
-  const today = new Date();
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const date = now.getUTCDate();
 
-  const startOfToday = new Date(today);
+  const startOfToday = new Date(Date.UTC(year, month, date));
   startOfToday.setHours(0, 0, 0, 0);
 
-  const dayOfWeek = today.getDay();
+  const dayOfWeek = now.getUTCDay();
   const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(Date.UTC(year, month, date - diffToMonday));
 
-  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  startOfMonth.setHours(0, 0, 0, 0);
+  const startOfMonth = new Date(Date.UTC(year, month, 1));
 
   const earnings = await Transaction.aggregate([
     {
@@ -2874,6 +2887,7 @@ const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
         userModel: 'DeliveryPartner',
         status: 'SUCCESS',
         type: 'DELIVERY_PARTNER_EARNING',
+        createdAt: { $gte: startOfMonth },
       },
     },
     {
@@ -2912,11 +2926,11 @@ const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
   };
 
   return {
-    daily: report.dailyEarnings,
-    weekly: report.weeklyEarnings,
-    monthly: report.monthlyEarnings,
-    total: report.totalEarnings,
-    unpaid: wallet?.totalUnpaidEarnings || 0,
+    daily: roundTo2(report.dailyEarnings),
+    weekly: roundTo2(report.weeklyEarnings),
+    monthly: roundTo2(report.monthlyEarnings),
+    total: roundTo2(report.totalEarnings),
+    unpaid: roundTo2(wallet?.totalUnpaidEarnings || 0),
   };
 };
 
@@ -3166,8 +3180,20 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
     pendingOrders: 0,
   };
 
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
 
   const monthlyEarnings = monthlyEarningsAgg.map((item) => ({
     name: MONTHS[item._id.month - 1],
