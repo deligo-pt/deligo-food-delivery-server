@@ -37,6 +37,13 @@ router.post(
   OfferControllers.validateAndApplyOffer,
 );
 
+// Get Available Offers for Checkout
+router.get(
+  '/available-offers/:checkoutId',
+  auth('CUSTOMER'),
+  OfferControllers.getAvailableOffersForCheckout,
+);
+
 // Get All Offers
 router.get(
   '/',

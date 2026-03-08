@@ -6,10 +6,11 @@ import { Cart } from '../Cart/cart.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { Product } from '../Product/product.model';
 import { AuthUser } from '../../constant/user.constant';
-import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
+import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
+import { formatEstimatedTime } from '../../utils/formatEstimatedTime';
 
 // Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
@@ -63,16 +64,17 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Location data missing');
   }
 
-  const distance = calculateDistance(
+  const distanceData = await calculateGoggleRoadDistance(
     vendorCoords[0],
     vendorCoords[1],
     activeAddress.longitude,
     activeAddress.latitude,
   );
+
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
   const deliveryChargeBase = roundTo2(
-    distance.meters * (globalSettings?.deliveryChargePerMeter || 0),
+    distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
   );
   const deliveryVat = roundTo2(
     deliveryChargeBase * ((globalSettings?.deliveryVatRate || 0) / 100),
@@ -277,8 +279,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       vatRate: globalSettings?.deliveryVatRate || 0,
       vatAmount: deliveryVat,
       totalDeliveryCharge: totalDeliveryCharge,
-      distance: roundTo2(distance.km),
-      estimatedTime: payload.estimatedDeliveryTime || '20-30 minutes',
+      distance: roundTo2(distanceData.km),
+      estimatedTime: formatEstimatedTime(distanceData.durationMinutes),
     },
 
     payoutSummary: {
