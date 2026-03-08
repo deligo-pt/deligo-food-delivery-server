@@ -66,8 +66,6 @@ const mapOrderToPdPayload = (order: TOrder) => {
     },
   ];
 
-  console.log({ details, payments });
-
   return {
     customer_id: 5,
     terminal_id: 1,
