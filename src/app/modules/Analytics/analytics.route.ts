@@ -80,35 +80,35 @@ router.get(
 // get vendor sales report analytics
 router.get(
   '/vendor-sales-report-analytics',
-  auth("VENDOR", "SUB_VENDOR"),
+  auth('VENDOR', 'SUB_VENDOR'),
   AnalyticsControllers.getVendorSalesReportAnalytics,
 );
 
 // get vendor sales report analytics
 router.get(
   '/vendor-customer-report',
-  auth("VENDOR", "SUB_VENDOR"),
+  auth('VENDOR', 'SUB_VENDOR'),
   AnalyticsControllers.getVendorCustomerReport,
 );
 
 // get fleet performance analytics
 router.get(
   '/fleet-performance-analytics',
-  auth("ADMIN", "SUPER_ADMIN"),
+  auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getFleetManagerPerformanceAnalytics,
 );
 
 // get fleet performance details analytics
 router.get(
   '/fleet-performance-details-analytics/:fleetManagerId',
-  auth("ADMIN", "SUPER_ADMIN"),
+  auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getSingleFleetPerformanceDetailsAnalytics,
 );
 
 // get fleet performance details analytics
 router.get(
   '/admin-vendor-sales-analytics',
-  auth("ADMIN", "SUPER_ADMIN"),
+  auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminVendorSalesAnalytics,
 );
 
@@ -149,7 +149,8 @@ router.get(
 
 // Delivery Partner earning analytics route
 router.get(
-  '/delivery-partner-earning-analytics',
+  // '/delivery-partner-earning-analytics', // Previous route
+  '/partner/earning-analytics', // Updated route
   auth('DELIVERY_PARTNER'),
   AnalyticsControllers.getDeliveryPartnerEarningAnalytics,
 );
@@ -164,8 +165,8 @@ router.get(
 
 // get vendor earnings analytics
 router.get(
-  '/vendor-earnings-analytics', // Previous route
-  // '/vendor/earnings-analytics', // Updated route
+  // '/vendor-earnings-analytics', // Previous route
+  '/vendor/earnings-analytics', // Updated route
   auth('VENDOR', 'SUB_VENDOR'),
   AnalyticsControllers.getVendorEarningsAnalytics,
 );
