@@ -178,6 +178,7 @@ const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
 // get admin delivery partner report analytics controller
 const getSingleFleetPerformanceDetailsAnalytics = catchAsync(async (req, res) => {
   const { fleetManagerId } = req.params;
@@ -187,6 +188,18 @@ const getSingleFleetPerformanceDetailsAnalytics = catchAsync(async (req, res) =>
     success: true,
     statusCode: httpStatus.OK,
     message: 'Single fleet manager performance analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get admin delivery partner report analytics controller
+const getAdminVendorSalesAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminVendorSalesAnalytics();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin vendor sales analytics fetched successfully',
     data: result,
   });
 });
@@ -344,6 +357,7 @@ export const AnalyticsControllers = {
   getVendorCustomerReport,
   getFleetManagerPerformanceAnalytics,
   getSingleFleetPerformanceDetailsAnalytics,
+  getAdminVendorSalesAnalytics,
   // ---------------------------------------
   // Analytics Services (Developer Umayer)
   // ---------------------------------------

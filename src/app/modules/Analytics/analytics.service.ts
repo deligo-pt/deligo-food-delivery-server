@@ -60,7 +60,9 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
                   timezone: 'Europe/Lisbon',
                 },
               },
-              total: { $sum: '$subtotal' },
+              total: {
+                $sum: '$payoutSummary.vendor.vendorNetPayout',
+              },
             },
           },
         ],
@@ -72,7 +74,7 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
             $group: {
               _id: '$items.productId',
               name: { $first: '$items.name' },
-              sold: { $sum: '$items.quantity' },
+              sold: { $sum: '$items.itemSummary.quantity' },
             },
           },
           { $sort: { sold: -1 } },
@@ -84,7 +86,9 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
           {
             $group: {
               _id: null,
-              total: { $sum: '$subtotal' },
+              total: {
+                $sum: '$payoutSummary.vendor.vendorNetPayout',
+              },
             },
           },
         ],
@@ -2138,6 +2142,113 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
   };
 };
 
+// get admin vendor sales analytics
+const getAdminVendorSalesAnalytics = async () => {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const [result] = await Order.aggregate([
+    {
+      $match: {
+        orderStatus: 'DELIVERED',
+        isPaid: true,
+        isDeleted: false,
+        createdAt: { $gte: sevenDaysAgo },
+      },
+    },
+    {
+      $facet: {
+        // weekly vendor earnings trend
+        weeklySales: [
+          {
+            $group: {
+              _id: {
+                $dayOfWeek: {
+                  date: '$createdAt',
+                  timezone: 'Europe/Lisbon',
+                },
+              },
+              total: {
+                $sum: '$payoutSummary.vendor.vendorNetPayout',
+              },
+            },
+          },
+        ],
+
+        // top selling items across all vendors
+        topItems: [
+          { $unwind: '$items' },
+          {
+            $group: {
+              _id: '$items.productId',
+              name: { $first: '$items.name' },
+              sold: { $sum: '$items.itemSummary.quantity' },
+            },
+          },
+          { $sort: { sold: -1 } },
+          { $limit: 5 },
+        ],
+
+        // total vendor earnings
+        totalSales: [
+          {
+            $group: {
+              _id: null,
+              total: {
+                $sum: '$payoutSummary.vendor.vendorNetPayout',
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const weeklyTrend = dayNames.map((day) => ({
+    day,
+    total: 0,
+  }));
+
+  let totalSales = 0;
+
+  if (result.totalSales.length > 0) {
+    totalSales = roundTo2(result.totalSales[0].total);
+  }
+
+  result.weeklySales.forEach((item: any) => {
+    const index = item._id - 1;
+    weeklyTrend[index].total = roundTo2(item.total);
+  });
+
+  // Best & Slowest Day
+  const nonZeroDays = weeklyTrend.filter((d) => d.total > 0);
+
+  const bestPerformingDay =
+    nonZeroDays.length > 0
+      ? [...nonZeroDays].sort((a, b) => b.total - a.total)[0].day
+      : 'N/A';
+
+  const slowestDay =
+    nonZeroDays.length > 0
+      ? [...nonZeroDays].sort((a, b) => a.total - b.total)[0].day
+      : 'N/A';
+
+  return {
+    totalSales: roundTo2(totalSales),
+    bestPerformingDay,
+    slowestDay,
+    weeklyTrend,
+    topSellingItems: result.topItems.map((item: any) => ({
+      id: item._id,
+      name: item.name,
+      sold: item.sold,
+    })),
+  };
+};
+
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
 // --------------------------------------------------------------------------------------
@@ -3538,6 +3649,7 @@ export const AnalyticsServices = {
   getVendorCustomerReport,
   getFleetManagerPerformanceAnalytics,
   getSingleFleetPerformanceDetailsAnalytics,
+  getAdminVendorSalesAnalytics,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)
