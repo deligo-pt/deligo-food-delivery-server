@@ -58,4 +58,5 @@ export default {
     username: process.env.REDUNIQ_USERNAME,
     password: process.env.REDUNIQ_PASSWORD,
   },
+  google_maps_api_key: process.env.GOOGLE_MAPS_API_KEY,
 };

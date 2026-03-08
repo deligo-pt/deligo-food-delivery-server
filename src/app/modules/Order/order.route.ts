@@ -15,7 +15,7 @@ router.post(
   OrderControllers.createOrderAfterReduniqPayment,
 );
 
-// Accept / Reject / Preparing / Ready for pickup/ Cancel order
+// Accept / Reject / Preparing / Ready for pickup/ Cancel order by vendor
 router.patch(
   '/:orderId/status',
   auth('VENDOR', 'SUB_VENDOR'),
@@ -23,7 +23,7 @@ router.patch(
   OrderControllers.updateOrderStatusByVendor,
 );
 
-// Assign delivery partner to order (vendor)
+// Assign delivery partner to order (vendor, sub vendor)
 router.patch(
   '/:orderId/broadcast-order',
   auth('VENDOR', 'SUB_VENDOR'),
@@ -41,11 +41,11 @@ router.patch(
 // verify otp by vendor
 router.patch(
   '/:orderId/verify-otp',
-  auth('VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR'),
   OrderControllers.otpVerificationByVendor,
 );
 
-// update order status by delivery partner
+// update order status by delivery partner [On the way, Delivered, Reassign order to another delivery partner]
 router.patch(
   '/:orderId/update-order-status',
   auth('DELIVERY_PARTNER'),
