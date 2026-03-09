@@ -85,7 +85,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
     );
   }
-
   const deliveryVat = roundTo2(
     deliveryChargeBase * ((globalSettings?.deliveryVatRate || 0) / 100),
   );
@@ -124,12 +123,9 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       const aQty = Number(a.quantity) || 0;
       const aTaxRate = Number(a.taxRate) || 0;
 
-      const perUnitAddonTax =
-        a.perUnitTaxAmount || roundTo2(aPrice * (aTaxRate / 100));
-
       const addonLineTotal = roundTo2(aPrice * aQty);
 
-      const addonTax = roundTo2(perUnitAddonTax * aQty);
+      const addonTax = roundTo2(addonLineTotal * (aTaxRate / 100));
       return {
         optionId: a.optionId,
         name: a.name,
@@ -140,7 +136,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         quantity: a.quantity,
         lineTotal: addonLineTotal,
         taxRate: a.taxRate || 0,
-        perUnitTaxAmount: perUnitAddonTax,
         taxAmount: addonTax,
       };
     });
@@ -157,11 +152,10 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     const productLineTotal = roundTo2(priceAfterStoreDiscount * qty);
 
     const productTaxRate = product.pricing?.taxRate || 0;
-    const perUnitProductTax =
-      item.productPricing?.perUnitTaxAmount ||
-      roundTo2(priceAfterStoreDiscount * (productTaxRate / 100));
 
-    const productTaxAmount = roundTo2(perUnitProductTax * qty);
+    const productTaxAmount = roundTo2(
+      productLineTotal * (productTaxRate / 100),
+    );
 
     const itemTotalBeforeTax = roundTo2(
       productLineTotal + totalAddonsLineTotal,
@@ -198,7 +192,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         unitPrice: priceAfterStoreDiscount,
         lineTotal: productLineTotal,
         taxRate: product.pricing?.taxRate || 0,
-        perUnitTaxAmount: perUnitProductTax,
         taxAmount: productTaxAmount,
       },
       itemSummary: {

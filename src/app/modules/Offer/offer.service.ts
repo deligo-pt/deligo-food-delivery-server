@@ -13,6 +13,7 @@ import {
   findAndValidateOffer,
   rebuildCheckoutSummary,
 } from './offer.utils';
+import { Order } from '../Order/order.model';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
@@ -745,7 +746,10 @@ const validateAndApplyOffer = async (
 };
 
 // get available offers for checkout service
-const getAvailableOffersForCheckout = async (checkoutId: string) => {
+const getAvailableOffersForCheckout = async (
+  checkoutId: string,
+  currentUser: AuthUser,
+) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData) {
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout session not found');
@@ -766,16 +770,40 @@ const getAvailableOffersForCheckout = async (checkoutId: string) => {
 
   const allOffers = await Offer.find(baseQuery).lean();
 
+  const userOrders = await Order.find({
+    customerId: currentUser._id,
+    orderStatus: { $ne: 'CANCELLED' },
+  })
+    .select('offer.offerApplied.promoId')
+    .lean();
+
+  const usageMap = userOrders.reduce((acc: any, order: any) => {
+    const pId = order.offer?.offerApplied?.promoId?.toString();
+    if (pId) acc[pId] = (acc[pId] || 0) + 1;
+    return acc;
+  }, {});
+
   const availableOffers = allOffers.map((offer) => {
     const minOrderAmount = offer.minOrderAmount || 0;
-    const isEligible = cartTotal >= minOrderAmount;
-    const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
+    const usageCount = usageMap[offer._id.toString()] || 0;
+
+    const isMinAmountMet = cartTotal >= minOrderAmount;
+    const isUsageLimitMet = usageCount < (offer.userUsageLimit || Infinity);
+
+    const isEligible = isMinAmountMet && isUsageLimitMet;
+
+    let message = 'Offer is applicable';
+    if (!isMinAmountMet) {
+      const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
+      message = `Add €${diff} more to unlock this offer`;
+    } else if (!isUsageLimitMet) {
+      message = 'You have exceeded the usage limit for this offer';
+    }
+
     return {
       ...offer,
-      isEligible: isEligible,
-      message: isEligible
-        ? 'Offer is applicable'
-        : `Add €${diff} more to unlock this offer`,
+      isEligible,
+      message,
     };
   });
 
