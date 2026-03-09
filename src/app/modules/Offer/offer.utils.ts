@@ -36,6 +36,13 @@ export const findAndValidateOffer = async (
   if (!offer)
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer or promo code');
 
+  if (!offer.isAutoApply && isObjectId) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This offer requires a valid promo code.',
+    );
+  }
+
   const originalTaxableAmount = roundTo2(
     checkoutData.orderCalculation.taxableAmount +
       (checkoutData.orderCalculation.totalOfferDiscount || 0),

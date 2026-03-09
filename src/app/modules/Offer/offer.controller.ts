@@ -60,7 +60,9 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offer applied successfully',
+    message: result?.offer?.isApplied
+      ? 'Offer applied successfully'
+      : 'Offer removed/invalid',
     data: result,
   });
 });
@@ -70,6 +72,7 @@ const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
   const { checkoutId } = req.params;
   const result = await OfferServices.getAvailableOffersForCheckout(
     checkoutId as string,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
