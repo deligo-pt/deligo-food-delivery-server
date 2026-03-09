@@ -187,8 +187,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   },
 );
 
-fleetManagerSchema.index({ email: 1 }, { unique: true }); //new
-
 fleetManagerSchema.plugin(passwordPlugin);
 
 export const FleetManager = model<TFleetManager, IUserModel<TFleetManager>>(

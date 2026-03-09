@@ -702,7 +702,7 @@ const getAvailableOffersForCheckout = async (checkoutId: string) => {
     isDeleted: false,
     validFrom: { $lte: now },
     expiresAt: { $gte: now },
-    $or: [{ vendorId: vendorId }, { vendorId: null }],
+    $or: [{ vendorId: vendorId }, { vendorId: null }, { isGlobal: true }],
   };
 
   const allOffers = await Offer.find(baseQuery).lean();
@@ -716,7 +716,7 @@ const getAvailableOffersForCheckout = async (checkoutId: string) => {
       isEligible: isEligible,
       message: isEligible
         ? 'Offer is applicable'
-        : `Add ${diff} TK more to unlock this offer`,
+        : `Add €${diff} more to unlock this offer`,
     };
   });
 
