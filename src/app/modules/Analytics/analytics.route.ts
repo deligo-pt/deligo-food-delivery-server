@@ -112,6 +112,20 @@ router.get(
   AnalyticsControllers.getAdminVendorSalesAnalytics,
 );
 
+// get delivery partner performance analytics
+router.get(
+  '/delivery-partner-performance-analytics',
+  auth("ADMIN", "SUPER_ADMIN"),
+  AnalyticsControllers.getDeliveryPartnerPerformanceAnalytics,
+);
+
+// get delivery partner performance details analytics
+router.get(
+  '/delivery-partner-performance-details-analytics/:partnerUserId',
+  auth("ADMIN", "SUPER_ADMIN"),
+  AnalyticsControllers.getSingleDeliveryPartnerPerformanceDetailsAnalytics,
+);
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS ROUTES (Developer Umayer) ----------------------------
 // ----------------------------------------------------------------------------------

@@ -1,4 +1,12 @@
+import { TDeliveryPartner } from "../Delivery-Partner/delivery-partner.interface";
 import { TFleetManager } from "../Fleet-Manager/fleet-manager.interface";
+
+export interface TMeta {
+    page: number;
+    limit: number;
+    total: number;
+    totalPage: number;
+}
 
 export interface TimeframeQuery {
     timeframe?: "last7days" | "last14days" | "last30days";
@@ -124,10 +132,68 @@ export type TFleetPerformanceData = {
         fleetWeeklyPerformance: TFleetWeeklyPerformance[];
         topFleetPerformers: TTopFleetPerformers[];
     };
-    meta: {
-        page: number;
-        limit: number;
-        total: number;
-        totalPage: number;
+    meta: TMeta;
+};
+
+// for delivery partner performance analytics
+export type TDeliveryPartnerPerformance = Pick<
+    TDeliveryPartner,
+    | "_id"
+    | "profilePhoto"
+    | "userId"
+    | "email"
+    | "status"
+    | "name"
+    | "address"
+    | "operationalData"
+> & {
+    totalDeliveries: number;
+    rating: number;
+    totalEarnings: number;
+};
+
+export type TPartnerPerformanceStat = {
+    mostOrders: {
+        partnerName: string;
+        partnerPhoto: string;
+        ordersCount: number;
+    };
+    highestRated: {
+        partnerName: string;
+        partnerPhoto: string;
+        rating: {
+            average: number;
+            totalRatings: number;
+        };
+    };
+    highestEarnings: {
+        partnerName: string;
+        partnerPhoto: string;
+        earnings: number;
     };
 };
+
+export type TPartnerMonthlyPerformance = {
+    month: string;
+    totalOrders: number;
+};
+
+export type TTopPartnerPerformers = {
+    earnings: number;
+    initials: string;
+    name: string;
+    rating: number;
+    profilePhoto: string;
+};
+
+export type TPartnerPerformanceData = {
+    partnerPerformance: TDeliveryPartnerPerformance[];
+    topCards: TPartnerPerformanceStat;
+    earningsPerformance: TPartnerMonthlyPerformance[];
+    topPerformers: TTopPartnerPerformers[];
+};
+
+export type TPartnerPerformanceDetailsData = {
+    partnerPerformance: TDeliveryPartnerPerformance;
+    partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
+}

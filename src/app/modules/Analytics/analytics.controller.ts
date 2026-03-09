@@ -174,7 +174,7 @@ const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin fleet manager performance analytics fetched successfully',
+    message: 'Fleet manager performance analytics fetched successfully',
     data: result,
   });
 });
@@ -200,6 +200,36 @@ const getAdminVendorSalesAnalytics = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Admin vendor sales analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get delivery partner performance analytics controller
+const getDeliveryPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
+  const result =
+    await AnalyticsServices.getDeliveryPartnerPerformanceAnalytics(
+      req.query as Record<string, unknown>
+    );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery partner performance analytics fetched successfully',
+    data: result,
+  });
+});
+
+// get single delivery partner performance analytics controller
+const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(async (req, res) => {
+  const { partnerUserId } = req.params;
+  const result = await AnalyticsServices.getSingleDeliveryPartnerPerformanceDetailsAnalytics(
+    partnerUserId
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Single delivery partner performance analytics fetched successfully',
     data: result,
   });
 });
@@ -358,6 +388,9 @@ export const AnalyticsControllers = {
   getFleetManagerPerformanceAnalytics,
   getSingleFleetPerformanceDetailsAnalytics,
   getAdminVendorSalesAnalytics,
+  getDeliveryPartnerPerformanceAnalytics,
+  getSingleDeliveryPartnerPerformanceDetailsAnalytics,
+
   // ---------------------------------------
   // Analytics Services (Developer Umayer)
   // ---------------------------------------

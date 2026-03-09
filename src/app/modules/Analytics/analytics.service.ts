@@ -16,8 +16,13 @@ import {
   OrderReportAnalyticsResponse,
   SalesAnalyticsResponse,
   SummaryFacet,
+  TDeliveryPartnerPerformance,
   TFleetPerformanceData,
   TimeframeQuery,
+  TMeta,
+  TPartnerMonthlyPerformance,
+  TPartnerPerformanceData,
+  TPartnerPerformanceDetailsData,
   TVendorSalesReport,
 } from './analytics.interface';
 import { Transaction } from '../Transaction/transaction.model';
@@ -2262,6 +2267,361 @@ const getAdminVendorSalesAnalytics = async () => {
   };
 };
 
+// get admin delivery partner performance analytics
+const getDeliveryPartnerPerformanceAnalytics = async (
+  query: Record<string, unknown>): Promise<{
+    data: TPartnerPerformanceData;
+    meta: TMeta;
+  }> => {
+
+  const { page = 1, limit = 10 } = query;
+
+  const skip = (Number(page) - 1) * Number(limit)
+
+  const now = new Date()
+
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(now.getMonth() - 5)
+  sixMonthsAgo.setDate(1)
+  sixMonthsAgo.setHours(0, 0, 0, 0)
+
+  const result = await DeliveryPartner.aggregate([
+
+    {
+      $match: {
+        isDeleted: false
+      }
+    },
+
+    {
+      $lookup: {
+        from: "orders",
+        localField: "_id",
+        foreignField: "deliveryPartnerId",
+        pipeline: [
+          {
+            $match: {
+              orderStatus: "DELIVERED",
+              isDeleted: false
+            }
+          }
+        ],
+        as: "orders"
+      }
+    },
+
+    {
+      $addFields: {
+        totalDeliveries: { $size: "$orders" },
+
+        totalEarnings: {
+          $sum: "$orders.payoutSummary.rider.riderNetEarnings"
+        },
+
+        rating: {
+          $ifNull: ["$rating.average", 0]
+        }
+      }
+    },
+
+    {
+      $facet: {
+
+        partnerPerformance: [
+
+          { $sort: { totalDeliveries: -1 } },
+
+          { $skip: skip },
+
+          { $limit: Number(limit) },
+
+          {
+            $project: {
+              _id: 1,
+              profilePhoto: 1,
+              userId: 1,
+              email: 1,
+              status: 1,
+              name: 1,
+              address: 1,
+              operationalData: 1,
+              totalDeliveries: 1,
+              totalEarnings: 1,
+              rating: 1
+            }
+          }
+
+        ],
+
+        topCards: [
+
+          {
+            $group: {
+              _id: null,
+
+              mostOrders: {
+                $max: {
+                  ordersCount: "$totalDeliveries",
+                  partnerName: "$name",
+                  partnerPhoto: "$profilePhoto"
+                }
+              },
+
+              highestEarnings: {
+                $max: {
+                  earnings: "$totalEarnings",
+                  partnerName: "$name",
+                  partnerPhoto: "$profilePhoto"
+                }
+              },
+
+              highestRated: {
+                $max: {
+                  rating: "$rating",
+                  partnerName: "$name",
+                  partnerPhoto: "$profilePhoto"
+                }
+              }
+
+            }
+          }
+
+        ],
+
+        topPerformers: [
+
+          { $sort: { rating: -1, totalEarnings: -1 } },
+
+          { $limit: 5 },
+
+          {
+            $project: {
+              name: 1,
+              rating: 1,
+              totalEarnings: "$totalEarnings",
+              profilePhoto: 1,
+              initials: {
+                $concat: [
+                  { $substr: ["$name.firstName", 0, 1] },
+                  { $substr: ["$name.lastName", 0, 1] }
+                ]
+              }
+            }
+          }
+
+        ],
+
+        totalCount: [
+          { $count: "count" }
+        ]
+
+      }
+
+    }
+
+  ])
+
+  const data = result[0]
+
+  // Monthly Earnings Performance
+  const monthlyRaw = await Order.aggregate([
+
+    {
+      $match: {
+        orderStatus: "DELIVERED",
+        isDeleted: false,
+        createdAt: { $gte: sixMonthsAgo }
+      }
+    },
+
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        totalOrders: { $sum: 1 }
+      }
+    },
+
+    { $sort: { "_id.year": 1, "_id.month": 1 } }
+
+  ])
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+  const earningsPerformance: TPartnerMonthlyPerformance[] = []
+
+  for (let i = 5; i >= 0; i--) {
+
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+
+    const month = d.getMonth() + 1
+    const year = d.getFullYear()
+
+    const found = monthlyRaw.find(
+      (m) => m._id.month === month && m._id.year === year
+    )
+
+    earningsPerformance.push({
+      month: monthNames[d.getMonth()],
+      totalOrders: found?.totalOrders || 0
+    })
+
+  }
+
+  const stats = data.topCards?.[0] || {}
+
+  const response: TPartnerPerformanceData = {
+
+    partnerPerformance: data.partnerPerformance,
+
+    topCards: {
+      mostOrders: {
+        partnerName: stats?.mostOrders?.partnerName || "",
+        partnerPhoto: stats?.mostOrders?.partnerPhoto || "",
+        ordersCount: stats?.mostOrders?.ordersCount || 0
+      },
+
+      highestRated: {
+        partnerName: stats?.highestRated?.partnerName || "",
+        partnerPhoto: stats?.highestRated?.partnerPhoto || "",
+        rating: {
+          average: stats?.highestRated?.rating || 0,
+          totalRatings: 0
+        }
+      },
+
+      highestEarnings: {
+        partnerName: stats?.highestEarnings?.partnerName || "",
+        partnerPhoto: stats?.highestEarnings?.partnerPhoto || "",
+        earnings: stats?.highestEarnings?.earnings || 0
+      }
+    },
+
+    earningsPerformance,
+
+    topPerformers: data.topPerformers
+
+  }
+
+  return {
+
+    data: response,
+
+    meta: {
+      page: Number(page),
+      limit: Number(limit),
+      total: data.totalCount?.[0]?.count || 0,
+      totalPage: Math.ceil((data.totalCount?.[0]?.count || 0) / Number(limit))
+    }
+
+  }
+
+};
+
+// get admin single delivery partner performance details analytics
+const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
+  partnerUserId: string
+): Promise<TPartnerPerformanceDetailsData> => {
+
+  const now = new Date()
+
+  // Find partner
+  const partner = await DeliveryPartner.findOne({ userId: partnerUserId })
+    .select(
+      "_id profilePhoto userId email status name address operationalData rating"
+    )
+    .lean()
+
+  if (!partner) {
+    throw new Error("Delivery partner not found")
+  }
+
+  // Total Deliveries & Earnings
+  const [stats] = await Order.aggregate([
+    {
+      $match: {
+        deliveryPartnerId: partner._id,
+        orderStatus: "DELIVERED",
+        isDeleted: false
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalDeliveries: { $sum: 1 },
+        totalEarnings: {
+          $sum: "$payoutSummary.rider.riderNetEarnings"
+        }
+      }
+    }
+  ])
+
+  const partnerPerformance: TDeliveryPartnerPerformance = {
+    ...partner,
+    totalDeliveries: stats?.totalDeliveries || 0,
+    totalEarnings: roundTo2(stats?.totalEarnings || 0),
+    rating: partner?.rating?.average || 0
+  }
+
+  // Last 6 Months Performance
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(now.getMonth() - 5)
+  sixMonthsAgo.setDate(1)
+  sixMonthsAgo.setHours(0, 0, 0, 0)
+
+  const monthlyRaw = await Order.aggregate([
+    {
+      $match: {
+        deliveryPartnerId: partner._id,
+        orderStatus: "DELIVERED",
+        isDeleted: false,
+        createdAt: { $gte: sixMonthsAgo }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        totalOrders: { $sum: 1 }
+      }
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } }
+  ])
+
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ]
+
+  const partnerMonthlyPerformance: TPartnerMonthlyPerformance[] = []
+
+  for (let i = 5; i >= 0; i--) {
+
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+
+    const month = d.getMonth() + 1
+    const year = d.getFullYear()
+
+    const found = monthlyRaw.find(
+      (m) => m._id.month === month && m._id.year === year
+    )
+
+    partnerMonthlyPerformance.push({
+      month: monthNames[d.getMonth()],
+      totalOrders: found?.totalOrders || 0
+    })
+  }
+
+  return {
+    partnerPerformance,
+    partnerMonthlyPerformance
+  }
+}
+
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
 // --------------------------------------------------------------------------------------
@@ -3676,6 +4036,8 @@ export const AnalyticsServices = {
   getFleetManagerPerformanceAnalytics,
   getSingleFleetPerformanceDetailsAnalytics,
   getAdminVendorSalesAnalytics,
+  getDeliveryPartnerPerformanceAnalytics,
+  getSingleDeliveryPartnerPerformanceDetailsAnalytics,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)
