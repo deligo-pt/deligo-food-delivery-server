@@ -12,7 +12,7 @@ const updateCustomer = catchAsync(async (req, res) => {
     req.body,
     req.params.customerId,
     user,
-    profilePhoto
+    profilePhoto,
   );
   sendResponse(res, {
     success: true,
@@ -27,7 +27,7 @@ const addDeliveryAddress = catchAsync(async (req, res) => {
   const { deliveryAddress } = req.body;
   const result = await CustomerServices.addDeliveryAddress(
     deliveryAddress,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -37,11 +37,31 @@ const addDeliveryAddress = catchAsync(async (req, res) => {
   });
 });
 
+// update delivery address controller
+const updateDeliveryAddress = catchAsync(async (req, res) => {
+  const { addressId } = req.params;
+  const payload = req.body.deliveryAddress;
+  const user = req.user as AuthUser;
+
+  const result = await CustomerServices.updateDeliveryAddress(
+    addressId,
+    payload,
+    user,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: result,
+  });
+});
+
 // toggle delivery address status
 const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
   const result = await CustomerServices.toggleDeliveryAddressStatus(
     req.params.addressId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -55,7 +75,7 @@ const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
 const deleteDeliveryAddress = catchAsync(async (req, res) => {
   const result = await CustomerServices.deleteDeliveryAddress(
     req.params.addressId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -69,7 +89,7 @@ const deleteDeliveryAddress = catchAsync(async (req, res) => {
 const getAllCustomers = catchAsync(async (req, res) => {
   const result = await CustomerServices.getAllCustomersFromDB(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -85,7 +105,7 @@ const getAllCustomers = catchAsync(async (req, res) => {
 const getSingleCustomer = catchAsync(async (req, res) => {
   const customer = await CustomerServices.getSingleCustomerFromDB(
     req.params.customerId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -99,6 +119,7 @@ const getSingleCustomer = catchAsync(async (req, res) => {
 export const CustomerControllers = {
   updateCustomer,
   addDeliveryAddress,
+  updateDeliveryAddress,
   toggleDeliveryAddressStatus,
   deleteDeliveryAddress,
   getAllCustomers,

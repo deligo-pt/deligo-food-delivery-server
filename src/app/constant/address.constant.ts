@@ -2,6 +2,7 @@ import { Schema } from 'mongoose';
 import { AddressType } from '../modules/Customer/customer.constant';
 
 export type TDeliveryAddress = {
+  _id?: string;
   street?: string;
   city?: string;
   state?: string;
