@@ -15,7 +15,7 @@ router.patch(
   multerUpload.single('file'),
   parseBody,
   validateRequest(CustomerValidation.updateCustomerDataValidationSchema),
-  CustomerControllers.updateCustomer
+  CustomerControllers.updateCustomer,
 );
 
 // add delivery address
@@ -23,34 +23,42 @@ router.post(
   '/add-delivery-address',
   auth('CUSTOMER'),
   validateRequest(CustomerValidation.addDeliveryAddressValidationSchema),
-  CustomerControllers.addDeliveryAddress
+  CustomerControllers.addDeliveryAddress,
+);
+
+// update delivery address
+router.patch(
+  '/update-delivery-address/:addressId',
+  auth('CUSTOMER'),
+  validateRequest(CustomerValidation.updateDeliveryAddressValidationSchema),
+  CustomerControllers.updateDeliveryAddress,
 );
 
 // toggle delivery address status
 router.patch(
   '/toggle-delivery-address-status/:addressId',
   auth('CUSTOMER'),
-  CustomerControllers.toggleDeliveryAddressStatus
+  CustomerControllers.toggleDeliveryAddressStatus,
 );
 
 // Delete delivery address
 router.delete(
   '/delete-delivery-address/:addressId',
   auth('CUSTOMER'),
-  CustomerControllers.deleteDeliveryAddress
+  CustomerControllers.deleteDeliveryAddress,
 );
 
 // Get all customers
 router.get(
   '/',
   auth('ADMIN', 'SUPER_ADMIN'),
-  CustomerControllers.getAllCustomers
+  CustomerControllers.getAllCustomers,
 );
 // Get single customer
 router.get(
   '/:customerId',
   auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'VENDOR'),
-  CustomerControllers.getSingleCustomer
+  CustomerControllers.getSingleCustomer,
 );
 
 export const CustomerRoutes = router;

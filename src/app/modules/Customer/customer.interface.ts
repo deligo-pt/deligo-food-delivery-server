@@ -68,6 +68,7 @@ export type TCustomer = {
   // Multiple Saved Delivery Addresses (Includes Zone Integration)
   // ------------------------------------------------------
   deliveryAddresses?: Array<{
+    _id?: string;
     street?: string;
     city?: string;
     state?: string;
