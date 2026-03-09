@@ -50,7 +50,6 @@ const toggleOfferStatus = catchAsync(async (req, res) => {
 });
 
 // validate and apply offer controller
-
 const validateAndApplyOffer = catchAsync(async (req, res) => {
   const { checkoutId, offerIdentifier } = req.body;
   const result = await OfferServices.validateAndApplyOffer(
@@ -61,7 +60,24 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offer applied successfully',
+    message: result?.offer?.isApplied
+      ? 'Offer applied successfully'
+      : 'Offer removed/invalid',
+    data: result,
+  });
+});
+
+// get available offers for checkout controller
+const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
+  const { checkoutId } = req.params;
+  const result = await OfferServices.getAvailableOffersForCheckout(
+    checkoutId as string,
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Available offers fetched successfully',
     data: result,
   });
 });
@@ -76,7 +92,8 @@ const getAllOffers = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Offers fetched successfully',
-    data: result,
+    meta: result.meta,
+    data: result.data,
   });
 });
 
@@ -130,6 +147,7 @@ export const OfferControllers = {
   updateOffer,
   toggleOfferStatus,
   validateAndApplyOffer,
+  getAvailableOffersForCheckout,
   getAllOffers,
   getSingleOffer,
   softDeleteOffer,

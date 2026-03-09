@@ -6,10 +6,11 @@ import { Cart } from '../Cart/cart.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { Product } from '../Product/product.model';
 import { AuthUser } from '../../constant/user.constant';
-import { calculateDistance } from '../../utils/calculateDistance';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
+import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
+import { formatEstimatedTime } from '../../utils/formatEstimatedTime';
 
 // Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
@@ -63,17 +64,27 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Location data missing');
   }
 
-  const distance = calculateDistance(
+  const distanceData = await calculateGoggleRoadDistance(
     vendorCoords[0],
     vendorCoords[1],
     activeAddress.longitude,
     activeAddress.latitude,
   );
+
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
-  const deliveryChargeBase = roundTo2(
-    distance.meters * (globalSettings?.deliveryChargePerMeter || 0),
-  );
+  const MIN_DISTANCE_THRESHOLD_METERS = 1000; // 1 km threshold for fixed delivery charge
+  const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
+
+  let deliveryChargeBase = 0;
+
+  if (distanceData.meters <= MIN_DISTANCE_THRESHOLD_METERS) {
+    deliveryChargeBase = BASE_FIXED_DELIVERY_CHARGE;
+  } else {
+    deliveryChargeBase = roundTo2(
+      distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
+    );
+  }
   const deliveryVat = roundTo2(
     deliveryChargeBase * ((globalSettings?.deliveryVatRate || 0) / 100),
   );
@@ -112,12 +123,9 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       const aQty = Number(a.quantity) || 0;
       const aTaxRate = Number(a.taxRate) || 0;
 
-      const perUnitAddonTax =
-        a.perUnitTaxAmount || roundTo2(aPrice * (aTaxRate / 100));
-
       const addonLineTotal = roundTo2(aPrice * aQty);
 
-      const addonTax = roundTo2(perUnitAddonTax * aQty);
+      const addonTax = roundTo2(addonLineTotal * (aTaxRate / 100));
       return {
         optionId: a.optionId,
         name: a.name,
@@ -128,7 +136,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         quantity: a.quantity,
         lineTotal: addonLineTotal,
         taxRate: a.taxRate || 0,
-        perUnitTaxAmount: perUnitAddonTax,
         taxAmount: addonTax,
       };
     });
@@ -145,11 +152,10 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     const productLineTotal = roundTo2(priceAfterStoreDiscount * qty);
 
     const productTaxRate = product.pricing?.taxRate || 0;
-    const perUnitProductTax =
-      item.productPricing?.perUnitTaxAmount ||
-      roundTo2(priceAfterStoreDiscount * (productTaxRate / 100));
 
-    const productTaxAmount = roundTo2(perUnitProductTax * qty);
+    const productTaxAmount = roundTo2(
+      productLineTotal * (productTaxRate / 100),
+    );
 
     const itemTotalBeforeTax = roundTo2(
       productLineTotal + totalAddonsLineTotal,
@@ -186,7 +192,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         unitPrice: priceAfterStoreDiscount,
         lineTotal: productLineTotal,
         taxRate: product.pricing?.taxRate || 0,
-        perUnitTaxAmount: perUnitProductTax,
         taxAmount: productTaxAmount,
       },
       itemSummary: {
@@ -277,8 +282,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       vatRate: globalSettings?.deliveryVatRate || 0,
       vatAmount: deliveryVat,
       totalDeliveryCharge: totalDeliveryCharge,
-      distance: roundTo2(distance.km),
-      estimatedTime: payload.estimatedDeliveryTime || '20-30 minutes',
+      distance: roundTo2(distanceData.km),
+      estimatedTime: formatEstimatedTime(distanceData.durationMinutes),
     },
 
     payoutSummary: {

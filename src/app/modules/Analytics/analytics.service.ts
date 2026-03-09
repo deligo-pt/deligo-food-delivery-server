@@ -3226,19 +3226,19 @@ const getPartnerPerformanceAnalytics = async (
 const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
   const riderObjectId = new Types.ObjectId(currentUser._id);
 
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = now.getUTCMonth();
-  const date = now.getUTCDate();
+  const today = new Date();
 
-  const startOfToday = new Date(Date.UTC(year, month, date));
+  const startOfToday = new Date(today);
   startOfToday.setHours(0, 0, 0, 0);
 
-  const dayOfWeek = now.getUTCDay();
+  const dayOfWeek = today.getDay();
   const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(Date.UTC(year, month, date - diffToMonday));
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
 
-  const startOfMonth = new Date(Date.UTC(year, month, 1));
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
 
   const earnings = await Transaction.aggregate([
     {
@@ -3247,7 +3247,6 @@ const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
         userModel: 'DeliveryPartner',
         status: 'SUCCESS',
         type: 'DELIVERY_PARTNER_EARNING',
-        createdAt: { $gte: startOfMonth },
       },
     },
     {

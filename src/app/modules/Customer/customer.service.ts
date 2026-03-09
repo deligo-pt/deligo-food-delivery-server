@@ -202,7 +202,7 @@ const addDeliveryAddress = async (
     notes: deliveryAddress.notes?.trim(),
 
     isActive: true,
-    addressType: hasAnyAddress ? deliveryAddress.addressType : 'PRIMARY',
+    addressType: hasAnyAddress ? deliveryAddress.addressType : 'OTHER',
   };
 
   // --------------------------------------------------
@@ -229,6 +229,72 @@ const addDeliveryAddress = async (
   return {
     message: 'Delivery address added successfully',
     activeAddress: newDeliveryAddress,
+  };
+};
+
+// update delivery address
+const updateDeliveryAddress = async (
+  addressId: string,
+  payload: Partial<TDeliveryAddress>,
+  currentUser: AuthUser,
+) => {
+  const userId = currentUser.userId;
+  const customer = await Customer.findOne({
+    userId,
+    'deliveryAddresses._id': addressId,
+  });
+
+  if (!customer) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Address not found or unauthorized',
+    );
+  }
+
+  const existingAddress = customer.deliveryAddresses?.find(
+    (addr) => addr._id?.toString() === addressId,
+  );
+
+  if (!existingAddress) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery address not found');
+  }
+
+  const updateFields: any = {};
+  const fieldsToUpdate = [
+    'street',
+    'city',
+    'state',
+    'country',
+    'postalCode',
+    'latitude',
+    'longitude',
+    'geoAccuracy',
+    'detailedAddress',
+    'zoneId',
+    'notes',
+    'addressType',
+  ];
+
+  fieldsToUpdate.forEach((field) => {
+    if (payload[field as keyof TDeliveryAddress] !== undefined) {
+      const val = payload[field as keyof TDeliveryAddress];
+      updateFields[`deliveryAddresses.$.${field}`] =
+        typeof val === 'string' ? val.trim() : val;
+    }
+  });
+  const updateResult = await Customer.updateOne(
+    { userId, 'deliveryAddresses._id': addressId },
+    { $set: updateFields },
+    { runValidators: true },
+  );
+
+  if (updateResult.matchedCount === 0) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'Update failed');
+  }
+
+  return {
+    message: 'Delivery address updated successfully',
+    updatedAddress: { ...existingAddress, ...payload },
   };
 };
 
@@ -391,6 +457,7 @@ const getSingleCustomerFromDB = async (
 export const CustomerServices = {
   updateCustomer,
   addDeliveryAddress,
+  updateDeliveryAddress,
   toggleDeliveryAddressStatus,
   deleteDeliveryAddress,
   getAllCustomersFromDB,

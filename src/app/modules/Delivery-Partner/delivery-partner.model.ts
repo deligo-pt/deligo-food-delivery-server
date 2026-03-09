@@ -43,6 +43,7 @@ const deliveryPartnerSchema = new Schema<
     email: {
       type: String,
       required: true,
+      unique: true,
       lowercase: true,
       trim: true,
       match: [
@@ -277,7 +278,6 @@ const deliveryPartnerSchema = new Schema<
 deliveryPartnerSchema.index({
   currentSessionLocation: '2dsphere',
 });
-deliveryPartnerSchema.index({ email: 1 }, { unique: true }); //new
 deliveryPartnerSchema.index({ 'registeredBy.id': 1 });
 deliveryPartnerSchema.plugin(passwordPlugin);
 
