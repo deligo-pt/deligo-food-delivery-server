@@ -163,8 +163,6 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
   },
 );
 
-adminSchema.index({ email: 1 }, { unique: true }); //new
-
 // password hashing plugin
 adminSchema.plugin(passwordPlugin);
 
