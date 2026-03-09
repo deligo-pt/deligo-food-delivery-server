@@ -7,7 +7,8 @@ import { TransactionServices } from './transaction.service';
 // get all transactions
 const getMyTransactions = catchAsync(async (req, res) => {
     const result = await TransactionServices.getMyTransactions(
-        req.user as AuthUser
+        req.user as AuthUser,
+        req.query
     );
 
     sendResponse(res, {
