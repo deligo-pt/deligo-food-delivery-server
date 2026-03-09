@@ -202,7 +202,7 @@ const addDeliveryAddress = async (
     notes: deliveryAddress.notes?.trim(),
 
     isActive: true,
-    addressType: hasAnyAddress ? deliveryAddress.addressType : 'PRIMARY',
+    addressType: hasAnyAddress ? deliveryAddress.addressType : 'OTHER',
   };
 
   // --------------------------------------------------
