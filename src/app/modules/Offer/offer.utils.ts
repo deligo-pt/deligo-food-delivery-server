@@ -312,11 +312,11 @@ export const rebuildCheckoutSummary = async (
         ),
       },
       rider: {
-        earningsWithoutTax: roundTo2(totalDeliveryCharge - fleetFee),
-        payableTax: newDeliveryVat,
-        riderNetEarnings: roundTo2(
-          totalDeliveryCharge - fleetFee + newDeliveryVat,
+        earningsWithoutTax: roundTo2(
+          totalDeliveryCharge - newDeliveryVat - fleetFee,
         ),
+        payableTax: newDeliveryVat,
+        riderNetEarnings: roundTo2(totalDeliveryCharge - fleetFee),
       },
       fleet: {
         rate: globalSettings?.fleetManagerCommissionPercent || 0,
