@@ -234,6 +234,32 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(async (re
   });
 });
 
+// get customer insights controller
+const getAdminCustomerInsights = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminCustomerInsights();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin customer insights fetched successfully',
+    data: result,
+  });
+});
+
+// get platform earnings controller
+const getPlatformEarnings = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getPlatformEarnings(
+    req.query
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Admin platform earnings fetched successfully',
+    data: result,
+  });
+});
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Umayer) -----------------------
 // ----------------------------------------------------------------------------------
@@ -390,6 +416,8 @@ export const AnalyticsControllers = {
   getAdminVendorSalesAnalytics,
   getDeliveryPartnerPerformanceAnalytics,
   getSingleDeliveryPartnerPerformanceDetailsAnalytics,
+  getAdminCustomerInsights,
+  getPlatformEarnings,
 
   // ---------------------------------------
   // Analytics Services (Developer Umayer)

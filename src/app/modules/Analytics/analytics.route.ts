@@ -126,6 +126,21 @@ router.get(
   AnalyticsControllers.getSingleDeliveryPartnerPerformanceDetailsAnalytics,
 );
 
+// get admin customer insights
+router.get(
+  '/admin-customer-insights',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getCustomerInsights,
+);
+
+// get admin platform earnings
+router.get(
+  '/admin-platform-earnings',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getPlatformEarnings,
+);
+
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS ROUTES (Developer Umayer) ----------------------------
 // ----------------------------------------------------------------------------------
