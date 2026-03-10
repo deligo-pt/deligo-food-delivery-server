@@ -153,7 +153,6 @@ export type TVendor = {
     totalReviews: number;
   };
 
-  totalOrders?: number;
   lastLoginAt?: Date;
 
   // --------------------------------------------------------
