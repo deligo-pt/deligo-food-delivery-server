@@ -260,6 +260,18 @@ const getPlatformEarnings = catchAsync(async (req, res) => {
   });
 });
 
+// get top vendors controller
+const getTopVendors = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getTopVendors();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Top vendors fetched successfully',
+    data: result,
+  });
+});
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Umayer) -----------------------
 // ----------------------------------------------------------------------------------
@@ -418,6 +430,7 @@ export const AnalyticsControllers = {
   getSingleDeliveryPartnerPerformanceDetailsAnalytics,
   getAdminCustomerInsights,
   getPlatformEarnings,
+  getTopVendors,
 
   // ---------------------------------------
   // Analytics Services (Developer Umayer)

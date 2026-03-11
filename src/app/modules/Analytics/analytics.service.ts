@@ -23,6 +23,8 @@ import {
   TPartnerMonthlyPerformance,
   TPartnerPerformanceData,
   TPartnerPerformanceDetailsData,
+  TTopVendor,
+  TTopVendorData,
   TVendorSalesReport,
 } from './analytics.interface';
 import { Transaction } from '../Transaction/transaction.model';
@@ -2998,6 +3000,113 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
   };
 };
 
+// get top vendors for admin
+const getTopVendors = async (): Promise<{ data: TTopVendorData }> => {
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [activeVendors, topVendorAgg, thisMonthAgg] = await Promise.all([
+    // Active vendors
+    Vendor.countDocuments({
+      role: "VENDOR",
+      status: "ACTIVE",
+      isDeleted: false,
+    }),
+
+    // Top vendors all time
+    Order.aggregate([
+      {
+        $match: {
+          orderStatus: "DELIVERED",
+          isPaid: true,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: "$vendorId",
+          revenue: {
+            $sum: "$payoutSummary.vendor.earningsWithoutTax",
+          },
+          orders: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: "vendors",
+          localField: "_id",
+          foreignField: "_id",
+          as: "vendor",
+        },
+      },
+      { $unwind: "$vendor" },
+      {
+        $project: {
+          revenue: 1,
+          orders: 1,
+          name: {
+            $concat: [
+              "$vendor.name.firstName",
+              " ",
+              "$vendor.name.lastName",
+            ],
+          },
+          category: "$vendor.businessDetails.businessType",
+          rating: "$vendor.rating.average",
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 10 },
+    ]),
+
+    // Top revenue vendor this month
+    Order.aggregate([
+      {
+        $match: {
+          orderStatus: "DELIVERED",
+          isPaid: true,
+          isDeleted: false,
+          createdAt: { $gte: monthStart },
+        },
+      },
+      {
+        $group: {
+          _id: "$vendorId",
+          revenue: {
+            $sum: "$payoutSummary.vendor.earningsWithoutTax",
+          },
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 1 },
+    ]),
+  ]);
+
+  const thisMonthTopRevenue = thisMonthAgg?.[0]?.revenue || 0;
+
+  const topVendors: TTopVendor[] = topVendorAgg.map(
+    (vendor: any, index: number) => ({
+      rank: index + 1,
+      name: vendor.name || "N/A",
+      category: vendor.category || "N/A",
+      revenue: vendor.revenue,
+      orders: vendor.orders,
+      rating: vendor.rating || 0,
+    })
+  );
+
+  return {
+    data: {
+      stats: {
+        activeVendors,
+        thisMonthTopRevenue,
+      },
+      topVendors,
+    },
+  };
+};
+
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
 // --------------------------------------------------------------------------------------
@@ -4415,6 +4524,7 @@ export const AnalyticsServices = {
   getSingleDeliveryPartnerPerformanceDetailsAnalytics,
   getAdminCustomerInsights,
   getPlatformEarnings,
+  getTopVendors,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)

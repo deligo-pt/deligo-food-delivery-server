@@ -280,8 +280,8 @@ const updateOrderStatusByVendor = async (
 
     const deliveryPartner = order.deliveryPartnerId
       ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
-          session,
-        })
+        session,
+      })
       : null;
     const deliveryPartnerId = deliveryPartner?.userId;
 
@@ -1285,15 +1285,19 @@ const updateOrderStatusByDeliveryPartner = async (
     // TODO: Notify Customer (Order is now ON_THE_WAY)
     const customer = await Customer.findById(updatedOrder.customerId).lean();
     const customerId = customer?.userId;
+    const vendor = await Vendor.findById(
+      updatedOrder.vendorId,
+    ).lean();
+    const vendorId = vendor?.userId;
+
     const notificationPayload = {
       title: `Order is now ${payload.orderStatus}`,
-      body: `${
-        payload.orderStatus === 'ON_THE_WAY'
-          ? `Your order ${orderId} is now ON_THE_WAY.`
-          : payload.orderStatus === 'DELIVERED'
-            ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
-            : `Your order ${orderId} is  ${payload.orderStatus}.`
-      } `,
+      body: `${payload.orderStatus === 'ON_THE_WAY'
+        ? `Your order ${orderId} is now ON_THE_WAY.`
+        : payload.orderStatus === 'DELIVERED'
+          ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
+          : `Your order ${orderId} is  ${payload.orderStatus}.`
+        } `,
       data: {
         orderId,
         orderStatus: payload.orderStatus,
@@ -1308,6 +1312,18 @@ const updateOrderStatusByDeliveryPartner = async (
         'default',
         'ORDER',
       );
+    }
+    if (vendorId) {
+      NotificationService.sendToUser(
+        vendorId!,
+        notificationPayload.title,
+        `${payload.orderStatus === 'ON_THE_WAY' ?
+          `Order ${orderId} is now ${payload.orderStatus}` :
+          payload.orderStatus === 'DELIVERED' && `Order ${orderId} is successfully ${payload.orderStatus} by delivery partner`}`,
+        notificationPayload.data,
+        'default',
+        'ORDER',
+      )
     }
 
     return {
