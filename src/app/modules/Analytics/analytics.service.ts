@@ -23,6 +23,8 @@ import {
   TPartnerMonthlyPerformance,
   TPartnerPerformanceData,
   TPartnerPerformanceDetailsData,
+  TTopVendor,
+  TTopVendorData,
   TVendorSalesReport,
 } from './analytics.interface';
 import { Transaction } from '../Transaction/transaction.model';
@@ -165,7 +167,7 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
       $group: {
         _id: '$customerId',
         totalOrders: { $sum: 1 },
-        totalSpent: { $sum: '$subtotal' },
+        totalSpent: { $sum: "$payoutSummary.grandTotal" },
         firstOrderDate: { $min: '$createdAt' },
         city: { $first: '$deliveryAddress.city' },
       },
@@ -2620,7 +2622,490 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
     partnerPerformance,
     partnerMonthlyPerformance
   }
-}
+};
+
+// get admin customer insights analytics api
+const getAdminCustomerInsights = async () => {
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [facet] = await Order.aggregate([
+
+    {
+      $match: {
+        orderStatus: "DELIVERED",
+        isPaid: true,
+        isDeleted: false,
+      },
+    },
+
+    {
+      $group: {
+        _id: "$customerId",
+        totalOrders: { $sum: 1 },
+        totalSpent: { $sum: "$payoutSummary.grandTotal" },
+        firstOrderDate: { $min: "$createdAt" },
+        city: { $first: "$deliveryAddress.city" },
+      },
+    },
+
+    {
+      $facet: {
+
+        // Summary Cards
+        cardStats: [
+          {
+            $group: {
+              _id: null,
+              totalCustomers: { $sum: 1 },
+
+              newCustomers: {
+                $sum: {
+                  $cond: [{ $gte: ["$firstOrderDate", thirtyDaysAgo] }, 1, 0],
+                },
+              },
+
+              returningCustomers: {
+                $sum: {
+                  $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0],
+                },
+              },
+
+              avgOrders: { $avg: "$totalOrders" },
+            },
+          },
+        ],
+
+        // Demographics
+        demographics: [
+          { $group: { _id: "$city", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+        ],
+
+        // Customer Value Segmentation
+        customerValueRaw: [
+          {
+            $project: {
+              avgOrderValue: {
+                $cond: [
+                  { $gt: ["$totalOrders", 0] },
+                  { $divide: ["$totalSpent", "$totalOrders"] },
+                  0,
+                ],
+              },
+              totalSpent: 1,
+            },
+          },
+          { $sort: { totalSpent: -1 } },
+        ],
+
+        // Retention Trend
+        retentionTrend: [
+          {
+            $project: {
+              isReturning: {
+                $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0],
+              },
+              weekIndex: {
+                $floor: {
+                  $divide: [
+                    { $subtract: [new Date(), "$firstOrderDate"] },
+                    1000 * 60 * 60 * 24 * 7,
+                  ],
+                },
+              },
+            },
+          },
+          {
+            $group: {
+              _id: "$weekIndex",
+              rate: { $avg: "$isReturning" },
+            },
+          },
+          { $sort: { _id: 1 } },
+          { $limit: 4 },
+        ],
+
+        // Order Heatmap
+        heatmap: [
+          {
+            $group: {
+              _id: {
+                day: {
+                  $dayOfWeek: {
+                    date: "$firstOrderDate",
+                    timezone: "Europe/Lisbon",
+                  },
+                },
+                hour: {
+                  $hour: {
+                    date: "$firstOrderDate",
+                    timezone: "Europe/Lisbon",
+                  },
+                },
+              },
+              orders: { $sum: 1 },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const cards = facet?.cardStats?.[0] || {};
+  const demographicsRaw = facet?.demographics || [];
+  const valueRaw = facet?.customerValueRaw || [];
+  const retentionRaw = facet?.retentionTrend || [];
+  const heatmapRaw = facet?.heatmap || [];
+  const totalCustomers = cards.totalCustomers || 0;
+
+  const getSegmentAvg = (percent: number) => {
+    if (!valueRaw.length) return "0.00";
+
+    const limit = Math.ceil(valueRaw.length * (percent / 100));
+    const segment = valueRaw.slice(0, limit);
+
+    const sum = segment.reduce(
+      (acc: number, curr: any) => acc + curr.avgOrderValue,
+      0
+    );
+
+    return roundTo2(sum / segment.length);
+  };
+
+  return {
+
+    summaryCards: {
+
+      totalCustomers: {
+        value: totalCustomers,
+        subValue: `${cards.newCustomers || 0} new`,
+      },
+
+      returningCustomers: {
+        value: cards.returningCustomers || 0,
+        subValue: `${(cards.avgOrders || 0).toFixed(1)} orders/avg`,
+      },
+
+      topCity: {
+        value: demographicsRaw[0]?._id || "N/A",
+        subValue:
+          totalCustomers > 0
+            ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
+              0
+            )}% of customers`
+            : "0%",
+      },
+
+      retentionRate: {
+        value:
+          totalCustomers > 0
+            ? `${((cards.returningCustomers / totalCustomers) * 100).toFixed(
+              0
+            )}%`
+            : "0%",
+        subValue: "Avg. Repeat",
+      },
+    },
+
+    demographics: demographicsRaw.map((d: any) => ({
+      city: d._id,
+      percentage:
+        totalCustomers > 0
+          ? `${((d.count / totalCustomers) * 100).toFixed(0)}%`
+          : "0%",
+    })),
+
+    customerValue: [
+      { segment: "Top 1%", avgOrder: `€${getSegmentAvg(1)}` },
+      { segment: "Top 5%", avgOrder: `€${getSegmentAvg(5)}` },
+      { segment: "Top 10%", avgOrder: `€${getSegmentAvg(10)}` },
+    ],
+
+    retentionTrend: retentionRaw.map((r: any) => ({
+      week: `Week ${r._id + 1}`,
+      rate: `${(r.rate * 100).toFixed(0)}%`,
+    })),
+
+    heatmap: heatmapRaw.map((h: any) => ({
+      day: h._id.day,
+      hour: h._id.hour,
+      orderCount: h.orders,
+    })),
+  };
+};
+
+// get platform earnings api for admin
+const getPlatformEarnings = async (query: Record<string, any>) => {
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Base Filter
+  const baseQuery = {
+    type: "PLATFORM_COMMISSION",
+    status: "SUCCESS",
+  };
+
+  // Stats Calculations
+  const now = new Date();
+
+  const weekStart = new Date();
+  weekStart.setDate(now.getDate() - 7);
+
+  const monthStart = new Date();
+  monthStart.setDate(1);
+
+  const [
+    totalPlatformCommissionAgg,
+    thisWeekAgg,
+    thisMonthAgg,
+    totalRevenueAgg,
+  ] = await Promise.all([
+    Transaction.aggregate([
+      { $match: baseQuery },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+    ]),
+
+    Transaction.aggregate([
+      {
+        $match: {
+          ...baseQuery,
+          createdAt: { $gte: weekStart },
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+    ]),
+
+    Transaction.aggregate([
+      {
+        $match: {
+          ...baseQuery,
+          createdAt: { $gte: monthStart },
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+    ]),
+
+    Order.aggregate([
+      {
+        $match: {
+          isPaid: true,
+          orderStatus: "DELIVERED",
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$payoutSummary.grandTotal" },
+        },
+      },
+    ]),
+  ]);
+
+  const totalPlatformCommission =
+    totalPlatformCommissionAgg?.[0]?.total || 0;
+
+  const thisWeekCommission = thisWeekAgg?.[0]?.total || 0;
+
+  const thisMonthCommission = thisMonthAgg?.[0]?.total || 0;
+
+  const totalRevenue = totalRevenueAgg?.[0]?.totalRevenue || 0;
+
+
+  // Monthly Commission Chart
+  const monthlyCommissionsAgg = await Transaction.aggregate([
+    { $match: baseQuery },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+        },
+        commission: { $sum: "$totalAmount" },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]);
+
+  const monthlyCommissions = monthlyCommissionsAgg.map((m) => ({
+    month: `${m._id.year}-${String(m._id.month).padStart(2, "0")}`,
+    commission: m.commission,
+  }));
+
+
+  // Paginated Commission Table
+  const [transactions, total] = await Promise.all([
+    Transaction.find(baseQuery)
+      .populate({
+        path: "orderId",
+        populate: {
+          path: "customerId",
+          select: "name",
+        },
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+
+    Transaction.countDocuments(baseQuery),
+  ]);
+
+
+  const commissions = transactions.map((txn: any) => {
+    const order = txn.orderId;
+    const customer = order?.customerId;
+
+    return {
+      _id: txn._id.toString(),
+
+      customer: customer || null,
+
+      transactionId: txn.transactionId,
+
+      orderId: order?.orderId || null,
+
+      amount: order?.payoutSummary?.grandTotal?.toFixed(2) || "0.00",
+
+      platformFee:
+        order?.payoutSummary?.deliGoCommission?.totalDeduction?.toFixed(2) ||
+        "0.00",
+
+      createdAt: txn.createdAt.toISOString(),
+    };
+  });
+
+  return {
+    data: {
+      stats: {
+        totalRevenue,
+        totalPlatformCommission,
+        thisWeekCommission,
+        thisMonthCommission,
+      },
+
+      monthlyCommissions,
+
+      commissions,
+    },
+
+    meta: {
+      page,
+      limit,
+      total,
+      totalPage: Math.ceil(total / limit),
+    },
+  };
+};
+
+// get top vendors for admin
+const getTopVendors = async (): Promise<{ data: TTopVendorData }> => {
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [activeVendors, topVendorAgg, thisMonthAgg] = await Promise.all([
+    // Active vendors
+    Vendor.countDocuments({
+      role: "VENDOR",
+      status: "ACTIVE",
+      isDeleted: false,
+    }),
+
+    // Top vendors all time
+    Order.aggregate([
+      {
+        $match: {
+          orderStatus: "DELIVERED",
+          isPaid: true,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: "$vendorId",
+          revenue: {
+            $sum: "$payoutSummary.vendor.earningsWithoutTax",
+          },
+          orders: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: "vendors",
+          localField: "_id",
+          foreignField: "_id",
+          as: "vendor",
+        },
+      },
+      { $unwind: "$vendor" },
+      {
+        $project: {
+          revenue: 1,
+          orders: 1,
+          name: {
+            $concat: [
+              "$vendor.name.firstName",
+              " ",
+              "$vendor.name.lastName",
+            ],
+          },
+          category: "$vendor.businessDetails.businessType",
+          rating: "$vendor.rating.average",
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 10 },
+    ]),
+
+    // Top revenue vendor this month
+    Order.aggregate([
+      {
+        $match: {
+          orderStatus: "DELIVERED",
+          isPaid: true,
+          isDeleted: false,
+          createdAt: { $gte: monthStart },
+        },
+      },
+      {
+        $group: {
+          _id: "$vendorId",
+          revenue: {
+            $sum: "$payoutSummary.vendor.earningsWithoutTax",
+          },
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 1 },
+    ]),
+  ]);
+
+  const thisMonthTopRevenue = thisMonthAgg?.[0]?.revenue || 0;
+
+  const topVendors: TTopVendor[] = topVendorAgg.map(
+    (vendor: any, index: number) => ({
+      rank: index + 1,
+      name: vendor.name || "N/A",
+      category: vendor.category || "N/A",
+      revenue: vendor.revenue,
+      orders: vendor.orders,
+      rating: vendor.rating || 0,
+    })
+  );
+
+  return {
+    data: {
+      stats: {
+        activeVendors,
+        thisMonthTopRevenue,
+      },
+      topVendors,
+    },
+  };
+};
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
@@ -4037,6 +4522,9 @@ export const AnalyticsServices = {
   getAdminVendorSalesAnalytics,
   getDeliveryPartnerPerformanceAnalytics,
   getSingleDeliveryPartnerPerformanceDetailsAnalytics,
+  getAdminCustomerInsights,
+  getPlatformEarnings,
+  getTopVendors,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)

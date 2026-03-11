@@ -197,3 +197,22 @@ export type TPartnerPerformanceDetailsData = {
     partnerPerformance: TDeliveryPartnerPerformance;
     partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
 }
+
+// for top vendors
+export type TTopVendor = {
+    rank: number;
+    name: string;
+    category: string;
+    revenue: number;
+    orders: number;
+    rating: number;
+};
+
+
+export type TTopVendorData = {
+    stats: {
+        activeVendors: number;
+        thisMonthTopRevenue: number;
+    };
+    topVendors: TTopVendor[];
+};

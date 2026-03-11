@@ -37,42 +37,48 @@ router.get(
 
 // get admin sales report analytics
 router.get(
-  '/admin-sales-report-analytics',
+  // '/admin-sales-report-analytics', //before
+  '/admin/sales-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminSalesReportAnalytics,
 );
 
 // get admin order report analytics
 router.get(
-  '/admin-order-report-analytics',
+  // '/admin-order-report-analytics', //before
+  '/admin/order-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminOrderReportAnalytics,
 );
 
 // get admin customer report analytics
 router.get(
-  '/admin-customer-report-analytics',
+  // '/admin-customer-report-analytics', //before
+  '/admin/customer-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminCustomerReportAnalytics,
 );
 
 // get admin vendor report analytics
 router.get(
-  '/admin-vendor-report-analytics',
+  // '/admin-vendor-report-analytics', //before
+  '/admin/vendor-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminVendorReportAnalytics,
 );
 
 // get admin fleet manager report analytics
 router.get(
-  '/admin-fleet-manager-report-analytics',
+  // '/admin-fleet-manager-report-analytics', //before
+  '/admin/fleet-manager-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminFleetManagerReportAnalytics,
 );
 
 // get admin delivery partner report analytics
 router.get(
-  '/admin-delivery-partner-report-analytics',
+  // '/admin-delivery-partner-report-analytics', //before
+  '/admin/delivery-partner-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminDeliveryPartnerReportAnalytics,
 );
@@ -93,38 +99,67 @@ router.get(
 
 // get fleet performance analytics
 router.get(
-  '/fleet-performance-analytics',
+  // '/fleet-performance-analytics', //before
+  '/admin/fleet-performance-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getFleetManagerPerformanceAnalytics,
 );
 
 // get fleet performance details analytics
 router.get(
-  '/fleet-performance-details-analytics/:fleetManagerId',
+  // '/fleet-performance-details-analytics/:fleetManagerId', //before
+  '/admin/fleet-performance-details-analytics/:fleetManagerId',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getSingleFleetPerformanceDetailsAnalytics,
 );
 
 // get fleet performance details analytics
 router.get(
-  '/admin-vendor-sales-analytics',
+  // '/admin-vendor-sales-analytics', //before
+  '/admin/vendor-sales-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminVendorSalesAnalytics,
 );
 
 // get delivery partner performance analytics
 router.get(
-  '/delivery-partner-performance-analytics',
+  // '/delivery-partner-performance-analytics', //before
+  '/admin/delivery-partner-performance-analytics',
   auth("ADMIN", "SUPER_ADMIN"),
   AnalyticsControllers.getDeliveryPartnerPerformanceAnalytics,
 );
 
 // get delivery partner performance details analytics
 router.get(
-  '/delivery-partner-performance-details-analytics/:partnerUserId',
+  // '/delivery-partner-performance-details-analytics/:partnerUserId', //before
+  '/admin/delivery-partner-performance-details-analytics/:partnerUserId',
   auth("ADMIN", "SUPER_ADMIN"),
   AnalyticsControllers.getSingleDeliveryPartnerPerformanceDetailsAnalytics,
 );
+
+// get admin customer insights
+router.get(
+  // '/admin-customer-insights', //before
+  '/admin/customer-insights',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getCustomerInsights,
+);
+
+// get admin platform earnings
+router.get(
+  // '/admin-platform-earnings', //before
+  '/admin/platform-earnings',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getPlatformEarnings,
+);
+
+// get top vendors
+router.get(
+  '/admin/top-vendors',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getTopVendors,
+);
+
 
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS ROUTES (Developer Umayer) ----------------------------
