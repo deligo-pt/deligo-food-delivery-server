@@ -833,6 +833,28 @@ const partnerAcceptsDispatchedOrder = async (
       });
     }
 
+    // notification payload
+    const notificationPayload = {
+      title: `Order is accepted`,
+      body: `Order is now accepted by delivery partner`,
+      data: {
+        orderId,
+        orderStatus: claimedOrder.orderStatus,
+        type: "ORDER_STATUS"
+      },
+    };
+
+    if (vendorUserId) {
+      NotificationService.sendToUser(
+        vendorUserId!,
+        notificationPayload.title,
+        notificationPayload.body,
+        notificationPayload.data,
+        'default',
+        'ORDER',
+      );
+    }
+
     return { data: claimedOrder, message: 'Order accepted.' };
   } catch (error) {
     if (session.inTransaction()) {
@@ -942,6 +964,7 @@ const otpVerificationByVendor = async (
     data: {
       orderId,
       orderStatus: ORDER_STATUS.PICKED_UP,
+      type: "ORDER"
     },
   };
   if (customerId) {
@@ -1301,6 +1324,7 @@ const updateOrderStatusByDeliveryPartner = async (
       data: {
         orderId,
         orderStatus: payload.orderStatus,
+        type: "ORDER_STATUS"
       },
     };
     if (customerId) {
