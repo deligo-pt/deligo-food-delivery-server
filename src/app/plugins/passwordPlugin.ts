@@ -39,7 +39,8 @@ export const passwordPlugin = <T extends { email?: string }>(
       query.isDeleted = isDeleted;
     }
 
-    let dbQuery = this.findOne(query).lean();
+    // let dbQuery = this.findOne(query).lean(); /--> before
+    let dbQuery = this.findOne(query);
 
     if (fields) {
       dbQuery = dbQuery.select(fields);
