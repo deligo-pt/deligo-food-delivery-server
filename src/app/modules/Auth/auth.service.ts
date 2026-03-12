@@ -730,7 +730,7 @@ const forgotPassword = async (email: string) => {
 
   return {
     message: 'Password reset link sent to your email address successfully',
-    token,
+    // token,
   };
 };
 
@@ -1064,9 +1064,8 @@ const approvedOrRejectedUser = async (
     'user-approval-notification',
   );
 
-  const emailSubject = `Your ${
-    submittedUser.role
-  } Application has been ${payload.status.toLowerCase()}`;
+  const emailSubject = `Your ${submittedUser.role
+    } Application has been ${payload.status.toLowerCase()}`;
 
   if (
     [
@@ -1087,9 +1086,8 @@ const approvedOrRejectedUser = async (
   }
 
   return {
-    message: `${
-      submittedUser.role
-    } ${payload.status.toLowerCase()} successfully`,
+    message: `${submittedUser.role
+      } ${payload.status.toLowerCase()} successfully`,
   };
 };
 
@@ -1338,9 +1336,9 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 
   if (
     (currentUser?.role === 'DELIVERY_PARTNER',
-    currentUser?.role === 'CUSTOMER',
-    currentUser?.role === 'VENDOR',
-    currentUser?.role === 'FLEET_MANAGER')
+      currentUser?.role === 'CUSTOMER',
+      currentUser?.role === 'VENDOR',
+      currentUser?.role === 'FLEET_MANAGER')
   ) {
     if (currentUser?.userId !== existingUser?.userId) {
       throw new AppError(

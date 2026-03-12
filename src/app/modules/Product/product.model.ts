@@ -10,7 +10,7 @@ const variationSchema = new Schema({
       _id: false,
       label: { type: String, required: true }, // e.g., "Large"
       price: { type: Number, required: true }, // e.g., 500
-      sku: { type: String, unique: true },
+      sku: { type: String },
       stockQuantity: { type: Number, default: 0 },
       totalAddedQuantity: { type: Number, default: 0 },
       isOutOfStock: { type: Boolean, default: false },
