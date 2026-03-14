@@ -3043,7 +3043,7 @@ const getTopVendors = async (): Promise<{ data: TTopVendorData }> => {
     // Active vendors
     Vendor.countDocuments({
       role: "VENDOR",
-      status: "ACTIVE",
+      status: "APPROVED",
       isDeleted: false,
     }),
 
@@ -3137,6 +3137,184 @@ const getTopVendors = async (): Promise<{ data: TTopVendorData }> => {
       },
       topVendors,
     },
+  };
+};
+
+// get peak hourly analytics for admin
+const getPeakHourAnalytics = async () => {
+  const timezone = "Europe/Lisbon";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() + diffToMonday);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+  const [analytics] = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        createdAt: { $gte: startOfWeek, $lt: endOfWeek },
+      },
+    },
+    {
+      $facet: {
+        weeklyHours: [
+          {
+            $group: {
+              _id: {
+                day: {
+                  $isoDayOfWeek: {
+                    date: "$createdAt",
+                    timezone,
+                  },
+                },
+                hour: {
+                  $hour: {
+                    date: "$createdAt",
+                    timezone,
+                  },
+                },
+              },
+              orders: { $sum: 1 },
+            },
+          },
+        ],
+
+        weekDaysOrders: [
+          {
+            $group: {
+              _id: {
+                $isoDayOfWeek: {
+                  date: "$createdAt",
+                  timezone,
+                },
+              },
+              orders: { $sum: 1 },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const SLOT_RANGES = [
+    { label: "8AM - 10AM", start: 8, end: 10 },
+    { label: "10AM - 12PM", start: 10, end: 12 },
+    { label: "12PM - 2PM", start: 12, end: 14 },
+    { label: "2PM - 4PM", start: 14, end: 16 },
+    { label: "4PM - 6PM", start: 16, end: 18 },
+    { label: "6PM - 8PM", start: 18, end: 20 },
+    { label: "8PM - 10PM", start: 20, end: 22 },
+    { label: "10PM - 12AM", start: 22, end: 24 },
+    { label: "12AM - 2AM", start: 0, end: 2 },
+    { label: "2AM - 4AM", start: 2, end: 4 },
+    { label: "4AM - 6AM", start: 4, end: 6 },
+    { label: "6AM - 8AM", start: 6, end: 8 },
+  ];
+
+  const weeklyHourlyOrders = DAYS.map((day) => ({
+    day,
+    hourlyData: SLOT_RANGES.map((slot) => ({
+      hour: slot.label,
+      orders: 0,
+    })),
+  }));
+
+  let weeklyHourlyMaxOrdersCount = 0;
+
+  analytics.weeklyHours.forEach((item: any) => {
+    const dayIndex = item._id.day - 1;
+    const hour = item._id.hour;
+
+    const slotIndex = SLOT_RANGES.findIndex((slot) => {
+      if (slot.start < slot.end) {
+        return hour >= slot.start && hour < slot.end;
+      }
+      return hour >= slot.start || hour < slot.end;
+    });
+
+    if (slotIndex !== -1) {
+      weeklyHourlyOrders[dayIndex].hourlyData[slotIndex].orders += item.orders;
+
+      if (item.orders > weeklyHourlyMaxOrdersCount) {
+        weeklyHourlyMaxOrdersCount = item.orders;
+      }
+    }
+  });
+
+  const weekDaysOrders = DAYS.map((day, i) => {
+    const found = analytics.weekDaysOrders.find((d: any) => d._id === i + 1);
+
+    return {
+      day,
+      orders: found?.orders || 0,
+    };
+  });
+
+  const busiestDay =
+    [...weekDaysOrders].sort((a, b) => b.orders - a.orders)[0]?.day || "Mon";
+
+  const peakSlot = weeklyHourlyOrders
+    .flatMap((d) => d.hourlyData)
+    .sort((a, b) => b.orders - a.orders)[0];
+
+  const peakHour = peakSlot?.hour || "";
+
+  const totalOrders = weekDaysOrders.reduce((sum, d) => sum + d.orders, 0);
+
+  const avgOrdersPerHour = Math.round(totalOrders / 24);
+
+  const prevDayAgg = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        createdAt: { $gte: yesterday, $lt: today },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $hour: {
+            date: "$createdAt",
+            timezone,
+          },
+        },
+        orders: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const prevDayDistribution = Array.from({ length: 24 }).map((_, i) => {
+    const found = prevDayAgg.find((p: any) => p._id === i);
+
+    return {
+      hour: `${i}:00`,
+      orders: found?.orders || 0,
+    };
+  });
+
+  return {
+    stats: {
+      peakHour,
+      busiestDay,
+      avgOrdersPerHour,
+    },
+    weeklyHourlyOrders,
+    weeklyHourlyMaxOrdersCount,
+    prevDayDistribution,
+    weekDaysOrders,
   };
 };
 
@@ -4601,6 +4779,7 @@ export const AnalyticsServices = {
   getAdminCustomerInsights,
   getPlatformEarnings,
   getTopVendors,
+  getPeakHourAnalytics,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)

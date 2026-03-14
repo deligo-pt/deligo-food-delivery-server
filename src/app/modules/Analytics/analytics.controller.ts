@@ -272,6 +272,18 @@ const getTopVendors = catchAsync(async (req, res) => {
   });
 });
 
+// get top vendors controller
+const getPeakHourAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getPeakHourAnalytics();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Peak hour fetched successfully',
+    data: result,
+  });
+});
+
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Umayer) -----------------------
 // ----------------------------------------------------------------------------------
@@ -431,6 +443,7 @@ export const AnalyticsControllers = {
   getAdminCustomerInsights,
   getPlatformEarnings,
   getTopVendors,
+  getPeakHourAnalytics,
 
   // ---------------------------------------
   // Analytics Services (Developer Umayer)
