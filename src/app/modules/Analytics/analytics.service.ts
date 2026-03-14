@@ -36,6 +36,8 @@ import httpStatus from 'http-status';
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
 // --------------------------------------------------------------------------------------
 
+const timezone = "Europe/Lisbon";
+
 // get vendor sales analytics
 const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
@@ -3043,7 +3045,7 @@ const getTopVendors = async (): Promise<{ data: TTopVendorData }> => {
     // Active vendors
     Vendor.countDocuments({
       role: "VENDOR",
-      status: "ACTIVE",
+      status: "APPROVED",
       isDeleted: false,
     }),
 
@@ -3137,6 +3139,482 @@ const getTopVendors = async (): Promise<{ data: TTopVendorData }> => {
       },
       topVendors,
     },
+  };
+};
+
+// get peak hourly analytics for admin
+const getPeakHourAnalytics = async () => {
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() + diffToMonday);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+  const [analytics] = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        createdAt: { $gte: startOfWeek, $lt: endOfWeek },
+      },
+    },
+    {
+      $facet: {
+        weeklyHours: [
+          {
+            $group: {
+              _id: {
+                day: {
+                  $isoDayOfWeek: {
+                    date: "$createdAt",
+                    timezone,
+                  },
+                },
+                hour: {
+                  $hour: {
+                    date: "$createdAt",
+                    timezone,
+                  },
+                },
+              },
+              orders: { $sum: 1 },
+            },
+          },
+        ],
+
+        weekDaysOrders: [
+          {
+            $group: {
+              _id: {
+                $isoDayOfWeek: {
+                  date: "$createdAt",
+                  timezone,
+                },
+              },
+              orders: { $sum: 1 },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const SLOT_RANGES = [
+    { label: "8AM - 10AM", start: 8, end: 10 },
+    { label: "10AM - 12PM", start: 10, end: 12 },
+    { label: "12PM - 2PM", start: 12, end: 14 },
+    { label: "2PM - 4PM", start: 14, end: 16 },
+    { label: "4PM - 6PM", start: 16, end: 18 },
+    { label: "6PM - 8PM", start: 18, end: 20 },
+    { label: "8PM - 10PM", start: 20, end: 22 },
+    { label: "10PM - 12AM", start: 22, end: 24 },
+    { label: "12AM - 2AM", start: 0, end: 2 },
+    { label: "2AM - 4AM", start: 2, end: 4 },
+    { label: "4AM - 6AM", start: 4, end: 6 },
+    { label: "6AM - 8AM", start: 6, end: 8 },
+  ];
+
+  const weeklyHourlyOrders = DAYS.map((day) => ({
+    day,
+    hourlyData: SLOT_RANGES.map((slot) => ({
+      hour: slot.label,
+      orders: 0,
+    })),
+  }));
+
+  let weeklyHourlyMaxOrdersCount = 0;
+
+  analytics.weeklyHours.forEach((item: any) => {
+    const dayIndex = item._id.day - 1;
+    const hour = item._id.hour;
+
+    const slotIndex = SLOT_RANGES.findIndex((slot) => {
+      if (slot.start < slot.end) {
+        return hour >= slot.start && hour < slot.end;
+      }
+      return hour >= slot.start || hour < slot.end;
+    });
+
+    if (slotIndex !== -1) {
+      weeklyHourlyOrders[dayIndex].hourlyData[slotIndex].orders += item.orders;
+
+      if (item.orders > weeklyHourlyMaxOrdersCount) {
+        weeklyHourlyMaxOrdersCount = item.orders;
+      }
+    }
+  });
+
+  const weekDaysOrders = DAYS.map((day, i) => {
+    const found = analytics.weekDaysOrders.find((d: any) => d._id === i + 1);
+
+    return {
+      day,
+      orders: found?.orders || 0,
+    };
+  });
+
+  const busiestDay =
+    [...weekDaysOrders].sort((a, b) => b.orders - a.orders)[0]?.day || "Mon";
+
+  const peakSlot = weeklyHourlyOrders
+    .flatMap((d) => d.hourlyData)
+    .sort((a, b) => b.orders - a.orders)[0];
+
+  const peakHour = peakSlot?.hour || "";
+
+  const totalOrders = weekDaysOrders.reduce((sum, d) => sum + d.orders, 0);
+
+  const avgOrdersPerHour = Math.round(totalOrders / 24);
+
+  const prevDayAgg = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        createdAt: { $gte: yesterday, $lt: today },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $hour: {
+            date: "$createdAt",
+            timezone,
+          },
+        },
+        orders: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const prevDayDistribution = Array.from({ length: 24 }).map((_, i) => {
+    const found = prevDayAgg.find((p: any) => p._id === i);
+
+    return {
+      hour: `${i}:00`,
+      orders: found?.orders || 0,
+    };
+  });
+
+  return {
+    stats: {
+      peakHour,
+      busiestDay,
+      avgOrdersPerHour,
+    },
+    weeklyHourlyOrders,
+    weeklyHourlyMaxOrdersCount,
+    prevDayDistribution,
+    weekDaysOrders,
+  };
+};
+
+// get delivey insights analytics for admin
+const getDeliveryInsights = async () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const last7Days = new Date(today);
+  last7Days.setDate(today.getDate() - 6);
+
+  /** ------------ Estimated Time Parser ------------ */
+  const estimatedMinutesExpr = {
+    $let: {
+      vars: {
+        value: {
+          $toInt: {
+            $ifNull: [
+              {
+                $getField: {
+                  field: "match",
+                  input: {
+                    $regexFind: {
+                      input: "$delivery.estimatedTime",
+                      regex: /\d+/
+                    }
+                  }
+                }
+              },
+              0
+            ]
+          }
+        }
+      },
+      in: {
+        $switch: {
+          branches: [
+            {
+              case: {
+                $regexMatch: {
+                  input: "$delivery.estimatedTime",
+                  regex: /(s|sec)/i
+                }
+              },
+              then: { $divide: ["$$value", 60] }
+            },
+            {
+              case: {
+                $regexMatch: {
+                  input: "$delivery.estimatedTime",
+                  regex: /(h|hr)/i
+                }
+              },
+              then: { $multiply: ["$$value", 60] }
+            }
+          ],
+          default: "$$value"
+        }
+      }
+    }
+  };
+
+  const [statsAgg, weeklyAgg, ridersAgg] = await Promise.all([
+
+    /** ---------------- STATS ---------------- */
+    Order.aggregate([
+      {
+        $match: {
+          orderStatus: "DELIVERED",
+          isDeleted: false,
+          pickedUpAt: { $ne: null },
+          deliveredAt: { $ne: null }
+        }
+      },
+      {
+        $project: {
+          createdAt: 1,
+
+          actualMinutes: {
+            $divide: [
+              { $subtract: ["$deliveredAt", "$pickedUpAt"] },
+              1000 * 60
+            ]
+          },
+
+          estimatedMinutes: estimatedMinutesExpr
+        }
+      },
+      {
+        $addFields: {
+          isOnTime: {
+            $cond: [
+              { $lte: ["$actualMinutes", "$estimatedMinutes"] },
+              1,
+              0
+            ]
+          }
+        }
+      },
+      {
+        $facet: {
+
+          totalDeliveries: [{ $count: "count" }],
+
+          deliveriesToday: [
+            {
+              $match: {
+                createdAt: { $gte: today, $lt: tomorrow }
+              }
+            },
+            { $count: "count" }
+          ],
+
+          avgDeliveryTime: [
+            {
+              $group: {
+                _id: null,
+                avg: { $avg: "$actualMinutes" }
+              }
+            }
+          ],
+
+          onTimeRate: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                onTime: { $sum: "$isOnTime" }
+              }
+            },
+            {
+              $project: {
+                rate: {
+                  $multiply: [
+                    { $divide: ["$onTime", "$total"] },
+                    100
+                  ]
+                }
+              }
+            }
+          ]
+
+        }
+      }
+    ]),
+
+    /** ---------------- LAST WEEK DELIVERY TIME ---------------- */
+    Order.aggregate([
+      {
+        $match: {
+          orderStatus: "DELIVERED",
+          isDeleted: false,
+          createdAt: { $gte: last7Days },
+          pickedUpAt: { $ne: null },
+          deliveredAt: { $ne: null }
+        }
+      },
+      {
+        $project: {
+          day: { $dayOfWeek: "$createdAt" },
+
+          deliveryTime: {
+            $divide: [
+              { $subtract: ["$deliveredAt", "$pickedUpAt"] },
+              1000 * 60
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$day",
+          avgTime: { $avg: "$deliveryTime" }
+        }
+      }
+    ]),
+
+    /** ---------------- TOP RIDERS ---------------- */
+    Order.aggregate([
+      {
+        $match: {
+          orderStatus: "DELIVERED",
+          isDeleted: false,
+          deliveryPartnerId: { $ne: null },
+          pickedUpAt: { $ne: null },
+          deliveredAt: { $ne: null }
+        }
+      },
+      {
+        $project: {
+          deliveryPartnerId: 1,
+
+          actualMinutes: {
+            $divide: [
+              { $subtract: ["$deliveredAt", "$pickedUpAt"] },
+              1000 * 60
+            ]
+          },
+
+          estimatedMinutes: estimatedMinutesExpr
+        }
+      },
+      {
+        $addFields: {
+          isOnTime: {
+            $cond: [
+              { $lte: ["$actualMinutes", "$estimatedMinutes"] },
+              1,
+              0
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$deliveryPartnerId",
+
+          deliveries: { $sum: 1 },
+
+          avgTime: { $avg: "$actualMinutes" },
+
+          total: { $sum: 1 },
+
+          onTime: { $sum: "$isOnTime" }
+        }
+      },
+      {
+        $lookup: {
+          from: "deliverypartners",
+          localField: "_id",
+          foreignField: "_id",
+          as: "partner"
+        }
+      },
+      { $unwind: "$partner" },
+      {
+        $project: {
+          name: {
+            $concat: [
+              "$partner.name.firstName",
+              " ",
+              "$partner.name.lastName"
+            ]
+          },
+
+          deliveries: 1,
+
+          avgTime: { $round: ["$avgTime", 0] },
+
+          rating: "$partner.rating.average",
+
+          onTimeRate: {
+            $multiply: [
+              { $divide: ["$onTime", "$total"] },
+              100
+            ]
+          }
+        }
+      },
+      { $sort: { deliveries: -1 } },
+      { $limit: 5 }
+    ])
+
+  ]);
+
+
+  const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const stats = {
+    totalDeliveries: statsAgg[0].totalDeliveries[0]?.count || 0,
+    deliveriesToday: statsAgg[0].deliveriesToday[0]?.count || 0,
+    avgDeliveryTime: Math.round(statsAgg[0].avgDeliveryTime[0]?.avg || 0),
+    onTimeRate: Math.round(statsAgg[0].onTimeRate[0]?.rate || 0)
+  };
+
+  const avgDeliveryTime = DAYS.map((day, i) => {
+    const found = weeklyAgg.find(d => d._id === i + 1);
+
+    return {
+      day,
+      time: Math.round(found?.avgTime || 0)
+    };
+  });
+
+  const topRiders = ridersAgg.map(r => ({
+    name: r.name,
+    deliveries: r.deliveries,
+    avgTime: `${r.avgTime} min`,
+    rating: Number((r.rating || 0).toFixed(1)),
+    onTime: `${Math.round(r.onTimeRate)}%`
+  }));
+
+  return {
+    stats,
+    avgDeliveryTime,
+    topRiders
   };
 };
 
@@ -4601,6 +5079,8 @@ export const AnalyticsServices = {
   getAdminCustomerInsights,
   getPlatformEarnings,
   getTopVendors,
+  getPeakHourAnalytics,
+  getDeliveryInsights,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)
