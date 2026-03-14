@@ -160,6 +160,20 @@ router.get(
   AnalyticsControllers.getTopVendors,
 );
 
+// get peak hours
+router.get(
+  '/admin/peak-hours',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getPeakHourAnalytics,
+);
+
+// get delivery insights
+router.get(
+  '/admin/delivery-insights',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsControllers.getDeliveryInsights,
+);
+
 
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS ROUTES (Developer Umayer) ----------------------------
