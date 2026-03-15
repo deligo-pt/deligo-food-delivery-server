@@ -142,7 +142,7 @@ router.get(
   // '/admin-customer-insights', //before
   '/admin/customer-insights',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getCustomerInsights,
+  AnalyticsControllers.getAdminCustomerInsights,
 );
 
 // get admin platform earnings
