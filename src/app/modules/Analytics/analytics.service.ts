@@ -153,209 +153,239 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
 
 // get customer insights controller
 const getCustomerInsights = async (currentUser: AuthUser) => {
-  const vendorId = new Types.ObjectId(currentUser._id);
+  const vendorId = new Types.ObjectId(currentUser._id)
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const now = new Date()
+
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(now.getDate() - 7)
+
+  const fourteenDaysAgo = new Date()
+  fourteenDaysAgo.setDate(now.getDate() - 14)
+
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(now.getDate() - 30)
 
   const [facet] = await Order.aggregate([
     {
       $match: {
         vendorId,
-        orderStatus: 'DELIVERED',
+        orderStatus: "DELIVERED",
         isPaid: true,
         isDeleted: false,
       },
     },
 
     {
-      $group: {
-        _id: '$customerId',
-        totalOrders: { $sum: 1 },
-        totalSpent: { $sum: "$payoutSummary.grandTotal" },
-        firstOrderDate: { $min: '$createdAt' },
-        city: { $first: '$deliveryAddress.city' },
-      },
-    },
-
-    {
       $facet: {
-        // summary cards
-        cardStats: [
+
+        /** ---------------- ORDER FREQUENCY ---------------- */
+        orderFrequency: [
           {
             $group: {
               _id: null,
-              totalCustomers: { $sum: 1 },
-              newCustomers: {
+
+              weekly: {
                 $sum: {
-                  $cond: [{ $gte: ['$firstOrderDate', thirtyDaysAgo] }, 1, 0],
-                },
+                  $cond: [{ $gte: ["$createdAt", sevenDaysAgo] }, 1, 0]
+                }
               },
-              returningCustomers: {
+
+              biweekly: {
                 $sum: {
-                  $cond: [{ $gt: ['$totalOrders', 1] }, 1, 0],
-                },
+                  $cond: [{ $gte: ["$createdAt", fourteenDaysAgo] }, 1, 0]
+                }
               },
-              avgOrders: { $avg: '$totalOrders' },
-            },
-          },
+
+              monthly: {
+                $sum: {
+                  $cond: [{ $gte: ["$createdAt", thirtyDaysAgo] }, 1, 0]
+                }
+              }
+
+            }
+          }
         ],
 
-        // demographics - top cities
-        demographics: [
-          { $group: { _id: '$city', count: { $sum: 1 } } },
-          { $sort: { count: -1 } },
-        ],
-
-        // customer value segmentation
-        customerValueRaw: [
-          {
-            $project: {
-              avgOrderValue: {
-                $cond: [
-                  { $gt: ['$totalOrders', 0] },
-                  { $divide: ['$totalSpent', '$totalOrders'] },
-                  0,
-                ],
-              },
-              totalSpent: 1,
-            },
-          },
-          { $sort: { totalSpent: -1 } },
-        ],
-
-        // retention ratio
-        retentionTrend: [
-          {
-            $project: {
-              isReturning: {
-                $cond: [{ $gt: ['$totalOrders', 1] }, 1, 0],
-              },
-              weekIndex: {
-                $floor: {
-                  $divide: [
-                    { $subtract: [new Date(), '$firstOrderDate'] },
-                    1000 * 60 * 60 * 24 * 7,
-                  ],
-                },
-              },
-            },
-          },
+        /** ---------------- CUSTOMER GROUP ---------------- */
+        customers: [
           {
             $group: {
-              _id: '$weekIndex',
-              rate: { $avg: '$isReturning' },
+              _id: "$customerId",
+              totalOrders: { $sum: 1 },
+              totalSpent: { $sum: "$payoutSummary.grandTotal" },
+              firstOrderDate: { $min: "$createdAt" },
+              city: { $first: "$deliveryAddress.city" },
             },
-          },
-          { $sort: { _id: 1 } },
-          { $limit: 4 },
+          }
         ],
-        // peak order heatmap (day of week + hour)
+
+        /** ---------------- HEATMAP ---------------- */
         heatmap: [
+          {
+            $match: {
+              createdAt: { $gte: sevenDaysAgo }
+            }
+          },
           {
             $group: {
               _id: {
                 day: {
                   $dayOfWeek: {
-                    date: '$firstOrderDate',
-                    timezone: 'Europe/Lisbon',
-                  },
+                    date: "$createdAt",
+                    timezone: "Europe/Lisbon"
+                  }
                 },
                 hour: {
                   $hour: {
-                    date: '$firstOrderDate',
-                    timezone: 'Europe/Lisbon',
-                  },
-                },
+                    date: "$createdAt",
+                    timezone: "Europe/Lisbon"
+                  }
+                }
               },
-              orders: { $sum: 1 },
-            },
-          },
-        ],
-      },
-    },
-  ]);
+              orders: { $sum: 1 }
+            }
+          }
+        ]
 
-  const cards = facet?.cardStats?.[0] || {};
-  const demographicsRaw = facet?.demographics || [];
-  const valueRaw = facet?.customerValueRaw || [];
-  const retentionRaw = facet?.retentionTrend || [];
-  const heatmapRaw = facet?.heatmap || [];
-  const totalCustomers = cards.totalCustomers || 0;
+      }
+    }
+  ])
+
+  const orderFrequencyRaw = facet?.orderFrequency?.[0] || {}
+  const customersRaw = facet?.customers || []
+  const heatmapRaw = facet?.heatmap || []
+
+  const totalCustomers = customersRaw.length
+
+  const newCustomers = customersRaw.filter(
+    (c: any) => c.firstOrderDate >= thirtyDaysAgo
+  ).length
+
+  const returningCustomers = customersRaw.filter(
+    (c: any) => c.totalOrders > 1
+  ).length
+
+  const avgOrders =
+    totalCustomers > 0
+      ? (
+        customersRaw.reduce(
+          (acc: number, c: any) => acc + c.totalOrders,
+          0
+        ) / totalCustomers
+      ).toFixed(1)
+      : "0.0"
+
+  /** ---------------- DEMOGRAPHICS ---------------- */
+  const cityMap: Record<string, number> = {}
+
+  customersRaw.forEach((c: any) => {
+    if (!c.city) return
+    cityMap[c.city] = (cityMap[c.city] || 0) + 1
+  })
+
+  const demographicsRaw = Object.entries(cityMap)
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count)
+
+  /** ---------------- VALUE SEGMENTS ---------------- */
+  const valueRaw = customersRaw
+    .map((c: any) => ({
+      avgOrderValue:
+        c.totalOrders > 0 ? c.totalSpent / c.totalOrders : 0,
+      totalSpent: c.totalSpent
+    }))
+    .sort((a: any, b: any) => b.totalSpent - a.totalSpent)
 
   const getSegmentAvg = (percent: number) => {
-    if (!valueRaw.length) return '0.00';
 
-    const limit = Math.ceil(valueRaw.length * (percent / 100));
-    const segment = valueRaw.slice(0, limit);
+    if (!valueRaw.length) return "0.00"
+
+    const limit = Math.ceil(valueRaw.length * (percent / 100))
+    const segment = valueRaw.slice(0, limit)
 
     const sum = segment.reduce(
       (acc: number, curr: any) => acc + curr.avgOrderValue,
-      0,
-    );
+      0
+    )
 
-    return roundTo2(sum / segment.length);
-  };
+    return roundTo2(sum / segment.length)
+  }
+
+
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+  const formatHour = (hour: number) => {
+    const suffix = hour >= 12 ? "PM" : "AM"
+    const h = hour % 12 || 12
+    return `${h.toString().padStart(2, "0")} ${suffix}`
+  }
 
   return {
     summaryCards: {
       totalCustomers: {
         value: totalCustomers,
-        subValue: `${cards.newCustomers || 0} new`,
+        subValue: `${newCustomers} new`,
       },
 
       returningCustomers: {
-        value: cards.returningCustomers || 0,
-        subValue: `${(cards.avgOrders || 0).toFixed(1)} orders/avg`,
+        value: returningCustomers,
+        subValue: `${avgOrders} orders/avg`,
       },
 
       topCity: {
-        value: demographicsRaw[0]?._id || 'N/A',
+        value: demographicsRaw[0]?.city || "N/A",
         subValue:
           totalCustomers > 0
-            ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
-              0,
-            )}% of customers`
-            : '0%',
+            ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(0)}% of customers`
+            : "0%",
       },
 
       retentionRate: {
         value:
           totalCustomers > 0
-            ? `${((cards.returningCustomers / totalCustomers) * 100).toFixed(
-              0,
-            )}%`
-            : '0%',
-        subValue: 'Avg. Repeat',
+            ? `${((returningCustomers / totalCustomers) * 100).toFixed(0)}%`
+            : "0%",
+        subValue: "Avg. Repeat",
       },
     },
 
     demographics: demographicsRaw.map((d: any) => ({
-      city: d._id,
+      city: d.city,
       percentage:
         totalCustomers > 0
           ? `${((d.count / totalCustomers) * 100).toFixed(0)}%`
-          : '0%',
+          : "0%",
     })),
 
     customerValue: [
-      { segment: 'Top 1%', avgOrder: `€${getSegmentAvg(1)}` },
-      { segment: 'Top 5%', avgOrder: `€${getSegmentAvg(5)}` },
-      { segment: 'Top 10%', avgOrder: `€${getSegmentAvg(10)}` },
+      { segment: "Top 1%", avgOrder: `€${getSegmentAvg(1)}` },
+      { segment: "Top 5%", avgOrder: `€${getSegmentAvg(5)}` },
+      { segment: "Top 10%", avgOrder: `€${getSegmentAvg(10)}` },
     ],
 
-    retentionTrend: retentionRaw.map((r: any) => ({
-      week: `Week ${r._id + 1}`,
-      rate: `${(r.rate * 100).toFixed(0)}%`,
-    })),
+    orderFrequency: [
+      {
+        name: "weekly",
+        orders: orderFrequencyRaw.weekly || 0,
+      },
+      {
+        name: "biweekly",
+        orders: orderFrequencyRaw.biweekly || 0,
+      },
+      {
+        name: "monthly",
+        orders: orderFrequencyRaw.monthly || 0,
+      },
+    ],
 
     heatmap: heatmapRaw.map((h: any) => ({
-      day: h._id.day,
-      hour: h._id.hour,
+      day: days[h._id.day - 1],
+      hour: formatHour(h._id.hour),
       orderCount: h.orders,
     })),
-  };
-};
+  }
+}
 
 // get order trend insights
 const getOrderTrendInsights = async (currentUser: AuthUser) => {
@@ -2661,9 +2691,16 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
 
 // get admin customer insights analytics api
 const getAdminCustomerInsights = async () => {
+  const now = new Date()
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(now.getDate() - 7)
+
+  const fourteenDaysAgo = new Date()
+  fourteenDaysAgo.setDate(now.getDate() - 14)
+
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(now.getDate() - 30)
 
   const [facet] = await Order.aggregate([
 
@@ -2676,106 +2713,66 @@ const getAdminCustomerInsights = async () => {
     },
 
     {
-      $group: {
-        _id: "$customerId",
-        totalOrders: { $sum: 1 },
-        totalSpent: { $sum: "$payoutSummary.grandTotal" },
-        firstOrderDate: { $min: "$createdAt" },
-        city: { $first: "$deliveryAddress.city" },
-      },
-    },
-
-    {
       $facet: {
-
-        // Summary Cards
-        cardStats: [
+        /** ---------------- ORDER FREQUENCY ---------------- */
+        orderFrequency: [
           {
             $group: {
               _id: null,
-              totalCustomers: { $sum: 1 },
 
-              newCustomers: {
+              weekly: {
                 $sum: {
-                  $cond: [{ $gte: ["$firstOrderDate", thirtyDaysAgo] }, 1, 0],
+                  $cond: [{ $gte: ["$createdAt", sevenDaysAgo] }, 1, 0],
                 },
               },
 
-              returningCustomers: {
+              biweekly: {
                 $sum: {
-                  $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0],
+                  $cond: [{ $gte: ["$createdAt", fourteenDaysAgo] }, 1, 0],
                 },
               },
 
-              avgOrders: { $avg: "$totalOrders" },
-            },
-          },
-        ],
-
-        // Demographics
-        demographics: [
-          { $group: { _id: "$city", count: { $sum: 1 } } },
-          { $sort: { count: -1 } },
-        ],
-
-        // Customer Value Segmentation
-        customerValueRaw: [
-          {
-            $project: {
-              avgOrderValue: {
-                $cond: [
-                  { $gt: ["$totalOrders", 0] },
-                  { $divide: ["$totalSpent", "$totalOrders"] },
-                  0,
-                ],
-              },
-              totalSpent: 1,
-            },
-          },
-          { $sort: { totalSpent: -1 } },
-        ],
-
-        // Retention Trend
-        retentionTrend: [
-          {
-            $project: {
-              isReturning: {
-                $cond: [{ $gt: ["$totalOrders", 1] }, 1, 0],
-              },
-              weekIndex: {
-                $floor: {
-                  $divide: [
-                    { $subtract: [new Date(), "$firstOrderDate"] },
-                    1000 * 60 * 60 * 24 * 7,
-                  ],
+              monthly: {
+                $sum: {
+                  $cond: [{ $gte: ["$createdAt", thirtyDaysAgo] }, 1, 0],
                 },
               },
             },
           },
+        ],
+
+        /** ---------------- CUSTOMER GROUP ---------------- */
+        customers: [
           {
             $group: {
-              _id: "$weekIndex",
-              rate: { $avg: "$isReturning" },
+              _id: "$customerId",
+              totalOrders: { $sum: 1 },
+              totalSpent: { $sum: "$payoutSummary.grandTotal" },
+              firstOrderDate: { $min: "$createdAt" },
+              city: { $first: "$deliveryAddress.city" },
             },
           },
-          { $sort: { _id: 1 } },
-          { $limit: 4 },
         ],
 
-        // Order Heatmap
+        /** ---------------- HEATMAP ---------------- */
         heatmap: [
+          {
+            $match: {
+              createdAt: { $gte: sevenDaysAgo },
+            },
+          },
           {
             $group: {
               _id: {
                 day: {
                   $dayOfWeek: {
-                    date: "$firstOrderDate",
+                    date: "$createdAt",
                     timezone: "Europe/Lisbon",
                   },
                 },
                 hour: {
                   $hour: {
-                    date: "$firstOrderDate",
+                    date: "$createdAt",
                     timezone: "Europe/Lisbon",
                   },
                 },
@@ -2786,28 +2783,49 @@ const getAdminCustomerInsights = async () => {
         ],
       },
     },
-  ]);
+  ])
 
-  const cards = facet?.cardStats?.[0] || {};
-  const demographicsRaw = facet?.demographics || [];
-  const valueRaw = facet?.customerValueRaw || [];
-  const retentionRaw = facet?.retentionTrend || [];
-  const heatmapRaw = facet?.heatmap || [];
-  const totalCustomers = cards.totalCustomers || 0;
+  const orderFrequencyRaw = facet?.orderFrequency?.[0] || {}
+  const customersRaw = facet?.customers || []
+  const heatmapRaw = facet?.heatmap || []
 
-  const getSegmentAvg = (percent: number) => {
-    if (!valueRaw.length) return "0.00";
+  const totalCustomers = customersRaw.length
 
-    const limit = Math.ceil(valueRaw.length * (percent / 100));
-    const segment = valueRaw.slice(0, limit);
+  const newCustomers = customersRaw.filter(
+    (c: any) => c.firstOrderDate >= thirtyDaysAgo
+  ).length
 
-    const sum = segment.reduce(
-      (acc: number, curr: any) => acc + curr.avgOrderValue,
-      0
-    );
+  const returningCustomers = customersRaw.filter(
+    (c: any) => c.totalOrders > 1
+  ).length
 
-    return roundTo2(sum / segment.length);
-  };
+  const avgOrders =
+    totalCustomers > 0
+      ? (
+        customersRaw.reduce((acc: number, c: any) => acc + c.totalOrders, 0) /
+        totalCustomers
+      ).toFixed(1)
+      : "0.0"
+
+  /** ---------------- DEMOGRAPHICS ---------------- */
+  const cityMap: Record<string, number> = {}
+
+  customersRaw.forEach((c: any) => {
+    if (!c.city) return
+    cityMap[c.city] = (cityMap[c.city] || 0) + 1
+  })
+
+  const demographicsRaw = Object.entries(cityMap)
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count)
+
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+  const formatHour = (hour: number) => {
+    const suffix = hour >= 12 ? "PM" : "AM"
+    const h = hour % 12 || 12
+    return `${h.toString().padStart(2, "0")} ${suffix}`
+  }
 
   return {
 
@@ -2815,16 +2833,16 @@ const getAdminCustomerInsights = async () => {
 
       totalCustomers: {
         value: totalCustomers,
-        subValue: `${cards.newCustomers || 0} new`,
+        subValue: `${newCustomers} new`,
       },
 
       returningCustomers: {
-        value: cards.returningCustomers || 0,
-        subValue: `${(cards.avgOrders || 0).toFixed(1)} orders/avg`,
+        value: returningCustomers,
+        subValue: `${avgOrders} orders/avg`,
       },
 
       topCity: {
-        value: demographicsRaw[0]?._id || "N/A",
+        value: demographicsRaw[0]?.city || "N/A",
         subValue:
           totalCustomers > 0
             ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(
@@ -2836,40 +2854,42 @@ const getAdminCustomerInsights = async () => {
       retentionRate: {
         value:
           totalCustomers > 0
-            ? `${((cards.returningCustomers / totalCustomers) * 100).toFixed(
-              0
-            )}%`
+            ? `${((returningCustomers / totalCustomers) * 100).toFixed(0)}%`
             : "0%",
         subValue: "Avg. Repeat",
       },
     },
 
     demographics: demographicsRaw.map((d: any) => ({
-      city: d._id,
+      city: d.city,
       percentage:
         totalCustomers > 0
           ? `${((d.count / totalCustomers) * 100).toFixed(0)}%`
           : "0%",
     })),
 
-    customerValue: [
-      { segment: "Top 1%", avgOrder: `€${getSegmentAvg(1)}` },
-      { segment: "Top 5%", avgOrder: `€${getSegmentAvg(5)}` },
-      { segment: "Top 10%", avgOrder: `€${getSegmentAvg(10)}` },
+    orderFrequency: [
+      {
+        name: "weekly",
+        orders: orderFrequencyRaw.weekly || 0,
+      },
+      {
+        name: "biweekly",
+        orders: orderFrequencyRaw.biweekly || 0,
+      },
+      {
+        name: "monthly",
+        orders: orderFrequencyRaw.monthly || 0,
+      },
     ],
 
-    retentionTrend: retentionRaw.map((r: any) => ({
-      week: `Week ${r._id + 1}`,
-      rate: `${(r.rate * 100).toFixed(0)}%`,
-    })),
-
     heatmap: heatmapRaw.map((h: any) => ({
-      day: h._id.day,
-      hour: h._id.hour,
+      day: days[h._id.day - 1],
+      hour: formatHour(h._id.hour),
       orderCount: h.orders,
     })),
-  };
-};
+  }
+}
 
 // get platform earnings api for admin
 const getPlatformEarnings = async (query: Record<string, any>) => {
