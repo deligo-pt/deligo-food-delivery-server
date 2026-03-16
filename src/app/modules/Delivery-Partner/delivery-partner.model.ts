@@ -231,6 +231,7 @@ const deliveryPartnerSchema = new Schema<
     // Documents
     //-------------------------------------------------
     documents: {
+      myPhoto: { type: String, default: '' },
       idProofFront: { type: String, default: '' },
       idProofBack: { type: String, default: '' },
       drivingLicenseFront: { type: String, default: '' },

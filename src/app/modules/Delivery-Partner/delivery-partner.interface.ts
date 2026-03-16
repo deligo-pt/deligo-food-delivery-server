@@ -160,6 +160,7 @@ export type TDeliveryPartner = {
   // 9) Documents
   // -------------------------------------------------
   documents?: {
+    myPhoto?: string;
     idProofFront?: string;
     idProofBack?: string;
     drivingLicenseFront?: string;
@@ -201,10 +202,10 @@ export type TDeliveryPartner = {
 // Document Upload Types (unchanged)
 export type TDeliveryPartnerImageDocuments = {
   docImageTitle:
-    | 'idProofFront'
-    | 'idProofBack'
-    | 'drivingLicenseFront'
-    | 'drivingLicenseBack'
-    | 'vehicleRegistration'
-    | 'criminalRecordCertificate';
+  | 'idProofFront'
+  | 'idProofBack'
+  | 'drivingLicenseFront'
+  | 'drivingLicenseBack'
+  | 'vehicleRegistration'
+  | 'criminalRecordCertificate';
 };
