@@ -63,7 +63,7 @@ const transactionSchema = new Schema<TTransaction>(
     },
     paymentMethod: {
       type: String,
-      enum: ['CARD', 'MOBILE', 'WALLET', 'CASH', 'BANK_TRANSFER', 'OTHER'],
+      enum: ['CARD', 'MB_WAY', 'WALLET', 'CASH', 'BANK_TRANSFER', 'OTHER'],
       required: true,
     },
     remarks: {

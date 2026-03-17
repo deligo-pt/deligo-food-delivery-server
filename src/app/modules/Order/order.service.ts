@@ -83,7 +83,7 @@ const createOrderAfterReduniqPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  const successCodes = ['00000000', '17000000000'];
+  const successCodes = ['00000000', '17000000000', "10000000000"];
 
   if (
     !paymentData ||
