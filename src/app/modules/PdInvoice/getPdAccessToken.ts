@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
-import { RedisService } from '../../utils/redis';
+import { RedisService } from '../../config/redis';
 import config from '../../config';
 
 export const getPdAccessToken = async () => {

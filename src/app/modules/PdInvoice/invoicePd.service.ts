@@ -1,55 +1,53 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
-import httpStatus from 'http-status';
-import { Order } from '../Order/order.model';
-import AppError from '../../errors/AppError';
-import config from '../../config';
 import { getPdAccessToken } from './getPdAccessToken';
+import config from '../../config';
+import { Order } from '../Order/order.model';
 
-// getInvoicePdfFromPd
-const getInvoicePdfFromPd = async (orderId: string) => {
+const downloadOrderInvoicePdf = async (orderId: string) => {
+  const order = await Order.findOne({ orderId });
+
+  if (!order || !order.invoiceSync?.isSynced || !order.invoiceSync.invoiceNo) {
+    throw new Error('Invoice is not synced yet with Pasta Digital.');
+  }
+
   try {
-    const order = await Order.findOne({ orderId });
+    const pdToken = await getPdAccessToken();
 
-    if (!order || !order.invoiceSync?.invoiceNo) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Order not found or invoice number is missing.',
-      );
+    const fullInvoiceNo = order.invoiceSync.invoiceNo;
+    const [docType, rest] = fullInvoiceNo.split(' ');
+    const [serial, number] = rest.split('/');
+
+    const response = await axios.get(
+      `${config.pastaDigital.api_url}/sales/pdf`,
+      {
+        params: {
+          document: docType,
+          serial: serial,
+          number: number,
+        },
+        headers: {
+          Authorization: `Bearer ${pdToken}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+
+    if (response.data && response.data.pdf_base64) {
+      return response.data.pdf_base64;
     }
 
-    const fullNo = order.invoiceSync.invoiceNo; // e.g., "FS A/19"
-    const parts = fullNo.split(' '); // ["FS", "A/19"]
-    const transDocument = parts[0]; // "FS"
-    const [transSerial, transDocNumber] = parts[1].split('/'); // "A", "19"
-
-    const url = `${config.pastaDigital.api_url}/documents/pdf`;
-
-    const response = await axios.post(url, {
-      params: {
-        TransDocument: transDocument, // "FS"
-        TransSerial: transSerial, // "A"
-        TransDocNumber: transDocNumber, // "19"
-        copies: 1,
-      },
-      headers: {
-        Authorization: `Bearer ${await getPdAccessToken()}`,
-        Accept: 'application/json',
-      },
-    });
-
-    if (response.data && response.data.PDF) {
-      return response.data.PDF;
-    }
-
-    return response.data;
+    throw new Error('PDF data not found in the API response.');
   } catch (error: any) {
-    console.error('PDF Fetch Error URL:', error.config?.url);
-    console.error('PDF Fetch Error Params:', error.config?.params);
-    throw error;
+    const errorDetail = error.response?.data || error.message;
+    console.error('Failed to fetch PDF from Pasta Digital:', errorDetail);
+
+    throw new Error(
+      'Could not retrieve PDF invoice string from Pasta Digital.',
+    );
   }
 };
 
 export const InvoicePdService = {
-  getInvoicePdfFromPd,
+  downloadOrderInvoicePdf,
 };
