@@ -18,20 +18,35 @@ const downloadOrderInvoicePdf = async (orderId: string) => {
     const [docType, rest] = fullInvoiceNo.split(' ');
     const [serial, number] = rest.split('/');
 
-    const response = await axios.get(
-      `${config.pastaDigital.api_url}/sales/pdf`,
-      {
-        params: {
-          document: docType,
-          serial: serial,
-          number: number,
-        },
-        headers: {
-          Authorization: `Bearer ${pdToken}`,
-          Accept: 'application/json',
-        },
+    const baseUrl = config.pastaDigital.api_url!.replace(/\/$/, '');
+
+    const response = await axios({
+      method: 'get',
+      url: `${baseUrl}/sales/pdf`,
+      params: {
+        document: docType,
+        serial: serial,
+        number: number,
       },
-    );
+      headers: {
+        Authorization: `Bearer ${pdToken}`,
+        Accept: 'application/json',
+      },
+    });
+    // const response = await axios.get(
+    //   `${config.pastaDigital.api_url}/sales/pdf`,
+    //   {
+    //     params: {
+    //       document: docType,
+    //       serial: serial,
+    //       number: number,
+    //     },
+    //     headers: {
+    //       Authorization: `Bearer ${pdToken}`,
+    //       Accept: 'application/json',
+    //     },
+    //   },
+    // );
 
     if (response.data && response.data.pdf_base64) {
       return response.data.pdf_base64;
