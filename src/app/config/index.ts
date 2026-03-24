@@ -47,6 +47,9 @@ export default {
   firebase_service_account: process.env.FIREBASE_SERVICE_ACCOUNT,
   redis: {
     local_url: process.env.REDIS_LOCAL_URL,
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    password: process.env.REDIS_PASSWORD,
   },
   pastaDigital: {
     api_url: process.env.PD_API_URL,

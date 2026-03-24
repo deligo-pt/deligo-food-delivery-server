@@ -6,7 +6,7 @@ import nodemailer from 'nodemailer';
 import config from '../config';
 import AppError from '../errors/AppError';
 import httpStatus from 'http-status';
-import { RedisService } from './redis';
+import { RedisService } from '../config/redis';
 
 Handlebars.registerHelper('eq', (a, b) => a === b);
 
