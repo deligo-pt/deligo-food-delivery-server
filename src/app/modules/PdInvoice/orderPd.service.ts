@@ -2,11 +2,10 @@ import axios from 'axios';
 import { getPdAccessToken } from './getPdAccessToken';
 import config from '../../config';
 import { Order } from '../Order/order.model';
-import { TOrder } from '../Order/order.interface';
 import { roundTo2 } from '../../utils/mathProvider';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const mapOrderToPdPayload = (order: TOrder) => {
+const mapOrderToPdPayload = (order: any) => {
   const details = order.items.flatMap((item: any) => {
     let productRef = item.variationSku || item.sku;
 
@@ -65,6 +64,7 @@ const mapOrderToPdPayload = (order: TOrder) => {
       payment_method_id: paymentMethodId,
     },
   ];
+  // const email = order.customerId?.email;
 
   return {
     customer_id: 5,
@@ -74,11 +74,15 @@ const mapOrderToPdPayload = (order: TOrder) => {
     tax_included: false,
     details: details,
     payments: payments,
+    // send_email: true,
+    // email: email || 'mamudmdemon@gmail.com',
   };
 };
 // syncOrderWithPd
 const syncOrderWithPd = async (orderId: string) => {
-  const order = await Order.findById(orderId).populate('items.productId');
+  const order = await Order.findById(orderId)
+    .populate('items.productId')
+    .populate('customerId');
 
   if (!order || order.invoiceSync?.isSynced) return;
 
