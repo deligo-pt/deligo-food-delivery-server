@@ -132,14 +132,19 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
 
 // download invoice pdf from pasta digital controller
 const downloadInvoicePdfFromPd = catchAsync(async (req, res) => {
-  const result = await InvoicePdService.getInvoicePdfFromPd(req.params.orderId);
+  const base64Data = await InvoicePdService.downloadOrderInvoicePdf(
+    req.params.orderId,
+  );
 
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Invoice PDF downloaded successfully',
-    data: result,
-  });
+  const pdfBuffer = Buffer.from(base64Data, 'base64');
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader(
+    'Content-Disposition',
+    `inline; filename=invoice-${req.params.orderId}.pdf`,
+  );
+
+  res.status(httpStatus.OK).send(pdfBuffer);
 });
 
 // get delivery partner dispatch order
