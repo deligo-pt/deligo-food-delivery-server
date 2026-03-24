@@ -6,7 +6,6 @@ import { seed } from './app/utils/seeding';
 import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
 import { initOrderCronJobs } from './app/utils/orderCleanup';
-
 const server = http.createServer(app);
 
 // Handle unexpected errors

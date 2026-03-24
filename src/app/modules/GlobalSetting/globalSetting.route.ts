@@ -11,7 +11,7 @@ router.post(
   '/create',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(GlobalSettingValidation.createGlobalSettingValidationSchema),
-  GlobalSettingControllers.createGlobalSettings
+  GlobalSettingControllers.createGlobalSettings,
 );
 
 // update global setting route
@@ -19,14 +19,14 @@ router.patch(
   '/update',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(GlobalSettingValidation.updateGlobalSettingValidationSchema),
-  GlobalSettingControllers.updateGlobalSettings
+  GlobalSettingControllers.updateGlobalSettings,
 );
 
 // get all global setting route
 router.get(
   '/',
   auth('ADMIN', 'SUPER_ADMIN'),
-  GlobalSettingControllers.getGlobalSettingsForAdmin
+  GlobalSettingControllers.getGlobalSettingsForAdmin,
 );
 
 export const GlobalSettingRoutes = router;

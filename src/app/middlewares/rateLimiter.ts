@@ -2,9 +2,9 @@
 import { NextFunction, Request, Response } from 'express';
 import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
-import { redisClient } from '../utils/redis';
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
+import { redisClient } from '../config/redis';
 export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
   const windowMs = 1 * 60 * 1000;
   const max = type === 'auth' ? 10 : 100;
