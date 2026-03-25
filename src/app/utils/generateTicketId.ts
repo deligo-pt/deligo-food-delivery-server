@@ -2,7 +2,7 @@ import { Counter } from '../modules/Support/support.model';
 
 /**
  * Generates a unique readable Ticket ID
- * Format: TIC-YYMM-SERIAL (Example: TIC-2601-0005)
+ * Format: TIC-YYMM-SERIAL (Example: TIC-2601-00001)
  */
 export const generateTicketId = async (): Promise<string> => {
   const date = new Date();
