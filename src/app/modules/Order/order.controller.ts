@@ -3,8 +3,8 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/user.constant';
-import { InvoicePdService } from '../PdInvoice/invoicePd.service';
 import { TImageFile } from '../../interfaces/image.interface';
+import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
 
 // create order after reduniq payment
 const createOrderAfterReduniqPayment = catchAsync(async (req, res) => {
