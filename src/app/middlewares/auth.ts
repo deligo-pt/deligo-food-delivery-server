@@ -10,22 +10,29 @@ import { findUserById } from '../utils/findUserByEmailOrId';
 
 const auth = (...requiredRoles: TUserRole[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    let token: string | undefined;
+
+    // authorization header
     const authHeader = req.headers.authorization;
-    let token;
 
-    // checking if the token is missing
-    if (!authHeader) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+    if (authHeader) {
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      } else {
+        token = authHeader;
+      }
     }
 
-    if (authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
-    } else {
-      token = authHeader;
+    // cookies token
+    const authCookies = req.cookies?.accessToken;
+
+    if (!token && authCookies) {
+      token = authCookies;
     }
+
 
     if (!token) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorizedddddd!');
     }
 
     const decoded = verifyToken(
@@ -56,7 +63,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
         iat as number,
       )
     ) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized2!');
     }
 
     const isSessionActive = user.loginDevices?.some(
@@ -71,7 +78,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
     }
 
     if (requiredRoles && !requiredRoles.includes(role)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized3!');
     }
 
     req.user = user;
