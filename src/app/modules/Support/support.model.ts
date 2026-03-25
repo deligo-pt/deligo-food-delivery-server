@@ -16,7 +16,7 @@ const participantSchema = new Schema(
     },
     name: { type: String },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const supportConversationSchema = new Schema<TSupportConversation>(
@@ -92,7 +92,7 @@ const supportConversationSchema = new Schema<TSupportConversation>(
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false, index: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Sorting for inbox
@@ -139,8 +139,13 @@ const supportMessageSchema = new Schema<TSupportMessage>(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
+
+const counterSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  seq: { type: Number, default: 0 },
+});
 
 // Message order
 supportMessageSchema.index({ createdAt: -1 });
@@ -155,10 +160,12 @@ supportMessageSchema.pre('save', function (next) {
 
 export const SupportConversation = model<TSupportConversation>(
   'SupportConversation',
-  supportConversationSchema
+  supportConversationSchema,
 );
 
 export const SupportMessage = model<TSupportMessage>(
   'SupportMessage',
-  supportMessageSchema
+  supportMessageSchema,
 );
+
+export const Counter = model('Counter', counterSchema);
