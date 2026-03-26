@@ -83,18 +83,14 @@ const createOrderAfterReduniqPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  const successCodes = ['00000000', '17000000000', '10000000000'];
-
   if (
     !paymentData ||
-    !paymentData.result ||
-    !successCodes.includes(paymentData.result.code) ||
     !paymentData.transaction ||
     paymentData.transaction.status !== '4'
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Payment not completed or failed',
+      'Payment failed. Please try again.',
     );
   }
 

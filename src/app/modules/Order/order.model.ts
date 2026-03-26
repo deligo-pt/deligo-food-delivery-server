@@ -145,7 +145,7 @@ const orderSchema = new Schema<TOrder>(
 
     paymentMethod: {
       type: String,
-      enum: ['CARD', 'MB_WAY', 'APPLE_PAY', 'OTHER'],
+      enum: ['CARD', 'MB_WAY', 'APPLE_PAY', 'PAYPAL', 'GOOGLE_PAY', 'OTHER'],
       required: true,
     },
     paymentStatus: {

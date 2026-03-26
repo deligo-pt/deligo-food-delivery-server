@@ -33,13 +33,20 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
 
   if (err instanceof multer.MulterError) {
     statusCode = 400;
-    message = err.message;
+
     if (err.code === 'LIMIT_FILE_SIZE') {
       message = 'File size is too large. Maximum limit is 5MB.';
+    } else if (err.code === 'LIMIT_FILE_COUNT') {
+      message = 'You cannot upload more than 5 files at a time.';
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      message = 'Unexpected field. Please check the key name (e.g., "files").';
+    } else {
+      message = err.message;
     }
+
     errorSources = [
       {
-        path: 'file',
+        path: err.field as string,
         message: message,
       },
     ];

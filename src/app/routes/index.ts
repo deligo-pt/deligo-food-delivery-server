@@ -16,7 +16,6 @@ import { OfferRoutes } from '../modules/Offer/offer.route';
 import { RatingRoutes } from '../modules/Rating/rating.route';
 import { AnalyticsRoutes } from '../modules/Analytics/analytics.route';
 import { CheckoutRoutes } from '../modules/Checkout/checkout.route';
-import { SupportRoutes } from '../modules/Support/support.route';
 import { ZoneRoutes } from '../modules/Zone/zone.route';
 import { GlobalSettingRoutes } from '../modules/GlobalSetting/globalSetting.route';
 import { AddOnsRoutes } from '../modules/Add-Ons/addOns.route';
@@ -27,6 +26,8 @@ import { TestRoutes } from '../modules/Test/test.route';
 import { PayoutRoutes } from '../modules/Payout/payout.route';
 import { WalletRoutes } from '../modules/Wallet/wallet.route';
 import { transactionRoutes } from '../modules/Transaction/transaction.route';
+import { UploadRoutes } from '../modules/Upload/upload.route';
+import { SupportRoutes } from '../modules/Support/support.route';
 
 const router = express.Router();
 
@@ -143,6 +144,10 @@ const moduleRoutes = [
   {
     path: '/transactions',
     route: transactionRoutes,
+  },
+  {
+    path: '/uploads',
+    route: UploadRoutes,
   },
 ];
 
