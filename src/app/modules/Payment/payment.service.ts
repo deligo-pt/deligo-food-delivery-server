@@ -8,7 +8,13 @@ import { AuthUser } from '../../constant/user.constant';
 // create reduniq payment intent service
 const createReduniqPayment = async (
   checkoutSummaryId: string,
-  paymentMethod: 'CARD' | 'MB_WAY' | 'APPLE_PAY' | 'OTHER',
+  paymentMethod:
+    | 'CARD'
+    | 'MB_WAY'
+    | 'APPLE_PAY'
+    | 'PAYPAL'
+    | 'GOOGLE_PAY'
+    | 'OTHER',
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'Summary not found');
@@ -45,6 +51,8 @@ const createReduniqPayment = async (
     CARD: '117',
     MB_WAY: '110',
     APPLE_PAY: '115',
+    PAYPAL: '105',
+    GOOGLE_PAY: '114',
     OTHER: null,
   };
 
