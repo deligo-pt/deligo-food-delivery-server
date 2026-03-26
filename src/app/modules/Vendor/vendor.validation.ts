@@ -45,6 +45,9 @@ const vendorUpdateValidationSchema = z.object({
         swiftCode: z.string().optional(),
       })
       .optional(),
+
+    // admin only
+    isUpdateLocked: z.boolean().optional(),
   }),
 });
 

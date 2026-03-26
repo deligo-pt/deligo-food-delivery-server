@@ -7,9 +7,15 @@ import { AuthUser } from '../../constant/user.constant';
 // Vendor Update Controller
 const vendorUpdate = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
+  const payload = req.body;
+
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    delete payload.isUpdateLocked;
+    delete payload.isDeleted;
+  }
   const result = await VendorServices.vendorUpdate(
     req.params.vendorId,
-    req?.body,
+    payload,
     currentUser,
   );
 

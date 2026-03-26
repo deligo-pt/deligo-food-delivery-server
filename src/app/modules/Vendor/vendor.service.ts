@@ -10,45 +10,48 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { BusinessCategory } from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
+import { flattenObject } from '../../utils/flattenObject';
 
-// Vendor Update Service
+/**
+ * Service to update vendor profile information.
+ * Handles authorization, update-locking logic, business category validation,
+ * GeoJSON location derivation, and safe nested updates using flattening.
+ */
 const vendorUpdate = async (
   id: string,
   payload: Partial<TVendor>,
   currentUser: AuthUser,
 ) => {
-  // -----------------------------------------
-  // Check if vendor exists
-  // -----------------------------------------
+  // 1. Initial check to ensure the vendor exists in the system
   const existingVendor = await Vendor.findOne({ userId: id });
 
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found.');
   }
 
-  // -----------------------------------------
-  // Check if vendor is locked for update
-  // -----------------------------------------
-  if (existingVendor.isUpdateLocked) {
+  // 2. Define access control: Admins/Super Admins or the Account Owner (Vendor/Sub-Vendor)
+  const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  const isOwner =
+    (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
+    currentUser.userId === existingVendor.userId;
+
+  // 3. Authorization: Block unauthorized users from modifying the vendor profile
+  if (!isStaff && !isOwner) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized for this action.',
+    );
+  }
+
+  // 4. Update-Lock: Prevent changes if the profile is locked, unless bypassed by an Admin
+  if (existingVendor.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Vendor update is locked. Please contact support.',
     );
   }
 
-  // -----------------------------------------
-  // Authorization check
-  // -----------------------------------------
-  if (currentUser.userId !== existingVendor.userId) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this vendor.',
-    );
-  }
-
-  // -----------------------------------------
-  // Validate business type if provided
-  // -----------------------------------------
+  // 5. Business Validation: Verify that the provided business type exists in the database
   if (payload.businessDetails?.businessType) {
     const exists = await BusinessCategory.findOne({
       name: payload.businessDetails.businessType,
@@ -59,9 +62,7 @@ const vendorUpdate = async (
     }
   }
 
-  // -----------------------------------------
-  // Derive GeoJSON from latitude/longitude
-  // -----------------------------------------
+  // 6. Geospatial Data: Generate GeoJSON Point if latitude and longitude are provided
   if (payload.businessLocation) {
     const { longitude, latitude } = payload.businessLocation;
 
@@ -76,13 +77,15 @@ const vendorUpdate = async (
       };
     }
   }
-  // -----------------------------------------
-  // Update vendor
-  // -----------------------------------------
+
+  // 7. Data Safety: Flatten the payload to prevent accidental overwriting of nested objects in MongoDB
+  const flattenedPayload = flattenObject(payload);
+
+  // 8. Execution: Perform the update using findOneAndUpdate with the atomic $set operator
   const updatedVendor = await Vendor.findOneAndUpdate(
     { userId: existingVendor.userId },
-    { $set: payload },
-    { new: true },
+    { $set: flattenedPayload },
+    { new: true, runValidators: true }, // Ensure new data adheres to schema rules
   );
 
   if (!updatedVendor) {
@@ -95,47 +98,72 @@ const vendorUpdate = async (
   return updatedVendor;
 };
 
-// vendor doc image upload service
+/**
+ * Service to upload or update vendor document images (businessLicenseDoc, taxDoc, Store Photo, etc.)
+ * Handles old image cleanup, authorization, and update-lock bypass for admins.
+ */
 const vendorDocImageUpload = async (
   file: string | undefined,
   data: TVendorImageDocuments,
   currentUser: AuthUser,
   vendorId: string,
 ) => {
+  // 1. Check if the vendor exists in the database
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  if (existingVendor?.isUpdateLocked) {
+  // 2. Define user roles and access rights
+  const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  const isOwner =
+    (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
+    currentUser.userId === existingVendor.userId;
+
+  // 3. Authorization: Only Admins or the Account Owner can perform this action
+  if (!isStaff && !isOwner) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized for this action.',
+    );
+  }
+
+  // 4. Protection: Block updates if the profile is locked (Admins can bypass this lock)
+  if (existingVendor.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Vendor update is locked. Please contact support.',
     );
   }
 
-  if (currentUser?.userId !== existingVendor?.userId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You are not authorize to upload document image!',
-    );
-  }
-
-  // delete previous image if exists
   const docTitle = data?.docImageTitle;
 
-  if (docTitle && existingVendor.documents?.[docTitle]) {
-    const oldImage = existingVendor.documents[docTitle];
+  // 5. Cleanup: If a new file is uploaded, delete the previous image from Cloudinary to save space
+  if (
+    docTitle &&
+    file &&
+    existingVendor.documents?.[
+      docTitle as keyof typeof existingVendor.documents
+    ]
+  ) {
+    const oldImage = (existingVendor.documents as any)[docTitle];
+
+    // Asynchronous cleanup: We don't want to block the user response if Cloudinary fails
     deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.error(err);
+      console.error('Cloudinary deletion failed:', err);
     });
   }
 
-  if (data.docImageTitle && file) {
+  // 6. Update: Set the new file path to the specific document field
+  if (docTitle && file) {
+    // Spread existing documents to prevent accidental data loss
     existingVendor.documents = {
       ...existingVendor.documents,
-      [data.docImageTitle]: file,
-    };
+      [docTitle]: file,
+    } as any;
+
+    // Explicitly tell Mongoose that the nested 'documents' object has changed
+    existingVendor.markModified('documents');
     await existingVendor.save();
   }
 
@@ -146,7 +174,6 @@ const vendorDocImageUpload = async (
 };
 
 // vendor business location update service
-
 const updateVendorLiveLocation = async (
   payload: TLiveLocationPayload,
   currentUser: AuthUser,
