@@ -12,7 +12,7 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { formatEstimatedTime } from '../../utils/formatEstimatedTime';
 
-// Checkout Service Function
+// Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const requiredFields = [
     { field: currentUser.name?.firstName, label: 'First Name' },
