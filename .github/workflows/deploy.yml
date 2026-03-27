@@ -1,4 +1,4 @@
-name:  Deploy DeliGo Food Server PT
+name:  Deploy DeliGo Food Server
 
 on:
   push:
