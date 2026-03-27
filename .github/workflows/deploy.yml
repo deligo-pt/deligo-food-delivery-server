@@ -1,4 +1,4 @@
-name:  Deploy DeliGo Food Server
+name:  Deploy DeliGo Food Server PT
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
       - name: Build project
         run: npm run build
 
-  # ---------- DEPLOY STEP ----------
+  # ---------- DEPLOY STEPs ----------
   deploy:
     needs: build   
     runs-on: ubuntu-latest
