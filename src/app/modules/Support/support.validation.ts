@@ -2,27 +2,17 @@ import { z } from 'zod';
 
 const sendMessageSchema = z.object({
   body: z.object({
-    room: z
-      .string({ required_error: 'Room is required' })
-      .min(1, 'Room must be at least 1 character long'),
-    message: z
-      .string({ required_error: 'Message is required' })
-      .min(1, 'Message must be at least 1 character long'),
-    attachments: z
-      .array(z.string())
-      .max(5, 'Attachments cannot exceed 5 files')
+    message: z.string().min(1, 'Message cannot be empty'),
+    messageType: z
+      .enum(['TEXT', 'IMAGE', 'AUDIO', 'LOCATION', 'SYSTEM'])
+      .default('TEXT'),
+    attachments: z.array(z.string().url()).optional(),
+    category: z
+      .enum(['ORDER_ISSUE', 'PAYMENT', 'IVA_INVOICE', 'TECHNICAL', 'GENERAL'])
       .optional(),
-    replyTo: z.string().optional().nullable(),
+    // Adding referenceId validation for orders or other linked entities
+    referenceId: z.string().optional(),
   }),
 });
 
-const readMessageSchema = z.object({
-  params: z.object({
-    room: z.string({ required_error: 'Room param is required' }).min(1),
-  }),
-});
-
-export const SupportValidation = {
-  sendMessageSchema,
-  readMessageSchema,
-};
+export const SupportValidation = { sendMessageSchema };

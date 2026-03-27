@@ -4,107 +4,121 @@ import { AuthUser } from '../../../constant/user.constant';
 import { SupportService } from '../../../modules/Support/support.service';
 
 type SendMessagePayload = {
-  room: string;
+  room?: string; // Optional because first message won't have a room
   message: string;
+  messageType?: 'TEXT' | 'IMAGE' | 'AUDIO' | 'LOCATION' | 'SYSTEM';
   attachments?: string[];
-  replyTo?: string | null;
 };
 
 export const registerSupportEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as AuthUser;
-  const userId = user.userId;
+  const userId = user.userId; // Custom ID (e.g., C-VXX...)
   const userRole = user.role;
 
+  // Admin joining a common room to receive notifications for all new tickets
   if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
     socket.join('admin-notifications-room');
   }
 
-  // --------------------------------------------
-  //  Join conversation room
-  //  --------------------------------------------
+  /**
+   * 1. Join a specific ticket room
+   */
   socket.on('join-conversation', ({ room }: { room: string }) => {
     if (!room) return;
     socket.join(room);
+    console.log(`User ${userId} joined room: ${room}`);
   });
 
+  /**
+   * 2. Typing Indicator
+   */
   socket.on(
     'typing',
     ({ room, isTyping }: { room: string; isTyping: boolean }) => {
+      if (!room) return;
       socket.to(room).emit('user-typing', {
         userId,
         name: user.name || 'User',
         isTyping,
       });
-    }
+    },
   );
 
-  // --------------------------------------------
-  //  Send message (GENERIC for all chat types)
-  //  --------------------------------------------
+  /**
+   * 3. Send Message (Handles Ticket Creation & Messaging)
+   */
   socket.on('send-message', async (payload: SendMessagePayload) => {
     try {
-      const { room, message, attachments, replyTo } = payload;
+      const { message, attachments, messageType } = payload;
 
-      if (!room || !message) {
-        socket.emit('chat-error', {
-          message: 'Invalid payload',
-        });
+      if (!message) {
+        socket.emit('chat-error', { message: 'Message content is required' });
         return;
       }
 
-      // DB + business logic (lock, unread, etc.)
-      const savedMessage = await SupportService.createMessage({
-        room,
-        senderId: userId,
-        senderRole: userRole,
-        message,
-        attachments,
-        replyTo,
-      });
+      // Call Service to save message and handle ticket logic
+      // Service will auto-create ticket/room if it's the first message
+      const savedMessage = await SupportService.createMessage(
+        {
+          message,
+          attachments,
+          messageType: messageType || 'TEXT',
+        },
+        user,
+      );
 
-      // Realtime emit to room
-      io.to(room).emit('new-message', savedMessage);
+      const roomName = savedMessage.room;
 
+      // Ensure the sender is in the room (crucial for new tickets)
+      socket.join(roomName);
+
+      // Realtime emit to all participants in the room
+      io.to(roomName).emit('new-message', savedMessage);
+
+      // Notify Admins if a Customer/Vendor sends a message
       if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
         io.to('admin-notifications-room').emit('incoming-notification', {
-          room: payload.room,
+          room: roomName,
           senderName: user.name || 'User',
           messagePreview: message.slice(0, 50),
-          ticketId: savedMessage.ticketId || null,
-          conversationType: (savedMessage as any).type || 'SUPPORT',
+          ticketId: savedMessage.ticketId,
           time: new Date(),
         });
       }
     } catch (error: any) {
       socket.emit('chat-error', {
-        message: error?.message || 'Message send failed',
+        message: error?.message || 'Failed to send message',
       });
     }
   });
 
-  // --------------------------------------------
-  //  Mark messages as read
-  //  --------------------------------------------
+  /**
+   * 4. Mark messages as read
+   */
   socket.on('mark-read', async ({ room }: { room: string }) => {
     try {
-      await SupportService.markReadByAdminOrUser(room, user);
+      if (!room) return;
+      await SupportService.markReadByAdminOrUser(room, userId);
 
       socket.to(room).emit('read-update', {
         room,
         userId,
         time: new Date(),
       });
-    } catch {
-      // silent fail
+    } catch (error) {
+      // Silent fail for read updates
     }
   });
 
-  // --------------------------------------------
-  //  Close conversation (lock release)
-  //  --------------------------------------------
+  /**
+   * 5. Close Ticket
+   */
   socket.on('close-conversation', async ({ room }: { room: string }) => {
     try {
-      await SupportService.closeConversation(room, user);
+      if (!room) return;
+
+      // Only Admins should close from socket (or based on your logic)
+      await SupportService.closeTicket(room, userId);
 
       io.to(room).emit('conversation-closed', {
         room,
@@ -118,6 +132,9 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
     }
   });
 
+  /**
+   * 6. Leave Room
+   */
   socket.on('leave-conversation', ({ room }: { room: string }) => {
     if (!room) return;
     socket.leave(room);

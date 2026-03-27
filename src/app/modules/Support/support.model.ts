@@ -1,143 +1,71 @@
 import { Schema, model } from 'mongoose';
-import { TSupportConversation, TSupportMessage } from './support.interface';
-import { USER_ROLE } from '../../constant/user.constant';
+import { TSupportMessage, TSupportTicket } from './support.interface';
 
-// ---------------------------------------------------------------------------
-//  Support Conversation Schema (GENERIC)
-// ---------------------------------------------------------------------------
-
-const participantSchema = new Schema(
+// TICKET SCHEMA: Handles session metadata
+const supportTicketSchema = new Schema<TSupportTicket>(
   {
-    userId: { type: String, required: true },
-    role: {
+    ticketId: { type: String, unique: true, required: true, index: true },
+    room: { type: String, required: true, unique: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      refPath: 'userModel', // Dynamic reference to multiple collections
+    },
+    userModel: {
       type: String,
-      enum: Object.values(USER_ROLE),
+      enum: ['Admin', 'Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'],
       required: true,
     },
-    name: { type: String },
-  },
-  { _id: false },
-);
-
-const supportConversationSchema = new Schema<TSupportConversation>(
-  {
-    room: {
+    activeHandler: {
       type: String,
-      required: true,
-      unique: true,
-      index: true,
+      enum: ['AI', 'AGENT', 'NONE'],
+      default: 'AI',
     },
-
-    ticketId: {
-      type: String,
-      unique: true,
-      sparse: true,
-      index: true,
-    },
-
-    // Generic participants
-    participants: {
-      type: [participantSchema],
-      required: true,
-    },
-
-    // Conversation lock owner
-    handledBy: {
-      type: String,
+    assignedAdminId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Admin',
       default: null,
-      index: true,
     },
-
-    // Lifecycle
     status: {
       type: String,
       enum: ['OPEN', 'IN_PROGRESS', 'CLOSED'],
       default: 'OPEN',
-      index: true,
     },
-
-    // Meta
-    lastMessage: { type: String, default: '' },
-    lastMessageTime: { type: Date, default: null },
-
-    // Unread count per participant
-    unreadCount: {
-      type: Map,
-      of: Number,
-      default: {},
-    },
-
-    type: {
+    category: {
       type: String,
-      enum: [
-        'SUPPORT',
-        'VENDOR_CHAT',
-        'DRIVER_CHAT',
-        'CUSTOMER_CHAT',
-        'FLEET_MANAGER_CHAT',
-        'FLEET_DRIVER_CHAT',
-        'ORDER',
-        'DIRECT',
-      ],
-      default: 'SUPPORT',
+      enum: ['ORDER_ISSUE', 'PAYMENT', 'IVA_INVOICE', 'TECHNICAL', 'GENERAL'],
+      default: 'GENERAL',
     },
-
-    referenceId: {
-      type: String,
-      default: null,
-      index: true,
-    },
-
-    // Flags
-    isActive: { type: Boolean, default: true },
-    isDeleted: { type: Boolean, default: false, index: true },
+    referenceId: { type: Schema.Types.ObjectId, ref: 'Order' },
+    lastMessage: { type: String },
+    lastMessageSender: { type: String, enum: ['CUSTOMER', 'AGENT', 'AI'] },
+    lastMessageTime: { type: Date, default: Date.now },
+    unreadCount: { type: Map, of: Number, default: {} },
+    closedAt: { type: Date },
+    closedBy: { type: Schema.Types.ObjectId, ref: 'Admin' },
   },
   { timestamps: true },
 );
 
-// Sorting for inbox
-supportConversationSchema.index({ lastMessageTime: -1 });
-
-// ---------------------------------------------------------------------------
-//  Support Message Schema (GENERIC)
-// ---------------------------------------------------------------------------
-
+// MESSAGE SCHEMA: Stores actual conversation logs
 const supportMessageSchema = new Schema<TSupportMessage>(
   {
-    ticketId: { type: String, default: null, index: true },
-    room: { type: String, required: true, index: true },
-
-    // Sender
-    senderId: { type: String, required: true, index: true },
+    ticketId: { type: String, required: true, index: true },
+    room: { type: String, required: true },
+    senderId: { type: String, required: true },
     senderRole: {
       type: String,
-      enum: Object.values(USER_ROLE),
+      enum: ['CUSTOMER', 'AGENT', 'AI'],
       required: true,
     },
-
-    // Content
     message: { type: String, required: true },
-    attachments: { type: [String], default: [] },
-
-    // Read status per participant
-    readBy: {
-      type: Map,
-      of: Boolean,
-      default: {},
-      index: true,
+    messageType: {
+      type: String,
+      enum: ['TEXT', 'IMAGE', 'AUDIO', 'LOCATION', 'SYSTEM'],
+      default: 'TEXT',
     },
-
-    // Edit / delete
-    isEdited: { type: Boolean, default: false },
-    editedAt: { type: Date, default: null },
-    isDeleted: { type: Boolean, default: false, index: true },
-
-    // Thread / reply
-    replyTo: {
-      type: Schema.Types.ObjectId,
-      ref: 'SupportMessage',
-      default: null,
-    },
+    attachments: [{ type: String }],
+    readBy: { type: Map, of: Boolean, default: {} },
   },
   { timestamps: true },
 );
@@ -147,25 +75,13 @@ const counterSchema = new Schema({
   seq: { type: Number, default: 0 },
 });
 
-// Message order
-supportMessageSchema.index({ createdAt: -1 });
+export const Counter = model('Counter', counterSchema);
 
-// Auto set editedAt
-supportMessageSchema.pre('save', function (next) {
-  if (this.isEdited && !this.editedAt) {
-    this.editedAt = new Date();
-  }
-  next();
-});
-
-export const SupportConversation = model<TSupportConversation>(
-  'SupportConversation',
-  supportConversationSchema,
+export const SupportTicket = model<TSupportTicket>(
+  'SupportTicket',
+  supportTicketSchema,
 );
-
 export const SupportMessage = model<TSupportMessage>(
   'SupportMessage',
   supportMessageSchema,
 );
-
-export const Counter = model('Counter', counterSchema);

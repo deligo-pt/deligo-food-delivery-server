@@ -72,27 +72,27 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   );
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
+  const deliveryVatRate = globalSettings?.deliveryVatRate || 23;
 
-  const MIN_DISTANCE_THRESHOLD_METERS = 1000; // 1 km threshold for fixed delivery charge
   const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
 
-  let deliveryChargeBase = 0;
+  const deliveryChargeBase =
+    distanceData.meters <= 1000
+      ? BASE_FIXED_DELIVERY_CHARGE || 0
+      : roundTo2(
+          distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
+        );
+  const deliveryGrossRaw = deliveryChargeBase * (1 + deliveryVatRate / 100);
 
-  if (distanceData.meters <= MIN_DISTANCE_THRESHOLD_METERS) {
-    deliveryChargeBase = BASE_FIXED_DELIVERY_CHARGE;
-  } else {
-    deliveryChargeBase = roundTo2(
-      distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
-    );
-  }
-  const deliveryVat = roundTo2(
-    deliveryChargeBase * ((globalSettings?.deliveryVatRate || 0) / 100),
-  );
-  const totalDeliveryCharge = roundTo2(deliveryChargeBase + deliveryVat);
+  const totalDeliveryCharge = roundTo2(deliveryGrossRaw);
+  const deliveryVat = roundTo2(totalDeliveryCharge - deliveryChargeBase);
 
   const PLATFORM_COMMISSION_RATE =
     globalSettings?.platformCommissionPercent || 0;
   const COMMISSION_VAT_RATE = globalSettings?.platformCommissionVatRate || 0;
+
+  let cumulativeRawGrandTotal = 0;
+  cumulativeRawGrandTotal += deliveryGrossRaw;
 
   const orderItems = selectedItems.map((item: any) => {
     const product = products.find(
@@ -101,6 +101,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
     let basePrice = product.pricing?.price || 0;
+
     let selectedVariantLabel = '';
     if (item.variationSku && product.variations?.length) {
       const selectedOption = product.variations
@@ -123,9 +124,10 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       const aQty = Number(a.quantity) || 0;
       const aTaxRate = Number(a.taxRate) || 0;
 
-      const addonLineTotal = roundTo2(aPrice * aQty);
+      const addonLineNet = roundTo2(aPrice * aQty);
 
-      const addonTax = roundTo2(addonLineTotal * (aTaxRate / 100));
+      const addonGrossRaw = addonLineNet * (1 + aTaxRate / 100);
+      cumulativeRawGrandTotal += addonGrossRaw; // Raw value যোগ হচ্ছে
       return {
         optionId: a.optionId,
         name: a.name,
@@ -134,9 +136,9 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         promoDiscountAmount: 0,
         unitPrice: a.unitPrice,
         quantity: a.quantity,
-        lineTotal: addonLineTotal,
+        lineTotal: addonLineNet,
         taxRate: a.taxRate || 0,
-        taxAmount: addonTax,
+        taxAmount: roundTo2(addonLineNet * (aTaxRate / 100)),
       };
     });
 
@@ -149,17 +151,16 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       0,
     );
 
-    const productLineTotal = roundTo2(priceAfterStoreDiscount * qty);
+    const productLineNet = roundTo2(priceAfterStoreDiscount * qty);
 
     const productTaxRate = product.pricing?.taxRate || 0;
 
-    const productTaxAmount = roundTo2(
-      productLineTotal * (productTaxRate / 100),
-    );
+    const productGrossRaw = productLineNet * (1 + productTaxRate / 100);
+    cumulativeRawGrandTotal += productGrossRaw; // Raw value
 
-    const itemTotalBeforeTax = roundTo2(
-      productLineTotal + totalAddonsLineTotal,
-    );
+    const productTaxAmount = roundTo2(productLineNet * (productTaxRate / 100));
+
+    const itemTotalBeforeTax = roundTo2(productLineNet + totalAddonsLineTotal);
     const itemTotalTax = roundTo2(productTaxAmount + totalAddonsTax);
 
     const commAmt = roundTo2(
@@ -190,7 +191,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         priceAfterProductDiscount: priceAfterStoreDiscount,
         promoDiscountAmount: 0,
         unitPrice: priceAfterStoreDiscount,
-        lineTotal: productLineTotal,
+        lineTotal: productLineNet,
         taxRate: product.pricing?.taxRate || 0,
         taxAmount: productTaxAmount,
       },
@@ -220,6 +221,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     (sum, i) => sum + i.productPricing.originalPrice * i.itemSummary.quantity,
     0,
   );
+  const finalGrandTotal = roundTo2(cumulativeRawGrandTotal);
+
   const totalProductDiscount = orderItems.reduce(
     (sum, i) => sum + i.itemSummary.totalProductDiscount,
     0,
@@ -228,9 +231,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     (sum, i) => sum + i.itemSummary.totalBeforeTax,
     0,
   );
-  const totalTaxAmount = orderItems.reduce(
-    (sum, i) => sum + i.itemSummary.totalTaxAmount,
-    0,
+  const totalTaxAmount = roundTo2(
+    finalGrandTotal - (taxableAmount + deliveryChargeBase),
   );
 
   const totalCommAmt = orderItems.reduce(
@@ -245,9 +247,6 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const fleetFee = roundTo2(
     deliveryChargeBase *
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
-  );
-  const grandTotal = roundTo2(
-    taxableAmount + totalTaxAmount + totalDeliveryCharge,
   );
 
   const vendorNetPayout = roundTo2(
@@ -280,14 +279,14 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     delivery: {
       charge: deliveryChargeBase,
       vatRate: globalSettings?.deliveryVatRate || 0,
-      vatAmount: deliveryVat,
-      totalDeliveryCharge: totalDeliveryCharge,
+      vatAmount: roundTo2(deliveryGrossRaw - deliveryChargeBase),
+      totalDeliveryCharge: roundTo2(deliveryGrossRaw),
       distance: roundTo2(distanceData.km),
       estimatedTime: formatEstimatedTime(distanceData.durationMinutes),
     },
 
     payoutSummary: {
-      grandTotal,
+      grandTotal: finalGrandTotal,
       deliGoCommission: {
         rate: PLATFORM_COMMISSION_RATE,
         amount: roundTo2(totalCommAmt),
