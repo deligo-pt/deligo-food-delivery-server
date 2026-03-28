@@ -18,5 +18,14 @@ router.post(
     IngredientsController.createIngredient,
 );
 
+router.post(
+    '/update-ingredient',
+    auth('ADMIN', 'SUPER_ADMIN'),
+    multerUpload.single('file'),
+    parseBody,
+    validateRequest(IngredientValidation.updateIngredientValidationSchema),
+    IngredientsController.updateIngredient,
+);
+
 
 export const IngredientRoutes = router;

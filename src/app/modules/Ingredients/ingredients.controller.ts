@@ -23,6 +23,26 @@ const createIngredient = catchAsync(async (req, res) => {
     });
 });
 
+const updateIngredient = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const file = req.file as TImageFile;
+
+    const result = await IngredientsServices.updateIngredient(
+        id,
+        req.body,
+        file?.path
+    );
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.CREATED,
+        message: 'Ingredient updated successfully',
+        data: result,
+    });
+});
+
+
 export const IngredientsController = {
-    createIngredient
+    createIngredient,
+    updateIngredient,
 }
