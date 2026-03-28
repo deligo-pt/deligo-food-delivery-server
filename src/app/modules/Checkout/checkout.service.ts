@@ -10,7 +10,6 @@ import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
-import { formatEstimatedTime } from '../../utils/formatEstimatedTime';
 
 // Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
@@ -282,7 +281,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       vatAmount: roundTo2(deliveryGrossRaw - deliveryChargeBase),
       totalDeliveryCharge: roundTo2(deliveryGrossRaw),
       distance: roundTo2(distanceData.km),
-      estimatedTime: formatEstimatedTime(distanceData.durationMinutes),
+      estimatedTime: distanceData.durationMinutes,
     },
 
     payoutSummary: {
