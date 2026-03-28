@@ -41,7 +41,7 @@ export type TOrder = {
     vatAmount: number;
     totalDeliveryCharge: number;
     distance: number;
-    estimatedTime: string;
+    estimatedTime: number;
     deliveryProofImage?: string;
   };
 
