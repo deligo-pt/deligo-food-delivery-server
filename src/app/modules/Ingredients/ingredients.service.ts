@@ -4,6 +4,8 @@ import AppError from "../../errors/AppError";
 import { IIngredients } from "./ingredients.interface";
 import { Ingredient } from "./ingredients.model";
 import { deleteSingleImageFromCloudinary } from "../../utils/deleteImage";
+import { QueryBuilder } from "../../builder/QueryBuilder";
+import { IngredientsSearchFields } from "./ingredients.constant";
 
 
 const createIngredient = async (
@@ -66,7 +68,37 @@ const updateIngredient = async (
 };
 
 
+const getIngredientDetails = async (id: string) => {
+    const result = await Ingredient.findById(id);
+    if (!result || result.isDeleted) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
+    }
+    return result;
+};
+
+const getAllIngredients = async (query: Record<string, unknown>) => {
+    const ingredientQuery = new QueryBuilder(
+        Ingredient.find({ isDeleted: false }),
+        query,
+    )
+        .search(IngredientsSearchFields)
+        .filter()
+        .sort()
+        .paginate()
+        .fields();
+
+    const result = await ingredientQuery.modelQuery;
+    const meta = await ingredientQuery.countTotal();
+
+    return {
+        meta,
+        data: result,
+    };
+};
+
 export const IngredientsServices = {
     createIngredient,
-    updateIngredient
+    updateIngredient,
+    getIngredientDetails,
+    getAllIngredients,
 };

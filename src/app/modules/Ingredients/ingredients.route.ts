@@ -9,6 +9,7 @@ import { IngredientsController } from "./ingredients.controller";
 
 const router = Router();
 
+// 1. Create Ingredient
 router.post(
     '/create-ingredient',
     auth('ADMIN', 'SUPER_ADMIN'),
@@ -18,6 +19,7 @@ router.post(
     IngredientsController.createIngredient,
 );
 
+// 2. Update ingredient
 router.post(
     '/update-ingredient',
     auth('ADMIN', 'SUPER_ADMIN'),
@@ -25,6 +27,20 @@ router.post(
     parseBody,
     validateRequest(IngredientValidation.updateIngredientValidationSchema),
     IngredientsController.updateIngredient,
+);
+
+// 3. Ingredients Details
+router.get(
+    '/:id',
+    auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+    IngredientsController.getIngredientDetails,
+);
+
+// 4. All Ingredients
+router.get(
+    '/',
+    auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+    IngredientsController.getAllIngredients,
 );
 
 

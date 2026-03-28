@@ -41,8 +41,33 @@ const updateIngredient = catchAsync(async (req, res) => {
     });
 });
 
+const getIngredientDetails = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const result = await IngredientsServices.getIngredientDetails(id);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: 'Ingredient details retrieved successfully',
+        data: result,
+    });
+});
+
+const getAllIngredients = catchAsync(async (req, res) => {
+    const result = await IngredientsServices.getAllIngredients(req.query);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: 'Ingredients retrieved successfully',
+        meta: result.meta,
+        data: result.data,
+    });
+});
 
 export const IngredientsController = {
     createIngredient,
     updateIngredient,
+    getIngredientDetails,
+    getAllIngredients
 }
