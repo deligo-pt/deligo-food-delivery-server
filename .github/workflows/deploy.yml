@@ -24,7 +24,7 @@ jobs:
       - name: Build project
         run: npm run build
 
-  # ---------- DEPLOY STEP ----------
+  # ---------- DEPLOY STEPs ----------
   deploy:
     needs: build   
     runs-on: ubuntu-latest
@@ -44,4 +44,7 @@ jobs:
             git pull origin main
             npm install
             npm run build
-            pm2 reload deligo-food-server
+
+            pm2 delete deligo-food-server || true
+            pm2 start dist/server.js --name deligo-food-server
+            pm2 save
