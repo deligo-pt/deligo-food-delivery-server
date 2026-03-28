@@ -109,7 +109,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         vatAmount: { type: Number, required: true },
         totalDeliveryCharge: { type: Number, required: true },
         distance: { type: Number, required: true },
-        estimatedTime: { type: String },
+        estimatedTime: { type: Number },
       },
       _id: false,
     },

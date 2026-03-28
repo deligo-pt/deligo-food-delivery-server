@@ -65,7 +65,7 @@ export type TCheckoutSummary = {
     vatAmount: number;
     totalDeliveryCharge: number;
     distance: number;
-    estimatedTime: string;
+    estimatedTime: number;
   };
 
   payoutSummary: {
