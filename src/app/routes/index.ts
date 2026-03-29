@@ -28,6 +28,7 @@ import { WalletRoutes } from '../modules/Wallet/wallet.route';
 import { transactionRoutes } from '../modules/Transaction/transaction.route';
 import { UploadRoutes } from '../modules/Upload/upload.route';
 import { SupportRoutes } from '../modules/Support/support.route';
+import { IngredientRoutes } from '../modules/Ingredients/ingredients.route';
 
 const router = express.Router();
 
@@ -148,6 +149,10 @@ const moduleRoutes = [
   {
     path: '/uploads',
     route: UploadRoutes,
+  },
+  {
+    path: '/ingredients',
+    route: IngredientRoutes,
   },
 ];
 
