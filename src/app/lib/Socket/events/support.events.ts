@@ -4,122 +4,139 @@ import { AuthUser } from '../../../constant/user.constant';
 import { SupportService } from '../../../modules/Support/support.service';
 
 type SendMessagePayload = {
-  room: string;
+  ticketId?: string; // Optional: first message won't have a ticketId
+  targetUserObjectId?: string; // Required for Admin to start a chat
+  targetUserId?: string; // Custom ID for target user
+  targetUserModel?: string; // 'Customer', 'Vendor' etc.
+  category?: string;
+  referenceOrderId?: string;
   message: string;
+  messageType?: 'TEXT' | 'IMAGE' | 'AUDIO' | 'LOCATION' | 'SYSTEM';
   attachments?: string[];
-  replyTo?: string | null;
 };
 
 export const registerSupportEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as AuthUser;
-  const userId = user.userId;
+  const userId = user.userId; // Custom ID (e.g., C-VXX...)
   const userRole = user.role;
 
+  // Admin joining a common room to receive notifications for all tickets
   if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
     socket.join('admin-notifications-room');
   }
 
-  // --------------------------------------------
-  //  Join conversation room
-  //  --------------------------------------------
-  socket.on('join-conversation', ({ room }: { room: string }) => {
-    if (!room) return;
-    socket.join(room);
+  /**
+   * 1. Join a specific ticket room (Using ticketId)
+   */
+  socket.on('join-conversation', ({ ticketId }: { ticketId: string }) => {
+    if (!ticketId) return;
+    socket.join(ticketId);
+    console.log(`User ${userId} joined ticket: ${ticketId}`);
   });
 
+  /**
+   * 2. Typing Indicator
+   */
   socket.on(
     'typing',
-    ({ room, isTyping }: { room: string; isTyping: boolean }) => {
-      socket.to(room).emit('user-typing', {
+    ({ ticketId, isTyping }: { ticketId: string; isTyping: boolean }) => {
+      if (!ticketId) return;
+      socket.to(ticketId).emit('user-typing', {
         userId,
         name: user.name || 'User',
         isTyping,
       });
-    }
+    },
   );
 
-  // --------------------------------------------
-  //  Send message (GENERIC for all chat types)
-  //  --------------------------------------------
+  /**
+   * 3. Send Message (Handles Ticket Creation & Messaging)
+   */
   socket.on('send-message', async (payload: SendMessagePayload) => {
     try {
-      const { room, message, attachments, replyTo } = payload;
+      const { message } = payload;
 
-      if (!room || !message) {
-        socket.emit('chat-error', {
-          message: 'Invalid payload',
-        });
+      if (!message) {
+        socket.emit('chat-error', { message: 'Message content is required' });
         return;
       }
 
-      // DB + business logic (lock, unread, etc.)
-      const savedMessage = await SupportService.createMessage({
-        room,
-        senderId: userId,
-        senderRole: userRole,
-        message,
-        attachments,
-        replyTo,
-      });
+      // Call Service (Updated to your latest service logic)
+      const savedMessage = await SupportService.createMessage(payload, user);
 
-      // Realtime emit to room
-      io.to(room).emit('new-message', savedMessage);
+      const ticketId = savedMessage.ticketId;
 
+      // Ensure the sender is in the ticket room
+      socket.join(ticketId);
+
+      // Realtime emit to all participants in the ticket room
+      io.to(ticketId).emit('new-message', savedMessage);
+
+      // Notify Admins if a non-admin sends a message
       if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
         io.to('admin-notifications-room').emit('incoming-notification', {
-          room: payload.room,
+          ticketId,
           senderName: user.name || 'User',
           messagePreview: message.slice(0, 50),
-          ticketId: savedMessage.ticketId || null,
-          conversationType: (savedMessage as any).type || 'SUPPORT',
           time: new Date(),
         });
       }
     } catch (error: any) {
       socket.emit('chat-error', {
-        message: error?.message || 'Message send failed',
+        message: error?.message || 'Failed to send message',
       });
     }
   });
 
-  // --------------------------------------------
-  //  Mark messages as read
-  //  --------------------------------------------
-  socket.on('mark-read', async ({ room }: { room: string }) => {
+  /**
+   * 4. Mark messages as read
+   */
+  socket.on('mark-read', async ({ ticketId }: { ticketId: string }) => {
     try {
-      await SupportService.markReadByAdminOrUser(room, user);
+      if (!ticketId) return;
 
-      socket.to(room).emit('read-update', {
-        room,
+      // Pass 'user' object as we updated service to accept AuthUser
+      await SupportService.markReadByAdminOrUser(ticketId, user);
+
+      socket.to(ticketId).emit('read-update', {
+        ticketId,
         userId,
         time: new Date(),
       });
-    } catch {
-      // silent fail
+    } catch (error) {
+      // Silent fail
     }
   });
 
-  // --------------------------------------------
-  //  Close conversation (lock release)
-  //  --------------------------------------------
-  socket.on('close-conversation', async ({ room }: { room: string }) => {
-    try {
-      await SupportService.closeConversation(room, user);
+  /**
+   * 5. Close Ticket
+   */
+  socket.on(
+    'close-conversation',
+    async ({ ticketId }: { ticketId: string }) => {
+      try {
+        if (!ticketId) return;
 
-      io.to(room).emit('conversation-closed', {
-        room,
-        closedBy: userId,
-        time: new Date(),
-      });
-    } catch (error: any) {
-      socket.emit('chat-error', {
-        message: error?.message || 'Failed to close conversation',
-      });
-    }
-  });
+        await SupportService.closeTicket(ticketId, user);
 
-  socket.on('leave-conversation', ({ room }: { room: string }) => {
-    if (!room) return;
-    socket.leave(room);
+        io.to(ticketId).emit('conversation-closed', {
+          ticketId,
+          closedBy: userId,
+          time: new Date(),
+        });
+      } catch (error: any) {
+        socket.emit('chat-error', {
+          message: error?.message || 'Failed to close conversation',
+        });
+      }
+    },
+  );
+
+  /**
+   * 6. Leave Room
+   */
+  socket.on('leave-conversation', ({ ticketId }: { ticketId: string }) => {
+    if (!ticketId) return;
+    socket.leave(ticketId);
   });
 };
