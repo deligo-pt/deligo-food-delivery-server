@@ -1,136 +1,74 @@
 import { Router } from 'express';
-import { SupportControllers } from './support.controller';
 import auth from '../../middlewares/auth';
+import { SupportControllers } from './support.controller';
+import validateRequest from '../../middlewares/validateRequest';
+import { SupportValidation } from './support.validation';
 
 const router = Router();
 
-/**
- * ------------------------------------------------------
- * Create or open a conversation
- * - SUPPORT  : all roles → admin
- * - DIRECT   : customer ↔ vendor (future)
- * - ORDER    : order based chat (future)
- * ------------------------------------------------------
- */
+// Send message (Handles both first contact and ongoing chat)
 router.post(
-  '/conversation',
+  '/send-message',
   auth(
     'ADMIN',
-    'VENDOR',
+    'SUPER_ADMIN',
     'CUSTOMER',
+    'VENDOR',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-    'SUPER_ADMIN',
   ),
-  SupportControllers.openOrCreateConversation,
+  validateRequest(SupportValidation.sendMessageSchema),
+  SupportControllers.sendMessage,
 );
 
-/**
- * ------------------------------------------------------
- * Get conversation list
- * - ADMIN / SUPER_ADMIN : see all
- * - Others              : see only own conversations
- * ------------------------------------------------------
- */
+// Admin view only
 router.get(
-  '/conversations',
+  '/tickets',
   auth(
     'ADMIN',
     'SUPER_ADMIN',
+    'CUSTOMER',
     'VENDOR',
     'SUB_VENDOR',
-    'CUSTOMER',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
   ),
-  SupportControllers.getAllSupportConversations,
+  SupportControllers.getAllTickets,
 );
 
-/**
- * ------------------------------------------------------
- * Get single conversation
- * - ADMIN / SUPER_ADMIN : see all
- * - Others              : see only own conversations
- * ------------------------------------------------------
- */
+// Shared chat history access
 router.get(
-  '/conversations/:room',
+  '/tickets/:ticketId/messages',
   auth(
     'ADMIN',
     'SUPER_ADMIN',
-    'VENDOR',
-    'SUB_VENDOR',
     'CUSTOMER',
+    'VENDOR',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
   ),
-  SupportControllers.getSingleSupportConversation,
+  SupportControllers.getMessagesByTicketId,
 );
 
-/**
- * ------------------------------------------------------
- * Get messages of a conversation (by room)
- * - Only participants can access
- * ------------------------------------------------------
- */
-router.get(
-  '/conversations/:room/messages',
-  auth(
-    'ADMIN',
-    'SUPER_ADMIN',
-    'VENDOR',
-    'CUSTOMER',
-    'FLEET_MANAGER',
-    'DELIVERY_PARTNER',
-  ),
-  SupportControllers.getMessagesByRoom,
-);
-
-/**
- * ------------------------------------------------------
- * Mark messages as read
- * - Generic (participant based)
- * ------------------------------------------------------
- */
+// Marking read
 router.patch(
-  '/conversations/:room/read',
+  '/tickets/:ticketId/read',
   auth(
     'ADMIN',
     'SUPER_ADMIN',
-    'VENDOR',
     'CUSTOMER',
+    'VENDOR',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
   ),
-  SupportControllers.markReadByAdminOrUser,
+  SupportControllers.markAsRead,
 );
 
-// ------------------------------------------------------
-//  Get total unread count
-// ------------------------------------------------------
-router.get(
-  '/unread-count',
-  auth(
-    'ADMIN',
-    'SUPER_ADMIN',
-    'VENDOR',
-    'CUSTOMER',
-    'FLEET_MANAGER',
-    'DELIVERY_PARTNER',
-  ),
-  SupportControllers.getTotalUnreadCount,
-);
-
-/**
- * ------------------------------------------------------
- * Close conversation (lock release)
- * - Only handler (handledBy) can close
- * ------------------------------------------------------
- */
+// Closing session
 router.patch(
-  '/conversations/:room/close',
+  '/tickets/:ticketId/close',
   auth('ADMIN', 'SUPER_ADMIN'),
-  SupportControllers.closeConversation,
+  SupportControllers.closeTicket,
 );
 
 export const SupportRoutes = router;

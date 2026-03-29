@@ -1,76 +1,55 @@
 import mongoose from 'mongoose';
 import { TUserRole } from '../../constant/user.constant';
-import { TConversationParticipant } from './support.constant';
 
-export type TConversationType =
-  | 'SUPPORT' // Admin <-> Customer (Ticket based)
-  | 'VENDOR_CHAT' // Admin <-> Vendor
-  | 'DRIVER_CHAT' // Admin <-> Driver/Delivery Partner
-  | 'CUSTOMER_CHAT' // Admin <-> Customer (Direct)
-  | 'FLEET_MANAGER_CHAT' // Admin <-> Fleet Manager
-  | 'FLEET_DRIVER_CHAT' // Fleet Manager <-> Delivery Partner
-  | 'ORDER' // Specific to an Order
-  | 'DIRECT'; // General/Others
+/**
+ * SUPPORT SYSTEM TYPES
+ * --------------------
+ * TTicketStatus: Defines the lifecycle of a support session.
+ * TUserModel: Essential for 'refPath' to handle different user collections (Customer, Vendor, etc.)
+ */
+export type TTicketStatus = 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
+export type THandlerType = 'AI' | 'AGENT' | 'NONE';
 
-export type TSupportConversation = {
+export type TUserModel =
+  | 'Admin'
+  | 'Customer'
+  | 'Vendor'
+  | 'FleetManager'
+  | 'DeliveryPartner';
+
+export type TSupportTicket = {
   _id?: mongoose.Types.ObjectId;
-
-  room: string;
-  ticketId?: string;
-
-  //  Generic participants (NOT user/receiver)
-  participants: TConversationParticipant[];
-
-  // Conversation lock owner (admin / vendor / customer)
-  handledBy: string | null;
-
-  // Conversation lifecycle
-  status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
-
-  //  Last message meta
+  ticketId: string; // Unique human-readable ID (e.g., PT-2026-001)
+  userId: mongoose.Types.ObjectId;
+  userModel: TUserModel; // Points to the specific collection (refPath)
+  activeHandler: THandlerType;
+  assignedAdminId?: mongoose.Types.ObjectId | null;
+  status: TTicketStatus;
+  aiMetadata?: {
+    lastIntent?: string;
+    needsHuman: boolean;
+  };
+  category: 'ORDER_ISSUE' | 'PAYMENT' | 'IVA_INVOICE' | 'TECHNICAL' | 'GENERAL';
+  referenceOrderId?: mongoose.Types.ObjectId; // Order ID reference
   lastMessage?: string;
+  lastMessageSender?: TUserRole;
   lastMessageTime?: Date;
-
-  //  Unread count per participant (generic)
-  unreadCount: Map<string, number>; // { "userId1": 0, "userId2": 3 }
-
-  //  Conversation category
-  type: TConversationType;
-
-  // Optional reference ID (e.g., Order ID)
-  referenceId?: string;
-
-  //  Flags
-  isActive?: boolean;
-  isDeleted?: boolean;
-
+  unreadCount: Map<string, number>;
+  closedAt?: Date;
+  closedBy?: mongoose.Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 };
 
 export type TSupportMessage = {
   _id?: mongoose.Types.ObjectId;
-
-  ticketId?: string;
-  room: string;
-
+  ticketId: string;
   senderId: string;
   senderRole: TUserRole;
-
   message: string;
+  messageType: 'TEXT' | 'IMAGE' | 'AUDIO' | 'LOCATION' | 'SYSTEM';
   attachments?: string[];
-
-  //  Read status per participant (generic)
-  readBy: Map<string, boolean>; // { "userId1": true, "userId2": false }
-
-  //  Edit / delete
-  isEdited?: boolean;
-  editedAt?: Date | null;
-  isDeleted?: boolean;
-
-  //  Thread support
-  replyTo?: mongoose.Types.ObjectId | null;
-
+  readBy: Map<string, boolean>;
   createdAt?: Date;
   updatedAt?: Date;
 };

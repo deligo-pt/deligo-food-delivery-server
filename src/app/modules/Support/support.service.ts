@@ -1,384 +1,270 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import httpStatus from 'http-status';
-import AppError from '../../errors/AppError';
-import { AuthUser, TUserRole } from '../../constant/user.constant';
-import { SupportConversation, SupportMessage } from './support.model';
-import { QueryBuilder } from '../../builder/QueryBuilder';
-import { TConversationParticipant } from './support.constant';
 import { generateTicketId } from '../../utils/generateTicketId';
-import { TConversationType } from './support.interface';
+import { TUserModel } from './support.interface';
+import { SupportMessage, SupportTicket } from './support.model';
+import AppError from '../../errors/AppError';
+import { QueryBuilder } from '../../builder/QueryBuilder';
+import { AuthUser, ROLE_COLLECTION_MAP } from '../../constant/user.constant';
+import { Order } from '../Order/order.model';
 
-const ensureParticipant = (conversation: any, userId: string) => {
-  const isParticipant = conversation.participants.some(
-    (p: TConversationParticipant) => p.userId === userId,
-  );
+/**
+ * Checks for an existing active ticket.
+ * If the last session was CLOSED, it creates a new Ticket ID .
+ */
+const getOrCreateActiveTicket = async (
+  userObjectId: string,
+  userModel: TUserModel,
+  category: string = 'GENERAL',
+  referenceOrderId?: string,
+  isAgent: boolean = false,
+) => {
+  let ticket = await SupportTicket.findOne({
+    userId: userObjectId,
+    userModel,
+    status: { $ne: 'CLOSED' },
+  });
 
-  if (!isParticipant) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not a participant of this conversation',
-    );
+  if (!ticket) {
+    if (isAgent) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'No active ticket found for this user. Agents cannot create new tickets.',
+      );
+    }
+
+    const ticketId = await generateTicketId();
+
+    ticket = await SupportTicket.create({
+      ticketId,
+      userId: userObjectId,
+      userModel,
+      category,
+      referenceOrderId,
+      status: 'OPEN',
+      activeHandler: 'AI',
+      unreadCount: new Map(),
+    });
+  } else {
+    if (category !== 'GENERAL' && ticket.category === 'GENERAL') {
+      ticket.category = category as any;
+    }
+
+    if (referenceOrderId && !ticket.referenceOrderId) {
+      ticket.referenceOrderId = referenceOrderId as any;
+    }
+
+    if (ticket.isModified()) {
+      await ticket.save();
+    }
   }
+
+  return ticket;
 };
 
-const ensureConversationLock = async (
-  conversation: any,
-  userId: string,
-  role: string,
-) => {
-  if (conversation.status === 'CLOSED') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Conversation is closed');
-  }
+const createMessage = async (payload: any, currentUser: AuthUser) => {
+  const isAgent =
+    currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
-  if (conversation.handledBy && conversation.handledBy !== userId) {
-    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+  const senderRole = currentUser.role;
+  const targetUserObjectId = isAgent
+    ? payload.targetUserObjectId
+    : currentUser._id.toString();
+  const targetUserCustomId = isAgent
+    ? payload.targetUserId
+    : currentUser.userId;
+  const targetUserModel = isAgent
+    ? payload.targetUserModel
+    : ROLE_COLLECTION_MAP[currentUser.role];
+
+  if (payload.referenceOrderId && !isAgent) {
+    const order = await Order.findById(payload.referenceOrderId);
+    if (!order) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+    }
+    if (
+      order.customerId.toString() !== currentUser._id.toString() &&
+      currentUser.role === 'CUSTOMER'
+    ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'This conversation is locked by another admin',
+        'You are not authorized to create a support ticket for this order',
+      );
+    }
+
+    if (
+      order.vendorId.toString() !== currentUser._id.toString() &&
+      (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR')
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to create a support ticket for this order',
+      );
+    }
+
+    if (
+      currentUser?.role === 'DELIVERY_PARTNER' &&
+      order?.deliveryPartnerId?.toString() !== currentUser._id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to create a support ticket for this order',
       );
     }
   }
 
-  if ((!conversation.handledBy && role === 'ADMIN') || role === 'SUPER_ADMIN') {
-    conversation.handledBy = userId;
-    conversation.status = 'IN_PROGRESS';
-    await conversation.save();
-  }
-};
+  // 3. Get or Create active ticket
+  const ticket = await getOrCreateActiveTicket(
+    targetUserObjectId,
+    targetUserModel as TUserModel,
+    payload.category,
+    payload.referenceOrderId,
+    isAgent,
+  );
 
-// ------------------------------------------------------------------
-// Open or Create Conversation (GENERIC)
-// ------------------------------------------------------------------
+  // 4. Create the message
+  const newMessage = await SupportMessage.create({
+    ticketId: ticket.ticketId,
+    senderId: currentUser.userId, // Custom ID like C-VXXS...
+    senderRole: currentUser.role,
+    message: payload.message,
+    messageType: payload.messageType || 'TEXT',
+    attachments: payload.attachments || [],
+    readBy: new Map([[currentUser.userId, true]]),
+  });
 
-const openOrCreateConversation = async (
-  currentUser: AuthUser,
-  payload?: {
-    type?: TConversationType;
-    referenceId?: string;
-    targetUser?: {
-      userId: string;
-      role: TUserRole;
-      name?: string;
-    };
-  },
-) => {
-  const type = payload?.type ?? 'SUPPORT';
+  let recipientId: string;
 
-  // deterministic room
-  let room: string;
+  if (isAgent) {
+    recipientId = targetUserCustomId;
 
-  if (type === 'SUPPORT') {
-    room = `SUPPORT_${currentUser.userId}`;
-  } else if (payload?.targetUser) {
-    const ids = [currentUser.userId, payload.targetUser.userId].sort();
-    room = `${type}_${ids[0]}_${ids[1]}`;
-    if (type === 'ORDER' && payload.referenceId) {
-      room = `ORDER_${payload.referenceId}_${ids[0]}_${ids[1]}`;
+    if (!ticket.assignedAdminId) {
+      ticket.assignedAdminId = currentUser._id as any;
+      ticket.status = 'IN_PROGRESS';
+      ticket.activeHandler = 'AGENT';
+
+      if (ticket.unreadCount.has('ADMIN_GENERAL')) {
+        const generalCount = ticket.unreadCount.get('ADMIN_GENERAL') || 0;
+        ticket.unreadCount.set(currentUser.userId, generalCount);
+        ticket.unreadCount.delete('ADMIN_GENERAL');
+      }
     }
   } else {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Target user is required for DIRECT or ORDER conversations',
-    );
+    recipientId = 'ADMIN_GENERAL';
   }
 
-  const existing = await SupportConversation.findOne({
-    room,
-    isDeleted: false,
-  });
+  const currentUnread = ticket.unreadCount.get(recipientId) || 0;
+  ticket.unreadCount.set(recipientId, currentUnread + 1);
+  ticket.markModified('unreadCount');
 
-  if (existing) {
-    if (type === 'SUPPORT' && existing.status === 'CLOSED') {
-      existing.status = 'OPEN';
-      existing.handledBy = null;
-      existing.ticketId = await generateTicketId();
-      await existing.save();
-    }
-    return existing;
-  }
+  // 5. Update Ticket Metadata
+  ticket.lastMessage = payload.message;
+  ticket.lastMessageSender = senderRole;
+  ticket.lastMessageTime = new Date();
 
-  const ticketId = type === 'SUPPORT' ? await generateTicketId() : undefined;
-
-  const participants: TConversationParticipant[] = [
-    {
-      userId: currentUser.userId,
-      role: currentUser.role,
-      name: `${currentUser.name.firstName} ${currentUser.name.lastName}`,
-    },
-  ];
-
-  if (payload?.targetUser) {
-    participants.push(payload.targetUser);
-  }
-
-  const unreadCount = new Map<string, number>();
-  participants.forEach((p) => unreadCount.set(p.userId, 0));
-
-  return SupportConversation.create({
-    room,
-    ticketId,
-    participants,
-    type,
-    referenceId: payload?.referenceId || undefined,
-    status: 'OPEN',
-    unreadCount,
-    isActive: true,
-  });
+  await ticket.save();
+  return newMessage;
 };
 
-// ------------------------------------------------------------------
-// Get Conversations (GENERIC)
-// ------------------------------------------------------------------
-
-const getAllSupportConversations = async (
+const getAllTickets = async (
   query: Record<string, unknown>,
   currentUser: AuthUser,
 ) => {
-  const baseFilter: Record<string, any> = { isDeleted: false };
+  const isAgent =
+    currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
-  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    baseFilter['participants.userId'] = currentUser.userId;
+  let findQuery = SupportTicket.find();
+
+  if (!isAgent) {
+    findQuery = findQuery.where({ userId: currentUser._id });
   }
-
-  if (query.role) {
-    baseFilter['participants.role'] = query.role;
-    delete query.role;
-  }
-
-  const qb = new QueryBuilder(SupportConversation.find(baseFilter), query)
-    .sort()
-    .paginate()
-    .fields()
-    .filter()
-    .search(['room', 'ticketId']);
-
-  const data = await qb.modelQuery;
-  const meta = await qb.countTotal();
-
-  return { meta, data };
-};
-
-// ------------------------------------------------------------------
-// Get Conversation (GENERIC)
-// ------------------------------------------------------------------
-
-const getSingleSupportConversation = async (
-  room: string,
-  currentUser: AuthUser,
-) => {
-  const conversation = await SupportConversation.findOne({
-    room,
-    isDeleted: false,
-  });
-
-  if (!conversation) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
-  }
-  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    ensureParticipant(conversation, currentUser.userId);
-  }
-
-  return conversation;
-};
-
-// ------------------------------------------------------------------
-// Create Message (CALLED FROM SOCKET ONLY)
-// ------------------------------------------------------------------
-
-const createMessage = async ({
-  room,
-  senderId,
-  senderRole,
-  message,
-  attachments = [],
-  replyTo = null,
-}: {
-  room: string;
-  senderId: string;
-  senderRole: string;
-  message: string;
-  attachments?: string[];
-  replyTo?: any;
-}) => {
-  const conversation = await SupportConversation.findOne({
-    room,
-    isDeleted: false,
-  });
-
-  if (!conversation) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
-  }
-
-  if (senderRole !== 'ADMIN' && senderRole !== 'SUPER_ADMIN') {
-    ensureParticipant(conversation, senderId);
-  }
-  if (conversation.type === 'SUPPORT') {
-    await ensureConversationLock(conversation, senderId, senderRole);
-  }
-
-  // --------------------------------------------------
-  //  Read map (DO NOT replace map)
-  // --------------------------------------------------
-  const readBy = new Map<string, boolean>();
-  conversation.participants.forEach((p) => {
-    readBy.set(p.userId, p.userId === senderId);
-  });
-
-  const msg = await SupportMessage.create({
-    ticketId: conversation?.ticketId || null,
-    room,
-    senderId,
-    senderRole,
-    message,
-    attachments,
-    readBy,
-    replyTo,
-  });
-
-  // --------------------------------------------------
-  //  Update unreadCount SAFELY (Map-safe)
-  // --------------------------------------------------
-  conversation.participants.forEach((p: TConversationParticipant) => {
-    if (p.userId !== senderId) {
-      const current = conversation.unreadCount.get(p.userId) || 0;
-      conversation.unreadCount.set(p.userId, current + 1);
-    }
-  });
-
-  // sender always has 0 unread
-  conversation.unreadCount.set(senderId, 0);
-
-  // --------------------------------------------------
-  //  Update meta
-  // --------------------------------------------------
-  conversation.lastMessage = message;
-  conversation.lastMessageTime = new Date();
-
-  if (conversation.status === 'OPEN') {
-    conversation.status = 'IN_PROGRESS';
-  }
-
-  await conversation.save();
-
-  return msg;
-};
-
-// ------------------------------------------------------------------
-// Get Messages by Room
-// ------------------------------------------------------------------
-
-const getMessagesByRoom = async (
-  query: Record<string, unknown>,
-  room: string,
-  currentUser: AuthUser,
-) => {
-  const conversation = await SupportConversation.findOne({
-    room,
-    isDeleted: false,
-  });
-
-  if (!conversation) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
-  }
-
-  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    ensureParticipant(conversation, currentUser.userId);
-  }
-
   const qb = new QueryBuilder(
-    SupportMessage.find({ room, isDeleted: false }),
+    findQuery
+      .populate('userId', 'userId name email')
+      .populate('referenceOrderId', 'orderId status ')
+      .populate('assignedAdminId', 'userId name email'),
     query,
   )
+    .search(['ticketId', 'lastMessage'])
+    .filter()
     .sort()
     .paginate()
-    .filter()
     .fields();
+  return { meta: await qb.countTotal(), data: await qb.modelQuery };
+};
 
+const getMessagesByTicketId = async (
+  ticketId: string,
+  query: Record<string, unknown>,
+) => {
+  const qb = new QueryBuilder(SupportMessage.find({ ticketId }), query)
+    .sort()
+    .paginate()
+    .fields();
+  return { meta: await qb.countTotal(), data: await qb.modelQuery };
+};
+
+const markReadByAdminOrUser = async (
+  ticketId: string,
+  currentUser: AuthUser,
+) => {
+  const customUserId = currentUser.userId;
+  await SupportMessage.updateMany(
+    { ticketId: ticketId, [`readBy.${customUserId}`]: { $ne: true } },
+    { $set: { [`readBy.${customUserId}`]: true } },
+  );
+  const ticket = await SupportTicket.findOne({ ticketId: ticketId });
+  if (!ticket) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Ticket not found');
+  }
+  if (ticket?.unreadCount) {
+    ticket.unreadCount.set(customUserId, 0);
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+    if (isAdmin) {
+      ticket.unreadCount.set('ADMIN_GENERAL', 0);
+    }
+    ticket.markModified('unreadCount');
+    await ticket.save();
+  }
   return {
-    meta: await qb.countTotal(),
-    data: await qb.modelQuery,
+    message: 'Messages marked as read',
   };
 };
 
-// ------------------------------------------------------------------
-// Mark Messages as Read (GENERIC)
-// ------------------------------------------------------------------
+const closeTicket = async (ticketId: string, currentUser: AuthUser) => {
+  const ticket = await SupportTicket.findOne({
+    ticketId: ticketId,
+    status: { $ne: 'CLOSED' },
+  });
+  if (!ticket)
+    throw new AppError(httpStatus.NOT_FOUND, 'Active ticket not found');
 
-const markReadByAdminOrUser = async (room: string, currentUser: AuthUser) => {
-  const conversation = await SupportConversation.findOne({
-    room,
-    isDeleted: false,
+  const adminId = currentUser._id;
+
+  ticket.status = 'CLOSED';
+  ticket.closedAt = new Date();
+  ticket.closedBy = adminId as any;
+  ticket.activeHandler = 'NONE';
+  await ticket.save();
+
+  // Send automated closing message (Portuguese)
+  await SupportMessage.create({
+    ticketId: ticket.ticketId,
+    senderId: currentUser.userId,
+    senderRole: currentUser.role,
+    message:
+      'O suporte foi encerrado. Envie uma nova mensagem para iniciar um novo ticket.',
+    messageType: 'SYSTEM',
   });
 
-  if (!conversation) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
-  }
-
-  ensureParticipant(conversation, currentUser.userId);
-
-  await SupportMessage.updateMany(
-    { room, [`readBy.${currentUser.userId}`]: false },
-    { $set: { [`readBy.${currentUser.userId}`]: true } },
-  );
-
-  conversation.unreadCount.set(currentUser.userId, 0);
-  await conversation.save();
-
-  return true;
-};
-
-// ------------------------------------------------------------------
-// Get Total Unread Count (GENERIC)
-// ------------------------------------------------------------------
-const getTotalUnreadCount = async (currentUser: AuthUser) => {
-  const conversations = await SupportConversation.find({
-    'participants.userId': currentUser.userId,
-    isDeleted: false,
-  });
-
-  const totalUnread = conversations.reduce((acc, conv) => {
-    const count = conv.unreadCount.get(currentUser.userId) || 0;
-    return acc + count;
-  }, 0);
-
-  return { totalUnread };
-};
-
-// ------------------------------------------------------------------
-// Close Conversation (GENERIC)
-// ------------------------------------------------------------------
-
-const closeConversation = async (room: string, currentUser: AuthUser) => {
-  const conversation = await SupportConversation.findOne({
-    room,
-    isDeleted: false,
-  });
-
-  if (!conversation) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Conversation not found');
-  }
-
-  if (conversation.handledBy !== currentUser.userId) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Only handler can close conversation',
-    );
-  }
-
-  conversation.status = 'CLOSED';
-  conversation.handledBy = null;
-  await conversation.save();
-
-  return true;
+  return { success: true };
 };
 
 export const SupportService = {
-  openOrCreateConversation,
-  getAllSupportConversations,
-  getSingleSupportConversation,
-  createMessage, // socket only
-  getMessagesByRoom,
+  createMessage,
+  getAllTickets,
+  getMessagesByTicketId,
   markReadByAdminOrUser,
-  getTotalUnreadCount,
-  closeConversation,
+  closeTicket,
 };

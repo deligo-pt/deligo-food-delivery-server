@@ -4,137 +4,80 @@ import sendResponse from '../../utils/sendResponse';
 import { SupportService } from './support.service';
 import { AuthUser } from '../../constant/user.constant';
 
-// ------------------------------------------------------
-//  Open or Create Conversation
-// ------------------------------------------------------
-const openOrCreateConversation = catchAsync(async (req, res) => {
-  const conversation = await SupportService.openOrCreateConversation(
-    req.user as AuthUser,
+const sendMessage = catchAsync(async (req, res) => {
+  // We send the whole body and req.user to service
+  // Service will handle model mapping and role generation
+  const result = await SupportService.createMessage(
     req.body,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
     success: true,
-    statusCode: httpStatus.OK,
-    message: 'Conversation opened successfully',
-    data: conversation,
+    statusCode: httpStatus.CREATED,
+    message: 'Message processed successfully',
+    data: result,
   });
 });
 
-// ------------------------------------------------------
-//  Get Conversations (Generic)
-// ------------------------------------------------------
-const getAllSupportConversations = catchAsync(async (req, res) => {
-  const { meta, data } = await SupportService.getAllSupportConversations(
+const getAllTickets = catchAsync(async (req, res) => {
+  const { meta, data } = await SupportService.getAllTickets(
     req.query,
     req.user as AuthUser,
   );
-
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Conversations retrieved successfully',
+    message: 'Tickets retrieved',
     meta,
     data,
   });
 });
 
-// ------------------------------------------------------
-//  Get Single Conversation
-// ------------------------------------------------------
-const getSingleSupportConversation = catchAsync(async (req, res) => {
-  const { room } = req.params;
-  const result = await SupportService.getSingleSupportConversation(
-    room,
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Conversation retrieved successfully',
-    data: result,
-  });
-});
-
-// ------------------------------------------------------
-//  Get Messages by Room
-// ------------------------------------------------------
-const getMessagesByRoom = catchAsync(async (req, res) => {
-  const { room } = req.params;
-
-  const result = await SupportService.getMessagesByRoom(
+const getMessagesByTicketId = catchAsync(async (req, res) => {
+  const { meta, data } = await SupportService.getMessagesByTicketId(
+    req.params.ticketId,
     req.query,
-    room,
-    req.user as AuthUser,
   );
-
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Messages retrieved successfully',
-    meta: result.meta,
-    data: result.data,
+    message: 'Chat history retrieved',
+    meta,
+    data,
   });
 });
 
-// ------------------------------------------------------
-//  Mark Messages as Read
-// ------------------------------------------------------
-const markReadByAdminOrUser = catchAsync(async (req, res) => {
-  const { room } = req.params;
-
+const markAsRead = catchAsync(async (req, res) => {
   const result = await SupportService.markReadByAdminOrUser(
-    room,
+    req.params.ticketId,
     req.user as AuthUser,
   );
-
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Messages marked as read successfully',
-    data: result,
+    message: result?.message,
+    data: null,
   });
 });
 
-// ------------------------------------------------------
-// Get total unread count
-// ------------------------------------------------------
-const getTotalUnreadCount = catchAsync(async (req, res) => {
-  const result = await SupportService.getTotalUnreadCount(req.user as AuthUser);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Total unread count retrieved successfully',
-    data: result?.totalUnread,
-  });
-});
-
-// ------------------------------------------------------
-//  Close Conversation (Generic Lock Release)
-// ------------------------------------------------------
-const closeConversation = catchAsync(async (req, res) => {
-  const { room } = req.params;
-
-  const result = await SupportService.closeConversation(
-    room,
+const closeTicket = catchAsync(async (req, res) => {
+  const result = await SupportService.closeTicket(
+    req.params.ticketId,
     req.user as AuthUser,
   );
-
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Conversation closed successfully',
+    message: 'Ticket closed',
     data: result,
   });
 });
 
 export const SupportControllers = {
-  openOrCreateConversation,
-  getAllSupportConversations,
-  getSingleSupportConversation,
-  getMessagesByRoom,
-  markReadByAdminOrUser,
-  getTotalUnreadCount,
-  closeConversation,
+  sendMessage,
+  getAllTickets,
+  getMessagesByTicketId,
+  markAsRead,
+  closeTicket,
 };
