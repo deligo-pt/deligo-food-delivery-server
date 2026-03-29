@@ -1,11 +1,11 @@
 import { Schema, model } from 'mongoose';
 import { TSupportMessage, TSupportTicket } from './support.interface';
+import { USER_ROLE } from '../../constant/user.constant';
 
 // TICKET SCHEMA: Handles session metadata
 const supportTicketSchema = new Schema<TSupportTicket>(
   {
     ticketId: { type: String, unique: true, required: true, index: true },
-    room: { type: String, required: true, unique: true },
     userId: {
       type: Schema.Types.ObjectId,
       required: true,
@@ -36,9 +36,9 @@ const supportTicketSchema = new Schema<TSupportTicket>(
       enum: ['ORDER_ISSUE', 'PAYMENT', 'IVA_INVOICE', 'TECHNICAL', 'GENERAL'],
       default: 'GENERAL',
     },
-    referenceId: { type: Schema.Types.ObjectId, ref: 'Order' },
+    referenceOrderId: { type: Schema.Types.ObjectId, ref: 'Order' },
     lastMessage: { type: String },
-    lastMessageSender: { type: String, enum: ['CUSTOMER', 'AGENT', 'AI'] },
+    lastMessageSender: { type: String, enum: Object.values(USER_ROLE) },
     lastMessageTime: { type: Date, default: Date.now },
     unreadCount: { type: Map, of: Number, default: {} },
     closedAt: { type: Date },
@@ -51,11 +51,10 @@ const supportTicketSchema = new Schema<TSupportTicket>(
 const supportMessageSchema = new Schema<TSupportMessage>(
   {
     ticketId: { type: String, required: true, index: true },
-    room: { type: String, required: true },
     senderId: { type: String, required: true },
     senderRole: {
       type: String,
-      enum: ['CUSTOMER', 'AGENT', 'AI'],
+      enum: Object.values(USER_ROLE),
       required: true,
     },
     message: { type: String, required: true },

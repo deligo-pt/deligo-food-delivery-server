@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { TUserRole } from '../../constant/user.constant';
 
 /**
  * SUPPORT SYSTEM TYPES
@@ -19,7 +20,6 @@ export type TUserModel =
 export type TSupportTicket = {
   _id?: mongoose.Types.ObjectId;
   ticketId: string; // Unique human-readable ID (e.g., PT-2026-001)
-  room: string; // Unique socket room for the specific session
   userId: mongoose.Types.ObjectId;
   userModel: TUserModel; // Points to the specific collection (refPath)
   activeHandler: THandlerType;
@@ -30,9 +30,9 @@ export type TSupportTicket = {
     needsHuman: boolean;
   };
   category: 'ORDER_ISSUE' | 'PAYMENT' | 'IVA_INVOICE' | 'TECHNICAL' | 'GENERAL';
-  referenceId?: mongoose.Types.ObjectId; // Order ID reference
+  referenceOrderId?: mongoose.Types.ObjectId; // Order ID reference
   lastMessage?: string;
-  lastMessageSender?: 'CUSTOMER' | 'AGENT' | 'AI';
+  lastMessageSender?: TUserRole;
   lastMessageTime?: Date;
   unreadCount: Map<string, number>;
   closedAt?: Date;
@@ -44,9 +44,8 @@ export type TSupportTicket = {
 export type TSupportMessage = {
   _id?: mongoose.Types.ObjectId;
   ticketId: string;
-  room: string;
   senderId: string;
-  senderRole: 'CUSTOMER' | 'AGENT' | 'AI';
+  senderRole: TUserRole;
   message: string;
   messageType: 'TEXT' | 'IMAGE' | 'AUDIO' | 'LOCATION' | 'SYSTEM';
   attachments?: string[];

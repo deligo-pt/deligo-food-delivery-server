@@ -24,13 +24,21 @@ router.post(
 // Admin view only
 router.get(
   '/tickets',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'CUSTOMER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+  ),
   SupportControllers.getAllTickets,
 );
 
 // Shared chat history access
 router.get(
-  '/tickets/:room/messages',
+  '/tickets/:ticketId/messages',
   auth(
     'ADMIN',
     'SUPER_ADMIN',
@@ -39,12 +47,12 @@ router.get(
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
   ),
-  SupportControllers.getMessagesByRoom,
+  SupportControllers.getMessagesByTicketId,
 );
 
 // Marking read
 router.patch(
-  '/tickets/:room/read',
+  '/tickets/:ticketId/read',
   auth(
     'ADMIN',
     'SUPER_ADMIN',
@@ -58,7 +66,7 @@ router.patch(
 
 // Closing session
 router.patch(
-  '/tickets/:room/close',
+  '/tickets/:ticketId/close',
   auth('ADMIN', 'SUPER_ADMIN'),
   SupportControllers.closeTicket,
 );

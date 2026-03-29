@@ -21,7 +21,10 @@ const sendMessage = catchAsync(async (req, res) => {
 });
 
 const getAllTickets = catchAsync(async (req, res) => {
-  const { meta, data } = await SupportService.getAllTickets(req.query);
+  const { meta, data } = await SupportService.getAllTickets(
+    req.query,
+    req.user as AuthUser,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -31,9 +34,9 @@ const getAllTickets = catchAsync(async (req, res) => {
   });
 });
 
-const getMessagesByRoom = catchAsync(async (req, res) => {
-  const { meta, data } = await SupportService.getMessagesByRoom(
-    req.params.room,
+const getMessagesByTicketId = catchAsync(async (req, res) => {
+  const { meta, data } = await SupportService.getMessagesByTicketId(
+    req.params.ticketId,
     req.query,
   );
   sendResponse(res, {
@@ -45,10 +48,23 @@ const getMessagesByRoom = catchAsync(async (req, res) => {
   });
 });
 
+const markAsRead = catchAsync(async (req, res) => {
+  const result = await SupportService.markReadByAdminOrUser(
+    req.params.ticketId,
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 const closeTicket = catchAsync(async (req, res) => {
   const result = await SupportService.closeTicket(
-    req.params.room,
-    (req.user as AuthUser).userId,
+    req.params.ticketId,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -58,23 +74,10 @@ const closeTicket = catchAsync(async (req, res) => {
   });
 });
 
-const markAsRead = catchAsync(async (req, res) => {
-  const result = await SupportService.markReadByAdminOrUser(
-    req.params.room,
-    (req.user as AuthUser).userId,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Messages read',
-    data: result,
-  });
-});
-
 export const SupportControllers = {
   sendMessage,
   getAllTickets,
-  getMessagesByRoom,
-  closeTicket,
+  getMessagesByTicketId,
   markAsRead,
+  closeTicket,
 };
