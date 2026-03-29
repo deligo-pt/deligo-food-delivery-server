@@ -20,7 +20,7 @@ router.post(
 );
 
 // 2. Update ingredient
-router.post(
+router.patch(
     '/update-ingredient',
     auth('ADMIN', 'SUPER_ADMIN'),
     multerUpload.single('file'),
@@ -31,7 +31,7 @@ router.post(
 
 // 3. Ingredients Details
 router.get(
-    '/:id',
+    '/:sku',
     auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
     IngredientsController.getIngredientDetails,
 );
