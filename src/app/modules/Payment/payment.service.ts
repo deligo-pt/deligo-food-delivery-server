@@ -5,6 +5,12 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { AuthUser } from '../../constant/user.constant';
+import { IIngredientOrder, TPaymentMethod } from '../Ingredient-Order/ing-order.interface';
+import mongoose from 'mongoose';
+import { Vendor } from '../Vendor/vendor.model';
+import { Ingredient } from '../Ingredients/ingredients.model';
+import { IngredientOrder } from '../Ingredient-Order/ing-order.model';
+
 // create reduniq payment intent service
 const createReduniqPayment = async (
   checkoutSummaryId: string,
@@ -126,7 +132,92 @@ const handlePaymentFailure = async (
   return { message: 'Payment status reset successfully' };
 };
 
+// create ingredients payment service
+const createIngredientPayment = async (
+  payload: IIngredientOrder,
+  currentUser: AuthUser
+) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const vendorInfo = await Vendor.findById(currentUser._id).session(session);
+    const ingredient = await Ingredient.findById(payload.orderDetails?.ingredient).session(session);
+
+    if (!vendorInfo) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    }
+    if (!ingredient) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
+    }
+
+    const totalAmount = ingredient.price * (payload.orderDetails?.totalQuantity || 1);
+    const grandTotal = totalAmount + (payload.delivery?.charge || 0);
+    const paymentMethod = payload.paymentMethod as TPaymentMethod;
+    const solutionIds = {
+      CARD: '117',
+      MB_WAY: '110',
+      APPLE_PAY: '115',
+      PAYPAL: '105',
+      GOOGLE_PAY: '114',
+      OTHER: null,
+    };
+
+    // Create order within transaction
+    const [newOrder] = await IngredientOrder.create(
+      [{
+        ...payload,
+        vendor: currentUser._id,
+        deliveryAddress: vendorInfo.address,
+        grandTotal,
+        paymentStatus: 'PROCESSING',
+        orderStatus: 'CONFIRMED',
+      }],
+      { session }
+    );
+
+    const orderPayload = {
+      method: 'initPayment',
+      api: { username: config.reduniq.username, password: config.reduniq.password },
+      payment: {
+        amount: Math.round(grandTotal * 100),
+        action: 101,
+        currency: '978',
+        solution: paymentMethod !== 'OTHER' ? solutionIds[paymentMethod] : null,
+        description: `Order Payment via ${paymentMethod}`,
+      },
+      returnUrlOk: `${config.frontend_urls.frontend_url_test_payment}/payment-success?orderId=${newOrder._id}&token={token}`,
+      returnUrlError: `${config.frontend_urls.frontend_url_test_payment}/payment-failed?orderId=${newOrder._id}`,
+    };
+
+    const response = await axios.post(config.reduniq.api_url as string, orderPayload);
+
+    if (response.data.result.code === '00000000') {
+      // Update token within transaction
+      newOrder.transactionId = response.data.token;
+      await newOrder.save({ session });
+
+      await session.commitTransaction();
+
+      return {
+        redirectUrl: response.data.redirectUrl,
+        paymentToken: response.data.token,
+      };
+    } else {
+      throw new Error('Payment initiation failed');
+    }
+  } catch (error: unknown) {
+    await session.abortTransaction();
+    const errorMessage = error instanceof Error ? error.message : 'Transaction failed';
+    throw new AppError(httpStatus.BAD_REQUEST, errorMessage);
+  } finally {
+    session.endSession();
+  }
+};
+
 export const PaymentServices = {
   createReduniqPayment,
   handlePaymentFailure,
+  createIngredientPayment
 };
