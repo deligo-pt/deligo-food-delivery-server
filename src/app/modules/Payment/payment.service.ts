@@ -10,6 +10,9 @@ import mongoose from 'mongoose';
 import { Vendor } from '../Vendor/vendor.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
 import { IngredientOrder } from '../Ingredient-Order/ing-order.model';
+import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
+import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { Admin } from '../Admin/admin.model';
 
 // create reduniq payment intent service
 const createReduniqPayment = async (
@@ -133,7 +136,7 @@ const handlePaymentFailure = async (
 };
 
 // create ingredients payment service
-const createIngredientPayment = async (
+const createIngredientRequniqPayment = async (
   payload: IIngredientOrder,
   currentUser: AuthUser
 ) => {
@@ -144,6 +147,7 @@ const createIngredientPayment = async (
 
     const vendorInfo = await Vendor.findById(currentUser._id).session(session);
     const ingredient = await Ingredient.findById(payload.orderDetails?.ingredient).session(session);
+    const adminInfo = await Admin.findOne({ role: "SUPER_ADMIN" }).select("address").session(session);
 
     if (!vendorInfo) {
       throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
@@ -152,8 +156,26 @@ const createIngredientPayment = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
     }
 
-    const totalAmount = ingredient.price * (payload.orderDetails?.totalQuantity || 1);
-    const grandTotal = totalAmount + (payload.delivery?.charge || 0);
+    const vendorCoords = vendorInfo.currentSessionLocation?.coordinates as [number, number];
+
+    // 3. Calculate Distance and Delivery Charges
+    const distanceData = await calculateGoggleRoadDistance(
+      adminInfo?.address?.longitude as number,
+      adminInfo?.address?.latitude as number,
+      vendorCoords[0],
+      vendorCoords[1],
+    );
+
+    const globalSettings = await GlobalSettingsService.getGlobalSettings();
+    const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
+
+    const deliveryChargeBase = distanceData.meters <= 1000
+      ? BASE_FIXED_DELIVERY_CHARGE
+      : Number((distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0)).toFixed(2));
+
+    const totalIngredientCost = payload.orderDetails.totalQuantity * Number(ingredient.price);
+    const grandTotal = Number((totalIngredientCost + deliveryChargeBase).toFixed(2));
+
     const paymentMethod = payload.paymentMethod as TPaymentMethod;
     const solutionIds = {
       CARD: '117',
@@ -169,7 +191,12 @@ const createIngredientPayment = async (
       [{
         ...payload,
         vendor: currentUser._id,
-        deliveryAddress: vendorInfo.address,
+        deliveryAddress: vendorInfo.businessLocation,
+        delivery: {
+          charge: deliveryChargeBase,
+          distance: Number(distanceData.km.toFixed(2)),
+          estimatedTime: distanceData.durationMinutes,
+        },
         grandTotal,
         paymentStatus: 'PROCESSING',
         orderStatus: 'CONFIRMED',
@@ -179,30 +206,40 @@ const createIngredientPayment = async (
 
     const orderPayload = {
       method: 'initPayment',
-      api: { username: config.reduniq.username, password: config.reduniq.password },
+      api: {
+        username: config.reduniq.username,
+        password: config.reduniq.password
+      },
       payment: {
         amount: Math.round(grandTotal * 100),
         action: 101,
         currency: '978',
         solution: paymentMethod !== 'OTHER' ? solutionIds[paymentMethod] : null,
-        description: `Order Payment via ${paymentMethod}`,
+        description: `Ingredient Order via ${paymentMethod}`,
       },
-      returnUrlOk: `${config.frontend_urls.frontend_url_test_payment}/payment-success?orderId=${newOrder._id}&token={token}`,
+      order: {
+        ref: newOrder._id.toString(),
+        amount: Math.round(grandTotal * 100),
+        date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      },
+      returnUrlOk: `${config.frontend_urls.frontend_url_test_payment}/payment-success?orderId=${newOrder._id}`,
       returnUrlError: `${config.frontend_urls.frontend_url_test_payment}/payment-failed?orderId=${newOrder._id}`,
     };
 
     const response = await axios.post(config.reduniq.api_url as string, orderPayload);
+    const { result, token, redirectUrl } = response.data;
 
-    if (response.data.result.code === '00000000') {
-      // Update token within transaction
-      newOrder.transactionId = response.data.token;
+
+    if (result.code === '00000000') {
+      newOrder.transactionId = token;
       await newOrder.save({ session });
 
       await session.commitTransaction();
 
       return {
-        redirectUrl: response.data.redirectUrl,
-        paymentToken: response.data.token,
+        redirectUrl: redirectUrl,
+        paymentToken: token,
+        adminInfo
       };
     } else {
       throw new Error('Payment initiation failed');
@@ -219,5 +256,5 @@ const createIngredientPayment = async (
 export const PaymentServices = {
   createReduniqPayment,
   handlePaymentFailure,
-  createIngredientPayment
+  createIngredientRequniqPayment
 };

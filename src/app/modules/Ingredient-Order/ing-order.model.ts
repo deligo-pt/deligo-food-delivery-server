@@ -11,7 +11,7 @@ const ingredientOrderSchema = new Schema<IIngredientOrder>(
     {
         vendor: { type: Schema.Types.ObjectId, ref: 'Vendor', required: true },
         admin: { type: Schema.Types.ObjectId, ref: 'Admin' },
-        orderId: { type: String, required: true, unique: true },
+        orderId: { type: String },
         orderDetails: { type: ingredientOrderDetailSchema, required: true },
         deliveryAddress: {
             label: { type: String },

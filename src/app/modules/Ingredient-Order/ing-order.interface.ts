@@ -13,7 +13,7 @@ export interface IIngredientOrderDetail {
 export interface IIngredientOrder {
     vendor: Types.ObjectId;
     admin?: Types.ObjectId;
-    orderId: string;
+    orderId?: string;
     orderDetails: IIngredientOrderDetail;
     deliveryAddress: {
         label: string,

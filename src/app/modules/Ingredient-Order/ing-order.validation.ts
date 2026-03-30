@@ -4,7 +4,6 @@ const createIngredientOrderValidationSchema = z.object({
     body: z.object({
         orderDetails: z.object({
             totalQuantity: z.number().positive('Quantity must be greater than 0'),
-            totalAmount: z.number().positive('Total amount must be greater than 0'),
             ingredient: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Ingredient ID'),
         }),
         paymentMethod: z.enum([
