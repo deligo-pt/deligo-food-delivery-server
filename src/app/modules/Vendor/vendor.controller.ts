@@ -92,7 +92,7 @@ const getAllVendors = catchAsync(async (req, res) => {
 
 // get single vendor
 const getSingleVendor = catchAsync(async (req, res) => {
-  const result = await VendorServices.getSingleVendorFromDB(
+  const result = await VendorServices.getSingleVendor(
     req.params.vendorId,
     req.user as AuthUser,
   );
@@ -105,6 +105,22 @@ const getSingleVendor = catchAsync(async (req, res) => {
   });
 });
 
+// get all vendors for customer
+const getAllVendorsForCustomer = catchAsync(async (req, res) => {
+  const result = await VendorServices.getAllVendorsForCustomer(
+    req.query,
+    req.user as AuthUser,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendors Retrieved Successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
@@ -112,4 +128,5 @@ export const VendorControllers = {
   toggleVendorStoreOpenClose,
   getAllVendors,
   getSingleVendor,
+  getAllVendorsForCustomer,
 };
