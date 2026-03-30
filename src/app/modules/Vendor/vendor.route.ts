@@ -42,6 +42,13 @@ router.patch(
   VendorControllers.toggleVendorStoreOpenClose,
 );
 
+// get all vendors for customer
+router.get(
+  '/customer',
+  auth('CUSTOMER'),
+  VendorControllers.getAllVendorsForCustomer,
+);
+
 // get all vendors
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);
 // get single vendor
