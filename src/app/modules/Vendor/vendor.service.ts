@@ -430,8 +430,7 @@ const getAllVendorsForCustomer = async (
     },
     businessLocation: vendor.businessLocation,
     storePhoto: vendor.documents?.storePhoto || '',
-    rating: vendor.rating?.average || 0,
-    isStoreOpen: vendor.businessDetails?.isStoreOpen,
+    rating: vendor.rating,
     currentSessionLocation: vendor.currentSessionLocation,
   }));
 
