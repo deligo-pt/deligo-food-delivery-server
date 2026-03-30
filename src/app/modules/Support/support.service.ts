@@ -181,7 +181,10 @@ const getAllTickets = async (
   }
   const qb = new QueryBuilder(
     findQuery
-      .populate('userId', 'userId name email')
+      .populate(
+        'userId',
+        'userId name businessDetails.businessName profilePhoto',
+      )
       .populate('referenceOrderId', 'orderId status ')
       .populate('assignedAdminId', 'userId name email'),
     query,
