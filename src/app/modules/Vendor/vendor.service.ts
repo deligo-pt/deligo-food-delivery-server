@@ -7,7 +7,7 @@ import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { BusinessCategory } from '../Category/category.model';
+import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 import { flattenObject } from '../../utils/flattenObject';
@@ -416,23 +416,41 @@ const getAllVendorsForCustomer = async (
   const rawData = await vendors.modelQuery;
 
   // 6. Map to the exact structure required by your Frontend
-  const data = rawData.map((vendor: TVendor) => ({
-    id: vendor._id,
-    userId: vendor.userId,
-    name: vendor.name,
-    businessDetails: {
-      businessName: vendor.businessDetails?.businessName,
-      businessType: vendor.businessDetails?.businessType,
-      openingHours: vendor.businessDetails?.openingHours,
-      closingHours: vendor.businessDetails?.closingHours,
-      closingDays: vendor.businessDetails?.closingDays,
-      isStoreOpen: vendor.businessDetails?.isStoreOpen,
-    },
-    businessLocation: vendor.businessLocation,
-    storePhoto: vendor.documents?.storePhoto || '',
-    rating: vendor.rating,
-    currentSessionLocation: vendor.currentSessionLocation,
-  }));
+
+  const data = await Promise.all(
+    rawData.map(async (vendor: any) => {
+      // Find unique categories for this specific vendor from Product model
+      const vendorCategories = await Product.distinct('category', {
+        vendorId: vendor._id,
+        isDeleted: false,
+      });
+
+      // Populate category details (optional: if you need name/icon)
+      const populatedCategories = await ProductCategory.find({
+        _id: { $in: vendorCategories },
+      }).select('name icon'); // Assuming you have name and icon in ProductCategory
+
+      return {
+        id: vendor._id,
+        userId: vendor.userId,
+        name: vendor.name,
+        businessDetails: {
+          businessName: vendor.businessDetails?.businessName,
+          businessType: vendor.businessDetails?.businessType,
+          openingHours: vendor.businessDetails?.openingHours,
+          closingHours: vendor.businessDetails?.closingHours,
+          closingDays: vendor.businessDetails?.closingDays,
+          isStoreOpen: vendor.businessDetails?.isStoreOpen,
+        },
+        businessLocation: vendor.businessLocation,
+        storePhoto: vendor.documents?.storePhoto || '',
+        rating: vendor.rating,
+        currentSessionLocation: vendor.currentSessionLocation,
+        // Adding the categories here
+        availableCategories: populatedCategories,
+      };
+    }),
+  );
 
   return {
     meta,
