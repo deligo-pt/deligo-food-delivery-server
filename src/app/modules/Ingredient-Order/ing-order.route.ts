@@ -25,7 +25,7 @@ router.get(
 
 router.get(
     '/:orderId', // orderId eita
-    auth("ADMIN", "SUPER_ADMIN"),
+    auth("ADMIN", "SUPER_ADMIN", "VENDOR", "SUB_VENDOR"),
     IngredientOrderController.getSingleIngredientOrder
 );
 

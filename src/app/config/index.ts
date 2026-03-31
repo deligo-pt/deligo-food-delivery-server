@@ -12,6 +12,7 @@ export default {
     frontend_url_admin_admin: process.env.FRONTEND_URL_ADMIN_WITH_DOMAIN,
     frontend_url_fleet_manager: process.env.FRONTEND_URL_FLEET_MANAGER,
     frontend_url_test_payment: process.env.FRONTEND_URL_TEST_PAYMENT,
+    frontend_url_test: process.env.FRONTEND_URL_TEST,
   },
   bulkgate: {
     bulkgate_send_api_url: process.env.BULKGATE_SEND_API_URL,
