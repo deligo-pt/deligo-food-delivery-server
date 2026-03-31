@@ -7,10 +7,11 @@ import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { BusinessCategory } from '../Category/category.model';
+import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 import { flattenObject } from '../../utils/flattenObject';
+import { Product } from '../Product/product.model';
 
 /**
  * Service to update vendor profile information.
@@ -309,10 +310,7 @@ const getAllVendors = async (
 };
 
 // get single vendor
-const getSingleVendorFromDB = async (
-  vendorId: string,
-  currentUser: AuthUser,
-) => {
+const getSingleVendor = async (vendorId: string, currentUser: AuthUser) => {
   if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -350,11 +348,122 @@ const getSingleVendorFromDB = async (
   return existingVendor;
 };
 
+// get all vendors for customer
+const getAllVendorsForCustomer = async (
+  query: Record<string, unknown>,
+  currentUser: any,
+) => {
+  // 1. Get Customer Coordinates from currentSessionLocation
+  const coordinates = currentUser?.currentSessionLocation?.coordinates;
+
+  if (!coordinates || coordinates.length < 2) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Location required. Please enable GPS to find nearby restaurants.',
+    );
+  }
+
+  const [lng, lat] = coordinates;
+  const radiusInRadians = 20 / 6378.1; // 20km radius circle
+
+  // 2. Filter vendors within 20km circle
+  const filter: any = {
+    status: 'APPROVED',
+    isDeleted: false,
+    currentSessionLocation: {
+      $geoWithin: {
+        $centerSphere: [[lng, lat], radiusInRadians],
+      },
+    },
+  };
+
+  // 3. Category Filter Logic
+  if (query.productCategory) {
+    const matchingVendorIds = await Product.distinct('vendorId', {
+      category: query.productCategory,
+      isDeleted: false,
+    });
+
+    if (matchingVendorIds.length === 0) {
+      return {
+        meta: {
+          total: 0,
+          page: 1,
+          limit: Number(query.limit) || 10,
+          totalPage: 0,
+        },
+        data: [],
+      };
+    }
+    filter._id = { $in: matchingVendorIds };
+    delete query.productCategory;
+  }
+
+  // 4. QueryBuilder Execution
+  const vendors = new QueryBuilder(Vendor.find(filter), query)
+    .search(['businessDetails.businessName'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  // 5. Select parent paths to avoid 'Path Collision'
+  vendors.modelQuery = vendors.modelQuery.select(
+    'name userId  businessDetails businessLocation documents rating currentSessionLocation',
+  );
+
+  const meta = await vendors.countTotal();
+  const rawData = await vendors.modelQuery;
+
+  // 6. Map to the exact structure required by your Frontend
+
+  const data = await Promise.all(
+    rawData.map(async (vendor: any) => {
+      // Find unique categories for this specific vendor from Product model
+      const vendorCategories = await Product.distinct('category', {
+        vendorId: vendor._id,
+        isDeleted: false,
+      });
+
+      // Populate category details (optional: if you need name/icon)
+      const populatedCategories = await ProductCategory.find({
+        _id: { $in: vendorCategories },
+      }).select('name icon'); // Assuming you have name and icon in ProductCategory
+
+      return {
+        id: vendor._id,
+        userId: vendor.userId,
+        name: vendor.name,
+        businessDetails: {
+          businessName: vendor.businessDetails?.businessName,
+          businessType: vendor.businessDetails?.businessType,
+          openingHours: vendor.businessDetails?.openingHours,
+          closingHours: vendor.businessDetails?.closingHours,
+          closingDays: vendor.businessDetails?.closingDays,
+          isStoreOpen: vendor.businessDetails?.isStoreOpen,
+        },
+        businessLocation: vendor.businessLocation,
+        storePhoto: vendor.documents?.storePhoto || '',
+        rating: vendor.rating,
+        currentSessionLocation: vendor.currentSessionLocation,
+        // Adding the categories here
+        availableCategories: populatedCategories,
+      };
+    }),
+  );
+
+  return {
+    meta,
+    data,
+  };
+};
+
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
   updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,
-  getSingleVendorFromDB,
+  getSingleVendor,
+  getAllVendorsForCustomer,
 };

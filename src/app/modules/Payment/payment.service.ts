@@ -84,7 +84,9 @@ const createReduniqPayment = async (
       amount: Math.round(summary.payoutSummary.grandTotal * 100),
       date: new Date().toISOString().slice(0, 19).replace('T', ' '),
     },
-    returnUrlOk: `${config.frontend_urls.frontend_url_test_payment}/payment-success?token={token}&summaryId=${checkoutSummaryId}`,
+    //returnUrlOk: `deligocustomer://payment-result?status=success&summaryId=${checkoutSummaryId}`,
+    //returnUrlError: `deligocustomer://payment-result?status=failed&summaryId=${checkoutSummaryId}`,
+    returnUrlOk: `${config.frontend_urls.frontend_url_test_payment}/payment-success?summaryId=${checkoutSummaryId}`,
     returnUrlError: `${config.frontend_urls.frontend_url_test_payment}/payment-failed?summaryId=${checkoutSummaryId}`,
     languageCode: 'pt',
   };

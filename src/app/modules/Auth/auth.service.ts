@@ -1018,8 +1018,9 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     }
   }
 
+  const submissionTime = new Date();
   submittedUser.status = 'SUBMITTED';
-  submittedUser.submittedForApprovalAt = new Date();
+  submittedUser.submittedForApprovalAt = submissionTime;
   submittedUser.isUpdateLocked = true;
   await submittedUser.save();
 
@@ -1045,12 +1046,23 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
   }
 
+  const userName =
+    `${submittedUser.name?.firstName || ''} ${submittedUser.name?.lastName || ''}`.trim() ||
+    'A User';
+  const formattedTime = submissionTime.toLocaleString('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+    day: 'numeric',
+    month: 'short',
+  });
+
   // send push notification to all admin
   NotificationService.sendToRole(
     'Admin',
     ['ADMIN', 'SUPER_ADMIN'],
-    'New User Submission for Approval',
     `New ${submittedUser?.role} Submission for Approval`,
+    `${userName} (${submittedUser?.role}) has submitted for approval at ${formattedTime}.`,
     { userId: submittedUser?._id.toString(), role: submittedUser?.role },
     'default',
     'ACCOUNT',
