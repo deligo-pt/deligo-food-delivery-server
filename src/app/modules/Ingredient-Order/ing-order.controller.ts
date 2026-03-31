@@ -46,8 +46,38 @@ const getAllIngredientOrdersForAdmin = catchAsync(async (req, res) => {
     });
 });
 
+const getSingleIngredientOrder = catchAsync(async (req, res) => {
+    const { orderId } = req.params;
+    const result = await IngredientOrderService.getSingleIngredientOrder(orderId);
+
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: 'Order details retrieved successfully',
+        data: result,
+    });
+});
+
+
+const updateIngredientOrderStatus = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    const currentUser = req.user as AuthUser;
+
+    const result = await IngredientOrderService.updateIngredientOrderStatus(id, status, currentUser);
+
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: `Order status updated to ${status}`,
+        data: result,
+    });
+});
+
 export const IngredientOrderController = {
     confirmIngredientOrder,
     getMyIngredientOrders,
     getAllIngredientOrdersForAdmin,
+    getSingleIngredientOrder,
+    updateIngredientOrderStatus,
 };

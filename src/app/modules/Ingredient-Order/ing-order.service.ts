@@ -16,6 +16,7 @@ import { searchableFields } from './ing-order.constant';
 
 const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
+// confirm ingredient order after reduniq payment success
 const confirmIngredientOrder = async (
     payload: { orderId: string; paymentToken: string },
     currentUser: AuthUser,
@@ -157,6 +158,7 @@ const confirmIngredientOrder = async (
     }
 };
 
+// Vendor can view their orders (with filters, pagination) - only paid and confirmed orders
 const getMyIngredientOrders = async (
     query: Record<string, unknown>,
     currentUser: AuthUser
@@ -192,6 +194,7 @@ const getMyIngredientOrders = async (
     };
 };
 
+// Admin can view all orders (with filters, pagination) - only paid and confirmed orders
 const getAllIngredientOrdersForAdmin = async (query: Record<string, unknown>) => {
 
     const ingredientOrderQuery = new QueryBuilder(
@@ -221,8 +224,61 @@ const getAllIngredientOrdersForAdmin = async (query: Record<string, unknown>) =>
     };
 };
 
+// get single order details (only if it's paid and confirmed)
+const getSingleIngredientOrder = async (orderId: string) => {
+    const result = await IngredientOrder.findOne({
+        orderId,
+        isDeleted: false,
+        isPaid: true,
+        paymentStatus: 'PAID',
+    })
+        .populate('vendor')
+        .populate('orderDetails.ingredient');
+
+    if (!result) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Ingredient order not found');
+    }
+
+    return result;
+};
+
+// update order status (SHIPPED, DELIVERED) - only Admin can do this
+const updateIngredientOrderStatus = async (
+    id: string,
+    status: 'SHIPPED' | 'DELIVERED',
+    currentUser: AuthUser
+) => {
+    const adminId = currentUser._id;
+    if (!adminId) {
+        throw new AppError(httpStatus.UNAUTHORIZED, 'Unauthorized to update order status');
+    };
+
+    const order = await IngredientOrder.findById(id);
+
+    if (!order) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+    }
+
+    if (!order.isPaid) {
+        throw new AppError(httpStatus.BAD_REQUEST, 'Cannot update status of an unpaid order');
+    }
+
+    const result = await IngredientOrder.findByIdAndUpdate(
+        id,
+        {
+            orderStatus: status,
+            admin: adminId,
+        },
+        { new: true }
+    );
+
+    return result;
+};
+
 export const IngredientOrderService = {
     confirmIngredientOrder,
     getMyIngredientOrders,
     getAllIngredientOrdersForAdmin,
+    getSingleIngredientOrder,
+    updateIngredientOrderStatus,
 };

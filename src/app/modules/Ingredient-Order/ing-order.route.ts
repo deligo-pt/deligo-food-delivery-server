@@ -23,4 +23,16 @@ router.get(
     IngredientOrderController.getAllIngredientOrdersForAdmin
 );
 
+router.get(
+    '/:orderId', // orderId eita
+    auth("ADMIN", "SUPER_ADMIN"),
+    IngredientOrderController.getSingleIngredientOrder
+);
+
+router.patch(
+    '/:id/status', //_id eita
+    auth("ADMIN", "SUPER_ADMIN"),
+    IngredientOrderController.updateIngredientOrderStatus
+);
+
 export const IngredientOrderRoutes = router;
