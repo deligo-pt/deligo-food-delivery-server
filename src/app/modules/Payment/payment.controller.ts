@@ -35,7 +35,28 @@ const handlePaymentFailure = catchAsync(async (req, res) => {
   });
 });
 
+
+// create ingredient reduniq payment intent controller
+const createIngredientRequniqPayment = catchAsync(async (req, res) => {
+  const payload = req.body;
+  const currentUser = req.user as AuthUser;
+
+  const session = await PaymentServices.createIngredientRequniqPayment(
+    payload,
+    currentUser
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Ingredient reduniq payment session created',
+    data: session,
+  });
+});
+
+
 export const PaymentController = {
   createReduniqPayment,
   handlePaymentFailure,
+  createIngredientRequniqPayment
 };

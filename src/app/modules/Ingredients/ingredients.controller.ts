@@ -42,8 +42,8 @@ const updateIngredient = catchAsync(async (req, res) => {
 });
 
 const getIngredientDetails = catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const result = await IngredientsServices.getIngredientDetails(id);
+    const { sku } = req.params;
+    const result = await IngredientsServices.getIngredientDetails(sku);
 
     sendResponse(res, {
         success: true,
