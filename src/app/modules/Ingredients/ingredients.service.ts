@@ -68,8 +68,8 @@ const updateIngredient = async (
 };
 
 
-const getIngredientDetails = async (id: string) => {
-    const result = await Ingredient.findById(id);
+const getIngredientDetails = async (sku: string) => {
+    const result = await Ingredient.findOne({ sku });
     if (!result || result.isDeleted) {
         throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
     }
