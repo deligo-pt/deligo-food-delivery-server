@@ -42,8 +42,8 @@ const ingredientOrderSchema = new Schema<IIngredientOrder>(
 
         orderStatus: {
             type: String,
-            enum: ['CONFIRMED', 'SHIPPED', 'DELIVERED'],
-            default: 'CONFIRMED',
+            enum: ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED'],
+            default: 'PENDING',
         },
 
         paymentStatus: {

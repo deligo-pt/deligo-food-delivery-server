@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 
-export type TOrderStatus = 'CONFIRMED' | 'SHIPPED' | 'DELIVERED';
+export type TOrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED';
 export type TPaymentStatus = 'PROCESSING' | 'PAID'; // | 'FAILED' | 'REFUNDED';
 export type TPaymentMethod = 'CARD' | 'MB_WAY' | 'APPLE_PAY' | 'PAYPAL' | 'GOOGLE_PAY' | 'OTHER';
 

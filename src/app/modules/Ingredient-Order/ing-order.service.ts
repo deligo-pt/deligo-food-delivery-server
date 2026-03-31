@@ -10,6 +10,9 @@ import { AuthUser } from '../../constant/user.constant';
 import { IngredientOrder } from './ing-order.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
 import { IIngredients } from '../Ingredients/ingredients.interface';
+import { QueryBuilder } from '../../builder/QueryBuilder';
+import { Vendor } from '../Vendor/vendor.model';
+import { searchableFields } from './ing-order.constant';
 
 const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
@@ -154,7 +157,72 @@ const confirmIngredientOrder = async (
     }
 };
 
+const getMyIngredientOrders = async (
+    query: Record<string, unknown>,
+    currentUser: AuthUser
+) => {
+    const vendorInfo = await Vendor.findById(currentUser._id);
+    if (!vendorInfo) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    };
+
+    const ingredientOrderQuery = new QueryBuilder(
+        IngredientOrder.find({
+            vendor: vendorInfo._id,
+            isDeleted: false,
+            isPaid: true,
+            paymentStatus: 'PAID',
+            orderStatus: { $ne: 'PENDING' }, // Exclude orders that are still pending
+            orderId: { $exists: true }, // Ensure we only get orders that have been confirmed and have an orderId
+        }).populate('orderDetails.ingredient'),
+        query,
+    )
+        .search(searchableFields)
+        .filter()
+        .sort()
+        .paginate()
+        .fields();
+
+    const result = await ingredientOrderQuery.modelQuery;
+    const meta = await ingredientOrderQuery.countTotal();
+
+    return {
+        meta,
+        data: result,
+    };
+};
+
+const getAllIngredientOrdersForAdmin = async (query: Record<string, unknown>) => {
+
+    const ingredientOrderQuery = new QueryBuilder(
+        IngredientOrder.find({
+            isDeleted: false,
+            isPaid: true,
+            paymentStatus: 'PAID',
+            orderStatus: { $ne: 'PENDING' }, // Exclude orders that are still pending
+            orderId: { $exists: true }, // Ensure we only get orders that have been confirmed and have an orderId
+        })
+            .populate('orderDetails.ingredient')
+            .populate('vendor'),
+        query,
+    )
+        .search(searchableFields)
+        .filter()
+        .sort()
+        .paginate()
+        .fields();
+
+    const result = await ingredientOrderQuery.modelQuery;
+    const meta = await ingredientOrderQuery.countTotal();
+
+    return {
+        meta,
+        data: result,
+    };
+};
 
 export const IngredientOrderService = {
     confirmIngredientOrder,
+    getMyIngredientOrders,
+    getAllIngredientOrdersForAdmin,
 };

@@ -199,7 +199,7 @@ const createIngredientRequniqPayment = async (
         },
         grandTotal,
         paymentStatus: 'PROCESSING',
-        orderStatus: 'CONFIRMED',
+        orderStatus: 'PENDING',
       }],
       { session }
     );
