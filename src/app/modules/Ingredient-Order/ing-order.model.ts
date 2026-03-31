@@ -3,7 +3,7 @@ import { IIngredientOrder, IIngredientOrderDetail } from './ing-order.interface'
 
 const ingredientOrderDetailSchema = new Schema<IIngredientOrderDetail>({
     totalQuantity: { type: Number, required: true },
-    totalAmount: { type: Number, required: true },
+    totalAmount: { type: Number },
     ingredient: { type: Schema.Types.ObjectId, ref: 'Ingredient', required: true },
 }, { _id: false });
 

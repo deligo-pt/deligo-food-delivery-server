@@ -189,7 +189,11 @@ const createIngredientRequniqPayment = async (
     // Create order within transaction
     const [newOrder] = await IngredientOrder.create(
       [{
-        ...payload,
+        orderDetails: {
+          ...payload.orderDetails,
+          totalAmount: totalIngredientCost,
+        },
+        paymentMethod: paymentMethod,
         vendor: currentUser._id,
         deliveryAddress: vendorInfo.businessLocation,
         delivery: {
@@ -238,8 +242,7 @@ const createIngredientRequniqPayment = async (
 
       return {
         redirectUrl: redirectUrl,
-        paymentToken: token,
-        adminInfo
+        paymentToken: token
       };
     } else {
       throw new Error('Payment initiation failed');

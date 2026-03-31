@@ -105,7 +105,7 @@ const confirmIngredientOrder = async (
         }
 
         // 3. Create General Transaction Record (if your system uses a Transaction model)
-        const transaction = await Transaction.create(
+        await Transaction.create(
             [
                 {
                     transactionId: transactionId,
@@ -145,11 +145,8 @@ const confirmIngredientOrder = async (
         );
 
 
-        return {
-            existingOrder,
-            updatedIngredient,
-            transaction,
-        };
+        return existingOrder;
+
     } catch (err) {
         await session.abortTransaction();
         throw err;

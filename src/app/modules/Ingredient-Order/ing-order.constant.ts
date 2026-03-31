@@ -1,1 +1,1 @@
-export const searchableFields = ['orderId', 'transactionId', 'paymentStatus'];
+export const searchableFields = ['orderId', 'orderStatus'];
