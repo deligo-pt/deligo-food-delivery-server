@@ -8,6 +8,7 @@ import AppError from '../../errors/AppError';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AuthUser, ROLE_COLLECTION_MAP } from '../../constant/user.constant';
 import { Order } from '../Order/order.model';
+import { findUserById } from '../../utils/findUserByEmailOrId';
 
 /**
  * Checks for an existing active ticket.
@@ -64,13 +65,16 @@ const getOrCreateActiveTicket = async (
 };
 
 const createMessage = async (payload: any, currentUser: AuthUser) => {
+  const { user: loggedInUser } = await findUserById({
+    userId: currentUser.userId,
+  });
   const isAgent =
     currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
   const senderRole = currentUser.role;
   const targetUserObjectId = isAgent
     ? payload.targetUserObjectId
-    : currentUser._id.toString();
+    : loggedInUser?._id.toString();
   const targetUserCustomId = isAgent
     ? payload.targetUserId
     : currentUser.userId;
@@ -84,7 +88,7 @@ const createMessage = async (payload: any, currentUser: AuthUser) => {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
     }
     if (
-      order.customerId.toString() !== currentUser._id.toString() &&
+      order.customerId.toString() !== loggedInUser?._id.toString() &&
       currentUser.role === 'CUSTOMER'
     ) {
       throw new AppError(
@@ -94,7 +98,7 @@ const createMessage = async (payload: any, currentUser: AuthUser) => {
     }
 
     if (
-      order.vendorId.toString() !== currentUser._id.toString() &&
+      order.vendorId.toString() !== loggedInUser?._id.toString() &&
       (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR')
     ) {
       throw new AppError(
@@ -105,7 +109,7 @@ const createMessage = async (payload: any, currentUser: AuthUser) => {
 
     if (
       currentUser?.role === 'DELIVERY_PARTNER' &&
-      order?.deliveryPartnerId?.toString() !== currentUser._id.toString()
+      order?.deliveryPartnerId?.toString() !== loggedInUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
@@ -140,7 +144,7 @@ const createMessage = async (payload: any, currentUser: AuthUser) => {
     recipientId = targetUserCustomId;
 
     if (!ticket.assignedAdminId) {
-      ticket.assignedAdminId = currentUser._id as any;
+      ticket.assignedAdminId = loggedInUser?._id as any;
       ticket.status = 'IN_PROGRESS';
       ticket.activeHandler = 'AGENT';
 
@@ -177,7 +181,7 @@ const getAllTickets = async (
   let findQuery = SupportTicket.find();
 
   if (!isAgent) {
-    findQuery = findQuery.where({ userId: currentUser._id });
+    findQuery = findQuery.where({ userId: currentUser.userId });
   }
   const qb = new QueryBuilder(
     findQuery
@@ -236,6 +240,9 @@ const markReadByAdminOrUser = async (
 };
 
 const closeTicket = async (ticketId: string, currentUser: AuthUser) => {
+  const { user: loggedInUser } = await findUserById({
+    userId: currentUser.userId,
+  });
   const ticket = await SupportTicket.findOne({
     ticketId: ticketId,
     status: { $ne: 'CLOSED' },
@@ -243,7 +250,7 @@ const closeTicket = async (ticketId: string, currentUser: AuthUser) => {
   if (!ticket)
     throw new AppError(httpStatus.NOT_FOUND, 'Active ticket not found');
 
-  const adminId = currentUser._id;
+  const adminId = loggedInUser?._id;
 
   ticket.status = 'CLOSED';
   ticket.closedAt = new Date();
