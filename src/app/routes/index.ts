@@ -29,6 +29,7 @@ import { transactionRoutes } from '../modules/Transaction/transaction.route';
 import { UploadRoutes } from '../modules/Upload/upload.route';
 import { SupportRoutes } from '../modules/Support/support.route';
 import { IngredientRoutes } from '../modules/Ingredients/ingredients.route';
+import { IngredientOrderRoutes } from '../modules/Ingredient-Order/ing-order.route';
 
 const router = express.Router();
 
@@ -153,6 +154,10 @@ const moduleRoutes = [
   {
     path: '/ingredients',
     route: IngredientRoutes,
+  },
+  {
+    path: '/ingredients-order',
+    route: IngredientOrderRoutes,
   },
 ];
 

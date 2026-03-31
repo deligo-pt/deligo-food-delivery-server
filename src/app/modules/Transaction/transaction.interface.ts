@@ -23,7 +23,8 @@ export type TTransaction = {
     | 'VENDOR_SETTLEMENT'
     | 'FLEET_SETTLEMENT'
     | 'DELIVERY_PARTNER_SETTLEMENT'
-    | 'PLATFORM_COMMISSION';
+    | 'PLATFORM_COMMISSION'
+    | "INGREDIENT_PURCHASE";
 
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
   paymentMethod:
