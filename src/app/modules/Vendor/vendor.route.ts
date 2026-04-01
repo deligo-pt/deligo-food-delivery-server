@@ -46,6 +46,7 @@ router.patch(
 router.get(
   '/customer',
   auth('CUSTOMER'),
+  validateRequest(VendorValidation.getAllVendorsForCustomerValidationSchema),
   VendorControllers.getAllVendorsForCustomer,
 );
 
