@@ -364,7 +364,7 @@ const getAllVendorsForCustomer = async (
   }
 
   const [lng, lat] = coordinates;
-  const radiusInRadians = 20 / 6378.1; // 20km radius circle
+  const radiusInRadians = 20000 / 6378.1; // 20km radius circle
 
   // 2. Filter vendors within 20km circle
   const filter: any = {
