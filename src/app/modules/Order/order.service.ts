@@ -35,10 +35,14 @@ const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
 // Create Order after reduniq payment
 const createOrderAfterReduniqPayment = async (
-  payload: { checkoutSummaryId: string; paymentToken: string },
+  payload: {
+    checkoutSummaryId: string;
+    paymentToken: string;
+    deliveryNotes?: string;
+  },
   currentUser: AuthUser,
 ) => {
-  const { checkoutSummaryId, paymentToken } = payload;
+  const { checkoutSummaryId, paymentToken, deliveryNotes } = payload;
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
@@ -105,6 +109,10 @@ const createOrderAfterReduniqPayment = async (
     const orderData = {
       ...summary.toObject(),
       _id: undefined,
+      delivery: {
+        ...summary.delivery,
+        notes: deliveryNotes || '',
+      },
       orderId: `ORD-${uniqueOrderId}`,
       paymentMethod: summary.paymentMethod,
       paymentStatus: 'PAID',
