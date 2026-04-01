@@ -15,6 +15,9 @@ export type TGlobalSettings = {
   deliveryVatRate?: number;
   vendorVatPercent?: number;
 
+  // customer nearest vendor search radius
+  customerNearestVendorRadiusKm: number;
+
   // Order rules
   minOrderAmount?: number;
   maxOrderAmount?: number;

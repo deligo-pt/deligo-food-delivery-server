@@ -12,6 +12,7 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
+import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 
 /**
  * Service to update vendor profile information.
@@ -363,10 +364,12 @@ const getAllVendorsForCustomer = async (
     );
   }
 
-  const [lng, lat] = coordinates;
-  const radiusInRadians = 20000 / 6378.1; // 20km radius circle
+  const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
-  // 2. Filter vendors within 20km circle
+  const [lng, lat] = coordinates;
+  const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
+
+  // 2. Filter vendors
   const filter: any = {
     status: 'APPROVED',
     isDeleted: false,
