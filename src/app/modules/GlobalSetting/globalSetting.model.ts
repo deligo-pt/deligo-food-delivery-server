@@ -40,6 +40,7 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
     // customer nearest vendor search radius
     customerNearestVendorRadiusKm: {
       type: Number,
+      default: 20,
     },
 
     // --------------------------------------------------
