@@ -112,6 +112,7 @@ const orderSchema = new Schema<TOrder>(
       distance: { type: Number, default: 0 },
       estimatedTime: { type: Number },
       deliveryProofImage: { type: String },
+      notes: { type: String },
     },
 
     payoutSummary: {
