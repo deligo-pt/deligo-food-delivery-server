@@ -119,6 +119,11 @@ const updateGlobalSettingValidationSchema = z.object({
     maxDeliveryDistanceKm: z.number().positive().optional(),
 
     // --------------------------------------------------
+    // customer nearest vendor search radius
+    // --------------------------------------------------
+    customerNearestVendorRadiusKm: z.number().positive().optional(),
+
+    // --------------------------------------------------
     // Platform Commission
     // --------------------------------------------------
     platformCommissionPercent: z.number().min(0).max(100).optional(),
