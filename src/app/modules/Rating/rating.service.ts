@@ -19,16 +19,13 @@ import mongoose from 'mongoose';
 // create rating
 const createRating = async (payload: TRating, currentUser: AuthUser) => {
   const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    session.startTransaction();
-    const [exists, existsOrder] = await Promise.all([
-      Rating.findOne({
-        orderId: payload.orderId,
-        reviewerId: currentUser._id,
-        ratingType: payload.ratingType,
-      }).session(session),
-      Order.findById(payload.orderId).session(session),
-    ]);
+    const exists = await Rating.findOne({
+      orderId: payload.orderId,
+      reviewerId: currentUser._id,
+      ratingType: payload.ratingType,
+    }).session(session);
 
     if (exists) {
       throw new AppError(
@@ -37,6 +34,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
       );
     }
 
+    const existsOrder = await Order.findById(payload.orderId).session(session);
     if (!existsOrder) {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
     }
@@ -68,11 +66,9 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
       updateFields['ratingStatus.isProductRated'] = true;
       updateFields['ratingStatus.isVendorRated'] = true;
 
-      await Promise.all(
-        existsOrder.items.map((item) =>
-          calcAndUpdateProduct(item.productId.toString(), session),
-        ),
-      );
+      for (const item of existsOrder.items) {
+        await calcAndUpdateProduct(item.productId.toString(), session);
+      }
       await calcAndUpdateVendorAllProductStats(
         existsOrder.vendorId.toString(),
         session,
@@ -117,12 +113,12 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
       { session },
     );
     await session.commitTransaction();
-    await session.endSession();
     return result;
   } catch (err) {
     await session.abortTransaction();
-    session.endSession();
     throw err;
+  } finally {
+    await session.endSession();
   }
 };
 
