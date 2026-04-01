@@ -113,12 +113,12 @@ router.get(
   AnalyticsControllers.getSingleFleetPerformanceDetailsAnalytics,
 );
 
-// get fleet performance details analytics
+// get admin sales analytics
 router.get(
   // '/admin-vendor-sales-analytics', //before
-  '/admin/vendor-sales-analytics',
+  '/admin/sales-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getAdminVendorSalesAnalytics,
+  AnalyticsControllers.getAdminSalesAnalytics,
 );
 
 // get delivery partner performance analytics

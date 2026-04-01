@@ -193,8 +193,8 @@ const getSingleFleetPerformanceDetailsAnalytics = catchAsync(async (req, res) =>
 });
 
 // get admin delivery partner report analytics controller
-const getAdminVendorSalesAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminVendorSalesAnalytics();
+const getAdminSalesAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminSalesAnalytics(req.query);
 
   sendResponse(res, {
     success: true,
@@ -449,7 +449,7 @@ export const AnalyticsControllers = {
   getVendorCustomerReport,
   getFleetManagerPerformanceAnalytics,
   getSingleFleetPerformanceDetailsAnalytics,
-  getAdminVendorSalesAnalytics,
+  getAdminSalesAnalytics,
   getDeliveryPartnerPerformanceAnalytics,
   getSingleDeliveryPartnerPerformanceDetailsAnalytics,
   getAdminCustomerInsights,
