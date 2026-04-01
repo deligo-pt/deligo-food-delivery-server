@@ -181,7 +181,7 @@ const getAllTickets = async (
   let findQuery = SupportTicket.find();
 
   if (!isAgent) {
-    findQuery = findQuery.where({ userId: currentUser.userId });
+    findQuery = findQuery.where({ userId: currentUser._id });
   }
   const qb = new QueryBuilder(
     findQuery
