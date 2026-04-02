@@ -353,13 +353,12 @@ const getSingleVendor = async (vendorId: string, currentUser: AuthUser) => {
 const getAllVendorsForCustomer = async (
   query: Record<string, unknown>,
   currentUser: AuthUser,
-  coordinates: number[] | undefined,
 ) => {
   // 1. Get Customer Coordinates from currentSessionLocation
-  const currentCoordinates =
-    coordinates || currentUser?.currentSessionLocation?.coordinates;
 
-  if (!currentCoordinates || currentCoordinates.length < 2) {
+  const coordinates = currentUser?.currentSessionLocation?.coordinates;
+
+  if (!coordinates || coordinates.length < 2) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Location required. Please enable GPS to find nearby restaurants.',
@@ -368,7 +367,7 @@ const getAllVendorsForCustomer = async (
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
-  const [lng, lat] = currentCoordinates;
+  const [lng, lat] = coordinates;
   const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
 
   // 2. Filter vendors

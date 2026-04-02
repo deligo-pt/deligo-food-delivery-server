@@ -71,22 +71,7 @@ const vendorDocImageValidationSchema = z.object({
 });
 
 // --------------------------------------------------
-// Get All Vendors for Customer Validation Schema
-// --------------------------------------------------
-const getAllVendorsForCustomerValidationSchema = z.object({
-  body: z.object({
-    coordinates: z
-      .array(z.number(), {
-        required_error: 'Coordinates are required',
-        invalid_type_error: 'Coordinates must be an array of numbers',
-      })
-      .length(2, { message: 'Coordinates must have exactly 2 numbers' }),
-  }),
-});
-
-// --------------------------------------------------
 export const VendorValidation = {
   vendorUpdateValidationSchema,
   vendorDocImageValidationSchema,
-  getAllVendorsForCustomerValidationSchema,
 };

@@ -22,6 +22,22 @@ const updateCustomer = catchAsync(async (req, res) => {
   });
 });
 
+// update live location controller
+const updateCustomerLiveLocation = catchAsync(async (req, res) => {
+  const result = await CustomerServices.updateCustomerLiveLocation(
+    req.body,
+    req.user as AuthUser,
+    req.params.customerId,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
 // add delivery address
 const addDeliveryAddress = catchAsync(async (req, res) => {
   const { deliveryAddress } = req.body;
@@ -118,6 +134,7 @@ const getSingleCustomer = catchAsync(async (req, res) => {
 
 export const CustomerControllers = {
   updateCustomer,
+  updateCustomerLiveLocation,
   addDeliveryAddress,
   updateDeliveryAddress,
   toggleDeliveryAddressStatus,
