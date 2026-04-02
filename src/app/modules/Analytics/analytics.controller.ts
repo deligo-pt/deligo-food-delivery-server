@@ -286,7 +286,7 @@ const getPeakHourAnalytics = catchAsync(async (req, res) => {
 
 // get delivery insights controller
 const getDeliveryInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getDeliveryInsights();
+  const result = await AnalyticsServices.getDeliveryInsights(req.query);
 
   sendResponse(res, {
     success: true,

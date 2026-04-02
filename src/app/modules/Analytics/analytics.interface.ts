@@ -208,11 +208,64 @@ export type TTopVendor = {
     rating: number;
 };
 
-
 export type TTopVendorData = {
     stats: {
         activeVendors: number;
         thisMonthTopRevenue: number;
     };
     topVendors: TTopVendor[];
+};
+
+
+// --> get admin delivery insights
+// Summary metrics (top cards)
+export type TDeliverySummary = {
+    averageDeliveryTime: number; // in minutes
+    lateDeliveryPercentage: number; // % of late deliveries
+    rejectedDeliveryPercentage: number; // % of rejected deliveries
+};
+
+// Rider performance
+export type TRiderPerformance = {
+    riderId: string;
+    riderName: string;
+    totalDeliveries: number;
+    successfulDeliveries: number;
+    rejectedDeliveries: number;
+    averageTime: number; // avg delivery time in minutes
+};
+
+// Distance vs Time (for scatter/line chart)
+export type TDistanceTimeAnalysis = {
+    distanceKm: number;
+    averageTime: number;
+};
+
+// Area performance (slow delivery detection)
+export type TAreaDeliveryPerformance = {
+    area: string;
+    averageTime: number;
+    latePercentage: number;
+};
+
+// Rider idle time
+export type TRiderIdleTime = {
+    riderId: string;
+    riderName: string;
+    idleTimeMinutes: number; // total idle time in selected period
+};
+
+// rejected deliveries breakdown
+export type TRejectedDeliveryReason = {
+    reason: string;
+    count: number;
+};
+export type TDeliveryInsights = {
+    summary: TDeliverySummary;
+
+    riderPerformance: TRiderPerformance[];
+    distanceTimeAnalysis: TDistanceTimeAnalysis[];
+    areaPerformance: TAreaDeliveryPerformance[];
+    riderIdleTime: TRiderIdleTime[];
+    rejectedReasons: TRejectedDeliveryReason[];
 };
