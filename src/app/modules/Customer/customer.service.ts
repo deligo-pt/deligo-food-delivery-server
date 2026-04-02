@@ -8,6 +8,7 @@ import { Customer } from './customer.model';
 import { CustomerSearchableFields } from './customer.constant';
 import { TDeliveryAddress } from '../../constant/address.constant';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 
 // update customer service
 const updateCustomer = async (
@@ -107,6 +108,84 @@ const updateCustomer = async (
   );
 
   return updated;
+};
+
+// --------------------------------------------------------------
+// Customer live location update service will be added here
+// --------------------------------------------------------------
+const updateCustomerLiveLocation = async (
+  payload: TLiveLocationPayload,
+  currentUser: AuthUser,
+  customerId: string,
+) => {
+  if (currentUser?.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update live location. Your account status is: ${currentUser?.status}`,
+    );
+  }
+
+  if (currentUser?.userId !== customerId) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You are not authorize to update live location!',
+    );
+  }
+
+  const {
+    latitude,
+    longitude,
+    geoAccuracy,
+    heading,
+    speed,
+    isMocked,
+    timestamp,
+  } = payload;
+
+  if (geoAccuracy !== undefined && geoAccuracy > 100) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Geo accuracy should be less than 100',
+    );
+  }
+
+  const updateData: Record<string, any> = {
+    'currentSessionLocation.type': 'Point',
+    'currentSessionLocation.coordinates': [longitude, latitude],
+    'currentSessionLocation.lastLocationUpdate': timestamp
+      ? new Date(timestamp)
+      : new Date(),
+  };
+
+  if (geoAccuracy !== undefined)
+    updateData['currentSessionLocation.geoAccuracy'] = geoAccuracy;
+  if (heading !== undefined)
+    updateData['currentSessionLocation.heading'] = heading;
+  if (speed !== undefined) updateData['currentSessionLocation.speed'] = speed;
+  if (isMocked !== undefined)
+    updateData['currentSessionLocation.isMocked'] = isMocked;
+
+  const updatedCustomer = await Customer.findOneAndUpdate(
+    { userId: currentUser.userId },
+    { $set: updateData },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  if (!updatedCustomer) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Customer not found or update failed.',
+    );
+  }
+
+  return {
+    success: true,
+    message: 'Live location updated successfully',
+    data: updatedCustomer.currentSessionLocation,
+  };
 };
 
 // --------------------------------------------------------------
@@ -456,6 +535,7 @@ const getSingleCustomerFromDB = async (
 
 export const CustomerServices = {
   updateCustomer,
+  updateCustomerLiveLocation,
   addDeliveryAddress,
   updateDeliveryAddress,
   toggleDeliveryAddressStatus,
