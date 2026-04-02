@@ -110,7 +110,6 @@ const getAllVendorsForCustomer = catchAsync(async (req, res) => {
   const result = await VendorServices.getAllVendorsForCustomer(
     req.query,
     req.user as AuthUser,
-    req.body.coordinates,
   );
 
   sendResponse(res, {
