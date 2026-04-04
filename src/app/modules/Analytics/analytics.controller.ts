@@ -262,7 +262,7 @@ const getPlatformEarnings = catchAsync(async (req, res) => {
 
 // get top vendors controller
 const getTopVendors = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getTopVendors();
+  const result = await AnalyticsServices.getTopVendors(req.query);
 
   sendResponse(res, {
     success: true,

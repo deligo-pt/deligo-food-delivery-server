@@ -198,24 +198,42 @@ export type TPartnerPerformanceDetailsData = {
     partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
 }
 
-// for top vendors
-export type TTopVendor = {
-    rank: number;
-    name: string;
-    category: string;
-    revenue: number;
-    orders: number;
+// ---> for top vendors analytics
+export type TVendorPerformance = {
+    vendorId: string;
+    vendorName: string;
+
+    totalOrders: number;      // total number of orders
+    totalRevenue: number;     // total revenue generated
+
+    averageRating: number;    // avg customer rating (1-5)
+    preparationTime: number;  // avg prep time in minutes
+
+    cancelRate: number;       // % of cancelled orders
+    satisfactionScore: number; // custom score (0-100 or %)
+};
+
+// Top selling vendors (ranked)
+export type TTopSellingVendor = {
+    vendorId: string;
+    vendorName: string;
+    totalOrders: number;
+    totalRevenue: number;
+};
+
+// Vendor rating distribution
+export type TVendorRatingDistribution = {
+    vendorName: string;
     rating: number;
 };
 
-export type TTopVendorData = {
-    stats: {
-        activeVendors: number;
-        thisMonthTopRevenue: number;
-    };
-    topVendors: TTopVendor[];
-};
+export type TVendorInsights = {
+    topSellingVendors: TTopSellingVendor[];
 
+    vendorPerformance: TVendorPerformance[];
+
+    ratingDistribution: TVendorRatingDistribution[];
+};
 
 // --> get admin delivery insights
 // Summary metrics (top cards)

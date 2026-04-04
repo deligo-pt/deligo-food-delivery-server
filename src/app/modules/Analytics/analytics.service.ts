@@ -25,8 +25,7 @@ import {
   TPartnerMonthlyPerformance,
   TPartnerPerformanceData,
   TPartnerPerformanceDetailsData,
-  TTopVendor,
-  TTopVendorData,
+  TVendorInsights,
   TVendorSalesReport,
 } from './analytics.interface';
 import { Transaction } from '../Transaction/transaction.model';
@@ -3374,105 +3373,108 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
 };
 
 // get top vendors for admin
-const getTopVendors = async (): Promise<{ data: TTopVendorData }> => {
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+const getTopVendors = async (query: { fromDate?: string; toDate?: string }): Promise<TVendorInsights> => {
+  const now = new Date();
+  const to = query.toDate ? new Date(query.toDate) : now;
+  const from = query.fromDate
+    ? new Date(query.fromDate)
+    : new Date(new Date().setDate(to.getDate() - 30));
 
-  const [activeVendors, topVendorAgg, thisMonthAgg] = await Promise.all([
-    // Active vendors
-    Vendor.countDocuments({
-      role: 'VENDOR',
-      status: 'APPROVED',
-      isDeleted: false,
-    }),
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
 
-    // Top vendors all time
-    Order.aggregate([
-      {
-        $match: {
-          orderStatus: 'DELIVERED',
-          isPaid: true,
-          isDeleted: false,
+  const [results] = await Order.aggregate([
+    // We include all statuses here to calculate cancelRate accurately
+    {
+      $match: {
+        isDeleted: false,
+        createdAt: { $gte: from, $lte: to }
+      }
+    },
+    {
+      $group: {
+        _id: '$vendorId',
+        // Total orders regardless of status (for cancel rate)
+        grandTotalOrders: { $sum: 1 },
+        // Cancelled orders
+        cancelledOrders: {
+          $sum: { $cond: [{ $eq: ['$orderStatus', 'CANCELED'] }, 1, 0] }
         },
-      },
-      {
-        $group: {
-          _id: '$vendorId',
-          revenue: {
-            $sum: '$payoutSummary.vendor.earningsWithoutTax',
-          },
-          orders: { $sum: 1 },
+        // Revenue (Only from paid/delivered)
+        revenue: {
+          $sum: {
+            $cond: [
+              { $and: [{ $eq: ['$orderStatus', 'DELIVERED'] }, { $eq: ['$isPaid', true] }] },
+              '$payoutSummary.vendor.earningsWithoutTax',
+              0
+            ]
+          }
         },
-      },
-      {
-        $lookup: {
-          from: 'vendors',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'vendor',
+        // Prep Time (assuming prep time is stored in order or calculated)
+        avgPrepTime: { $avg: '$preparationTime' }
+      }
+    },
+    {
+      $lookup: {
+        from: 'vendors',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'vendorInfo'
+      }
+    },
+    { $unwind: '$vendorInfo' },
+    {
+      $project: {
+        vendorId: '$vendorInfo.userId',
+        vendorName: { $concat: ['$vendorInfo.name.firstName', ' ', '$vendorInfo.name.lastName'] },
+        totalOrders: '$grandTotalOrders',
+        totalRevenue: { $round: ['$revenue', 2] },
+        averageRating: { $ifNull: ['$vendorInfo.rating.average', 0] },
+        preparationTime: { $ifNull: [{ $round: ['$avgPrepTime', 0] }, 0] }, // Default 0 mins
+        cancelRate: {
+          $round: [
+            { $multiply: [{ $divide: ['$cancelledOrders', '$grandTotalOrders'] }, 100] },
+            1
+          ]
         },
-      },
-      { $unwind: '$vendor' },
-      {
-        $project: {
-          revenue: 1,
-          orders: 1,
-          name: {
-            $concat: ['$vendor.name.firstName', ' ', '$vendor.name.lastName'],
-          },
-          category: '$vendor.businessDetails.businessType',
-          rating: '$vendor.rating.average',
-        },
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: 10 },
-    ]),
-
-    // Top revenue vendor this month
-    Order.aggregate([
-      {
-        $match: {
-          orderStatus: 'DELIVERED',
-          isPaid: true,
-          isDeleted: false,
-          createdAt: { $gte: monthStart },
-        },
-      },
-      {
-        $group: {
-          _id: '$vendorId',
-          revenue: {
-            $sum: '$payoutSummary.vendor.earningsWithoutTax',
-          },
-        },
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: 1 },
-    ]),
+        // Satisfaction Score: Weighted average of (1 - cancelRate) and Rating
+        satisfactionScore: {
+          $round: [
+            {
+              $add: [
+                { $multiply: ['$vendorInfo.rating.average', 10] }, // 4.5 -> 45
+                { $multiply: [{ $subtract: [1, { $divide: ['$cancelledOrders', '$grandTotalOrders'] }] }, 50] } // 0.9 -> 45
+              ]
+            },
+            0
+          ]
+        }
+      }
+    },
+    {
+      $facet: {
+        // Leaderboard (Sorted by Revenue)
+        topSellingVendors: [
+          { $sort: { totalRevenue: -1 } },
+          { $limit: 10 },
+          { $project: { vendorId: 1, vendorName: 1, totalOrders: 1, totalRevenue: 1 } }
+        ],
+        // Performance Table (Detailed)
+        vendorPerformance: [
+          { $sort: { totalOrders: -1 } }
+        ],
+        // Rating Distribution
+        ratingDistribution: [
+          { $project: { _id: 0, vendorName: 1, rating: '$averageRating' } }
+        ]
+      }
+    }
   ]);
 
-  const thisMonthTopRevenue = thisMonthAgg?.[0]?.revenue || 0;
-
-  const topVendors: TTopVendor[] = topVendorAgg.map(
-    (vendor: any, index: number) => ({
-      rank: index + 1,
-      name: vendor.name || 'N/A',
-      category: vendor.category || 'N/A',
-      revenue: vendor.revenue,
-      orders: vendor.orders,
-      rating: vendor.rating || 0,
-    }),
-  );
-
   return {
-    data: {
-      stats: {
-        activeVendors,
-        thisMonthTopRevenue,
-      },
-      topVendors,
-    },
+    topSellingVendors: results.topSellingVendors || [],
+    vendorPerformance: results.vendorPerformance || [],
+    ratingDistribution: results.ratingDistribution || []
   };
 };
 
