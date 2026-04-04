@@ -30,7 +30,6 @@ export type TOrderItemSnapshot = {
     quantity: number;
     lineTotal: number;
     taxRate: number;
-    perUnitTaxAmount: number;
     taxAmount: number;
   }[];
 
@@ -42,7 +41,6 @@ export type TOrderItemSnapshot = {
     unitPrice: number;
     lineTotal: number;
     taxRate: number;
-    perUnitTaxAmount: number;
     taxAmount: number;
   };
 
