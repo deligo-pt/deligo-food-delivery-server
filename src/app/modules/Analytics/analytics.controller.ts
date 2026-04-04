@@ -236,7 +236,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(async (re
 
 // get customer insights controller
 const getAdminCustomerInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminCustomerInsights();
+  const result = await AnalyticsServices.getAdminCustomerInsights(req.query);
 
   sendResponse(res, {
     success: true,

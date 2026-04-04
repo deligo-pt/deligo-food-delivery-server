@@ -269,3 +269,51 @@ export type TDeliveryInsights = {
     riderIdleTime: TRiderIdleTime[];
     rejectedReasons: TRejectedDeliveryReason[];
 };
+
+// ---> get customer insights
+// Summary (top cards)
+export type TCustomerSummary = {
+    newCustomers: number;
+    returningCustomers: number;
+    churnRate: number;
+    averageCLV: number;
+};
+
+// Active users
+export type TActiveUsers = {
+    dau: number; // Daily Active Users
+    wau: number; // Weekly Active Users
+    mau: number; // Monthly Active Users
+};
+
+// Top customers (highest spenders)
+export type TTopCustomer = {
+    customerId: string;
+    name: string;
+    totalSpent: number;
+    totalOrders: number;
+};
+
+// Order frequency (per user per week)
+export type TOrderFrequency = {
+    range: string; // e.g. "1 order", "2-3 orders", "5+ orders"
+    userCount: number;
+};
+
+// Hourly order pattern (peak time detection)
+export type THourlyOrders = {
+    hour: number; // 0 - 23
+    orderCount: number;
+};
+
+export type TCustomerInsights = {
+    summary: TCustomerSummary;
+
+    activeUsers: TActiveUsers;
+
+    topCustomers: TTopCustomer[];
+
+    orderFrequency: TOrderFrequency[];
+
+    hourlyOrders: THourlyOrders[];
+};
