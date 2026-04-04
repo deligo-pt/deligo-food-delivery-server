@@ -370,8 +370,13 @@ const getAllVendorsForCustomer = async (
   const [lng, lat] = coordinates;
   const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
 
+  const activeProductVendorIds = await Product.distinct('vendorId', {
+    isDeleted: false,
+  });
+
   // 2. Filter vendors
   const filter: any = {
+    _id: { $in: activeProductVendorIds },
     status: 'APPROVED',
     isDeleted: false,
     currentSessionLocation: {
@@ -386,6 +391,7 @@ const getAllVendorsForCustomer = async (
     const matchingVendorIds = await Product.distinct('vendorId', {
       category: query.productCategory,
       isDeleted: false,
+      vendorId: { $in: activeProductVendorIds },
     });
 
     if (matchingVendorIds.length === 0) {
