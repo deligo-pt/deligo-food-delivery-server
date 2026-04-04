@@ -10,7 +10,7 @@ export type TOffer = {
   offerType: OfferType;
 
   // Auto apply or manual code (optional)
-  code?: string;
+  code?: string | null;
   isAutoApply: boolean;
 
   adminId: mongoose.Types.ObjectId | null;
