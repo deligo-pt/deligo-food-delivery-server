@@ -189,7 +189,7 @@ const getAllTickets = async (
         'userId',
         'userId name businessDetails.businessName profilePhoto',
       )
-      .populate('referenceOrderId', 'orderId status ')
+      .populate('referenceOrderId', 'orderId status')
       .populate('assignedAdminId', 'userId name email'),
     query,
   )
