@@ -3083,60 +3083,30 @@ const getAdminCustomerInsights = async (query: {
   from.setHours(0, 0, 0, 0);
   to.setHours(23, 59, 59, 999);
 
+  // Time-frames for AU and Churn
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const [facet] = await Order.aggregate([
-    {
-      // ✅ DO NOT FILTER isPaid HERE
-      $match: {
-        isDeleted: false,
-      },
-    },
-
+    { $match: { isDeleted: false } },
     {
       $facet: {
-        /** =============================
-         * CUSTOMER BASE (ALL 26 USERS)
-         ============================== */
         customerBase: [
           {
             $group: {
               _id: '$customerId',
-
               totalOrders: { $sum: 1 },
-
-              // ✅ Only paid contributes to revenue
               totalSpent: {
-                $sum: {
-                  $cond: [
-                    { $eq: ['$isPaid', true] },
-                    '$payoutSummary.grandTotal',
-                    0,
-                  ],
-                },
+                $sum: { $cond: [{ $eq: ['$isPaid', true] }, '$payoutSummary.grandTotal', 0] },
               },
-
-              paidOrders: {
-                $sum: {
-                  $cond: [{ $eq: ['$isPaid', true] }, 1, 0],
-                },
-              },
-
               firstOrderDate: { $min: '$createdAt' },
               lastOrderDate: { $max: '$createdAt' },
-
-              // ✅ Orders in selected range
-              ordersInRange: {
+              // Count orders specifically within the user-selected range
+              ordersInSelectedRange: {
                 $sum: {
                   $cond: [
-                    {
-                      $and: [
-                        { $gte: ['$createdAt', from] },
-                        { $lte: ['$createdAt', to] },
-                      ],
-                    },
+                    { $and: [{ $gte: ['$createdAt', from] }, { $lte: ['$createdAt', to] }] },
                     1,
                     0,
                   ],
@@ -3144,8 +3114,6 @@ const getAdminCustomerInsights = async (query: {
               },
             },
           },
-
-          // ✅ Get customer name
           {
             $lookup: {
               from: 'customers',
@@ -3154,92 +3122,50 @@ const getAdminCustomerInsights = async (query: {
               as: 'userDetails',
             },
           },
-          {
-            $unwind: {
-              path: '$userDetails',
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
+          { $unwind: { path: '$userDetails', preserveNullAndEmptyArrays: true } },
           {
             $addFields: {
-              name: {
-                $trim: {
-                  input: {
-                    $concat: [
-                      { $ifNull: ['$userDetails.name.firstName', ''] },
-                      ' ',
-                      { $ifNull: ['$userDetails.name.lastName', ''] },
-                    ],
-                  },
-                },
-              },
-
-              /** ✅ NEW */
+              /** NEW CUSTOMER: First order ever happened in this range */
               isNew: {
                 $cond: [
-                  {
-                    $and: [
-                      { $gte: ['$firstOrderDate', from] },
-                      { $lte: ['$firstOrderDate', to] },
-                    ],
-                  },
+                  { $and: [{ $gte: ['$firstOrderDate', from] }, { $lte: ['$firstOrderDate', to] }] },
                   1,
                   0,
                 ],
               },
-
-              /** ✅ RETURNING */
+              /** RETURNING CUSTOMER: Had orders before this range AND ordered again within this range */
               isReturning: {
                 $cond: [
-                  {
-                    $and: [
-                      { $lt: ['$firstOrderDate', from] },
-                      { $gte: ['$lastOrderDate', from] },
-                    ],
-                  },
+                  { $gt: ['$totalOrders', 0] },
                   1,
                   0,
                 ],
               },
-
-              /** ✅ CHURNED */
+              /** CHURNED: Hasn't ordered in recent times */
               isChurned: {
                 $cond: [
-                  { $lt: ['$lastOrderDate', thirtyDaysAgo] },
+                  {
+                    $and: [
+                      { $gt: ['$totalOrders', 0] }, // had history
+                      { $eq: ['$ordersInRange', 0] } // inactive now
+                    ]
+                  },
                   1,
-                  0,
-                ],
+                  0
+                ]
               },
             },
           },
         ],
-
-        /** =============================
-         * HOURLY DISTRIBUTION
-         ============================== */
         hourlyDistribution: [
-          {
-            $match: {
-              createdAt: { $gte: from, $lte: to },
-            },
-          },
+          { $match: { createdAt: { $gte: from, $lte: to } } },
           {
             $group: {
-              _id: {
-                $hour: {
-                  date: '$createdAt',
-                  timezone: 'Asia/Dhaka',
-                },
-              },
+              _id: { $hour: { date: '$createdAt', timezone: 'Asia/Dhaka' } },
               count: { $sum: 1 },
             },
           },
         ],
-
-        /** =============================
-         * ACTIVE USERS
-         ============================== */
         activeSnapshots: [
           {
             $group: {
@@ -3250,21 +3176,9 @@ const getAdminCustomerInsights = async (query: {
           {
             $group: {
               _id: null,
-              dau: {
-                $sum: {
-                  $cond: [{ $gte: ['$lastActivity', oneDayAgo] }, 1, 0],
-                },
-              },
-              wau: {
-                $sum: {
-                  $cond: [{ $gte: ['$lastActivity', sevenDaysAgo] }, 1, 0],
-                },
-              },
-              mau: {
-                $sum: {
-                  $cond: [{ $gte: ['$lastActivity', thirtyDaysAgo] }, 1, 0],
-                },
-              },
+              dau: { $sum: { $cond: [{ $gte: ['$lastActivity', oneDayAgo] }, 1, 0] } },
+              wau: { $sum: { $cond: [{ $gte: ['$lastActivity', sevenDaysAgo] }, 1, 0] } },
+              mau: { $sum: { $cond: [{ $gte: ['$lastActivity', thirtyDaysAgo] }, 1, 0] } },
             },
           },
         ],
@@ -3273,102 +3187,52 @@ const getAdminCustomerInsights = async (query: {
   ]);
 
   const customerBase = facet.customerBase || [];
-  const hourlyRaw = facet.hourlyDistribution || [];
-  const active = facet.activeSnapshots[0] || {
-    dau: 0,
-    wau: 0,
-    mau: 0,
-  };
+  const active = facet.activeSnapshots[0] || { dau: 0, wau: 0, mau: 0 };
 
-  /** =============================
-   * SUMMARY
-   ============================== */
+  // Calculate Summary Stats
   const newCustomers = customerBase.filter((c: any) => c.isNew === 1).length;
+  const returningCustomers = customerBase.filter((c: any) => c.isReturning > 0).length;
+  const churnedCustomers = customerBase.filter((c: any) => c.isChurned === 1).length;
 
-  const returningCustomers = customerBase.filter(
-    (c: any) => c.isReturning === 1,
-  ).length;
+  // CLV should be based on Total Spent by all non-deleted customers
+  const totalLifetimeRevenue = customerBase.reduce((acc: number, c: any) => acc + c.totalSpent, 0);
 
-  const churnedCustomers = customerBase.filter(
-    (c: any) => c.isChurned === 1,
-  ).length;
-
-  const activeCustomers = customerBase.filter(
-    (c: any) => c.ordersInRange > 0,
-  );
-
-  const totalRevenue = customerBase.reduce(
-    (acc: number, c: any) => acc + c.totalSpent,
-    0,
-  );
-
-  /** =============================
-   * ORDER FREQUENCY
-   ============================== */
-  const freqMap: Record<string, number> = {
-    '1 order': 0,
-    '2-3 orders': 0,
-    '4-5 orders': 0,
-    '5+ orders': 0,
-  };
-
-  activeCustomers.forEach((c: any) => {
-    const orders = c.ordersInRange;
-
-    if (orders === 1) freqMap['1 order']++;
-    else if (orders <= 3) freqMap['2-3 orders']++;
-    else if (orders <= 5) freqMap['4-5 orders']++;
-    else freqMap['5+ orders']++;
-  });
-
-  /** =============================
-   * FINAL RESPONSE
-   ============================== */
   return {
     summary: {
       newCustomers,
       returningCustomers,
-
-      churnRate:
-        customerBase.length > 0
-          ? Number(
-            ((churnedCustomers / customerBase.length) * 100).toFixed(2),
-          )
-          : 0,
-
-      averageCLV:
-        activeCustomers.length > 0
-          ? Math.round(totalRevenue / activeCustomers.length)
-          : 0,
+      churnRate: customerBase.length > 0
+        ? Number(((churnedCustomers / customerBase.length) * 100).toFixed(2))
+        : 0,
+      averageCLV: customerBase.length > 0
+        ? Math.round(totalLifetimeRevenue / customerBase.length)
+        : 0,
     },
-
     activeUsers: {
       dau: active.dau,
       wau: active.wau,
       mau: active.mau,
     },
-
     topCustomers: customerBase
       .sort((a: any, b: any) => b.totalSpent - a.totalSpent)
       .slice(0, 5)
       .map((c: any) => ({
-        customerId: c.userDetails.userId,
-        name: c.name || 'Anonymous User',
-        totalSpent: Number(roundTo2(c.totalSpent)),
+        customerId: c.userDetails?.userId || 'N/A',
+        name: c.userDetails
+          ? `${c.userDetails.name?.firstName} ${c.userDetails.name?.lastName}`.trim()
+          : 'Anonymous',
+        totalSpent: Number(c.totalSpent.toFixed(2)),
         totalOrders: c.totalOrders,
       })),
-
-    orderFrequency: Object.entries(freqMap).map(
-      ([range, userCount]) => ({
-        range,
-        userCount,
-      }),
-    ),
-
+    orderFrequency: [
+      { range: '1 order', userCount: customerBase.filter((c: any) => c.ordersInSelectedRange === 1).length },
+      { range: '2-3 orders', userCount: customerBase.filter((c: any) => c.ordersInSelectedRange >= 2 && c.ordersInSelectedRange <= 3).length },
+      { range: '4-5 orders', userCount: customerBase.filter((c: any) => c.ordersInSelectedRange >= 4 && c.ordersInSelectedRange <= 5).length },
+      { range: '5+ orders', userCount: customerBase.filter((c: any) => c.ordersInSelectedRange > 5).length },
+    ],
     hourlyOrders: Array.from({ length: 24 }, (_, hour) => ({
       hour,
-      orderCount:
-        hourlyRaw.find((h: any) => h._id === hour)?.count || 0,
+      orderCount: facet.hourlyDistribution.find((h: any) => h._id === hour)?.count || 0,
     })),
   };
 };
@@ -3773,7 +3637,7 @@ const getDeliveryInsights = async (query: {
         $match: {
           isDeleted: false,
           "operationalData.isWorking": true,
-          "operationalData.lastActivityAt": { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+          // "operationalData.lastActivityAt": { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }, // this will make only today's active riders
         },
       },
       {
