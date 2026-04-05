@@ -2558,6 +2558,166 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   };
 };
 
+// get platform earnings api for admin
+const getPlatformEarnings = async (query: Record<string, any>) => {
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Base Filter
+  const baseQuery = {
+    type: 'PLATFORM_COMMISSION',
+    status: 'SUCCESS',
+  };
+
+  // Stats Calculations
+  const now = new Date();
+
+  const weekStart = new Date();
+  weekStart.setDate(now.getDate() - 7);
+
+  const monthStart = new Date();
+  monthStart.setDate(1);
+
+  const [
+    totalPlatformCommissionAgg,
+    thisWeekAgg,
+    thisMonthAgg,
+    totalRevenueAgg,
+  ] = await Promise.all([
+    Transaction.aggregate([
+      { $match: baseQuery },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]),
+
+    Transaction.aggregate([
+      {
+        $match: {
+          ...baseQuery,
+          createdAt: { $gte: weekStart },
+        },
+      },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]),
+
+    Transaction.aggregate([
+      {
+        $match: {
+          ...baseQuery,
+          createdAt: { $gte: monthStart },
+        },
+      },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]),
+
+    Order.aggregate([
+      {
+        $match: {
+          isPaid: true,
+          orderStatus: 'DELIVERED',
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$payoutSummary.grandTotal' },
+        },
+      },
+    ]),
+  ]);
+
+  const totalPlatformCommission = totalPlatformCommissionAgg?.[0]?.total || 0;
+
+  const thisWeekCommission = thisWeekAgg?.[0]?.total || 0;
+
+  const thisMonthCommission = thisMonthAgg?.[0]?.total || 0;
+
+  const totalRevenue = totalRevenueAgg?.[0]?.totalRevenue || 0;
+
+  // Monthly Commission Chart
+  const monthlyCommissionsAgg = await Transaction.aggregate([
+    { $match: baseQuery },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+        },
+        commission: { $sum: '$totalAmount' },
+      },
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1 } },
+  ]);
+
+  const monthlyCommissions = monthlyCommissionsAgg.map((m) => ({
+    month: `${m._id.year}-${String(m._id.month).padStart(2, '0')}`,
+    commission: m.commission,
+  }));
+
+  // Paginated Commission Table
+  const [transactions, total] = await Promise.all([
+    Transaction.find(baseQuery)
+      .populate({
+        path: 'orderId',
+        populate: {
+          path: 'customerId',
+          select: 'name',
+        },
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+
+    Transaction.countDocuments(baseQuery),
+  ]);
+
+  const commissions = transactions.map((txn: any) => {
+    const order = txn.orderId;
+    const customer = order?.customerId;
+
+    return {
+      _id: txn._id.toString(),
+
+      customer: customer || null,
+
+      transactionId: txn.transactionId,
+
+      orderId: order?.orderId || null,
+
+      amount: order?.payoutSummary?.grandTotal?.toFixed(2) || '0.00',
+
+      platformFee:
+        order?.payoutSummary?.deliGoCommission?.totalDeduction?.toFixed(2) ||
+        '0.00',
+
+      createdAt: txn.createdAt.toISOString(),
+    };
+  });
+
+  return {
+    data: {
+      stats: {
+        totalRevenue,
+        totalPlatformCommission,
+        thisWeekCommission,
+        thisMonthCommission,
+      },
+
+      monthlyCommissions,
+
+      commissions,
+    },
+
+    meta: {
+      page,
+      limit,
+      total,
+      totalPage: Math.ceil(total / limit),
+    },
+  };
+};
+
 // get admin vendor sales analytics
 const getAdminSalesAnalytics = async (query: any) => {
   // DATE HANDLING
@@ -3213,166 +3373,6 @@ const getAdminCustomerInsights = async (query: {
   };
 };
 
-// get platform earnings api for admin
-const getPlatformEarnings = async (query: Record<string, any>) => {
-  const page = Number(query.page) || 1;
-  const limit = Number(query.limit) || 10;
-  const skip = (page - 1) * limit;
-
-  // Base Filter
-  const baseQuery = {
-    type: 'PLATFORM_COMMISSION',
-    status: 'SUCCESS',
-  };
-
-  // Stats Calculations
-  const now = new Date();
-
-  const weekStart = new Date();
-  weekStart.setDate(now.getDate() - 7);
-
-  const monthStart = new Date();
-  monthStart.setDate(1);
-
-  const [
-    totalPlatformCommissionAgg,
-    thisWeekAgg,
-    thisMonthAgg,
-    totalRevenueAgg,
-  ] = await Promise.all([
-    Transaction.aggregate([
-      { $match: baseQuery },
-      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-    ]),
-
-    Transaction.aggregate([
-      {
-        $match: {
-          ...baseQuery,
-          createdAt: { $gte: weekStart },
-        },
-      },
-      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-    ]),
-
-    Transaction.aggregate([
-      {
-        $match: {
-          ...baseQuery,
-          createdAt: { $gte: monthStart },
-        },
-      },
-      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-    ]),
-
-    Order.aggregate([
-      {
-        $match: {
-          isPaid: true,
-          orderStatus: 'DELIVERED',
-          isDeleted: false,
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$payoutSummary.grandTotal' },
-        },
-      },
-    ]),
-  ]);
-
-  const totalPlatformCommission = totalPlatformCommissionAgg?.[0]?.total || 0;
-
-  const thisWeekCommission = thisWeekAgg?.[0]?.total || 0;
-
-  const thisMonthCommission = thisMonthAgg?.[0]?.total || 0;
-
-  const totalRevenue = totalRevenueAgg?.[0]?.totalRevenue || 0;
-
-  // Monthly Commission Chart
-  const monthlyCommissionsAgg = await Transaction.aggregate([
-    { $match: baseQuery },
-    {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-        },
-        commission: { $sum: '$totalAmount' },
-      },
-    },
-    { $sort: { '_id.year': 1, '_id.month': 1 } },
-  ]);
-
-  const monthlyCommissions = monthlyCommissionsAgg.map((m) => ({
-    month: `${m._id.year}-${String(m._id.month).padStart(2, '0')}`,
-    commission: m.commission,
-  }));
-
-  // Paginated Commission Table
-  const [transactions, total] = await Promise.all([
-    Transaction.find(baseQuery)
-      .populate({
-        path: 'orderId',
-        populate: {
-          path: 'customerId',
-          select: 'name',
-        },
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
-
-    Transaction.countDocuments(baseQuery),
-  ]);
-
-  const commissions = transactions.map((txn: any) => {
-    const order = txn.orderId;
-    const customer = order?.customerId;
-
-    return {
-      _id: txn._id.toString(),
-
-      customer: customer || null,
-
-      transactionId: txn.transactionId,
-
-      orderId: order?.orderId || null,
-
-      amount: order?.payoutSummary?.grandTotal?.toFixed(2) || '0.00',
-
-      platformFee:
-        order?.payoutSummary?.deliGoCommission?.totalDeduction?.toFixed(2) ||
-        '0.00',
-
-      createdAt: txn.createdAt.toISOString(),
-    };
-  });
-
-  return {
-    data: {
-      stats: {
-        totalRevenue,
-        totalPlatformCommission,
-        thisWeekCommission,
-        thisMonthCommission,
-      },
-
-      monthlyCommissions,
-
-      commissions,
-    },
-
-    meta: {
-      page,
-      limit,
-      total,
-      totalPage: Math.ceil(total / limit),
-    },
-  };
-};
-
 // get top vendors for admin
 const getTopVendors = async (query: { fromDate?: string; toDate?: string }): Promise<TVendorInsights> => {
   const now = new Date();
@@ -3644,48 +3644,36 @@ const getDeliveryInsights = async (query: {
       },
       {
         $addFields: {
-          // Ensure we only calculate if Delivered is AFTER Picked Up
+          // 1. Calculate duration ONLY if both timestamps exist
           actualMinutes: {
             $cond: [
-              {
-                $and: [
-                  { $gt: ['$deliveredAt', null] },
-                  { $gt: ['$pickedUpAt', null] },
-                  { $gt: ['$deliveredAt', '$pickedUpAt'] } // Must be after
-                ]
-              },
-              {
-                $divide: [
-                  { $subtract: ['$deliveredAt', '$pickedUpAt'] },
-                  1000 * 60 // Convert ms to minutes
-                ]
-              },
-              0
-            ]
+              { $and: [{ $gt: ["$deliveredAt", null] }, { $gt: ["$pickedUpAt", null] }] },
+              { $divide: [{ $subtract: ["$deliveredAt", "$pickedUpAt"] }, 60000] },
+              null,
+            ],
           },
-          // Convert string estimated time to number if necessary, or default to 30
-          estMin: { $convert: { input: '$delivery.estimatedTime', to: 'double', onError: 0, onNull: 0 } },
-          isRejected: { $cond: [{ $in: ['$orderStatus', ["REJECTED"]] }, 1, 0] },
-          isSuccess: { $cond: [{ $eq: ['$orderStatus', 'DELIVERED'] }, 1, 0] }
-        }
+          estMin: { $convert: { input: "$delivery.estimatedTime", to: "double", onError: 0, onNull: 0 } },
+          isRejected: { $cond: [{ $in: ["$orderStatus", ["REJECTED", "CANCELLED"]] }, 1, 0] },
+          isSuccess: { $cond: [{ $eq: ["$orderStatus", "DELIVERED"] }, 1, 0] },
+        },
       },
       {
         $addFields: {
-          // Correct Late Logic
+          // 2. Late Logic: Success + Actual > Estimate (validating actualMinutes is not null)
           isLate: {
             $cond: [
               {
                 $and: [
-                  { $eq: ['$isSuccess', 1] },
-                  { $gt: ['$actualMinutes', '$estMin'] },
-                  { $gt: ['$estMin', 0] }
-                ]
+                  { $eq: ["$isSuccess", 1] },
+                  { $gt: ["$actualMinutes", "$estMin"] },
+                  { $gt: ["$estMin", 0] },
+                ],
               },
               1,
-              0
-            ]
-          }
-        }
+              0,
+            ],
+          },
+        },
       },
       {
         $facet: {
@@ -3693,40 +3681,47 @@ const getDeliveryInsights = async (query: {
             {
               $group: {
                 _id: null,
-                // Only average orders that actually have a delivery duration > 0
-                avgTime: { $avg: { $cond: [{ $gt: ['$actualMinutes', 0] }, '$actualMinutes', '$$REMOVE'] } },
+                // Average only orders that actually finished (exclude "Ready for Pickup")
+                avgTime: { $avg: { $cond: [{ $gt: ["$actualMinutes", 0] }, "$actualMinutes", "$$REMOVE"] } },
                 totalOrders: { $sum: 1 },
-                successOrders: { $sum: '$isSuccess' },
-                lateCount: { $sum: '$isLate' },
-                rejectedCount: { $sum: '$isRejected' }
-              }
-            }
+                successOrders: { $sum: "$isSuccess" },
+                lateCount: { $sum: "$isLate" },
+                rejectedCount: { $sum: "$isRejected" },
+              },
+            },
           ],
           riderPerformance: [
             { $match: { deliveryPartnerId: { $ne: null } } },
             {
               $group: {
-                _id: '$deliveryPartnerId',
-                totalDeliveries: { $sum: 1 },
-                successfulDeliveries: { $sum: '$isSuccess' },
-                rejectedDeliveries: { $sum: '$isRejected' },
-                totalTime: { $sum: '$actualMinutes' }
-              }
+                _id: "$deliveryPartnerId",
+                totalDeliveries: { $sum: 1 }, // Correctly counts ALL assigned orders
+                successfulDeliveries: { $sum: "$isSuccess" },
+                totalTime: { $sum: { $ifNull: ["$actualMinutes", 0] } },
+              },
             },
-            { $lookup: { from: 'deliverypartners', localField: '_id', foreignField: '_id', as: 'rider' } },
-            { $unwind: '$rider' },
+            { $lookup: { from: "deliverypartners", localField: "_id", foreignField: "_id", as: "rider" } },
+            { $unwind: "$rider" },
             {
               $project: {
-                riderId: { $toString: '$_id' },
-                riderName: { $concat: ['$rider.name.firstName', ' ', '$rider.name.lastName'] },
+                riderId: { $ifNull: ["$rider.userId", "N/A"] },
+                riderName: { $concat: ["$rider.name.firstName", " ", "$rider.name.lastName"] },
                 totalDeliveries: 1,
                 successfulDeliveries: 1,
-                rejectedDeliveries: 1,
                 averageTime: {
-                  $round: [{ $cond: [{ $gt: ['$successfulDeliveries', 0] }, { $divide: ['$totalTime', '$successfulDeliveries'] }, 0] }, 1]
-                }
-              }
-            }
+                  $round: [
+                    {
+                      $cond: [
+                        { $gt: ["$successfulDeliveries", 0] },
+                        { $divide: ["$totalTime", "$successfulDeliveries"] },
+                        0,
+                      ],
+                    },
+                    1,
+                  ],
+                },
+              },
+            },
           ],
           distanceTimeAnalysis: [
             // Only use successful orders with valid distance and time > 0
@@ -3744,70 +3739,80 @@ const getDeliveryInsights = async (query: {
             { $match: { isSuccess: 1, actualMinutes: { $gt: 0 } } },
             {
               $group: {
-                _id: '$deliveryAddress.city',
-                avgTime: { $avg: '$actualMinutes' },
-                late: { $sum: '$isLate' },
-                total: { $sum: 1 }
-              }
+                _id: { $toUpper: { $ifNull: ["$deliveryAddress.city", "Unknown"] } },
+                avgTime: { $avg: "$actualMinutes" },
+                late: { $sum: "$isLate" },
+                total: { $sum: 1 },
+              },
             },
             {
               $project: {
-                area: { $ifNull: ['$_id', 'Unknown'] },
-                averageTime: { $round: ['$avgTime', 1] }, // Use 1 decimal for better precision than just "1"
-                latePercentage: { $round: [{ $multiply: [{ $divide: ['$late', '$total'] }, 100] }, 2] },
-                _id: 0
-              }
-            }
+                area: "$_id",
+                averageTime: { $round: ["$avgTime", 1] },
+                latePercentage: { $round: [{ $multiply: [{ $divide: ["$late", "$total"] }, 100] }, 1] },
+                _id: 0,
+              },
+            },
           ],
           rejectedReasons: [
             { $match: { isRejected: 1 } },
             {
               $group: {
-                _id: { $ifNull: ['$deliveryPartnerCancelReason', '$rejectReason'] },
-                count: { $sum: 1 }
-              }
+                _id: { $ifNull: ["$deliveryPartnerCancelReason", "$rejectReason"] },
+                count: { $sum: 1 },
+              },
             },
-            { $project: { reason: { $ifNull: ['$_id', 'OTHER'] }, count: 1, _id: 0 } }
-          ]
-        }
-      }
+            { $project: { reason: { $ifNull: ["$_id", "OTHER"] }, count: 1, _id: 0 } },
+          ],
+        },
+      },
     ]),
 
     DeliveryPartner.aggregate([
-      { $match: { isDeleted: false, 'operationalData.isWorking': true } },
+      {
+        $match: {
+          isDeleted: false,
+          "operationalData.isWorking": true,
+          "operationalData.lastActivityAt": { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+        },
+      },
       {
         $project: {
-          riderId: { $toString: '$userId' },
-          riderName: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
+          riderId: { $toString: "$userId" },
+          riderName: { $concat: ["$name.firstName", " ", "$name.lastName"] },
           idleTimeMinutes: {
-            $round: [
-              {
-                $divide: [
-                  { $subtract: [new Date(), { $ifNull: ['$operationalData.lastActivityAt', new Date()] }] },
-                  1000 * 60
-                ]
-              },
-              0
-            ]
-          }
-        }
+            $round: [{ $divide: [{ $subtract: [new Date(), "$operationalData.lastActivityAt"] }, 60000] }, 0],
+          },
+        },
       },
-      { $limit: 10 }
-    ])
+      { $sort: { idleTimeMinutes: -1 } },
+      { $limit: 10 },
+    ]),
   ]);
 
-  const facet = orderAnalytics[0];
-  const summary = facet.summary[0] || { avgTime: 0, totalOrders: 0, lateCount: 0, rejectedCount: 0, successOrders: 0 };
+  const facet = orderAnalytics[0] || {
+    summary: [],
+    riderPerformance: [],
+    distanceTimeAnalysis: [],
+    areaPerformance: [],
+    rejectedReasons: [],
+  };
+
+  const summary = facet.summary[0] || {
+    avgTime: 0,
+    totalOrders: 0,
+    lateCount: 0,
+    rejectedCount: 0,
+    successOrders: 0,
+  };
 
   return {
     summary: {
       averageDeliveryTime: Number((summary.avgTime || 0).toFixed(1)),
-      lateDeliveryPercentage: summary.successOrders > 0
-        ? Number(roundTo2((summary.lateCount / summary.successOrders) * 100))
-        : 0,
-      rejectedDeliveryPercentage: summary.totalOrders > 0
-        ? Number(roundTo2((summary.rejectedCount / summary.totalOrders) * 100))
-        : 0,
+      lateDeliveryPercentage:
+        summary.successOrders > 0 ? Number(((summary.lateCount / summary.successOrders) * 100).toFixed(1)) : 0,
+      rejectedDeliveryPercentage:
+        summary.totalOrders > 0 ? Number(((summary.rejectedCount / summary.totalOrders) * 100).toFixed(1)) : 0,
     },
     riderPerformance: facet.riderPerformance,
     distanceTimeAnalysis: facet.distanceTimeAnalysis,
