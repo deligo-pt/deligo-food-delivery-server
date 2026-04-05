@@ -274,7 +274,7 @@ const getTopVendors = catchAsync(async (req, res) => {
 
 // get peak hours controller
 const getPeakHourAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getPeakHourAnalytics();
+  const result = await AnalyticsServices.getPeakHourAnalytics(req.query);
 
   sendResponse(res, {
     success: true,

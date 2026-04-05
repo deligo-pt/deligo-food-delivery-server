@@ -25,6 +25,7 @@ import {
   TPartnerMonthlyPerformance,
   TPartnerPerformanceData,
   TPartnerPerformanceDetailsData,
+  TPeakHoursInsights,
   TVendorInsights,
   TVendorSalesReport,
 } from './analytics.interface';
@@ -3479,178 +3480,144 @@ const getTopVendors = async (query: { fromDate?: string; toDate?: string }): Pro
 };
 
 // get peak hourly analytics for admin
-const getPeakHourAnalytics = async () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+const getPeakHourAnalytics = async (query: { fromDate?: string; toDate?: string }): Promise<TPeakHoursInsights> => {
+  const now = new Date();
+  const to = query.toDate ? new Date(query.toDate) : now;
+  const from = query.fromDate
+    ? new Date(query.fromDate)
+    : new Date(new Date().setDate(to.getDate() - 7));
 
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
 
-  const day = today.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() + diffToMonday);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 7);
-
-  const [analytics] = await Order.aggregate([
+  // 1. Get real efficiency: (Total Delivered Orders / Unique Rider-Hours)
+  const [efficiencyData] = await Order.aggregate([
     {
       $match: {
+        orderStatus: 'DELIVERED',
         isDeleted: false,
-        createdAt: { $gte: startOfWeek, $lt: endOfWeek },
-      },
-    },
-    {
-      $facet: {
-        weeklyHours: [
-          {
-            $group: {
-              _id: {
-                day: {
-                  $isoDayOfWeek: {
-                    date: '$createdAt',
-                    timezone,
-                  },
-                },
-                hour: {
-                  $hour: {
-                    date: '$createdAt',
-                    timezone,
-                  },
-                },
-              },
-              orders: { $sum: 1 },
-            },
-          },
-        ],
-
-        weekDaysOrders: [
-          {
-            $group: {
-              _id: {
-                $isoDayOfWeek: {
-                  date: '$createdAt',
-                  timezone,
-                },
-              },
-              orders: { $sum: 1 },
-            },
-          },
-        ],
-      },
-    },
-  ]);
-
-  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-  const SLOT_RANGES = [
-    { label: '8AM - 10AM', start: 8, end: 10 },
-    { label: '10AM - 12PM', start: 10, end: 12 },
-    { label: '12PM - 2PM', start: 12, end: 14 },
-    { label: '2PM - 4PM', start: 14, end: 16 },
-    { label: '4PM - 6PM', start: 16, end: 18 },
-    { label: '6PM - 8PM', start: 18, end: 20 },
-    { label: '8PM - 10PM', start: 20, end: 22 },
-    { label: '10PM - 12AM', start: 22, end: 24 },
-    { label: '12AM - 2AM', start: 0, end: 2 },
-    { label: '2AM - 4AM', start: 2, end: 4 },
-    { label: '4AM - 6AM', start: 4, end: 6 },
-    { label: '6AM - 8AM', start: 6, end: 8 },
-  ];
-
-  const weeklyHourlyOrders = DAYS.map((day) => ({
-    day,
-    hourlyData: SLOT_RANGES.map((slot) => ({
-      hour: slot.label,
-      orders: 0,
-    })),
-  }));
-
-  let weeklyHourlyMaxOrdersCount = 0;
-
-  analytics.weeklyHours.forEach((item: any) => {
-    const dayIndex = item._id.day - 1;
-    const hour = item._id.hour;
-
-    const slotIndex = SLOT_RANGES.findIndex((slot) => {
-      if (slot.start < slot.end) {
-        return hour >= slot.start && hour < slot.end;
+        riderId: { $exists: true }
       }
-      return hour >= slot.start || hour < slot.end;
-    });
-
-    if (slotIndex !== -1) {
-      weeklyHourlyOrders[dayIndex].hourlyData[slotIndex].orders += item.orders;
-
-      if (item.orders > weeklyHourlyMaxOrdersCount) {
-        weeklyHourlyMaxOrdersCount = item.orders;
-      }
-    }
-  });
-
-  const weekDaysOrders = DAYS.map((day, i) => {
-    const found = analytics.weekDaysOrders.find((d: any) => d._id === i + 1);
-
-    return {
-      day,
-      orders: found?.orders || 0,
-    };
-  });
-
-  const busiestDay =
-    [...weekDaysOrders].sort((a, b) => b.orders - a.orders)[0]?.day || 'Mon';
-
-  const peakSlot = weeklyHourlyOrders
-    .flatMap((d) => d.hourlyData)
-    .sort((a, b) => b.orders - a.orders)[0];
-
-  const peakHour = peakSlot?.hour || '';
-
-  const totalOrders = weekDaysOrders.reduce((sum, d) => sum + d.orders, 0);
-
-  const avgOrdersPerHour = Math.round(totalOrders / 24);
-
-  const prevDayAgg = await Order.aggregate([
-    {
-      $match: {
-        isDeleted: false,
-        createdAt: { $gte: yesterday, $lt: today },
-      },
     },
     {
       $group: {
         _id: {
-          $hour: {
-            date: '$createdAt',
-            timezone,
-          },
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone } },
+          hour: { $hour: { date: "$createdAt", timezone } },
+          rider: "$riderId"
         },
-        orders: { $sum: 1 },
-      },
+        count: { $sum: 1 }
+      }
     },
+    { $group: { _id: null, avg: { $avg: "$count" } } }
   ]);
 
-  const prevDayDistribution = Array.from({ length: 24 }).map((_, i) => {
-    const found = prevDayAgg.find((p: any) => p._id === i);
+  const realEfficiency = efficiencyData?.avg || 1.5;
 
+  // 2. Fetch Online Riders count from DeliveryPartner model
+  const onlineRidersCount = await DeliveryPartner.countDocuments({
+    status: 'APPROVED',
+    isDeleted: false,
+    'operationalData.currentStatus': { $in: ['AVAILABLE', 'BUSY'] }
+  });
+
+  // 3. Multi-faceted aggregation for performance
+  const [results] = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        createdAt: { $gte: from, $lte: to },
+      },
+    },
+    {
+      $facet: {
+
+        hourly: [
+          {
+            $group: {
+              _id: { $hour: { date: '$createdAt', timezone } },
+              orderCount: { $sum: 1 },
+              activeRiderIds: { $addToSet: '$riderId' }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ],
+
+        dayWise: [
+          {
+            $group: {
+              _id: { $isoDayOfWeek: { date: '$createdAt', timezone } },
+              orderCount: { $sum: 1 }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ],
+
+        heatmap: [
+          {
+            $group: {
+              _id: {
+                day: { $isoDayOfWeek: { date: '$createdAt', timezone } },
+                hour: { $hour: { date: '$createdAt', timezone } }
+              },
+              orderCount: { $sum: 1 }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  const DAYS_MAP = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // 4. Map Hourly Data (Ensure 0-23 hours are represented)
+  const hourlyOrders = Array.from({ length: 24 }, (_, hour) => {
+    const matched = results.hourly.find((h: any) => h._id === hour);
     return {
-      hour: `${i}:00`,
-      orders: found?.orders || 0,
+      hour,
+      orderCount: matched?.orderCount || 0,
+      activeRidersInHour: matched?.activeRiderIds?.length || 0
     };
   });
 
+  // 5. Calculate Gap using real active riders vs total online pool
+  const riderDemandGap = hourlyOrders
+    .filter(h => h.orderCount > 0)
+    .map((h) => {
+      // Logic: Use the count of riders who actually took orders, 
+      // or fall back to 80% of current online pool as a capacity baseline
+      const activeRiders = Math.max(h.activeRidersInHour, Math.floor(onlineRidersCount * 0.8), 1);
+      const capacity = activeRiders * realEfficiency;
+
+      return {
+        hour: h.hour,
+        orders: h.orderCount,
+        activeRiders: activeRiders,
+        shortage: h.orderCount > capacity ? Math.ceil(h.orderCount - capacity) : 0
+      };
+    });
+
+  // 6. Meal Time Calculation (11-16 Lunch, 18-23 Dinner)
+  const total = hourlyOrders.reduce((sum, h) => sum + h.orderCount, 0) || 1;
+  const lunch = hourlyOrders.filter(h => h.hour >= 11 && h.hour <= 16).reduce((s, h) => s + h.orderCount, 0);
+  const dinner = hourlyOrders.filter(h => h.hour >= 18 && h.hour <= 23).reduce((s, h) => s + h.orderCount, 0);
+
   return {
-    stats: {
-      peakHour,
-      busiestDay,
-      avgOrdersPerHour,
-    },
-    weeklyHourlyOrders,
-    weeklyHourlyMaxOrdersCount,
-    prevDayDistribution,
-    weekDaysOrders,
+    hourlyOrders: hourlyOrders.map(({ hour, orderCount }) => ({ hour, orderCount })),
+    mealTimeComparison: [
+      { type: "LUNCH", orderCount: lunch, percentage: Number(((lunch / total) * 100).toFixed(1)) },
+      { type: "DINNER", orderCount: dinner, percentage: Number(((dinner / total) * 100).toFixed(1)) }
+    ],
+    dayWiseOrders: DAYS_MAP.map((day, i) => ({
+      day,
+      orderCount: results.dayWise.find((d: any) => d._id === i + 1)?.orderCount || 0
+    })),
+    heatmap: results.heatmap.map((item: any) => ({
+      day: DAYS_MAP[item._id.day],
+      hour: item._id.hour,
+      orderCount: item.orderCount
+    })),
+    riderDemandGap
   };
 };
 
