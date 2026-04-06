@@ -198,21 +198,168 @@ export type TPartnerPerformanceDetailsData = {
     partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
 }
 
-// for top vendors
-export type TTopVendor = {
-    rank: number;
-    name: string;
-    category: string;
-    revenue: number;
-    orders: number;
+// ---> for top vendors analytics
+export type TVendorPerformance = {
+    vendorId: string;
+    vendorName: string;
+
+    totalOrders: number;      // total number of orders
+    totalRevenue: number;     // total revenue generated
+
+    averageRating: number;    // avg customer rating (1-5)
+    preparationTime: number;  // avg prep time in minutes
+
+    cancelRate: number;       // % of cancelled orders
+    satisfactionScore: number; // custom score (0-100 or %)
+};
+// Top selling vendors (ranked)
+export type TTopSellingVendor = {
+    vendorId: string;
+    vendorName: string;
+    totalOrders: number;
+    totalRevenue: number;
+};
+// Vendor rating distribution
+export type TVendorRatingDistribution = {
+    vendorName: string;
     rating: number;
+};
+export type TVendorInsights = {
+    topSellingVendors: TTopSellingVendor[];
+
+    vendorPerformance: TVendorPerformance[];
+
+    ratingDistribution: TVendorRatingDistribution[];
+};
+
+// --> get admin delivery insights
+// Summary metrics (top cards)
+export type TDeliverySummary = {
+    averageDeliveryTime: number; // in minutes
+    lateDeliveryPercentage: number; // % of late deliveries
+    rejectedDeliveryPercentage: number; // % of rejected deliveries
+};
+// Rider performance
+export type TRiderPerformance = {
+    riderId: string;
+    riderName: string;
+    totalDeliveries: number;
+    successfulDeliveries: number;
+    rejectedDeliveries: number;
+    averageTime: number; // avg delivery time in minutes
+};
+// Distance vs Time (for scatter/line chart)
+export type TDistanceTimeAnalysis = {
+    distanceKm: number;
+    averageTime: number;
+};
+// Area performance (slow delivery detection)
+export type TAreaDeliveryPerformance = {
+    area: string;
+    averageTime: number;
+    latePercentage: number;
+};
+// Rider idle time
+export type TRiderIdleTime = {
+    riderId: string;
+    riderName: string;
+    idleTimeMinutes: number; // total idle time in selected period
+};
+// rejected deliveries breakdown
+export type TRejectedDeliveryReason = {
+    reason: string;
+    count: number;
+};
+export type TDeliveryInsights = {
+    summary: TDeliverySummary;
+
+    riderPerformance: TRiderPerformance[];
+    distanceTimeAnalysis: TDistanceTimeAnalysis[];
+    areaPerformance: TAreaDeliveryPerformance[];
+    riderIdleTime: TRiderIdleTime[];
+    rejectedReasons: TRejectedDeliveryReason[];
+};
+
+// ---> get customer insights
+// Summary (top cards)
+export type TCustomerSummary = {
+    newCustomers: number;
+    returningCustomers: number;
+    churnRate: number;
+    averageCLV: number;
+};
+// Active users
+export type TActiveUsers = {
+    dau: number; // Daily Active Users
+    wau: number; // Weekly Active Users
+    mau: number; // Monthly Active Users
+};
+// Top customers (highest spenders)
+export type TTopCustomer = {
+    customerId: string;
+    name: string;
+    totalSpent: number;
+    totalOrders: number;
+};
+// Order frequency (per user per week)
+export type TOrderFrequency = {
+    range: string; // e.g. "1 order", "2-3 orders", "5+ orders"
+    userCount: number;
+};
+// Hourly order pattern (peak time detection)
+export type THourlyOrders = {
+    hour: number; // 0 - 23
+    orderCount: number;
+};
+export type TCustomerInsights = {
+    summary: TCustomerSummary;
+
+    activeUsers: TActiveUsers;
+
+    topCustomers: TTopCustomer[];
+
+    orderFrequency: TOrderFrequency[];
+
+    hourlyOrders: THourlyOrders[];
 };
 
 
-export type TTopVendorData = {
-    stats: {
-        activeVendors: number;
-        thisMonthTopRevenue: number;
-    };
-    topVendors: TTopVendor[];
+// ---> get peak hour analytics
+// Hourly order data (have above)
+
+// Lunch vs Dinner comparison
+export type TMealTimeComparison = {
+    type: "LUNCH" | "DINNER";
+    orderCount: number;
+    percentage: number; // % of total orders
+};
+// Day-wise peak analysis
+export type TDayWiseOrders = {
+    day: string;        // e.g. "Mon", "Tue"
+    orderCount: number;
+};
+// Heatmap data (day + hour)
+export type THeatmapData = {
+    day: string;        // Mon–Sun
+    hour: number;       // 0–23
+    orderCount: number;
+};
+// Rider availability vs demand
+export type TRiderDemandGap = {
+    hour: number;
+    orders: number;
+    activeRiders: number;
+    shortage: number; // orders - riders (positive = shortage)
+};
+// MAIN RESPONSE TYPE
+export type TPeakHoursInsights = {
+    hourlyOrders: THourlyOrders[];
+
+    mealTimeComparison: TMealTimeComparison[];
+
+    dayWiseOrders: TDayWiseOrders[];
+
+    heatmap: THeatmapData[];
+
+    riderDemandGap: TRiderDemandGap[];
 };

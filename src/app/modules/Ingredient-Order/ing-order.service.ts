@@ -13,6 +13,7 @@ import { IIngredients } from '../Ingredients/ingredients.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Vendor } from '../Vendor/vendor.model';
 import { searchableFields } from './ing-order.constant';
+import { formatDateTime } from '../../utils/formatDateTime';
 
 const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
@@ -235,8 +236,31 @@ const getSingleIngredientOrder = async (orderId: string) => {
     if (!result) {
         throw new AppError(httpStatus.NOT_FOUND, 'Ingredient order not found');
     }
+    const order = result.toObject();
 
-    return result;
+    // Mapping Logic
+    const timeline = [
+        {
+            status: "CONFIRMED",
+            date: formatDateTime(order.createdAt),
+            completed: true
+        },
+        {
+            status: "SHIPPED",
+            date: formatDateTime(order.statusHistory?.shippedAt),
+            completed: !!order.statusHistory?.shippedAt
+        },
+        {
+            status: "DELIVERED",
+            date: formatDateTime(order.statusHistory?.deliveredAt),
+            completed: !!order.statusHistory?.deliveredAt
+        }
+    ];
+
+    return {
+        ...order,
+        timeline
+    };
 };
 
 // update order status (SHIPPED, DELIVERED) - only Admin can do this
@@ -260,12 +284,18 @@ const updateIngredientOrderStatus = async (
         throw new AppError(httpStatus.BAD_REQUEST, 'Cannot update status of an unpaid order');
     }
 
+    const updatedData: Record<string, unknown> = {
+        orderStatus: status,
+        admin: adminId,
+    };
+
+    // Store the specific date for the timeline
+    if (status === 'SHIPPED') updatedData['statusHistory.shippedAt'] = new Date();
+    if (status === 'DELIVERED') updatedData['statusHistory.deliveredAt'] = new Date();
+
     const result = await IngredientOrder.findByIdAndUpdate(
         id,
-        {
-            orderStatus: status,
-            admin: adminId,
-        },
+        updatedData,
         { new: true }
     );
 
