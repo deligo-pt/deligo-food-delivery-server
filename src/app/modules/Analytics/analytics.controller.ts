@@ -193,8 +193,8 @@ const getSingleFleetPerformanceDetailsAnalytics = catchAsync(async (req, res) =>
 });
 
 // get admin delivery partner report analytics controller
-const getAdminVendorSalesAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminVendorSalesAnalytics();
+const getAdminSalesAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminSalesAnalytics(req.query);
 
   sendResponse(res, {
     success: true,
@@ -236,7 +236,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(async (re
 
 // get customer insights controller
 const getAdminCustomerInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminCustomerInsights();
+  const result = await AnalyticsServices.getAdminCustomerInsights(req.query);
 
   sendResponse(res, {
     success: true,
@@ -262,7 +262,7 @@ const getPlatformEarnings = catchAsync(async (req, res) => {
 
 // get top vendors controller
 const getTopVendors = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getTopVendors();
+  const result = await AnalyticsServices.getTopVendors(req.query);
 
   sendResponse(res, {
     success: true,
@@ -274,7 +274,7 @@ const getTopVendors = catchAsync(async (req, res) => {
 
 // get peak hours controller
 const getPeakHourAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getPeakHourAnalytics();
+  const result = await AnalyticsServices.getPeakHourAnalytics(req.query);
 
   sendResponse(res, {
     success: true,
@@ -286,7 +286,7 @@ const getPeakHourAnalytics = catchAsync(async (req, res) => {
 
 // get delivery insights controller
 const getDeliveryInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getDeliveryInsights();
+  const result = await AnalyticsServices.getDeliveryInsights(req.query);
 
   sendResponse(res, {
     success: true,
@@ -449,7 +449,7 @@ export const AnalyticsControllers = {
   getVendorCustomerReport,
   getFleetManagerPerformanceAnalytics,
   getSingleFleetPerformanceDetailsAnalytics,
-  getAdminVendorSalesAnalytics,
+  getAdminSalesAnalytics,
   getDeliveryPartnerPerformanceAnalytics,
   getSingleDeliveryPartnerPerformanceDetailsAnalytics,
   getAdminCustomerInsights,

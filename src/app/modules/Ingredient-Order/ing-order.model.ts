@@ -46,6 +46,11 @@ const ingredientOrderSchema = new Schema<IIngredientOrder>(
             default: 'PENDING',
         },
 
+        statusHistory: {
+            shippedAt: { type: Date },
+            deliveredAt: { type: Date },
+        },
+
         paymentStatus: {
             type: String,
             enum: ['PROCESSING', 'PAID'], // 'FAILED', 'REFUNDED' can be added later
