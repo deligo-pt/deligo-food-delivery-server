@@ -5,7 +5,6 @@ import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';
-import { Product } from '../Product/product.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { roundTo2 } from '../../utils/mathProvider';
 import {
@@ -37,27 +36,27 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   // --------------------------------------------
   //  Product Validation & Ownership Check
   // --------------------------------------------
-  if (payload.offerType === 'BOGO' && payload.bogo?.productId) {
-    const product = await Product.findById(payload.bogo.productId);
+  // if (payload.offerType === 'BOGO' && payload.bogo?.productId) {
+  //   const product = await Product.findById(payload.bogo.productId);
 
-    if (!product) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'The specified product for BOGO was not found',
-      );
-    }
+  //   if (!product) {
+  //     throw new AppError(
+  //       httpStatus.NOT_FOUND,
+  //       'The specified product for BOGO was not found',
+  //     );
+  //   }
 
-    // If currentUser is a Vendor, ensure they own the product
-    if (
-      isVendor &&
-      product.vendorId.toString() !== currentUser._id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You can only create BOGO offers for your own products',
-      );
-    }
-  }
+  //   // If currentUser is a Vendor, ensure they own the product
+  //   if (
+  //     isVendor &&
+  //     product.vendorId.toString() !== currentUser._id.toString()
+  //   ) {
+  //     throw new AppError(
+  //       httpStatus.FORBIDDEN,
+  //       'You can only create BOGO offers for your own products',
+  //     );
+  //   }
+  // }
 
   if (!payload.isAutoApply && payload.code) {
     const existingCode = await Offer.findOne({
@@ -77,6 +76,11 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
   //  Offer type validation
   // --------------------------------------------
   switch (payload.offerType) {
+    case 'BOGO':
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'BOGO offers are temporarily disabled and cannot be created at this time.',
+      );
     case 'PERCENT':
     case 'FLAT':
       if (!payload.discountValue || payload.discountValue <= 0) {
@@ -87,18 +91,18 @@ const createOffer = async (payload: TOffer, currentUser: AuthUser) => {
       }
       break;
 
-    case 'BOGO':
-      if (
-        !payload.bogo?.buyQty ||
-        !payload.bogo?.getQty ||
-        !payload.bogo?.productId
-      ) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'BOGO offer requires buyQty, getQty and a valid productId',
-        );
-      }
-      break;
+    // case 'BOGO':
+    //   if (
+    //     !payload.bogo?.buyQty ||
+    //     !payload.bogo?.getQty ||
+    //     !payload.bogo?.productId
+    //   ) {
+    //     throw new AppError(
+    //       httpStatus.BAD_REQUEST,
+    //       'BOGO offer requires buyQty, getQty and a valid productId',
+    //     );
+    //   }
+    //   break;
 
     case 'FREE_DELIVERY':
       break;
@@ -180,10 +184,10 @@ const updateOffer = async (
   // --------------------------------------------------
   // Prevent update if offer already expired
   // --------------------------------------------------
-  if (offer.expiresAt < new Date()) {
+  if (offer.expiresAt < new Date() && !payload.expiresAt) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Expired offer cannot be updated',
+      'Expired offer cannot be updated without extending the date',
     );
   }
 
@@ -192,22 +196,29 @@ const updateOffer = async (
   // --------------------------------------------------
   const offerType = payload.offerType ?? offer.offerType;
 
+  // if (offerType === 'BOGO') {
+  //   const productId = payload.bogo?.productId || offer.bogo?.productId;
+  //   if (productId && payload.bogo?.productId) {
+  //     const product = await Product.findById(productId);
+  //     if (
+  //       !product ||
+  //       (isVendor && product.vendorId.toString() !== currentUser._id.toString())
+  //     ) {
+  //       throw new AppError(httpStatus.FORBIDDEN, 'Invalid product for BOGO');
+  //     }
+  //   }
+  // }
+
   if (offerType === 'BOGO') {
-    const productId = payload.bogo?.productId || offer.bogo?.productId;
-    if (productId && payload.bogo?.productId) {
-      const product = await Product.findById(productId);
-      if (
-        !product ||
-        (isVendor && product.vendorId.toString() !== currentUser._id.toString())
-      ) {
-        throw new AppError(httpStatus.FORBIDDEN, 'Invalid product for BOGO');
-      }
-    }
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'BOGO offers are currently disabled. You cannot update or switch to BOGO type.',
+    );
   }
 
   const currentAutoApply = payload.isAutoApply ?? offer.isAutoApply;
   if (currentAutoApply) {
-    payload.code = undefined;
+    payload.code = null;
   } else {
     if (payload.code) {
       payload.code = payload.code.toUpperCase();
@@ -272,9 +283,9 @@ const updateOffer = async (
     (payload as any).bogo = null;
   }
 
-  if (payload.bogo && offer.bogo) {
-    payload.bogo = { ...offer.bogo, ...payload.bogo };
-  }
+  // if (payload.bogo && offer.bogo) {
+  //   payload.bogo = { ...offer.bogo, ...payload.bogo };
+  // }
 
   // --------------------------------------------------
   // Usage limits sanity check

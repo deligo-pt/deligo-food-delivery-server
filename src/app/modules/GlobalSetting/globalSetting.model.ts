@@ -37,6 +37,12 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
       default: 15,
     },
 
+    // customer nearest vendor search radius
+    customerNearestVendorRadiusKm: {
+      type: Number,
+      default: 20,
+    },
+
     // --------------------------------------------------
     // Platform Commission
     // --------------------------------------------------

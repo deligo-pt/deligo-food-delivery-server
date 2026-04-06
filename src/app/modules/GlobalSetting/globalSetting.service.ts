@@ -205,7 +205,7 @@ const getGlobalSettingsForAdmin = async (currentUser: AuthUser) => {
 // get for checkout
 const getGlobalSettings = async () => {
   const result = await GlobalSettings.findOne({}).select(
-    'platformCommissionPercent platformCommissionVatRate deliveryVatRate deliveryChargePerKm fleetManagerCommissionPercent baseDeliveryCharge',
+    'platformCommissionPercent platformCommissionVatRate deliveryVatRate deliveryChargePerKm fleetManagerCommissionPercent baseDeliveryCharge customerNearestVendorRadiusKm',
   );
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Global settings not found');
@@ -218,6 +218,7 @@ const getGlobalSettings = async () => {
     deliveryChargePerMeter: perMeter,
     fleetManagerCommissionPercent: result?.fleetManagerCommissionPercent,
     baseDeliveryCharge: result?.baseDeliveryCharge,
+    customerNearestVendorRadiusKm: result?.customerNearestVendorRadiusKm,
   };
 };
 

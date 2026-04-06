@@ -12,6 +12,7 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
+import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 
 /**
  * Service to update vendor profile information.
@@ -351,9 +352,10 @@ const getSingleVendor = async (vendorId: string, currentUser: AuthUser) => {
 // get all vendors for customer
 const getAllVendorsForCustomer = async (
   query: Record<string, unknown>,
-  currentUser: any,
+  currentUser: AuthUser,
 ) => {
   // 1. Get Customer Coordinates from currentSessionLocation
+
   const coordinates = currentUser?.currentSessionLocation?.coordinates;
 
   if (!coordinates || coordinates.length < 2) {
@@ -363,11 +365,18 @@ const getAllVendorsForCustomer = async (
     );
   }
 
-  const [lng, lat] = coordinates;
-  const radiusInRadians = 20 / 6378.1; // 20km radius circle
+  const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
-  // 2. Filter vendors within 20km circle
+  const [lng, lat] = coordinates;
+  const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
+
+  const activeProductVendorIds = await Product.distinct('vendorId', {
+    isDeleted: false,
+  });
+
+  // 2. Filter vendors
   const filter: any = {
+    _id: { $in: activeProductVendorIds },
     status: 'APPROVED',
     isDeleted: false,
     currentSessionLocation: {
@@ -382,6 +391,7 @@ const getAllVendorsForCustomer = async (
     const matchingVendorIds = await Product.distinct('vendorId', {
       category: query.productCategory,
       isDeleted: false,
+      vendorId: { $in: activeProductVendorIds },
     });
 
     if (matchingVendorIds.length === 0) {

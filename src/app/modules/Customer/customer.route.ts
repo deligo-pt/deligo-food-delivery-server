@@ -5,6 +5,7 @@ import { CustomerControllers } from './customer.controller';
 import { CustomerValidation } from './customer.validation';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
+import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
 
 const router = Router();
 
@@ -16,6 +17,14 @@ router.patch(
   parseBody,
   validateRequest(CustomerValidation.updateCustomerDataValidationSchema),
   CustomerControllers.updateCustomer,
+);
+
+// update customer live location
+router.patch(
+  '/:customerId/update-live-location',
+  auth('CUSTOMER'),
+  validateRequest(GlobalValidation.UpdateLiveLocationValidationSchema),
+  CustomerControllers.updateCustomerLiveLocation,
 );
 
 // add delivery address

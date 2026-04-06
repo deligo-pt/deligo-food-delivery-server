@@ -43,6 +43,7 @@ export type TOrder = {
     distance: number;
     estimatedTime: number;
     deliveryProofImage?: string;
+    notes?: string;
   };
 
   payoutSummary: {

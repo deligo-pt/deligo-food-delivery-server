@@ -64,7 +64,7 @@ const mapOrderToPdPayload = (order: any) => {
       payment_method_id: paymentMethodId,
     },
   ];
-  // const email = order.customerId?.email;
+  const email = order.customerId?.email;
 
   return {
     customer_id: 5,
@@ -74,8 +74,8 @@ const mapOrderToPdPayload = (order: any) => {
     tax_included: false,
     details: details,
     payments: payments,
-    // send_email: true,
-    // email: email || 'mamudmdemon@gmail.com',
+    send_email: true,
+    email: email,
   };
 };
 // syncOrderWithPd
