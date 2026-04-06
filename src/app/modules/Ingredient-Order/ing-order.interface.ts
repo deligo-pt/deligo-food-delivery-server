@@ -39,6 +39,10 @@ export interface IIngredientOrder {
     orderStatus: TOrderStatus;
     paymentStatus: TPaymentStatus;
 
+    statusHistory: {
+        shippedAt?: Date;
+        deliveredAt?: Date;
+    };
     transactionId?: string;
     isPaid?: boolean;
     isDeleted: boolean;
