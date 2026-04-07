@@ -30,6 +30,7 @@ import { Transaction } from '../Transaction/transaction.model';
 import { Wallet } from '../Wallet/wallet.model';
 import { roundTo2 } from '../../utils/mathProvider';
 import { customAlphabet } from 'nanoid';
+import { Admin } from '../Admin/admin.model';
 
 const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
@@ -933,10 +934,10 @@ const otpVerificationByVendor = async (
         `OTP is already verified. Order status is ${orderCheck.orderStatus}`,
       );
     }
-    if (orderCheck.orderStatus !== ORDER_STATUS.ASSIGNED) {
+    if (orderCheck.orderStatus !== ORDER_STATUS.READY_FOR_PICKUP) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Order status is ${orderCheck.orderStatus}, cannot verify OTP.`,
+        `Order must be READY_FOR_PICKUP to verify OTP. Current status is ${orderCheck.orderStatus}`,
       );
     }
 
@@ -1147,6 +1148,8 @@ const updateOrderStatusByDeliveryPartner = async (
         { userId: updatedOrder.vendorId, userModel: 'Vendor' },
         {
           $inc: {
+            totalUnpaidTax: roundTo2(vendorPayableTax) || 0,
+            totalTax: roundTo2(vendorPayableTax) || 0,
             totalUnpaidEarnings: roundTo2(vendorNetPayout) || 0,
             totalEarnings: roundTo2(vendorNetPayout) || 0,
           },
@@ -1160,6 +1163,8 @@ const updateOrderStatusByDeliveryPartner = async (
         { userId: partner?._id, userModel: 'DeliveryPartner' },
         {
           $inc: {
+            totalUnpaidTax: roundTo2(riderPayableTax) || 0,
+            totalTax: roundTo2(riderPayableTax) || 0,
             totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
             totalEarnings: roundTo2(riderEarningAmount) || 0,
           },
@@ -1168,7 +1173,9 @@ const updateOrderStatusByDeliveryPartner = async (
         { session, upsert: true },
       );
 
-      const SYSTEM_ADMIN = '694a088c43ee1acbe0e9c87d';
+      const SYSTEM_ADMIN = await Admin.findOne({ role: 'SUPER_ADMIN' })
+        .select('_id')
+        .lean();
       // Admin Wallet
       await Wallet.findOneAndUpdate(
         { userId: SYSTEM_ADMIN, userModel: 'Admin' },
@@ -1187,6 +1194,8 @@ const updateOrderStatusByDeliveryPartner = async (
           { userId: fleetManagerId, userModel: 'FleetManager' },
           {
             $inc: {
+              totalUnpaidTax: commissionVat || 0,
+              totalTax: commissionVat || 0,
               totalUnpaidEarnings: totalDeliveryCharge || 0,
               totalRiderPayable: riderNetEarnings || 0,
               totalFleetEarnings: payoutSummary.fleet.fee || 0,
