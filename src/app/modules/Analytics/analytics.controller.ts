@@ -164,6 +164,21 @@ const getVendorCustomerReport = catchAsync(async (req, res) => {
   });
 });
 
+// get admin delivery partner report analytics controller
+const getVendorTaxReport = catchAsync(async (req, res) => {
+  const result =
+    await AnalyticsServices.getVendorTaxReport(
+      req.user as AuthUser,
+    );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor Tax report fetched successfully',
+    data: result,
+  });
+});
+
 // get fleet performance analytics controller
 const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
   const result =
@@ -447,6 +462,7 @@ export const AnalyticsControllers = {
   getAdminDeliveryPartnerReportAnalytics,
   getVendorSalesReportAnalytics,
   getVendorCustomerReport,
+  getVendorTaxReport,
   getFleetManagerPerformanceAnalytics,
   getSingleFleetPerformanceDetailsAnalytics,
   getAdminSalesAnalytics,
