@@ -97,6 +97,13 @@ router.get(
   AnalyticsControllers.getVendorCustomerReport,
 );
 
+// get vendor tax report analytics
+router.get(
+  '/vendor/tax-report',
+  auth('VENDOR', 'SUB_VENDOR'),
+  AnalyticsControllers.getVendorTaxReport,
+);
+
 // get fleet performance analytics
 router.get(
   // '/fleet-performance-analytics', //before

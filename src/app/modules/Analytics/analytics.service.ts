@@ -26,6 +26,7 @@ import {
   TPartnerPerformanceData,
   TPartnerPerformanceDetailsData,
   TPeakHoursInsights,
+  TTaxReport,
   TVendorInsights,
   TVendorSalesReport,
 } from './analytics.interface';
@@ -1871,6 +1872,199 @@ const getVendorCustomerReport = async (
       data: customerTable,
       meta,
     },
+  };
+};
+
+// get vendor tax report
+const getVendorTaxReport = async (
+  currentUser: AuthUser
+): Promise<TTaxReport> => {
+  const vendorId = new mongoose.Types.ObjectId(currentUser._id);
+  const now = new Date();
+
+  // Calculate date for 6 months ago (start of the month)
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const [report] = await Order.aggregate([
+    {
+      $match: {
+        vendorId,
+        isPaid: true,
+        isDeleted: false,
+        createdAt: { $gte: sixMonthsAgo }
+      }
+    },
+    {
+      $facet: {
+        // 1. Top Level Stats (Cards)
+        stats: [
+          {
+            $group: {
+              _id: null,
+              totalSales: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
+              totalTax: { $sum: '$payoutSummary.vendor.payableTax' }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              totalSales: 1,
+              totalTax: 1,
+              netRevenue: { $subtract: ['$totalSales', '$totalTax'] }
+            }
+          }
+        ],
+
+        // 2. Product vs Addon Contribution (Donut Chart)
+        taxContribution: [
+          { $unwind: '$items' },
+          {
+            $group: {
+              _id: null,
+              productTax: { $sum: '$items.productPricing.taxAmount' },
+              addonTax: {
+                $sum: {
+                  $reduce: {
+                    input: '$items.addons',
+                    initialValue: 0,
+                    in: { $add: ['$$value', '$$this.taxAmount'] }
+                  }
+                }
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              total: { $add: ['$productTax', '$addonTax'] },
+              productTax: 1,
+              addonTax: 1
+            }
+          },
+          {
+            $project: {
+              contribution: [
+                {
+                  name: 'Product',
+                  value: { $cond: [{ $eq: ['$total', 0] }, 0, { $multiply: [{ $divide: ['$productTax', '$total'] }, 100] }] }
+                },
+                {
+                  name: 'Addon',
+                  value: { $cond: [{ $eq: ['$total', 0] }, 0, { $multiply: [{ $divide: ['$addonTax', '$total'] }, 100] }] }
+                }
+              ]
+            }
+          },
+          { $unwind: '$contribution' },
+          { $replaceRoot: { newRoot: '$contribution' } }
+        ],
+
+        // 3. Tax by Category (Bar Chart)
+        taxByCategory: [
+          { $unwind: '$items' },
+          {
+            $project: {
+              allTaxes: {
+                $concatArrays: [
+                  [{ rate: '$items.productPricing.taxRate', amount: '$items.productPricing.taxAmount' }],
+                  {
+                    $map: {
+                      input: '$items.addons',
+                      as: 'addon',
+                      in: { rate: '$$addon.taxRate', amount: '$$addon.taxAmount' }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          { $unwind: '$allTaxes' },
+          {
+            $group: {
+              _id: '$allTaxes.rate',
+              value: { $sum: '$allTaxes.amount' }
+            }
+          },
+          {
+            $project: {
+              name: { $concat: [{ $toString: '$_id' }, '% Rate'] },
+              value: 1,
+              _id: 0
+            }
+          },
+          { $sort: { name: 1 } }
+        ],
+
+        // 4. Monthly Raw Data (For Trend Chart)
+        monthlyRaw: [
+          {
+            $group: {
+              _id: {
+                month: { $month: '$createdAt' },
+                year: { $year: '$createdAt' }
+              },
+              revenue: { $sum: '$payoutSummary.vendor.earningsWithoutTax' },
+              tax: { $sum: '$payoutSummary.vendor.payableTax' }
+            }
+          }
+        ],
+
+        // 5. Top Tax-Generating Addons (Horizontal Bar)
+        addonTax: [
+          { $unwind: '$items' },
+          { $unwind: '$items.addons' },
+          {
+            $group: {
+              _id: '$items.addons.name',
+              tax: { $sum: '$items.addons.taxAmount' }
+            }
+          },
+          { $sort: { tax: -1 } },
+          { $limit: 5 },
+          { $project: { _id: 0, name: '$_id', tax: 1 } }
+        ]
+      }
+    }
+  ]);
+
+  // --- 6 Month Continuity Logic (Matches your Vibe) ---
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const revenueData = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const m = d.getMonth();
+    const y = d.getFullYear();
+
+    const found = report?.monthlyRaw?.find(
+      (item: any) => item._id.month === m + 1 && item._id.year === y
+    );
+
+    revenueData.push({
+      name: monthNames[m],
+      revenue: found ? Number(found.revenue.toFixed(2)) : 0,
+      tax: found ? Number(found.tax.toFixed(2)) : 0,
+    });
+  }
+
+  // Format final return
+  const stats = report?.stats?.[0] || { totalSales: 0, totalTax: 0, netRevenue: 0 };
+
+  return {
+    stats: {
+      totalSales: Number(stats.totalSales.toFixed(2)),
+      totalTax: Number(stats.totalTax.toFixed(2)),
+      netRevenue: Number(stats.netRevenue.toFixed(2)),
+    },
+    taxContribution: report.taxContribution.length
+      ? report.taxContribution.map((c: any) => ({ name: c.name, value: Number(c.value.toFixed(1)) }))
+      : [{ name: 'Product', value: 0 }, { name: 'Addon', value: 0 }],
+    taxByCategory: report.taxByCategory,
+    revenueData,
+    addonTax: report.addonTax,
   };
 };
 
@@ -5352,6 +5546,7 @@ export const AnalyticsServices = {
   getAdminDeliveryPartnerReportAnalytics,
   getVendorSalesReportAnalytics,
   getVendorCustomerReport,
+  getVendorTaxReport,
   getFleetManagerPerformanceAnalytics,
   getSingleFleetPerformanceDetailsAnalytics,
   getAdminSalesAnalytics,

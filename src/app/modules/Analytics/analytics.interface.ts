@@ -363,3 +363,33 @@ export type TPeakHoursInsights = {
 
     riderDemandGap: TRiderDemandGap[];
 };
+
+
+// vendor tax report
+export type TTaxReport = {
+    stats: {
+        totalSales: number;
+        totalTax: number;
+        netRevenue: number; // sales - tax
+    };
+    taxContribution: {
+        name: string; // sun
+        value: number;
+    }[];
+
+    taxByCategory: {
+        name: string; // tax rate like 6%, 10%, 23%
+        value: number; // tax amount 
+    }[];
+
+    revenueData: {
+        name: string; // Month name like Feb 
+        revenue: number; // revenue on that month like 3200
+        tax: number; // tax amount on that month like 420
+    }[]; // based on last 6 months
+
+    addonTax: {
+        name: string;
+        tax: number;
+    }[];
+};
