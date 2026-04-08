@@ -896,7 +896,7 @@ const otpVerificationByVendor = async (
     {
       orderId,
       vendorId: currentUser._id.toString(),
-      orderStatus: ORDER_STATUS.ASSIGNED,
+      orderStatus: ORDER_STATUS.READY_FOR_PICKUP,
       isOtpVerified: false,
       deliveryOtp: otp,
       isDeleted: false,
