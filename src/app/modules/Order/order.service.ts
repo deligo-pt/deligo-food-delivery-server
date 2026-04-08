@@ -896,7 +896,7 @@ const otpVerificationByVendor = async (
     {
       orderId,
       vendorId: currentUser._id.toString(),
-      orderStatus: ORDER_STATUS.ASSIGNED,
+      orderStatus: ORDER_STATUS.READY_FOR_PICKUP,
       isOtpVerified: false,
       deliveryOtp: otp,
       isDeleted: false,
@@ -941,10 +941,10 @@ const otpVerificationByVendor = async (
       );
     }
 
-    // throw new AppError(
-    //   httpStatus.UNAUTHORIZED,
-    //   'Invalid OTP or order status/assignment is incorrect.',
-    // );
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'Invalid OTP or order status/assignment is incorrect.',
+    );
   }
 
   if (updatedOrder.deliveryPartnerId) {
