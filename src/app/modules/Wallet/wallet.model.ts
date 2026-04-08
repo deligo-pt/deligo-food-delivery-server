@@ -26,7 +26,19 @@ const walletSchema = new Schema<TWallet>(
       type: Date,
       default: null,
     },
+    totalUnpaidTax: {
+      type: Number,
+      default: 0,
+    },
+    totalTax: {
+      type: Number,
+      default: 0,
+    },
     totalUnpaidEarnings: {
+      type: Number,
+      default: 0,
+    },
+    totalEarnings: {
       type: Number,
       default: 0,
     },
@@ -35,10 +47,6 @@ const walletSchema = new Schema<TWallet>(
     },
     totalFleetEarnings: {
       type: Number,
-    },
-    totalEarnings: {
-      type: Number,
-      default: 0,
     },
   },
   {
