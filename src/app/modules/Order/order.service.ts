@@ -941,10 +941,10 @@ const otpVerificationByVendor = async (
       );
     }
 
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'Invalid OTP or order status/assignment is incorrect.',
-    );
+    // throw new AppError(
+    //   httpStatus.UNAUTHORIZED,
+    //   'Invalid OTP or order status/assignment is incorrect.',
+    // );
   }
 
   if (updatedOrder.deliveryPartnerId) {
