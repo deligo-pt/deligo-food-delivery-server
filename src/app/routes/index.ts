@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router } from 'express';
 import { AuthRoutes } from '../modules/Auth/auth.route';
 import { ProfileRoutes } from '../modules/Profile/profile.route';
 import { VendorRoutes } from '../modules/Vendor/vendor.route';
@@ -31,7 +31,7 @@ import { SupportRoutes } from '../modules/Support/support.route';
 import { IngredientRoutes } from '../modules/Ingredients/ingredients.route';
 import { IngredientOrderRoutes } from '../modules/Ingredient-Order/ing-order.route';
 
-const router = express.Router();
+const router = Router();
 
 const moduleRoutes = [
   {

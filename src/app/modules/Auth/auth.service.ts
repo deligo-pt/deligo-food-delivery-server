@@ -1412,10 +1412,10 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
         'User is already verified. Please login.',
       );
     }
-    const { otp, otpExpires } = generateOtp();
-    user.otp = otp;
-    user.isOtpExpired = otpExpires;
-    await user.save();
+    const { otp } = generateOtp();
+
+    const redisOtpKey = `otp:${email}`;
+    await RedisService.set(redisOtpKey, otp, 300); // 5-minute TTL
 
     // Prepare email template content
     const emailHtml = await EmailHelper.createEmailContent(
