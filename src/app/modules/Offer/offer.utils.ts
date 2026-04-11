@@ -267,10 +267,10 @@ export const rebuildCheckoutSummary = async (
     (sum: any, i: any) => sum + i.itemSummary.totalTaxAmount,
     0,
   );
-  const newDeliveryVat = roundTo2(
-    finalDeliveryChargeNet * ((globalSettings?.deliveryVatRate || 0) / 100),
-  );
-  const totalDeliveryCharge = roundTo2(finalDeliveryChargeNet + newDeliveryVat);
+  const newDeliveryVat =
+    finalDeliveryChargeNet * ((globalSettings?.deliveryVatRate || 0) / 100);
+
+  const totalDeliveryCharge = finalDeliveryChargeNet + newDeliveryVat;
   const totalCommAmt = updatedItems.reduce(
     (sum: any, i: any) => sum + i.commission.deliGoCommissionAmount,
     0,
