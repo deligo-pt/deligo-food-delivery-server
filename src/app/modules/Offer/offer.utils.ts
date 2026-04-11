@@ -9,14 +9,22 @@ import { Offer } from './offer.model';
 import mongoose from 'mongoose';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 
+/**
+ * Validates the offer by checking status, expiration, vendor mapping,
+ * minimum order amount, and user usage limits.
+ */
 export const findAndValidateOffer = async (
   offerIdentifier: string,
   checkoutData: any,
   currentUser: any,
 ) => {
+  // 1. If no code provided, skip validation
   if (!offerIdentifier || offerIdentifier.trim() === '') return null;
 
   const now = new Date();
+
+  // 2. Setup base query: Offer must be active, not deleted, within date range,
+  // and either global (vendorId: null) or specific to this vendor.
   const baseQuery = {
     isActive: true,
     isDeleted: false,
@@ -25,6 +33,7 @@ export const findAndValidateOffer = async (
     $or: [{ vendorId: checkoutData.vendorId }, { vendorId: null }],
   };
 
+  // 3. Search by ID if it's a valid ObjectId, otherwise search by Promo Code
   const isObjectId = mongoose.Types.ObjectId.isValid(offerIdentifier);
   const offer = isObjectId
     ? await Offer.findOne({ ...baseQuery, _id: offerIdentifier })
@@ -36,6 +45,7 @@ export const findAndValidateOffer = async (
   if (!offer)
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer or promo code');
 
+  // 4. Ensure Auto-apply offers aren't being forced manually via code incorrectly
   if (!offer.isAutoApply && isObjectId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -43,11 +53,13 @@ export const findAndValidateOffer = async (
     );
   }
 
+  // 5. Calculate the original taxable amount before any existing offer discounts
   const originalTaxableAmount = roundTo2(
     checkoutData.orderCalculation.taxableAmount +
       (checkoutData.orderCalculation.totalOfferDiscount || 0),
   );
 
+  // 6. Check if order meets the Minimum Amount requirement of the offer
   if (originalTaxableAmount < (offer?.minOrderAmount || 0)) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -55,6 +67,7 @@ export const findAndValidateOffer = async (
     );
   }
 
+  // 7. For FLAT discounts, ensure order total isn't less than the discount itself
   if (
     offer.offerType === 'FLAT' &&
     originalTaxableAmount < (offer?.discountValue || 0)
@@ -65,6 +78,7 @@ export const findAndValidateOffer = async (
     );
   }
 
+  // 8. Validate User Usage Limit (How many times this specific user has used this promo)
   const promoId = offer._id.toString();
   const usageCount = await Order.countDocuments({
     customerId: currentUser._id,
@@ -82,6 +96,9 @@ export const findAndValidateOffer = async (
   return offer;
 };
 
+/**
+ * Calculates the total discount amount based on the offer type (PERCENT, FLAT, FREE_DELIVERY, BOGO).
+ */
 export const calculateOfferDiscount = (offer: any, checkoutData: any) => {
   const originalTaxableAmount = roundTo2(
     checkoutData.orderCalculation.taxableAmount +
@@ -93,8 +110,10 @@ export const calculateOfferDiscount = (offer: any, checkoutData: any) => {
   let finalDeliveryChargeNet = deliveryChargeBase;
   let bogoSnapshot = null;
 
+  // 9. Determine discount based on Offer Type
   switch (offer.offerType) {
     case 'PERCENT': {
+      // Percentage of total taxable amount, capped by maxDiscountAmount if exists
       const calculated =
         (originalTaxableAmount * (offer.discountValue || 0)) / 100;
       totalOfferDiscount = offer.maxDiscountAmount
@@ -103,6 +122,7 @@ export const calculateOfferDiscount = (offer: any, checkoutData: any) => {
       break;
     }
     case 'FLAT': {
+      // Fixed amount discount
       totalOfferDiscount = Math.min(
         offer.discountValue || 0,
         originalTaxableAmount,
@@ -110,10 +130,12 @@ export const calculateOfferDiscount = (offer: any, checkoutData: any) => {
       break;
     }
     case 'FREE_DELIVERY': {
+      // Set delivery charge to 0
       finalDeliveryChargeNet = 0;
       break;
     }
     case 'BOGO': {
+      // Buy One Get One logic: Find target product and calculate free quantity value
       const bogo = offer.bogo!;
       const targetItem = checkoutData.items.find(
         (i: any) => i.productId?.toString() === bogo.productId.toString(),
@@ -143,6 +165,10 @@ export const calculateOfferDiscount = (offer: any, checkoutData: any) => {
   };
 };
 
+/**
+ * Rebuilds the entire checkout object, redistributing the discount across items,
+ * recalculating taxes, commissions, and payouts.
+ */
 export const rebuildCheckoutSummary = async (
   checkoutData: any,
   offer: any,
@@ -156,10 +182,12 @@ export const rebuildCheckoutSummary = async (
       (checkoutData.orderCalculation.totalOfferDiscount || 0),
   );
 
+  // 10. Calculate the ratio of the discount to the total taxable amount for pro-rata distribution
   const discountRatio =
     originalTaxableAmount > 0 ? totalOfferDiscount / originalTaxableAmount : 0;
   let distributedDiscountSum = 0;
 
+  // 11. Loop through items to apply discount pro-rata and recalculate item-level financials
   const updatedItems = items.map((item: any, index: number) => {
     const itemOriginalBeforeTax = roundTo2(
       item.itemSummary.totalBeforeTax +
@@ -167,6 +195,7 @@ export const rebuildCheckoutSummary = async (
     );
     let itemOfferDiscount = 0;
 
+    // Distribute discount: last item gets the remainder to avoid rounding issues
     if (index === items.length - 1) {
       itemOfferDiscount = Math.max(
         0,
@@ -179,6 +208,7 @@ export const rebuildCheckoutSummary = async (
       distributedDiscountSum + itemOfferDiscount,
     );
 
+    // 12. Recalculate Unit Prices, Addons, and Taxes after discount
     const itemInternalDiscountRatio =
       itemOriginalBeforeTax > 0 ? itemOfferDiscount / itemOriginalBeforeTax : 0;
     const productBase = item.productPricing.priceAfterProductDiscount;
@@ -188,6 +218,7 @@ export const rebuildCheckoutSummary = async (
       newProductUnitPrice * (item.productPricing.taxRate / 100),
     );
 
+    // 13. Update individual addons within the item
     const updatedAddons = item.addons.map((addon: any) => {
       const addonPromoDisc = roundTo2(
         addon.originalPrice * itemInternalDiscountRatio,
@@ -210,6 +241,8 @@ export const rebuildCheckoutSummary = async (
       (sum: number, a: any) => sum + a.unitPrice * a.quantity,
       0,
     );
+
+    // 14. Summary of new item totals
     const newItemTaxableTotal = roundTo2(
       (newProductUnitPrice + newAddonsPriceTotal) * item.itemSummary.quantity,
     );
@@ -217,6 +250,7 @@ export const rebuildCheckoutSummary = async (
       (newProductTax + newAddonsTaxTotal) * item.itemSummary.quantity,
     );
 
+    // 15. Recalculate Platform Commission based on new discounted price
     const itemComm = roundTo2(
       newItemTaxableTotal * (item.commission.deliGoCommissionRate / 100),
     );
@@ -258,6 +292,7 @@ export const rebuildCheckoutSummary = async (
     };
   });
 
+  // 16. Final global calculations (Total Order Level)
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
   const finalGlobalTaxableAmount = updatedItems.reduce(
     (sum: any, i: any) => sum + i.itemSummary.totalBeforeTax,
@@ -267,10 +302,16 @@ export const rebuildCheckoutSummary = async (
     (sum: any, i: any) => sum + i.itemSummary.totalTaxAmount,
     0,
   );
-  const newDeliveryVat =
-    finalDeliveryChargeNet * ((globalSettings?.deliveryVatRate || 0) / 100);
 
-  const totalDeliveryCharge = finalDeliveryChargeNet + newDeliveryVat;
+  // 17. Recalculate Delivery VAT and Total Delivery Charge
+  const deliveryVatRate = (globalSettings?.deliveryVatRate || 0) / 100;
+  const rawDeliveryVat = finalDeliveryChargeNet * deliveryVatRate;
+
+  const deliveryVat = roundTo2(rawDeliveryVat);
+
+  const totalDeliveryCharge = roundTo2(finalDeliveryChargeNet + deliveryVat);
+
+  // 18. Consolidate Platform Commissions
   const totalCommAmt = updatedItems.reduce(
     (sum: any, i: any) => sum + i.commission.deliGoCommissionAmount,
     0,
@@ -280,6 +321,8 @@ export const rebuildCheckoutSummary = async (
     0,
   );
   const totalDeduction = roundTo2(totalCommAmt + totalCommVat);
+
+  // 19. Calculate Final Grand Total and Fleet Fee
   const grandTotal = roundTo2(
     finalGlobalTaxableAmount + finalGlobalTaxAmount + totalDeliveryCharge,
   );
@@ -288,6 +331,7 @@ export const rebuildCheckoutSummary = async (
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
 
+  // 20. Return the complete updated checkout object structure
   return {
     items: updatedItems,
     orderCalculation: {
@@ -299,7 +343,7 @@ export const rebuildCheckoutSummary = async (
     delivery: {
       ...checkoutData.delivery,
       charge: finalDeliveryChargeNet,
-      vatAmount: newDeliveryVat,
+      vatAmount: deliveryVat,
       totalDeliveryCharge,
     },
     payoutSummary: {
@@ -320,9 +364,9 @@ export const rebuildCheckoutSummary = async (
       },
       rider: {
         earningsWithoutTax: roundTo2(
-          totalDeliveryCharge - newDeliveryVat - fleetFee,
+          totalDeliveryCharge - deliveryVat - fleetFee,
         ),
-        payableTax: newDeliveryVat,
+        payableTax: deliveryVat,
         riderNetEarnings: roundTo2(totalDeliveryCharge - fleetFee),
       },
       fleet: {
