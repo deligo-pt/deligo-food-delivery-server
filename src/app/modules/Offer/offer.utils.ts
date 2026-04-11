@@ -189,34 +189,37 @@ export const rebuildCheckoutSummary = async (
 
   // 11. Loop through items to apply discount pro-rata and recalculate item-level financials
   const updatedItems = items.map((item: any, index: number) => {
-    const itemOriginalBeforeTax = roundTo2(
-      item.itemSummary.totalBeforeTax +
-        (item.itemSummary.totalPromoDiscount || 0),
+    const lineOriginalBeforeTax = roundTo2(
+      item.productPricing.priceAfterProductDiscount * item.itemSummary.quantity,
     );
-    let itemOfferDiscount = 0;
+    let lineOfferDiscount = 0;
 
     // Distribute discount: last item gets the remainder to avoid rounding issues
     if (index === items.length - 1) {
-      itemOfferDiscount = Math.max(
-        0,
-        roundTo2(totalOfferDiscount - distributedDiscountSum),
-      );
+      lineOfferDiscount = roundTo2(totalOfferDiscount - distributedDiscountSum);
     } else {
-      itemOfferDiscount = roundTo2(itemOriginalBeforeTax * discountRatio);
+      lineOfferDiscount = roundTo2(lineOriginalBeforeTax * discountRatio);
     }
     distributedDiscountSum = roundTo2(
-      distributedDiscountSum + itemOfferDiscount,
+      distributedDiscountSum + lineOfferDiscount,
+    );
+
+    const newLineTotalBeforeTax = roundTo2(
+      lineOriginalBeforeTax - lineOfferDiscount,
+    );
+
+    const newProductUnitPrice = roundTo2(
+      newLineTotalBeforeTax / item.itemSummary.quantity,
+    );
+
+    const newProductTax = roundTo2(
+      newProductUnitPrice * (item.productPricing.taxRate / 100),
     );
 
     // 12. Recalculate Unit Prices, Addons, and Taxes after discount
     const itemInternalDiscountRatio =
-      itemOriginalBeforeTax > 0 ? itemOfferDiscount / itemOriginalBeforeTax : 0;
-    const productBase = item.productPricing.priceAfterProductDiscount;
-    const productPromoDisc = roundTo2(productBase * itemInternalDiscountRatio);
-    const newProductUnitPrice = roundTo2(productBase - productPromoDisc);
-    const newProductTax = roundTo2(
-      newProductUnitPrice * (item.productPricing.taxRate / 100),
-    );
+      lineOriginalBeforeTax > 0 ? lineOfferDiscount / lineOriginalBeforeTax : 0;
+    const unitPromoDiscount = lineOfferDiscount / item.itemSummary.quantity;
 
     // 13. Update individual addons within the item
     const updatedAddons = item.addons.map((addon: any) => {
@@ -263,14 +266,14 @@ export const rebuildCheckoutSummary = async (
       addons: updatedAddons,
       productPricing: {
         ...item.productPricing,
-        promoDiscountAmount: productPromoDisc,
+        promoDiscountAmount: unitPromoDiscount,
         unitPrice: newProductUnitPrice,
         lineTotal: newProductUnitPrice,
         taxAmount: newProductTax,
       },
       itemSummary: {
         ...item.itemSummary,
-        totalPromoDiscount: itemOfferDiscount,
+        totalPromoDiscount: lineOfferDiscount,
         totalBeforeTax: newItemTaxableTotal,
         totalTaxAmount: newItemTaxTotal,
         grandTotal: roundTo2(newItemTaxableTotal + newItemTaxTotal),
