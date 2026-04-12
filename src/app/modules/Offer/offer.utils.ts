@@ -212,9 +212,8 @@ export const rebuildCheckoutSummary = async (
       newLineTotalBeforeTax / item.itemSummary.quantity,
     );
 
-    const newProductTax = roundTo2(
-      newProductUnitPrice * (item.productPricing.taxRate / 100),
-    );
+    const newProductTax =
+      newProductUnitPrice * (item.productPricing.taxRate / 100);
 
     // 12. Recalculate Unit Prices, Addons, and Taxes after discount
     const itemInternalDiscountRatio =
@@ -266,10 +265,10 @@ export const rebuildCheckoutSummary = async (
       addons: updatedAddons,
       productPricing: {
         ...item.productPricing,
-        promoDiscountAmount: unitPromoDiscount,
+        promoDiscountAmount: roundTo2(unitPromoDiscount),
         unitPrice: newProductUnitPrice,
         lineTotal: newProductUnitPrice,
-        taxAmount: newProductTax,
+        taxAmount: roundTo2(newProductTax),
       },
       itemSummary: {
         ...item.itemSummary,
@@ -326,9 +325,17 @@ export const rebuildCheckoutSummary = async (
   const totalDeduction = roundTo2(totalCommAmt + totalCommVat);
 
   // 19. Calculate Final Grand Total and Fleet Fee
-  const grandTotal = roundTo2(
-    finalGlobalTaxableAmount + finalGlobalTaxAmount + totalDeliveryCharge,
+
+  const finalItemsGrandTotal = updatedItems.reduce(
+    (sum: any, i: any) => sum + i.itemSummary.grandTotal,
+    0,
   );
+
+  const grandTotal = roundTo2(finalItemsGrandTotal + totalDeliveryCharge);
+
+  // const grandTotal = roundTo2(
+  //   finalGlobalTaxableAmount + finalGlobalTaxAmount + totalDeliveryCharge,
+  // );
   const fleetFee = roundTo2(
     finalDeliveryChargeNet *
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
