@@ -926,7 +926,7 @@ const refreshToken = async (token: string) => {
     config.jwt.jwt_refresh_secret as string,
   ) as JwtPayload;
 
-  const { iat, userId } = decoded;
+  const { iat, userId, deviceId } = decoded;
 
   const result = await findUserById({ userId });
 
@@ -935,6 +935,16 @@ const refreshToken = async (token: string) => {
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+
+  const isDeviceValid = user.loginDevices?.some(
+    (d: TLoginDevice) => d.deviceId === deviceId,
+  );
+  if (!isDeviceValid) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'Session expired or device removed. Please login again.',
+    );
   }
 
   // checking if the user is blocked
@@ -964,6 +974,7 @@ const refreshToken = async (token: string) => {
     contactNumber: user?.contactNumber,
     role: user?.role,
     status: user?.status,
+    deviceId: deviceId,
   };
 
   const accessToken = createToken(
