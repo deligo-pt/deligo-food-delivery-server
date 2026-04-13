@@ -22,7 +22,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
         gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
         nationality: z.string().optional(),
 
-        nifNumber: z.string().optional(),
+        NIF: z.string().optional(),
         passportNumber: z.string().optional(),
       })
       .optional(),
@@ -98,7 +98,7 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
 const deliveryPartnerDocImageValidationSchema = z.object({
   body: z.object({
     docImageTitle: z.enum([
-      "myPhoto",
+      'myPhoto',
       'idProofFront',
       'idProofBack',
       'drivingLicenseFront',
