@@ -107,8 +107,6 @@ const registerUser = async <
       {
         ...payload,
         [idField]: userID,
-        // otp,
-        // isOtpExpired: otpExpires,
       },
     ]);
     createdUser = result[0];
