@@ -107,8 +107,6 @@ const registerUser = async <
       {
         ...payload,
         [idField]: userID,
-        // otp,
-        // isOtpExpired: otpExpires,
       },
     ]);
     createdUser = result[0];
@@ -926,7 +924,7 @@ const refreshToken = async (token: string) => {
     config.jwt.jwt_refresh_secret as string,
   ) as JwtPayload;
 
-  const { iat, userId } = decoded;
+  const { iat, userId, deviceId } = decoded;
 
   const result = await findUserById({ userId });
 
@@ -935,6 +933,16 @@ const refreshToken = async (token: string) => {
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+
+  const isDeviceValid = user.loginDevices?.some(
+    (d: TLoginDevice) => d.deviceId === deviceId,
+  );
+  if (!isDeviceValid) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'Session expired or device removed. Please login again.',
+    );
   }
 
   // checking if the user is blocked
@@ -964,6 +972,7 @@ const refreshToken = async (token: string) => {
     contactNumber: user?.contactNumber,
     role: user?.role,
     status: user?.status,
+    deviceId: deviceId,
   };
 
   const accessToken = createToken(
@@ -1412,10 +1421,10 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
         'User is already verified. Please login.',
       );
     }
-    const { otp, otpExpires } = generateOtp();
-    user.otp = otp;
-    user.isOtpExpired = otpExpires;
-    await user.save();
+    const { otp } = generateOtp();
+
+    const redisOtpKey = `otp:${email}`;
+    await RedisService.set(redisOtpKey, otp, 300); // 5-minute TTL
 
     // Prepare email template content
     const emailHtml = await EmailHelper.createEmailContent(
