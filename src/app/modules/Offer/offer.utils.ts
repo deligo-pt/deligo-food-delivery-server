@@ -406,33 +406,43 @@ export const rebuildCheckoutSummary = async (
  * This ensures unit prices, taxes, and payouts are recalculated without discounts.
  */
 export const calculateOfferRemoval = async (checkoutData: any) => {
-  // 1. Setup data for zero discount
+  const cleanItems = checkoutData.items.map((item: any) => ({
+    ...item,
+    productPricing: {
+      ...item.productPricing,
+      unitPrice: item.productPricing.priceAfterProductDiscount, // রিস্টোর অরিজিনাল প্রাইস
+      promoDiscountAmount: 0,
+    },
+    itemSummary: {
+      ...item.itemSummary,
+      totalPromoDiscount: 0,
+    },
+  }));
+
+  const cleanCheckoutData = {
+    ...checkoutData,
+    items: cleanItems,
+    orderCalculation: {
+      ...checkoutData.orderCalculation,
+      totalOfferDiscount: 0,
+    },
+  };
+
   const zeroDiscountData = {
     totalOfferDiscount: 0,
     finalDeliveryChargeNet: checkoutData.delivery.charge,
     bogoSnapshot: null,
   };
 
-  // 2. Dummy offer object to represent 'No Offer' state
-  const dummyOffer = {
-    _id: null,
-    title: '',
-    code: '',
-    offerType: 'NONE',
-  };
+  const dummyOffer = { _id: null, title: '', code: '', offerType: 'NONE' };
 
-  // 3. Recalculate everything using your existing rebuild logic
   const updatePayload = await rebuildCheckoutSummary(
-    checkoutData,
+    cleanCheckoutData,
     dummyOffer,
     zeroDiscountData,
   );
 
-  /**
-   * 4. Destructure to remove the 'offer' object from payload
-   * to avoid MongoDB update path conflicts.
-   */
-  const { offer, ...otherUpdates } = updatePayload;
+  const { offer: _, ...otherUpdates } = updatePayload;
 
   return {
     ...otherUpdates,
