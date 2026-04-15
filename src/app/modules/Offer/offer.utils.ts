@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // utils/offer.utils.ts
 
@@ -395,6 +397,48 @@ export const rebuildCheckoutSummary = async (
         maxDiscountAmount: offer.maxDiscountAmount,
         bogoSnapshot,
       },
+    },
+  };
+};
+
+/**
+ * Utility to reset checkout state to its original values by removing any applied offers.
+ * This ensures unit prices, taxes, and payouts are recalculated without discounts.
+ */
+export const calculateOfferRemoval = async (checkoutData: any) => {
+  // 1. Setup data for zero discount
+  const zeroDiscountData = {
+    totalOfferDiscount: 0,
+    finalDeliveryChargeNet: checkoutData.delivery.charge,
+    bogoSnapshot: null,
+  };
+
+  // 2. Dummy offer object to represent 'No Offer' state
+  const dummyOffer = {
+    _id: null,
+    title: '',
+    code: '',
+    offerType: 'NONE',
+  };
+
+  // 3. Recalculate everything using your existing rebuild logic
+  const updatePayload = await rebuildCheckoutSummary(
+    checkoutData,
+    dummyOffer,
+    zeroDiscountData,
+  );
+
+  /**
+   * 4. Destructure to remove the 'offer' object from payload
+   * to avoid MongoDB update path conflicts.
+   */
+  const { offer, ...otherUpdates } = updatePayload;
+
+  return {
+    ...otherUpdates,
+    offer: {
+      isApplied: false,
+      offerApplied: null,
     },
   };
 };
