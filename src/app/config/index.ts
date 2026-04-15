@@ -41,16 +41,13 @@ export default {
     cloudinary_api_key: process.env.CLOUDINARY_API_KEY,
     cloudinary_api_secret: process.env.CLOUDINARY_API_SECRET,
   },
-  //   meilisearch_host: process.env.MEILISEARCH_HOST,
-  //   meilisearch_master_key: process.env.MEILISEARCH_MASTER_KEY,
   sender_email: process.env.SENDER_EMAIL,
   sender_app_password: process.env.SENDER_APP_PASS,
   firebase_service_account: process.env.FIREBASE_SERVICE_ACCOUNT,
   redis: {
-    local_url: process.env.REDIS_LOCAL_URL,
     host: process.env.REDIS_HOST,
     port: process.env.REDIS_PORT,
-    password: process.env.REDIS_PASSWORD,
+    password: process.env.REDIS_PASSWORD || undefined,
   },
   pastaDigital: {
     api_url: process.env.PD_API_URL,
