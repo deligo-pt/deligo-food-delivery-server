@@ -4,7 +4,7 @@ import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
-import { redisClient } from '../config/redis';
+import redis from '../config/redis';
 export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
   const windowMs = 1 * 60 * 1000;
   const max = type === 'auth' ? 10 : 100;
@@ -22,7 +22,9 @@ export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
       return `${type}:${ip}`;
     },
     store: new RedisStore({
-      sendCommand: (...args: string[]) => redisClient.sendCommand(args),
+      sendCommand: async (...args: string[]) => {
+        return (await redis.call(args[0], ...args.slice(1))) as any;
+      },
       prefix: `rl:${type}:`,
     }),
     handler: (req: Request, res: Response, next: NextFunction) => {
