@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // utils/offer.utils.ts
 
@@ -395,6 +397,58 @@ export const rebuildCheckoutSummary = async (
         maxDiscountAmount: offer.maxDiscountAmount,
         bogoSnapshot,
       },
+    },
+  };
+};
+
+/**
+ * Utility to reset checkout state to its original values by removing any applied offers.
+ * This ensures unit prices, taxes, and payouts are recalculated without discounts.
+ */
+export const calculateOfferRemoval = async (checkoutData: any) => {
+  const cleanItems = checkoutData.items.map((item: any) => ({
+    ...item,
+    productPricing: {
+      ...item.productPricing,
+      unitPrice: item.productPricing.priceAfterProductDiscount,
+      promoDiscountAmount: 0,
+    },
+    itemSummary: {
+      ...item.itemSummary,
+      totalPromoDiscount: 0,
+    },
+  }));
+
+  const cleanCheckoutData = {
+    ...checkoutData,
+    items: cleanItems,
+    orderCalculation: {
+      ...checkoutData.orderCalculation,
+      totalOfferDiscount: 0,
+    },
+  };
+
+  const zeroDiscountData = {
+    totalOfferDiscount: 0,
+    finalDeliveryChargeNet: checkoutData.delivery.charge,
+    bogoSnapshot: null,
+  };
+
+  const dummyOffer = { _id: null, title: '', code: '', offerType: 'NONE' };
+
+  const updatePayload = await rebuildCheckoutSummary(
+    cleanCheckoutData,
+    dummyOffer,
+    zeroDiscountData,
+  );
+
+  const { offer: _, ...otherUpdates } = updatePayload;
+
+  return {
+    ...otherUpdates,
+    offer: {
+      isApplied: false,
+      offerApplied: null,
     },
   };
 };
