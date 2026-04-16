@@ -410,7 +410,7 @@ export const calculateOfferRemoval = async (checkoutData: any) => {
     ...item,
     productPricing: {
       ...item.productPricing,
-      unitPrice: item.productPricing.priceAfterProductDiscount, // রিস্টোর অরিজিনাল প্রাইস
+      unitPrice: item.productPricing.priceAfterProductDiscount,
       promoDiscountAmount: 0,
     },
     itemSummary: {
