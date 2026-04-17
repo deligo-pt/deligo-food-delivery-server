@@ -64,5 +64,6 @@ export default {
     test_customer_email: process.env.TEST_CUSTOMER_EMAIL,
     test_customer_contact_number: process.env.TEST_CUSTOMER_CONTACT_NUMBER,
     test_customer_otp: process.env.TEST_CUSTOMER_OTP,
+    test_customer_contact_otp: process.env.TEST_CUSTOMER_CONTACT_OTP,
   }
 };
