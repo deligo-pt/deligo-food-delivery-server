@@ -573,13 +573,11 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         email: payload.email,
         requiresOtpVerification: true,
       });
-      console.log("hit here 1")
     } else {
       await Customer.updateOne(
         { _id: existingUser._id },
         { requiresOtpVerification: true, isOtpVerified: false },
       );
-      console.log("hit here 2")
     }
 
     const emailHtml = await EmailHelper.createEmailContent(
@@ -625,7 +623,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
           requiresOtpVerification: true,
         },
       );
-      console.log("hit here 3")
     } else {
       const userId = generateUserId('/create-customer');
       await Customer.create({
@@ -635,7 +632,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         mobileOtpId,
         requiresOtpVerification: true,
       });
-      console.log("hit here 4")
 
     }
 
@@ -1256,7 +1252,6 @@ const verifyOtp = async (
 
     if (email === config.customer.test_customer_email && otp === config.customer.test_customer_otp) {
       console.log("otp verification bypassed for test customer");
-      // bypass OTP verification for test customer
     } else if (!storedOtp || String(storedOtp) !== String(otp)) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
     }
