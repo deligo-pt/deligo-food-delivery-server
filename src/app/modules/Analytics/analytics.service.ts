@@ -3775,7 +3775,7 @@ const getPeakHourAnalytics = async (query: {
         results.dayWise.find((d: any) => d._id === i + 1)?.orderCount || 0,
     })),
     heatmap: results.heatmap.map((item: any) => ({
-      day: DAYS_MAP[item._id.day],
+      day: DAYS_MAP[item._id.day - 1] || "Unknown",
       hour: item._id.hour,
       orderCount: item.orderCount,
     })),
