@@ -60,4 +60,9 @@ export default {
     password: process.env.REDUNIQ_PASSWORD,
   },
   google_maps_api_key: process.env.GOOGLE_MAPS_API_KEY,
+  customer: {
+    test_customer_email: process.env.TEST_CUSTOMER_EMAIL,
+    test_customer_contact_number: process.env.TEST_CUSTOMER_CONTACT_NUMBER,
+    test_customer_otp: process.env.TEST_CUSTOMER_OTP,
+  }
 };

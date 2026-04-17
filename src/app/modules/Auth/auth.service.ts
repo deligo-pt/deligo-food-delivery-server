@@ -573,11 +573,13 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         email: payload.email,
         requiresOtpVerification: true,
       });
+      console.log("hit here 1")
     } else {
       await Customer.updateOne(
         { _id: existingUser._id },
         { requiresOtpVerification: true, isOtpVerified: false },
       );
+      console.log("hit here 2")
     }
 
     const emailHtml = await EmailHelper.createEmailContent(
@@ -608,9 +610,11 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       contactNumber: payload.contactNumber,
     }).lean();
 
+    const isTestNumber = payload.contactNumber === config.customer.test_customer_contact_number as string;
+
     // Send mobile OTP
     const res = await sendMobileOtp(payload.contactNumber);
-    const mobileOtpId = res?.data?.id;
+    const mobileOtpId = isTestNumber ? 'test-otp-id' : res.mobileOtpId;
 
     if (existingUser) {
       await Customer.updateOne(
@@ -621,6 +625,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
           requiresOtpVerification: true,
         },
       );
+      console.log("hit here 3")
     } else {
       const userId = generateUserId('/create-customer');
       await Customer.create({
@@ -630,6 +635,8 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         mobileOtpId,
         requiresOtpVerification: true,
       });
+      console.log("hit here 4")
+
     }
 
     return {
@@ -1198,9 +1205,8 @@ const approvedOrRejectedUser = async (
     'user-approval-notification',
   );
 
-  const emailSubject = `Your ${
-    submittedUser.role
-  } Application has been ${payload.status.toLowerCase()}`;
+  const emailSubject = `Your ${submittedUser.role
+    } Application has been ${payload.status.toLowerCase()}`;
 
   if (
     [
@@ -1221,9 +1227,8 @@ const approvedOrRejectedUser = async (
   }
 
   return {
-    message: `${
-      submittedUser.role
-    } ${payload.status.toLowerCase()} successfully`,
+    message: `${submittedUser.role
+      } ${payload.status.toLowerCase()} successfully`,
   };
 };
 
@@ -1249,7 +1254,10 @@ const verifyOtp = async (
     const redisOtpKey = `otp:${email}`;
     const storedOtp = await RedisService.get(redisOtpKey);
 
-    if (!storedOtp || String(storedOtp) !== String(otp)) {
+    if (email === config.customer.test_customer_email && otp === config.customer.test_customer_otp) {
+      console.log("otp verification bypassed for test customer");
+      // bypass OTP verification for test customer
+    } else if (!storedOtp || String(storedOtp) !== String(otp)) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
     }
 
@@ -1472,9 +1480,9 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 
   if (
     (currentUser?.role === 'DELIVERY_PARTNER',
-    currentUser?.role === 'CUSTOMER',
-    currentUser?.role === 'VENDOR',
-    currentUser?.role === 'FLEET_MANAGER')
+      currentUser?.role === 'CUSTOMER',
+      currentUser?.role === 'VENDOR',
+      currentUser?.role === 'FLEET_MANAGER')
   ) {
     if (currentUser?.userId !== existingUser?.userId) {
       throw new AppError(
