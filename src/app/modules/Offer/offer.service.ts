@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
@@ -9,6 +10,7 @@ import { CheckoutSummary } from '../Checkout/checkout.model';
 import { roundTo2 } from '../../utils/mathProvider';
 import {
   calculateOfferDiscount,
+  calculateOfferRemoval,
   findAndValidateOffer,
   rebuildCheckoutSummary,
 } from './offer.utils';
@@ -728,15 +730,11 @@ const validateAndApplyOffer = async (
   );
 
   if (!offer) {
+    const resetPayload = await calculateOfferRemoval(checkoutData);
+
     return await CheckoutSummary.findByIdAndUpdate(
       checkoutId,
-      {
-        $set: {
-          'orderCalculation.totalOfferDiscount': 0,
-          'offer.isApplied': false,
-          'offer.offerApplied': null,
-        },
-      },
+      { $set: resetPayload },
       { new: true },
     ).lean();
   }

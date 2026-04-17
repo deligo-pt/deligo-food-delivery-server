@@ -42,6 +42,8 @@ async function bootstrap() {
 
     initOrderCronJobs();
 
+    // initAuthEventListener();
+
     server.listen(config.port, () => {
       if (config.NODE_ENV === 'development') {
         console.log(`Application is running on port ${config.port}`);
