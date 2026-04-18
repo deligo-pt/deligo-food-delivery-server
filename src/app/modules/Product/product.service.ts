@@ -10,16 +10,10 @@ import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { AddonGroup } from '../Add-Ons/addOns.model';
-import { customAlphabet } from 'nanoid';
-// import { SageService } from '../Sage/SageService';
 import { cleanForSKU, generateSlug } from './product.utils';
 import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
-
-const generateShortId = customAlphabet(
-  '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-  6,
-);
+import customNanoId from '../../utils/customNanoId';
 
 // Product Create Service
 const createProduct = async (
@@ -80,7 +74,7 @@ const createProduct = async (
     payload.pricing.taxRate = tax.taxRate;
   }
 
-  const shortId = generateShortId();
+  const shortId = customNanoId(6);
   const productNamePart = cleanForSKU(payload.name);
 
   payload.vendorId = currentUser._id;
