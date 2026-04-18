@@ -9,9 +9,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Wallet } from '../Wallet/wallet.model';
 import { Transaction } from '../Transaction/transaction.model';
 import { NotificationService } from '../Notification/notification.service';
-import { customAlphabet } from 'nanoid';
-
-const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
+import customNanoId from '../../utils/customNanoId';
 
 // initiate payout service
 const initiateSettlement = async (
@@ -66,7 +64,7 @@ const initiateSettlement = async (
     }
 
     const snapshotAmount = wallet.totalUnpaidEarnings;
-    const uniquePayoutId = nanoid();
+    const uniquePayoutId = customNanoId(8);
 
     const [payout] = await Payout.create(
       [
