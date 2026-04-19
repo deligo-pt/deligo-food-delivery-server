@@ -612,7 +612,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
     // Send mobile OTP
     const res = await sendMobileOtp(payload.contactNumber);
-    const mobileOtpId = isTestNumber ? 'test-otp-id' : res.mobileOtpId;
+    const mobileOtpId = isTestNumber ? 'test-otp-id' : res.data.id;
 
     if (existingUser) {
       await Customer.updateOne(
@@ -1289,10 +1289,13 @@ const verifyOtp = async (
         console.log("Contact otp verification bypassed for test customer");
       }
     } else {
+      console.log(userData.mobileOtpId);
       const res = await verifyMobileOtp(
         userData.mobileOtpId as string,
         otp as string,
       );
+
+      console.log(res);
       if (!res?.data?.verified) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
       }
