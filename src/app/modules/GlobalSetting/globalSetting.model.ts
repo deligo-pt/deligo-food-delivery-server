@@ -1,197 +1,190 @@
 import { Schema, model } from 'mongoose';
 import { TGlobalSettings } from './globalSetting.interface';
 
-const GlobalSettingsSchema = new Schema<TGlobalSettings>(
-  {
-    // --------------------------------------------------
-    // Delivery Pricing
-    // --------------------------------------------------
-    deliveryChargePerKm: {
+const GlobalSettingsSchema = new Schema<TGlobalSettings>({
+  // --------------------------------------------------
+  // Delivery Pricing
+  // --------------------------------------------------
+  delivery: {
+    baseCharge: {
       type: Number,
       required: true,
       default: 0,
     },
-
-    baseDeliveryCharge: {
+    ChargePerKm: {
       type: Number,
+      required: true,
       default: 0,
     },
-
-    minDeliveryCharge: {
+    minCharge: {
       type: Number,
-      default: 50,
-    },
-
-    maxDeliveryCharge: {
-      type: Number,
-      default: 300,
-    },
-
-    freeDeliveryAbove: {
-      type: Number,
+      required: true,
       default: 0,
     },
-
-    maxDeliveryDistanceKm: {
+    maxCharge: {
       type: Number,
-      default: 15,
+      required: true,
+      default: 0,
     },
-
-    // customer nearest vendor search radius
-    customerNearestVendorRadiusKm: {
+    freeAbove: {
       type: Number,
-      default: 20,
+      required: true,
+      default: 0,
     },
-
-    // --------------------------------------------------
-    // Platform Commission
-    // --------------------------------------------------
-    platformCommissionPercent: {
+    maxDistanceKm: {
       type: Number,
-      default: 15,
-      min: 0,
-      max: 100,
+      required: true,
+      default: 0,
     },
-
-    platformCommissionVatRate: {
+    vatRate: {
       type: Number,
-      default: 23,
-      min: 0,
-      max: 100,
+      required: true,
+      default: 0,
     },
-
-    fleetManagerCommissionPercent: {
+  },
+  // --------------------------------------------------
+  // Commission & VAT
+  // --------------------------------------------------
+  commission: {
+    platformPercent: {
       type: Number,
-      default: 4,
-      min: 0,
-      max: 100,
+      required: true,
+      default: 0,
     },
-
-    deliveryPartnerCommissionPercent: {
+    platformVatRate: {
       type: Number,
-      default: 96,
-      min: 0,
-      max: 100,
+      required: true,
+      default: 0,
     },
-
-    deliveryVatRate: {
+    fleetManagerPercent: {
       type: Number,
-      default: 23,
-      min: 0,
-      max: 100,
+      required: true,
+      default: 0,
     },
-
+    deliveryPartnerPercent: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
     vendorVatPercent: {
       type: Number,
+      required: true,
       default: 0,
-      min: 0,
-      max: 100,
     },
+  },
 
-    // --------------------------------------------------
-    // Order Rules
-    // --------------------------------------------------
-    minOrderAmount: {
+  // --------------------------------------------------
+  // Order Rules & Automation
+  // --------------------------------------------------
+  order: {
+    minAmount: {
       type: Number,
       default: 0,
     },
-
-    maxOrderAmount: {
+    maxAmount: {
       type: Number,
-      default: null,
+      default: 0,
     },
-
     maxItemsPerOrder: {
       type: Number,
-      default: null,
+      default: 0,
     },
-
-    // --------------------------------------------------
-    // Cancellation & Refund
-    // --------------------------------------------------
+    nearestVendorRadiusKm: {
+      type: Number,
+      default: 0,
+    },
+    autoCancelUnacceptedMinutes: {
+      type: Number,
+      default: 0,
+    },
+    autoMarkDeliveredMinutes: {
+      type: Number,
+      default: 0,
+    },
     cancelTimeLimitMinutes: {
       type: Number,
-      default: 5,
+      default: 0,
     },
-
     refundProcessingDays: {
       type: Number,
-      default: 7,
+      default: 0,
     },
-
-    // --------------------------------------------------
-    //  Offers
-    // --------------------------------------------------
-
-    isOfferEnabled: {
-      type: Boolean,
-      default: true,
-    },
-
-    maxDiscountPercent: {
+  },
+  rewards: {
+    customerPointsPerEuro: {
       type: Number,
-      default: 50,
-      min: 0,
-      max: 100,
+      default: 0,
     },
-
-    // --------------------------------------------------
-    // Order Automation
-    // --------------------------------------------------
-    autoCancelUnacceptedOrderMinutes: {
+    riderPointsPerDelivery: {
       type: Number,
-      default: 10,
+      default: 0,
     },
-
-    autoMarkDeliveredAfterMinutes: {
+    riderReferralPoints: {
       type: Number,
-      default: 180,
+      default: 0,
     },
-
-    // --------------------------------------------------
-    // OTP & Security
-    // --------------------------------------------------
-    orderOtpEnabled: {
-      type: Boolean,
-      default: true,
-    },
-
-    otpLength: {
+    newRiderWelcomeBonus: {
       type: Number,
-      default: 4,
+      default: 0,
     },
-
-    otpExpiryMinutes: {
-      type: Number,
-      default: 5,
+    customerReferralMilestones: {
+      type: Array,
+      default: [],
     },
+  },
 
-    // --------------------------------------------------
-    // Platform State
-    // --------------------------------------------------
+  system: {
     isPlatformLive: {
       type: Boolean,
       default: true,
     },
-
     maintenanceMessage: {
       type: String,
       default: '',
     },
+    isOfferEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    maxDiscountPercent: {
+      type: Number,
+      default: 0,
+    },
+    refundProcessingDays: {
+      type: Number,
+      default: 0,
+    },
+    otp: {
+      enabled: {
+        type: Boolean,
+        default: false,
+      },
+      length: {
+        type: Number,
+        default: 4,
+      },
+      expiryMinutes: {
+        type: Number,
+        default: 0,
+      },
+    },
+  },
 
-    // --------------------------------------------------
-    // Meta
-    // --------------------------------------------------
+  meta: {
     updatedBy: {
       type: Schema.Types.ObjectId,
       ref: 'Admin',
-      default: null,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
     },
   },
-  {
-    timestamps: true,
-  },
-);
+});
 
 GlobalSettingsSchema.index({}, { unique: true });
 
