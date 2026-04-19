@@ -31,9 +31,9 @@ const createGlobalSettings = async (
   // Basic sanity validations
   // --------------------------------------------------
   if (
-    payload.platformCommissionPercent !== undefined &&
-    (payload.platformCommissionPercent < 0 ||
-      payload.platformCommissionPercent > 100)
+    payload.commission?.platformPercent !== undefined &&
+    (payload.commission?.platformPercent < 0 ||
+      payload.commission?.platformPercent > 100)
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -42,8 +42,9 @@ const createGlobalSettings = async (
   }
 
   if (
-    payload.maxDiscountPercent !== undefined &&
-    (payload.maxDiscountPercent < 0 || payload.maxDiscountPercent > 100)
+    payload.system?.maxDiscountPercent !== undefined &&
+    (payload.system?.maxDiscountPercent < 0 ||
+      payload.system?.maxDiscountPercent > 100)
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -52,9 +53,9 @@ const createGlobalSettings = async (
   }
 
   if (
-    payload.deliveryPartnerCommissionPercent !== undefined &&
-    (payload.deliveryPartnerCommissionPercent < 0 ||
-      payload.deliveryPartnerCommissionPercent > 100)
+    payload.commission?.deliveryPartnerPercent !== undefined &&
+    (payload.commission?.deliveryPartnerPercent < 0 ||
+      payload.commission?.deliveryPartnerPercent > 100)
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -65,7 +66,10 @@ const createGlobalSettings = async (
   // --------------------------------------------------
   // Meta info
   // --------------------------------------------------
-  payload.updatedBy = currentUser._id.toString();
+  payload.meta = {
+    ...payload.meta,
+    updatedBy: currentUser._id,
+  };
 
   // --------------------------------------------------
   // Create global settings
@@ -110,9 +114,9 @@ const updateGlobalSettings = async (
   // Cross-field business validations (important)
   // --------------------------------------------------
   if (
-    payload.platformCommissionPercent !== undefined &&
-    (payload.platformCommissionPercent < 0 ||
-      payload.platformCommissionPercent > 100)
+    payload.commission?.platformPercent !== undefined &&
+    (payload.commission?.platformPercent < 0 ||
+      payload.commission?.platformPercent > 100)
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -121,8 +125,9 @@ const updateGlobalSettings = async (
   }
 
   if (
-    payload.maxDiscountPercent !== undefined &&
-    (payload.maxDiscountPercent < 0 || payload.maxDiscountPercent > 100)
+    payload.system?.maxDiscountPercent !== undefined &&
+    (payload.system?.maxDiscountPercent < 0 ||
+      payload.system?.maxDiscountPercent > 100)
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -131,8 +136,8 @@ const updateGlobalSettings = async (
   }
 
   if (
-    payload.freeDeliveryAbove !== undefined &&
-    payload.freeDeliveryAbove < 0
+    payload.delivery?.freeAbove !== undefined &&
+    payload.delivery?.freeAbove < 0
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -144,18 +149,21 @@ const updateGlobalSettings = async (
   // Maintenance mode sanity
   // --------------------------------------------------
   if (
-    payload.isPlatformLive === false &&
-    !payload.maintenanceMessage &&
-    !existingSettings.maintenanceMessage
+    payload.system?.isPlatformLive === false &&
+    !payload.system?.maintenanceMessage &&
+    !existingSettings.system?.maintenanceMessage
   ) {
-    payload.maintenanceMessage =
+    payload.system.maintenanceMessage =
       'We are under maintenance. Please try again later.';
   }
 
   // --------------------------------------------------
   // Meta info
   // --------------------------------------------------
-  payload.updatedBy = currentUser._id.toString();
+  payload.meta = {
+    ...payload.meta,
+    updatedBy: currentUser._id,
+  };
 
   // --------------------------------------------------
   // Update settings (single document)
@@ -205,20 +213,20 @@ const getGlobalSettingsForAdmin = async (currentUser: AuthUser) => {
 // get for checkout
 const getGlobalSettings = async () => {
   const result = await GlobalSettings.findOne({}).select(
-    'platformCommissionPercent platformCommissionVatRate deliveryVatRate deliveryChargePerKm fleetManagerCommissionPercent baseDeliveryCharge customerNearestVendorRadiusKm',
+    'commission delivery order',
   );
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Global settings not found');
   }
-  const perMeter = result?.deliveryChargePerKm / 1000;
+  const perMeter = result?.delivery?.ChargePerKm / 1000;
   return {
-    platformCommissionPercent: result?.platformCommissionPercent,
-    platformCommissionVatRate: result?.platformCommissionVatRate,
-    deliveryVatRate: result?.deliveryVatRate,
+    platformCommissionPercent: result?.commission?.platformPercent,
+    platformCommissionVatRate: result?.commission?.platformVatRate,
+    deliveryVatRate: result?.delivery?.vatRate,
     deliveryChargePerMeter: perMeter,
-    fleetManagerCommissionPercent: result?.fleetManagerCommissionPercent,
-    baseDeliveryCharge: result?.baseDeliveryCharge,
-    customerNearestVendorRadiusKm: result?.customerNearestVendorRadiusKm,
+    fleetManagerCommissionPercent: result?.commission?.fleetManagerPercent,
+    baseDeliveryCharge: result?.delivery?.baseCharge,
+    customerNearestVendorRadiusKm: result?.order?.nearestVendorRadiusKm,
   };
 };
 
