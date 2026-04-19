@@ -7,6 +7,7 @@ import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
 import { initOrderCronJobs } from './app/utils/orderCleanup';
 import { initAuthEventListener } from './app/subscriber/auth.subscriber';
+import { initUserStreamConsumer } from './app/events/userStreamConsumer';
 const server = http.createServer(app);
 
 // Handle unexpected errors
@@ -44,6 +45,9 @@ async function bootstrap() {
     initOrderCronJobs();
 
     initAuthEventListener();
+
+    // newly created
+    initUserStreamConsumer();
 
     server.listen(config.port, () => {
       if (config.NODE_ENV === 'development') {
