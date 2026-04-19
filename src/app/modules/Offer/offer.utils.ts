@@ -80,6 +80,27 @@ export const findAndValidateOffer = async (
     );
   }
 
+  // 7.5. Validate if the offer is applicable to the products in the cart
+  const hasApplicableProducts =
+    offer.applicableProducts && offer.applicableProducts.length > 0;
+
+  if (hasApplicableProducts) {
+    const isProductMatched = checkoutData.items.some((item: any) => {
+      const cartProductId =
+        item.productId?._id?.toString() || item.productId?.toString();
+      return offer?.applicableProducts?.some(
+        (pId: any) => pId.toString() === cartProductId,
+      );
+    });
+
+    if (!isProductMatched) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This offer is not valid for the products in your cart.',
+      );
+    }
+  }
+
   // 8. Validate User Usage Limit (How many times this specific user has used this promo)
   const promoId = offer._id.toString();
   const usageCount = await Order.countDocuments({
