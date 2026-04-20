@@ -32,6 +32,7 @@ export type TPointsLog = {
     | 'REFERRAL_BONUS'
     | 'REFUND'
     | 'ADJUSTMENT'
+    | 'FAILED_LOG'
     | 'OTHER';
   referenceId?: Schema.Types.ObjectId;
   onModel?: TReferralModel;
