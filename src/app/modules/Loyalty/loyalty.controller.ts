@@ -33,7 +33,31 @@ const addDeliveryPartnerPoints = catchAsync(async (req, res) => {
   });
 });
 
+// get my points controller
+const getMyPoints = catchAsync(async (req, res) => {
+  const result = await LoyaltyServices.getMyPoints(req.user as AuthUser);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
+const getAllPoints = catchAsync(async (req, res) => {
+  const result = await LoyaltyServices.getAllPoints(req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 export const LoyaltyController = {
   addOrderPoints,
   addDeliveryPartnerPoints,
+  getMyPoints,
+  getAllPoints,
 };

@@ -3,8 +3,10 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Order } from '../Order/order.model';
-import { Points, PointsLog, Referral, RewardItem } from './loyalty.model';
+import { Points, PointsLog } from './loyalty.model';
 import mongoose, { ClientSession, Types } from 'mongoose';
+import { AuthUser } from '../../constant/user.constant';
+import { QueryBuilder } from '../../builder/QueryBuilder';
 
 /**
  * Adds loyalty points to a customer based on their order amount.
@@ -268,153 +270,45 @@ const addDeliveryPartnerPoints = async (
   }
 };
 
-/**
- * Checks and grants referral rewards to the referrer
- * when they reach specific successful referral milestones.
- */
-const processReferralReward = async (referrerId: string, role: string) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// Fetch my points
+const getMyPoints = async (currentUser: AuthUser) => {
+  const points = await Points.findOne({
+    'userId.id': currentUser._id,
+  }).lean();
 
-  try {
-    const settings = await GlobalSettingsService.getGlobalSettings();
-
-    if (!settings) throw new Error('Global settings not found');
-
-    const rewards = settings.rewards;
-
-    // Count how many people joined using this ID and completed their task
-    const qualifiedCount = await Referral.countDocuments({
-      'userId.id': referrerId,
-      status: 'QUALIFIED',
-    }).session(session);
-
-    // Check if the current count matches any milestone in Global Settings
-    const milestone = rewards.customerReferralMilestones.find(
-      (m) => m.friendsRequired === qualifiedCount,
-    );
-
-    if (milestone) {
-      if (
-        milestone.rewardType === 'CREDIT' ||
-        milestone.rewardType === 'CASHBACK'
-      ) {
-        const pointsToAdd =
-          milestone.rewardValue * rewards.customerPointsPerEuro;
-
-        // Reward the referrer with points equivalent to the cash value
-        await Points.findOneAndUpdate(
-          { 'userId.id': referrerId },
-          { $inc: { currentPoints: pointsToAdd, totalEarned: pointsToAdd } },
-          { upsert: true, session },
-        );
-
-        await PointsLog.create(
-          [
-            {
-              userId: { id: referrerId, model: 'Customer', role: role },
-              points: pointsToAdd,
-              transactionType: 'REFERRAL_BONUS',
-              onModel: 'Referral',
-              description: `Reward for reaching Milestone: ${qualifiedCount} successful referrals`,
-            },
-          ],
-          { session },
-        );
-      }
-
-      // Mark the current set of qualified referrals as 'REWARDED'
-      // to avoid duplicate reward processing for the same milestone.
-      await Referral.updateMany(
-        { 'userId.id': referrerId, status: 'QUALIFIED' },
-        { $set: { status: 'REWARDED' } },
-        { session },
-      );
-    }
-
-    await session.commitTransaction();
-  } catch (error) {
-    await session.abortTransaction();
-    console.error('Referral Reward Processing Error:', error);
-    throw error;
-  } finally {
-    session.endSession();
+  if (!points) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Points not found');
   }
+  return {
+    message: 'Points fetched successfully',
+    data: points,
+  };
 };
 
-/**
- * Handles redemption of loyalty points for physical/digital reward items.
- */
-const redeemRewardItem = async (
-  userId: string,
-  role: string,
-  itemId: string,
-) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// Fetch all points
+const getAllPoints = async (query: Record<string, unknown>) => {
+  const points = new QueryBuilder(
+    Points.find({}).populate('userId.id', 'name role email'),
+    query,
+  );
 
-  try {
-    // 1. Validation: Item availability and stock
-    const item = await RewardItem.findById(itemId).session(session);
-    if (!item || item.stock <= 0) {
-      throw new Error('Item unavailable or out of stock');
-    }
-
-    // 2. Validation: Ensure user has sufficient balance
-    const userPoints = await Points.findOne({ 'userId.id': userId }).session(
-      session,
-    );
-    if (!userPoints || userPoints.currentPoints < item.requiredPoints) {
-      throw new Error('Insufficient points to redeem this item');
-    }
-
-    // 3. Deduct points from user's current balance
-    await Points.findOneAndUpdate(
-      { 'userId.id': userId },
-      {
-        $inc: {
-          currentPoints: -item.requiredPoints,
-          totalSpent: item.requiredPoints,
-        },
-      },
-      { session },
-    );
-
-    // 4. Reduce stock count for the redeemed item
-    await RewardItem.findByIdAndUpdate(
-      itemId,
-      { $inc: { stock: -1 } },
-      { session },
-    );
-
-    // 5. Create a redemption log
-    await PointsLog.create(
-      [
-        {
-          userId: { id: userId, model: 'Customer', role: role },
-          points: -item.requiredPoints,
-          transactionType: 'REDEEM',
-          referenceId: item._id,
-          onModel: 'RewardClaim',
-          description: `Redeemed: ${item.name}`,
-        },
-      ],
-      { session },
-    );
-
-    await session.commitTransaction();
-    return { success: true, message: `Successfully redeemed ${item.name}` };
-  } catch (error: any) {
-    await session.abortTransaction();
-    throw new Error(error.message || 'Redemption failed');
-  } finally {
-    session.endSession();
+  if (!points) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Points not found');
   }
+
+  const meta = await points.countTotal();
+  const data = await points.modelQuery;
+
+  return {
+    message: 'Points fetched successfully',
+    data,
+    meta,
+  };
 };
 
 export const LoyaltyServices = {
   addOrderPoints,
   addDeliveryPartnerPoints,
-  processReferralReward,
-  redeemRewardItem,
+  getMyPoints,
+  getAllPoints,
 };
