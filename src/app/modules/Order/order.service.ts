@@ -1119,7 +1119,7 @@ const updateOrderStatusByDeliveryPartner = async (
       }
 
       await LoyaltyServices.addOrderPoints(
-        updatedOrder.customerId,
+        updatedOrder.customerId._id,
         updatedOrder._id.toString(),
         session,
       );
