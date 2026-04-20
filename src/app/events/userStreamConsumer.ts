@@ -2,137 +2,156 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose from 'mongoose';
+import { RedisService } from '../config/redis';
 import { ROLE_COLLECTION_MAP } from '../constant/user.constant';
-import { RedisService } from '../config/redisConfig';
+import AppError from '../errors/AppError';
+import httpStatus from 'http-status';
 
 const STREAM_KEY = 'user:events';
-const GROUP_NAME = 'food-service-group'; // ← Change this per service (e.g., delivery-service-group)
+const GROUP_NAME = 'food-service-group';
 const CONSUMER_NAME = `food-consumer-${process.pid}`;
 
 export const initUserStreamConsumer = async () => {
-  // 1. Create consumer group (safe to call multiple times)
-  await RedisService.createConsumerGroup(STREAM_KEY, GROUP_NAME, '$');
+    await RedisService.createConsumerGroup(STREAM_KEY, GROUP_NAME, '$');
 
-  console.log(
-    `Redis Stream Consumer started → ${CONSUMER_NAME} (Group: ${GROUP_NAME})`,
-  );
+    console.log(`User Stream Consumer started: ${CONSUMER_NAME}`);
 
-  // 2. Start consuming messages
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    try {
-      const streams = (await RedisService.getClient().xreadgroup(
-        'GROUP',
-        GROUP_NAME,
-        CONSUMER_NAME,
-        'COUNT',
-        10,
-        'BLOCK',
-        3000,
-        'STREAMS',
-        STREAM_KEY,
-        '>',
-      )) as any[] | null;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        try {
+            const streams = await RedisService.getClient().xreadgroup(
+                'GROUP', GROUP_NAME, CONSUMER_NAME,
+                'COUNT', 10,
+                'BLOCK', 3000,
+                'STREAMS', STREAM_KEY, '>'
+            ) as any[] | null;
 
-      if (!streams || streams.length === 0) {
-        continue;
-      }
+            if (!streams || streams.length === 0) continue;
 
-      for (const [_, messages] of streams) {
-        for (const [messageId, fields] of messages) {
-          try {
-            const payload = JSON.parse(fields[1]); // 'data' field
+            for (const [_, messages] of streams) {
+                for (const [messageId, fields] of messages) {
+                    try {
+                        const payload = JSON.parse(fields[1]);
 
-            await handleUserEvent(payload);
+                        await handleUserEvent(payload);
 
-            // Acknowledge
-            await RedisService.getClient().xack(
-              STREAM_KEY,
-              GROUP_NAME,
-              messageId,
-            );
-          } catch (err) {
-            console.error(`Failed to process message ${messageId}:`, err);
-            // Do not ack on error (for retry)
-          }
+                        await RedisService.getClient().xack(STREAM_KEY, GROUP_NAME, messageId);
+                    } catch (err) {
+                        console.error(`Failed to process message ${messageId}:`, err);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Redis Stream consumer error:', err);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-      }
-    } catch (err) {
-      console.error('Redis Stream consumer error:', err);
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // backoff
     }
-  }
 };
 
-// Handle All User Events in One Place
+// Main Event Handler
 const handleUserEvent = async (payload: any) => {
-  const { type, id } = payload;
+    const { type, id, role } = payload;
 
-  console.log(`Processing event: ${type} for user ${id}`);
+    if (!role) {
+        throw new AppError(httpStatus.BAD_REQUEST, `Event missing role: ${type}`);
+    }
 
-  switch (type) {
-    case 'USER_REGISTERED':
-    case 'USER_STATUS_CHANGED':
-      await syncUserProfile(payload);
-      break;
+    const modelName = ROLE_COLLECTION_MAP[role as keyof typeof ROLE_COLLECTION_MAP];
+    if (!modelName) {
+        throw new AppError(httpStatus.NOT_FOUND, `No model found for role: ${role}`);
+    }
 
-    case 'USER_SOFT_DELETED':
-      await handleSoftDelete(payload);
-      break;
+    const Model = mongoose.model(modelName);
 
-    case 'USER_PERMANENTLY_DELETED':
-      await handlePermanentDelete(payload);
-      break;
+    console.log(`Processing ${type} for ${role} (${id})`);
 
-    default:
-      console.warn(`Unknown event type: ${type}`);
-  }
+    switch (type) {
+        case 'USER_REGISTERED':
+            await handleUserRegistered(Model, payload);
+            break;
+
+        case 'USER_STATUS_CHANGED':
+            await handleUserStatusChanged(Model, payload);
+            break;
+
+        case 'USER_SOFT_DELETED':
+            await handleSoftDelete(Model, id);
+            break;
+
+        case 'USER_PERMANENTLY_DELETED':
+            await handlePermanentDelete(Model, id);
+            break;
+
+        default:
+            throw new AppError(httpStatus.NOT_FOUND, `Unknown event type: ${type}`);
+    }
 };
 
-// Common sync function (used by REGISTERED and STATUS_CHANGED)
-const syncUserProfile = async (payload: any) => {
-  const modelName =
-    ROLE_COLLECTION_MAP[payload.role as keyof typeof ROLE_COLLECTION_MAP];
-  if (!modelName) {
-    console.warn(`No model found for role: ${payload.role}`);
-    return;
-  }
+// Specific Handlers
 
-  const Model = mongoose.model(modelName);
+// 1. For new user registration → Create or Upsert
+// Alternative - More explicit create approach
+const handleUserRegistered = async (Model: mongoose.Model<any>, payload: any) => {
+    const { id, userId, email, role, registeredBy, ...rest } = payload;
 
-  await Model.updateOne(
-    { authUserId: payload.id },
-    {
-      $set: {
-        authUserId: payload.id,
-        customUserId: payload.userId,
-        email: payload.email,
-        role: payload.role,
-        status: payload.status, // useful for status change
-        ...payload, // in case you send more fields
-      },
-    },
-    { upsert: true },
-  );
+    try {
+        // First try to find if already exists
+        const existing = await Model.findOne({ authUserId: id });
+
+        if (existing) {
+            // Update if exists
+            await Model.updateOne(
+                { authUserId: id },
+                { $set: { ...rest, updatedAt: new Date() } }
+            );
+
+        } else {
+            // Create new document
+            await Model.create({
+                authUserId: id,
+                customUserId: userId,
+                email,
+                role,
+                registeredBy,
+                ...rest,
+                createdAt: new Date(),
+            });
+            console.log(`New user created in ${Model.modelName}: ${email}`);
+        }
+    } catch (error) {
+        console.error(`Failed to handle USER_REGISTERED for ${email}:`, error);
+        throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to process user registration');
+    }
 };
 
-const handleSoftDelete = async (payload: any) => {
-  const modelName =
-    ROLE_COLLECTION_MAP[payload.role as keyof typeof ROLE_COLLECTION_MAP];
-  if (!modelName) return;
+// 2. For status change (APPROVED, SUBMITTED, REJECTED, etc.)
+const handleUserStatusChanged = async (Model: mongoose.Model<any>, payload: any) => {
+    const { id, status, ...rest } = payload;
 
-  const Model = mongoose.model(modelName);
-  await Model.updateOne(
-    { authUserId: payload.id },
-    { $set: { isDeleted: true } },
-  );
+    await Model.updateOne(
+        { authUserId: id },
+        {
+            $set: {
+                status: status,
+                ...rest,
+            },
+        }
+    );
+
+    console.log(`User Status Updated: ${id} → ${status}`);
 };
 
-const handlePermanentDelete = async (payload: any) => {
-  const modelName =
-    ROLE_COLLECTION_MAP[payload.role as keyof typeof ROLE_COLLECTION_MAP];
-  if (!modelName) return;
+// 3. Soft Delete
+const handleSoftDelete = async (Model: mongoose.Model<any>, authUserId: string) => {
+    await Model.updateOne(
+        { authUserId },
+        { $set: { isDeleted: true } }
+    );
+    console.log(`User Soft Deleted: ${authUserId}`);
+};
 
-  const Model = mongoose.model(modelName);
-  await Model.deleteOne({ authUserId: payload.id });
+// 4. Permanent Delete
+const handlePermanentDelete = async (Model: mongoose.Model<any>, authUserId: string) => {
+    await Model.deleteOne({ authUserId });
+    console.log(`User Permanently Deleted: ${authUserId}`);
 };

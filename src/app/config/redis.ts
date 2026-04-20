@@ -126,7 +126,7 @@ export const RedisService = {
   createConsumerGroup: async (
     streamKey: string,
     groupName: string,
-    startId: string = '$',
+    startId: string = '$', // '$' = only future messages, '0' = from beginning
   ) => {
     try {
       // MKSTREAM automatically creates the stream if it doesn't exist
