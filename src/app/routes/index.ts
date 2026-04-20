@@ -30,6 +30,7 @@ import { UploadRoutes } from '../modules/Upload/upload.route';
 import { SupportRoutes } from '../modules/Support/support.route';
 import { IngredientRoutes } from '../modules/Ingredients/ingredients.route';
 import { IngredientOrderRoutes } from '../modules/Ingredient-Order/ing-order.route';
+import { LoyaltyRoutes } from '../modules/Loyalty/loyalty.route';
 
 const router = Router();
 
@@ -158,6 +159,10 @@ const moduleRoutes = [
   {
     path: '/ingredients-order',
     route: IngredientOrderRoutes,
+  },
+  {
+    path: '/loyalties',
+    route: LoyaltyRoutes,
   },
 ];
 

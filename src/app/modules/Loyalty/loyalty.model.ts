@@ -5,8 +5,14 @@ import {
   TReferral,
   TRewardItem,
 } from './loyalty.interface';
-import { ALL_USER_MODELS } from '../Auth/auth.constant';
 
+const ALL_USER_MODELS = [
+  'Admin',
+  'Vendor',
+  'FleetManager',
+  'DeliveryPartner',
+  'Customer',
+];
 // --------------------------------------------------
 // 1. Points Model
 // --------------------------------------------------

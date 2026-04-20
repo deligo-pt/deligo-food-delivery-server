@@ -3,6 +3,7 @@ import AppError from '../../errors/AppError';
 import { AuthUser } from '../../constant/user.constant';
 import { TGlobalSettings } from './globalSetting.interface';
 import { GlobalSettings } from './globalSetting.model';
+import { ClientSession } from 'mongoose';
 
 // create global settings service
 const createGlobalSettings = async (
@@ -211,10 +212,10 @@ const getGlobalSettingsForAdmin = async (currentUser: AuthUser) => {
 };
 
 // get for checkout
-const getGlobalSettings = async () => {
-  const result = await GlobalSettings.findOne({}).select(
-    'commission delivery order rewards',
-  );
+const getGlobalSettings = async (session?: ClientSession) => {
+  const result = await GlobalSettings.findOne({})
+    .select('commission delivery order rewards')
+    .session(session as ClientSession);
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Global settings not found');
   }
