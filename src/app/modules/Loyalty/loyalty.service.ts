@@ -1,23 +1,31 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { ROLE_COLLECTION_MAP } from '../../constant/user.constant';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { Order } from '../Order/order.model';
 import { Points, PointsLog, Referral, RewardItem } from './loyalty.model';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 
 /**
  * Adds loyalty points to a customer based on their order amount.
  * Formula: Order Amount * Global Points Per Euro Rate.
  */
 const addOrderPoints = async (
-  userId: string,
+  userId: Types.ObjectId,
   role: string,
-  orderAmount: number,
   orderId: string,
 ) => {
+  const existsOrder = await Order.findById(orderId);
+
+  if (!existsOrder) throw new Error('Order not found');
+
+  const orderAmount = existsOrder.payoutSummary.grandTotal;
+  const userModel =
+    ROLE_COLLECTION_MAP[role as keyof typeof ROLE_COLLECTION_MAP];
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
     // Fetch dynamic point conversion rate from settings
-    const settings = await GlobalSettingsService.getGlobalSettings();
+    const settings = await GlobalSettingsService.getGlobalSettings(session);
 
     if (!settings) throw new Error('Global settings not found');
 
@@ -28,15 +36,22 @@ const addOrderPoints = async (
     // Update user's point balance (Atomic Increment)
     await Points.findOneAndUpdate(
       { 'userId.id': userId },
-      { $inc: { currentPoints: pointsToAdd, totalEarned: pointsToAdd } },
-      { upsert: true, session },
+      {
+        $inc: { currentPoints: pointsToAdd, totalEarned: pointsToAdd },
+        $setOnInsert: {
+          'userId.model': userModel,
+          'userId.role': role,
+        },
+      },
+
+      { upsert: true, session, new: true },
     );
 
     // Record the point transaction in history log
     await PointsLog.create(
       [
         {
-          userId: { id: userId, model: 'Customer', role: role },
+          userId: { id: userId, model: userModel, role: role },
           points: pointsToAdd,
           transactionType: 'EARN',
           referenceId: orderId,
