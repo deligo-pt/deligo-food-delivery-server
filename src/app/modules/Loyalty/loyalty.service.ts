@@ -276,12 +276,13 @@ const getMyPoints = async (currentUser: AuthUser) => {
     'userId.id': currentUser._id,
   }).lean();
 
-  if (!points) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Points not found');
-  }
   return {
     message: 'Points fetched successfully',
-    data: points,
+    data: {
+      currentPoints: points?.currentPoints || 0,
+      totalEarned: points?.totalEarned || 0,
+      totalSpent: points?.totalSpent || 0,
+    },
   };
 };
 
