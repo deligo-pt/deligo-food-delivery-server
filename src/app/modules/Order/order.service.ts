@@ -1120,9 +1120,17 @@ const updateOrderStatusByDeliveryPartner = async (
 
       await LoyaltyServices.addOrderPoints(
         updatedOrder.customerId,
-        'CUSTOMER',
         updatedOrder._id.toString(),
+        session,
       );
+      if (updatedOrder.deliveryPartnerId) {
+        await LoyaltyServices.addDeliveryPartnerPoints(
+          updatedOrder.deliveryPartnerId,
+          updatedOrder._id.toString(),
+          session,
+        );
+      }
+
       const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
 
       const vendorEarningsBeforeTax =
