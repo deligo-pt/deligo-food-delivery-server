@@ -63,6 +63,7 @@ const PointsLogSchema = new Schema<TPointsLog>(
         'REFERRAL_BONUS',
         'REFUND',
         'ADJUSTMENT',
+        'FAILED_LOG',
         'OTHER',
       ],
       required: true,
