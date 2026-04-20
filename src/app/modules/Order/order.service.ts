@@ -31,6 +31,7 @@ import { Wallet } from '../Wallet/wallet.model';
 import { roundTo2 } from '../../utils/mathProvider';
 import { Admin } from '../Admin/admin.model';
 import customNanoId from '../../utils/customNanoId';
+import { LoyaltyServices } from '../Loyalty/loyalty.service';
 
 // Create Order after reduniq payment
 const createOrderAfterReduniqPayment = async (
@@ -1116,6 +1117,12 @@ const updateOrderStatusByDeliveryPartner = async (
           'Delivery Partner not found for this order.',
         );
       }
+
+      await LoyaltyServices.addOrderPoints(
+        updatedOrder.customerId,
+        'CUSTOMER',
+        updatedOrder._id.toString(),
+      );
       const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
 
       const vendorEarningsBeforeTax =
