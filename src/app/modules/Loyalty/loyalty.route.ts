@@ -20,4 +20,16 @@ router.post(
   LoyaltyController.addDeliveryPartnerPoints,
 );
 
+router.get(
+  '/my-points',
+  auth('CUSTOMER', 'DELIVERY_PARTNER'),
+  LoyaltyController.getMyPoints,
+);
+
+router.get(
+  '/all-points',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  LoyaltyController.getAllPoints,
+);
+
 export const LoyaltyRoutes = router;
