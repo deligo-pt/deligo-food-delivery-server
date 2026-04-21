@@ -86,7 +86,13 @@ const getAdminOrderReportAnalytics = catchAsync(async (req, res) => {
 
 // get admin customer report analytics controller
 const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminCustomerReportAnalytics();
+  const { timeframe, fromDate, toDate } = req.query;
+
+  const result = await AnalyticsServices.getAdminCustomerReportAnalytics(
+    timeframe as string,
+    fromDate as string,
+    toDate as string
+  );
 
   sendResponse(res, {
     success: true,
