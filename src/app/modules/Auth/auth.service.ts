@@ -132,120 +132,6 @@ const registerUser = async <
   };
 };
 
-// const registerUser = async <
-//   T extends { email: string; role: any; isEmailVerified?: boolean },
-// >(
-//   payload: T,
-//   url: string,
-// ) => {
-//   // 1. Identify User Type from URL
-//   const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
-//   const userTypeData = USER_TYPE_MAP[userType];
-//   const modelData = USER_MODEL_MAP[userType];
-
-//   if (!userTypeData || !modelData) {
-//     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
-//   }
-
-//   const { Model, idField } = modelData;
-//   const mongooseModel = Model as unknown as Model<T>;
-
-//   // 2. Start Parallel Independent Tasks (OTP, ID, Email Content, Existence Check)
-//   // This reduces latency by not waiting for one to finish before starting the next.
-//   const userID = generateUserId(userType);
-//   const { otp } = generateOtp();
-//   const redisOtpKey = `otp:${payload.email}`;
-
-//   const [checkUserResults, emailHtml] = await Promise.all([
-//     Promise.all(
-//       ALL_USER_MODELS.map((M: any) =>
-//         M.isUserExistsByEmail(
-//           payload.email,
-//           false,
-//           'email isEmailVerified role',
-//         ).catch(() => null),
-//       ),
-//     ),
-//     EmailHelper.createEmailContent(
-//       {
-//         otp,
-//         userEmail: payload.email,
-//         currentYear: new Date().getFullYear(),
-//         date: new Date().toDateString(),
-//         user: userTypeData.role.toLowerCase(),
-//       },
-//       'verify-email',
-//     ),
-//   ]);
-
-//   // 3. Database Transaction Logic
-//   // We use a session to ensure that if the creation fails, the deletion of an unverified user is rolled back.
-//   const session: ClientSession = await startSession();
-//   session.startTransaction();
-
-//   try {
-//     const existingUser = checkUserResults.find((user) => user && user.email);
-
-//     if (existingUser) {
-//       if (existingUser.isEmailVerified) {
-//         throw new AppError(
-//           httpStatus.CONFLICT,
-//           `${existingUser.email} is already registered as ${existingUser.role}.`,
-//         );
-//       }
-
-//       // Remove stale/unverified registration across any model
-//       const modelIndex = checkUserResults.findIndex(
-//         (u) => u?.email === existingUser.email,
-//       );
-//       await ALL_USER_MODELS[modelIndex].deleteOne(
-//         { email: existingUser.email },
-//         { session },
-//       );
-//     }
-
-//     // Create user within the transaction
-//     const [createdUser] = await mongooseModel.create(
-//       [
-//         {
-//           ...payload,
-//           [idField]: userID,
-//           role: userTypeData.role, // Ensure role matches the endpoint
-//         },
-//       ],
-//       { session },
-//     );
-
-//     // 4. Persistence (Redis & DB Commit)
-//     await RedisService.set(redisOtpKey, otp, 300); // 5-minute TTL
-
-//     await session.commitTransaction();
-//     session.endSession();
-
-//     // 5. Fire-and-forget Email (Doesn't block the HTTP response)
-//     EmailHelper.sendEmail(
-//       payload.email,
-//       emailHtml,
-//       'Verify your email for DeliGo',
-//     ).catch((err) => console.error('Background Email Error:', err));
-
-//     return {
-//       message: `${userTypeData.role} registered. Check your email for OTP.`,
-//       data: createdUser,
-//     };
-//   } catch (error) {
-//     // Abort transaction on any error to prevent partial data states
-//     await session.abortTransaction();
-//     session.endSession();
-
-//     if ((error as any)?.code === 11000) {
-//       throw new AppError(httpStatus.CONFLICT, 'Email already in use');
-//     }
-//     throw error;
-//   }
-// };
-
-// Register User [Vendor, Fleet Manager, Admin] By Other
 const onboardUser = async <
   T extends {
     email: string;
@@ -608,7 +494,9 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       contactNumber: payload.contactNumber,
     }).lean();
 
-    const isTestNumber = payload.contactNumber === config.customer.test_customer_contact_number as string;
+    const isTestNumber =
+      payload.contactNumber ===
+      (config.customer.test_customer_contact_number as string);
 
     // Send mobile OTP
     const res = await sendMobileOtp(payload.contactNumber);
@@ -632,7 +520,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         mobileOtpId,
         requiresOtpVerification: true,
       });
-
     }
 
     return {
@@ -1201,8 +1088,9 @@ const approvedOrRejectedUser = async (
     'user-approval-notification',
   );
 
-  const emailSubject = `Your ${submittedUser.role
-    } Application has been ${payload.status.toLowerCase()}`;
+  const emailSubject = `Your ${
+    submittedUser.role
+  } Application has been ${payload.status.toLowerCase()}`;
 
   if (
     [
@@ -1223,8 +1111,9 @@ const approvedOrRejectedUser = async (
   }
 
   return {
-    message: `${submittedUser.role
-      } ${payload.status.toLowerCase()} successfully`,
+    message: `${
+      submittedUser.role
+    } ${payload.status.toLowerCase()} successfully`,
   };
 };
 
@@ -1254,8 +1143,8 @@ const verifyOtp = async (
       if (otp !== config.customer.test_customer_otp) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
       } else {
-        console.log("Email otp verification bypassed for test customer");
-      };
+        console.log('Email otp verification bypassed for test customer');
+      }
     } else if (!storedOtp || String(storedOtp) !== String(otp)) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
     }
@@ -1286,7 +1175,7 @@ const verifyOtp = async (
       if (otp !== config.customer.test_customer_contact_otp) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
       } else {
-        console.log("Contact otp verification bypassed for test customer");
+        console.log('Contact otp verification bypassed for test customer');
       }
     } else {
       console.log(userData.mobileOtpId);
@@ -1300,7 +1189,6 @@ const verifyOtp = async (
         throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
       }
     }
-
   }
 
   if (!userData) {
@@ -1491,9 +1379,9 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 
   if (
     (currentUser?.role === 'DELIVERY_PARTNER',
-      currentUser?.role === 'CUSTOMER',
-      currentUser?.role === 'VENDOR',
-      currentUser?.role === 'FLEET_MANAGER')
+    currentUser?.role === 'CUSTOMER',
+    currentUser?.role === 'VENDOR',
+    currentUser?.role === 'FLEET_MANAGER')
   ) {
     if (currentUser?.userId !== existingUser?.userId) {
       throw new AppError(
