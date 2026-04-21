@@ -1123,6 +1123,21 @@ const updateOrderStatusByDeliveryPartner = async (
         updatedOrder._id.toString(),
         session,
       );
+
+      const orderCount = await Order.countDocuments({
+        customerId: updatedOrder.customerId._id,
+        orderStatus: ORDER_STATUS.DELIVERED,
+        isDeleted: false,
+      }).session(session);
+
+      if (orderCount === 1) {
+        await LoyaltyServices.processReferralReward(
+          updatedOrder.customerId._id.toString(),
+          updatedOrder.payoutSummary.grandTotal,
+          session,
+        );
+      }
+
       if (updatedOrder.deliveryPartnerId) {
         await LoyaltyServices.addDeliveryPartnerPoints(
           updatedOrder.deliveryPartnerId,
