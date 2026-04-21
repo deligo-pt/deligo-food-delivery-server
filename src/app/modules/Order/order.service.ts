@@ -33,7 +33,7 @@ import { Admin } from '../Admin/admin.model';
 import customNanoId from '../../utils/customNanoId';
 import { LoyaltyServices } from '../Loyalty/loyalty.service';
 
-// Create Order after reduniq payment
+// Create Order after redUniq payment
 const createOrderAfterReduniqPayment = async (
   payload: {
     checkoutSummaryId: string;
