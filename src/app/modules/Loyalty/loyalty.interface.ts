@@ -14,6 +14,7 @@ export type TPoints = {
   currentPoints: number;
   totalEarned: number;
   totalSpent: number;
+  expiryDate: Date;
   createdAt: Date;
   updatedAt: Date;
 };

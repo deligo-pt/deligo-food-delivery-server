@@ -45,7 +45,6 @@ const createGlobalSettingValidationSchema = z.object({
         autoCancelUnacceptedMinutes: z.number().nonnegative(),
         autoMarkDeliveredMinutes: z.number().nonnegative(),
         cancelTimeLimitMinutes: z.number().nonnegative(),
-        refundProcessingDays: z.number().nonnegative(),
       })
       .optional(),
 
@@ -56,6 +55,7 @@ const createGlobalSettingValidationSchema = z.object({
         riderPointsPerDelivery: z.number().nonnegative(),
         riderReferralPoints: z.number().nonnegative(),
         newRiderWelcomeBonus: z.number().nonnegative(),
+        pointsExpiryDays: z.number().nonnegative(),
         customerReferralMilestones: z.array(referralMilestoneSchema),
       })
       .optional(),
@@ -111,7 +111,6 @@ const updateGlobalSettingValidationSchema = z.object({
         autoCancelUnacceptedMinutes: z.number().nonnegative().optional(),
         autoMarkDeliveredMinutes: z.number().nonnegative().optional(),
         cancelTimeLimitMinutes: z.number().nonnegative().optional(),
-        refundProcessingDays: z.number().nonnegative().optional(),
       })
       .optional(),
 
@@ -121,6 +120,7 @@ const updateGlobalSettingValidationSchema = z.object({
         riderPointsPerDelivery: z.number().nonnegative().optional(),
         riderReferralPoints: z.number().nonnegative().optional(),
         newRiderWelcomeBonus: z.number().nonnegative().optional(),
+        pointsExpiryDays: z.number().nonnegative().optional(),
         customerReferralMilestones: z.array(referralMilestoneSchema).optional(),
       })
       .optional(),

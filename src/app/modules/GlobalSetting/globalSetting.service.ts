@@ -4,6 +4,7 @@ import { AuthUser } from '../../constant/user.constant';
 import { TGlobalSettings } from './globalSetting.interface';
 import { GlobalSettings } from './globalSetting.model';
 import { ClientSession } from 'mongoose';
+import { flattenObject } from '../../utils/flattenObject';
 
 // create global settings service
 const createGlobalSettings = async (
@@ -154,25 +155,34 @@ const updateGlobalSettings = async (
     !payload.system?.maintenanceMessage &&
     !existingSettings.system?.maintenanceMessage
   ) {
+    payload.system = payload.system || {};
     payload.system.maintenanceMessage =
       'We are under maintenance. Please try again later.';
+  }
+
+  if (Object.keys(payload).length === 0) {
+    return existingSettings;
   }
 
   // --------------------------------------------------
   // Meta info
   // --------------------------------------------------
-  payload.meta = {
-    ...payload.meta,
-    updatedBy: currentUser._id,
-  };
 
+  const flattenedPayload = flattenObject(payload);
+
+  flattenedPayload['meta.updatedBy'] = currentUser._id;
+  flattenedPayload['meta.updatedAt'] = new Date();
   // --------------------------------------------------
-  // Update settings (single document)
+  // Update settings
   // --------------------------------------------------
-  const updatedSettings = await GlobalSettings.findOneAndUpdate({}, payload, {
-    new: true,
-    runValidators: true,
-  });
+  const updatedSettings = await GlobalSettings.findOneAndUpdate(
+    {},
+    { $set: flattenedPayload },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
 
   return updatedSettings;
 };
