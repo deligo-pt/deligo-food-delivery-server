@@ -51,6 +51,7 @@ const loginCustomerValidationSchema = z.object({
         required_error: 'Mobile number is required',
       })
       .optional(),
+    referralCode: z.string().optional(),
   }),
 });
 
