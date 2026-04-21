@@ -388,7 +388,7 @@ const processReferralReward = async (
           userId: referral.userId,
           points: bonusAmount,
           transactionType: 'REFERRAL_BONUS',
-          referenceId: referral._id, // Add reference for tracking
+          referenceId: referral._id,
           onModel: 'Referral',
           description: `Referral bonus for inviting user ID: ${newUserId}`,
         },
