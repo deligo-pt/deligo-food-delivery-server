@@ -34,6 +34,7 @@ const PointsSchema = new Schema<TPoints>(
     currentPoints: { type: Number, default: 0 },
     totalEarned: { type: Number, default: 0 },
     totalSpent: { type: Number, default: 0 },
+    expiryDate: { type: Date, default: null },
   },
   { timestamps: true },
 );

@@ -77,12 +77,18 @@ const addOrderPoints = async (
       orderAmount * (rewards?.customerPointsPerEuro || 10),
     );
 
+    const expiryDays = rewards?.pointsExpiryDays || 365;
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
     if (pointsToAdd > 0) {
       // 6. Update user's point balance (Atomic Increment)
       await Points.findOneAndUpdate(
         { 'userId.id': userId },
         {
           $inc: { currentPoints: pointsToAdd, totalEarned: pointsToAdd },
+          $set: { expiryDate },
           $setOnInsert: {
             'userId.id': userId,
             'userId.model': 'Customer',
@@ -198,6 +204,10 @@ const addDeliveryPartnerPoints = async (
     const settings = await GlobalSettingsService.getGlobalSettings(session);
     const rewards = settings?.rewards;
 
+    const expiryDays = rewards?.pointsExpiryDays || 365;
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
     // Fallback to 20 if settings are missing to avoid NaN errors
     const points = rewards?.riderPointsPerDelivery || 20;
 
@@ -206,6 +216,7 @@ const addDeliveryPartnerPoints = async (
       { 'userId.id': deliveryPartnerId },
       {
         $inc: { currentPoints: points, totalEarned: points },
+        $set: { expiryDate },
         $setOnInsert: {
           'userId.id': deliveryPartnerId,
           'userId.model': 'DeliveryPartner',

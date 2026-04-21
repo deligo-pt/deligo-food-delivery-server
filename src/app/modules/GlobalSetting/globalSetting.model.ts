@@ -127,6 +127,10 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>({
       type: Number,
       default: 0,
     },
+    pointsExpiryDays: {
+      type: Number,
+      default: 0,
+    },
     customerReferralMilestones: {
       type: Array,
       default: [],

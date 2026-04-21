@@ -43,6 +43,7 @@ export type TGlobalSettings = {
     riderPointsPerDelivery: number;
     riderReferralPoints: number;
     newRiderWelcomeBonus: number;
+    pointsExpiryDays: number;
     customerReferralMilestones: {
       friendsRequired: number;
       rewardType: 'CASHBACK' | 'FREE_MEAL' | 'FREE_DELIVERY' | 'CREDIT';
