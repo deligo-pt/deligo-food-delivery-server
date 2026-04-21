@@ -7,7 +7,6 @@ import { Points, PointsLog, Referral } from './loyalty.model';
 import mongoose, { ClientSession, Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { Customer } from '../Customer/customer.model';
 
 /**
  * Adds loyalty points to a customer based on their order amount.
@@ -354,16 +353,48 @@ const processReferralReward = async (
   }).session(session);
 
   if (referral) {
-    await Customer.updateOne(
-      { _id: referral.userId.id },
-      { $inc: { loyaltyPoints: 50 } },
-      { session },
+    const settings = await GlobalSettingsService.getGlobalSettings(session);
+    const rewards = settings?.rewards;
+    const bonusAmount = rewards?.referralPoints || 0;
+    const expiryDays = rewards?.pointsExpiryDays || 180;
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
+    // 1. Update Points Collection (Atomic)
+    await Points.findOneAndUpdate(
+      { 'userId.id': referral.userId.id },
+      {
+        $inc: { currentPoints: bonusAmount, totalEarned: bonusAmount },
+        $set: { expiryDate },
+        $setOnInsert: {
+          'userId.model': referral.userId.model,
+          'userId.role': referral.userId.role,
+        },
+      },
+      { session, upsert: true },
     );
 
+    // 3. Update Referral Record
     referral.status = 'REWARDED';
     referral.orderCompleted = true;
     referral.orderAmount = orderAmount;
     await referral.save({ session });
+
+    // 4. Create Audit Log
+    await PointsLog.create(
+      [
+        {
+          userId: referral.userId,
+          points: bonusAmount,
+          transactionType: 'REFERRAL_BONUS',
+          referenceId: referral._id, // Add reference for tracking
+          onModel: 'Referral',
+          description: `Referral bonus for inviting user ID: ${newUserId}`,
+        },
+      ],
+      { session },
+    );
   }
 };
 

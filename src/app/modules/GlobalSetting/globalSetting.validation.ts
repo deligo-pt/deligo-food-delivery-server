@@ -15,7 +15,7 @@ const createGlobalSettingValidationSchema = z.object({
     delivery: z
       .object({
         baseCharge: z.number().nonnegative(),
-        ChargePerKm: z.number().nonnegative(),
+        chargePerKm: z.number().nonnegative(),
         minCharge: z.number().nonnegative(),
         maxCharge: z.number().nonnegative(),
         freeAbove: z.number().nonnegative(),
@@ -53,7 +53,7 @@ const createGlobalSettingValidationSchema = z.object({
       .object({
         customerPointsPerEuro: z.number().nonnegative(),
         riderPointsPerDelivery: z.number().nonnegative(),
-        riderReferralPoints: z.number().nonnegative(),
+        referralPoints: z.number().nonnegative(),
         newRiderWelcomeBonus: z.number().nonnegative(),
         pointsExpiryDays: z.number().nonnegative(),
         customerReferralMilestones: z.array(referralMilestoneSchema),
@@ -83,7 +83,7 @@ const updateGlobalSettingValidationSchema = z.object({
     delivery: z
       .object({
         baseCharge: z.number().nonnegative().optional(),
-        ChargePerKm: z.number().nonnegative().optional(),
+        chargePerKm: z.number().nonnegative().optional(),
         minCharge: z.number().nonnegative().optional(),
         maxCharge: z.number().nonnegative().optional(),
         freeAbove: z.number().nonnegative().optional(),
@@ -118,7 +118,7 @@ const updateGlobalSettingValidationSchema = z.object({
       .object({
         customerPointsPerEuro: z.number().nonnegative().optional(),
         riderPointsPerDelivery: z.number().nonnegative().optional(),
-        riderReferralPoints: z.number().nonnegative().optional(),
+        referralPoints: z.number().nonnegative().optional(),
         newRiderWelcomeBonus: z.number().nonnegative().optional(),
         pointsExpiryDays: z.number().nonnegative().optional(),
         customerReferralMilestones: z.array(referralMilestoneSchema).optional(),
