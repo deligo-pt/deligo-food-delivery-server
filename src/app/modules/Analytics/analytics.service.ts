@@ -35,6 +35,7 @@ import { Wallet } from '../Wallet/wallet.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { PipelineStage } from 'mongoose';
+import { getGroupingPipeline, getReportTimeframe } from './analytics.utils';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -270,9 +271,9 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
   const avgOrders =
     totalCustomers > 0
       ? (
-          customersRaw.reduce((acc: number, c: any) => acc + c.totalOrders, 0) /
-          totalCustomers
-        ).toFixed(1)
+        customersRaw.reduce((acc: number, c: any) => acc + c.totalOrders, 0) /
+        totalCustomers
+      ).toFixed(1)
       : '0.0';
 
   /** ---------------- DEMOGRAPHICS ---------------- */
@@ -997,26 +998,30 @@ const getAdminOrderReportAnalytics = async (
 };
 
 // admin customer report analytics
-const getAdminCustomerReportAnalytics = async () => {
-  const startOf12MonthsWindow = new Date();
-  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
-  startOf12MonthsWindow.setDate(1);
-  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+const getAdminCustomerReportAnalytics = async (
+  timeframe?: string,
+  fromDate?: string | Date,
+  toDate?: string | Date
+) => {
+  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+  const groupId = getGroupingPipeline(resolution, size);
+
+  // Build the dynamic match for growth
+  const growthMatch: any = { isDeleted: false };
+  if (start) {
+    growthMatch.createdAt = { $gte: start, $lte: end };
+  }
 
   const [analytics] = await Customer.aggregate([
-    { $match: { isDeleted: false } },
-
     {
       $facet: {
-        // SUMMARY CARDS
-        summary: [
+        stats: [
+          { $match: { isDeleted: false } },
           {
             $group: {
               _id: null,
               totalCustomers: { $sum: 1 },
-              activeCustomers: {
-                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
-              },
+              activeCustomers: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
             },
           },
           {
@@ -1031,101 +1036,65 @@ const getAdminCustomerReportAnalytics = async () => {
               from: 'wallets',
               pipeline: [
                 { $match: { userModel: 'Admin' } },
-                {
-                  $group: {
-                    _id: null,
-                    totalRev: { $sum: '$totalEarnings' },
-                  },
-                },
+                { $group: { _id: null, totalRev: { $sum: '$totalEarnings' } } },
               ],
               as: 'walletStats',
             },
           },
-          {
-            $project: {
-              totalCustomers: 1,
-              activeCustomers: 1,
-              totalOrders: {
-                $ifNull: [{ $arrayElemAt: ['$totalOrderCount.count', 0] }, 0],
-              },
-              totalRevenue: {
-                $ifNull: [{ $arrayElemAt: ['$walletStats.totalRev', 0] }, 0],
-              },
-            },
-          },
         ],
-
-        // CUSTOMER GROWTH - only 12 months
         growth: [
-          {
-            $match: { createdAt: { $gte: startOf12MonthsWindow } },
-          },
-          {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              monthlyCount: { $sum: 1 },
-            },
-          },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
+          { $match: growthMatch },
+          { $group: { _id: groupId, count: { $sum: 1 } } },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
         ],
-
-        // STATUS DISTRIBUTION
         statusStats: [
-          {
-            $group: {
-              _id: '$status',
-              count: { $sum: 1 },
-            },
-          },
+          { $match: { isDeleted: false } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
         ],
       },
     },
   ]);
 
-  const summary = analytics.summary[0] || {
-    totalCustomers: 0,
-    activeCustomers: 0,
-    totalOrders: 0,
-    totalRevenue: 0,
-  };
+  const rawStats = analytics.stats[0] || {};
 
-  // CUMULATIVE GROWTH TRANSFORMATION
-  let cumulative = 0;
   const customerGrowth = analytics.growth.map((item: any) => {
-    cumulative += item.monthlyCount;
-    return {
-      label: new Date(item._id.year, item._id.month - 1).toLocaleString(
-        'en-US',
-        { month: 'short' },
-      ),
-      value: cumulative,
-    };
+    const id = item._id;
+    let label = '';
+
+    if (resolution === 'day') {
+      const date = new Date(id.year, id.month - 1, id.day);
+      label = date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).replace(' ', '');
+    } else if (resolution === 'multiDay') {
+      const dStart = new Date(id.year, 0, id.bucket * size + 1);
+      const dEnd = new Date(id.year, 0, (id.bucket + 1) * size);
+      label = `${dStart.getDate()}${dStart.toLocaleString('en-US', { month: 'short' })}-${dEnd.getDate()}${dEnd.toLocaleString('en-US', { month: 'short' })}`;
+    } else if (resolution === 'month') {
+      const date = new Date(id.year, id.month - 1);
+      label = `${date.toLocaleString('en-US', { month: 'short' })}/${id.year.toString().slice(-2)}`;
+    } else if (resolution === 'multiMonth') {
+      const mStart = new Date(id.year, id.bucket * size);
+      const mEnd = new Date(id.year, (id.bucket + 1) * size - 1);
+      label = `${mStart.toLocaleString('en-US', { month: 'short' })}/${mStart.getFullYear().toString().slice(-2)}-${mEnd.toLocaleString('en-US', { month: 'short' })}/${mEnd.getFullYear().toString().slice(-2)}`;
+    } else {
+      label = id.year.toString();
+    }
+
+    return { label, value: item.count };
   });
 
   return {
-    cards: {
-      totalCustomers: summary.totalCustomers,
-      activeCustomers: summary.activeCustomers,
-      totalOrders: summary.totalOrders,
-      totalRevenue: `€${summary.totalRevenue.toFixed(2)}`,
+    stats: {
+      totalCustomers: rawStats.totalCustomers || 0,
+      activeCustomers: rawStats.activeCustomers || 0,
+      totalSpent: rawStats.walletStats?.[0]?.totalRev || 0,
+      totalOrders: rawStats.totalOrderCount?.[0]?.count || 0,
     },
-
     customerGrowth,
-
     statusDistribution: {
-      approved:
-        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
-        0,
-
-      pending:
-        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
-
-      blocked:
-        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
-    },
+      active: analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
+      blocked: analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
+      pending: analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+    }
   };
 };
 
@@ -1965,36 +1934,76 @@ const getVendorTaxReport = async (
         // 3. Tax by Category (Bar Chart)
         taxByCategory: [
           { $unwind: '$items' },
+          // Collect all taxes (product tax + all addon taxes)
           {
             $project: {
               allTaxes: {
                 $concatArrays: [
-                  [{ rate: '$items.productPricing.taxRate', amount: '$items.productPricing.taxAmount' }],
+                  // Product tax
+                  [{
+                    rate: '$items.productPricing.taxRate',
+                    amount: '$items.productPricing.taxAmount'
+                  }],
+                  // Addon taxes
                   {
                     $map: {
                       input: '$items.addons',
                       as: 'addon',
-                      in: { rate: '$$addon.taxRate', amount: '$$addon.taxAmount' }
+                      in: {
+                        rate: '$$addon.taxRate',
+                        amount: '$$addon.taxAmount'
+                      }
                     }
                   }
                 ]
               }
             }
           },
+
           { $unwind: '$allTaxes' },
+
+          // Group by tax rate and sum the amount
           {
             $group: {
               _id: '$allTaxes.rate',
-              value: { $sum: '$allTaxes.amount' }
+              totalTaxAmount: { $sum: '$allTaxes.amount' }
             }
           },
+
+          // Calculate total tax across all rates (for percentage)
+          {
+            $group: {
+              _id: null,
+              taxes: { $push: { rate: '$_id', amount: '$totalTaxAmount' } },
+              grandTotalTax: { $sum: '$totalTaxAmount' }
+            }
+          },
+
+          { $unwind: '$taxes' },
+
+          // Final projection with name, value, and percentage
           {
             $project: {
-              name: { $concat: [{ $toString: '$_id' }, '% Rate'] },
-              value: 1,
+              name: {
+                $concat: [{ $toString: '$taxes.rate' }, '%']
+              },
+              value: '$taxes.amount',
+              percentage: {
+                $cond: {
+                  if: { $eq: ['$grandTotalTax', 0] },
+                  then: 0,
+                  else: {
+                    $multiply: [
+                      { $divide: ['$taxes.amount', '$grandTotalTax'] },
+                      100
+                    ]
+                  }
+                }
+              },
               _id: 0
             }
           },
+
           { $sort: { name: 1 } }
         ],
 
@@ -3175,8 +3184,8 @@ const getAdminSalesAnalytics = async (query: any) => {
   const growthRate =
     previous.totalRevenue > 0
       ? ((current.totalRevenue - previous.totalRevenue) /
-          previous.totalRevenue) *
-        100
+        previous.totalRevenue) *
+      100
       : current.totalRevenue > 0
         ? 100
         : 0;
@@ -4051,14 +4060,14 @@ const getDeliveryInsights = async (query: {
       lateDeliveryPercentage:
         summary.successOrders > 0
           ? Number(
-              ((summary.lateCount / summary.successOrders) * 100).toFixed(1),
-            )
+            ((summary.lateCount / summary.successOrders) * 100).toFixed(1),
+          )
           : 0,
       rejectedDeliveryPercentage:
         summary.totalOrders > 0
           ? Number(
-              ((summary.rejectedCount / summary.totalOrders) * 100).toFixed(1),
-            )
+            ((summary.rejectedCount / summary.totalOrders) * 100).toFixed(1),
+          )
           : 0,
     },
     riderPerformance: facet.riderPerformance,
@@ -4261,100 +4270,100 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-          // Vendor filter
-          {
-            $match: {
-              vendorId,
-              isDeleted: false,
+        // Vendor filter
+        {
+          $match: {
+            vendorId,
+            isDeleted: false,
+          },
+        },
+
+        // Unwind items
+        { $unwind: '$items' },
+
+        // Join products to get category
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'items.productId',
+            foreignField: '_id',
+            as: 'product',
+          },
+        },
+        { $unwind: '$product' },
+
+        {
+          $lookup: {
+            from: 'productcategories',
+            localField: 'product.category',
+            foreignField: '_id',
+            as: 'categoryDetails',
+          },
+        },
+        { $unwind: '$categoryDetails' },
+
+        // Count orders per category
+        {
+          $group: {
+            _id: {
+              categoryId: '$categoryDetails._id',
+              categoryName: '$categoryDetails.name',
+              orderId: '$_id',
             },
           },
+        },
 
-          // Unwind items
-          { $unwind: '$items' },
-
-          // Join products to get category
-          {
-            $lookup: {
-              from: 'products',
-              localField: 'items.productId',
-              foreignField: '_id',
-              as: 'product',
-            },
+        {
+          $group: {
+            _id: '$_id.categoryId',
+            categoryName: { $first: '$_id.categoryName' },
+            orderCount: { $sum: 1 },
           },
-          { $unwind: '$product' },
+        },
 
-          {
-            $lookup: {
-              from: 'productcategories',
-              localField: 'product.category',
-              foreignField: '_id',
-              as: 'categoryDetails',
-            },
-          },
-          { $unwind: '$categoryDetails' },
-
-          // Count orders per category
-          {
-            $group: {
-              _id: {
-                categoryId: '$categoryDetails._id',
-                categoryName: '$categoryDetails.name',
-                orderId: '$_id',
+        // Calculate TOTAL of all category orders
+        {
+          $group: {
+            _id: null,
+            totalCategoryOrders: { $sum: '$orderCount' },
+            categories: {
+              $push: {
+                name: '$categoryName',
+                orderCount: '$orderCount',
               },
             },
           },
+        },
 
-          {
-            $group: {
-              _id: '$_id.categoryId',
-              categoryName: { $first: '$_id.categoryName' },
-              orderCount: { $sum: 1 },
-            },
-          },
-
-          // Calculate TOTAL of all category orders
-          {
-            $group: {
-              _id: null,
-              totalCategoryOrders: { $sum: '$orderCount' },
-              categories: {
-                $push: {
-                  name: '$categoryName',
-                  orderCount: '$orderCount',
+        // Calculate percentage (SUM = 100%)
+        { $unwind: '$categories' },
+        {
+          $project: {
+            _id: 0,
+            name: '$categories.name',
+            totalOrders: '$categories.orderCount',
+            percentage: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        '$categories.orderCount',
+                        '$totalCategoryOrders',
+                      ],
+                    },
+                    100,
+                  ],
                 },
-              },
+                2,
+              ],
             },
           },
+        },
 
-          // Calculate percentage (SUM = 100%)
-          { $unwind: '$categories' },
-          {
-            $project: {
-              _id: 0,
-              name: '$categories.name',
-              totalOrders: '$categories.orderCount',
-              percentage: {
-                $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          '$categories.orderCount',
-                          '$totalCategoryOrders',
-                        ],
-                      },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-            },
-          },
-
-          // Top category first
-          { $sort: { percentage: -1 } },
-        ]);
+        // Top category first
+        { $sort: { percentage: -1 } },
+      ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -4641,8 +4650,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-        )
+        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+      )
       : 0;
 
   return {
@@ -4659,17 +4668,17 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-              ) + '%'
+              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+            ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-          opData.completedDeliveries > 0 &&
-          opData.totalDeliveryMinutes
+            opData.completedDeliveries > 0 &&
+            opData.totalDeliveryMinutes
             ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries,
-              )
+              opData.totalDeliveryMinutes / opData.completedDeliveries,
+            )
             : 0;
 
         return {

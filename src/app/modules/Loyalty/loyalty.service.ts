@@ -3,10 +3,11 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Order } from '../Order/order.model';
-import { Points, PointsLog } from './loyalty.model';
+import { Points, PointsLog, Referral } from './loyalty.model';
 import mongoose, { ClientSession, Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { Customer } from '../Customer/customer.model';
 
 /**
  * Adds loyalty points to a customer based on their order amount.
@@ -318,9 +319,59 @@ const getAllPoints = async (query: Record<string, unknown>) => {
   };
 };
 
+const createReferralRecord = async (
+  referrerId: Types.ObjectId,
+  newUserId: Types.ObjectId,
+  session?: ClientSession,
+) => {
+  const isExist = await Referral.findOne({
+    'referredUserId.id': newUserId,
+  }).session(session as ClientSession);
+
+  if (isExist) return;
+
+  await Referral.create(
+    [
+      {
+        userId: { id: referrerId, model: 'Customer', role: 'CUSTOMER' },
+        referredUserId: { id: newUserId, model: 'Customer', role: 'CUSTOMER' },
+        status: 'PENDING',
+        rewardLevel: 1,
+      },
+    ],
+    { session },
+  );
+};
+
+const processReferralReward = async (
+  newUserId: string,
+  orderAmount: number,
+  session: any,
+) => {
+  const referral = await Referral.findOne({
+    'referredUserId.id': newUserId,
+    status: 'PENDING',
+  }).session(session);
+
+  if (referral) {
+    await Customer.updateOne(
+      { _id: referral.userId.id },
+      { $inc: { loyaltyPoints: 50 } },
+      { session },
+    );
+
+    referral.status = 'REWARDED';
+    referral.orderCompleted = true;
+    referral.orderAmount = orderAmount;
+    await referral.save({ session });
+  }
+};
+
 export const LoyaltyServices = {
   addOrderPoints,
   addDeliveryPartnerPoints,
   getMyPoints,
   getAllPoints,
+  createReferralRecord,
+  processReferralReward,
 };
