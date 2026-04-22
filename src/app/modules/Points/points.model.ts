@@ -1,10 +1,5 @@
 import { Schema, model } from 'mongoose';
-import {
-  TPoints,
-  TPointsLog,
-  TReferral,
-  TRewardItem,
-} from './loyalty.interface';
+import { TPoints, TPointsLog } from './points.interface';
 
 const ALL_USER_MODELS = [
   'Admin',
@@ -29,7 +24,6 @@ const PointsSchema = new Schema<TPoints>(
         required: true,
         enum: ALL_USER_MODELS,
       },
-      role: { type: String, required: true },
     },
     currentPoints: { type: Number, default: 0 },
     totalEarned: { type: Number, default: 0 },
@@ -53,7 +47,6 @@ const PointsLogSchema = new Schema<TPointsLog>(
         refPath: 'userId.model',
       },
       model: { type: String, required: true, enum: ALL_USER_MODELS },
-      role: { type: String, required: true },
     },
     points: { type: Number, required: true },
     transactionType: {
@@ -78,61 +71,4 @@ const PointsLogSchema = new Schema<TPointsLog>(
 
 export const PointsLog = model<TPointsLog>('PointsLog', PointsLogSchema);
 
-// --------------------------------------------------
-// 3. Referral Model
-// --------------------------------------------------
-const ReferralSchema = new Schema<TReferral>(
-  {
-    userId: {
-      id: {
-        type: Schema.Types.ObjectId,
-        required: true,
-        refPath: 'userId.model',
-      },
-      model: { type: String, required: true, enum: ALL_USER_MODELS },
-      role: { type: String, required: true },
-    },
-    referredUserId: {
-      id: {
-        type: Schema.Types.ObjectId,
-        required: true,
-        refPath: 'referredUserId.model',
-      },
-      model: { type: String, required: true, enum: ALL_USER_MODELS },
-      role: { type: String, required: true },
-    },
-    status: {
-      type: String,
-      enum: ['PENDING', 'QUALIFIED', 'REWARDED'],
-      default: 'PENDING',
-    },
-    rewardLevel: { type: Number, default: 1 },
-    orderCompleted: { type: Boolean, default: false },
-    orderAmount: { type: Number, default: 0 },
-  },
-  { timestamps: true },
-);
-
-export const Referral = model<TReferral>('Referral', ReferralSchema);
-
-// --------------------------------------------------
-// 4. RewardItem Model
-// --------------------------------------------------
-const RewardItemSchema = new Schema<TRewardItem>(
-  {
-    name: { type: String, required: true },
-    requiredPoints: { type: Number, required: true },
-    estimatedSpend: { type: String },
-    stock: { type: Number, default: 0 },
-    isActive: { type: Boolean, default: true },
-  },
-  { timestamps: true },
-);
-
-export const RewardItem = model<TRewardItem>('RewardItem', RewardItemSchema);
-
 PointsSchema.index({ 'userId.id': 1, 'userId.model': 1 }, { unique: true });
-ReferralSchema.index(
-  { 'userId.id': 1, 'referredUserId.id': 1 },
-  { unique: true },
-);

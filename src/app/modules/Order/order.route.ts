@@ -8,11 +8,11 @@ import { parseBody } from '../../middlewares/bodyParser';
 
 const router = Router();
 
-// Create order after reduniq payment
+// Create order after redUniq payment
 router.post(
   '/create-order',
   auth('CUSTOMER'),
-  OrderControllers.createOrderAfterReduniqPayment,
+  OrderControllers.createOrderAfterRedUniqPayment,
 );
 
 // download invoice pdf from pasta digital

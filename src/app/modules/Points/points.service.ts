@@ -3,7 +3,7 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Order } from '../Order/order.model';
-import { Points, PointsLog, Referral } from './loyalty.model';
+import { Points, PointsLog } from './points.model';
 import mongoose, { ClientSession, Types } from 'mongoose';
 import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
@@ -318,91 +318,9 @@ const getAllPoints = async (query: Record<string, unknown>) => {
   };
 };
 
-const createReferralRecord = async (
-  referrerId: Types.ObjectId,
-  newUserId: Types.ObjectId,
-  session?: ClientSession,
-) => {
-  const isExist = await Referral.findOne({
-    'referredUserId.id': newUserId,
-  }).session(session as ClientSession);
-
-  if (isExist) return;
-
-  await Referral.create(
-    [
-      {
-        userId: { id: referrerId, model: 'Customer', role: 'CUSTOMER' },
-        referredUserId: { id: newUserId, model: 'Customer', role: 'CUSTOMER' },
-        status: 'PENDING',
-        rewardLevel: 1,
-      },
-    ],
-    { session },
-  );
-};
-
-const processReferralReward = async (
-  newUserId: string,
-  orderAmount: number,
-  session: any,
-) => {
-  const referral = await Referral.findOne({
-    'referredUserId.id': newUserId,
-    status: 'PENDING',
-  }).session(session);
-
-  if (referral) {
-    const settings = await GlobalSettingsService.getGlobalSettings(session);
-    const rewards = settings?.rewards;
-    const bonusAmount = rewards?.referralPoints || 0;
-    const expiryDays = rewards?.pointsExpiryDays || 180;
-
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + expiryDays);
-
-    // 1. Update Points Collection (Atomic)
-    await Points.findOneAndUpdate(
-      { 'userId.id': referral.userId.id },
-      {
-        $inc: { currentPoints: bonusAmount, totalEarned: bonusAmount },
-        $set: { expiryDate },
-        $setOnInsert: {
-          'userId.model': referral.userId.model,
-          'userId.role': referral.userId.role,
-        },
-      },
-      { session, upsert: true },
-    );
-
-    // 3. Update Referral Record
-    referral.status = 'REWARDED';
-    referral.orderCompleted = true;
-    referral.orderAmount = orderAmount;
-    await referral.save({ session });
-
-    // 4. Create Audit Log
-    await PointsLog.create(
-      [
-        {
-          userId: referral.userId,
-          points: bonusAmount,
-          transactionType: 'REFERRAL_BONUS',
-          referenceId: referral._id,
-          onModel: 'Referral',
-          description: `Referral bonus for inviting user ID: ${newUserId}`,
-        },
-      ],
-      { session },
-    );
-  }
-};
-
-export const LoyaltyServices = {
+export const PointsServices = {
   addOrderPoints,
   addDeliveryPartnerPoints,
   getMyPoints,
   getAllPoints,
-  createReferralRecord,
-  processReferralReward,
 };
