@@ -34,8 +34,6 @@ import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
-import { generateReferralCode } from '../../utils/generateReferralCode';
-import { LoyaltyServices } from '../Loyalty/loyalty.service';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -425,21 +423,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     );
   }
 
-  // Validate referral code if provided
-  let referrerId = null;
-  if (payload.referralCode) {
-    const referrer = await Customer.findOne({
-      referralCode: payload.referralCode,
-    }).lean();
-    if (!referrer) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Invalid referral code provided.',
-      );
-    }
-    referrerId = referrer._id;
-  }
-
   // -----------------------------------------------------
   // Email Login Logic
   // -----------------------------------------------------
@@ -470,14 +453,11 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
     if (!existingUser) {
       const userId = generateUserId('/create-customer');
-      const myReferralCode = await generateReferralCode('DELI');
 
       await Customer.create({
         userId,
         role: 'CUSTOMER',
         email: payload.email,
-        referralCode: myReferralCode,
-        referredBy: referrerId,
         requiresOtpVerification: true,
       });
     } else {
@@ -534,14 +514,11 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       );
     } else {
       const userId = generateUserId('/create-customer');
-      const myReferralCode = await generateReferralCode('DELI');
       await Customer.create({
         userId,
         role: 'CUSTOMER',
         contactNumber: payload.contactNumber,
         mobileOtpId,
-        referralCode: myReferralCode,
-        referredBy: referrerId,
         requiresOtpVerification: true,
       });
     }
@@ -1273,13 +1250,6 @@ const verifyOtp = async (
   await userModel.findOneAndUpdate({ _id: userData._id }, updateQuery, {
     new: true,
   });
-
-  if (userData.referredBy && !userData.isOtpVerified) {
-    await LoyaltyServices.createReferralRecord(
-      userData.referredBy,
-      userData._id,
-    );
-  }
 
   const jwtPayload = {
     userId: userData.userId,

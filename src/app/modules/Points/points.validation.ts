@@ -12,7 +12,7 @@ const addDeliveryPartnerPointsValidationSchema = z.object({
   }),
 });
 
-export const LoyaltyValidation = {
+export const PointsValidation = {
   addOrderPointsValidationSchema,
   addDeliveryPartnerPointsValidationSchema,
 };
