@@ -35,7 +35,7 @@ import { Wallet } from '../Wallet/wallet.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { PipelineStage } from 'mongoose';
-import { getGroupingPipeline, getReportTimeframe } from './analytics.utils';
+import { generateEmptyBuckets, getGroupingPipeline, getReportTimeframe, mapGrowthToTimeline } from './analytics.utils';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -1004,7 +1004,9 @@ const getAdminCustomerReportAnalytics = async (
   toDate?: string | Date
 ) => {
   const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
-  const groupId = getGroupingPipeline(resolution, size);
+
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+  const groupId = getGroupingPipeline(resolution, size, start);
 
   // Build the dynamic match for growth
   const growthMatch: any = { isDeleted: false };
@@ -1057,30 +1059,17 @@ const getAdminCustomerReportAnalytics = async (
 
   const rawStats = analytics.stats[0] || {};
 
-  const customerGrowth = analytics.growth.map((item: any) => {
-    const id = item._id;
-    let label = '';
-
-    if (resolution === 'day') {
-      const date = new Date(id.year, id.month - 1, id.day);
-      label = date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).replace(' ', '');
-    } else if (resolution === 'multiDay') {
-      const dStart = new Date(id.year, 0, id.bucket * size + 1);
-      const dEnd = new Date(id.year, 0, (id.bucket + 1) * size);
-      label = `${dStart.getDate()}${dStart.toLocaleString('en-US', { month: 'short' })}-${dEnd.getDate()}${dEnd.toLocaleString('en-US', { month: 'short' })}`;
-    } else if (resolution === 'month') {
-      const date = new Date(id.year, id.month - 1);
-      label = `${date.toLocaleString('en-US', { month: 'short' })}/${id.year.toString().slice(-2)}`;
-    } else if (resolution === 'multiMonth') {
-      const mStart = new Date(id.year, id.bucket * size);
-      const mEnd = new Date(id.year, (id.bucket + 1) * size - 1);
-      label = `${mStart.toLocaleString('en-US', { month: 'short' })}/${mStart.getFullYear().toString().slice(-2)}-${mEnd.toLocaleString('en-US', { month: 'short' })}/${mEnd.getFullYear().toString().slice(-2)}`;
-    } else {
-      label = id.year.toString();
-    }
-
-    return { label, value: item.count };
-  });
+  const customerGrowth = mapGrowthToTimeline({
+    growth: analytics.growth,
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  }).map(item => ({
+    label: item.time,
+    value: item.value,
+  }));
 
   return {
     stats: {
@@ -1089,7 +1078,9 @@ const getAdminCustomerReportAnalytics = async (
       totalSpent: rawStats.walletStats?.[0]?.totalRev || 0,
       totalOrders: rawStats.totalOrderCount?.[0]?.count || 0,
     },
+
     customerGrowth,
+
     statusDistribution: {
       active: analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
       blocked: analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
@@ -1099,293 +1090,206 @@ const getAdminCustomerReportAnalytics = async (
 };
 
 // admin vendor report analytics
-const getAdminVendorReportAnalytics = async () => {
-  const startOf12MonthsWindow = new Date();
-  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
-  startOf12MonthsWindow.setDate(1);
-  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+const getAdminVendorReportAnalytics = async (
+  timeframe?: string,
+  fromDate?: string | Date,
+  toDate?: string | Date
+) => {
+  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+
+  // 1. Generate the exact timeline map with 0s
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+  const groupId = getGroupingPipeline(resolution, size, start);
+
+
+  // Growth match based on timeframe (or all if timeframe is null)
+  const growthMatch: any = { isDeleted: false };
+  if (start) {
+    growthMatch.createdAt = { $gte: start, $lte: end };
+  }
 
   const [analytics] = await Vendor.aggregate([
     {
-      $match: {
-        isDeleted: false,
-      },
-    },
-
-    {
       $facet: {
-        // SUMMARY CARDS
-        summary: [
-          {
-            $group: {
-              _id: null,
-              totalVendors: { $sum: 1 },
-
-              approvedVendors: {
-                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
-              },
-
-              submittedVendors: {
-                $sum: { $cond: [{ $eq: ['$status', 'SUBMITTED'] }, 1, 0] },
-              },
-
-              blockedOrRejectedVendors: {
-                $sum: {
-                  $cond: [{ $in: ['$status', ['BLOCKED', 'REJECTED']] }, 1, 0],
-                },
-              },
-            },
-          },
-        ],
-
-        // MONTHLY SIGNUPS - only lastest 12 months
-        monthlySignups: [
-          {
-            $match: {
-              createdAt: { $gte: startOf12MonthsWindow },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              count: { $sum: 1 },
-            },
-          },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
-        ],
-
-        // STATUS DISTRIBUTION
+        // GLOBAL STATS & STATUS DISTRIBUTION
         statusStats: [
-          {
-            $group: {
-              _id: '$status',
-              count: { $sum: 1 },
-            },
-          },
+          { $match: { isDeleted: false } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+        ],
+
+        // VENDOR GROWTH (Timeframe aware)
+        growth: [
+          { $match: growthMatch },
+          { $group: { _id: groupId, count: { $sum: 1 } } },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
         ],
       },
     },
   ]);
 
-  const summary = analytics.summary[0] || {
-    totalVendors: 0,
-    approvedVendors: 0,
-    submittedVendors: 0,
-    blockedOrRejectedVendors: 0,
-  };
+  // Helper to find count by status
+  const getCount = (status: string) =>
+    analytics.statusStats.find((s: any) => s._id === status)?.count || 0;
 
-  // MONTHLY SIGNUPS TRANSFORMATION
-  const monthlySignups = analytics.monthlySignups.map((item: any) => ({
-    label: new Date(item._id.year, item._id.month - 1).toLocaleString('en-US', {
-      month: 'short',
-    }),
-    value: item.count,
+  // Map Growth Labels (Reusing the logic from Customer Report)
+  // 2. Map MongoDB results into timelineMap (IMPORTANT FIX)
+  const vendorGrowths = mapGrowthToTimeline({
+    growth: analytics.growth,
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  }).map(item => ({
+    time: item.time,
+    vendors: item.value,
   }));
 
+  const approved = getCount('APPROVED');
+  const pending = getCount('PENDING');
+  const submitted = getCount('SUBMITTED');
+  const rejected = getCount('REJECTED');
+  const blocked = getCount('BLOCKED');
+
   return {
-    // TOP CARDS
-    cards: {
-      totalVendors: summary.totalVendors,
-      approvedVendors: summary.approvedVendors,
-      submittedVendors: summary.submittedVendors,
-      blockedOrRejectedVendors: summary.blockedOrRejectedVendors,
+    stats: {
+      totalVendors: approved + pending + submitted + rejected + blocked,
+      approvedVendors: approved,
+      pendingVendors: pending,
+      blockedVendors: blocked + rejected,
     },
 
-    // BAR CHART
-    monthlySignups,
+    vendorGrowths,
 
-    // DONUT CHART
     statusDistribution: {
-      approved:
-        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
-        0,
-
-      pending:
-        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
-
-      submitted:
-        analytics.statusStats.find((s: any) => s._id === 'SUBMITTED')?.count ||
-        0,
-
-      rejected:
-        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count ||
-        0,
-
-      blocked:
-        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
+      approved,
+      pending,
+      submitted,
+      rejected,
+      blocked,
     },
   };
 };
 
 // admin fleet manager report analytics
-const getAdminFleetManagerReportAnalytics = async () => {
-  const startOf12MonthsWindow = new Date();
-  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
-  startOf12MonthsWindow.setDate(1);
-  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+const getAdminFleetManagerReportAnalytics = async (
+  timeframe?: string,
+  fromDate?: string | Date,
+  toDate?: string | Date
+) => {
+  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+
+  // 1. Generate the exact timeline map with 0s
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+  const groupId = getGroupingPipeline(resolution, size, start);
+
+  // Match only within timeframe if provided, otherwise all non-deleted
+  const growthMatch: any = { isDeleted: false };
+  if (timeframe || fromDate) {
+    growthMatch.createdAt = { $gte: start, $lte: end };
+  }
 
   const [analytics] = await FleetManager.aggregate([
     {
-      $match: {
-        isDeleted: false,
-      },
-    },
-
-    {
       $facet: {
-        // SUMMARY CARDS
         summary: [
+          { $match: { isDeleted: false } },
           {
             $group: {
               _id: null,
-
-              totalFleetManagers: { $sum: 1 },
-
-              approvedFleetManagers: {
-                $sum: {
-                  $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0],
-                },
-              },
-
-              submittedFleetManagers: {
-                $sum: {
-                  $cond: [{ $eq: ['$status', 'SUBMITTED'] }, 1, 0],
-                },
-              },
-
-              blockedOrRejectedFleetManagers: {
-                $sum: {
-                  $cond: [{ $in: ['$status', ['BLOCKED', 'REJECTED']] }, 1, 0],
-                },
-              },
-            },
-          },
-        ],
-
-        // MONTHLY SIGNUPS (LAST 12 MONTHS)
-        monthlySignups: [
-          {
-            $match: {
-              createdAt: { $gte: startOf12MonthsWindow },
+              totalManagers: { $sum: 1 },
+              approvedManagers: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
             },
           },
           {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              count: { $sum: 1 },
+            $lookup: {
+              from: 'drivers',
+              pipeline: [{ $match: { isDeleted: false } }, { $count: 'count' }],
+              as: 'driverCount',
             },
           },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
+          {
+            $lookup: {
+              from: 'orders',
+              pipeline: [{ $match: { isDeleted: false, status: 'DELIVERED' } }, { $count: 'count' }],
+              as: 'deliveryCount',
+            },
+          },
         ],
-
-        // STATUS DISTRIBUTION
+        growth: [
+          { $match: growthMatch },
+          { $group: { _id: groupId, count: { $sum: 1 } } },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
+        ],
         statusStats: [
-          {
-            $group: {
-              _id: '$status',
-              count: { $sum: 1 },
-            },
-          },
+          { $match: { isDeleted: false } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
         ],
       },
     },
   ]);
 
-  const summary = analytics.summary[0] || {
-    totalFleetManagers: 0,
-    approvedFleetManagers: 0,
-    totalDrivers: 0,
-    totalDeliveries: 0,
-  };
+  const summary = analytics.summary[0] || {};
 
-  const monthlySignups = analytics.monthlySignups.map((item: any) => ({
-    label: new Date(item._id.year, item._id.month - 1).toLocaleString('en-US', {
-      month: 'short',
-    }),
-    value: item.count,
+  // 2. Map MongoDB results to the correct timeline labels
+  const fleetGrowths = mapGrowthToTimeline({
+    growth: analytics.growth,
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  }).map(item => ({
+    time: item.time,
+    managers: item.value,
   }));
 
+  const getStatusCount = (status: string) =>
+    analytics.statusStats.find((s: any) => s._id === status)?.count || 0;
+
   return {
-    // TOP CARDS
-    cards: {
-      totalFleetManagers: summary.totalFleetManagers,
-      approvedFleetManagers: summary.approvedFleetManagers,
-      submittedFleetManagers: summary.submittedFleetManagers,
-      blockedOrRejectedFleetManagers: summary.blockedOrRejectedFleetManagers,
+    stats: {
+      totalManagers: summary.totalManagers || 0,
+      approvedManagers: summary.approvedManagers || 0,
+      totalDrivers: summary.driverCount?.[0]?.count || 0,
+      totalDeliveries: summary.deliveryCount?.[0]?.count || 0,
     },
 
-    // BAR / LINE CHART
-    monthlySignups,
+    fleetGrowths,
 
-    // DONUT CHART
     statusDistribution: {
-      approved:
-        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
-        0,
-
-      pending:
-        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
-
-      rejected:
-        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count ||
-        0,
-
-      blocked:
-        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
+      approved: getStatusCount('APPROVED'),
+      pending: getStatusCount('PENDING'),
+      submitted: getStatusCount('SUBMITTED'),
+      rejected: getStatusCount('REJECTED'),
+      blocked: getStatusCount('BLOCKED'),
     },
   };
 };
 
 // admin fleet manager report analytics
-const getAdminDeliveryPartnerReportAnalytics = async () => {
-  const startOf12MonthsWindow = new Date();
-  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
-  startOf12MonthsWindow.setDate(1);
-  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+const getAdminDeliveryPartnerReportAnalytics = async (timeframe?: string, fromDate?: string, toDate?: string) => {
+  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+
+  // 1. Generate the empty 0-value template
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+
+  const groupId = getGroupingPipeline(resolution, size, start);
+  const growthMatch: any = { isDeleted: false };
+  if (start) growthMatch.createdAt = { $gte: start, $lte: end };
 
   const [analytics] = await DeliveryPartner.aggregate([
     {
-      $match: {
-        isDeleted: false,
-      },
-    },
-
-    {
       $facet: {
-        // SUMMARY CARDS
+        // TOP STATS
         summary: [
+          { $match: { isDeleted: false } },
           {
             $group: {
               _id: null,
-
               totalPartners: { $sum: 1 },
-
-              activePartners: {
-                $sum: {
-                  $cond: [
-                    {
-                      $and: [
-                        { $eq: ['$status', 'APPROVED'] },
-                        { $eq: ['$operationalData.isWorking', true] },
-                      ],
-                    },
-                    1,
-                    0,
-                  ],
-                },
-              },
-
-              totalDeliveries: {
-                $sum: {
-                  $ifNull: ['$operationalData.totalDeliveries', 0],
-                },
-              },
+              approvedPartners: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
+              totalDeliveries: { $sum: { $ifNull: ['$operationalData.totalDeliveries', 0] } },
             },
           },
           {
@@ -1393,109 +1297,61 @@ const getAdminDeliveryPartnerReportAnalytics = async () => {
               from: 'wallets',
               pipeline: [
                 { $match: { userModel: 'DeliveryPartner' } },
-                {
-                  $group: {
-                    _id: null,
-                    totalEarningsFromWallet: { $sum: '$totalEarnings' },
-                  },
-                },
+                { $group: { _id: null, totalEarned: { $sum: '$totalEarnings' } } },
               ],
               as: 'walletStats',
             },
           },
-          {
-            $project: {
-              totalPartners: 1,
-              activePartners: 1,
-              totalDeliveries: 1,
-              totalEarnings: {
-                $ifNull: [
-                  { $arrayElemAt: ['$walletStats.totalEarningsFromWallet', 0] },
-                  0,
-                ],
-              },
-            },
-          },
         ],
-
-        // PARTNER GROWTH (LAST 12 MONTHS)
+        // VENDOR GROWTHS OVER TIMEFRAME
         growth: [
-          {
-            $match: {
-              createdAt: { $gte: startOf12MonthsWindow },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              count: { $sum: 1 },
-            },
-          },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
+          { $match: growthMatch },
+          { $group: { _id: groupId, count: { $sum: 1 } } },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
         ],
-
-        // VEHICLE TYPES
-        vehicleTypes: [
-          {
-            $group: {
-              _id: '$vehicleInfo.vehicleType',
-              count: { $sum: 1 },
-            },
-          },
+        // VEHICLE DISTRIBUTION
+        vehicleStats: [
+          { $match: { isDeleted: false } },
+          { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
         ],
-      },
-    },
+      }
+    }
   ]);
 
-  const summary = analytics.summary[0] || {
-    totalPartners: 0,
-    activePartners: 0,
-    totalDeliveries: 0,
-    totalEarnings: 0,
-  };
+  const summary = analytics.summary[0] || {};
 
-  // CUMULATIVE GROWTH TRANSFORMATION
-  let cumulative = 0;
-  const partnerGrowth = analytics.growth.map((item: any) => {
-    cumulative += item.count;
-    return {
-      label: new Date(item._id.year, item._id.month - 1).toLocaleString(
-        'en-US',
-        { month: 'short' },
-      ),
-      value: cumulative,
-    };
-  });
+  // 2. Merge DB results into our timelineMap
+  const partnerGrowths = mapGrowthToTimeline({
+    growth: analytics.growth,
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  }).map(item => ({
+    time: item.time,
+    managers: item.value,
+  }));
+
+  const getVehicleCount = (type: string) =>
+    analytics.vehicleStats.find((v: any) => v._id === type)?.count || 0;
 
   return {
-    // TOP CARDS
-    cards: {
-      totalPartners: summary.totalPartners,
-      activePartners: summary.activePartners,
-      totalDeliveries: summary.totalDeliveries,
-      totalEarnings: `€${summary.totalEarnings.toFixed(2)}`,
+    stats: {
+      totalPartners: summary.totalPartners || 0,
+      approvedPartners: summary.approvedPartners || 0,
+      totalDeliveries: summary.totalDeliveries || 0,
+      totalEarnings: summary.walletStats?.[0]?.totalEarned || 0,
     },
 
-    // LINE CHART
-    partnerGrowth,
+    partnerGrowths,
 
-    // VEHICLE TYPES
-    vehicleTypes: {
-      motorbike:
-        analytics.vehicleTypes.find((v: any) => v._id === 'MOTORBIKE')?.count ||
-        0,
-      eBike:
-        analytics.vehicleTypes.find((v: any) => v._id === 'E-BIKE')?.count || 0,
-      scooter:
-        analytics.vehicleTypes.find((v: any) => v._id === 'SCOOTER')?.count ||
-        0,
-      bicycle:
-        analytics.vehicleTypes.find((v: any) => v._id === 'BICYCLE')?.count ||
-        0,
-      car: analytics.vehicleTypes.find((v: any) => v._id === 'CAR')?.count || 0,
+    vehicleDistribution: {
+      "E-BIKE": getVehicleCount('E-BIKE'),
+      BICYCLE: getVehicleCount('BICYCLE'),
+      SCOOTER: getVehicleCount('SCOOTER'),
+      MOTORBIKE: getVehicleCount('MOTORBIKE'),
+      CAR: getVehicleCount('CAR'),
     },
   };
 };
