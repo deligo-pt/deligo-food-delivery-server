@@ -6,9 +6,9 @@ import { AuthUser } from '../../constant/user.constant';
 import { TImageFile } from '../../interfaces/image.interface';
 import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
 
-// create order after reduniq payment
-const createOrderAfterReduniqPayment = catchAsync(async (req, res) => {
-  const result = await OrderServices.createOrderAfterReduniqPayment(
+// create order after redUniq payment
+const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
+  const result = await OrderServices.createOrderAfterRedUniqPayment(
     req.body,
     req.user as AuthUser,
   );
@@ -174,7 +174,7 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
 });
 
 export const OrderControllers = {
-  createOrderAfterReduniqPayment,
+  createOrderAfterRedUniqPayment,
   getAllOrders,
   getSingleOrder,
   updateOrderStatusByVendor,
