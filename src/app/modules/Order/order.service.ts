@@ -31,10 +31,10 @@ import { Wallet } from '../Wallet/wallet.model';
 import { roundTo2 } from '../../utils/mathProvider';
 import { Admin } from '../Admin/admin.model';
 import customNanoId from '../../utils/customNanoId';
-import { LoyaltyServices } from '../Loyalty/loyalty.service';
+import { PointsServices } from '../Points/points.service';
 
 // Create Order after redUniq payment
-const createOrderAfterReduniqPayment = async (
+const createOrderAfterRedUniqPayment = async (
   payload: {
     checkoutSummaryId: string;
     paymentToken: string;
@@ -1118,28 +1118,14 @@ const updateOrderStatusByDeliveryPartner = async (
         );
       }
 
-      await LoyaltyServices.addOrderPoints(
+      await PointsServices.addOrderPoints(
         updatedOrder.customerId._id,
         updatedOrder._id.toString(),
         session,
       );
 
-      const orderCount = await Order.countDocuments({
-        customerId: updatedOrder.customerId._id,
-        orderStatus: ORDER_STATUS.DELIVERED,
-        isDeleted: false,
-      }).session(session);
-
-      if (orderCount === 1) {
-        await LoyaltyServices.processReferralReward(
-          updatedOrder.customerId._id.toString(),
-          updatedOrder.payoutSummary.grandTotal,
-          session,
-        );
-      }
-
       if (updatedOrder.deliveryPartnerId) {
-        await LoyaltyServices.addDeliveryPartnerPoints(
+        await PointsServices.addDeliveryPartnerPoints(
           updatedOrder.deliveryPartnerId,
           updatedOrder._id.toString(),
           session,
@@ -1592,7 +1578,7 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: AuthUser) => {
 };
 
 export const OrderServices = {
-  createOrderAfterReduniqPayment,
+  createOrderAfterRedUniqPayment,
   updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,

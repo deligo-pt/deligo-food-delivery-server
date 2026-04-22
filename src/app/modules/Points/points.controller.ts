@@ -1,15 +1,15 @@
 import { AuthUser } from '../../constant/user.constant';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { LoyaltyServices } from './loyalty.service';
 import httpStatus from 'http-status';
+import { PointsServices } from './points.service';
 
 // add order points controller
 const addOrderPoints = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
   const { _id: userId } = currentUser;
 
-  const result = await LoyaltyServices.addOrderPoints(userId, req.body.orderId);
+  const result = await PointsServices.addOrderPoints(userId, req.body.orderId);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -21,7 +21,7 @@ const addOrderPoints = catchAsync(async (req, res) => {
 // add delivery partner points controller
 const addDeliveryPartnerPoints = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
-  const result = await LoyaltyServices.addDeliveryPartnerPoints(
+  const result = await PointsServices.addDeliveryPartnerPoints(
     currentUser._id.toString(),
     req.body.orderId,
   );
@@ -35,7 +35,7 @@ const addDeliveryPartnerPoints = catchAsync(async (req, res) => {
 
 // get my points controller
 const getMyPoints = catchAsync(async (req, res) => {
-  const result = await LoyaltyServices.getMyPoints(req.user as AuthUser);
+  const result = await PointsServices.getMyPoints(req.user as AuthUser);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -45,7 +45,7 @@ const getMyPoints = catchAsync(async (req, res) => {
 });
 
 const getAllPoints = catchAsync(async (req, res) => {
-  const result = await LoyaltyServices.getAllPoints(req.query);
+  const result = await PointsServices.getAllPoints(req.query);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -55,7 +55,7 @@ const getAllPoints = catchAsync(async (req, res) => {
   });
 });
 
-export const LoyaltyController = {
+export const PointsController = {
   addOrderPoints,
   addDeliveryPartnerPoints,
   getMyPoints,
