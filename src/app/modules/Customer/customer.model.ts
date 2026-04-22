@@ -127,8 +127,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // Referral & Loyalty
     // ----------------------------------------------------------------
     referralCode: { type: String, default: '' },
-    loyaltyPoints: { type: Number, default: 0 },
-
+    referredBy: { type: Schema.Types.ObjectId, default: null, ref: 'Customer' },
     // ----------------------------------------------------------------
     // Admin Workflow / Audit
     // ----------------------------------------------------------------

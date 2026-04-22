@@ -11,7 +11,7 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>({
       required: true,
       default: 0,
     },
-    ChargePerKm: {
+    chargePerKm: {
       type: Number,
       required: true,
       default: 0,
@@ -119,7 +119,7 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>({
       type: Number,
       default: 0,
     },
-    riderReferralPoints: {
+    referralPoints: {
       type: Number,
       default: 0,
     },

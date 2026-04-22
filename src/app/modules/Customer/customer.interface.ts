@@ -93,10 +93,10 @@ export type TCustomer = {
   loginDevices?: TLoginDevice[];
 
   // ------------------------------------------------------
-  // Referral & Loyalty
+  // Referral
   // ------------------------------------------------------
   referralCode?: string;
-  loyaltyPoints?: number;
+  referredBy?: mongoose.Types.ObjectId;
 
   // ------------------------------------------------------
   // Admin Workflow / Audit
