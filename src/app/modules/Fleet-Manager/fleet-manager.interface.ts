@@ -1,5 +1,4 @@
-import mongoose from 'mongoose';
-import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/user.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
 export type TFleetManager = {
@@ -7,58 +6,13 @@ export type TFleetManager = {
   // Core Identifiers
   // ---------------------------------------------
   _id?: string;
-  userId: string;
-  registeredBy?: mongoose.Types.ObjectId;
+  authUserId: string;
+  customUserId: string;
   role: 'FLEET_MANAGER';
   email: string;
   password: string;
-
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
-  isDeleted: boolean;
   isUpdateLocked: boolean;
-
-  // Push notifications
-  fcmTokens?: string[];
-
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
-  // ---------------------------------------------
-  // OTP & Password Reset
-  // ---------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
-
-  // ---------------------------------------------
-  // Personal Information
-  // ---------------------------------------------
-  name?: {
-    firstName?: string;
-    lastName?: string;
-  };
-
-  contactNumber?: string;
-  profilePhoto?: string;
-
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    longitude?: number;
-    latitude?: number;
-    geoAccuracy?: number;
-    detailedAddress?: string;
-  };
 
   currentSessionLocation?: TGeoJSONPoint;
 
@@ -94,16 +48,6 @@ export type TFleetManager = {
   };
 
   // ---------------------------------------------
-  // Documents & Verification
-  // ---------------------------------------------
-  documents?: {
-    myPhoto?: string;
-    idProofFront?: string;
-    idProofBack?: string;
-    businessLicense?: string;
-  };
-
-  // ---------------------------------------------
   // Operational Data
   // ---------------------------------------------
   operationalData?: {
@@ -112,24 +56,9 @@ export type TFleetManager = {
     totalDeliveries?: number;
   };
 
-  // ---------------------------------------------
-  // Security & Access
-  // ---------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
-
-  // ---------------------------------------------
-  // Admin Workflow / Audit
-  // ---------------------------------------------
-  approvedBy?: mongoose.Types.ObjectId;
-  rejectedBy?: mongoose.Types.ObjectId;
-  blockedBy?: mongoose.Types.ObjectId;
-
-  submittedForApprovalAt?: Date;
-  approvedOrRejectedOrBlockedAt?: Date;
-
-  remarks?: string;
-
+  // --------------------------------------------------------
+  // Rating & Activity
+  // --------------------------------------------------------
   rating?: {
     average: number;
     totalReviews: number;

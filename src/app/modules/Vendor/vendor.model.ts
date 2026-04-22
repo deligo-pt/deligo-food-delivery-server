@@ -3,6 +3,7 @@ import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
+import { USER_STATUS } from '../../constant/user.constant';
 
 const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
@@ -36,6 +37,11 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       ],
     },
     isUpdateLocked: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: Object.keys(USER_STATUS),
+      default: USER_STATUS.PENDING,
+    },
 
     // -------------------------------------------------------
     // Business Details

@@ -1,4 +1,5 @@
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
+import { USER_STATUS } from '../../constant/user.constant';
 
 export type TRegisteredByModel = 'Admin' | 'Vendor';
 
@@ -12,6 +13,7 @@ export type TVendor = {
   email: string;
   role: 'VENDOR' | 'SUB_VENDOR';
   isUpdateLocked: boolean;
+  status: keyof typeof USER_STATUS;
 
   // --------------------------------------------------------
   // Business Details
