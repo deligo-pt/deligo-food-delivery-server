@@ -104,7 +104,13 @@ const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
 
 // get admin vendor report analytics controller
 const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminVendorReportAnalytics();
+  const { timeframe, fromDate, toDate } = req.query;
+
+  const result = await AnalyticsServices.getAdminVendorReportAnalytics(
+    timeframe as string,
+    fromDate as string,
+    toDate as string
+  );
 
   sendResponse(res, {
     success: true,
@@ -116,7 +122,13 @@ const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
 
 // get admin fleet manager report analytics controller
 const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminFleetManagerReportAnalytics();
+  const { timeframe, fromDate, toDate } = req.query;
+
+  const result = await AnalyticsServices.getAdminFleetManagerReportAnalytics(
+    timeframe as string,
+    fromDate as string,
+    toDate as string
+  );
 
   sendResponse(res, {
     success: true,
@@ -128,8 +140,13 @@ const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
 
 // get admin delivery partner report analytics controller
 const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
+  const { timeframe, fromDate, toDate } = req.query;
   const result =
-    await AnalyticsServices.getAdminDeliveryPartnerReportAnalytics();
+    await AnalyticsServices.getAdminDeliveryPartnerReportAnalytics(
+      timeframe as string,
+      fromDate as string,
+      toDate as string
+    );
 
   sendResponse(res, {
     success: true,
