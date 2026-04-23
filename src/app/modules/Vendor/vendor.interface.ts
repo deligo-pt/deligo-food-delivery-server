@@ -34,6 +34,12 @@ export type TVendor = {
   // Push notifications
   fcmTokens?: string[];
 
+  // ------------------------------------------------------
+  // Referral
+  // ------------------------------------------------------
+  referralCode?: string;
+  referredBy?: mongoose.Types.ObjectId;
+
   // --------------------------------------------------------
   // Pending temporary Email and contact number
   // --------------------------------------------------------

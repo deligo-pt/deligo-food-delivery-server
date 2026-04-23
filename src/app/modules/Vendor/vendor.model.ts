@@ -68,6 +68,16 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // -------------------------------------------------------
     fcmTokens: { type: [String], default: [] },
 
+    // ------------------------------------------------------
+    // Referral
+    // ------------------------------------------------------
+    referralCode: { type: String, unique: true },
+    referredBy: {
+      type: Schema.Types.ObjectId,
+      default: null,
+      ref: 'Vendor',
+    },
+
     // --------------------------------------------------------
     // Pending temporary Email and contact number
     // --------------------------------------------------------
