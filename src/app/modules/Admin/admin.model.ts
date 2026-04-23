@@ -77,4 +77,11 @@ adminSchema.index({ currentSessionLocation: '2dsphere' });
 // password hashing plugin
 adminSchema.plugin(passwordPlugin);
 
+
+adminSchema.statics.isUserExistsByUserId = async function (
+  customUserId: string,
+) {
+  return this.findOne({ customUserId });
+};
+
 export const Admin = model<TAdmin, IUserModel<TAdmin>>('Admin', adminSchema);

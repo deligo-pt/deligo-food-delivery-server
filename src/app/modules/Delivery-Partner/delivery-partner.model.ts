@@ -175,4 +175,11 @@ deliveryPartnerSchema.index({ currentSessionLocation: '2dsphere' });
 
 deliveryPartnerSchema.plugin(passwordPlugin);
 
+
+deliveryPartnerSchema.statics.isUserExistsByUserId = async function (
+  customUserId: string,
+) {
+  return this.findOne({ customUserId });
+};
+
 export const DeliveryPartner = model<TDeliveryPartner, IUserModel<TDeliveryPartner>>('DeliveryPartner', deliveryPartnerSchema);

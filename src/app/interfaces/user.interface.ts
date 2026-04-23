@@ -7,7 +7,7 @@ export interface IUserModel<T> extends Model<T> {
     isDeleted?: boolean,
     fields?: string,
   ): Promise<T | null>;
-  isUserExistsByUserId(userId: string, isDeleted?: boolean): Promise<T | null>;
+  isUserExistsByUserId(customUserId: string, isDeleted?: boolean): Promise<T | null>;
   isUserExistsByContactNumber(
     contactNumber: string,
     isDeleted?: boolean,

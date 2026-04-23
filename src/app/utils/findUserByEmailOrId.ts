@@ -39,7 +39,8 @@ export const findUserById = async ({
       throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
     }
 
-    const foundUser = await Model.isUserExistsByUserId(userId, isDeleted);
+    const foundUser = await Model.isUserExistsByUserId(userId);
+
     if (foundUser) {
       return { user: foundUser, model: Model };
     }

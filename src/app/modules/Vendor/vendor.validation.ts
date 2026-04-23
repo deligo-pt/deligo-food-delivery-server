@@ -6,18 +6,6 @@ import { addressValidationSchema } from '../Admin/admin.validation';
 // --------------------------------------------------
 const vendorUpdateValidationSchema = z.object({
   body: z.object({
-    // Personal Details
-    name: z
-      .object({
-        firstName: z.string().optional(),
-        lastName: z.string().optional(),
-      })
-      .optional(),
-
-    contactNumber: z.string().optional(),
-
-    // Address
-    address: addressValidationSchema.optional(),
 
     // Business Details
     businessDetails: z

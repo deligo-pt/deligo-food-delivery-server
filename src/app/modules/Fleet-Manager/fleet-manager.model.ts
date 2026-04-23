@@ -123,6 +123,12 @@ fleetManagerSchema.index({ currentSessionLocation: '2dsphere' });
 
 fleetManagerSchema.plugin(passwordPlugin);
 
+fleetManagerSchema.statics.isUserExistsByUserId = async function (
+  customUserId: string,
+) {
+  return this.findOne({ customUserId });
+};
+
 export const FleetManager = model<TFleetManager, IUserModel<TFleetManager>>(
   'FleetManager',
   fleetManagerSchema,

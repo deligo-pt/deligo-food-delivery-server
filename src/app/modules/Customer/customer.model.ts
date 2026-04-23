@@ -104,6 +104,12 @@ customerSchema.index({ currentSessionLocation: '2dsphere' });
 // Plugins
 customerSchema.plugin(passwordPlugin);
 
+customerSchema.statics.isUserExistsByUserId = async function (
+  customUserId: string
+) {
+  return this.findOne({ customUserId });
+};
+
 export const Customer = model<TCustomer, IUserModel<TCustomer>>(
   'Customer',
   customerSchema,

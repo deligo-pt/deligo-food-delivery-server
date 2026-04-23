@@ -25,7 +25,7 @@ const vendorUpdate = async (
   currentUser: AuthUser,
 ) => {
   // 1. Initial check to ensure the vendor exists in the system
-  const existingVendor = await Vendor.findOne({ userId: id });
+  const existingVendor = await Vendor.findOne({ customUserId: id });
 
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found.');
@@ -35,7 +35,7 @@ const vendorUpdate = async (
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner =
     (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
-    currentUser.userId === existingVendor.userId;
+    currentUser.customUserId === existingVendor.customUserId;
 
   // 3. Authorization: Block unauthorized users from modifying the vendor profile
   if (!isStaff && !isOwner) {
@@ -145,7 +145,7 @@ const vendorDocImageUpload = async (
     docTitle &&
     file &&
     existingVendor.documents?.[
-      docTitle as keyof typeof existingVendor.documents
+    docTitle as keyof typeof existingVendor.documents
     ]
   ) {
     const oldImage = (existingVendor.documents as any)[docTitle];
@@ -267,9 +267,8 @@ const toggleVendorStoreOpenClose = async (currentUser: AuthUser) => {
   currentUser.businessDetails!.storeClosedAt = new Date();
   await (currentUser as any).save();
   return {
-    message: `Store is ${
-      currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
-    }`,
+    message: `Store is ${currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
+      }`,
   };
 };
 

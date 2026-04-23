@@ -113,6 +113,12 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
 
 vendorSchema.index({ currentSessionLocation: '2dsphere' });
 
+vendorSchema.statics.isUserExistsByUserId = async function (
+  customUserId: string,
+) {
+  return this.findOne({ customUserId });
+};
+
 export const Vendor = model<TVendor, IUserModel<TVendor>>(
   'Vendor',
   vendorSchema,
