@@ -9,6 +9,7 @@ import { CustomerSearchableFields } from './customer.constant';
 import { TDeliveryAddress } from '../../constant/address.constant';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
+import { generateReferralCode } from '../../utils/generateReferralCode';
 
 // update customer service
 const updateCustomer = async (
@@ -34,6 +35,17 @@ const updateCustomer = async (
     currentUser.userId !== customer.userId
   ) {
     throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized update');
+  }
+
+  // -----------------------------
+  // Referral Code Generation (New Logic)
+  // -----------------------------
+  if (!currentUser.referralCode) {
+    const firstName =
+      payload.name?.firstName || currentUser.name.firstName || 'USER';
+    const newReferralCode = await generateReferralCode(firstName);
+
+    payload.referralCode = newReferralCode;
   }
 
   // ----------------------------------------------------------------------

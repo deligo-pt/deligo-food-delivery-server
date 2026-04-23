@@ -18,4 +18,5 @@ export type TUserProfileUpdate = {
     geoAccuracy?: number;
     detailedAddress?: string;
   };
+  referralCode?: string;
 };
