@@ -101,6 +101,7 @@ export type AuthUser = {
     geoAccuracy?: number;
     detailedAddress?: string;
   };
+  referralCode?: string;
 };
 
 export type TLoginDevice = {

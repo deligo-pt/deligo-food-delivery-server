@@ -14,6 +14,7 @@ import { EmailHelper } from '../../utils/emailSender';
 import generateOtp from '../../utils/generateOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import mongoose from 'mongoose';
+import { generateReferralCode } from '../../utils/generateReferralCode';
 
 // get my profile service
 const getMyProfile = async (currentUser: AuthUser) => {
@@ -51,6 +52,17 @@ const updateMyProfile = async (
       httpStatus.FORBIDDEN,
       `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`,
     );
+  }
+
+  // -----------------------------
+  // Referral Code Generation (New Logic)
+  // -----------------------------
+  if (!currentUser.referralCode) {
+    const firstName =
+      payload.name?.firstName || currentUser.name.firstName || 'USER';
+    const newReferralCode = await generateReferralCode(firstName);
+
+    payload.referralCode = newReferralCode;
   }
 
   // -----------------------------
