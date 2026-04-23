@@ -2,7 +2,7 @@
 import { Schema, model } from 'mongoose';
 import { TDeliveryPartner } from './delivery-partner.interface';
 import { IUserModel } from '../../interfaces/user.interface';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
+import { userSchemaPlugin } from '../../plugins/passwordPlugin';
 import { USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
@@ -173,13 +173,7 @@ const deliveryPartnerSchema = new Schema<
 // --- Indexing and Plugins ---
 deliveryPartnerSchema.index({ currentSessionLocation: '2dsphere' });
 
-deliveryPartnerSchema.plugin(passwordPlugin);
+deliveryPartnerSchema.plugin(userSchemaPlugin);
 
-
-deliveryPartnerSchema.statics.isUserExistsByUserId = async function (
-  customUserId: string,
-) {
-  return this.findOne({ customUserId });
-};
 
 export const DeliveryPartner = model<TDeliveryPartner, IUserModel<TDeliveryPartner>>('DeliveryPartner', deliveryPartnerSchema);

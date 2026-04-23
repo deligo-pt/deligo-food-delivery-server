@@ -3,7 +3,7 @@ import { model, Schema } from 'mongoose';
 import { TAdmin } from './admin.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { USER_STATUS } from '../../constant/user.constant';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
+import { userSchemaPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 
 const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
@@ -75,13 +75,6 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
 adminSchema.index({ currentSessionLocation: '2dsphere' });
 
 // password hashing plugin
-adminSchema.plugin(passwordPlugin);
-
-
-adminSchema.statics.isUserExistsByUserId = async function (
-  customUserId: string,
-) {
-  return this.findOne({ customUserId });
-};
+adminSchema.plugin(userSchemaPlugin);
 
 export const Admin = model<TAdmin, IUserModel<TAdmin>>('Admin', adminSchema);

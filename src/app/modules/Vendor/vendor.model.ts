@@ -4,6 +4,7 @@ import { TVendor } from './vendor.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 import { USER_STATUS } from '../../constant/user.constant';
+import { userSchemaPlugin } from '../../plugins/passwordPlugin';
 
 const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
@@ -113,11 +114,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
 
 vendorSchema.index({ currentSessionLocation: '2dsphere' });
 
-vendorSchema.statics.isUserExistsByUserId = async function (
-  customUserId: string,
-) {
-  return this.findOne({ customUserId });
-};
+vendorSchema.plugin(userSchemaPlugin);
 
 export const Vendor = model<TVendor, IUserModel<TVendor>>(
   'Vendor',

@@ -3,7 +3,7 @@ import { Schema, model } from 'mongoose';
 import { TCustomer } from './customer.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { USER_STATUS } from '../../constant/user.constant';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
+import { userSchemaPlugin } from '../../plugins/passwordPlugin';
 import { AddressType } from './customer.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 
@@ -102,13 +102,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
 customerSchema.index({ currentSessionLocation: '2dsphere' });
 
 // Plugins
-customerSchema.plugin(passwordPlugin);
-
-customerSchema.statics.isUserExistsByUserId = async function (
-  customUserId: string
-) {
-  return this.findOne({ customUserId });
-};
+customerSchema.plugin(userSchemaPlugin);
 
 export const Customer = model<TCustomer, IUserModel<TCustomer>>(
   'Customer',

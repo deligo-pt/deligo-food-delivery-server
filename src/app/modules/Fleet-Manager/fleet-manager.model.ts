@@ -3,7 +3,7 @@ import { Schema, model } from 'mongoose';
 import { TFleetManager } from './fleet-manager.interface';
 import { USER_STATUS } from '../../constant/user.constant';
 import { IUserModel } from '../../interfaces/user.interface';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
+import { userSchemaPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 
 const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
@@ -121,13 +121,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
 // Geo-spatial Indexing
 fleetManagerSchema.index({ currentSessionLocation: '2dsphere' });
 
-fleetManagerSchema.plugin(passwordPlugin);
-
-fleetManagerSchema.statics.isUserExistsByUserId = async function (
-  customUserId: string,
-) {
-  return this.findOne({ customUserId });
-};
+fleetManagerSchema.plugin(userSchemaPlugin);
 
 export const FleetManager = model<TFleetManager, IUserModel<TFleetManager>>(
   'FleetManager',
