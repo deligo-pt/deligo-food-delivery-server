@@ -2,24 +2,32 @@
 import { Schema, model } from 'mongoose';
 import { TCustomer } from './customer.interface';
 import { IUserModel } from '../../interfaces/user.interface';
-import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { AddressType } from './customer.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 
 const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {
-    // ----------------------------------------------------------------
-    // Core Identifiers
-    // ----------------------------------------------------------------
-    userId: { type: String, required: true, unique: true },
-
+    // ------------------------------------------------------
+    // Core Identifiers (Synced with Interface)
+    // ------------------------------------------------------
+    authUserId: {
+      type: String,
+      required: true,
+      unique: true
+    },
+    customUserId: {
+      type: String,
+      required: true,
+      unique: true
+    },
     role: {
       type: String,
       enum: ['CUSTOMER'],
       required: true,
+      default: 'CUSTOMER',
     },
-
     email: {
       type: String,
       unique: true,
@@ -31,69 +39,20 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         'Please fill a valid email address',
       ],
     },
-
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
-      default: USER_STATUS.APPROVED,
+      required: true,
     },
 
-    isOtpVerified: { type: Boolean, default: false },
-    isDeleted: { type: Boolean, default: false },
-
-    // ----------------------------------------------------------------
-    // FCM Tokens
-    // ----------------------------------------------------------------
-    fcmTokens: { type: [String], default: [] },
-
-    // --------------------------------------------------------
-    // Pending temporary Email and contact number
-    // --------------------------------------------------------
-    pendingEmail: { type: String },
-    pendingContactNumber: { type: String },
-
-    // ----------------------------------------------------------------
-    // OTP
-    // ----------------------------------------------------------------
-    otp: { type: String, default: '' },
-    isOtpExpired: { type: Date, default: null },
-    requiresOtpVerification: { type: Boolean, default: true },
-    mobileOtpId: { type: String, default: '' },
-
-    // ----------------------------------------------------------------
-    // Personal Details
-    // ----------------------------------------------------------------
-    name: {
-      firstName: { type: String, default: '' },
-      lastName: { type: String, default: '' },
-    },
-
-    contactNumber: { type: String, unique: true, sparse: true },
-
-    profilePhoto: { type: String, default: '' },
-
-    address: {
-      street: { type: String, default: '' },
-      city: { type: String, default: '' },
-      state: { type: String, default: '' },
-      country: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
-      longitude: { type: Number },
-      latitude: { type: Number },
-      geoAccuracy: { type: Number },
-      detailedAddress: { type: String },
-    },
-
-    NIF: { type: String, default: '' },
-
-    // ----------------------------------------------------------------
-    // Current/Real-Time Location Data (For live tracking during delivery)
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------
+    // Current/Real-Time Location Data
+    // ------------------------------------------------------
     currentSessionLocation: { type: liveLocationSchema },
 
-    // ----------------------------------------------------------------
-    // MULTIPLE SAVED ADDRESSES
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------
+    // Multiple Saved Delivery Addresses
+    // ------------------------------------------------------
     deliveryAddresses: [
       {
         street: { type: String },
@@ -107,40 +66,22 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
         detailedAddress: { type: String },
         isActive: { type: Boolean, default: false },
 
-        zoneId: { type: Schema.Types.ObjectId, default: null, ref: 'Zone' },
+        // Zone Integration & Metadata
+        zoneId: { type: Schema.Types.ObjectId, ref: 'Zone', default: null },
         addressType: { type: String, enum: Object.keys(AddressType) },
         notes: { type: String },
       },
     ],
 
-    // ----------------------------------------------------------------
-    // Security & Access
-    // ----------------------------------------------------------------
-    twoFactorEnabled: { type: Boolean, default: false },
-
-    loginDevices: {
-      type: [loginDeviceSchema],
-      default: [],
-    },
-
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------
     // Referral & Loyalty
-    // ----------------------------------------------------------------
-    referralCode: { type: String, default: '' },
+    // ------------------------------------------------------
+    referralCode: { type: String },
     loyaltyPoints: { type: Number, default: 0 },
 
-    // ----------------------------------------------------------------
-    // Admin Workflow / Audit
-    // ----------------------------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
-    remarks: { type: String, default: '' },
-
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------
     // Payment Methods
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------
     paymentMethods: [
       {
         cardType: { type: String, required: true },
@@ -152,13 +93,15 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   },
   {
     timestamps: true,
-    virtuals: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   },
 );
 
 // GEO INDEX FOR REAL-TIME LOCATION
 customerSchema.index({ currentSessionLocation: '2dsphere' });
 
+// Plugins
 customerSchema.plugin(passwordPlugin);
 
 export const Customer = model<TCustomer, IUserModel<TCustomer>>(

@@ -1,7 +1,7 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TFleetManager } from './fleet-manager.interface';
-import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/user.constant';
 import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
@@ -9,24 +9,25 @@ import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
 const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   {
     // ------------------------------------------
-    // Core Identifiers
+    // Core Identifiers (Synced with Interface)
     // ------------------------------------------
-    userId: {
+    authUserId: {
       type: String,
       required: true,
       unique: true,
     },
 
-    registeredBy: {
-      type: Schema.Types.ObjectId,
-      default: null,
-      ref: 'Admin',
+    customUserId: {
+      type: String,
+      required: true,
+      unique: true,
     },
 
     role: {
       type: String,
       enum: ['FLEET_MANAGER'],
       required: true,
+      default: 'FLEET_MANAGER',
     },
 
     email: {
@@ -50,55 +51,12 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
-      default: USER_STATUS.PENDING,
+      required: true,
     },
 
-    isEmailVerified: { type: Boolean, default: false },
-    isDeleted: { type: Boolean, default: false },
-    isUpdateLocked: { type: Boolean, default: false },
-
-    // ------------------------------------------
-    // FCM Tokens
-    // ------------------------------------------
-    fcmTokens: { type: [String], default: [] },
-
-    // --------------------------------------------------------
-    // Pending temporary Email and contact number
-    // --------------------------------------------------------
-    pendingEmail: { type: String },
-    pendingContactNumber: { type: String },
-
-    // ------------------------------------------
-    // OTP & Password Reset
-    // ------------------------------------------
-    otp: { type: String, default: '' },
-    isOtpExpired: { type: Date, default: null },
-
-    passwordResetToken: { type: String, default: '' },
-    passwordResetTokenExpiresAt: { type: Date, default: null },
-    passwordChangedAt: { type: Date, default: null },
-
-    // ------------------------------------------
-    // Personal Details
-    // ------------------------------------------
-    name: {
-      firstName: { type: String, default: '' },
-      lastName: { type: String, default: '' },
-    },
-
-    contactNumber: { type: String, default: '' },
-    profilePhoto: { type: String, default: '' },
-
-    address: {
-      street: { type: String, default: '' },
-      city: { type: String, default: '' },
-      state: { type: String, default: '' },
-      country: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
-      longitude: { type: Number },
-      latitude: { type: Number },
-      geoAccuracy: { type: Number },
-      detailedAddress: { type: String, default: '' },
+    isUpdateLocked: {
+      type: Boolean,
+      default: false
     },
 
     currentSessionLocation: {
@@ -109,41 +67,31 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // Business Details
     // ------------------------------------------
     businessDetails: {
-      businessName: { type: String, default: '' },
-      businessLicenseNumber: { type: String, default: '' },
-      NIF: { type: String, default: '' },
-      totalBranches: { type: Number, default: 1 },
+      businessName: { type: String, required: true },
+      businessLicenseNumber: { type: String },
+      NIF: { type: String },
+      totalBranches: { type: Number },
     },
 
     businessLocation: {
-      street: { type: String, default: '' },
-      city: { type: String, default: '' },
-      state: { type: String, default: '' },
-      country: { type: String, default: '' },
-      postalCode: { type: String, default: '' },
-      longitude: { type: Number },
+      street: { type: String, required: true },
+      city: { type: String, required: true },
+      state: { type: String, required: true },
+      country: { type: String, required: true },
+      postalCode: { type: String, required: true },
       latitude: { type: Number },
+      longitude: { type: Number },
       geoAccuracy: { type: Number },
     },
 
     // ------------------------------------------
-    // Bank Details
+    // Bank & Payment Information
     // ------------------------------------------
     bankDetails: {
-      bankName: { type: String, default: '' },
-      accountHolderName: { type: String, default: '' },
-      iban: { type: String, default: '' },
-      swiftCode: { type: String, default: '' },
-    },
-
-    // ------------------------------------------
-    // Documents
-    // ------------------------------------------
-    documents: {
-      myPhoto: { type: String, default: '' },
-      idProofFront: { type: String, default: '' },
-      idProofBack: { type: String, default: '' },
-      businessLicense: { type: String, default: '' },
+      bankName: { type: String, required: true },
+      accountHolderName: { type: String, required: true },
+      iban: { type: String, required: true },
+      swiftCode: { type: String, required: true },
     },
 
     // ------------------------------------------
@@ -151,32 +99,13 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // ------------------------------------------
     operationalData: {
       totalDrivers: { type: Number, default: 0 },
-      activeVehicles: { type: Number, default: 0 },
-      totalDeliveries: { type: Number, default: 0 },
+      activeVehicles: { type: Number },
+      totalDeliveries: { type: Number },
     },
 
-    // ------------------------------------------
-    // Security & Access
-    // ------------------------------------------
-    twoFactorEnabled: { type: Boolean, default: false },
-
-    loginDevices: {
-      type: [loginDeviceSchema],
-      default: [],
-    },
-
-    // ------------------------------------------
-    // Admin Workflow / Audit
-    // ------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-
-    submittedForApprovalAt: { type: Date, default: null },
-    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
-
-    remarks: { type: String, default: '' },
-
+    // --------------------------------------------------------
+    // Rating & Activity
+    // --------------------------------------------------------
     rating: {
       average: { type: Number, default: 0 },
       totalReviews: { type: Number, default: 0 },
@@ -184,9 +113,13 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   },
   {
     timestamps: true,
-    virtuals: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   },
 );
+
+// Geo-spatial Indexing
+fleetManagerSchema.index({ currentSessionLocation: '2dsphere' });
 
 fleetManagerSchema.plugin(passwordPlugin);
 
