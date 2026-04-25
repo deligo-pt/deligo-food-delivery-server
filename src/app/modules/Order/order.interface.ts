@@ -92,8 +92,6 @@ export type TOrder = {
   pickupAddress?: TAddress;
 
   // OTP Verification
-  deliveryOtp?: string; // generated when vendor accepts
-  isOtpVerified?: boolean; // vendor verifies driver OTP
   remarks?: string;
 
   // Order Lifecycle

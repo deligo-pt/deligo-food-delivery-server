@@ -97,22 +97,6 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
   });
 });
 
-// otp verification by vendor controller
-const otpVerificationByVendor = catchAsync(async (req, res) => {
-  const result = await OrderServices.otpVerificationByVendor(
-    req.params.orderId,
-    req.body.otp,
-    req.user as AuthUser,
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
-  });
-});
-
 // update order status by delivery partner controller
 const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
@@ -180,7 +164,6 @@ export const OrderControllers = {
   updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
-  otpVerificationByVendor,
   updateOrderStatusByDeliveryPartner,
   downloadInvoicePdfFromPd,
   getDeliveryPartnersDispatchOrder,
