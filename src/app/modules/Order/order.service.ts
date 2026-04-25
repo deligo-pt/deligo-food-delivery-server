@@ -15,7 +15,6 @@ import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
-import generateOtp from '../../utils/generateOtp';
 import mongoose from 'mongoose';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { NotificationService } from '../Notification/notification.service';
@@ -182,7 +181,7 @@ const createOrderAfterRedUniqPayment = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
-      'default',
+      'order_notification',
       'ORDER',
     );
 
@@ -361,12 +360,6 @@ const updateOrderStatusByVendor = async (
           geoAccuracy: currentUser?.businessLocation?.geoAccuracy,
           detailedAddress: currentUser?.businessLocation?.detailedAddress || '',
         };
-      }
-
-      // set delivery otp
-      if (!order.deliveryOtp) {
-        const { otp: deliveryOtp } = generateOtp();
-        order.deliveryOtp = deliveryOtp;
       }
 
       // --------------------------------------------------------
@@ -870,134 +863,6 @@ const partnerAcceptsDispatchedOrder = async (
   }
 };
 
-// otp verification by vendor service
-const otpVerificationByVendor = async (
-  orderId: string,
-  otp: string,
-  currentUser: AuthUser,
-) => {
-  if (!currentUser || currentUser.role !== 'VENDOR') {
-    throw new AppError(httpStatus.FORBIDDEN, 'Vendor not found.');
-  }
-
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${currentUser.status}`,
-    );
-  }
-
-  if (!otp || typeof otp !== 'string') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Valid OTP is required.');
-  }
-
-  const updatedOrder = await Order.findOneAndUpdate(
-    {
-      orderId,
-      vendorId: currentUser._id.toString(),
-      orderStatus: ORDER_STATUS.READY_FOR_PICKUP,
-      isOtpVerified: false,
-      deliveryOtp: otp,
-      isDeleted: false,
-      deliveryPartnerId: { $ne: null },
-    },
-    {
-      $set: {
-        isOtpVerified: true,
-        deliveryOtp: null,
-        orderStatus: ORDER_STATUS.PICKED_UP,
-        pickedUpAt: new Date(),
-      },
-    },
-    { new: true },
-  ).populate(
-    'deliveryPartnerId customerId',
-    'name userId role contactNumber currentSessionLocation profilePhoto',
-  );
-
-  if (!updatedOrder) {
-    const orderCheck = await Order.findOne({
-      orderId,
-      vendorId: currentUser._id.toString(),
-    });
-
-    if (!orderCheck) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'Order not found for this vendor.',
-      );
-    }
-    if (orderCheck.isOtpVerified) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `OTP is already verified. Order status is ${orderCheck.orderStatus}`,
-      );
-    }
-    if (orderCheck.orderStatus !== ORDER_STATUS.READY_FOR_PICKUP) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Order must be READY_FOR_PICKUP to verify OTP. Current status is ${orderCheck.orderStatus}`,
-      );
-    }
-
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'Invalid OTP or order status/assignment is incorrect.',
-    );
-  }
-
-  if (updatedOrder.deliveryPartnerId) {
-    await DeliveryPartner.findByIdAndUpdate(updatedOrder.deliveryPartnerId, {
-      $set: {
-        'operationalData.currentStatus': 'ON_DELIVERY',
-        'operationalData.lastActivityAt': new Date(),
-      },
-    });
-  }
-
-  // TODO: Notify Customer & Delivery Partner (Order is now PICKED_UP)
-  const customer = await Customer.findById(updatedOrder.customerId).lean();
-  const customerId = customer?.userId;
-  const deliveryPartner = await DeliveryPartner.findById(
-    updatedOrder.deliveryPartnerId,
-  ).lean();
-  const deliveryPartnerId = deliveryPartner?.userId;
-  const notificationPayload = {
-    title: 'Order is now PICKED_UP',
-    body: `Your order ${orderId} is now PICKED_UP.`,
-    data: {
-      orderId,
-      orderStatus: ORDER_STATUS.PICKED_UP,
-      type: 'ORDER',
-    },
-  };
-  if (customerId) {
-    NotificationService.sendToUser(
-      customerId!,
-      notificationPayload.title,
-      notificationPayload.body,
-      notificationPayload.data,
-      'default',
-      'ORDER',
-    );
-  }
-  if (deliveryPartnerId) {
-    NotificationService.sendToUser(
-      deliveryPartnerId!,
-      notificationPayload.title,
-      notificationPayload.body,
-      notificationPayload.data,
-      'default',
-      'ORDER',
-    );
-  }
-
-  return {
-    message: `OTP is verified. Order status is ${updatedOrder.orderStatus}`,
-    data: updatedOrder,
-  };
-};
-
 // update order status by delivery partner service
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
@@ -1014,6 +879,7 @@ const updateOrderStatusByDeliveryPartner = async (
 
   // VALID state transitions
   const validTransitions: Record<string, string> = {
+    [ORDER_STATUS.PICKED_UP]: ORDER_STATUS.READY_FOR_PICKUP,
     [ORDER_STATUS.ON_THE_WAY]: ORDER_STATUS.PICKED_UP,
     [ORDER_STATUS.DELIVERED]: ORDER_STATUS.ON_THE_WAY,
     [ORDER_STATUS.REASSIGNMENT_NEEDED]: ORDER_STATUS.ASSIGNED,
@@ -1092,24 +958,16 @@ const updateOrderStatusByDeliveryPartner = async (
           `Order status is already ${payload.orderStatus}.`,
         );
       }
-
-      if (!orderCheck.isOtpVerified && payload.orderStatus === 'ON_THE_WAY') {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Please verify the OTP first to start delivery.',
-        );
-      } else {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
-        );
-      }
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+      );
     }
 
     // Update partner record
     if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
       const partner = await DeliveryPartner.findById(
-        updatedOrder.deliveryPartnerId,
+        updatedOrder?.deliveryPartnerId,
       );
       if (!partner) {
         throw new AppError(
@@ -1582,7 +1440,6 @@ export const OrderServices = {
   updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
-  otpVerificationByVendor,
   updateOrderStatusByDeliveryPartner,
   getAllOrders,
   getSingleOrder,
