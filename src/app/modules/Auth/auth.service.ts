@@ -34,6 +34,7 @@ import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
+import { ReferralServices } from '../Referral/referral.service';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -454,12 +455,23 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     if (!existingUser) {
       const userId = generateUserId('/create-customer');
 
-      await Customer.create({
+      const newUser = await Customer.create({
         userId,
         role: 'CUSTOMER',
         email: payload.email,
         requiresOtpVerification: true,
       });
+      if (payload.referralCode) {
+        const res = await ReferralServices.createReferralEntry(
+          newUser,
+          payload.referralCode,
+        );
+        if (res) {
+          await Customer.findByIdAndUpdate(newUser._id, {
+            referredBy: res.referrerId,
+          });
+        }
+      }
     } else {
       await Customer.updateOne(
         { _id: existingUser._id },

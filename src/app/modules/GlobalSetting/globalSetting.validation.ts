@@ -2,11 +2,18 @@ import z from 'zod';
 
 const referralMilestoneSchema = z.object({
   friendsRequired: z.number().positive('Friends required must be > 0'),
-  rewardType: z.enum(['CASHBACK', 'FREE_MEAL', 'FREE_DELIVERY', 'CREDIT']),
+  rewardType: z.enum([
+    'CASHBACK',
+    'FREE_MEAL',
+    'FREE_DELIVERY',
+    'CREDIT',
+    'OTHER',
+  ]),
   rewardValue: z.number().nonnegative('Reward value must be >= 0'),
   minOrderAmountPerFriend: z
     .number()
     .nonnegative('Min order amount must be >= 0'),
+  validityDays: z.number().nonnegative().optional(),
 });
 
 const createGlobalSettingValidationSchema = z.object({

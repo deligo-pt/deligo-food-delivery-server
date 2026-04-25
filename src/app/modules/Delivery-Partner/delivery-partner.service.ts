@@ -12,6 +12,7 @@ import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
+import { generateReferralCode } from '../../utils/generateReferralCode';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
@@ -35,6 +36,17 @@ const updateDeliveryPartner = async (
       httpStatus.BAD_REQUEST,
       'Please verify your email before updating your profile.',
     );
+  }
+
+  // -----------------------------
+  // Referral Code Generation (New Logic)
+  // -----------------------------
+  if (!currentUser.referralCode) {
+    const firstName =
+      payload.name?.firstName || currentUser.name.firstName || 'USER';
+    const newReferralCode = await generateReferralCode(firstName);
+
+    payload.referralCode = newReferralCode;
   }
 
   // ---------------------------------------------------------

@@ -32,6 +32,7 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { Admin } from '../Admin/admin.model';
 import customNanoId from '../../utils/customNanoId';
 import { PointsServices } from '../Points/points.service';
+import { ReferralServices } from '../Referral/referral.service';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -1131,6 +1132,12 @@ const updateOrderStatusByDeliveryPartner = async (
           session,
         );
       }
+
+      await ReferralServices.distributeReferralBonus(
+        updatedOrder.customerId.toString(),
+        updatedOrder._id.toString(),
+        session,
+      );
 
       const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
 

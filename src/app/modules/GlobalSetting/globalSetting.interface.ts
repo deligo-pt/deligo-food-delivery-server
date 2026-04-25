@@ -1,5 +1,13 @@
 import mongoose from 'mongoose';
 
+export type TReferralMilestone = {
+  friendsRequired: number;
+  rewardType: 'CASHBACK' | 'FREE_MEAL' | 'FREE_DELIVERY' | 'CREDIT' | 'OTHER';
+  rewardValue: number;
+  minOrderAmountPerFriend: number;
+  validityDays?: number;
+};
+
 export type TGlobalSettings = {
   // --------------------------------------------------
   // Delivery Pricing
@@ -44,12 +52,7 @@ export type TGlobalSettings = {
     referralPoints: number;
     newRiderWelcomeBonus: number;
     pointsExpiryDays: number;
-    customerReferralMilestones: {
-      friendsRequired: number;
-      rewardType: 'CASHBACK' | 'FREE_MEAL' | 'FREE_DELIVERY' | 'CREDIT';
-      rewardValue: number;
-      minOrderAmountPerFriend: number;
-    }[];
+    customerReferralMilestones: TReferralMilestone[];
   };
 
   // Security & System State
@@ -69,59 +72,5 @@ export type TGlobalSettings = {
   // Meta Data
   meta: {
     updatedBy: mongoose.Types.ObjectId;
-    createdAt?: Date;
-    updatedAt?: Date;
   };
 };
-
-// export type TGlobalSettings = {
-//   // Delivery pricing
-//   deliveryChargePerKm: number;
-//   baseDeliveryCharge: number;
-//   minDeliveryCharge: number;
-//   maxDeliveryCharge?: number;
-//   freeDeliveryAbove?: number;
-//   maxDeliveryDistanceKm?: number;
-
-//   // Platform commission
-//   platformCommissionPercent: number;
-//   platformCommissionVatRate: number;
-//   fleetManagerCommissionPercent?: number;
-//   deliveryPartnerCommissionPercent?: number;
-//   deliveryVatRate?: number;
-//   vendorVatPercent?: number;
-
-//   // customer nearest vendor search radius
-//   customerNearestVendorRadiusKm: number;
-
-//   // Order rules
-//   minOrderAmount?: number;
-//   maxOrderAmount?: number;
-//   maxItemsPerOrder?: number;
-
-//   // Cancellation & refund
-//   cancelTimeLimitMinutes?: number;
-//   refundProcessingDays?: number;
-
-//   // Offers
-//   isOfferEnabled: boolean;
-//   maxDiscountPercent?: number;
-
-//   // Order lifecycle automation
-//   autoCancelUnacceptedOrderMinutes?: number;
-//   autoMarkDeliveredAfterMinutes?: number;
-
-//   // OTP & security
-//   orderOtpEnabled: boolean;
-//   otpLength?: number;
-//   otpExpiryMinutes?: number;
-
-//   // Platform state
-//   isPlatformLive: boolean;
-//   maintenanceMessage?: string;
-
-//   // Meta
-//   updatedBy?: string;
-//   createdAt?: Date;
-//   updatedAt?: Date;
-// };

@@ -123,6 +123,16 @@ const deliveryPartnerSchema = new Schema<
       passportNumber: { type: String, default: '' },
     },
 
+    // ------------------------------------------------------
+    // Referral
+    // ------------------------------------------------------
+    referralCode: { type: String },
+    referredBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'DeliveryPartner',
+      default: null,
+    },
+
     //-------------------------------------------------
     // Legal Status
     //-------------------------------------------------
