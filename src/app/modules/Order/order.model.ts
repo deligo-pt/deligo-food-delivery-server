@@ -164,8 +164,6 @@ const orderSchema = new Schema<TOrder>(
     rejectReason: { type: String },
     remarks: { type: String, default: '' },
 
-    deliveryOtp: { type: String },
-    isOtpVerified: { type: Boolean, default: false },
     dispatchPartnerPool: { type: [String], default: [] },
     dispatchExpiresAt: { type: Date },
 
