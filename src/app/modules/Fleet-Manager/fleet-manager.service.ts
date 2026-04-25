@@ -21,8 +21,7 @@ const fleetManagerUpdate = async (
   // Find Fleet Manager
   // ---------------------------------------------------------
   const existingFleetManager = await FleetManager.findOne({
-    userId: fleetManagerId,
-    isDeleted: false,
+    customUserId: fleetManagerId
   });
 
   if (!existingFleetManager) {
@@ -34,7 +33,7 @@ const fleetManagerUpdate = async (
   // ---------------------------------------------------------
   const isSelf =
     currentUser.role === 'FLEET_MANAGER' &&
-    currentUser.userId === existingFleetManager.userId;
+    currentUser.customUserId === existingFleetManager.customUserId;
 
   if (!isSelf) {
     throw new AppError(
@@ -46,12 +45,12 @@ const fleetManagerUpdate = async (
   // ---------------------------------------------------------
   // Ensure email is verified before self-update
   // ---------------------------------------------------------
-  if (!existingFleetManager.isEmailVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please verify your email before updating your profile.',
-    );
-  }
+  // if (!existingFleetManager.isEmailVerified) {
+  //   throw new AppError(
+  //     httpStatus.BAD_REQUEST,
+  //     'Please verify your email before updating your profile.',
+  //   );
+  // }
 
   if (payload.businessLocation) {
     const { longitude, latitude, geoAccuracy = 0 } = payload.businessLocation;
@@ -92,7 +91,7 @@ const fleetManagerUpdate = async (
   // Perform Update
   // ---------------------------------------------------------
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
-    { userId: fleetManagerId },
+    { customUserId: fleetManagerId },
     { $set: payload },
     { new: true },
   );

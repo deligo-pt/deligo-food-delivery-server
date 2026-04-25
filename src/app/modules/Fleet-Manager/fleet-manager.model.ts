@@ -42,12 +42,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       ],
     },
 
-    password: {
-      type: String,
-      required: true,
-      select: false,
-    },
-
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
@@ -67,18 +61,18 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // Business Details
     // ------------------------------------------
     businessDetails: {
-      businessName: { type: String, required: true },
-      businessLicenseNumber: { type: String },
-      NIF: { type: String },
-      totalBranches: { type: Number },
+      businessName: { type: String, default: '' },
+      businessLicenseNumber: { type: String, default: '' },
+      NIF: { type: String, default: '' },
+      totalBranches: { type: Number, default: 1 },
     },
 
     businessLocation: {
-      street: { type: String, required: true },
-      city: { type: String, required: true },
-      state: { type: String, required: true },
-      country: { type: String, required: true },
-      postalCode: { type: String, required: true },
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      country: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
       latitude: { type: Number },
       longitude: { type: Number },
       geoAccuracy: { type: Number },
@@ -88,10 +82,10 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // Bank & Payment Information
     // ------------------------------------------
     bankDetails: {
-      bankName: { type: String, required: true },
-      accountHolderName: { type: String, required: true },
-      iban: { type: String, required: true },
-      swiftCode: { type: String, required: true },
+      bankName: { type: String, default: '' },
+      accountHolderName: { type: String, default: '' },
+      iban: { type: String, default: '' },
+      swiftCode: { type: String, default: '' },
     },
 
     // ------------------------------------------
@@ -99,8 +93,8 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // ------------------------------------------
     operationalData: {
       totalDrivers: { type: Number, default: 0 },
-      activeVehicles: { type: Number },
-      totalDeliveries: { type: Number },
+      activeVehicles: { type: Number, default: 0 },
+      totalDeliveries: { type: Number, default: 0 },
     },
 
     // --------------------------------------------------------

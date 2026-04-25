@@ -10,7 +10,6 @@ export type TAdmin = {
   customUserId: string;
   role: 'ADMIN' | 'SUPER_ADMIN';
   email: string;
-  password: string;
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
 

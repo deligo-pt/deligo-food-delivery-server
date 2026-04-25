@@ -10,7 +10,6 @@ export type TFleetManager = {
   customUserId: string;
   role: 'FLEET_MANAGER';
   email: string;
-  password: string;
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
 

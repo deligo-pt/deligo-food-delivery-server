@@ -92,7 +92,7 @@ const handleUserEvent = async (payload: any) => {
 // 1. For new user registration → Create or Upsert
 // Alternative - More explicit create approach
 const handleUserRegistered = async (Model: mongoose.Model<any>, payload: any) => {
-    const { id, userId, email, role, registeredBy, ...rest } = payload;
+    const { id, userId, email, role, registeredBy, status, ...rest } = payload;
 
     try {
         // First try to find if already exists
@@ -112,6 +112,7 @@ const handleUserRegistered = async (Model: mongoose.Model<any>, payload: any) =>
                 customUserId: userId,
                 email,
                 role,
+                status,
                 registeredBy,
                 ...rest,
                 createdAt: new Date(),

@@ -85,7 +85,7 @@ const vendorUpdate = async (
 
   // 8. Execution: Perform the update using findOneAndUpdate with the atomic $set operator
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { userId: existingVendor.userId },
+    { customUserId: existingVendor.customUserId },
     { $set: flattenedPayload },
     { new: true, runValidators: true }, // Ensure new data adheres to schema rules
   );

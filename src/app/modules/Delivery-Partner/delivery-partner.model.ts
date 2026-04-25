@@ -47,29 +47,32 @@ const deliveryPartnerSchema = new Schema<
       enum: Object.keys(USER_STATUS),
       required: true,
     },
+    isUpdateLocked: {
+      type: Boolean,
+      default: false
+    },
 
     // -------------------------------------------------
     // Live Location
     // -------------------------------------------------
     currentSessionLocation: {
       type: liveLocationSchema,
-      required: true
     },
 
     personalInfo: {
       dateOfBirth: { type: Date },
       gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'] },
-      nationality: { type: String },
-      NIF: { type: String },
-      passportNumber: { type: String },
+      nationality: { type: String, default: '' },
+      NIF: { type: String, default: '' },
+      passportNumber: { type: String, default: '' },
     },
 
     // -------------------------------------------------
     // Legal Status / Work Rights
     // -------------------------------------------------
     legalStatus: {
-      residencePermitType: { type: String },
-      residencePermitNumber: { type: String },
+      residencePermitType: { type: String, default: '' },
+      residencePermitNumber: { type: String, default: '' },
       residencePermitExpiry: { type: Date },
     },
 
@@ -77,10 +80,10 @@ const deliveryPartnerSchema = new Schema<
     // Payment & Banking Details
     // -------------------------------------------------
     bankDetails: {
-      bankName: { type: String },
-      accountHolderName: { type: String },
-      iban: { type: String },
-      swiftCode: { type: String },
+      bankName: { type: String, default: '' },
+      accountHolderName: { type: String, default: '' },
+      iban: { type: String, default: '' },
+      swiftCode: { type: String, default: '' },
     },
 
     // -------------------------------------------------
@@ -91,12 +94,12 @@ const deliveryPartnerSchema = new Schema<
         type: String,
         enum: ['BICYCLE', 'E-BIKE', 'SCOOTER', 'MOTORBIKE', 'CAR'],
       },
-      brand: { type: String },
-      model: { type: String },
-      licensePlate: { type: String },
-      drivingLicenseNumber: { type: String },
+      brand: { type: String, default: '' },
+      model: { type: String, default: '' },
+      licensePlate: { type: String, default: '' },
+      drivingLicenseNumber: { type: String, default: '' },
       drivingLicenseExpiry: { type: Date },
-      insurancePolicyNumber: { type: String },
+      insurancePolicyNumber: { type: String, default: '' },
       insuranceExpiry: { type: Date },
     },
 
@@ -121,7 +124,7 @@ const deliveryPartnerSchema = new Schema<
         powerBank: { type: Boolean, default: false },
       },
       workedWithOtherPlatform: { type: Boolean, default: false },
-      otherPlatformName: { type: String },
+      otherPlatformName: { type: String, default: '' },
     },
 
     // -------------------------------------------------
@@ -140,17 +143,18 @@ const deliveryPartnerSchema = new Schema<
       currentStatus: {
         type: String,
         enum: Object.keys(currentStatusOptions),
+        default: "OFFLINE",
         required: true,
       },
       assignmentZoneId: {
         type: Schema.Types.ObjectId,
         ref: 'Zone',
-        required: true
+        default: null
       },
-      currentZoneId: { type: Schema.Types.ObjectId, ref: 'Zone' },
-      currentOrderId: { type: Schema.Types.ObjectId, ref: 'Order' },
+      currentZoneId: { type: Schema.Types.ObjectId, ref: 'Zone', default: null },
+      currentOrderId: { type: Schema.Types.ObjectId, ref: 'Order', default: null },
       capacity: { type: Number, required: true, default: 1 },
-      isWorking: { type: Boolean, default: false, required: true },
+      isWorking: { type: Boolean, default: false },
       lastActivityAt: { type: Date },
     },
 

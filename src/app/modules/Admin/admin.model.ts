@@ -33,12 +33,6 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       lowercase: true,
       trim: true,
     },
-    password: {
-      type: String,
-      required: true,
-      // Typically you'd want select: false here, 
-      // but keeping it basic to match your previous style.
-    },
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),

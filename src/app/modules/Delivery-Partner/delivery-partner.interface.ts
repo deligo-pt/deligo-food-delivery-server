@@ -14,6 +14,7 @@ export type TDeliveryPartner = {
   role: 'DELIVERY_PARTNER';
   email: string;
   status: keyof typeof USER_STATUS;
+  isUpdateLocked: boolean;
 
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)
