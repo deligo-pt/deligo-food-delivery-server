@@ -8,7 +8,7 @@ const sosSchema = new Schema<TSos>(
       id: {
         type: Schema.Types.ObjectId,
         required: true,
-        refPath: 'userId.model',
+        refPath: 'userObjectId.model',
       },
       model: {
         type: String,

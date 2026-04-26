@@ -17,7 +17,7 @@ const PointsSchema = new Schema<TPoints>(
       id: {
         type: Schema.Types.ObjectId,
         required: true,
-        refPath: 'userId.model',
+        refPath: 'userObjectId.model',
       },
       model: {
         type: String,
@@ -40,11 +40,11 @@ export const Points = model<TPoints>('Points', PointsSchema);
 // --------------------------------------------------
 const PointsLogSchema = new Schema<TPointsLog>(
   {
-    userId: {
+    userObjectId: {
       id: {
         type: Schema.Types.ObjectId,
         required: true,
-        refPath: 'userId.model',
+        refPath: 'userObjectId.model',
       },
       model: { type: String, required: true, enum: ALL_USER_MODELS_ENUM },
     },
@@ -71,4 +71,7 @@ const PointsLogSchema = new Schema<TPointsLog>(
 
 export const PointsLog = model<TPointsLog>('PointsLog', PointsLogSchema);
 
-PointsSchema.index({ 'userId.id': 1, 'userId.model': 1 }, { unique: true });
+PointsSchema.index(
+  { 'userObjectId.id': 1, 'userObjectId.model': 1 },
+  { unique: true },
+);

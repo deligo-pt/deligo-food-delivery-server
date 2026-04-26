@@ -126,8 +126,11 @@ const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser?.customUserId;
-  if (currentUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
+  const customUserId = currentUser?.customUserId;
+  if (
+    currentUser?.role === 'FLEET_MANAGER' &&
+    customUserId !== fleetManagerId
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this fleet manager!',

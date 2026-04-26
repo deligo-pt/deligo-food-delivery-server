@@ -38,8 +38,7 @@ const updateCustomer = async (
   // Referral Code Generation (New Logic)
   // -----------------------------
   if (!currentUser.referralCode) {
-    const firstName =
-      payload.name?.firstName || currentUser.name.firstName || 'USER';
+    const firstName = currentUser.name.firstName || 'USER';
     const newReferralCode = await generateReferralCode(firstName);
 
     payload.referralCode = newReferralCode;
@@ -317,9 +316,9 @@ const updateDeliveryAddress = async (
   payload: Partial<TDeliveryAddress>,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.customUserId;
+  const customUserId = currentUser.customUserId;
   const customer = await Customer.findOne({
-    customUserId: userId,
+    customUserId,
     'deliveryAddresses._id': addressId,
   });
 
@@ -362,7 +361,7 @@ const updateDeliveryAddress = async (
     }
   });
   const updateResult = await Customer.updateOne(
-    { customUserId: userId, 'deliveryAddresses._id': addressId },
+    { customUserId, 'deliveryAddresses._id': addressId },
     { $set: updateFields },
     { runValidators: true },
   );
@@ -382,14 +381,14 @@ const toggleDeliveryAddressStatus = async (
   addressId: string,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.customUserId;
+  const customUserId = currentUser.customUserId;
   await Customer.updateOne(
-    { customUserId: userId },
+    { customUserId },
     { $set: { 'deliveryAddresses.$[].isActive': false } },
   );
 
   const updatedCustomer = await Customer.findOneAndUpdate(
-    { customUserId: userId, 'deliveryAddresses._id': addressId },
+    { customUserId, 'deliveryAddresses._id': addressId },
     { $set: { 'deliveryAddresses.$.isActive': true } },
     { new: true },
   );
@@ -418,9 +417,9 @@ const deleteDeliveryAddress = async (
   addressId: string,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.customUserId;
+  const customUserId = currentUser.customUserId;
   const result = await Customer.findOne(
-    { customUserId: userId },
+    { customUserId },
     { deliveryAddresses: { $elemMatch: { _id: addressId } } },
   );
 
@@ -438,7 +437,7 @@ const deleteDeliveryAddress = async (
     );
   }
   await Customer.updateOne(
-    { customUserId: userId },
+    { customUserId },
     { $pull: { deliveryAddresses: { _id: addressId } } },
   );
   return null;
@@ -498,11 +497,11 @@ const getSingleCustomerFromDB = async (
   let query: any;
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     query = Customer.findOne({
-      userId: currentUser?.customUserId,
+      customUserId: currentUser?.customUserId,
       isDeleted: false,
     });
     if (
-      query?.userId !== currentUser?.customUserId ||
+      query?.customUserId !== currentUser?.customUserId ||
       customerId !== currentUser?.customUserId
     ) {
       throw new AppError(
@@ -512,14 +511,14 @@ const getSingleCustomerFromDB = async (
     }
   } else {
     query = Customer.findOne({
-      userId: customerId,
+      customUserId: customerId,
     });
   }
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name customUserId role',
+    rejectedBy: 'name customUserId role',
+    blockedBy: 'name customUserId role',
   });
 
   populateOptions.forEach((option) => {

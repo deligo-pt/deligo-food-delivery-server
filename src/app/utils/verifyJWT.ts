@@ -6,7 +6,7 @@ import { TUserRole, USER_STATUS } from '../constant/user.constant';
 
 export const createToken = (
   jwtPayload: {
-    userId: string;
+    customUserId: string;
     name?: {
       firstName: string;
       lastName: string;

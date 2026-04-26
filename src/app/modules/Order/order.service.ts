@@ -130,7 +130,7 @@ const createOrderAfterRedUniqPayment = async (
         {
           transactionId: transactionId,
           orderId: order._id,
-          userId: currentUser?._id,
+          userObjectId: currentUser?._id,
           userModel: 'Customer',
           totalAmount: order.payoutSummary.grandTotal,
           type: 'ORDER_PAYMENT',
@@ -1235,7 +1235,7 @@ const updateOrderStatusByDeliveryPartner = async (
         {
           transactionId: `TXN-V-${orderId}`,
           orderId: orderDbId,
-          userId: updatedOrder.vendorId,
+          userObjectId: updatedOrder.vendorId,
           userModel: 'Vendor',
           baseAmount: roundTo2(vendorEarningsBeforeTax),
           taxAmount: roundTo2(vendorPayableTax),
@@ -1248,7 +1248,7 @@ const updateOrderStatusByDeliveryPartner = async (
         {
           transactionId: `TXN-DP-${orderId}`,
           orderId: orderDbId,
-          userId: partner._id,
+          userObjectId: partner._id,
           userModel: 'DeliveryPartner',
           baseAmount: roundTo2(riderEarningsBeforeTax),
           taxAmount: roundTo2(riderPayableTax),
@@ -1263,7 +1263,7 @@ const updateOrderStatusByDeliveryPartner = async (
         {
           transactionId: `TXN-DELIGO-${orderId}`,
           orderId: orderDbId,
-          userId: SYSTEM_ADMIN,
+          userObjectId: SYSTEM_ADMIN,
           userModel: 'Admin',
           baseAmount: roundTo2(deliGoCommission),
           taxAmount: roundTo2(commissionVat),
@@ -1279,7 +1279,7 @@ const updateOrderStatusByDeliveryPartner = async (
         transactionsToCreate.push({
           transactionId: `TXN-F-${orderId}`,
           orderId: orderDbId,
-          userId: fleetManagerId,
+          userObjectId: fleetManagerId,
           userModel: 'FleetManager',
           baseAmount: roundTo2(totalDeliveryCharge),
           taxAmount: 0,

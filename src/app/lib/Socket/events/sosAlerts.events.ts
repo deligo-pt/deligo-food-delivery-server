@@ -7,7 +7,7 @@ const sosLastDbUpdateMap = new Map<string, number>();
 
 export const registerSosSocketEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as AuthUser;
-  const userId = user?.customUserId;
+  const customUserId = user?.customUserId;
   const userRole = user?.role;
 
   // --------------------------------------------
@@ -33,7 +33,7 @@ export const registerSosSocketEvents = (io: Server, socket: Socket) => {
       try {
         const { sosId, latitude, longitude, geoAccuracy = 0 } = payload;
 
-        if (!sosId || !userId) return;
+        if (!sosId || !customUserId) return;
 
         if (
           latitude < -90 ||

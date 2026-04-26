@@ -39,7 +39,7 @@ const getOrCreateActiveTicket = async (
 
     ticket = await SupportTicket.create({
       ticketId,
-      userId: userObjectId,
+      userObjectId,
       userModel,
       category,
       referenceOrderId,
@@ -181,16 +181,16 @@ const getAllTickets = async (
   let findQuery = SupportTicket.find();
 
   if (!isAgent) {
-    findQuery = findQuery.where({ userId: currentUser._id });
+    findQuery = findQuery.where({ userObjectId: currentUser._id });
   }
   const qb = new QueryBuilder(
     findQuery
       .populate(
-        'userId',
-        'userId name businessDetails.businessName profilePhoto',
+        'userObjectId',
+        'customUserId name businessDetails.businessName profilePhoto',
       )
       .populate('referenceOrderId', 'orderId status')
-      .populate('assignedAdminId', 'userId name email'),
+      .populate('assignedAdminId', 'customUserId name email'),
     query,
   )
     .search(['ticketId', 'lastMessage'])

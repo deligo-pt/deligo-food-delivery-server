@@ -4692,7 +4692,7 @@ const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
   const earnings = await Transaction.aggregate([
     {
       $match: {
-        userId: riderObjectId,
+        userObjectId: riderObjectId,
         userModel: 'DeliveryPartner',
         status: 'SUCCESS',
         type: 'DELIVERY_PARTNER_EARNING',

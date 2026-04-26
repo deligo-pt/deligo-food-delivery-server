@@ -58,7 +58,7 @@ const sendPushSafely = async (
 
 //  Send to one user
 const sendToUser = (
-  userId: string,
+  customUserId: string,
   title: string,
   message: string,
   data?: Record<string, string>,
@@ -69,7 +69,7 @@ const sendToUser = (
   setImmediate(async () => {
     try {
       const { user } = await findUserById({
-        customUserId: userId,
+        customUserId,
       });
 
       if (!user) return;

@@ -70,7 +70,7 @@ const initiateSettlement = async (
       [
         {
           payoutId: `PAY-${uniquePayoutId}`,
-          userId: userObjectId,
+          userObjectId,
           userModel: targetUserModel,
           senderId: senderId,
           senderModel: senderModel,
@@ -125,7 +125,7 @@ const rejectPayout = async (
 
   try {
     const payout = await Payout.findOne({ payoutId })
-      .populate('userId', 'userId')
+      .populate('userObjectId', 'customUserId')
       .session(session);
 
     if (!payout) {
@@ -187,8 +187,8 @@ const rejectPayout = async (
 // retry failed payout service
 const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
   const payout = await Payout.findOne({ payoutId }).populate(
-    'userId',
-    'userId bankDetails',
+    'userObjectId',
+    'customUserId bankDetails',
   );
 
   if (!payout || payout.status !== 'FAILED') {
@@ -231,7 +231,7 @@ const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
     },
   };
   NotificationService.sendToUser(
-    user.userId,
+    user.customUserId,
     NotificationPayload.title,
     NotificationPayload.message,
     NotificationPayload.data,
@@ -264,7 +264,7 @@ const finalizeSettlement = async (
 
   try {
     const payout = await Payout.findOne({ payoutId })
-      .populate('userId', 'userId bankDetails')
+      .populate('userObjectId', 'customUserId bankDetails')
       .session(session);
 
     if (!payout || payout.status !== 'PROCESSING') {
@@ -320,7 +320,7 @@ const finalizeSettlement = async (
         {
           transactionId: `TXN-SETTLE-${Date.now()}`,
           payoutId: payout._id,
-          userId: payout.userObjectId,
+          userObjectId: payout.userObjectId,
           userModel: payout.userModel,
           totalAmount: amountToDeduct,
           type: settlementTypeMapper[payout.userModel],
@@ -358,7 +358,7 @@ const finalizeSettlement = async (
       },
     };
     NotificationService.sendToUser(
-      (result.userObjectId as any).userId,
+      (result.userObjectId as any).customUserId,
       NotificationPayload.title,
       NotificationPayload.message,
       NotificationPayload.data,
@@ -380,19 +380,19 @@ const getAllPayouts = async (
   query: Record<string, unknown>,
   currentUser: AuthUser,
 ) => {
-  const { role, _id: currentUserId } = currentUser;
+  const { role, _id: userObjectId } = currentUser;
   const { startDate, endDate, ...remainingQuery } = query;
   const filter: Record<string, any> = { ...remainingQuery };
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
     if (role === 'FLEET_MANAGER') {
-      filter.$or = [{ senderId: currentUserId }, { userId: currentUserId }];
+      filter.$or = [{ senderId: userObjectId }, { userObjectId: userObjectId }];
 
-      if (query.userId) {
-        filter.userId = query.userId;
+      if (query.userObjectId) {
+        filter.userObjectId = query.userObjectId;
       }
     } else {
-      filter.userId = currentUserId;
+      filter.userObjectId = userObjectId;
     }
   }
 
@@ -412,7 +412,7 @@ const getAllPayouts = async (
 
   const payoutQuery = new QueryBuilder(
     Payout.find()
-      .populate('userId', 'name profilePhoto userId role')
+      .populate('userObjectId', 'name profilePhoto customUserId role')
       .populate('senderId', 'name role'),
     filter,
   )
@@ -429,11 +429,9 @@ const getAllPayouts = async (
     let payoutCategory = 'GENERAL';
 
     if (role === 'FLEET_MANAGER') {
-      if (payout.userId?._id?.toString() === currentUserId.toString()) {
+      if (payout.userObjectId?._id?.toString() === userObjectId.toString()) {
         payoutCategory = 'RECEIVED_FROM_ADMIN';
-      } else if (
-        payout.senderId?._id?.toString() === currentUserId.toString()
-      ) {
+      } else if (payout.senderId?._id?.toString() === userObjectId.toString()) {
         payoutCategory = 'PAID_TO_PARTNER';
       }
     }
@@ -454,7 +452,10 @@ const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
   const { role, _id: currentUserId } = currentUser;
 
   const payout = await Payout.findOne({ payoutId })
-    .populate('userId', 'name profilePhoto userId email phone bankDetails')
+    .populate(
+      'userObjectId',
+      'name profilePhoto customUserId email phone bankDetails',
+    )
     .populate('senderId', 'name role profilePhoto');
 
   if (!payout) {

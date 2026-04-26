@@ -166,7 +166,7 @@ const updateVendorLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { userId: currentUser.customUserId },
+    { customUserId: currentUser.customUserId },
     { $set: updateData },
     {
       new: true,
@@ -227,9 +227,9 @@ const getAllVendors = async (
     .search(VendorSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name customUserId role',
+    rejectedBy: 'name customUserId role',
+    blockedBy: 'name customUserId role',
   });
 
   populateOptions.forEach((option) => {
@@ -257,19 +257,19 @@ const getSingleVendor = async (vendorId: string, currentUser: AuthUser) => {
   let query: any;
   if (currentUser.role === 'VENDOR') {
     query = Vendor.findOne({
-      userId: currentUser.customUserId,
+      customUserId: currentUser.customUserId,
       isDeleted: false,
     });
   } else {
     query = Vendor.findOne({
-      userId: vendorId,
+      customUserId: vendorId,
     });
   }
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name customUserId role',
+    rejectedBy: 'name customUserId role',
+    blockedBy: 'name customUserId role',
   });
 
   populateOptions.forEach((option) => {
@@ -354,7 +354,7 @@ const getAllVendorsForCustomer = async (
 
   // 5. Select parent paths to avoid 'Path Collision'
   vendors.modelQuery = vendors.modelQuery.select(
-    'name userId  businessDetails businessLocation documents rating currentSessionLocation',
+    'name customUserId  businessDetails businessLocation documents rating currentSessionLocation',
   );
 
   const meta = await vendors.countTotal();
@@ -377,7 +377,7 @@ const getAllVendorsForCustomer = async (
 
       return {
         id: vendor._id,
-        userId: vendor.userId,
+        customUserId: vendor.customUserId,
         name: vendor.name,
         businessDetails: {
           businessName: vendor.businessDetails?.businessName,

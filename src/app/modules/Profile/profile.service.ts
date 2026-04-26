@@ -2,7 +2,6 @@
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import {
-  ALL_USER_MODELS,
   AuthUser,
   ROLE_COLLECTION_MAP,
   USER_STATUS,
@@ -15,6 +14,7 @@ import generateOtp from '../../utils/generateOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import mongoose from 'mongoose';
 import { generateReferralCode } from '../../utils/generateReferralCode';
+import { ALL_USER_MODELS } from '../../interfaces/user.interface';
 
 // get my profile service
 const getMyProfile = async (currentUser: AuthUser) => {
@@ -108,7 +108,7 @@ const updateMyProfile = async (
   // Update User Document
   // -----------------------------
   const updatedUser = await model.findOneAndUpdate(
-    { userId: currentUser.userId },
+    { customUserId: currentUser.customUserId },
     { $set: payload },
     { new: true },
   );

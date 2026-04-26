@@ -19,7 +19,7 @@ export type TPoints = {
 
 export type TPointsLog = {
   _id: Schema.Types.ObjectId;
-  userId: {
+  userObjectId: {
     id: Schema.Types.ObjectId;
     model: TUserModel;
   };

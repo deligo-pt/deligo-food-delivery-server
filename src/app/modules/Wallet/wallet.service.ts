@@ -18,11 +18,11 @@ const getAllWallets = async (
       'registeredBy.model': 'FleetManager',
     }).select('_id');
     const partnerIds = partners.map((p) => p._id);
-    query.userId = { $in: partnerIds };
+    query.userObjectId = { $in: partnerIds };
     query.userModel = 'DeliveryPartner';
   }
   const wallets = new QueryBuilder(
-    Wallet.find().populate('userId', 'userId name email'),
+    Wallet.find().populate('userObjectId', 'customUserId name email'),
     query,
   )
     .fields()
@@ -41,8 +41,8 @@ const getAllWallets = async (
 // get single wallet
 const getSingleWallet = async (walletId: string, currentUser: AuthUser) => {
   const wallet = await Wallet.findOne({ walletId }).populate(
-    'userId',
-    'name email userId',
+    'userObjectId',
+    'name email customUserId',
   );
 
   if (!wallet) {
@@ -68,7 +68,7 @@ const getSingleWallet = async (walletId: string, currentUser: AuthUser) => {
 
 // get my wallet
 const getMyWallet = async (currentUser: AuthUser) => {
-  const userId = new mongoose.Types.ObjectId(currentUser._id);
+  const userObjectId = new mongoose.Types.ObjectId(currentUser._id);
   const adminUserId = new mongoose.Types.ObjectId('694a088c43ee1acbe0e9c87d');
 
   let wallet;
@@ -76,11 +76,11 @@ const getMyWallet = async (currentUser: AuthUser) => {
   if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') {
     wallet = await Wallet.findOne({
       userObjectId: adminUserId,
-    }).populate('userId', 'name email userId');
+    }).populate('userObjectId', 'name email customUserId');
   } else {
     wallet = await Wallet.findOne({
-      userObjectId: userId,
-    }).populate('userId', 'name email userId');
+      userObjectId,
+    }).populate('userObjectId', 'name email customUserId');
   }
   if (!wallet) {
     throw new AppError(httpStatus.NOT_FOUND, 'Wallet not found for this user');

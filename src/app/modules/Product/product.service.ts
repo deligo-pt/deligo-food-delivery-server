@@ -699,7 +699,7 @@ const getAllProducts = async (
 
   const populateOptions = getPopulateOptions(role, {
     vendor:
-      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
+      'customUserId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
   });
 
@@ -745,7 +745,7 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
   }
   const populateOptions = getPopulateOptions(currentUser.role, {
     vendor:
-      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
+      'customUserId businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
   });
 

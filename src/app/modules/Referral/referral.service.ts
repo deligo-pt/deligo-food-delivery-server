@@ -131,7 +131,10 @@ const distributeReferralBonus = async (
 
       if (rewardType === 'CASHBACK' || rewardType === 'CREDIT') {
         await DeliGoBalance.findOneAndUpdate(
-          { userId: referral.referrerId, userModel: referral.referrerModel },
+          {
+            userObjectId: referral.referrerId,
+            userModel: referral.referrerModel,
+          },
           { $inc: { totalBalance: rewardValue, totalEarned: rewardValue } },
           { upsert: true, session },
         );
@@ -157,7 +160,7 @@ const distributeReferralBonus = async (
         await Coupon.create(
           [
             {
-              userId: referral.referrerId,
+              userObjectId: referral.referrerId,
               userModel: referral.referrerModel,
               code: couponCode,
               type: rewardType,
@@ -193,7 +196,7 @@ const getReferralStats = async (currentUser: AuthUser) => {
       .select('rewards.customerReferralMilestones')
       .lean(),
     DeliGoBalance.findOne({
-      userId: currentUser._id,
+      userObjectId: currentUser._id,
       userModel: userModel,
     }).lean(),
     mongoose
