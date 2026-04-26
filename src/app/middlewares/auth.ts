@@ -81,16 +81,16 @@ const auth = (...requiredRoles: TUserRole[]) => {
     }
 
     // 8. Session Validation: Check if the current deviceId exists in active loginDevices
-    const isSessionActive = user.loginDevices?.some(
-      (device: { deviceId: string }) => device.deviceId === deviceId,
-    );
+    // const isSessionActive = user.loginDevices?.some(
+    //   (device: { deviceId: string }) => device.deviceId === deviceId,
+    // );
 
-    if (!isSessionActive) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        'This session is no longer active. Please log in again.',
-      );
-    }
+    // if (!isSessionActive) {
+    //   throw new AppError(
+    //     httpStatus.UNAUTHORIZED,
+    //     'This session is no longer active. Please log in again.',
+    //   );
+    // }
 
     // 9. Role-Based Access Control: Check if the user has the required role to access the route
     if (requiredRoles && !requiredRoles.includes(role)) {

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
@@ -9,60 +9,12 @@ export type TDeliveryPartner = {
   // Core Identifiers & Credentials
   // -------------------------------------------------
   _id?: string;
-  userId: string;
-  registeredBy?: {
-    id: mongoose.Types.ObjectId;
-    model: TRegisteredByModel;
-    role: 'ADMIN' | 'SUPER_ADMIN' | 'FLEET_MANAGER';
-  };
+  authUserId: string;
+  customUserId: string;
   role: 'DELIVERY_PARTNER';
   email: string;
-  password: string;
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
-  isDeleted: boolean;
   isUpdateLocked: boolean;
-
-  // FCM tokens for push notifications
-  fcmTokens?: string[];
-
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
-  // ------------------------------------------------------
-  // OTP & Password Reset
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-  requiresOtpVerification?: boolean;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
-
-  // -------------------------------------------------
-  // 1) Personal Information
-  // -------------------------------------------------
-  name?: {
-    firstName?: string;
-    lastName?: string;
-  };
-  contactNumber?: string;
-  profilePhoto?: string;
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    longitude?: number;
-    latitude?: number;
-    geoAccuracy?: number;
-    detailedAddress?: string;
-  };
 
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)
@@ -161,37 +113,6 @@ export type TDeliveryPartner = {
 
     lastActivityAt?: Date;
   };
-
-  // -------------------------------------------------
-  // 9) Documents
-  // -------------------------------------------------
-  documents?: {
-    myPhoto?: string;
-    idProofFront?: string;
-    idProofBack?: string;
-    drivingLicenseFront?: string;
-    drivingLicenseBack?: string;
-    vehicleRegistration?: string;
-    criminalRecordCertificate?: string;
-    activity?: string;
-    insurancePolicy?: string;
-  };
-
-  // -------------------------------------------------
-  // 10) Security & Access
-  // -------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
-
-  // -------------------------------------------------
-  // 11) Admin Workflow (Approval System)
-  // -------------------------------------------------
-  approvedBy?: mongoose.Types.ObjectId;
-  rejectedBy?: mongoose.Types.ObjectId;
-  blockedBy?: mongoose.Types.ObjectId;
-  submittedForApprovalAt?: Date;
-  approvedOrRejectedOrBlockedAt?: Date;
-  remarks?: string;
 
   rating?: {
     average: number;

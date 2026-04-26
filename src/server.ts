@@ -2,10 +2,12 @@
 import mongoose from 'mongoose';
 import app from './app';
 import config from './app/config';
-import { seed } from './app/utils/seeding';
+// import { seed } from './app/utils/seeding';
 import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
 import { initOrderCronJobs } from './app/utils/orderCleanup';
+import { initAuthEventListener } from './app/subscriber/auth.subscriber';
+import { initUserStreamConsumer } from './app/events/userStreamConsumer';
 const server = http.createServer(app);
 
 // Handle unexpected errors
@@ -33,16 +35,19 @@ async function bootstrap() {
     await mongoose.connect(config.db_url as string);
 
     // Seed database
-    if (config.NODE_ENV === 'development') {
-      await seed();
-    }
+    // if (config.NODE_ENV === 'development') {
+    //   await seed();
+    // }
 
     // Initialize Socket.IO
     initializeSocket(server);
 
     initOrderCronJobs();
 
-    // initAuthEventListener();
+    initAuthEventListener();
+
+    // newly created
+    initUserStreamConsumer();
 
     server.listen(config.port, () => {
       if (config.NODE_ENV === 'development') {

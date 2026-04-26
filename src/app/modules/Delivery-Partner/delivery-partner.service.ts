@@ -24,19 +24,19 @@ const updateDeliveryPartner = async (
   // Check if target delivery partner exists
   // ---------------------------------------------------------
   const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userId: deliveryPartnerId,
+    customUserId: deliveryPartnerId,
   });
 
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
 
-  if (!existingDeliveryPartner.isEmailVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please verify your email before updating your profile.',
-    );
-  }
+  // if (!existingDeliveryPartner.isEmailVerified) {
+  //   throw new AppError(
+  //     httpStatus.BAD_REQUEST,
+  //     'Please verify your email before updating your profile.',
+  //   );
+  // }
 
   // -----------------------------
   // Referral Code Generation (New Logic)
@@ -69,7 +69,7 @@ const updateDeliveryPartner = async (
 
   // Delivery Partner updating their own profile
   if (currentUser.role === 'DELIVERY_PARTNER') {
-    if (existingDeliveryPartner.userId !== currentUser?.userId) {
+    if (existingDeliveryPartner.customUserId !== currentUser?.customUserId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to update this profile.',
@@ -78,23 +78,22 @@ const updateDeliveryPartner = async (
   }
 
   // Admin/SuperAdmin updating a partner they registered
-  if (
-    currentUser.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner.registeredBy?.id.toString() !==
-      currentUser?._id.toString()
-  ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this Delivery Partner.',
-    );
-  }
+  // if (
+  //   currentUser.role === 'FLEET_MANAGER' &&
+  //   existingDeliveryPartner.registeredBy?.id.toString() !==
+  //     currentUser?._id.toString()
+  // ) {
+  //   throw new AppError(
+  //     httpStatus.FORBIDDEN,
+  //     'You are not authorized to update this Delivery Partner.',
+  //   );
+  // }
 
-  payload.status = 'PENDING';
   // ---------------------------------------------------------
   // Update the delivery partner
   // ---------------------------------------------------------
   const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
-    { userId: deliveryPartnerId },
+    { customUserId: deliveryPartnerId },
     { $set: payload },
     { new: true },
   );

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/user.constant';
 import { AddressType } from './customer.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
@@ -8,56 +8,11 @@ export type TCustomer = {
   // Core Identifiers
   // ------------------------------------------------------
   _id?: string;
-  userId: string;
+  authUserId: string;
+  customUserId: string;
   role: 'CUSTOMER';
   email?: string;
-
   status: keyof typeof USER_STATUS;
-  isOtpVerified: boolean;
-  isDeleted: boolean;
-
-  // Push notifications
-  fcmTokens?: string[];
-
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
-  // ------------------------------------------------------
-  // OTP
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-  requiresOtpVerification?: boolean;
-  mobileOtpId?: string;
-
-  // ------------------------------------------------------
-  // Personal Information
-  // ------------------------------------------------------
-  name?: {
-    firstName?: string;
-    lastName?: string;
-  };
-
-  contactNumber?: string;
-  profilePhoto?: string;
-
-  // Primary/Billing Address (Can be simple)
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    longitude?: number;
-    latitude?: number;
-    geoAccuracy?: number;
-    detailedAddress?: string;
-  };
-
-  NIF?: string;
 
   // ------------------------------------------------------
   // Current/Real-Time Location Data (For live tracking during delivery)
@@ -87,25 +42,10 @@ export type TCustomer = {
   }>;
 
   // ------------------------------------------------------
-  // Security & Access
-  // ------------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
-
-  // ------------------------------------------------------
-  // Referral
+  // Referral & Loyalty
   // ------------------------------------------------------
   referralCode?: string;
   referredBy?: mongoose.Types.ObjectId;
-
-  // ------------------------------------------------------
-  // Admin Workflow / Audit
-  // ------------------------------------------------------
-  approvedBy?: mongoose.Types.ObjectId;
-  rejectedBy?: mongoose.Types.ObjectId;
-  blockedBy?: mongoose.Types.ObjectId;
-  approvedOrRejectedOrBlockedAt?: Date;
-  remarks?: string;
 
   // ------------------------------------------------------
   // Payment Methods
