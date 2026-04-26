@@ -17,6 +17,10 @@ const restrictedItemSchema = new Schema<TRestrictedItem>(
       enum: ['TOBACCO', 'ALCOHOL', 'ADULT_CONTENT', 'DANGEROUS_GOODS', 'OTHER'],
       required: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

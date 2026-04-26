@@ -13,6 +13,16 @@ const RestrictedItemSchema = z.object({
     ]),
   }),
 });
+const RestrictedItemUpdateSchema = z.object({
+  body: z.object({
+    name: z.string().optional(),
+    reason: z.string().optional(),
+    category: z
+      .enum(['TOBACCO', 'ALCOHOL', 'ADULT_CONTENT', 'DANGEROUS_GOODS', 'OTHER'])
+      .optional(),
+  }),
+});
 export const RestrictedItemValidation = {
   RestrictedItemSchema,
+  RestrictedItemUpdateSchema,
 };
