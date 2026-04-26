@@ -52,9 +52,44 @@ const getSingleRestrictedItem = async (itemId: string) => {
   return result;
 };
 
+const softDeleteRestrictedItem = async (itemId: string) => {
+  const result = await RestrictedItem.findByIdAndUpdate(
+    {
+      _id: itemId,
+      isDeleted: false,
+    },
+    {
+      $set: {
+        isDeleted: true,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+  if (!result) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
+  }
+  return result;
+};
+
+const permanentDeleteRestrictedItem = async (itemId: string) => {
+  const result = await RestrictedItem.findByIdAndDelete({
+    _id: itemId,
+    isDeleted: true,
+  });
+  if (!result) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
+  }
+  return result;
+};
+
 export const RestrictedItemService = {
   createRestrictedItem,
   updateRestrictedItem,
   getAllRestrictedItems,
   getSingleRestrictedItem,
+  softDeleteRestrictedItem,
+  permanentDeleteRestrictedItem,
 };

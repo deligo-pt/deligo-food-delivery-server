@@ -49,9 +49,35 @@ const getSingleRestrictedItem = catchAsync(async (req, res) => {
   });
 });
 
+const softDeleteRestrictedItem = catchAsync(async (req, res) => {
+  const result = await RestrictedItemService.softDeleteRestrictedItem(
+    req.params.itemId,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Item deleted successfully',
+    data: result,
+  });
+});
+
+const permanentDeleteRestrictedItem = catchAsync(async (req, res) => {
+  const result = await RestrictedItemService.permanentDeleteRestrictedItem(
+    req.params.itemId,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Item permanently deleted successfully',
+    data: result,
+  });
+});
+
 export const RestrictedItemsController = {
   createRestrictedItem,
   updateRestrictedItem,
   getAllRestrictedItems,
   getSingleRestrictedItem,
+  softDeleteRestrictedItem,
+  permanentDeleteRestrictedItem,
 };

@@ -8,6 +8,7 @@ export type TRestrictedItem = {
     | 'ADULT_CONTENT'
     | 'DANGEROUS_GOODS'
     | 'OTHER';
+  isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
 };

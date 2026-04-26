@@ -32,4 +32,16 @@ router.get(
   RestrictedItemsController.getSingleRestrictedItem,
 );
 
+router.delete(
+  '/:itemId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  RestrictedItemsController.softDeleteRestrictedItem,
+);
+
+router.delete(
+  '/permanent-delete/:itemId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  RestrictedItemsController.permanentDeleteRestrictedItem,
+);
+
 export const RestrictedItemsRoutes = router;
