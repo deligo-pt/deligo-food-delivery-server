@@ -3,13 +3,9 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
-import {
-  TDeliveryPartner,
-  TDeliveryPartnerImageDocuments,
-} from './delivery-partner.interface';
+import { TDeliveryPartner } from './delivery-partner.interface';
 import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 import { generateReferralCode } from '../../utils/generateReferralCode';
@@ -234,56 +230,6 @@ const changeDeliveryPartnerStatus = async (
   };
 };
 
-// update doc image
-const deliverPartnerDocImageUpload = async (
-  file: string | undefined,
-  data: TDeliveryPartnerImageDocuments,
-  currentUser: AuthUser,
-  deliveryPartnerId: string,
-) => {
-  const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userId: deliveryPartnerId,
-  });
-  if (!existingDeliveryPartner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
-  }
-
-  if (currentUser?.role === 'FLEET_MANAGER') {
-    if (
-      currentUser?._id.toString() !==
-      existingDeliveryPartner?.registeredBy?.id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'You are not authorize to upload document image!',
-      );
-    }
-  }
-
-  // delete previous image if exists
-  const docTitle = data?.docImageTitle;
-
-  if (docTitle && existingDeliveryPartner?.documents?.[docTitle]) {
-    const oldImage = existingDeliveryPartner?.documents?.[docTitle];
-    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.error(err);
-    });
-  }
-
-  if (data.docImageTitle && file) {
-    existingDeliveryPartner.documents = {
-      ...existingDeliveryPartner.documents,
-      [data.docImageTitle]: file,
-    };
-    await existingDeliveryPartner.save();
-  }
-
-  return {
-    message: 'Delivery Partner document image updated successfully',
-    existingDeliveryPartner: existingDeliveryPartner,
-  };
-};
-
 //get all delivery partners
 const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
@@ -369,7 +315,6 @@ export const DeliveryPartnerServices = {
   updateDeliveryPartner,
   updateDeliveryPartnerLiveLocation,
   changeDeliveryPartnerStatus,
-  deliverPartnerDocImageUpload,
   getAllDeliveryPartnersFromDB,
   getSingleDeliveryPartnerFromDB,
 };

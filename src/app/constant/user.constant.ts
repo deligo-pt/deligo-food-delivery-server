@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose, { Schema } from 'mongoose';
 import { TDeliveryAddress } from './address.constant';
-import { Admin } from '../modules/Admin/admin.model';
-import { Vendor } from '../modules/Vendor/vendor.model';
-import { FleetManager } from '../modules/Fleet-Manager/fleet-manager.model';
-import { DeliveryPartner } from '../modules/Delivery-Partner/delivery-partner.model';
-import { Customer } from '../modules/Customer/customer.model';
-import { IUserModel } from '../interfaces/user.interface';
 
 // User Roles constant
 export const USER_ROLE = {
@@ -51,7 +45,7 @@ export const UrlPath = {
 
 export type AuthUser = {
   _id: mongoose.Types.ObjectId;
-  userId: string;
+  customUserId: string;
   moloniCustomerId?: number;
   name: {
     firstName: string;
@@ -173,11 +167,3 @@ export const ROLE_PREFIX_MAP: Record<string, TUserRole> = {
   D: 'DELIVERY_PARTNER',
   FM: 'FLEET_MANAGER',
 };
-
-export const ALL_USER_MODELS = [
-  Admin,
-  Vendor,
-  FleetManager,
-  DeliveryPartner,
-  Customer,
-] as IUserModel<any>[];

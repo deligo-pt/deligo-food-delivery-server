@@ -43,8 +43,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
-    
-        // ------------------------------------------------------
+
+    // ------------------------------------------------------
     // Referral
     // ------------------------------------------------------
     referralCode: { type: String, unique: true },

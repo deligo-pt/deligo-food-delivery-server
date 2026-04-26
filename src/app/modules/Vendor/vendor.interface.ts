@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 import { USER_STATUS } from '../../constant/user.constant';
 
@@ -53,6 +54,12 @@ export type TVendor = {
     latitude?: number;
     geoAccuracy?: number;
   };
+
+  // --------------------------------------------------------
+  // Referral Details
+  // --------------------------------------------------------
+  referralCode?: string;
+  referredBy?: mongoose.Types.ObjectId;
 
   currentSessionLocation?: TGeoJSONPoint;
 

@@ -39,7 +39,6 @@ const couponSchema = new Schema<TCoupon>(
   },
 );
 
-couponSchema.index({ code: 1 });
 couponSchema.index({ userId: 1, isUsed: 1 });
 
 export const Coupon = model<TCoupon>('Coupon', couponSchema);

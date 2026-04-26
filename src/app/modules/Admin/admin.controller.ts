@@ -10,30 +10,13 @@ const updateAdmin = catchAsync(async (req, res) => {
   const result = await AdminServices.updateAdmin(
     req.body,
     req.params.adminId,
-    currentUser
+    currentUser,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Admin update successfully',
     data: result,
-  });
-});
-
-// admin doc image upload controller
-const adminDocImageUpload = catchAsync(async (req, res) => {
-  const file = req.file;
-  const result = await AdminServices.adminDocImageUpload(
-    file?.path,
-    req.body,
-    req.user as AuthUser,
-    req.params.adminId
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
   });
 });
 
@@ -54,7 +37,7 @@ const getSingleAdmin = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
   const result = await AdminServices.getSingleAdmin(
     req.params.adminId,
-    currentUser
+    currentUser,
   );
   sendResponse(res, {
     success: true,
@@ -66,7 +49,6 @@ const getSingleAdmin = catchAsync(async (req, res) => {
 
 export const AdminControllers = {
   updateAdmin,
-  adminDocImageUpload,
   getAllAdmins,
   getSingleAdmin,
 };

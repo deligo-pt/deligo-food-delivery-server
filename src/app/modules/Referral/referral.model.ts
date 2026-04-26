@@ -55,6 +55,5 @@ const referralSchema = new Schema<TReferral>(
 );
 
 referralSchema.index({ referrerId: 1, status: 1 });
-referralSchema.index({ referredId: 1 });
 
 export const Referral = model<TReferral>('Referral', referralSchema);

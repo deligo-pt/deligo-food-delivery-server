@@ -69,7 +69,3 @@ export type TFleetManager = {
   createdAt: Date;
   updatedAt: Date;
 };
-
-export type TFleetManagerImageDocuments = {
-  docImageTitle: 'idProofFront' | 'idProofBack' | 'businessLicense';
-};

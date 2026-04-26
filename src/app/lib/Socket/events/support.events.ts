@@ -17,7 +17,7 @@ type SendMessagePayload = {
 
 export const registerSupportEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as AuthUser;
-  const userId = user.userId; // Custom ID (e.g., C-VXX...)
+  const userId = user.customUserId; // Custom ID (e.g., C-VXX...)
   const userRole = user.role;
 
   // Admin joining a common room to receive notifications for all tickets

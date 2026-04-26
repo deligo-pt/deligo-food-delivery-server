@@ -3,8 +3,6 @@ import auth from '../../middlewares/auth';
 import { Router } from 'express';
 import { DeliveryPartnerValidation } from './delivery-partner.validation';
 import { DeliveryPartnerControllers } from './delivery-partner.controller';
-import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
 import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
 
 const router = Router();
@@ -25,18 +23,6 @@ router.patch(
   auth('DELIVERY_PARTNER'),
   validateRequest(GlobalValidation.UpdateLiveLocationValidationSchema),
   DeliveryPartnerControllers.updateDeliveryPartnerLiveLocation,
-);
-
-// Delivery Partner Doc Image Upload Route
-router.patch(
-  '/:deliveryPartnerId/docImage',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
-  multerUpload.single('file'),
-  parseBody,
-  validateRequest(
-    DeliveryPartnerValidation.deliveryPartnerDocImageValidationSchema,
-  ),
-  DeliveryPartnerControllers.deliveryPartnerDocImageUpload,
 );
 
 // Change Delivery Partner Status Route

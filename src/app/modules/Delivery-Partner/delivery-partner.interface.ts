@@ -125,14 +125,3 @@ export type TDeliveryPartner = {
   createdAt?: Date;
   updatedAt?: Date;
 };
-
-// Document Upload Types (unchanged)
-export type TDeliveryPartnerImageDocuments = {
-  docImageTitle:
-    | 'idProofFront'
-    | 'idProofBack'
-    | 'drivingLicenseFront'
-    | 'drivingLicenseBack'
-    | 'vehicleRegistration'
-    | 'criminalRecordCertificate';
-};

@@ -27,12 +27,10 @@ const updateCustomer = async (
 
   const customer = await Customer.isUserExistsByUserId(customerId, false);
   if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  if (!customer.isOtpVerified)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
 
   if (
     currentUser.role === 'CUSTOMER' &&
-    currentUser.userId !== customer.userId
+    currentUser.customUserId !== customer.customUserId
   ) {
     throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized update');
   }

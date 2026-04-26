@@ -92,25 +92,6 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
   }),
 });
 
-// ---------------------------------------------
-// Document Upload Validation Schema
-// ---------------------------------------------
-const deliveryPartnerDocImageValidationSchema = z.object({
-  body: z.object({
-    docImageTitle: z.enum([
-      'myPhoto',
-      'idProofFront',
-      'idProofBack',
-      'drivingLicenseFront',
-      'drivingLicenseBack',
-      'vehicleRegistration',
-      'criminalRecordCertificate',
-      'activity',
-      'insurancePolicy',
-    ]),
-  }),
-});
-
 const deliveryPartnerStatusChangeValidationSchema = z.object({
   body: z.object({
     status: z.enum(['IDLE', 'OFFLINE']),
@@ -120,6 +101,5 @@ const deliveryPartnerStatusChangeValidationSchema = z.object({
 // ---------------------------------------------
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
-  deliveryPartnerDocImageValidationSchema,
   deliveryPartnerStatusChangeValidationSchema,
 };

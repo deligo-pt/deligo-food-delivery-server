@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from '../../errors/AppError';
-import { TVendor, TVendorImageDocuments } from './vendor.interface';
+import { TVendor } from './vendor.interface';
 import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
 import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
@@ -58,8 +57,7 @@ const vendorUpdate = async (
   // Referral Code Generation (New Logic)
   // -----------------------------
   if (!currentUser.referralCode) {
-    const firstName =
-      payload.name?.firstName || currentUser.name.firstName || 'USER';
+    const firstName = currentUser.name.firstName || 'USER';
     const newReferralCode = await generateReferralCode(firstName);
 
     payload.referralCode = newReferralCode;
@@ -112,81 +110,6 @@ const vendorUpdate = async (
   return updatedVendor;
 };
 
-/**
- * Service to upload or update vendor document images (businessLicenseDoc, taxDoc, Store Photo, etc.)
- * Handles old image cleanup, authorization, and update-lock bypass for admins.
- */
-const vendorDocImageUpload = async (
-  file: string | undefined,
-  data: TVendorImageDocuments,
-  currentUser: AuthUser,
-  vendorId: string,
-) => {
-  // 1. Check if the vendor exists in the database
-  const existingVendor = await Vendor.findOne({ userId: vendorId });
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
-  }
-
-  // 2. Define user roles and access rights
-  const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
-  const isOwner =
-    (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
-    currentUser.userId === existingVendor.userId;
-
-  // 3. Authorization: Only Admins or the Account Owner can perform this action
-  if (!isStaff && !isOwner) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
-  }
-
-  // 4. Protection: Block updates if the profile is locked (Admins can bypass this lock)
-  if (existingVendor.isUpdateLocked && !isStaff) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Vendor update is locked. Please contact support.',
-    );
-  }
-
-  const docTitle = data?.docImageTitle;
-
-  // 5. Cleanup: If a new file is uploaded, delete the previous image from Cloudinary to save space
-  if (
-    docTitle &&
-    file &&
-    existingVendor.documents?.[
-    docTitle as keyof typeof existingVendor.documents
-    ]
-  ) {
-    const oldImage = (existingVendor.documents as any)[docTitle];
-
-    // Asynchronous cleanup: We don't want to block the user response if Cloudinary fails
-    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.error('Cloudinary deletion failed:', err);
-    });
-  }
-
-  // 6. Update: Set the new file path to the specific document field
-  if (docTitle && file) {
-    // Spread existing documents to prevent accidental data loss
-    existingVendor.documents = {
-      ...existingVendor.documents,
-      [docTitle]: file,
-    } as any;
-
-    // Explicitly tell Mongoose that the nested 'documents' object has changed
-    existingVendor.markModified('documents');
-    await existingVendor.save();
-  }
-
-  return {
-    message: 'Vendor document image updated successfully',
-    data: existingVendor.documents,
-  };
-};
-
 // vendor business location update service
 const updateVendorLiveLocation = async (
   payload: TLiveLocationPayload,
@@ -200,7 +123,7 @@ const updateVendorLiveLocation = async (
     );
   }
 
-  if (currentUser?.userId !== vendorId) {
+  if (currentUser?.customUserId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update live location!',
@@ -243,7 +166,7 @@ const updateVendorLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { userId: currentUser.userId },
+    { userId: currentUser.customUserId },
     { $set: updateData },
     {
       new: true,
@@ -279,8 +202,9 @@ const toggleVendorStoreOpenClose = async (currentUser: AuthUser) => {
   currentUser.businessDetails!.storeClosedAt = new Date();
   await (currentUser as any).save();
   return {
-    message: `Store is ${currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
-      }`,
+    message: `Store is ${
+      currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
+    }`,
   };
 };
 
@@ -323,7 +247,7 @@ const getAllVendors = async (
 
 // get single vendor
 const getSingleVendor = async (vendorId: string, currentUser: AuthUser) => {
-  if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
+  if (currentUser.role === 'VENDOR' && currentUser.customUserId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this vendor!',
@@ -333,7 +257,7 @@ const getSingleVendor = async (vendorId: string, currentUser: AuthUser) => {
   let query: any;
   if (currentUser.role === 'VENDOR') {
     query = Vendor.findOne({
-      userId: currentUser.userId,
+      userId: currentUser.customUserId,
       isDeleted: false,
     });
   } else {
@@ -481,7 +405,6 @@ const getAllVendorsForCustomer = async (
 
 export const VendorServices = {
   vendorUpdate,
-  vendorDocImageUpload,
   updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,
