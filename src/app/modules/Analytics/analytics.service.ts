@@ -4762,7 +4762,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
   const stats = await Transaction.aggregate([
     {
       $match: {
-        userId: fleetObjectId,
+        userObjectId: fleetObjectId,
         userModel: 'FleetManager',
         status: 'SUCCESS',
         type: 'FLEET_EARNING',
@@ -4888,7 +4888,7 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
       Transaction.aggregate([
         {
           $match: {
-            userId: vendorObjectId,
+            userObjectId: vendorObjectId,
             userModel: 'Vendor',
             status: 'SUCCESS',
             type: 'VENDOR_EARNING',
@@ -4961,7 +4961,7 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
       Transaction.aggregate([
         {
           $match: {
-            userId: vendorObjectId,
+            userObjectId: vendorObjectId,
             userModel: 'Vendor',
             status: 'SUCCESS',
             type: 'VENDOR_EARNING',
