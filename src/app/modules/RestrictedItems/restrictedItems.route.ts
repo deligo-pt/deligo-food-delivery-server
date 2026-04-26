@@ -13,4 +13,35 @@ router.post(
   RestrictedItemsController.createRestrictedItem,
 );
 
+router.patch(
+  '/:itemId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(RestrictedItemValidation.RestrictedItemUpdateSchema),
+  RestrictedItemsController.updateRestrictedItem,
+);
+
+router.get(
+  '/',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  RestrictedItemsController.getAllRestrictedItems,
+);
+
+router.get(
+  '/:itemId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  RestrictedItemsController.getSingleRestrictedItem,
+);
+
+router.delete(
+  '/:itemId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  RestrictedItemsController.softDeleteRestrictedItem,
+);
+
+router.delete(
+  '/permanent-delete/:itemId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  RestrictedItemsController.permanentDeleteRestrictedItem,
+);
+
 export const RestrictedItemsRoutes = router;
