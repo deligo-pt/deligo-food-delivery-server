@@ -29,13 +29,13 @@ import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
 import { Wallet } from '../Wallet/wallet.model';
 import { roundTo2 } from '../../utils/mathProvider';
-import { customAlphabet } from 'nanoid';
 import { Admin } from '../Admin/admin.model';
+import customNanoId from '../../utils/customNanoId';
+import { PointsServices } from '../Points/points.service';
+import { ReferralServices } from '../Referral/referral.service';
 
-const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
-
-// Create Order after reduniq payment
-const createOrderAfterReduniqPayment = async (
+// Create Order after redUniq payment
+const createOrderAfterRedUniqPayment = async (
   payload: {
     checkoutSummaryId: string;
     paymentToken: string;
@@ -104,7 +104,7 @@ const createOrderAfterReduniqPayment = async (
   // --- Transaction ---
   const session = await mongoose.startSession();
   session.startTransaction();
-  const uniqueOrderId = nanoid();
+  const uniqueOrderId = customNanoId(10);
 
   try {
     const orderData = {
@@ -1118,6 +1118,27 @@ const updateOrderStatusByDeliveryPartner = async (
           'Delivery Partner not found for this order.',
         );
       }
+
+      await PointsServices.addOrderPoints(
+        updatedOrder.customerId._id,
+        updatedOrder._id.toString(),
+        session,
+      );
+
+      if (updatedOrder.deliveryPartnerId) {
+        await PointsServices.addDeliveryPartnerPoints(
+          updatedOrder.deliveryPartnerId,
+          updatedOrder._id.toString(),
+          session,
+        );
+      }
+
+      await ReferralServices.distributeReferralBonus(
+        updatedOrder.customerId.toString(),
+        updatedOrder._id.toString(),
+        session,
+      );
+
       const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
 
       const vendorEarningsBeforeTax =
@@ -1147,13 +1168,13 @@ const updateOrderStatusByDeliveryPartner = async (
       await Wallet.findOneAndUpdate(
         { userId: updatedOrder.vendorId, userModel: 'Vendor' },
         {
+          $setOnInsert: { walletId: `WAL-V-${customNanoId(8)}` },
           $inc: {
             totalUnpaidTax: roundTo2(vendorPayableTax) || 0,
             totalTax: roundTo2(vendorPayableTax) || 0,
             totalUnpaidEarnings: roundTo2(vendorNetPayout) || 0,
             totalEarnings: roundTo2(vendorNetPayout) || 0,
           },
-          $setOnInsert: { walletId: `WAL-V-${nanoid()}` },
         },
         { session, upsert: true },
       );
@@ -1162,13 +1183,13 @@ const updateOrderStatusByDeliveryPartner = async (
       await Wallet.findOneAndUpdate(
         { userId: partner?._id, userModel: 'DeliveryPartner' },
         {
+          $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
           $inc: {
             totalUnpaidTax: roundTo2(riderPayableTax) || 0,
             totalTax: roundTo2(riderPayableTax) || 0,
             totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
             totalEarnings: roundTo2(riderEarningAmount) || 0,
           },
-          $setOnInsert: { walletId: `WAL-D-${nanoid()}` },
         },
         { session, upsert: true },
       );
@@ -1180,10 +1201,12 @@ const updateOrderStatusByDeliveryPartner = async (
       await Wallet.findOneAndUpdate(
         { userId: SYSTEM_ADMIN, userModel: 'Admin' },
         {
+          $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
           $inc: {
+            totalUnpaidTax: roundTo2(commissionVat) || 0,
+            totalTax: roundTo2(commissionVat) || 0,
             totalEarnings: roundTo2(deliGoCommissionNet) || 0,
           },
-          $setOnInsert: { walletId: `WAL-A-${nanoid()}` },
         },
         { session, upsert: true },
       );
@@ -1193,25 +1216,22 @@ const updateOrderStatusByDeliveryPartner = async (
         await Wallet.findOneAndUpdate(
           { userId: fleetManagerId, userModel: 'FleetManager' },
           {
+            $setOnInsert: { walletId: `WAL-F-${customNanoId(8)}` },
             $inc: {
-              totalUnpaidTax: commissionVat || 0,
-              totalTax: commissionVat || 0,
               totalUnpaidEarnings: totalDeliveryCharge || 0,
               totalRiderPayable: riderNetEarnings || 0,
               totalFleetEarnings: payoutSummary.fleet.fee || 0,
               totalEarnings: totalDeliveryCharge || 0,
             },
-            $setOnInsert: { walletId: `WAL-F-${nanoid()}` },
           },
           { session, upsert: true },
         );
       }
 
       // --- Transaction Records ---
-      const timestamp = Date.now();
       const transactionsToCreate = [
         {
-          transactionId: `TXN-V-${timestamp}-${orderId}`,
+          transactionId: `TXN-V-${orderId}`,
           orderId: orderDbId,
           userId: updatedOrder.vendorId,
           userModel: 'Vendor',
@@ -1224,7 +1244,7 @@ const updateOrderStatusByDeliveryPartner = async (
           remarks: `Earnings for Order: ${orderId}`,
         },
         {
-          transactionId: `TXN-DP-${timestamp}-${orderId}`,
+          transactionId: `TXN-DP-${orderId}`,
           orderId: orderDbId,
           userId: partner._id,
           userModel: 'DeliveryPartner',
@@ -1239,7 +1259,7 @@ const updateOrderStatusByDeliveryPartner = async (
             : 'Direct Earning',
         },
         {
-          transactionId: `TXN-DELIGO-${timestamp}-${orderId}`,
+          transactionId: `TXN-DELIGO-${orderId}`,
           orderId: orderDbId,
           userId: SYSTEM_ADMIN,
           userModel: 'Admin',
@@ -1255,7 +1275,7 @@ const updateOrderStatusByDeliveryPartner = async (
 
       if (isManagedByFleet && fleetManagerId) {
         transactionsToCreate.push({
-          transactionId: `TXN-F-${timestamp}-${orderId}`,
+          transactionId: `TXN-F-${orderId}`,
           orderId: orderDbId,
           userId: fleetManagerId,
           userModel: 'FleetManager',
@@ -1565,7 +1585,7 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: AuthUser) => {
 };
 
 export const OrderServices = {
-  createOrderAfterReduniqPayment,
+  createOrderAfterRedUniqPayment,
   updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,

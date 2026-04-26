@@ -54,7 +54,8 @@ const transactionSchema = new Schema<TTransaction>(
         'FLEET_SETTLEMENT',
         'DELIVERY_PARTNER_SETTLEMENT',
         'PLATFORM_COMMISSION',
-        "INGREDIENT_PURCHASE",
+        'INGREDIENT_PURCHASE',
+        'REFERRAL_BONUS',
       ],
     },
     status: {
@@ -73,6 +74,7 @@ const transactionSchema = new Schema<TTransaction>(
         'WALLET',
         'CASH',
         'BANK_TRANSFER',
+        'DeliGO_PAY',
         'OTHER',
       ],
       required: true,

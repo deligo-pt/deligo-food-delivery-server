@@ -1,7 +1,6 @@
 import { USER_ROLE } from '../constant/user.constant';
-import { customAlphabet } from 'nanoid';
+import customNanoId from './customNanoId';
 
-const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
 export const USER_TYPE_MAP = {
   '/create-customer': { prefix: 'C-', role: USER_ROLE.CUSTOMER },
   '/create-vendor': { prefix: 'V-', role: USER_ROLE.VENDOR },
@@ -16,7 +15,7 @@ export const USER_TYPE_MAP = {
 
 const generateUserId = (userType: keyof typeof USER_TYPE_MAP): string => {
   const typeData = USER_TYPE_MAP[userType];
-  const uniqueId = nanoid();
+  const uniqueId = customNanoId(8);
   return `${typeData.prefix}${uniqueId}`;
 };
 

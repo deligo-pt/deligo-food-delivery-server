@@ -13,6 +13,7 @@ import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.inte
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { generateReferralCode } from '../../utils/generateReferralCode';
 
 /**
  * Service to update vendor profile information.
@@ -51,6 +52,17 @@ const vendorUpdate = async (
       httpStatus.BAD_REQUEST,
       'Vendor update is locked. Please contact support.',
     );
+  }
+
+  // -----------------------------
+  // Referral Code Generation (New Logic)
+  // -----------------------------
+  if (!currentUser.referralCode) {
+    const firstName =
+      payload.name?.firstName || currentUser.name.firstName || 'USER';
+    const newReferralCode = await generateReferralCode(firstName);
+
+    payload.referralCode = newReferralCode;
   }
 
   // 5. Business Validation: Verify that the provided business type exists in the database

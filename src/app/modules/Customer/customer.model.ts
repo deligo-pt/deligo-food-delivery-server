@@ -74,10 +74,10 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     ],
 
     // ------------------------------------------------------
-    // Referral & Loyalty
+    // Referral
     // ------------------------------------------------------
-    referralCode: { type: String },
-    loyaltyPoints: { type: Number, default: 0 },
+       referralCode: { type: String, default: '' },
+    referredBy: { type: Schema.Types.ObjectId, default: null, ref: 'Customer' },
 
     // ------------------------------------------------------
     // Payment Methods

@@ -1,182 +1,153 @@
 import z from 'zod';
 
+const referralMilestoneSchema = z.object({
+  friendsRequired: z.number().positive('Friends required must be > 0'),
+  rewardType: z.enum([
+    'CASHBACK',
+    'FREE_MEAL',
+    'FREE_DELIVERY',
+    'CREDIT',
+    'OTHER',
+  ]),
+  rewardValue: z.number().nonnegative('Reward value must be >= 0'),
+  minOrderAmountPerFriend: z
+    .number()
+    .nonnegative('Min order amount must be >= 0'),
+  validityDays: z.number().nonnegative().optional(),
+});
+
 const createGlobalSettingValidationSchema = z.object({
   body: z.object({
-    // --------------------------------------------------
     // Delivery Pricing
-    // --------------------------------------------------
-    deliveryChargePerKm: z
-      .number()
-      .nonnegative('Delivery charge per km must be >= 0')
+    delivery: z
+      .object({
+        baseCharge: z.number().nonnegative(),
+        chargePerKm: z.number().nonnegative(),
+        minCharge: z.number().nonnegative(),
+        maxCharge: z.number().nonnegative(),
+        freeAbove: z.number().nonnegative(),
+        maxDistanceKm: z.number().nonnegative(),
+        vatRate: z.number().min(0).max(100),
+      })
       .optional(),
 
-    baseDeliveryCharge: z
-      .number()
-      .nonnegative('Base delivery charge must be >= 0')
+    // Commission & VAT
+    commission: z
+      .object({
+        platformPercent: z.number().min(0).max(100),
+        platformVatRate: z.number().min(0).max(100),
+        fleetManagerPercent: z.number().min(0).max(100),
+        deliveryPartnerPercent: z.number().min(0).max(100),
+        vendorVatPercent: z.number().min(0).max(100),
+      })
       .optional(),
 
-    minDeliveryCharge: z
-      .number()
-      .nonnegative('Min delivery charge must be >= 0')
+    // Order Rules & Automation
+    order: z
+      .object({
+        minAmount: z.number().nonnegative(),
+        maxAmount: z.number().nonnegative(),
+        maxItemsPerOrder: z.number().positive(),
+        nearestVendorRadiusKm: z.number().positive(),
+        autoCancelUnacceptedMinutes: z.number().nonnegative(),
+        autoMarkDeliveredMinutes: z.number().nonnegative(),
+        cancelTimeLimitMinutes: z.number().nonnegative(),
+      })
       .optional(),
 
-    maxDeliveryCharge: z
-      .number()
-      .nonnegative('Max delivery charge must be >= 0')
+    // Loyalty & Rewards
+    rewards: z
+      .object({
+        customerPointsPerEuro: z.number().nonnegative(),
+        riderPointsPerDelivery: z.number().nonnegative(),
+        referralPoints: z.number().nonnegative(),
+        newRiderWelcomeBonus: z.number().nonnegative(),
+        pointsExpiryDays: z.number().nonnegative(),
+        customerReferralMilestones: z.array(referralMilestoneSchema),
+      })
       .optional(),
 
-    freeDeliveryAbove: z
-      .number()
-      .nonnegative('Free delivery amount must be >= 0')
-      .optional(),
-
-    maxDeliveryDistanceKm: z
-      .number()
-      .positive('Max delivery distance must be > 0')
-      .optional(),
-
-    // --------------------------------------------------
-    // customer nearest vendor search radius
-    // --------------------------------------------------
-    customerNearestVendorRadiusKm: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // Platform Commission
-    // --------------------------------------------------
-    platformCommissionPercent: z.number().min(0).max(100).optional(),
-
-    fleetManagerCommissionPercent: z.number().min(0).max(100).optional(),
-    deliveryPartnerCommissionPercent: z.number().min(0).max(100).optional(),
-
-    vendorVatPercent: z.number().min(0).max(100).optional(),
-
-    // --------------------------------------------------
-    // Order Rules
-    // --------------------------------------------------
-    minOrderAmount: z.number().nonnegative().optional(),
-    maxOrderAmount: z.number().positive().optional(),
-    maxItemsPerOrder: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // Cancellation & Refund
-    // --------------------------------------------------
-    cancelTimeLimitMinutes: z.number().positive().optional(),
-    refundProcessingDays: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    //  Offers
-    // --------------------------------------------------
-    isOfferEnabled: z.boolean().optional(),
-
-    maxDiscountPercent: z.number().min(0).max(100).optional(),
-
-    // --------------------------------------------------
-    // Order Automation
-    // --------------------------------------------------
-    autoCancelUnacceptedOrderMinutes: z.number().positive().optional(),
-    autoMarkDeliveredAfterMinutes: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // OTP & Security
-    // --------------------------------------------------
-    orderOtpEnabled: z.boolean().optional(),
-
-    otpLength: z
-      .number()
-      .min(4, 'OTP length must be at least 4')
-      .max(8, 'OTP length cannot exceed 8')
-      .optional(),
-
-    otpExpiryMinutes: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // Platform State
-    // --------------------------------------------------
-    isPlatformLive: z.boolean().optional(),
-
-    maintenanceMessage: z
-      .string()
-      .max(300, 'Maintenance message too long')
+    // Security & System State
+    system: z
+      .object({
+        isPlatformLive: z.boolean(),
+        maintenanceMessage: z.string().max(300).optional(),
+        isOfferEnabled: z.boolean(),
+        maxDiscountPercent: z.number().min(0).max(100),
+        refundProcessingDays: z.number().nonnegative(),
+        otp: z.object({
+          enabled: z.boolean(),
+          length: z.number().min(4).max(8),
+          expiryMinutes: z.number().positive(),
+        }),
+      })
       .optional(),
   }),
 });
 
 const updateGlobalSettingValidationSchema = z.object({
   body: z.object({
-    // --------------------------------------------------
-    // Delivery Pricing
-    // --------------------------------------------------
-    deliveryChargePerKm: z.number().nonnegative().optional(),
+    delivery: z
+      .object({
+        baseCharge: z.number().nonnegative().optional(),
+        chargePerKm: z.number().nonnegative().optional(),
+        minCharge: z.number().nonnegative().optional(),
+        maxCharge: z.number().nonnegative().optional(),
+        freeAbove: z.number().nonnegative().optional(),
+        maxDistanceKm: z.number().nonnegative().optional(),
+        vatRate: z.number().min(0).max(100).optional(),
+      })
+      .optional(),
 
-    baseDeliveryCharge: z.number().nonnegative().optional(),
+    commission: z
+      .object({
+        platformPercent: z.number().min(0).max(100).optional(),
+        platformVatRate: z.number().min(0).max(100).optional(),
+        fleetManagerPercent: z.number().min(0).max(100).optional(),
+        deliveryPartnerPercent: z.number().min(0).max(100).optional(),
+        vendorVatPercent: z.number().min(0).max(100).optional(),
+      })
+      .optional(),
 
-    minDeliveryCharge: z.number().nonnegative().optional(),
+    order: z
+      .object({
+        minAmount: z.number().nonnegative().optional(),
+        maxAmount: z.number().nonnegative().optional(),
+        maxItemsPerOrder: z.number().positive().optional(),
+        nearestVendorRadiusKm: z.number().positive().optional(),
+        autoCancelUnacceptedMinutes: z.number().nonnegative().optional(),
+        autoMarkDeliveredMinutes: z.number().nonnegative().optional(),
+        cancelTimeLimitMinutes: z.number().nonnegative().optional(),
+      })
+      .optional(),
 
-    maxDeliveryCharge: z.number().nonnegative().optional(),
+    rewards: z
+      .object({
+        customerPointsPerEuro: z.number().nonnegative().optional(),
+        riderPointsPerDelivery: z.number().nonnegative().optional(),
+        referralPoints: z.number().nonnegative().optional(),
+        newRiderWelcomeBonus: z.number().nonnegative().optional(),
+        pointsExpiryDays: z.number().nonnegative().optional(),
+        customerReferralMilestones: z.array(referralMilestoneSchema).optional(),
+      })
+      .optional(),
 
-    freeDeliveryAbove: z.number().nonnegative().optional(),
-
-    maxDeliveryDistanceKm: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // customer nearest vendor search radius
-    // --------------------------------------------------
-    customerNearestVendorRadiusKm: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // Platform Commission
-    // --------------------------------------------------
-    platformCommissionPercent: z.number().min(0).max(100).optional(),
-
-    deliveryPartnerCommissionPercent: z.number().min(0).max(100).optional(),
-
-    vendorVatPercent: z.number().min(0).max(100).optional(),
-
-    // --------------------------------------------------
-    // Order Rules
-    // --------------------------------------------------
-    minOrderAmount: z.number().nonnegative().optional(),
-
-    maxOrderAmount: z.number().positive().optional(),
-
-    maxItemsPerOrder: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // Cancellation & Refund
-    // --------------------------------------------------
-    cancelTimeLimitMinutes: z.number().positive().optional(),
-
-    refundProcessingDays: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    //  Offers
-    // --------------------------------------------------
-    isOfferEnabled: z.boolean().optional(),
-
-    maxDiscountPercent: z.number().min(0).max(100).optional(),
-
-    // --------------------------------------------------
-    // Order Automation
-    // --------------------------------------------------
-    autoCancelUnacceptedOrderMinutes: z.number().positive().optional(),
-
-    autoMarkDeliveredAfterMinutes: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // OTP & Security
-    // --------------------------------------------------
-    orderOtpEnabled: z.boolean().optional(),
-
-    otpLength: z.number().min(4).max(8).optional(),
-
-    otpExpiryMinutes: z.number().positive().optional(),
-
-    // --------------------------------------------------
-    // Platform State
-    // --------------------------------------------------
-    isPlatformLive: z.boolean().optional(),
-
-    maintenanceMessage: z.string().max(300).optional(),
+    system: z
+      .object({
+        isPlatformLive: z.boolean().optional(),
+        maintenanceMessage: z.string().max(300).optional(),
+        isOfferEnabled: z.boolean().optional(),
+        maxDiscountPercent: z.number().min(0).max(100).optional(),
+        refundProcessingDays: z.number().nonnegative().optional(),
+        otp: z
+          .object({
+            enabled: z.boolean().optional(),
+            length: z.number().min(4).max(8).optional(),
+            expiryMinutes: z.number().positive().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
   }),
 });
 

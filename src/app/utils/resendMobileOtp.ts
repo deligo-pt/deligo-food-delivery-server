@@ -28,7 +28,6 @@ export const resendMobileOtp = async (id: string) => {
     const response = await axios.post(apiUrl, payload, {
       headers: { 'Content-Type': 'application/json' },
     });
-
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {

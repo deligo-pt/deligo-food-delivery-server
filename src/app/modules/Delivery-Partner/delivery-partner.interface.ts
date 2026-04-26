@@ -28,6 +28,12 @@ export type TDeliveryPartner = {
     passportNumber?: string;
   };
 
+  // ------------------------------------------------------
+  // Referral
+  // ------------------------------------------------------
+  referralCode?: string;
+  referredBy?: mongoose.Types.ObjectId;
+
   // -------------------------------------------------
   // 2) Legal Status / Work Rights
   // -------------------------------------------------
@@ -123,10 +129,10 @@ export type TDeliveryPartner = {
 // Document Upload Types (unchanged)
 export type TDeliveryPartnerImageDocuments = {
   docImageTitle:
-  | 'idProofFront'
-  | 'idProofBack'
-  | 'drivingLicenseFront'
-  | 'drivingLicenseBack'
-  | 'vehicleRegistration'
-  | 'criminalRecordCertificate';
+    | 'idProofFront'
+    | 'idProofBack'
+    | 'drivingLicenseFront'
+    | 'drivingLicenseBack'
+    | 'vehicleRegistration'
+    | 'criminalRecordCertificate';
 };

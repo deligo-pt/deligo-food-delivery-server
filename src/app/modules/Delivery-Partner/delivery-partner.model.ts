@@ -67,9 +67,19 @@ const deliveryPartnerSchema = new Schema<
       passportNumber: { type: String, default: '' },
     },
 
-    // -------------------------------------------------
-    // Legal Status / Work Rights
-    // -------------------------------------------------
+    // ------------------------------------------------------
+    // Referral
+    // ------------------------------------------------------
+    referralCode: { type: String },
+    referredBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'DeliveryPartner',
+      default: null,
+    },
+
+    //-------------------------------------------------
+    // Legal Status
+    //-------------------------------------------------
     legalStatus: {
       residencePermitType: { type: String, default: '' },
       residencePermitNumber: { type: String, default: '' },

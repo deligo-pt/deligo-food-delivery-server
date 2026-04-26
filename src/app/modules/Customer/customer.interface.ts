@@ -45,7 +45,7 @@ export type TCustomer = {
   // Referral & Loyalty
   // ------------------------------------------------------
   referralCode?: string;
-  loyaltyPoints?: number;
+  referredBy?: mongoose.Types.ObjectId;
 
   // ------------------------------------------------------
   // Payment Methods

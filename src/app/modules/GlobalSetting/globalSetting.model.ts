@@ -1,191 +1,201 @@
 import { Schema, model } from 'mongoose';
-import { TGlobalSettings } from './globalSetting.interface';
+import { TGlobalSettings, TReferralMilestone } from './globalSetting.interface';
+
+// Referral Milestone Sub-Schema
+const ReferralMilestoneSchema = new Schema<TReferralMilestone>(
+  {
+    friendsRequired: { type: Number, required: true },
+    rewardType: {
+      type: String,
+      enum: ['CASHBACK', 'FREE_MEAL', 'FREE_DELIVERY', 'CREDIT', 'OTHER'],
+      required: true,
+    },
+    rewardValue: { type: Number, required: true, default: 0 },
+    minOrderAmountPerFriend: { type: Number, required: true, default: 0 },
+    validityDays: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
 
 const GlobalSettingsSchema = new Schema<TGlobalSettings>(
   {
     // --------------------------------------------------
     // Delivery Pricing
     // --------------------------------------------------
-    deliveryChargePerKm: {
-      type: Number,
-      required: true,
-      default: 0,
+    delivery: {
+      baseCharge: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      chargePerKm: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      minCharge: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      maxCharge: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      freeAbove: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      maxDistanceKm: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      vatRate: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
     },
-
-    baseDeliveryCharge: {
-      type: Number,
-      default: 0,
-    },
-
-    minDeliveryCharge: {
-      type: Number,
-      default: 50,
-    },
-
-    maxDeliveryCharge: {
-      type: Number,
-      default: 300,
-    },
-
-    freeDeliveryAbove: {
-      type: Number,
-      default: 0,
-    },
-
-    maxDeliveryDistanceKm: {
-      type: Number,
-      default: 15,
-    },
-
-    // customer nearest vendor search radius
-    customerNearestVendorRadiusKm: {
-      type: Number,
-      default: 20,
+    // --------------------------------------------------
+    // Commission & VAT
+    // --------------------------------------------------
+    commission: {
+      platformPercent: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      platformVatRate: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      fleetManagerPercent: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      deliveryPartnerPercent: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      vendorVatPercent: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
     },
 
     // --------------------------------------------------
-    // Platform Commission
+    // Order Rules & Automation
     // --------------------------------------------------
-    platformCommissionPercent: {
-      type: Number,
-      default: 15,
-      min: 0,
-      max: 100,
+    order: {
+      minAmount: {
+        type: Number,
+        default: 0,
+      },
+      maxAmount: {
+        type: Number,
+        default: 0,
+      },
+      maxItemsPerOrder: {
+        type: Number,
+        default: 0,
+      },
+      nearestVendorRadiusKm: {
+        type: Number,
+        default: 0,
+      },
+      autoCancelUnacceptedMinutes: {
+        type: Number,
+        default: 0,
+      },
+      autoMarkDeliveredMinutes: {
+        type: Number,
+        default: 0,
+      },
+      cancelTimeLimitMinutes: {
+        type: Number,
+        default: 0,
+      },
+      refundProcessingDays: {
+        type: Number,
+        default: 0,
+      },
+    },
+    rewards: {
+      customerPointsPerEuro: {
+        type: Number,
+        default: 0,
+      },
+      riderPointsPerDelivery: {
+        type: Number,
+        default: 0,
+      },
+      referralPoints: {
+        type: Number,
+        default: 0,
+      },
+      newRiderWelcomeBonus: {
+        type: Number,
+        default: 0,
+      },
+      pointsExpiryDays: {
+        type: Number,
+        default: 0,
+      },
+      customerReferralMilestones: {
+        type: [ReferralMilestoneSchema],
+        default: [],
+      },
     },
 
-    platformCommissionVatRate: {
-      type: Number,
-      default: 23,
-      min: 0,
-      max: 100,
+    system: {
+      isPlatformLive: {
+        type: Boolean,
+        default: true,
+      },
+      maintenanceMessage: {
+        type: String,
+        default: '',
+      },
+      isOfferEnabled: {
+        type: Boolean,
+        default: false,
+      },
+      maxDiscountPercent: {
+        type: Number,
+        default: 0,
+      },
+      refundProcessingDays: {
+        type: Number,
+        default: 0,
+      },
+      otp: {
+        enabled: {
+          type: Boolean,
+          default: false,
+        },
+        length: {
+          type: Number,
+          default: 4,
+        },
+        expiryMinutes: {
+          type: Number,
+          default: 5,
+        },
+      },
     },
 
-    fleetManagerCommissionPercent: {
-      type: Number,
-      default: 4,
-      min: 0,
-      max: 100,
-    },
-
-    deliveryPartnerCommissionPercent: {
-      type: Number,
-      default: 96,
-      min: 0,
-      max: 100,
-    },
-
-    deliveryVatRate: {
-      type: Number,
-      default: 23,
-      min: 0,
-      max: 100,
-    },
-
-    vendorVatPercent: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100,
-    },
-
-    // --------------------------------------------------
-    // Order Rules
-    // --------------------------------------------------
-    minOrderAmount: {
-      type: Number,
-      default: 0,
-    },
-
-    maxOrderAmount: {
-      type: Number,
-      default: null,
-    },
-
-    maxItemsPerOrder: {
-      type: Number,
-      default: null,
-    },
-
-    // --------------------------------------------------
-    // Cancellation & Refund
-    // --------------------------------------------------
-    cancelTimeLimitMinutes: {
-      type: Number,
-      default: 5,
-    },
-
-    refundProcessingDays: {
-      type: Number,
-      default: 7,
-    },
-
-    // --------------------------------------------------
-    //  Offers
-    // --------------------------------------------------
-
-    isOfferEnabled: {
-      type: Boolean,
-      default: true,
-    },
-
-    maxDiscountPercent: {
-      type: Number,
-      default: 50,
-      min: 0,
-      max: 100,
-    },
-
-    // --------------------------------------------------
-    // Order Automation
-    // --------------------------------------------------
-    autoCancelUnacceptedOrderMinutes: {
-      type: Number,
-      default: 10,
-    },
-
-    autoMarkDeliveredAfterMinutes: {
-      type: Number,
-      default: 180,
-    },
-
-    // --------------------------------------------------
-    // OTP & Security
-    // --------------------------------------------------
-    orderOtpEnabled: {
-      type: Boolean,
-      default: true,
-    },
-
-    otpLength: {
-      type: Number,
-      default: 4,
-    },
-
-    otpExpiryMinutes: {
-      type: Number,
-      default: 5,
-    },
-
-    // --------------------------------------------------
-    // Platform State
-    // --------------------------------------------------
-    isPlatformLive: {
-      type: Boolean,
-      default: true,
-    },
-
-    maintenanceMessage: {
-      type: String,
-      default: '',
-    },
-
-    // --------------------------------------------------
-    // Meta
-    // --------------------------------------------------
-    updatedBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'Admin',
-      default: null,
+    meta: {
+      updatedBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'Admin',
+      },
     },
   },
   {

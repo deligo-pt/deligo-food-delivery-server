@@ -30,6 +30,8 @@ import { UploadRoutes } from '../modules/Upload/upload.route';
 import { SupportRoutes } from '../modules/Support/support.route';
 import { IngredientRoutes } from '../modules/Ingredients/ingredients.route';
 import { IngredientOrderRoutes } from '../modules/Ingredient-Order/ing-order.route';
+import { PointsRoutes } from '../modules/Points/points.route';
+import { ReferralRoutes } from '../modules/Referral/referral.route';
 
 const router = Router();
 
@@ -158,6 +160,14 @@ const moduleRoutes = [
   {
     path: '/ingredients-order',
     route: IngredientOrderRoutes,
+  },
+  {
+    path: '/points',
+    route: PointsRoutes,
+  },
+  {
+    path: '/referrals',
+    route: ReferralRoutes,
   },
 ];
 

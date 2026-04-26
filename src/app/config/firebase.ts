@@ -6,9 +6,6 @@ const serviceAccountJson = config.firebase_service_account;
 
 if (!admin.apps.length) {
   if (!serviceAccountJson) {
-    console.error(
-      'Firebase service account is missing. Check your environment variables.'
-    );
     process.exit(1);
   }
 

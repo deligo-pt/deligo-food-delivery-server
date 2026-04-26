@@ -35,6 +35,7 @@ import { Wallet } from '../Wallet/wallet.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { PipelineStage } from 'mongoose';
+import { generateEmptyBuckets, getGroupingPipeline, getReportTimeframe, mapGrowthToTimeline } from './analytics.utils';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -270,9 +271,9 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
   const avgOrders =
     totalCustomers > 0
       ? (
-          customersRaw.reduce((acc: number, c: any) => acc + c.totalOrders, 0) /
-          totalCustomers
-        ).toFixed(1)
+        customersRaw.reduce((acc: number, c: any) => acc + c.totalOrders, 0) /
+        totalCustomers
+      ).toFixed(1)
       : '0.0';
 
   /** ---------------- DEMOGRAPHICS ---------------- */
@@ -997,26 +998,32 @@ const getAdminOrderReportAnalytics = async (
 };
 
 // admin customer report analytics
-const getAdminCustomerReportAnalytics = async () => {
-  const startOf12MonthsWindow = new Date();
-  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
-  startOf12MonthsWindow.setDate(1);
-  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+const getAdminCustomerReportAnalytics = async (
+  timeframe?: string,
+  fromDate?: string | Date,
+  toDate?: string | Date
+) => {
+  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+  const groupId = getGroupingPipeline(resolution, size, start);
+
+  // Build the dynamic match for growth
+  const growthMatch: any = { isDeleted: false };
+  if (start) {
+    growthMatch.createdAt = { $gte: start, $lte: end };
+  }
 
   const [analytics] = await Customer.aggregate([
-    { $match: { isDeleted: false } },
-
     {
       $facet: {
-        // SUMMARY CARDS
-        summary: [
+        stats: [
+          { $match: { isDeleted: false } },
           {
             $group: {
               _id: null,
               totalCustomers: { $sum: 1 },
-              activeCustomers: {
-                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
-              },
+              activeCustomers: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
             },
           },
           {
@@ -1031,392 +1038,258 @@ const getAdminCustomerReportAnalytics = async () => {
               from: 'wallets',
               pipeline: [
                 { $match: { userModel: 'Admin' } },
-                {
-                  $group: {
-                    _id: null,
-                    totalRev: { $sum: '$totalEarnings' },
-                  },
-                },
+                { $group: { _id: null, totalRev: { $sum: '$totalEarnings' } } },
               ],
               as: 'walletStats',
             },
           },
-          {
-            $project: {
-              totalCustomers: 1,
-              activeCustomers: 1,
-              totalOrders: {
-                $ifNull: [{ $arrayElemAt: ['$totalOrderCount.count', 0] }, 0],
-              },
-              totalRevenue: {
-                $ifNull: [{ $arrayElemAt: ['$walletStats.totalRev', 0] }, 0],
-              },
-            },
-          },
         ],
-
-        // CUSTOMER GROWTH - only 12 months
         growth: [
-          {
-            $match: { createdAt: { $gte: startOf12MonthsWindow } },
-          },
-          {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              monthlyCount: { $sum: 1 },
-            },
-          },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
+          { $match: growthMatch },
+          { $group: { _id: groupId, count: { $sum: 1 } } },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
         ],
-
-        // STATUS DISTRIBUTION
         statusStats: [
-          {
-            $group: {
-              _id: '$status',
-              count: { $sum: 1 },
-            },
-          },
+          { $match: { isDeleted: false } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
         ],
       },
     },
   ]);
 
-  const summary = analytics.summary[0] || {
-    totalCustomers: 0,
-    activeCustomers: 0,
-    totalOrders: 0,
-    totalRevenue: 0,
-  };
+  const rawStats = analytics.stats[0] || {};
 
-  // CUMULATIVE GROWTH TRANSFORMATION
-  let cumulative = 0;
-  const customerGrowth = analytics.growth.map((item: any) => {
-    cumulative += item.monthlyCount;
-    return {
-      label: new Date(item._id.year, item._id.month - 1).toLocaleString(
-        'en-US',
-        { month: 'short' },
-      ),
-      value: cumulative,
-    };
-  });
+  const customerGrowth = mapGrowthToTimeline({
+    growth: analytics.growth,
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  }).map(item => ({
+    label: item.time,
+    value: item.value,
+  }));
 
   return {
-    cards: {
-      totalCustomers: summary.totalCustomers,
-      activeCustomers: summary.activeCustomers,
-      totalOrders: summary.totalOrders,
-      totalRevenue: `€${summary.totalRevenue.toFixed(2)}`,
+    stats: {
+      totalCustomers: rawStats.totalCustomers || 0,
+      activeCustomers: rawStats.activeCustomers || 0,
+      totalSpent: rawStats.walletStats?.[0]?.totalRev || 0,
+      totalOrders: rawStats.totalOrderCount?.[0]?.count || 0,
     },
 
     customerGrowth,
 
     statusDistribution: {
-      approved:
-        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
-        0,
-
-      pending:
-        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
-
-      blocked:
-        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
-    },
+      active: analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
+      blocked: analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
+      pending: analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+    }
   };
 };
 
 // admin vendor report analytics
-const getAdminVendorReportAnalytics = async () => {
-  const startOf12MonthsWindow = new Date();
-  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
-  startOf12MonthsWindow.setDate(1);
-  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+const getAdminVendorReportAnalytics = async (
+  timeframe?: string,
+  fromDate?: string | Date,
+  toDate?: string | Date
+) => {
+  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+
+  // 1. Generate the exact timeline map with 0s
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+  const groupId = getGroupingPipeline(resolution, size, start);
+
+
+  // Growth match based on timeframe (or all if timeframe is null)
+  const growthMatch: any = { isDeleted: false };
+  if (start) {
+    growthMatch.createdAt = { $gte: start, $lte: end };
+  }
 
   const [analytics] = await Vendor.aggregate([
     {
-      $match: {
-        isDeleted: false,
-      },
-    },
-
-    {
       $facet: {
-        // SUMMARY CARDS
-        summary: [
-          {
-            $group: {
-              _id: null,
-              totalVendors: { $sum: 1 },
-
-              approvedVendors: {
-                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
-              },
-
-              submittedVendors: {
-                $sum: { $cond: [{ $eq: ['$status', 'SUBMITTED'] }, 1, 0] },
-              },
-
-              blockedOrRejectedVendors: {
-                $sum: {
-                  $cond: [{ $in: ['$status', ['BLOCKED', 'REJECTED']] }, 1, 0],
-                },
-              },
-            },
-          },
-        ],
-
-        // MONTHLY SIGNUPS - only lastest 12 months
-        monthlySignups: [
-          {
-            $match: {
-              createdAt: { $gte: startOf12MonthsWindow },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              count: { $sum: 1 },
-            },
-          },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
-        ],
-
-        // STATUS DISTRIBUTION
+        // GLOBAL STATS & STATUS DISTRIBUTION
         statusStats: [
-          {
-            $group: {
-              _id: '$status',
-              count: { $sum: 1 },
-            },
-          },
+          { $match: { isDeleted: false } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+        ],
+
+        // VENDOR GROWTH (Timeframe aware)
+        growth: [
+          { $match: growthMatch },
+          { $group: { _id: groupId, count: { $sum: 1 } } },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
         ],
       },
     },
   ]);
 
-  const summary = analytics.summary[0] || {
-    totalVendors: 0,
-    approvedVendors: 0,
-    submittedVendors: 0,
-    blockedOrRejectedVendors: 0,
-  };
+  // Helper to find count by status
+  const getCount = (status: string) =>
+    analytics.statusStats.find((s: any) => s._id === status)?.count || 0;
 
-  // MONTHLY SIGNUPS TRANSFORMATION
-  const monthlySignups = analytics.monthlySignups.map((item: any) => ({
-    label: new Date(item._id.year, item._id.month - 1).toLocaleString('en-US', {
-      month: 'short',
-    }),
-    value: item.count,
+  // Map Growth Labels (Reusing the logic from Customer Report)
+  // 2. Map MongoDB results into timelineMap (IMPORTANT FIX)
+  const vendorGrowths = mapGrowthToTimeline({
+    growth: analytics.growth,
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  }).map(item => ({
+    time: item.time,
+    vendors: item.value,
   }));
 
+  const approved = getCount('APPROVED');
+  const pending = getCount('PENDING');
+  const submitted = getCount('SUBMITTED');
+  const rejected = getCount('REJECTED');
+  const blocked = getCount('BLOCKED');
+
   return {
-    // TOP CARDS
-    cards: {
-      totalVendors: summary.totalVendors,
-      approvedVendors: summary.approvedVendors,
-      submittedVendors: summary.submittedVendors,
-      blockedOrRejectedVendors: summary.blockedOrRejectedVendors,
+    stats: {
+      totalVendors: approved + pending + submitted + rejected + blocked,
+      approvedVendors: approved,
+      pendingVendors: pending,
+      blockedVendors: blocked + rejected,
     },
 
-    // BAR CHART
-    monthlySignups,
+    vendorGrowths,
 
-    // DONUT CHART
     statusDistribution: {
-      approved:
-        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
-        0,
-
-      pending:
-        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
-
-      submitted:
-        analytics.statusStats.find((s: any) => s._id === 'SUBMITTED')?.count ||
-        0,
-
-      rejected:
-        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count ||
-        0,
-
-      blocked:
-        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
+      approved,
+      pending,
+      submitted,
+      rejected,
+      blocked,
     },
   };
 };
 
 // admin fleet manager report analytics
-const getAdminFleetManagerReportAnalytics = async () => {
-  const startOf12MonthsWindow = new Date();
-  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
-  startOf12MonthsWindow.setDate(1);
-  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+const getAdminFleetManagerReportAnalytics = async (
+  timeframe?: string,
+  fromDate?: string | Date,
+  toDate?: string | Date
+) => {
+  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+
+  // 1. Generate the exact timeline map with 0s
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+  const groupId = getGroupingPipeline(resolution, size, start);
+
+  // Match only within timeframe if provided, otherwise all non-deleted
+  const growthMatch: any = { isDeleted: false };
+  if (timeframe || fromDate) {
+    growthMatch.createdAt = { $gte: start, $lte: end };
+  }
 
   const [analytics] = await FleetManager.aggregate([
     {
-      $match: {
-        isDeleted: false,
-      },
-    },
-
-    {
       $facet: {
-        // SUMMARY CARDS
         summary: [
+          { $match: { isDeleted: false } },
           {
             $group: {
               _id: null,
-
-              totalFleetManagers: { $sum: 1 },
-
-              approvedFleetManagers: {
-                $sum: {
-                  $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0],
-                },
-              },
-
-              submittedFleetManagers: {
-                $sum: {
-                  $cond: [{ $eq: ['$status', 'SUBMITTED'] }, 1, 0],
-                },
-              },
-
-              blockedOrRejectedFleetManagers: {
-                $sum: {
-                  $cond: [{ $in: ['$status', ['BLOCKED', 'REJECTED']] }, 1, 0],
-                },
-              },
-            },
-          },
-        ],
-
-        // MONTHLY SIGNUPS (LAST 12 MONTHS)
-        monthlySignups: [
-          {
-            $match: {
-              createdAt: { $gte: startOf12MonthsWindow },
+              totalManagers: { $sum: 1 },
+              approvedManagers: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
             },
           },
           {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              count: { $sum: 1 },
+            $lookup: {
+              from: 'drivers',
+              pipeline: [{ $match: { isDeleted: false } }, { $count: 'count' }],
+              as: 'driverCount',
             },
           },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
+          {
+            $lookup: {
+              from: 'orders',
+              pipeline: [{ $match: { isDeleted: false, status: 'DELIVERED' } }, { $count: 'count' }],
+              as: 'deliveryCount',
+            },
+          },
         ],
-
-        // STATUS DISTRIBUTION
+        growth: [
+          { $match: growthMatch },
+          { $group: { _id: groupId, count: { $sum: 1 } } },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
+        ],
         statusStats: [
-          {
-            $group: {
-              _id: '$status',
-              count: { $sum: 1 },
-            },
-          },
+          { $match: { isDeleted: false } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
         ],
       },
     },
   ]);
 
-  const summary = analytics.summary[0] || {
-    totalFleetManagers: 0,
-    approvedFleetManagers: 0,
-    totalDrivers: 0,
-    totalDeliveries: 0,
-  };
+  const summary = analytics.summary[0] || {};
 
-  const monthlySignups = analytics.monthlySignups.map((item: any) => ({
-    label: new Date(item._id.year, item._id.month - 1).toLocaleString('en-US', {
-      month: 'short',
-    }),
-    value: item.count,
+  // 2. Map MongoDB results to the correct timeline labels
+  const fleetGrowths = mapGrowthToTimeline({
+    growth: analytics.growth,
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  }).map(item => ({
+    time: item.time,
+    managers: item.value,
   }));
 
+  const getStatusCount = (status: string) =>
+    analytics.statusStats.find((s: any) => s._id === status)?.count || 0;
+
   return {
-    // TOP CARDS
-    cards: {
-      totalFleetManagers: summary.totalFleetManagers,
-      approvedFleetManagers: summary.approvedFleetManagers,
-      submittedFleetManagers: summary.submittedFleetManagers,
-      blockedOrRejectedFleetManagers: summary.blockedOrRejectedFleetManagers,
+    stats: {
+      totalManagers: summary.totalManagers || 0,
+      approvedManagers: summary.approvedManagers || 0,
+      totalDrivers: summary.driverCount?.[0]?.count || 0,
+      totalDeliveries: summary.deliveryCount?.[0]?.count || 0,
     },
 
-    // BAR / LINE CHART
-    monthlySignups,
+    fleetGrowths,
 
-    // DONUT CHART
     statusDistribution: {
-      approved:
-        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
-        0,
-
-      pending:
-        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
-
-      rejected:
-        analytics.statusStats.find((s: any) => s._id === 'REJECTED')?.count ||
-        0,
-
-      blocked:
-        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
+      approved: getStatusCount('APPROVED'),
+      pending: getStatusCount('PENDING'),
+      submitted: getStatusCount('SUBMITTED'),
+      rejected: getStatusCount('REJECTED'),
+      blocked: getStatusCount('BLOCKED'),
     },
   };
 };
 
 // admin fleet manager report analytics
-const getAdminDeliveryPartnerReportAnalytics = async () => {
-  const startOf12MonthsWindow = new Date();
-  startOf12MonthsWindow.setMonth(startOf12MonthsWindow.getMonth() - 11);
-  startOf12MonthsWindow.setDate(1);
-  startOf12MonthsWindow.setHours(0, 0, 0, 0);
+const getAdminDeliveryPartnerReportAnalytics = async (timeframe?: string, fromDate?: string, toDate?: string) => {
+  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+
+  // 1. Generate the empty 0-value template
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+
+  const groupId = getGroupingPipeline(resolution, size, start);
+  const growthMatch: any = { isDeleted: false };
+  if (start) growthMatch.createdAt = { $gte: start, $lte: end };
 
   const [analytics] = await DeliveryPartner.aggregate([
     {
-      $match: {
-        isDeleted: false,
-      },
-    },
-
-    {
       $facet: {
-        // SUMMARY CARDS
+        // TOP STATS
         summary: [
+          { $match: { isDeleted: false } },
           {
             $group: {
               _id: null,
-
               totalPartners: { $sum: 1 },
-
-              activePartners: {
-                $sum: {
-                  $cond: [
-                    {
-                      $and: [
-                        { $eq: ['$status', 'APPROVED'] },
-                        { $eq: ['$operationalData.isWorking', true] },
-                      ],
-                    },
-                    1,
-                    0,
-                  ],
-                },
-              },
-
-              totalDeliveries: {
-                $sum: {
-                  $ifNull: ['$operationalData.totalDeliveries', 0],
-                },
-              },
+              approvedPartners: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
+              totalDeliveries: { $sum: { $ifNull: ['$operationalData.totalDeliveries', 0] } },
             },
           },
           {
@@ -1424,109 +1297,61 @@ const getAdminDeliveryPartnerReportAnalytics = async () => {
               from: 'wallets',
               pipeline: [
                 { $match: { userModel: 'DeliveryPartner' } },
-                {
-                  $group: {
-                    _id: null,
-                    totalEarningsFromWallet: { $sum: '$totalEarnings' },
-                  },
-                },
+                { $group: { _id: null, totalEarned: { $sum: '$totalEarnings' } } },
               ],
               as: 'walletStats',
             },
           },
-          {
-            $project: {
-              totalPartners: 1,
-              activePartners: 1,
-              totalDeliveries: 1,
-              totalEarnings: {
-                $ifNull: [
-                  { $arrayElemAt: ['$walletStats.totalEarningsFromWallet', 0] },
-                  0,
-                ],
-              },
-            },
-          },
         ],
-
-        // PARTNER GROWTH (LAST 12 MONTHS)
+        // VENDOR GROWTHS OVER TIMEFRAME
         growth: [
-          {
-            $match: {
-              createdAt: { $gte: startOf12MonthsWindow },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              count: { $sum: 1 },
-            },
-          },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
+          { $match: growthMatch },
+          { $group: { _id: groupId, count: { $sum: 1 } } },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
         ],
-
-        // VEHICLE TYPES
-        vehicleTypes: [
-          {
-            $group: {
-              _id: '$vehicleInfo.vehicleType',
-              count: { $sum: 1 },
-            },
-          },
+        // VEHICLE DISTRIBUTION
+        vehicleStats: [
+          { $match: { isDeleted: false } },
+          { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
         ],
-      },
-    },
+      }
+    }
   ]);
 
-  const summary = analytics.summary[0] || {
-    totalPartners: 0,
-    activePartners: 0,
-    totalDeliveries: 0,
-    totalEarnings: 0,
-  };
+  const summary = analytics.summary[0] || {};
 
-  // CUMULATIVE GROWTH TRANSFORMATION
-  let cumulative = 0;
-  const partnerGrowth = analytics.growth.map((item: any) => {
-    cumulative += item.count;
-    return {
-      label: new Date(item._id.year, item._id.month - 1).toLocaleString(
-        'en-US',
-        { month: 'short' },
-      ),
-      value: cumulative,
-    };
-  });
+  // 2. Merge DB results into our timelineMap
+  const partnerGrowths = mapGrowthToTimeline({
+    growth: analytics.growth,
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  }).map(item => ({
+    time: item.time,
+    managers: item.value,
+  }));
+
+  const getVehicleCount = (type: string) =>
+    analytics.vehicleStats.find((v: any) => v._id === type)?.count || 0;
 
   return {
-    // TOP CARDS
-    cards: {
-      totalPartners: summary.totalPartners,
-      activePartners: summary.activePartners,
-      totalDeliveries: summary.totalDeliveries,
-      totalEarnings: `€${summary.totalEarnings.toFixed(2)}`,
+    stats: {
+      totalPartners: summary.totalPartners || 0,
+      approvedPartners: summary.approvedPartners || 0,
+      totalDeliveries: summary.totalDeliveries || 0,
+      totalEarnings: summary.walletStats?.[0]?.totalEarned || 0,
     },
 
-    // LINE CHART
-    partnerGrowth,
+    partnerGrowths,
 
-    // VEHICLE TYPES
-    vehicleTypes: {
-      motorbike:
-        analytics.vehicleTypes.find((v: any) => v._id === 'MOTORBIKE')?.count ||
-        0,
-      eBike:
-        analytics.vehicleTypes.find((v: any) => v._id === 'E-BIKE')?.count || 0,
-      scooter:
-        analytics.vehicleTypes.find((v: any) => v._id === 'SCOOTER')?.count ||
-        0,
-      bicycle:
-        analytics.vehicleTypes.find((v: any) => v._id === 'BICYCLE')?.count ||
-        0,
-      car: analytics.vehicleTypes.find((v: any) => v._id === 'CAR')?.count || 0,
+    vehicleDistribution: {
+      "E-BIKE": getVehicleCount('E-BIKE'),
+      BICYCLE: getVehicleCount('BICYCLE'),
+      SCOOTER: getVehicleCount('SCOOTER'),
+      MOTORBIKE: getVehicleCount('MOTORBIKE'),
+      CAR: getVehicleCount('CAR'),
     },
   };
 };
@@ -1965,36 +1790,76 @@ const getVendorTaxReport = async (
         // 3. Tax by Category (Bar Chart)
         taxByCategory: [
           { $unwind: '$items' },
+          // Collect all taxes (product tax + all addon taxes)
           {
             $project: {
               allTaxes: {
                 $concatArrays: [
-                  [{ rate: '$items.productPricing.taxRate', amount: '$items.productPricing.taxAmount' }],
+                  // Product tax
+                  [{
+                    rate: '$items.productPricing.taxRate',
+                    amount: '$items.productPricing.taxAmount'
+                  }],
+                  // Addon taxes
                   {
                     $map: {
                       input: '$items.addons',
                       as: 'addon',
-                      in: { rate: '$$addon.taxRate', amount: '$$addon.taxAmount' }
+                      in: {
+                        rate: '$$addon.taxRate',
+                        amount: '$$addon.taxAmount'
+                      }
                     }
                   }
                 ]
               }
             }
           },
+
           { $unwind: '$allTaxes' },
+
+          // Group by tax rate and sum the amount
           {
             $group: {
               _id: '$allTaxes.rate',
-              value: { $sum: '$allTaxes.amount' }
+              totalTaxAmount: { $sum: '$allTaxes.amount' }
             }
           },
+
+          // Calculate total tax across all rates (for percentage)
+          {
+            $group: {
+              _id: null,
+              taxes: { $push: { rate: '$_id', amount: '$totalTaxAmount' } },
+              grandTotalTax: { $sum: '$totalTaxAmount' }
+            }
+          },
+
+          { $unwind: '$taxes' },
+
+          // Final projection with name, value, and percentage
           {
             $project: {
-              name: { $concat: [{ $toString: '$_id' }, '% Rate'] },
-              value: 1,
+              name: {
+                $concat: [{ $toString: '$taxes.rate' }, '%']
+              },
+              value: '$taxes.amount',
+              percentage: {
+                $cond: {
+                  if: { $eq: ['$grandTotalTax', 0] },
+                  then: 0,
+                  else: {
+                    $multiply: [
+                      { $divide: ['$taxes.amount', '$grandTotalTax'] },
+                      100
+                    ]
+                  }
+                }
+              },
               _id: 0
             }
           },
+
           { $sort: { name: 1 } }
         ],
 
@@ -3175,8 +3040,8 @@ const getAdminSalesAnalytics = async (query: any) => {
   const growthRate =
     previous.totalRevenue > 0
       ? ((current.totalRevenue - previous.totalRevenue) /
-          previous.totalRevenue) *
-        100
+        previous.totalRevenue) *
+      100
       : current.totalRevenue > 0
         ? 100
         : 0;
@@ -3775,7 +3640,7 @@ const getPeakHourAnalytics = async (query: {
         results.dayWise.find((d: any) => d._id === i + 1)?.orderCount || 0,
     })),
     heatmap: results.heatmap.map((item: any) => ({
-      day: DAYS_MAP[item._id.day],
+      day: DAYS_MAP[item._id.day - 1] || "Unknown",
       hour: item._id.hour,
       orderCount: item.orderCount,
     })),
@@ -4051,14 +3916,14 @@ const getDeliveryInsights = async (query: {
       lateDeliveryPercentage:
         summary.successOrders > 0
           ? Number(
-              ((summary.lateCount / summary.successOrders) * 100).toFixed(1),
-            )
+            ((summary.lateCount / summary.successOrders) * 100).toFixed(1),
+          )
           : 0,
       rejectedDeliveryPercentage:
         summary.totalOrders > 0
           ? Number(
-              ((summary.rejectedCount / summary.totalOrders) * 100).toFixed(1),
-            )
+            ((summary.rejectedCount / summary.totalOrders) * 100).toFixed(1),
+          )
           : 0,
     },
     riderPerformance: facet.riderPerformance,
@@ -4261,100 +4126,100 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-          // Vendor filter
-          {
-            $match: {
-              vendorId,
-              isDeleted: false,
+        // Vendor filter
+        {
+          $match: {
+            vendorId,
+            isDeleted: false,
+          },
+        },
+
+        // Unwind items
+        { $unwind: '$items' },
+
+        // Join products to get category
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'items.productId',
+            foreignField: '_id',
+            as: 'product',
+          },
+        },
+        { $unwind: '$product' },
+
+        {
+          $lookup: {
+            from: 'productcategories',
+            localField: 'product.category',
+            foreignField: '_id',
+            as: 'categoryDetails',
+          },
+        },
+        { $unwind: '$categoryDetails' },
+
+        // Count orders per category
+        {
+          $group: {
+            _id: {
+              categoryId: '$categoryDetails._id',
+              categoryName: '$categoryDetails.name',
+              orderId: '$_id',
             },
           },
+        },
 
-          // Unwind items
-          { $unwind: '$items' },
-
-          // Join products to get category
-          {
-            $lookup: {
-              from: 'products',
-              localField: 'items.productId',
-              foreignField: '_id',
-              as: 'product',
-            },
+        {
+          $group: {
+            _id: '$_id.categoryId',
+            categoryName: { $first: '$_id.categoryName' },
+            orderCount: { $sum: 1 },
           },
-          { $unwind: '$product' },
+        },
 
-          {
-            $lookup: {
-              from: 'productcategories',
-              localField: 'product.category',
-              foreignField: '_id',
-              as: 'categoryDetails',
-            },
-          },
-          { $unwind: '$categoryDetails' },
-
-          // Count orders per category
-          {
-            $group: {
-              _id: {
-                categoryId: '$categoryDetails._id',
-                categoryName: '$categoryDetails.name',
-                orderId: '$_id',
+        // Calculate TOTAL of all category orders
+        {
+          $group: {
+            _id: null,
+            totalCategoryOrders: { $sum: '$orderCount' },
+            categories: {
+              $push: {
+                name: '$categoryName',
+                orderCount: '$orderCount',
               },
             },
           },
+        },
 
-          {
-            $group: {
-              _id: '$_id.categoryId',
-              categoryName: { $first: '$_id.categoryName' },
-              orderCount: { $sum: 1 },
-            },
-          },
-
-          // Calculate TOTAL of all category orders
-          {
-            $group: {
-              _id: null,
-              totalCategoryOrders: { $sum: '$orderCount' },
-              categories: {
-                $push: {
-                  name: '$categoryName',
-                  orderCount: '$orderCount',
+        // Calculate percentage (SUM = 100%)
+        { $unwind: '$categories' },
+        {
+          $project: {
+            _id: 0,
+            name: '$categories.name',
+            totalOrders: '$categories.orderCount',
+            percentage: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        '$categories.orderCount',
+                        '$totalCategoryOrders',
+                      ],
+                    },
+                    100,
+                  ],
                 },
-              },
+                2,
+              ],
             },
           },
+        },
 
-          // Calculate percentage (SUM = 100%)
-          { $unwind: '$categories' },
-          {
-            $project: {
-              _id: 0,
-              name: '$categories.name',
-              totalOrders: '$categories.orderCount',
-              percentage: {
-                $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          '$categories.orderCount',
-                          '$totalCategoryOrders',
-                        ],
-                      },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-            },
-          },
-
-          // Top category first
-          { $sort: { percentage: -1 } },
-        ]);
+        // Top category first
+        { $sort: { percentage: -1 } },
+      ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -4641,8 +4506,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-        )
+        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+      )
       : 0;
 
   return {
@@ -4659,17 +4524,17 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-              ) + '%'
+              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+            ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-          opData.completedDeliveries > 0 &&
-          opData.totalDeliveryMinutes
+            opData.completedDeliveries > 0 &&
+            opData.totalDeliveryMinutes
             ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries,
-              )
+              opData.totalDeliveryMinutes / opData.completedDeliveries,
+            )
             : 0;
 
         return {

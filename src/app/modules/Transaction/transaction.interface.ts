@@ -24,7 +24,8 @@ export type TTransaction = {
     | 'FLEET_SETTLEMENT'
     | 'DELIVERY_PARTNER_SETTLEMENT'
     | 'PLATFORM_COMMISSION'
-    | "INGREDIENT_PURCHASE";
+    | 'INGREDIENT_PURCHASE'
+    | 'REFERRAL_BONUS';
 
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
   paymentMethod:
@@ -36,6 +37,7 @@ export type TTransaction = {
     | 'WALLET'
     | 'CASH'
     | 'BANK_TRANSFER'
+    | 'DeliGO_PAY'
     | 'OTHER';
   remarks: string;
   processedBy?: mongoose.Types.ObjectId;
