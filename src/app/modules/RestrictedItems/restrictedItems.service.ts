@@ -44,8 +44,17 @@ const getAllRestrictedItems = async (query: Record<string, unknown>) => {
   return { meta, data };
 };
 
+const getSingleRestrictedItem = async (itemId: string) => {
+  const result = await RestrictedItem.findById(itemId);
+  if (!result) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
+  }
+  return result;
+};
+
 export const RestrictedItemService = {
   createRestrictedItem,
   updateRestrictedItem,
   getAllRestrictedItems,
+  getSingleRestrictedItem,
 };

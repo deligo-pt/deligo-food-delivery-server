@@ -37,8 +37,21 @@ const getAllRestrictedItems = catchAsync(async (req, res) => {
   });
 });
 
+const getSingleRestrictedItem = catchAsync(async (req, res) => {
+  const result = await RestrictedItemService.getSingleRestrictedItem(
+    req.params.itemId,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Item retrieved successfully',
+    data: result,
+  });
+});
+
 export const RestrictedItemsController = {
   createRestrictedItem,
   updateRestrictedItem,
   getAllRestrictedItems,
+  getSingleRestrictedItem,
 };

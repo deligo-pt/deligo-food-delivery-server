@@ -26,4 +26,10 @@ router.get(
   RestrictedItemsController.getAllRestrictedItems,
 );
 
+router.get(
+  '/:itemId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  RestrictedItemsController.getSingleRestrictedItem,
+);
+
 export const RestrictedItemsRoutes = router;
