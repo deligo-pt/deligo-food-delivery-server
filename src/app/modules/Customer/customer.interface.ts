@@ -13,6 +13,7 @@ export type TCustomer = {
   role: 'CUSTOMER';
   email?: string;
   status: keyof typeof USER_STATUS;
+  isDeleted: boolean;
 
   // ------------------------------------------------------
   // Current/Real-Time Location Data (For live tracking during delivery)

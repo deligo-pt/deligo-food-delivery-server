@@ -44,6 +44,10 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       enum: Object.keys(USER_STATUS),
       required: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
 
     // ------------------------------------------------------
     // Current/Real-Time Location Data
@@ -76,7 +80,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // ------------------------------------------------------
     // Referral
     // ------------------------------------------------------
-       referralCode: { type: String, default: '' },
+    referralCode: { type: String, default: '' },
     referredBy: { type: Schema.Types.ObjectId, default: null, ref: 'Customer' },
 
     // ------------------------------------------------------
