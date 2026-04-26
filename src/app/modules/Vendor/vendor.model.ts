@@ -38,6 +38,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       ],
     },
     isUpdateLocked: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),

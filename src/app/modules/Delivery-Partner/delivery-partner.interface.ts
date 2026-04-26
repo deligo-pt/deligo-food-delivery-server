@@ -15,6 +15,7 @@ export type TDeliveryPartner = {
   email: string;
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
+  isDeleted: boolean;
 
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)

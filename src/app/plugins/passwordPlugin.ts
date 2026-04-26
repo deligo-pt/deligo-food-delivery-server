@@ -34,9 +34,10 @@ export const userSchemaPlugin = <T extends { email?: string }>(
     isDeleted?: boolean,
   ) {
     const query: any = { customUserId };
-    if (typeof isDeleted === 'boolean') {
-      query.isDeleted = isDeleted;
-    }
-    return await this.findOne(query).select('+password');
+    // if (typeof isDeleted === 'boolean') {
+    //   query.isDeleted = isDeleted;
+    // }
+    const res = await this.findOne(query).select('+password');
+    return res;
   };
 };

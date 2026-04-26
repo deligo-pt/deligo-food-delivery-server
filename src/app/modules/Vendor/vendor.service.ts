@@ -57,7 +57,7 @@ const vendorUpdate = async (
   // Referral Code Generation (New Logic)
   // -----------------------------
   if (!currentUser.referralCode) {
-    const firstName = currentUser.name.firstName || 'USER';
+    const firstName = 'USER';
     const newReferralCode = await generateReferralCode(firstName);
 
     payload.referralCode = newReferralCode;

@@ -14,6 +14,7 @@ export type TVendor = {
   email: string;
   role: 'VENDOR' | 'SUB_VENDOR';
   isUpdateLocked: boolean;
+  isDeleted: boolean;
   status: keyof typeof USER_STATUS;
 
   // --------------------------------------------------------

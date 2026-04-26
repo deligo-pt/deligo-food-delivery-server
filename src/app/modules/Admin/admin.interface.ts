@@ -12,6 +12,7 @@ export type TAdmin = {
   email: string;
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
+  isDeleted: boolean;
 
   currentSessionLocation?: TGeoJSONPoint;
 
