@@ -13,4 +13,17 @@ router.post(
   RestrictedItemsController.createRestrictedItem,
 );
 
+router.patch(
+  '/:itemId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(RestrictedItemValidation.RestrictedItemUpdateSchema),
+  RestrictedItemsController.updateRestrictedItem,
+);
+
+router.get(
+  '/',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  RestrictedItemsController.getAllRestrictedItems,
+);
+
 export const RestrictedItemsRoutes = router;

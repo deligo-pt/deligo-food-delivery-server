@@ -13,6 +13,32 @@ const createRestrictedItem = catchAsync(async (req, res) => {
   });
 });
 
+const updateRestrictedItem = catchAsync(async (req, res) => {
+  const result = await RestrictedItemService.updateRestrictedItem(
+    req.params.itemId,
+    req.body,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Item updated successfully',
+    data: result,
+  });
+});
+
+const getAllRestrictedItems = catchAsync(async (req, res) => {
+  const result = await RestrictedItemService.getAllRestrictedItems(req.query);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Items retrieved successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 export const RestrictedItemsController = {
   createRestrictedItem,
+  updateRestrictedItem,
+  getAllRestrictedItems,
 };
