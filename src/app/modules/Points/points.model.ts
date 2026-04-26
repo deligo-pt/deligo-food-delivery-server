@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { TPoints, TPointsLog } from './points.interface';
 
-const ALL_USER_MODELS = [
+const ALL_USER_MODELS_ENUM = [
   'Admin',
   'Vendor',
   'FleetManager',
@@ -22,7 +22,7 @@ const PointsSchema = new Schema<TPoints>(
       model: {
         type: String,
         required: true,
-        enum: ALL_USER_MODELS,
+        enum: ALL_USER_MODELS_ENUM,
       },
     },
     currentPoints: { type: Number, default: 0 },
@@ -46,7 +46,7 @@ const PointsLogSchema = new Schema<TPointsLog>(
         required: true,
         refPath: 'userId.model',
       },
-      model: { type: String, required: true, enum: ALL_USER_MODELS },
+      model: { type: String, required: true, enum: ALL_USER_MODELS_ENUM },
     },
     points: { type: Number, required: true },
     transactionType: {

@@ -2,13 +2,13 @@
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import {
+  ALL_USER_MODELS,
   AuthUser,
   ROLE_COLLECTION_MAP,
   USER_STATUS,
 } from '../../constant/user.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TUserProfileUpdate } from './profile.interface';
-import { ALL_USER_MODELS } from '../Auth/auth.constant';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { EmailHelper } from '../../utils/emailSender';
 import generateOtp from '../../utils/generateOtp';

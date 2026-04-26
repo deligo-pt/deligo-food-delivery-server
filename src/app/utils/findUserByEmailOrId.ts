@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
-import { ALL_USER_MODELS } from '../modules/Auth/auth.constant';
-import { ROLE_PREFIX_MAP, TUserRole } from '../constant/user.constant';
+import {
+  ALL_USER_MODELS,
+  ROLE_PREFIX_MAP,
+  TUserRole,
+} from '../constant/user.constant';
 import { IUserModel } from '../interfaces/user.interface';
 import { Admin } from '../modules/Admin/admin.model';
 import { Customer } from '../modules/Customer/customer.model';
