@@ -181,7 +181,7 @@ const createOrderAfterRedUniqPayment = async (
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
-      'order_notification',
+      'order_notification', //change the name
       'ORDER',
     );
 
