@@ -16,7 +16,6 @@ const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
   currentUser: AuthUser,
-  profilePhoto?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -45,15 +44,6 @@ const updateCustomer = async (
 
     payload.referralCode = newReferralCode;
   }
-
-  // ----------------------------------------------------------------------
-  // Photo update
-  // ----------------------------------------------------------------------
-  if (payload.profilePhoto) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Photo must be a file upload');
-  }
-
-  if (profilePhoto) payload.profilePhoto = profilePhoto;
 
   // ----------------------------------------------------------------------
   // User sends a single address
@@ -112,7 +102,7 @@ const updateCustomer = async (
   // Final Update
   // ----------------------------------------------------------------------
   const updated = await Customer.findOneAndUpdate(
-    { userId: customerId },
+    { customUserId: customerId },
     { $set: payload },
     { new: true },
   );
@@ -135,7 +125,7 @@ const updateCustomerLiveLocation = async (
     );
   }
 
-  if (currentUser?.userId !== customerId) {
+  if (currentUser?.customUserId !== customerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update live location!',
@@ -176,7 +166,7 @@ const updateCustomerLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updatedCustomer = await Customer.findOneAndUpdate(
-    { userId: currentUser.userId },
+    { customUserId: currentUser.customUserId },
     { $set: updateData },
     {
       new: true,
@@ -225,7 +215,7 @@ const addDeliveryAddress = async (
       'Only customers can add delivery addresses',
     );
   }
-  const userId = currentUser.userId;
+  const customUserId = currentUser.customUserId;
   if (currentUser.deliveryAddresses!.length >= 5) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -268,7 +258,7 @@ const addDeliveryAddress = async (
   // Deactivate previous addresses
   // --------------------------------------------------
   await Customer.updateOne(
-    { userId },
+    { customUserId },
     { $set: { 'deliveryAddresses.$[].isActive': false } },
   );
 
@@ -298,7 +288,7 @@ const addDeliveryAddress = async (
   // Push address
   // --------------------------------------------------
   await Customer.updateOne(
-    { userId },
+    { customUserId },
     { $push: { deliveryAddresses: newDeliveryAddress } },
   );
 
@@ -327,9 +317,9 @@ const updateDeliveryAddress = async (
   payload: Partial<TDeliveryAddress>,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.userId;
+  const userId = currentUser.customUserId;
   const customer = await Customer.findOne({
-    userId,
+    customUserId: userId,
     'deliveryAddresses._id': addressId,
   });
 
@@ -372,7 +362,7 @@ const updateDeliveryAddress = async (
     }
   });
   const updateResult = await Customer.updateOne(
-    { userId, 'deliveryAddresses._id': addressId },
+    { customUserId: userId, 'deliveryAddresses._id': addressId },
     { $set: updateFields },
     { runValidators: true },
   );
@@ -392,14 +382,14 @@ const toggleDeliveryAddressStatus = async (
   addressId: string,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.userId;
+  const userId = currentUser.customUserId;
   await Customer.updateOne(
-    { userId },
+    { customUserId: userId },
     { $set: { 'deliveryAddresses.$[].isActive': false } },
   );
 
   const updatedCustomer = await Customer.findOneAndUpdate(
-    { userId, 'deliveryAddresses._id': addressId },
+    { customUserId: userId, 'deliveryAddresses._id': addressId },
     { $set: { 'deliveryAddresses.$.isActive': true } },
     { new: true },
   );
@@ -428,9 +418,9 @@ const deleteDeliveryAddress = async (
   addressId: string,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.userId;
+  const userId = currentUser.customUserId;
   const result = await Customer.findOne(
-    { userId },
+    { customUserId: userId },
     { deliveryAddresses: { $elemMatch: { _id: addressId } } },
   );
 
@@ -448,7 +438,7 @@ const deleteDeliveryAddress = async (
     );
   }
   await Customer.updateOne(
-    { userId },
+    { customUserId: userId },
     { $pull: { deliveryAddresses: { _id: addressId } } },
   );
   return null;
@@ -474,9 +464,9 @@ const getAllCustomersFromDB = async (
     .search(CustomerSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name customUserId role',
+    rejectedBy: 'name customUserId role',
+    blockedBy: 'name customUserId role',
   });
 
   populateOptions.forEach((option) => {
@@ -508,12 +498,12 @@ const getSingleCustomerFromDB = async (
   let query: any;
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     query = Customer.findOne({
-      userId: currentUser?.userId,
+      userId: currentUser?.customUserId,
       isDeleted: false,
     });
     if (
-      query?.userId !== currentUser?.userId ||
-      customerId !== currentUser?.userId
+      query?.userId !== currentUser?.customUserId ||
+      customerId !== currentUser?.customUserId
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,

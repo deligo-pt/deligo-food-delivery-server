@@ -179,7 +179,7 @@ const createOrderAfterRedUniqPayment = async (
     };
 
     NotificationService.sendToUser(
-      existingVendor.userId,
+      existingVendor.customUserId,
       notificationPayload.title,
       notificationPayload.body,
       notificationPayload.data,
@@ -281,14 +281,14 @@ const updateOrderStatusByVendor = async (
     const customer = await Customer.findById(order.customerId, null, {
       session,
     });
-    const customerId = customer?.userId;
+    const customerId = customer?.customUserId;
 
     const deliveryPartner = order.deliveryPartnerId
       ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
           session,
         })
       : null;
-    const deliveryPartnerId = deliveryPartner?.userId;
+    const deliveryPartnerId = deliveryPartner?.customUserId;
 
     // ---------------------------------------------------------
     // Only pending orders are allowed to be accepted/rejected
@@ -561,7 +561,7 @@ const broadcastOrderToPartners = async (
     isDeleted: false,
   }).populate(
     'customerId',
-    'name userId role contactNumber currentSessionLocation profilePhoto',
+    'name customUserId role contactNumber currentSessionLocation profilePhoto',
   );
 
   if (order?.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
@@ -628,7 +628,7 @@ const broadcastOrderToPartners = async (
   }
 
   const partnerObjectIds = eligiblePartners.map((p) => p._id);
-  const partnerIds = eligiblePartners.map((p) => p.userId);
+  const partnerIds = eligiblePartners.map((p) => p.customUserId);
 
   const timerSeconds = 120;
   const expirationTime = new Date(Date.now() + timerSeconds * 1000);
@@ -719,7 +719,7 @@ const partnerAcceptsDispatchedOrder = async (
       .session(session);
     if (!order) throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
 
-    const vendorUserId = (order.vendorId as any)?.userId;
+    const vendorUserId = (order.vendorId as any)?.customUserId;
     const io = getIO();
 
     const isExpired =
@@ -738,7 +738,7 @@ const partnerAcceptsDispatchedOrder = async (
       );
       await session.commitTransaction();
 
-      io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
+      io.to(`user_${currentUser.customUserId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
       return {
@@ -748,14 +748,16 @@ const partnerAcceptsDispatchedOrder = async (
     }
 
     if (payload.action === 'REJECT') {
-      const isInPool = order.dispatchPartnerPool?.includes(currentUser.userId);
+      const isInPool = order.dispatchPartnerPool?.includes(
+        currentUser.customUserId,
+      );
       if (!isInPool) throw new AppError(httpStatus.BAD_REQUEST, 'Not in pool.');
 
       const isLastPartner = order.dispatchPartnerPool?.length === 1;
       await Order.updateOne(
         { orderId },
         {
-          $pull: { dispatchPartnerPool: currentUser.userId },
+          $pull: { dispatchPartnerPool: currentUser.customUserId },
           ...(isLastPartner && {
             $set: { orderStatus: ORDER_STATUS.AWAITING_PARTNER },
           }),
@@ -764,7 +766,7 @@ const partnerAcceptsDispatchedOrder = async (
       );
 
       await DeliveryPartner.updateOne(
-        { userId: currentUser.userId },
+        { customUserId: currentUser.customUserId },
         {
           $inc: { 'operationalData.totalRejectedOrders': 1 },
           $set: { 'operationalData.lastActivityAt': new Date() },
@@ -773,7 +775,7 @@ const partnerAcceptsDispatchedOrder = async (
       );
 
       await session.commitTransaction();
-      io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
+      io.to(`user_${currentUser.customUserId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
       return { data: null, message: 'Order rejected.' };
@@ -793,7 +795,7 @@ const partnerAcceptsDispatchedOrder = async (
         orderId,
         orderStatus: ORDER_STATUS.DISPATCHING,
         deliveryPartnerId: null,
-        dispatchPartnerPool: { $in: [currentUser.userId] },
+        dispatchPartnerPool: { $in: [currentUser.customUserId] },
         dispatchExpiresAt: { $gt: new Date() },
       },
       {
@@ -804,7 +806,7 @@ const partnerAcceptsDispatchedOrder = async (
         },
       },
       { new: true, session },
-    ).populate('customerId', 'name userId contactNumber profilePhoto');
+    ).populate('customerId', 'name customUserId contactNumber profilePhoto');
 
     if (!claimedOrder) {
       throw new AppError(
@@ -913,7 +915,7 @@ const otpVerificationByVendor = async (
     { new: true },
   ).populate(
     'deliveryPartnerId customerId',
-    'name userId role contactNumber currentSessionLocation profilePhoto',
+    'name customUserId role contactNumber currentSessionLocation profilePhoto',
   );
 
   if (!updatedOrder) {
@@ -958,11 +960,11 @@ const otpVerificationByVendor = async (
 
   // TODO: Notify Customer & Delivery Partner (Order is now PICKED_UP)
   const customer = await Customer.findById(updatedOrder.customerId).lean();
-  const customerId = customer?.userId;
+  const customerId = customer?.customUserId;
   const deliveryPartner = await DeliveryPartner.findById(
     updatedOrder.deliveryPartnerId,
   ).lean();
-  const deliveryPartnerId = deliveryPartner?.userId;
+  const deliveryPartnerId = deliveryPartner?.customUserId;
   const notificationPayload = {
     title: 'Order is now PICKED_UP',
     body: `Your order ${orderId} is now PICKED_UP.`,
@@ -1074,7 +1076,7 @@ const updateOrderStatusByDeliveryPartner = async (
       { new: true, session },
     ).populate(
       'customerId vendorId',
-      'name userId role contactNumber currentSessionLocation profilePhoto',
+      'name customUserId role contactNumber currentSessionLocation profilePhoto',
     );
 
     if (!updatedOrder) {
@@ -1166,7 +1168,7 @@ const updateOrderStatusByDeliveryPartner = async (
 
       // --- Vendor Wallet Update ---
       await Wallet.findOneAndUpdate(
-        { userId: updatedOrder.vendorId, userModel: 'Vendor' },
+        { customUserId: updatedOrder.vendorId, userModel: 'Vendor' },
         {
           $setOnInsert: { walletId: `WAL-V-${customNanoId(8)}` },
           $inc: {
@@ -1181,7 +1183,7 @@ const updateOrderStatusByDeliveryPartner = async (
 
       // --- Delivery Partner Wallet Update ---
       await Wallet.findOneAndUpdate(
-        { userId: partner?._id, userModel: 'DeliveryPartner' },
+        { userObjectId: partner?._id, userModel: 'DeliveryPartner' },
         {
           $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
           $inc: {
@@ -1199,7 +1201,7 @@ const updateOrderStatusByDeliveryPartner = async (
         .lean();
       // Admin Wallet
       await Wallet.findOneAndUpdate(
-        { userId: SYSTEM_ADMIN, userModel: 'Admin' },
+        { userObjectId: SYSTEM_ADMIN, userModel: 'Admin' },
         {
           $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
           $inc: {
@@ -1214,7 +1216,7 @@ const updateOrderStatusByDeliveryPartner = async (
       // Fleet Manager Wallet (If applicable)
       if (isManagedByFleet && fleetManagerId) {
         await Wallet.findOneAndUpdate(
-          { userId: fleetManagerId, userModel: 'FleetManager' },
+          { userObjectId: fleetManagerId, userModel: 'FleetManager' },
           {
             $setOnInsert: { walletId: `WAL-F-${customNanoId(8)}` },
             $inc: {
@@ -1301,7 +1303,7 @@ const updateOrderStatusByDeliveryPartner = async (
       );
 
       await DeliveryPartner.updateOne(
-        { userId: currentUser.userId },
+        { customUserId: currentUser.customUserId },
         {
           $set: {
             'operationalData.currentOrderId': null,
@@ -1319,7 +1321,7 @@ const updateOrderStatusByDeliveryPartner = async (
       );
     } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
       await DeliveryPartner.updateOne(
-        { userId: currentUser.userId },
+        { customUserId: currentUser.customUserId },
         {
           $set: {
             'operationalData.currentOrderId': null,
@@ -1340,9 +1342,9 @@ const updateOrderStatusByDeliveryPartner = async (
 
     // TODO: Notify Customer (Order is now ON_THE_WAY)
     const customer = await Customer.findById(updatedOrder.customerId).lean();
-    const customerId = customer?.userId;
+    const customerId = customer?.customUserId;
     const vendor = await Vendor.findById(updatedOrder.vendorId).lean();
-    const vendorId = vendor?.userId;
+    const vendorId = vendor?.customUserId;
 
     const notificationPayload = {
       title: `Order is now ${payload.orderStatus}`,
@@ -1461,10 +1463,10 @@ const getAllOrders = async (
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
-      'name userId role contactNumber currentSessionLocation profilePhoto NIF',
-    vendor: 'name userId role',
+      'name customUserId role contactNumber currentSessionLocation profilePhoto NIF',
+    vendor: 'name customUserId role',
     deliveryPartner:
-      'name userId role contactNumber currentSessionLocation profilePhoto',
+      'name customUserId role contactNumber currentSessionLocation profilePhoto',
     product: 'productId name',
   });
 
@@ -1487,7 +1489,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
     );
   }
 
-  const userId = currentUser._id;
+  const userObjectId = currentUser._id;
   // ------------------------------------------------------
   // Build role-based query filter securely
   // ------------------------------------------------------
@@ -1495,15 +1497,15 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 
   switch (currentUser.role) {
     case 'CUSTOMER':
-      filter.customerId = userId;
+      filter.customerId = userObjectId;
       break;
 
     case 'VENDOR':
-      filter.vendorId = userId;
+      filter.vendorId = userObjectId;
       break;
 
     case 'DELIVERY_PARTNER':
-      filter.deliveryPartnerId = userId;
+      filter.deliveryPartnerId = userObjectId;
       // filter.orderStatus = { $in: ['ACCEPTED', 'PICKED', 'DELIVERED'] };
       break;
 
@@ -1525,10 +1527,10 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
-      'name userId role contactNumber currentSessionLocation profilePhoto NIF',
-    vendor: 'name userId role',
+      'name customUserId role contactNumber currentSessionLocation profilePhoto NIF',
+    vendor: 'name customUserId role',
     deliveryPartner:
-      'name userId role contactNumber currentSessionLocation profilePhoto',
+      'name customUserId role contactNumber currentSessionLocation profilePhoto',
     product: 'productId name',
   });
 
@@ -1548,7 +1550,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 // get delivery partners dispatch order service
 const getDeliveryPartnersDispatchOrder = async (currentUser: AuthUser) => {
   const orders = await Order.find({
-    dispatchPartnerPool: { $in: [currentUser.userId] },
+    dispatchPartnerPool: { $in: [currentUser.customUserId] },
     isDeleted: false,
   }).sort({ createdAt: -1 });
 

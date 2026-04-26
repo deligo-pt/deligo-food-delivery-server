@@ -1,15 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import {
-  ALL_USER_MODELS,
-  AuthUser,
-  TUserRole,
-} from '../../constant/user.constant';
+import { AuthUser, TUserRole } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { Notification } from './notification.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserById } from '../../utils/findUserByEmailOrId';
+import { ALL_USER_MODELS } from '../../interfaces/user.interface';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -72,7 +69,7 @@ const sendToUser = (
   setImmediate(async () => {
     try {
       const { user } = await findUserById({
-        userId,
+        customUserId: userId,
       });
 
       if (!user) return;
@@ -89,7 +86,7 @@ const sendToUser = (
 
       // Save log (DB)
       await logNotification({
-        receiverId: user.userId,
+        receiverId: user.customUserId,
         receiverRole: user.role,
         title,
         message,
@@ -134,7 +131,7 @@ const sendToRole = (
         });
 
         await logNotification({
-          receiverId: user.userId,
+          receiverId: user.customUserId,
           receiverRole: user.role,
           title,
           message,
@@ -155,7 +152,7 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Notification not found');
   }
 
-  if (currentUser.userId !== notification.receiverId) {
+  if (currentUser.customUserId !== notification.receiverId) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'You are not authorized to perform this action',
@@ -169,7 +166,7 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
 // mark as read (all)
 const markAllAsRead = async (currentUser: AuthUser) => {
   await Notification.updateMany(
-    { receiverId: currentUser.userId },
+    { receiverId: currentUser.customUserId },
     { isRead: true },
   );
   return null;
@@ -181,7 +178,7 @@ const getMyNotifications = async (
 ) => {
   const notifications = new QueryBuilder(
     Notification.find({
-      receiverId: currentUser.userId,
+      receiverId: currentUser.customUserId,
     }),
     query,
   )
@@ -204,7 +201,7 @@ const getAllNotifications = async (
   query: Record<string, unknown>,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.userId;
+    query.receiverId = currentUser.customUserId;
   }
 
   const notifications = new QueryBuilder(Notification.find(), query)
@@ -234,7 +231,7 @@ const softDeleteSingleNotification = async (
 
   // If NOT super admin, restrict to own notification
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.userId;
+    query.receiverId = currentUser.customUserId;
   }
 
   // --------------------------------------------------
@@ -279,7 +276,7 @@ const softDeleteMultipleNotifications = async (
 
   // Restrict only if NOT super admin
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.userId;
+    query.receiverId = currentUser.customUserId;
   }
 
   // --------------------------------------------------
@@ -305,7 +302,7 @@ const softDeleteAllNotifications = async (currentUser: AuthUser) => {
 
   // Only restrict if NOT super admin
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.userId;
+    query.receiverId = currentUser.customUserId;
   }
 
   // --------------------------------------------------

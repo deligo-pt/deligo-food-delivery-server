@@ -53,7 +53,10 @@ const auth = (...requiredRoles: TUserRole[]) => {
     const { role, iat, userId, deviceId } = decoded;
 
     // 5. Fetch user and model information from the database
-    const result = await findUserById({ userId, isDeleted: false });
+    const result = await findUserById({
+      customUserId: userId,
+      isDeleted: false,
+    });
     const foundModel = result?.model;
     const user = result?.user;
     const status = user?.status;

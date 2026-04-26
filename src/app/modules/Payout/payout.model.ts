@@ -12,7 +12,7 @@ const payoutSchema = new Schema<TPayout>(
       required: true,
       unique: true,
     },
-    userId: {
+    userObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       refPath: 'userModel',

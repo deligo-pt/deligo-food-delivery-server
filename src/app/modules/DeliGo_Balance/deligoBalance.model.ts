@@ -3,7 +3,7 @@ import { TDeliGoBalance } from './deligoBalance.interface';
 
 const deliGoBalanceSchema = new Schema<TDeliGoBalance>(
   {
-    userId: {
+    userObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       refPath: 'userModel',
@@ -38,7 +38,7 @@ const deliGoBalanceSchema = new Schema<TDeliGoBalance>(
   },
 );
 
-deliGoBalanceSchema.index({ userId: 1, userModel: 1 });
+deliGoBalanceSchema.index({ userObjectId: 1, userModel: 1 });
 
 export const DeliGoBalance = model<TDeliGoBalance>(
   'DeliGoBalance',

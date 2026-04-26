@@ -7,12 +7,10 @@ import { CustomerServices } from './customer.service';
 // Customer Update Controller
 const updateCustomer = catchAsync(async (req, res) => {
   const user = req.user as AuthUser;
-  const profilePhoto = req.file?.path;
   const result = await CustomerServices.updateCustomer(
     req.body,
     req.params.customerId,
     user,
-    profilePhoto,
   );
   sendResponse(res, {
     success: true,

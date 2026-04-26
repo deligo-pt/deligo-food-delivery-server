@@ -1,12 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
-import {
-  ALL_USER_MODELS,
-  ROLE_PREFIX_MAP,
-  TUserRole,
-} from '../constant/user.constant';
-import { IUserModel } from '../interfaces/user.interface';
+import { ROLE_PREFIX_MAP, TUserRole } from '../constant/user.constant';
+import { ALL_USER_MODELS, IUserModel } from '../interfaces/user.interface';
 import { Admin } from '../modules/Admin/admin.model';
 import { Customer } from '../modules/Customer/customer.model';
 import { FleetManager } from '../modules/Fleet-Manager/fleet-manager.model';
@@ -14,16 +10,16 @@ import { Vendor } from '../modules/Vendor/vendor.model';
 import { DeliveryPartner } from '../modules/Delivery-Partner/delivery-partner.model';
 
 export const findUserById = async ({
-  userId,
+  customUserId,
   isDeleted = false,
 }: {
-  userId: string;
+  customUserId: string;
   isDeleted?: boolean;
 }) => {
-  if (!userId) {
+  if (!customUserId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'User ID must be provided');
   }
-  const prefix = userId.split('-')[0].toUpperCase();
+  const prefix = customUserId.split('-')[0].toUpperCase();
   const role = ROLE_PREFIX_MAP[prefix];
   const ROLE_MODEL_MAP: Record<TUserRole, IUserModel<any>> = {
     SUPER_ADMIN: Admin,
@@ -42,7 +38,7 @@ export const findUserById = async ({
       throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
     }
 
-    const foundUser = await Model.isUserExistsByUserId(userId);
+    const foundUser = await Model.isUserExistsByUserId(customUserId, isDeleted);
 
     if (foundUser) {
       return { user: foundUser, model: Model };
@@ -50,7 +46,7 @@ export const findUserById = async ({
   }
   throw new AppError(
     httpStatus.NOT_FOUND,
-    `No user found with ID "${userId}".`,
+    `No user found with ID "${customUserId}".`,
   );
 };
 export const findUserByEmail = async ({

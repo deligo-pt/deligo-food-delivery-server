@@ -140,7 +140,7 @@ const distributeReferralBonus = async (
           [
             {
               transactionId: generateTransactionId(),
-              userId: referral.referrerId,
+              userObjectId: referral.referrerId,
               userModel: referral.referrerModel,
               totalAmount: rewardValue,
               type: 'REFERRAL_BONUS',

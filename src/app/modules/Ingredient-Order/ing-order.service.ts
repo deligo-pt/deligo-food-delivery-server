@@ -118,7 +118,7 @@ const confirmIngredientOrder = async (
         {
           transactionId: transactionId,
           orderId: existingOrder._id,
-          userId: currentUser?._id,
+          userObjectId: currentUser?._id,
           userModel: 'Vendor',
           totalAmount: existingOrder.grandTotal,
           type: 'INGREDIENT_PURCHASE',

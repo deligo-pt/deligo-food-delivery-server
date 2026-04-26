@@ -51,7 +51,7 @@ const getSingleWallet = async (walletId: string, currentUser: AuthUser) => {
 
   if (currentUser.role === 'FLEET_MANAGER') {
     const isPartner = await DeliveryPartner.findOne({
-      _id: wallet.userId,
+      _id: wallet.userObjectId,
       'registeredBy.id': new mongoose.Types.ObjectId(currentUser._id),
     });
 
@@ -75,11 +75,11 @@ const getMyWallet = async (currentUser: AuthUser) => {
 
   if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') {
     wallet = await Wallet.findOne({
-      userId: adminUserId,
+      userObjectId: adminUserId,
     }).populate('userId', 'name email userId');
   } else {
     wallet = await Wallet.findOne({
-      userId: userId,
+      userObjectId: userId,
     }).populate('userId', 'name email userId');
   }
   if (!wallet) {

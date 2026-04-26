@@ -38,8 +38,7 @@ const updateDeliveryPartner = async (
   // Referral Code Generation (New Logic)
   // -----------------------------
   if (!currentUser.referralCode) {
-    const firstName =
-      payload.name?.firstName || currentUser.name.firstName || 'USER';
+    const firstName = currentUser.name.firstName || 'USER';
     const newReferralCode = await generateReferralCode(firstName);
 
     payload.referralCode = newReferralCode;
@@ -117,7 +116,7 @@ const updateDeliveryPartnerLiveLocation = async (
     );
   }
 
-  if (deliveryPartnerId && currentUser.userId !== deliveryPartnerId) {
+  if (deliveryPartnerId && currentUser.customUserId !== deliveryPartnerId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorize to update live location!',
@@ -160,7 +159,7 @@ const updateDeliveryPartnerLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updated = await DeliveryPartner.findOneAndUpdate(
-    { userId: currentUser.userId, isDeleted: false },
+    { customUserId: currentUser.customUserId, isDeleted: false },
     { $set: updateData },
     {
       new: true,
@@ -191,7 +190,9 @@ const changeDeliveryPartnerStatus = async (
     );
   }
 
-  const partner = await DeliveryPartner.findOne({ userId: currentUser.userId });
+  const partner = await DeliveryPartner.findOne({
+    customUserId: currentUser.customUserId,
+  });
 
   if (!partner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery partner not found');
@@ -214,7 +215,7 @@ const changeDeliveryPartnerStatus = async (
   }
 
   const result = await DeliveryPartner.findOneAndUpdate(
-    { userId: currentUser.userId },
+    { customUserId: currentUser.customUserId },
     {
       $set: {
         'operationalData.currentStatus': payload.status,
@@ -247,9 +248,9 @@ const getAllDeliveryPartnersFromDB = async (
     .search(DeliveryPartnerSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name customUserId role',
+    rejectedBy: 'name customUserId role',
+    blockedBy: 'name customUserId role',
   });
   populateOptions.forEach((option) => {
     deliveryPartners.modelQuery = deliveryPartners.modelQuery.populate(option);
@@ -272,7 +273,7 @@ const getSingleDeliveryPartnerFromDB = async (
 ) => {
   if (
     currentUser?.role === 'DELIVERY_PARTNER' &&
-    currentUser?.userId !== deliveryPartnerId
+    currentUser?.customUserId !== deliveryPartnerId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -284,12 +285,12 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
     existingDeliveryPartner = await DeliveryPartner.findOne({
-      userId: deliveryPartnerId,
+      customUserId: deliveryPartnerId,
       isDeleted: false,
     });
   } else {
     existingDeliveryPartner = await DeliveryPartner.findOne({
-      userId: deliveryPartnerId,
+      customUserId: deliveryPartnerId,
     });
   }
 

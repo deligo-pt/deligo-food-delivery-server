@@ -14,7 +14,7 @@ const updateAdmin = async (
   // -----------------------------------------
   // Check if admin exists
   // -----------------------------------------
-  const existingAdmin = await Admin.findOne({ userId: adminId });
+  const existingAdmin = await Admin.findOne({ customUserId: adminId });
 
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
@@ -47,7 +47,7 @@ const updateAdmin = async (
   // Update admin
   // -----------------------------------------
   const updatedAdmin = await Admin.findOneAndUpdate(
-    { userId: adminId },
+    { customUserId: adminId },
     { $set: payload },
     { new: true },
   );
@@ -95,7 +95,7 @@ const getSingleAdmin = async (adminId: string, currentUser: AuthUser) => {
   // ---------------------------------------------------------
   // Fetch the TARGET admin by passed adminId
   // ---------------------------------------------------------
-  const existingAdmin = await Admin.findOne({ userId: adminId });
+  const existingAdmin = await Admin.findOne({ customUserId: adminId });
 
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');

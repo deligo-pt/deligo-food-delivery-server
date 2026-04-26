@@ -3,8 +3,6 @@ import validateRequest from '../../middlewares/validateRequest';
 import auth from '../../middlewares/auth';
 import { CustomerControllers } from './customer.controller';
 import { CustomerValidation } from './customer.validation';
-import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
 import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
 
 const router = Router();
@@ -13,8 +11,6 @@ const router = Router();
 router.patch(
   '/:customerId',
   auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
-  multerUpload.single('file'),
-  parseBody,
   validateRequest(CustomerValidation.updateCustomerDataValidationSchema),
   CustomerControllers.updateCustomer,
 );

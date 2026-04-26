@@ -176,7 +176,7 @@ const getSingleSosAlert = async (id: string, currentUser: AuthUser) => {
   }
 
   if (currentUser.role === 'FLEET_MANAGER') {
-    const partner = await DeliveryPartner.findById(result.userId.id);
+    const partner = await DeliveryPartner.findById(result.userObjetId.id);
 
     if (
       !partner ||

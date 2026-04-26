@@ -21,7 +21,7 @@ const transactionSchema = new Schema<TTransaction>(
       type: Schema.Types.ObjectId,
       ref: 'Payout',
     },
-    userId: {
+    userObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       refPath: 'userModel',

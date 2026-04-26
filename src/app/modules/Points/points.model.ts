@@ -13,7 +13,7 @@ const ALL_USER_MODELS_ENUM = [
 // --------------------------------------------------
 const PointsSchema = new Schema<TPoints>(
   {
-    userId: {
+    userObjectId: {
       id: {
         type: Schema.Types.ObjectId,
         required: true,

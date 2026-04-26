@@ -22,7 +22,7 @@ const getOrCreateActiveTicket = async (
   isAgent: boolean = false,
 ) => {
   let ticket = await SupportTicket.findOne({
-    userId: userObjectId,
+    userObjectId: userObjectId,
     userModel,
     status: { $ne: 'CLOSED' },
   });
@@ -66,7 +66,7 @@ const getOrCreateActiveTicket = async (
 
 const createMessage = async (payload: any, currentUser: AuthUser) => {
   const { user: loggedInUser } = await findUserById({
-    userId: currentUser.userId,
+    customUserId: currentUser.customUserId,
   });
   const isAgent =
     currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
@@ -77,7 +77,7 @@ const createMessage = async (payload: any, currentUser: AuthUser) => {
     : loggedInUser?._id.toString();
   const targetUserCustomId = isAgent
     ? payload.targetUserId
-    : currentUser.userId;
+    : currentUser.customUserId;
   const targetUserModel = isAgent
     ? payload.targetUserModel
     : ROLE_COLLECTION_MAP[currentUser.role];
@@ -130,12 +130,12 @@ const createMessage = async (payload: any, currentUser: AuthUser) => {
   // 4. Create the message
   const newMessage = await SupportMessage.create({
     ticketId: ticket.ticketId,
-    senderId: currentUser.userId, // Custom ID like C-VXXS...
+    senderId: currentUser.customUserId, // Custom ID like C-VXXS...
     senderRole: currentUser.role,
     message: payload.message,
     messageType: payload.messageType || 'TEXT',
     attachments: payload.attachments || [],
-    readBy: new Map([[currentUser.userId, true]]),
+    readBy: new Map([[currentUser.customUserId, true]]),
   });
 
   let recipientId: string;
@@ -150,7 +150,7 @@ const createMessage = async (payload: any, currentUser: AuthUser) => {
 
       if (ticket.unreadCount.has('ADMIN_GENERAL')) {
         const generalCount = ticket.unreadCount.get('ADMIN_GENERAL') || 0;
-        ticket.unreadCount.set(currentUser.userId, generalCount);
+        ticket.unreadCount.set(currentUser.customUserId, generalCount);
         ticket.unreadCount.delete('ADMIN_GENERAL');
       }
     }
@@ -216,7 +216,7 @@ const markReadByAdminOrUser = async (
   ticketId: string,
   currentUser: AuthUser,
 ) => {
-  const customUserId = currentUser.userId;
+  const customUserId = currentUser.customUserId;
   await SupportMessage.updateMany(
     { ticketId: ticketId, [`readBy.${customUserId}`]: { $ne: true } },
     { $set: { [`readBy.${customUserId}`]: true } },
@@ -241,7 +241,7 @@ const markReadByAdminOrUser = async (
 
 const closeTicket = async (ticketId: string, currentUser: AuthUser) => {
   const { user: loggedInUser } = await findUserById({
-    userId: currentUser.userId,
+    customUserId: currentUser.customUserId,
   });
   const ticket = await SupportTicket.findOne({
     ticketId: ticketId,
@@ -261,7 +261,7 @@ const closeTicket = async (ticketId: string, currentUser: AuthUser) => {
   // Send automated closing message (Portuguese)
   await SupportMessage.create({
     ticketId: ticket.ticketId,
-    senderId: currentUser.userId,
+    senderId: currentUser.customUserId,
     senderRole: currentUser.role,
     message:
       'O suporte foi encerrado. Envie uma nova mensagem para iniciar um novo ticket.',

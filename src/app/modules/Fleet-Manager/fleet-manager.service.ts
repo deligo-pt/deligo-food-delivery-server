@@ -137,12 +137,12 @@ const getSingleFleetManagerFromDB = async (
 
   if (currentUser?.role === 'FLEET_MANAGER') {
     existingFleetManager = await FleetManager.findOne({
-      userId,
+      customUserId: fleetManagerId,
       isDeleted: false,
     });
   } else {
     existingFleetManager = await FleetManager.findOne({
-      userId: fleetManagerId,
+      customUserId: fleetManagerId,
     });
   }
 

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 export type TWallet = {
   walletId: string;
-  userId: mongoose.Types.ObjectId | string;
+  userObjectId: mongoose.Types.ObjectId | string;
   userModel: 'Customer' | 'Vendor' | 'FleetManager' | 'DeliveryPartner';
   lastSettlementDate?: Date;
   totalUnpaidTax: number;

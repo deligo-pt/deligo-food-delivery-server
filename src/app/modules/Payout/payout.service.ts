@@ -23,12 +23,12 @@ const initiateSettlement = async (
   const senderModel =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
 
-  const { user } = await findUserById({ userId: targetUserId });
+  const { user } = await findUserById({ customUserId: targetUserId });
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
   }
-  const userId = user?._id;
+  const userObjectId = user?._id;
   const targetUserModel =
     ROLE_COLLECTION_MAP[user?.role as keyof typeof ROLE_COLLECTION_MAP];
 
@@ -52,7 +52,7 @@ const initiateSettlement = async (
       }
     }
     const wallet = await Wallet.findOne({
-      userId,
+      userObjectId: userObjectId,
       userModel: targetUserModel,
     }).session(session);
 
@@ -70,7 +70,7 @@ const initiateSettlement = async (
       [
         {
           payoutId: `PAY-${uniquePayoutId}`,
-          userId,
+          userId: userObjectId,
           userModel: targetUserModel,
           senderId: senderId,
           senderModel: senderModel,
@@ -96,7 +96,7 @@ const initiateSettlement = async (
       };
 
       NotificationService.sendToUser(
-        user.userId,
+        user.customUserId,
         NotificationPayload.title,
         NotificationPayload.message,
         NotificationPayload.data,
@@ -162,7 +162,7 @@ const rejectPayout = async (
       },
     };
     NotificationService.sendToUser(
-      (payout.userId as any).userId,
+      (payout.userObjectId as any).customUserId,
       NotificationPayload.title,
       NotificationPayload.message,
       NotificationPayload.data,
@@ -202,7 +202,7 @@ const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
     throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized action.');
   }
 
-  const user = payout.userId as any;
+  const user = payout.userObjectId as any;
 
   if (
     !user?.bankDetails?.iban ||
@@ -271,7 +271,7 @@ const finalizeSettlement = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid payout session.');
     }
 
-    const user = payout.userId as any;
+    const user = payout.userObjectId as any;
 
     if (!user || !user.bankDetails || !user.bankDetails.iban) {
       throw new AppError(
@@ -296,7 +296,7 @@ const finalizeSettlement = async (
     const amountToDeduct = payout.amount;
 
     await Wallet.findOneAndUpdate(
-      { userId: payout.userId, userModel: payout.userModel },
+      { userObjectId: payout.userObjectId, userModel: payout.userModel },
       {
         $inc: { totalUnpaidEarnings: -amountToDeduct },
         $set: { lastSettlementDate: new Date() },
@@ -309,7 +309,7 @@ const finalizeSettlement = async (
       payout.senderModel === 'FleetManager'
     ) {
       await Wallet.findOneAndUpdate(
-        { userId: payout.senderId, userModel: 'FleetManager' },
+        { userObjectId: payout.senderId, userModel: 'FleetManager' },
         { $inc: { totalRiderPayable: -amountToDeduct } },
         { session },
       );
@@ -320,7 +320,7 @@ const finalizeSettlement = async (
         {
           transactionId: `TXN-SETTLE-${Date.now()}`,
           payoutId: payout._id,
-          userId: payout.userId,
+          userId: payout.userObjectId,
           userModel: payout.userModel,
           totalAmount: amountToDeduct,
           type: settlementTypeMapper[payout.userModel],
@@ -358,7 +358,7 @@ const finalizeSettlement = async (
       },
     };
     NotificationService.sendToUser(
-      (result.userId as any).userId,
+      (result.userObjectId as any).userId,
       NotificationPayload.title,
       NotificationPayload.message,
       NotificationPayload.data,
@@ -462,7 +462,8 @@ const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
   }
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
-    const isOwner = payout.userId._id.toString() === currentUserId.toString();
+    const isOwner =
+      payout.userObjectId._id.toString() === currentUserId.toString();
     const isSender =
       payout.senderId._id.toString() === currentUserId.toString();
 
@@ -476,7 +477,7 @@ const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
 
   let payoutCategory = 'GENERAL';
   if (role === 'FLEET_MANAGER') {
-    if (payout.userId._id.toString() === currentUserId.toString()) {
+    if (payout.userObjectId._id.toString() === currentUserId.toString()) {
       payoutCategory = 'RECEIVED_FROM_ADMIN';
     } else if (payout.senderId._id.toString() === currentUserId.toString()) {
       payoutCategory = 'PAID_TO_PARTNER';
