@@ -265,8 +265,8 @@ router.get(
 
 // get offer analytics for admin
 router.get(
-  '/admin/offer-analytics',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  '/offer-analytics',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
   AnalyticsSecondControllers.getOfferAnalyticsForAdmin,
 );
 
