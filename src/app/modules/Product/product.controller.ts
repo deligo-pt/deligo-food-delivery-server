@@ -218,6 +218,17 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
   });
 });
 
+const getOutOfStockAlerts = catchAsync(async (req, res) => {
+  const result = await ProductServices.getOutOfStockAlerts(req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Products retrieved successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 export const ProductControllers = {
   productCreate,
   updateProduct,
@@ -231,4 +242,5 @@ export const ProductControllers = {
   getSingleProduct,
   softDeleteProduct,
   permanentDeleteProduct,
+  getOutOfStockAlerts,
 };

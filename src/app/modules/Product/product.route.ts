@@ -18,6 +18,13 @@ router.post(
   ProductControllers.productCreate,
 );
 
+// get out of stock alerts
+router.get(
+  '/out-of-stock-alerts',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.getOutOfStockAlerts,
+);
+
 // Product update
 router.patch(
   '/:productId',
@@ -118,4 +125,5 @@ router.delete(
   auth('ADMIN', 'SUPER_ADMIN'),
   ProductControllers.permanentDeleteProduct,
 );
+
 export const ProductRoutes = router;
