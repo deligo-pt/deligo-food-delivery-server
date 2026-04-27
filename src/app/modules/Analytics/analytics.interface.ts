@@ -1,395 +1,440 @@
-import { TDeliveryPartner } from "../Delivery-Partner/delivery-partner.interface";
-import { TFleetManager } from "../Fleet-Manager/fleet-manager.interface";
+import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
+import { TFleetManager } from '../Fleet-Manager/fleet-manager.interface';
 
 export interface TMeta {
-    page: number;
-    limit: number;
-    total: number;
-    totalPage: number;
+  page: number;
+  limit: number;
+  total: number;
+  totalPage: number;
 }
 
 export interface TimeframeQuery {
-    timeframe?: "last7days" | "last14days" | "last30days";
+  timeframe?: 'last7days' | 'last14days' | 'last30days';
 }
 export interface SummaryFacet {
-    totalRevenue: number;
-    completedOrders: number;
-    cancelledOrders: number;
+  totalRevenue: number;
+  completedOrders: number;
+  cancelledOrders: number;
 }
 
 export interface DailyRevenueFacet {
-    _id: string;
-    revenue: number;
+  time: string;
+  revenue: number;
 }
+// export interface DailyRevenueFacet {
+//   _id: string;
+//   revenue: number;
+// }
+
+// export interface SalesAnalyticsResponse {
+//   summary: {
+//     totalRevenue: number;
+//     completedOrders: number;
+//     cancelledOrders: number;
+//     avgOrderValue: number;
+//   };
+//   revenueCards: {
+//     thisWeek: number;
+//     thisMonth: number;
+//     topEarningDay: string;
+//   };
+//   charts: {
+//     revenueTrend: { date: string; revenue: number }[];
+//     earningsByDay: { date: string; revenue: number }[];
+//   };
+// }
 
 export interface SalesAnalyticsResponse {
-    summary: {
-        totalRevenue: number;
-        completedOrders: number;
-        cancelledOrders: number;
-        avgOrderValue: number;
-    };
-    revenueCards: {
-        thisWeek: number;
-        thisMonth: number;
-        topEarningDay: string;
-    };
-    charts: {
-        revenueTrend: { date: string; revenue: number }[];
-        earningsByDay: { date: string; revenue: number }[];
-    };
+  stats: {
+    totalRevenue: number;
+    completedOrders: number;
+    cancelledOrders: number;
+    avgOrderValue: number;
+  };
+  revenueTrend: {
+    time: string;
+    revenue: number;
+  }[];
+  charts: {
+    revenueTrend: { date: string; revenue: number }[];
+  };
 }
 
-
 export interface OrderReportAnalyticsResponse {
-    summary: {
-        totalRevenue: number;
-        totalOrders: number;
-        avgOrderValue: number;
-    };
+  stats: {
+    totalRevenue: number;
+    totalOrders: number;
+    avgOrderValue: number;
+  };
 
-    ordersByZone: {
-        zone: string;
-        orders: number;
-    }[];
+  ordersByZone: {
+    label: string;
+    value: number;
+  }[];
 
-    revenueTrend: {
-        date: string;
-        revenue: number;
-    }[];
+  ordersTrend: {
+    time: string;
+    orders: number;
+  }[];
 
-    zoneHeatmap: {
-        zone: string;
-        hour: number;
-        orderCount: number;
-    }[];
-};
+  revenueTrend: {
+    date: string;
+    revenue: number;
+  }[];
+
+  zoneHeatmap: {
+    zone: string;
+    hour: number;
+    orderCount: number;
+  }[];
+}
+// export interface OrderReportAnalyticsResponse {
+//   summary: {
+//     totalRevenue: number;
+//     totalOrders: number;
+//     avgOrderValue: number;
+//   };
+
+//   ordersByZone: {
+//     zone: string;
+//     orders: number;
+//   }[];
+
+//   revenueTrend: {
+//     date: string;
+//     revenue: number;
+//   }[];
+
+//   zoneHeatmap: {
+//     zone: string;
+//     hour: number;
+//     orderCount: number;
+//   }[];
+// }
 
 export type TVendorSalesReport = {
-    stats: {
-        totalSales: number;
-        totalOrders: number;
-        avgOrderValue: number;
-    };
-    salesData: {
-        name: string;
-        sales: number;
-        orders: number;
-    }[];
+  stats: {
+    totalSales: number;
+    totalOrders: number;
+    avgOrderValue: number;
+  };
+  salesData: {
+    name: string;
+    sales: number;
+    orders: number;
+  }[];
 };
 
 // for fleet manager performance analysis
 export type TFleetManagerPerformance = Pick<
-    TFleetManager,
-    | "_id"
-    | "profilePhoto"
-    | "userId"
-    | "email"
-    | "status"
-    | "name"
-    | "address"
-    | "operationalData"
+  TFleetManager,
+  | '_id'
+  | 'profilePhoto'
+  | 'userId'
+  | 'email'
+  | 'status'
+  | 'name'
+  | 'address'
+  | 'operationalData'
 > & {
-    totalDeliveries: number;
-    totalEarnings: number;
+  totalDeliveries: number;
+  totalEarnings: number;
 };
 export type TFleetPerformanceStat = {
-    mostOrders: {
-        fleetName: string;
-        fleetPhoto: string;
-        ordersCount: number;
-    };
-    highestRating: {
-        fleetName: string;
-        fleetPhoto: string;
-        rating: {
-            average: number;
-            totalRatings: number;
-        };
-    };
-    highestEarnings: {
-        fleetName: string;
-        fleetPhoto: string;
-        earnings: number;
-    };
-};
-export type TFleetWeeklyPerformance = {
-    day: string;
-    totalOrders: number;
-    totalEarnings: number;
-};
-export type TTopFleetPerformers = {
+  mostOrders: {
     fleetName: string;
     fleetPhoto: string;
-    rating: number;
-    totalEarnings: number;
+    ordersCount: number;
+  };
+  highestRating: {
+    fleetName: string;
+    fleetPhoto: string;
+    rating: {
+      average: number;
+      totalRatings: number;
+    };
+  };
+  highestEarnings: {
+    fleetName: string;
+    fleetPhoto: string;
+    earnings: number;
+  };
+};
+export type TFleetWeeklyPerformance = {
+  day: string;
+  totalOrders: number;
+  totalEarnings: number;
+};
+export type TTopFleetPerformers = {
+  fleetName: string;
+  fleetPhoto: string;
+  rating: number;
+  totalEarnings: number;
 };
 
 export type TFleetPerformanceData = {
-    data: {
-        fleetPerformance: TFleetManagerPerformance[];
-        fleetPerformanceStat: TFleetPerformanceStat;
-        fleetWeeklyPerformance: TFleetWeeklyPerformance[];
-        topFleetPerformers: TTopFleetPerformers[];
-    };
-    meta: TMeta;
+  data: {
+    fleetPerformance: TFleetManagerPerformance[];
+    fleetPerformanceStat: TFleetPerformanceStat;
+    fleetWeeklyPerformance: TFleetWeeklyPerformance[];
+    topFleetPerformers: TTopFleetPerformers[];
+  };
+  meta: TMeta;
 };
 
 // for delivery partner performance analytics
 export type TDeliveryPartnerPerformance = Pick<
-    TDeliveryPartner,
-    | "_id"
-    | "profilePhoto"
-    | "userId"
-    | "email"
-    | "status"
-    | "name"
-    | "address"
-    | "operationalData"
+  TDeliveryPartner,
+  | '_id'
+  | 'profilePhoto'
+  | 'userId'
+  | 'email'
+  | 'status'
+  | 'name'
+  | 'address'
+  | 'operationalData'
 > & {
-    totalDeliveries: number;
-    rating: number;
-    totalEarnings: number;
+  totalDeliveries: number;
+  rating: number;
+  totalEarnings: number;
 };
 
 export type TPartnerPerformanceStat = {
-    mostOrders: {
-        partnerName: string;
-        partnerPhoto: string;
-        ordersCount: number;
+  mostOrders: {
+    partnerName: string;
+    partnerPhoto: string;
+    ordersCount: number;
+  };
+  highestRated: {
+    partnerName: string;
+    partnerPhoto: string;
+    rating: {
+      average: number;
+      totalRatings: number;
     };
-    highestRated: {
-        partnerName: string;
-        partnerPhoto: string;
-        rating: {
-            average: number;
-            totalRatings: number;
-        };
-    };
-    highestEarnings: {
-        partnerName: string;
-        partnerPhoto: string;
-        earnings: number;
-    };
+  };
+  highestEarnings: {
+    partnerName: string;
+    partnerPhoto: string;
+    earnings: number;
+  };
 };
 
 export type TPartnerMonthlyPerformance = {
-    month: string;
-    totalOrders: number;
+  month: string;
+  totalOrders: number;
 };
 
 export type TTopPartnerPerformers = {
-    earnings: number;
-    initials: string;
-    name: string;
-    rating: number;
-    profilePhoto: string;
+  earnings: number;
+  initials: string;
+  name: string;
+  rating: number;
+  profilePhoto: string;
 };
 
 export type TPartnerPerformanceData = {
-    partnerPerformance: TDeliveryPartnerPerformance[];
-    topCards: TPartnerPerformanceStat;
-    earningsPerformance: TPartnerMonthlyPerformance[];
-    topPerformers: TTopPartnerPerformers[];
+  partnerPerformance: TDeliveryPartnerPerformance[];
+  topCards: TPartnerPerformanceStat;
+  earningsPerformance: TPartnerMonthlyPerformance[];
+  topPerformers: TTopPartnerPerformers[];
 };
 
 export type TPartnerPerformanceDetailsData = {
-    partnerPerformance: TDeliveryPartnerPerformance;
-    partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
-}
+  partnerPerformance: TDeliveryPartnerPerformance;
+  partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
+};
 
 // ---> for top vendors analytics
 export type TVendorPerformance = {
-    vendorId: string;
-    vendorName: string;
+  vendorId: string;
+  vendorName: string;
 
-    totalOrders: number;      // total number of orders
-    totalRevenue: number;     // total revenue generated
+  totalOrders: number; // total number of orders
+  totalRevenue: number; // total revenue generated
 
-    averageRating: number;    // avg customer rating (1-5)
-    preparationTime: number;  // avg prep time in minutes
+  averageRating: number; // avg customer rating (1-5)
+  preparationTime: number; // avg prep time in minutes
 
-    cancelRate: number;       // % of cancelled orders
-    satisfactionScore: number; // custom score (0-100 or %)
+  cancelRate: number; // % of cancelled orders
+  satisfactionScore: number; // custom score (0-100 or %)
 };
 // Top selling vendors (ranked)
 export type TTopSellingVendor = {
-    vendorId: string;
-    vendorName: string;
-    totalOrders: number;
-    totalRevenue: number;
+  vendorId: string;
+  vendorName: string;
+  totalOrders: number;
+  totalRevenue: number;
 };
 // Vendor rating distribution
 export type TVendorRatingDistribution = {
-    vendorName: string;
-    rating: number;
+  vendorName: string;
+  rating: number;
 };
 export type TVendorInsights = {
-    topSellingVendors: TTopSellingVendor[];
+  topSellingVendors: TTopSellingVendor[];
 
-    vendorPerformance: TVendorPerformance[];
+  vendorPerformance: TVendorPerformance[];
 
-    ratingDistribution: TVendorRatingDistribution[];
+  ratingDistribution: TVendorRatingDistribution[];
 };
 
 // --> get admin delivery insights
 // Summary metrics (top cards)
 export type TDeliverySummary = {
-    averageDeliveryTime: number; // in minutes
-    lateDeliveryPercentage: number; // % of late deliveries
-    rejectedDeliveryPercentage: number; // % of rejected deliveries
+  averageDeliveryTime: number; // in minutes
+  lateDeliveryPercentage: number; // % of late deliveries
+  rejectedDeliveryPercentage: number; // % of rejected deliveries
 };
 // Rider performance
 export type TRiderPerformance = {
-    riderId: string;
-    riderName: string;
-    totalDeliveries: number;
-    successfulDeliveries: number;
-    rejectedDeliveries: number;
-    averageTime: number; // avg delivery time in minutes
+  riderId: string;
+  riderName: string;
+  totalDeliveries: number;
+  successfulDeliveries: number;
+  rejectedDeliveries: number;
+  averageTime: number; // avg delivery time in minutes
 };
 // Distance vs Time (for scatter/line chart)
 export type TDistanceTimeAnalysis = {
-    distanceKm: number;
-    averageTime: number;
+  distanceKm: number;
+  averageTime: number;
 };
 // Area performance (slow delivery detection)
 export type TAreaDeliveryPerformance = {
-    area: string;
-    averageTime: number;
-    latePercentage: number;
+  area: string;
+  averageTime: number;
+  latePercentage: number;
 };
 // Rider idle time
 export type TRiderIdleTime = {
-    riderId: string;
-    riderName: string;
-    idleTimeMinutes: number; // total idle time in selected period
+  riderId: string;
+  riderName: string;
+  idleTimeMinutes: number; // total idle time in selected period
 };
 // rejected deliveries breakdown
 export type TRejectedDeliveryReason = {
-    reason: string;
-    count: number;
+  reason: string;
+  count: number;
 };
 export type TDeliveryInsights = {
-    summary: TDeliverySummary;
+  summary: TDeliverySummary;
 
-    riderPerformance: TRiderPerformance[];
-    distanceTimeAnalysis: TDistanceTimeAnalysis[];
-    areaPerformance: TAreaDeliveryPerformance[];
-    riderIdleTime: TRiderIdleTime[];
-    rejectedReasons: TRejectedDeliveryReason[];
+  riderPerformance: TRiderPerformance[];
+  distanceTimeAnalysis: TDistanceTimeAnalysis[];
+  areaPerformance: TAreaDeliveryPerformance[];
+  riderIdleTime: TRiderIdleTime[];
+  rejectedReasons: TRejectedDeliveryReason[];
 };
 
 // ---> get customer insights
 // Summary (top cards)
 export type TCustomerSummary = {
-    newCustomers: number;
-    returningCustomers: number;
-    churnRate: number;
-    averageCLV: number;
+  newCustomers: number;
+  returningCustomers: number;
+  churnRate: number;
+  averageCLV: number;
 };
 // Active users
 export type TActiveUsers = {
-    dau: number; // Daily Active Users
-    wau: number; // Weekly Active Users
-    mau: number; // Monthly Active Users
+  dau: number; // Daily Active Users
+  wau: number; // Weekly Active Users
+  mau: number; // Monthly Active Users
 };
 // Top customers (highest spenders)
 export type TTopCustomer = {
-    customerId: string;
-    name: string;
-    totalSpent: number;
-    totalOrders: number;
+  customerId: string;
+  name: string;
+  totalSpent: number;
+  totalOrders: number;
 };
 // Order frequency (per user per week)
 export type TOrderFrequency = {
-    range: string; // e.g. "1 order", "2-3 orders", "5+ orders"
-    userCount: number;
+  range: string; // e.g. "1 order", "2-3 orders", "5+ orders"
+  userCount: number;
 };
 // Hourly order pattern (peak time detection)
 export type THourlyOrders = {
-    hour: number; // 0 - 23
-    orderCount: number;
+  hour: number; // 0 - 23
+  orderCount: number;
 };
 export type TCustomerInsights = {
-    summary: TCustomerSummary;
+  summary: TCustomerSummary;
 
-    activeUsers: TActiveUsers;
+  activeUsers: TActiveUsers;
 
-    topCustomers: TTopCustomer[];
+  topCustomers: TTopCustomer[];
 
-    orderFrequency: TOrderFrequency[];
+  orderFrequency: TOrderFrequency[];
 
-    hourlyOrders: THourlyOrders[];
+  hourlyOrders: THourlyOrders[];
 };
-
 
 // ---> get peak hour analytics
 // Hourly order data (have above)
 
 // Lunch vs Dinner comparison
 export type TMealTimeComparison = {
-    type: "LUNCH" | "DINNER";
-    orderCount: number;
-    percentage: number; // % of total orders
+  type: 'LUNCH' | 'DINNER';
+  orderCount: number;
+  percentage: number; // % of total orders
 };
 // Day-wise peak analysis
 export type TDayWiseOrders = {
-    day: string;        // e.g. "Mon", "Tue"
-    orderCount: number;
+  day: string; // e.g. "Mon", "Tue"
+  orderCount: number;
 };
 // Heatmap data (day + hour)
 export type THeatmapData = {
-    day: string;        // Mon–Sun
-    hour: number;       // 0–23
-    orderCount: number;
+  day: string; // Mon–Sun
+  hour: number; // 0–23
+  orderCount: number;
 };
 // Rider availability vs demand
 export type TRiderDemandGap = {
-    hour: number;
-    orders: number;
-    activeRiders: number;
-    shortage: number; // orders - riders (positive = shortage)
+  hour: number;
+  orders: number;
+  activeRiders: number;
+  shortage: number; // orders - riders (positive = shortage)
 };
 // MAIN RESPONSE TYPE
 export type TPeakHoursInsights = {
-    hourlyOrders: THourlyOrders[];
+  hourlyOrders: THourlyOrders[];
 
-    mealTimeComparison: TMealTimeComparison[];
+  mealTimeComparison: TMealTimeComparison[];
 
-    dayWiseOrders: TDayWiseOrders[];
+  dayWiseOrders: TDayWiseOrders[];
 
-    heatmap: THeatmapData[];
+  heatmap: THeatmapData[];
 
-    riderDemandGap: TRiderDemandGap[];
+  riderDemandGap: TRiderDemandGap[];
 };
-
 
 // vendor tax report
 export type TTaxReport = {
-    stats: {
-        totalSales: number;
-        totalTax: number;
-        netRevenue: number; // sales - tax
-    };
-    taxContribution: {
-        name: string; // sun
-        value: number;
-    }[];
+  stats: {
+    totalSales: number;
+    totalTax: number;
+    netRevenue: number; // sales - tax
+  };
+  taxContribution: {
+    name: string; // sun
+    value: number;
+  }[];
 
-    taxByCategory: {
-        name: string; // tax rate like 6%, 10%, 23%
-        value: number; // tax amount 
-    }[];
+  taxByCategory: {
+    name: string; // tax rate like 6%, 10%, 23%
+    value: number; // tax amount
+  }[];
 
-    revenueData: {
-        name: string; // Month name like Feb 
-        revenue: number; // revenue on that month like 3200
-        tax: number; // tax amount on that month like 420
-    }[]; // based on last 6 months
+  revenueData: {
+    name: string; // Month name like Feb
+    revenue: number; // revenue on that month like 3200
+    tax: number; // tax amount on that month like 420
+  }[]; // based on last 6 months
 
-    addonTax: {
-        name: string;
-        tax: number;
-    }[];
+  addonTax: {
+    name: string;
+    tax: number;
+  }[];
 };

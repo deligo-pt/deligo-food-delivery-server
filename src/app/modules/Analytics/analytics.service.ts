@@ -12,7 +12,6 @@ import {
   DailyRevenueFacet,
   OrderReportAnalyticsResponse,
   SalesAnalyticsResponse,
-  SummaryFacet,
   TCustomerInsights,
   TDeliveryInsights,
   TDeliveryPartnerPerformance,
@@ -692,45 +691,45 @@ const getAdminSalesReportAnalytics = async (
   // summery date logic
   let summaryStartDate: Date | null = null;
 
-  if (hasTimeframe && timeframe) {
-    const timeframeToDaysMap: Record<string, number> = {
-      last7days: 7,
-      last14days: 14,
-      last30days: 30,
-    };
+  const timeframeToDaysMap: Record<string, number> = {
+    last7days: 7,
+    last14days: 14,
+    last30days: 30,
+    last90days: 90,
+  };
 
-    const days = timeframeToDaysMap[timeframe as string];
+  const days = timeframeToDaysMap[timeframe as string] || 7;
 
-    // Apply filter ONLY if timeframe is valid
-    if (days) {
-      summaryStartDate = new Date();
-      summaryStartDate.setDate(endDate.getDate() - days);
-    }
+  if (hasTimeframe || timeframe) {
+    summaryStartDate = new Date();
+    summaryStartDate.setDate(endDate.getDate() - days);
   }
 
   // CHART DATE LOGIC (ALWAYS LAST 7 DAYS)
   const chartStartDate = new Date();
   chartStartDate.setDate(endDate.getDate() - 7);
 
+  const revenueTrendFormat = days > 60 ? '%b %Y' : '%d %b';
+
   // for this month of revenue trend
   const monthStartDate = new Date();
   monthStartDate.setDate(endDate.getDate() - 30);
 
   const [analytics] = await Order.aggregate<{
-    summary: SummaryFacet[];
+    stats: any[];
     revenueTrend: DailyRevenueFacet[];
-    last30DaysRevenue: { total: number }[];
   }>([
     {
       $match: {
         isPaid: true,
         isDeleted: false,
+        createdAt: { $gte: chartStartDate },
       },
     },
     {
       $facet: {
-        // summery cards
-        summary: [
+        // stats cards (formerly summary)
+        stats: [
           ...(summaryStartDate
             ? [{ $match: { createdAt: { $gte: summaryStartDate } } }]
             : []),
@@ -759,40 +758,32 @@ const getAdminSalesReportAnalytics = async (
             },
           },
         ],
-
         // 7 days revenue trend data
         revenueTrend: [
           {
             $match: {
               orderStatus: 'DELIVERED',
-              createdAt: { $gte: chartStartDate },
+              createdAt: { $gte: summaryStartDate || chartStartDate },
             },
           },
           {
             $group: {
               _id: {
                 $dateToString: {
-                  format: '%Y-%m-%d',
+                  format: revenueTrendFormat,
                   date: '$createdAt',
                 },
               },
               revenue: { $sum: '$payoutSummary.grandTotal' },
+              sortDate: { $first: '$createdAt' },
             },
           },
-          { $sort: { _id: 1 } },
-        ],
-        // 30 days revenue (this month card)
-        last30DaysRevenue: [
+          { $sort: { sortDate: 1 } },
           {
-            $match: {
-              orderStatus: 'DELIVERED',
-              createdAt: { $gte: monthStartDate },
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              total: { $sum: '$payoutSummary.grandTotal' },
+            $project: {
+              time: '$_id',
+              revenue: { $round: ['$revenue', 2] },
+              _id: 0,
             },
           },
         ],
@@ -800,7 +791,7 @@ const getAdminSalesReportAnalytics = async (
     },
   ]);
 
-  const summary = analytics?.summary[0] ?? {
+  const stats = analytics?.stats[0] ?? {
     totalRevenue: 0,
     completedOrders: 0,
     cancelledOrders: 0,
@@ -808,42 +799,22 @@ const getAdminSalesReportAnalytics = async (
 
   const revenueTrend = analytics?.revenueTrend ?? [];
 
-  const last30DaysRevenue = analytics?.last30DaysRevenue?.[0]?.total ?? 0;
-
-  const total7DayRevenue = revenueTrend.reduce(
-    (acc, day) => acc + day.revenue,
-    0,
-  );
-
-  const topEarningDay =
-    revenueTrend.length > 0
-      ? revenueTrend.reduce((max, d) => (d.revenue > max.revenue ? d : max))._id
-      : 'N/A';
-
   return {
-    summary: {
-      totalRevenue: roundTo2(summary.totalRevenue),
-      completedOrders: summary.completedOrders,
-      cancelledOrders: summary.cancelledOrders,
+    stats: {
+      totalRevenue: roundTo2(stats.totalRevenue),
+      completedOrders: stats.completedOrders,
+      cancelledOrders: stats.cancelledOrders,
       avgOrderValue:
-        summary.completedOrders > 0
-          ? roundTo2(summary.totalRevenue / summary.completedOrders)
+        stats.completedOrders > 0
+          ? roundTo2(stats.totalRevenue / stats.completedOrders)
           : 0.0,
     },
 
-    revenueCards: {
-      thisWeek: roundTo2(total7DayRevenue),
-      thisMonth: roundTo2(last30DaysRevenue),
-      topEarningDay,
-    },
+    revenueTrend: revenueTrend,
 
     charts: {
-      revenueTrend: revenueTrend.map((d) => ({
-        date: d._id,
-        revenue: d.revenue,
-      })),
-      earningsByDay: revenueTrend.map((d) => ({
-        date: d._id,
+      revenueTrend: revenueTrend.map((d: any) => ({
+        date: d.time,
         revenue: d.revenue,
       })),
     },
@@ -855,42 +826,31 @@ const getAdminOrderReportAnalytics = async (
   query: TimeframeQuery,
 ): Promise<OrderReportAnalyticsResponse> => {
   const now = new Date();
-  const timeframe = query?.timeframe;
+  const timeframe = query?.timeframe || 'last7days';
 
-  let timeframeMatch: any = {};
-  if (timeframe) {
-    const timeframeToDaysMap: Record<string, number> = {
-      last7days: 7,
-      last14days: 14,
-      last30days: 30,
-    };
-    const days = timeframeToDaysMap[timeframe!];
+  const timeframeToDaysMap: Record<string, number> = {
+    last7days: 7,
+    last14days: 14,
+    last30days: 30,
+    last90days: 90,
+  };
 
-    if (days) {
-      timeframeMatch = new Date();
-      timeframeMatch.setDate(now.getDate() - days);
-    }
-  }
+  const days = timeframeToDaysMap[timeframe] || 7;
+  const startDate = new Date();
+  startDate.setDate(now.getDate() - days);
 
-  const last10Days = new Date();
-  last10Days.setDate(now.getDate() - 10);
+  const timeFormat = days > 60 ? '%b %Y' : '%d %b';
 
-  const last30Days = new Date();
-  last30Days.setDate(now.getDate() - 30);
-
-  const [result] = await Order.aggregate([
+  const [result] = await Order.aggregate<any>([
     {
       $match: {
         isDeleted: false,
+        createdAt: { $gte: startDate },
       },
     },
     {
       $facet: {
-        // summery cards
-        summary: [
-          ...(timeframe
-            ? [{ $match: { createdAt: { $gte: timeframeMatch } } }]
-            : []),
+        stats: [
           {
             $group: {
               _id: null,
@@ -916,80 +876,91 @@ const getAdminOrderReportAnalytics = async (
             },
           },
           { $sort: { orders: -1 } },
+          {
+            $project: {
+              label: { $ifNull: ['$_id', 'Unknown'] },
+              value: '$orders',
+              _id: 0,
+            },
+          },
         ],
-        // revenue trend - 10 days
-        revenueTrend: [
-          { $match: { createdAt: { $gte: last10Days } } },
+        ordersTrend: [
           {
             $group: {
               _id: {
                 $dateToString: {
-                  format: '%Y-%m-%d',
+                  format: timeFormat,
                   date: '$createdAt',
                 },
               },
-              revenue: {
-                $sum: {
-                  $cond: [
-                    { $eq: ['$orderStatus', 'DELIVERED'] },
-                    '$payoutSummary.grandTotal',
-                    0,
-                  ],
-                },
+              orders: { $sum: 1 },
+              sortDate: { $first: '$createdAt' },
+            },
+          },
+          { $sort: { sortDate: 1 } },
+          {
+            $project: {
+              time: '$_id',
+              orders: 1,
+              _id: 0,
+            },
+          },
+        ],
+        revenueTrend: [
+          { $match: { orderStatus: 'DELIVERED' } },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
               },
+              revenue: { $sum: '$payoutSummary.grandTotal' },
             },
           },
           { $sort: { _id: 1 } },
         ],
-        // zone heat map
         zoneHeatmap: [
-          { $match: { createdAt: { $gte: last30Days } } },
           {
             $group: {
               _id: {
                 zone: '$deliveryAddress.city',
-                hour: {
-                  $hour: {
-                    date: '$createdAt',
-                    timezone: 'Europe/Lisbon',
-                  },
-                },
+                hour: { $hour: '$createdAt' },
               },
               orderCount: { $sum: 1 },
             },
           },
+          { $limit: 100 },
         ],
       },
     },
   ]);
 
-  const summary = result?.summary[0] ?? {
-    totalRevenue: 0,
-    totalOrders: 0,
-  };
+  const statsData = result?.stats[0] ?? { totalRevenue: 0, totalOrders: 0 };
+  const ordersTrend = result?.ordersTrend ?? [];
+  const revenueTrend = result?.revenueTrend ?? [];
+  const zoneHeatmap = result?.zoneHeatmap ?? [];
 
   return {
-    summary: {
-      totalRevenue: roundTo2(summary.totalRevenue),
-      totalOrders: summary.totalOrders,
+    stats: {
+      totalRevenue: roundTo2(statsData.totalRevenue),
+      totalOrders: statsData.totalOrders,
       avgOrderValue:
-        summary.totalOrders > 0
-          ? roundTo2(summary.totalRevenue / summary.totalOrders)
+        statsData.totalOrders > 0
+          ? roundTo2(statsData.totalRevenue / statsData.totalOrders)
           : 0.0,
     },
 
-    ordersByZone: result?.ordersByZone.map((z: any) => ({
-      zone: z._id ?? 'Unknown',
-      orders: z.orders,
-    })),
+    ordersByZone: result?.ordersByZone ?? [],
 
-    revenueTrend: result?.revenueTrend.map((d: any) => ({
+    // New Requirement: Orders Trend based on timeframe
+    ordersTrend: ordersTrend,
+
+    // Backward compatibility for charts
+    revenueTrend: revenueTrend.map((d: any) => ({
       date: d._id,
-      revenue: d.revenue,
+      revenue: roundTo2(d.revenue),
     })),
-
-    zoneHeatmap: result?.zoneHeatmap.map((h: any) => ({
-      zone: h._id.zone ?? 'Unknown',
+    zoneHeatmap: zoneHeatmap.map((h: any) => ({
+      zone: h._id.zone || 'Unknown',
       hour: h._id.hour,
       orderCount: h.orderCount,
     })),
@@ -3758,7 +3729,7 @@ const getPeakHourAnalytics = async (query: {
   };
 };
 
-// get delivery insights analytics for admin
+// get delivey insights analytics for admin
 const getDeliveryInsights = async (query: {
   fromDate?: string;
   toDate?: string;
@@ -4045,6 +4016,9 @@ const getDeliveryInsights = async (query: {
 };
 
 export const AnalyticsServices = {
+  // ----------------------------------
+  // Analytics Services (Developer Morshed)
+  // ----------------------------------
   getVendorSalesAnalytics,
   getCustomerInsights,
   getOrderTrendInsights,
