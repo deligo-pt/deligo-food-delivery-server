@@ -1427,7 +1427,12 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: AuthUser) => {
     _id: currentUser.operationalData?.currentOrderId,
     deliveryPartnerId: currentUser._id,
     isDeleted: false,
-  }).sort({ createdAt: -1 });
+  })
+    .populate(
+      'customerId vendorId',
+      'name userId role contactNumber currentSessionLocation profilePhoto',
+    )
+    .sort({ createdAt: -1 });
 
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
