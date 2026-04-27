@@ -1480,86 +1480,104 @@ const getSingleVendorPerformanceDetails = async (
 };
 
 // get offer analytics for admin
-const getOfferAnalyticsForAdmin = async () => {
+
+const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
   const now = new Date();
 
-  const offerStats = await Offer.aggregate([
-    { $match: { isDeleted: false } },
-    {
-      $group: {
-        _id: null,
-        totalOffers: { $sum: 1 },
-        activeOffers: {
-          $sum: {
-            $cond: [
-              {
-                $and: [
-                  { $eq: ['$isActive', true] },
-                  { $gt: ['$expiresAt', now] },
-                ],
-              },
-              1,
-              0,
-            ],
+  const offerFilter: any = {
+    isDeleted: false,
+  };
+
+  const orderFilter: any = {
+    'offer.isApplied': true,
+    isDeleted: false,
+    orderStatus: { $ne: 'CANCELLED' },
+  };
+
+  if (currentUser?.role === 'VENDOR' && currentUser?._id) {
+    const vId = new mongoose.Types.ObjectId(currentUser._id);
+    offerFilter.vendorId = vId;
+    orderFilter.vendorId = vId;
+  }
+  const [offerStats, orderStats] = await Promise.all([
+    Offer.aggregate([
+      { $match: offerFilter },
+      {
+        $group: {
+          _id: null,
+          totalOffers: { $sum: 1 },
+          activeOffers: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$isActive', true] },
+                    { $gt: ['$expiresAt', now] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
           },
         },
       },
-    },
-  ]);
+    ]),
 
-  const orderStats = await Order.aggregate([
-    {
-      $match: {
-        'offer.isApplied': true,
-        isDeleted: false,
-        orderStatus: { $ne: 'CANCELLED' },
-      },
-    },
-    {
-      $facet: {
-        overall: [
-          {
-            $group: {
-              _id: null,
-              totalRedemptions: { $sum: 1 },
-              revenueImpact: { $sum: '$orderCalculation.totalOfferDiscount' },
-            },
-          },
-        ],
-        usageOverTime: [
-          {
-            $group: {
-              _id: {
-                $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+    Order.aggregate([
+      { $match: orderFilter },
+      {
+        $facet: {
+          overall: [
+            {
+              $group: {
+                _id: null,
+                totalRedemptions: { $sum: 1 },
+                revenueImpact: { $sum: '$orderCalculation.totalOfferDiscount' },
               },
-              redemptions: { $sum: 1 },
             },
-          },
-          { $sort: { _id: 1 } },
-          { $project: { time: '$_id', redemptions: 1, _id: 0 } },
-        ],
-        typeUsage: [
-          {
-            $group: {
-              _id: '$offer.offerApplied.discountType',
-              usage: { $sum: 1 },
+          ],
+          usageOverTime: [
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+                },
+                redemptions: { $sum: 1 },
+              },
             },
-          },
-          { $project: { name: '$_id', usage: 1, _id: 0 } },
-        ],
-        topOffers: [
-          {
-            $group: {
-              _id: '$offer.offerApplied.title',
-              usage: { $sum: 1 },
+            { $sort: { _id: 1 } },
+            { $project: { time: '$_id', redemptions: 1, _id: 0 } },
+          ],
+          typeUsage: [
+            {
+              $group: {
+                _id: {
+                  $cond: [
+                    { $ifNull: ['$offer.offerApplied.bogoSnapshot', false] },
+                    'BOGO',
+                    '$offer.offerApplied.discountType',
+                  ],
+                },
+                usage: { $sum: 1 },
+              },
             },
-          },
-          { $sort: { usage: -1 } },
-          { $limit: 5 },
-          { $project: { name: '$_id', usage: 1, _id: 0 } },
-        ],
+            { $project: { name: '$_id', usage: 1, _id: 0 } },
+          ],
+          topOffers: [
+            {
+              $group: {
+                _id: '$offer.offerApplied.title',
+                usage: { $sum: 1 },
+              },
+            },
+            { $sort: { usage: -1 } },
+            { $limit: 5 },
+            { $project: { name: '$_id', usage: 1, _id: 0 } },
+          ],
+        },
       },
-    },
+    ]),
   ]);
 
   const stats = offerStats[0] || { totalOffers: 0, activeOffers: 0 };
@@ -1570,7 +1588,7 @@ const getOfferAnalyticsForAdmin = async () => {
       totalOffers: stats.totalOffers,
       activeOffers: stats.activeOffers,
       totalRedemptions: orders.overall[0]?.totalRedemptions || 0,
-      revenueImpact: orders.overall[0]?.revenueImpact || 0,
+      revenueImpact: roundTo2(orders.overall[0]?.revenueImpact),
     },
     usageOverTime: orders.usageOverTime,
     offerTypeUsage: orders.typeUsage,

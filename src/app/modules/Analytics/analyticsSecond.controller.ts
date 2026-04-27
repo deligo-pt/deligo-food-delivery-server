@@ -145,7 +145,9 @@ const getSingleVendorPerformanceDetails = catchAsync(async (req, res) => {
 
 // get offer analytics for admin
 const getOfferAnalyticsForAdmin = catchAsync(async (req, res) => {
-  const result = await AnalyticsSecondServices.getOfferAnalyticsForAdmin();
+  const result = await AnalyticsSecondServices.getOfferAnalyticsForAdmin(
+    req.user as AuthUser,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
