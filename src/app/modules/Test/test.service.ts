@@ -1,6 +1,6 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import { sendTestPushNotification } from '../../utils/sendPushNotification';
+import { sendPushNotification } from '../../utils/sendPushNotification';
 
 const getNotificationByToken = async (payload: { token: string }) => {
   const { token } = payload;
@@ -21,7 +21,7 @@ const getNotificationByToken = async (payload: { token: string }) => {
     sound: 'default' as const,
   };
 
-  const result = await sendTestPushNotification(token, hardcodedPayload);
+  const result = await sendPushNotification(token, hardcodedPayload);
 
   if (!result.success) {
     console.error(result.error);

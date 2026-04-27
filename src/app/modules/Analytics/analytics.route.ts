@@ -38,7 +38,6 @@ router.get(
 
 // get admin sales report analytics
 router.get(
-  // '/admin-sales-report-analytics', //before
   '/admin/sales-report-analytics',
   auth('ADMIN', 'SUPER_ADMIN'),
   AnalyticsControllers.getAdminSalesReportAnalytics,
