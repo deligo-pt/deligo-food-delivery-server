@@ -1484,6 +1484,10 @@ const getSingleVendorPerformanceDetails = async (
 const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
   const now = new Date();
 
+  const last7DaysDate = new Date();
+  last7DaysDate.setDate(now.getDate() - 6);
+  last7DaysDate.setHours(0, 0, 0, 0);
+
   const offerFilter: any = {
     isDeleted: false,
   };
@@ -1538,6 +1542,7 @@ const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
             },
           ],
           usageOverTime: [
+            { $match: { createdAt: { $gte: last7DaysDate } } },
             {
               $group: {
                 _id: {
@@ -1547,7 +1552,6 @@ const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
               },
             },
             { $sort: { _id: 1 } },
-            { $project: { time: '$_id', redemptions: 1, _id: 0 } },
           ],
           typeUsage: [
             {
@@ -1556,7 +1560,9 @@ const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
                   $cond: [
                     { $ifNull: ['$offer.offerApplied.bogoSnapshot', false] },
                     'BOGO',
-                    '$offer.offerApplied.discountType',
+                    {
+                      $ifNull: ['$offer.offerApplied.discountType', 'UNKNOWN'],
+                    },
                   ],
                 },
                 usage: { $sum: 1 },
@@ -1583,15 +1589,39 @@ const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
   const stats = offerStats[0] || { totalOffers: 0, activeOffers: 0 };
   const orders = orderStats[0];
 
+  const last7DaysArray = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+
+    const existingDate = orders.usageOverTime.find(
+      (u: any) => u._id === dateStr,
+    );
+    last7DaysArray.push({
+      time: dateStr,
+      redemptions: existingDate ? existingDate.redemptions : 0,
+    });
+  }
+
+  const allTypes = ['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO'];
+  const formattedTypeUsage = allTypes.map((type) => {
+    const found = orders.typeUsage.find((u: any) => u.name === type);
+    return {
+      name: type,
+      usage: found ? found.usage : 0,
+    };
+  });
+
   return {
     stats: {
       totalOffers: stats.totalOffers,
       activeOffers: stats.activeOffers,
       totalRedemptions: orders.overall[0]?.totalRedemptions || 0,
-      revenueImpact: roundTo2(orders.overall[0]?.revenueImpact),
+      revenueImpact: roundTo2(orders.overall[0]?.revenueImpact || 0),
     },
-    usageOverTime: orders.usageOverTime,
-    offerTypeUsage: orders.typeUsage,
+    usageOverTime: last7DaysArray,
+    offerTypeUsage: formattedTypeUsage,
     topOffers: orders.topOffers,
   };
 };
