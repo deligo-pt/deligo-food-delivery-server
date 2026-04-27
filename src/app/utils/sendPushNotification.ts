@@ -22,21 +22,15 @@ export const sendPushNotification = async (
   try {
     const message = {
       token,
-      notification: {
-        title: payload.title,
-        body: payload.body,
-      },
       // Android settings
       android: {
         priority: 'high' as const,
-        notification: {
-          sound: payload.sound || 'default',
-          channelId: payload.channelId || 'default',
-          priority: 'high' as const,
-        },
       },
       // iOS
       apns: {
+        headers: {
+          'apns-priority': '5',
+        },
         payload: {
           aps: {
             sound: payload.sound || 'default',
@@ -44,7 +38,13 @@ export const sendPushNotification = async (
           },
         },
       },
-      data: payload.data || {},
+      data: {
+        title: payload.title,
+        body: payload.body,
+        sound: payload.sound || 'default',
+        channelId: payload.channelId || 'default',
+        ...(payload.data || {}),
+      },
     };
 
     const response = await fcm.send(message);
