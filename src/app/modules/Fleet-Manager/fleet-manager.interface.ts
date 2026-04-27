@@ -23,6 +23,7 @@ export type TFleetManager = {
     firstName?: string;
     lastName?: string;
   };
+  contactNumber?: string;
 
   // ---------------------------------------------
   // Business Details

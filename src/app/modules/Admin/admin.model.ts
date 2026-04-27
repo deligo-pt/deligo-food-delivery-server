@@ -49,6 +49,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       firstName: { type: String },
       lastName: { type: String },
     },
+    contactNumber: { type: String },
 
     // --------------------------------------------------------
     // Real-Time Location

@@ -21,6 +21,7 @@ export type TAdmin = {
     firstName?: string;
     lastName?: string;
   };
+  contactNumber?: string;
 
   // ------------------------------------------------------------------
   // Permissions & Role Controls

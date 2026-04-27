@@ -24,6 +24,7 @@ export type TVendor = {
     firstName?: string;
     lastName?: string;
   };
+  contactNumber?: string;
 
   // --------------------------------------------------------
   // Business Details

@@ -23,6 +23,7 @@ export type TDeliveryPartner = {
     firstName?: string;
     lastName?: string;
   };
+  contactNumber?: string;
 
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)
