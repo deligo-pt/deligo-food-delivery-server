@@ -61,14 +61,19 @@ export interface SalesAnalyticsResponse {
 }
 
 export interface OrderReportAnalyticsResponse {
-  summary: {
+  stats: {
     totalRevenue: number;
     totalOrders: number;
     avgOrderValue: number;
   };
 
   ordersByZone: {
-    zone: string;
+    label: string;
+    value: number;
+  }[];
+
+  ordersTrend: {
+    time: string;
     orders: number;
   }[];
 
@@ -83,6 +88,29 @@ export interface OrderReportAnalyticsResponse {
     orderCount: number;
   }[];
 }
+// export interface OrderReportAnalyticsResponse {
+//   summary: {
+//     totalRevenue: number;
+//     totalOrders: number;
+//     avgOrderValue: number;
+//   };
+
+//   ordersByZone: {
+//     zone: string;
+//     orders: number;
+//   }[];
+
+//   revenueTrend: {
+//     date: string;
+//     revenue: number;
+//   }[];
+
+//   zoneHeatmap: {
+//     zone: string;
+//     hour: number;
+//     orderCount: number;
+//   }[];
+// }
 
 export type TVendorSalesReport = {
   stats: {
