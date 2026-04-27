@@ -84,6 +84,10 @@ const handleUserEvent = async (payload: any) => {
       await handleUserRegistered(Model, payload);
       break;
 
+    case 'USER_PROFILE_UPDATED':
+      await handleUserProfileUpdated(Model, payload);
+      break;
+
     case 'USER_STATUS_CHANGED':
       await handleUserStatusChanged(Model, payload);
       break;
@@ -143,6 +147,29 @@ const handleUserRegistered = async (
       'Failed to process user registration',
     );
   }
+};
+
+// 2. For profile updates → Update existing document with new data (name)
+const handleUserProfileUpdated = async (
+  Model: mongoose.Model<any>,
+  payload: any,
+) => {
+
+  const { id, firstName, lastName, ...rest } = payload;
+  const updatedData = {
+    name: {
+      firstName,
+      lastName,
+    },
+    ...rest,
+  };
+
+  await Model.findOneAndUpdate(
+    { authUserId: id },
+    { $set: { ...updatedData, updatedAt: new Date() } },
+    { new: true },
+  );
+  console.log(`User Profile Updated: ${id}`);
 };
 
 // 2. For status change (APPROVED, SUBMITTED, REJECTED, etc.)

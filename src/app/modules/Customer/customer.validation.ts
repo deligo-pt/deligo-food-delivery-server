@@ -6,20 +6,6 @@ import { addressValidationSchema } from '../Admin/admin.validation';
 // ---------------------------------------------
 const updateCustomerDataValidationSchema = z.object({
   body: z.object({
-    // Personal Details
-    name: z
-      .object({
-        firstName: z.string().optional(),
-        lastName: z.string().optional(),
-      })
-      .optional(),
-
-    contactNumber: z.string().optional(),
-    profilePhoto: z.string().optional(),
-
-    // Main Customer Address
-    address: addressValidationSchema.optional(),
-
     // Delivery Addresses (multiple saved addresses)
     deliveryAddresses: z
       .array(

@@ -53,6 +53,12 @@ const deliveryPartnerSchema = new Schema<
     },
     isDeleted: { type: Boolean, default: false },
 
+    // Name
+    name: {
+      firstName: { type: String },
+      lastName: { type: String },
+    },
+
     // -------------------------------------------------
     // Live Location
     // -------------------------------------------------

@@ -5,7 +5,7 @@ import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import { TCustomer } from './customer.interface';
 import { Customer } from './customer.model';
-import { CustomerSearchableFields } from './customer.constant';
+import { AddressType, CustomerSearchableFields } from './customer.constant';
 import { TDeliveryAddress } from '../../constant/address.constant';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
@@ -17,6 +17,7 @@ const updateCustomer = async (
   customerId: string,
   currentUser: AuthUser,
 ) => {
+  console.log("payload of profile", payload);
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -25,7 +26,9 @@ const updateCustomer = async (
   }
 
   const customer = await Customer.isUserExistsByUserId(customerId, false);
-  if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  if (!customer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
 
   if (
     currentUser.role === 'CUSTOMER' &&
@@ -34,76 +37,82 @@ const updateCustomer = async (
     throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized update');
   }
 
-  // -----------------------------
-  // Referral Code Generation (New Logic)
-  // -----------------------------
-  if (!currentUser.referralCode) {
-    const firstName = currentUser.name.firstName || 'USER';
-    const newReferralCode = await generateReferralCode(firstName);
+  // ---------------------------------
+  // SAFE UPDATE OBJECT (IMPORTANT)
+  // ---------------------------------
+  const updateData: any = { ...payload };
 
-    payload.referralCode = newReferralCode;
+  // ---------------------------------
+  // Referral Code (use DB value)
+  // ---------------------------------
+  if (!customer.referralCode) {
+    const firstName = customer.name?.firstName || 'USER';
+    updateData.referralCode = await generateReferralCode(firstName);
   }
 
-  // ----------------------------------------------------------------------
-  // User sends a single address
-  // ----------------------------------------------------------------------
-  let updatedDeliveryAddresses = customer.deliveryAddresses;
+  // ---------------------------------
+  // ADDRESS LOGIC
+  // ---------------------------------
+  let updatedDeliveryAddresses = customer.deliveryAddresses || [];
 
-  if (payload.address) {
-    const { longitude, latitude, geoAccuracy = 0 } = payload.address;
+  if (payload.deliveryAddresses?.length) {
 
-    if (geoAccuracy !== undefined && geoAccuracy > 100) {
+    const { longitude, latitude, geoAccuracy = 0 } =
+      payload.deliveryAddresses[0];
+
+    if (geoAccuracy > 100) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Geo accuracy must be less than or equal to 100.',
+        'Geo accuracy must be <= 100',
       );
     }
 
     const hasLng = typeof longitude === 'number';
     const hasLat = typeof latitude === 'number';
 
+    // ✅ Update location
     if (hasLng && hasLat) {
-      payload.currentSessionLocation = {
+      updateData.currentSessionLocation = {
         type: 'Point',
         coordinates: [longitude, latitude],
-        geoAccuracy: geoAccuracy,
+        geoAccuracy,
         lastLocationUpdate: new Date(),
       };
     }
 
     const newAddress = {
-      ...payload.address,
+      ...payload.deliveryAddresses[0],
       isActive: true,
+      addressType: AddressType.PRIMARY,
     };
 
-    // Check if this address already exists
-    const exists = customer?.deliveryAddresses?.some(
+    // ✅ Better comparison (stringified)
+    const exists = updatedDeliveryAddresses.some(
       (addr) =>
-        addr.longitude === newAddress.longitude &&
-        addr.latitude === newAddress.latitude,
+        Number(addr.longitude) === Number(newAddress.longitude) &&
+        Number(addr.latitude) === Number(newAddress.latitude)
     );
 
     if (!exists) {
-      // Deactivate all previous addresses
-      updatedDeliveryAddresses = customer?.deliveryAddresses?.map((addr) => ({
+      // deactivate all
+      updatedDeliveryAddresses = updatedDeliveryAddresses.map((addr) => ({
         ...addr,
         isActive: false,
       }));
 
-      // Add new active address
-      updatedDeliveryAddresses?.push({ ...newAddress, addressType: 'PRIMARY' });
+      updatedDeliveryAddresses.push(newAddress);
     }
 
-    payload.deliveryAddresses = updatedDeliveryAddresses;
+    updateData.deliveryAddresses = updatedDeliveryAddresses;
   }
 
-  // ----------------------------------------------------------------------
-  // Final Update
-  // ----------------------------------------------------------------------
+  // ---------------------------------
+  // FINAL UPDATE
+  // ---------------------------------
   const updated = await Customer.findOneAndUpdate(
     { customUserId: customerId },
-    { $set: payload },
-    { new: true },
+    { $set: updateData },
+    { new: true, runValidators: true }
   );
 
   return updated;

@@ -15,6 +15,13 @@ export type TCustomer = {
   status: keyof typeof USER_STATUS;
   isDeleted: boolean;
 
+  // Name & Contact Number
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  contactNumber?: string;
+
   // ------------------------------------------------------
   // Current/Real-Time Location Data (For live tracking during delivery)
   // ------------------------------------------------------
@@ -23,6 +30,7 @@ export type TCustomer = {
   // ------------------------------------------------------
   // Multiple Saved Delivery Addresses (Includes Zone Integration)
   // ------------------------------------------------------
+
   deliveryAddresses?: Array<{
     _id?: string;
     street?: string;

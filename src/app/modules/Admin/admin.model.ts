@@ -44,6 +44,12 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     },
     isDeleted: { type: Boolean, default: false },
 
+    // Name
+    name: {
+      firstName: { type: String },
+      lastName: { type: String },
+    },
+
     // --------------------------------------------------------
     // Real-Time Location
     // --------------------------------------------------------

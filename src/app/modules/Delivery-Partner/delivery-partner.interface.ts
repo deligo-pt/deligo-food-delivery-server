@@ -17,6 +17,13 @@ export type TDeliveryPartner = {
   isUpdateLocked: boolean;
   isDeleted: boolean;
 
+
+  // Name
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)
   // -------------------------------------------------

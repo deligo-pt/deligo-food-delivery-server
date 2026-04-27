@@ -16,6 +16,12 @@ export type TAdmin = {
 
   currentSessionLocation?: TGeoJSONPoint;
 
+  // Name
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+
   // ------------------------------------------------------------------
   // Permissions & Role Controls
   // ------------------------------------------------------------------
