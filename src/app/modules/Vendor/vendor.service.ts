@@ -355,7 +355,6 @@ const getAllVendorsForCustomer = async (
   currentUser: AuthUser,
 ) => {
   // 1. Get Customer Coordinates from currentSessionLocation
-
   const coordinates = currentUser?.currentSessionLocation?.coordinates;
 
   if (!coordinates || coordinates.length < 2) {
