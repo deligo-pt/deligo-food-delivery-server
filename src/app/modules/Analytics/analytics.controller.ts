@@ -91,7 +91,7 @@ const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getAdminCustomerReportAnalytics(
     timeframe as string,
     fromDate as string,
-    toDate as string
+    toDate as string,
   );
 
   sendResponse(res, {
@@ -109,7 +109,7 @@ const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getAdminVendorReportAnalytics(
     timeframe as string,
     fromDate as string,
-    toDate as string
+    toDate as string,
   );
 
   sendResponse(res, {
@@ -127,7 +127,7 @@ const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getAdminFleetManagerReportAnalytics(
     timeframe as string,
     fromDate as string,
-    toDate as string
+    toDate as string,
   );
 
   sendResponse(res, {
@@ -141,12 +141,11 @@ const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
 // get admin delivery partner report analytics controller
 const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
   const { timeframe, fromDate, toDate } = req.query;
-  const result =
-    await AnalyticsServices.getAdminDeliveryPartnerReportAnalytics(
-      timeframe as string,
-      fromDate as string,
-      toDate as string
-    );
+  const result = await AnalyticsServices.getAdminDeliveryPartnerReportAnalytics(
+    timeframe as string,
+    fromDate as string,
+    toDate as string,
+  );
 
   sendResponse(res, {
     success: true,
@@ -158,10 +157,9 @@ const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
 
 // get admin delivery partner report analytics controller
 const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
-  const result =
-    await AnalyticsServices.getVendorSalesReportAnalytics(
-      req.user as AuthUser
-    );
+  const result = await AnalyticsServices.getVendorSalesReportAnalytics(
+    req.user as AuthUser,
+  );
 
   sendResponse(res, {
     success: true,
@@ -173,11 +171,10 @@ const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
 
 // get admin delivery partner report analytics controller
 const getVendorCustomerReport = catchAsync(async (req, res) => {
-  const result =
-    await AnalyticsServices.getVendorCustomerReport(
-      req.user as AuthUser,
-      req.query
-    );
+  const result = await AnalyticsServices.getVendorCustomerReport(
+    req.user as AuthUser,
+    req.query,
+  );
 
   sendResponse(res, {
     success: true,
@@ -189,10 +186,9 @@ const getVendorCustomerReport = catchAsync(async (req, res) => {
 
 // get admin delivery partner report analytics controller
 const getVendorTaxReport = catchAsync(async (req, res) => {
-  const result =
-    await AnalyticsServices.getVendorTaxReport(
-      req.user as AuthUser,
-    );
+  const result = await AnalyticsServices.getVendorTaxReport(
+    req.user as AuthUser,
+  );
 
   sendResponse(res, {
     success: true,
@@ -204,10 +200,9 @@ const getVendorTaxReport = catchAsync(async (req, res) => {
 
 // get fleet performance analytics controller
 const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
-  const result =
-    await AnalyticsServices.getFleetManagerPerformanceAnalytics(
-      req.query as Record<string, unknown>
-    );
+  const result = await AnalyticsServices.getFleetManagerPerformanceAnalytics(
+    req.query as Record<string, unknown>,
+  );
 
   sendResponse(res, {
     success: true,
@@ -218,17 +213,23 @@ const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
 });
 
 // get admin delivery partner report analytics controller
-const getSingleFleetPerformanceDetailsAnalytics = catchAsync(async (req, res) => {
-  const { fleetManagerId } = req.params;
-  const result = await AnalyticsServices.getSingleFleetPerformanceDetailsAnalytics(fleetManagerId as string);
+const getSingleFleetPerformanceDetailsAnalytics = catchAsync(
+  async (req, res) => {
+    const { fleetManagerId } = req.params;
+    const result =
+      await AnalyticsServices.getSingleFleetPerformanceDetailsAnalytics(
+        fleetManagerId as string,
+      );
 
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Single fleet manager performance analytics fetched successfully',
-    data: result,
-  });
-});
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message:
+        'Single fleet manager performance analytics fetched successfully',
+      data: result,
+    });
+  },
+);
 
 // get admin delivery partner report analytics controller
 const getAdminSalesAnalytics = catchAsync(async (req, res) => {
@@ -244,10 +245,9 @@ const getAdminSalesAnalytics = catchAsync(async (req, res) => {
 
 // get delivery partner performance analytics controller
 const getDeliveryPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
-  const result =
-    await AnalyticsServices.getDeliveryPartnerPerformanceAnalytics(
-      req.query as Record<string, unknown>
-    );
+  const result = await AnalyticsServices.getDeliveryPartnerPerformanceAnalytics(
+    req.query as Record<string, unknown>,
+  );
 
   sendResponse(res, {
     success: true,
@@ -258,19 +258,23 @@ const getDeliveryPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
 });
 
 // get single delivery partner performance analytics controller
-const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(async (req, res) => {
-  const { partnerUserId } = req.params;
-  const result = await AnalyticsServices.getSingleDeliveryPartnerPerformanceDetailsAnalytics(
-    partnerUserId
-  );
+const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(
+  async (req, res) => {
+    const { partnerUserId } = req.params;
+    const result =
+      await AnalyticsServices.getSingleDeliveryPartnerPerformanceDetailsAnalytics(
+        partnerUserId,
+      );
 
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Single delivery partner performance analytics fetched successfully',
-    data: result,
-  });
-});
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message:
+        'Single delivery partner performance analytics fetched successfully',
+      data: result,
+    });
+  },
+);
 
 // get customer insights controller
 const getAdminCustomerInsights = catchAsync(async (req, res) => {
@@ -286,9 +290,7 @@ const getAdminCustomerInsights = catchAsync(async (req, res) => {
 
 // get platform earnings controller
 const getPlatformEarnings = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getPlatformEarnings(
-    req.query
-  );
+  const result = await AnalyticsServices.getPlatformEarnings(req.query);
 
   sendResponse(res, {
     success: true,
@@ -334,141 +336,6 @@ const getDeliveryInsights = catchAsync(async (req, res) => {
   });
 });
 
-// ----------------------------------------------------------------------------------
-// ---------------- ANALYTICS CONTROLLERS (Developer Umayer) -----------------------
-// ----------------------------------------------------------------------------------
-
-// get admin dashboard analytics controller
-const getAdminDashboardAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminDashboardAnalytics();
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin dashboard analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get vendor dashboard analytics controller
-const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getVendorDashboardAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Vendor dashboard analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get fleet dashboard analytics controller
-const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getFleetDashboardAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Fleet dashboard analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get partner performance analytics controller
-const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getPartnerPerformanceAnalytics(
-    req.user as AuthUser,
-    req.query,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Partner performance analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get delivery partner earnings analytics  controller
-const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getDeliveryPartnerEarningAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Delivery partner earning analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get fleet manager earning analytics controller
-const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getFleetManagerEarningAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Fleet manager earning analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get vendor earnings analytics controller
-const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getVendorEarningsAnalytics(
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Vendor earnings analytics fetched successfully',
-    data: result,
-  });
-});
-
-// get all customer analytics controller
-const getAllCustomerAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAllCustomerAnalytics(req.query);
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'All customers analytics fetched successfully',
-    meta: result?.meta,
-    data: result?.data,
-  });
-});
-
-// get vendor performance analytics controller
-const getVendorPerformanceAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getVendorPerformanceAnalytics(
-    req.query,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Vendor performance analytics fetched successfully',
-    meta: result?.meta,
-    data: result?.data,
-  });
-});
-
-// get single vendor performance details controller
-const getSingleVendorPerformanceDetails = catchAsync(async (req, res) => {
-  const { vendorUserId } = req.params;
-  const result = await AnalyticsServices.getSingleVendorPerformanceDetails(
-    vendorUserId,
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Single vendor performance details fetched successfully',
-    data: result,
-  });
-});
-
 export const AnalyticsControllers = {
   // ---------------------------------------
   // Analytics Services (Developer Morshed)
@@ -496,18 +363,4 @@ export const AnalyticsControllers = {
   getTopVendors,
   getPeakHourAnalytics,
   getDeliveryInsights,
-
-  // ---------------------------------------
-  // Analytics Services (Developer Umayer)
-  // ---------------------------------------
-  getAdminDashboardAnalytics,
-  getVendorDashboardAnalytics,
-  getFleetDashboardAnalytics,
-  getPartnerPerformanceAnalytics,
-  getDeliveryPartnerEarningAnalytics,
-  getFleetManagerEarningAnalytics,
-  getVendorEarningsAnalytics,
-  getAllCustomerAnalytics,
-  getVendorPerformanceAnalytics,
-  getSingleVendorPerformanceDetails,
 };
