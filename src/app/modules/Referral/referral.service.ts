@@ -18,20 +18,25 @@ import httpStatus from 'http-status';
 import { GlobalSettings } from '../GlobalSetting/globalSetting.model';
 import { Coupon } from '../Coupon/coupon.model';
 import { Order } from '../Order/order.model';
+import { findUserById } from '../../utils/findUserByEmailOrId';
 
 const createReferralEntry = async (
-  newUser: { _id: Types.ObjectId | string; role: string },
+  newUser: { customUserId: string },
   referralCode: string,
 ) => {
   if (!referralCode) return null;
 
+  const { user: loggedInUser } = await findUserById({
+    customUserId: newUser.customUserId,
+  });
+
   let referrer = null;
   let modelName: 'Customer' | 'Vendor' | 'DeliveryPartner';
 
-  if (newUser.role === USER_ROLE.CUSTOMER) {
+  if (loggedInUser.role === USER_ROLE.CUSTOMER) {
     referrer = await Customer.findOne({ referralCode });
     modelName = 'Customer';
-  } else if (newUser.role === USER_ROLE.VENDOR) {
+  } else if (loggedInUser.role === USER_ROLE.VENDOR) {
     referrer = await Vendor.findOne({ referralCode });
     modelName = 'Vendor';
   } else {
@@ -49,7 +54,7 @@ const createReferralEntry = async (
   if (referrer) {
     const referralData: Partial<TReferral> = {
       referrerId: new Types.ObjectId(referrer._id as string),
-      referredId: newUser._id as Types.ObjectId,
+      referredId: loggedInUser._id as Types.ObjectId,
       referrerModel: modelName,
       referredModel: modelName,
       status: 'PENDING',

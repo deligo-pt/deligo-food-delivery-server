@@ -6,8 +6,7 @@ import config from './app/config';
 import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
 import { initOrderCronJobs } from './app/utils/orderCleanup';
-import { initAuthEventListener } from './app/subscriber/auth.subscriber';
-import { initUserStreamConsumer } from './app/events/userStreamConsumer';
+import { initAllStreamConsumers } from './app/events';
 const server = http.createServer(app);
 
 // Handle unexpected errors
@@ -44,10 +43,11 @@ async function bootstrap() {
 
     initOrderCronJobs();
 
-    initAuthEventListener();
+    // // newly created
+    // initUserStreamConsumer();
+    // initReferralStreamConsumer();
 
-    // newly created
-    initUserStreamConsumer();
+    initAllStreamConsumers();
 
     server.listen(config.port, () => {
       if (config.NODE_ENV === 'development') {
