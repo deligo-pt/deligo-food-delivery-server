@@ -270,10 +270,10 @@ router.get(
 );
 
 // get tax report analytics for vendor
-router.get(
-  '/vendor/tax-report',
-  auth('VENDOR', 'SUB_VENDOR'),
-  AnalyticsSecondControllers.getTaxReportAnalyticsForVendor,
-);
+// router.get(
+//   '/vendor/tax-report',
+//   auth('VENDOR', 'SUB_VENDOR'),
+//   AnalyticsSecondControllers.getTaxReportAnalyticsForVendor,
+// );
 
 export const AnalyticsRoutes = router;
