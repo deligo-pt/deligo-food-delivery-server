@@ -9,7 +9,16 @@ export interface TMeta {
 }
 
 export interface TimeframeQuery {
-  timeframe?: 'last7days' | 'last14days' | 'last30days';
+  timeframe?:
+    | 'last7days'
+    | 'last14days'
+    | 'last30days'
+    | 'last90days'
+    | 'last1year'
+    | 'custom';
+
+  fromDate?: string;
+  toDate?: string;
 }
 export interface SummaryFacet {
   totalRevenue: number;
@@ -55,7 +64,7 @@ export interface SalesAnalyticsResponse {
     time: string;
     revenue: number;
   }[];
-  charts: {
+  charts?: {
     revenueTrend: { date: string; revenue: number }[];
   };
 }
