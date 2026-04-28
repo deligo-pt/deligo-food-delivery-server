@@ -18,12 +18,12 @@ const deliveryPartnerSchema = new Schema<
     authUserId: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     customUserId: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     role: {
       type: String,
@@ -49,7 +49,7 @@ const deliveryPartnerSchema = new Schema<
     },
     isUpdateLocked: {
       type: Boolean,
-      default: false
+      default: false,
     },
     isDeleted: { type: Boolean, default: false },
 
@@ -100,6 +100,7 @@ const deliveryPartnerSchema = new Schema<
     bankDetails: {
       bankName: { type: String, default: '' },
       accountHolderName: { type: String, default: '' },
+      accountNumber: { type: String, default: '' },
       iban: { type: String, default: '' },
       swiftCode: { type: String, default: '' },
     },
@@ -161,16 +162,24 @@ const deliveryPartnerSchema = new Schema<
       currentStatus: {
         type: String,
         enum: Object.keys(currentStatusOptions),
-        default: "OFFLINE",
+        default: 'OFFLINE',
         required: true,
       },
       assignmentZoneId: {
         type: Schema.Types.ObjectId,
         ref: 'Zone',
-        default: null
+        default: null,
       },
-      currentZoneId: { type: Schema.Types.ObjectId, ref: 'Zone', default: null },
-      currentOrderId: { type: Schema.Types.ObjectId, ref: 'Order', default: null },
+      currentZoneId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Zone',
+        default: null,
+      },
+      currentOrderId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Order',
+        default: null,
+      },
       capacity: { type: Number, required: true, default: 1 },
       isWorking: { type: Boolean, default: false },
       lastActivityAt: { type: Date },
@@ -197,5 +206,7 @@ deliveryPartnerSchema.index({ currentSessionLocation: '2dsphere' });
 
 deliveryPartnerSchema.plugin(userSchemaPlugin);
 
-
-export const DeliveryPartner = model<TDeliveryPartner, IUserModel<TDeliveryPartner>>('DeliveryPartner', deliveryPartnerSchema);
+export const DeliveryPartner = model<
+  TDeliveryPartner,
+  IUserModel<TDeliveryPartner>
+>('DeliveryPartner', deliveryPartnerSchema);

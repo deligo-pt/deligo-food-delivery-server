@@ -17,7 +17,6 @@ export type TDeliveryPartner = {
   isUpdateLocked: boolean;
   isDeleted: boolean;
 
-
   // Name
   name?: {
     firstName?: string;
@@ -58,6 +57,7 @@ export type TDeliveryPartner = {
   bankDetails?: {
     bankName?: string;
     accountHolderName?: string;
+    accountNumber?: string;
     iban?: string;
     swiftCode?: string;
   };

@@ -208,7 +208,8 @@ const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
     !user?.bankDetails?.iban ||
     !user?.bankDetails?.swiftCode ||
     !user?.bankDetails?.bankName ||
-    !user?.bankDetails?.accountHolderName
+    !user?.bankDetails?.accountHolderName ||
+    !user?.bankDetails?.accountNumber
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -273,7 +274,15 @@ const finalizeSettlement = async (
 
     const user = payout.userObjectId as any;
 
-    if (!user || !user.bankDetails || !user.bankDetails.iban) {
+    if (
+      !user ||
+      !user.bankDetails ||
+      !user.bankDetails.iban ||
+      !user.bankDetails.swiftCode ||
+      !user.bankDetails.bankName ||
+      !user.bankDetails.accountHolderName ||
+      !user.bankDetails.accountNumber
+    ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'User bank details not found.',
@@ -341,6 +350,7 @@ const finalizeSettlement = async (
     payout.bankDetails = {
       bankName: user?.bankDetails?.bankName,
       accountHolderName: user?.bankDetails?.accountHolderName,
+      accountNumber: user?.bankDetails?.accountNumber,
       iban: user?.bankDetails?.iban,
       swiftCode: user?.bankDetails?.swiftCode,
     };
