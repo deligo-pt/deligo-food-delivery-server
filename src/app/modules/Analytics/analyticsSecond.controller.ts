@@ -156,6 +156,19 @@ const getOfferAnalyticsForAdmin = catchAsync(async (req, res) => {
   });
 });
 
+const getTaxReportAnalyticsForVendor = catchAsync(async (req, res) => {
+  console.log(req.user);
+  const result = await AnalyticsSecondServices.getTaxReportAnalyticsForVendor(
+    req.user as AuthUser,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Tax report analytics for vendor fetched successfully',
+    data: result,
+  });
+});
+
 export const AnalyticsSecondControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -168,4 +181,5 @@ export const AnalyticsSecondControllers = {
   getVendorPerformanceAnalytics,
   getSingleVendorPerformanceDetails,
   getOfferAnalyticsForAdmin,
+  getTaxReportAnalyticsForVendor,
 };
