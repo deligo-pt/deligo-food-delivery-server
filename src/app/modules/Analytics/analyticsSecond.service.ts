@@ -1480,7 +1480,6 @@ const getSingleVendorPerformanceDetails = async (
 };
 
 // get offer analytics for admin
-
 const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
   const now = new Date();
 
@@ -1626,6 +1625,167 @@ const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
   };
 };
 
+// get tax report analytics for vendor
+const getTaxReportAnalyticsForVendor = async (currentUser: AuthUser) => {
+  const now = new Date();
+  const start = new Date();
+  start.setMonth(now.getMonth() - 5);
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+
+  const vId = new mongoose.Types.ObjectId(currentUser._id);
+
+  const [result] = await Order.aggregate<any>([
+    {
+      $match: {
+        vendorId: vId,
+        orderStatus: 'DELIVERED',
+        createdAt: { $gte: start, $lte: now },
+      },
+    },
+    {
+      $facet: {
+        stats: [
+          {
+            $group: {
+              _id: null,
+              totalSales: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
+              totalTax: { $sum: '$payoutSummary.vendor.payableTax' },
+              netRevenue: { $sum: '$payoutSummary.vendor.earningsWithoutTax' },
+            },
+          },
+        ],
+
+        taxContribution: [
+          { $unwind: '$items' },
+          {
+            $group: {
+              _id: null,
+              productTax: { $sum: '$items.productPricing.taxAmount' },
+              addonTax: {
+                $sum: {
+                  $reduce: {
+                    input: '$items.addons',
+                    initialValue: 0,
+                    in: { $add: ['$$value', '$$this.taxAmount'] },
+                  },
+                },
+              },
+            },
+          },
+        ],
+
+        taxByCategory: [
+          { $unwind: '$items' },
+          {
+            $project: {
+              allTaxes: {
+                $concatArrays: [
+                  [
+                    {
+                      rate: '$items.productPricing.taxRate',
+                      amount: '$items.productPricing.taxAmount',
+                    },
+                  ],
+                  {
+                    $map: {
+                      input: '$items.addons',
+                      as: 'addon',
+                      in: {
+                        rate: '$$addon.taxRate',
+                        amount: '$$addon.taxAmount',
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          { $unwind: '$allTaxes' },
+          {
+            $group: {
+              _id: '$allTaxes.rate',
+              totalValue: { $sum: '$allTaxes.amount' },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ],
+
+        revenueTrend: [
+          {
+            $group: {
+              _id: { $dateToString: { format: '%b', date: '$createdAt' } },
+              revenue: { $sum: '$payoutSummary.vendor.earningsWithoutTax' },
+              tax: { $sum: '$payoutSummary.vendor.payableTax' },
+              sortDate: { $first: '$createdAt' },
+            },
+          },
+          { $sort: { sortDate: 1 } },
+        ],
+
+        addonTaxBreakdown: [
+          { $unwind: '$items' },
+          { $unwind: '$items.addons' },
+          {
+            $group: {
+              _id: '$items.addons.name',
+              tax: { $sum: '$items.addons.taxAmount' },
+            },
+          },
+          { $sort: { tax: -1 } },
+          { $limit: 10 },
+        ],
+      },
+    },
+  ]);
+
+  const stats = result?.stats[0] || {
+    totalSales: 0,
+    totalTax: 0,
+    netRevenue: 0,
+  };
+  const contributionRaw = result?.taxContribution[0] || {
+    productTax: 0,
+    addonTax: 0,
+  };
+
+  const totalCalculatedTax =
+    contributionRaw.productTax + contributionRaw.addonTax || 1;
+
+  const taxContribution = [
+    {
+      name: 'Product',
+      value: roundTo2((contributionRaw.productTax / totalCalculatedTax) * 100),
+    },
+    {
+      name: 'Addon',
+      value: roundTo2((contributionRaw.addonTax / totalCalculatedTax) * 100),
+    },
+  ];
+
+  return {
+    stats: {
+      totalSales: roundTo2(stats.totalSales),
+      totalTax: roundTo2(stats.totalTax),
+      netRevenue: roundTo2(stats.netRevenue),
+    },
+    taxContribution,
+    taxByCategory: (result?.taxByCategory || []).map((t: any) => ({
+      name: `${t._id}%`,
+      value: roundTo2(t.totalValue),
+    })),
+    revenueData: (result?.revenueTrend || []).map((r: any) => ({
+      name: r._id,
+      revenue: roundTo2(r.revenue),
+      tax: roundTo2(r.tax),
+    })),
+    addonTax: (result?.addonTaxBreakdown || []).map((a: any) => ({
+      name: a._id,
+      tax: roundTo2(a.tax),
+    })),
+  };
+};
+
 export const AnalyticsSecondServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -1638,4 +1798,5 @@ export const AnalyticsSecondServices = {
   getVendorPerformanceAnalytics,
   getSingleVendorPerformanceDetails,
   getOfferAnalyticsForAdmin,
+  getTaxReportAnalyticsForVendor,
 };
