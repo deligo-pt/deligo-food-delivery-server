@@ -138,6 +138,7 @@ const deliveryPartnerSchema = new Schema<
     bankDetails: {
       bankName: { type: String, default: '' },
       accountHolderName: { type: String, default: '' },
+      accountNumber: { type: String, default: '' },
       iban: { type: String, default: '' },
       swiftCode: { type: String, default: '' },
     },

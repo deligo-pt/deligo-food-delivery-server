@@ -89,6 +89,7 @@ export type TFleetManager = {
   bankDetails?: {
     bankName: string;
     accountHolderName: string;
+    accountNumber: string;
     iban: string;
     swiftCode: string;
   };

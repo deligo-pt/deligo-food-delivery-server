@@ -91,6 +91,7 @@ export type TDeliveryPartner = {
   bankDetails?: {
     bankName?: string;
     accountHolderName?: string;
+    accountNumber?: string;
     iban?: string;
     swiftCode?: string;
   };
@@ -202,10 +203,10 @@ export type TDeliveryPartner = {
 // Document Upload Types (unchanged)
 export type TDeliveryPartnerImageDocuments = {
   docImageTitle:
-  | 'idProofFront'
-  | 'idProofBack'
-  | 'drivingLicenseFront'
-  | 'drivingLicenseBack'
-  | 'vehicleRegistration'
-  | 'criminalRecordCertificate';
+    | 'idProofFront'
+    | 'idProofBack'
+    | 'drivingLicenseFront'
+    | 'drivingLicenseBack'
+    | 'vehicleRegistration'
+    | 'criminalRecordCertificate';
 };

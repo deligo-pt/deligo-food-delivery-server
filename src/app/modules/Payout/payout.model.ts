@@ -56,6 +56,10 @@ const payoutSchema = new Schema<TPayout>(
         type: String,
         trim: true,
       },
+      accountNumber: {
+        type: String,
+        trim: true,
+      },
       iban: {
         type: String,
         trim: true,
