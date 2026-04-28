@@ -766,8 +766,6 @@ const getAdminSalesReportAnalytics = async (
     size,
   });
 
-  console.log(analytics.revenueTrendRaw);
-
   return {
     stats: {
       totalRevenue: roundTo2(stats.totalRevenue),
@@ -789,27 +787,28 @@ const getAdminSalesReportAnalytics = async (
 const getAdminOrderReportAnalytics = async (
   query: TimeframeQuery,
 ): Promise<OrderReportAnalyticsResponse> => {
-  const now = new Date();
-  const timeframe = query?.timeframe || 'last7days';
+  const { timeframe, fromDate, toDate } = query;
 
-  const timeframeToDaysMap: Record<string, number> = {
-    last7days: 7,
-    last14days: 14,
-    last30days: 30,
-    last90days: 90,
-  };
+  if (timeframe === 'custom' && !fromDate && !toDate) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please provide fromDate and toDate params for custom range',
+    );
+  }
 
-  const days = timeframeToDaysMap[timeframe] || 7;
-  const startDate = new Date();
-  startDate.setDate(now.getDate() - days);
+  const { start, end, resolution, size } = getReportTimeframe(
+    timeframe,
+    fromDate,
+    toDate,
+  );
 
-  const timeFormat = days > 60 ? '%b %Y' : '%d %b';
+  const timelineMap = generateEmptyBuckets(start, end, resolution, size);
 
   const [result] = await Order.aggregate<any>([
     {
       $match: {
         isDeleted: false,
-        createdAt: { $gte: startDate },
+        createdAt: { $gte: start, $lte: end },
       },
     },
     {
@@ -848,25 +847,11 @@ const getAdminOrderReportAnalytics = async (
             },
           },
         ],
-        ordersTrend: [
+        ordersTrendRaw: [
           {
             $group: {
-              _id: {
-                $dateToString: {
-                  format: timeFormat,
-                  date: '$createdAt',
-                },
-              },
-              orders: { $sum: 1 },
-              sortDate: { $first: '$createdAt' },
-            },
-          },
-          { $sort: { sortDate: 1 } },
-          {
-            $project: {
-              time: '$_id',
-              orders: 1,
-              _id: 0,
+              _id: getGroupingPipeline(resolution, size, start),
+              count: { $sum: 1 },
             },
           },
         ],
@@ -899,9 +884,14 @@ const getAdminOrderReportAnalytics = async (
   ]);
 
   const statsData = result?.stats[0] ?? { totalRevenue: 0, totalOrders: 0 };
-  const ordersTrend = result?.ordersTrend ?? [];
-  const revenueTrend = result?.revenueTrend ?? [];
-  const zoneHeatmap = result?.zoneHeatmap ?? [];
+  const ordersTrend = mapGrowthToTimeline({
+    growth: result?.ordersTrendRaw ?? [],
+    timelineMap,
+    start,
+    end,
+    resolution,
+    size,
+  });
 
   return {
     stats: {
@@ -916,14 +906,17 @@ const getAdminOrderReportAnalytics = async (
     ordersByZone: result?.ordersByZone ?? [],
 
     // New Requirement: Orders Trend based on timeframe
-    ordersTrend: ordersTrend,
+    ordersTrend: ordersTrend.map((item) => ({
+      time: item.time,
+      orders: item.value as number,
+    })),
 
     // Backward compatibility for charts
-    revenueTrend: revenueTrend.map((d: any) => ({
+    revenueTrend: (result?.revenueTrend ?? []).map((d: any) => ({
       date: d._id,
       revenue: roundTo2(d.revenue),
     })),
-    zoneHeatmap: zoneHeatmap.map((h: any) => ({
+    zoneHeatmap: (result?.zoneHeatmap ?? []).map((h: any) => ({
       zone: h._id.zone || 'Unknown',
       hour: h._id.hour,
       orderCount: h.orderCount,
@@ -3693,7 +3686,7 @@ const getPeakHourAnalytics = async (query: {
   };
 };
 
-// get delivey insights analytics for admin
+// get delivery insights analytics for admin
 const getDeliveryInsights = async (query: {
   fromDate?: string;
   toDate?: string;
