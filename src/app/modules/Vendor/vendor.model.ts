@@ -59,8 +59,8 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // Name
     // -------------------------------------------------------
     name: {
-      firstName: { type: String },
-      lastName: { type: String },
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
 

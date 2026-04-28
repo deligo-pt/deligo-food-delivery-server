@@ -46,8 +46,8 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
 
     // Name
     name: {
-      firstName: { type: String },
-      lastName: { type: String },
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
 
