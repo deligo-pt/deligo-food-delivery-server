@@ -142,6 +142,29 @@ const updateProduct = async (
 
   const modifiedData: Record<string, any> = {};
 
+  if (payload?.addonGroups?.length) {
+    const addonIds = payload.addonGroups;
+
+    const existingAddons = await AddonGroup.find({
+      _id: { $in: addonIds },
+    }).select('_id');
+
+    if (existingAddons.length !== addonIds.length) {
+      const foundIds = existingAddons.map((a) => a._id.toString());
+
+      const missingIds = addonIds.filter(
+        (id) => !foundIds.includes(id.toString())
+      );
+
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Invalid addonGroup IDs: ${missingIds.join(', ')}`
+      );
+    }
+
+    modifiedData.addonGroups = addonIds;
+  }
+
   if (payload.name) {
     modifiedData.name = payload.name;
     modifiedData.slug = generateSlug(payload.name);
@@ -612,9 +635,8 @@ const approvedProduct = async (
 
   await existingProduct.save();
   return {
-    message: `Product has been ${
-      payload.isApproved ? 'approved' : 'rejected'
-    } successfully`,
+    message: `Product has been ${payload.isApproved ? 'approved' : 'rejected'
+      } successfully`,
     data: {
       productId: existingProduct.productId,
       isApproved: existingProduct.isApproved,
@@ -739,7 +761,7 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
     query = Product.findOne({
       productId,
       vendorId: currentUser._id,
-    });
+    }).populate("addonGroups");
   } else {
     query = Product.findOne({ productId });
   }

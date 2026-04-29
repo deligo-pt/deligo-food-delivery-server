@@ -56,8 +56,8 @@ const vendorUpdate = async (
   // -----------------------------
   // Referral Code Generation (New Logic)
   // -----------------------------
-  if (!currentUser.referralCode) {
-    const firstName = 'USER';
+  if (!existingVendor?.referralCode) {
+    const firstName = existingVendor?.name?.firstName || 'USER';
     const newReferralCode = await generateReferralCode(firstName);
 
     payload.referralCode = newReferralCode;
@@ -202,9 +202,8 @@ const toggleVendorStoreOpenClose = async (currentUser: AuthUser) => {
   currentUser.businessDetails!.storeClosedAt = new Date();
   await (currentUser as any).save();
   return {
-    message: `Store is ${
-      currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
-    }`,
+    message: `Store is ${currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
+      }`,
   };
 };
 

@@ -155,12 +155,13 @@ const handleUserProfileUpdated = async (
   payload: any,
 ) => {
 
-  const { id, firstName, lastName, ...rest } = payload;
+  const { id, firstName, lastName, contactNumber, ...rest } = payload;
   const updatedData = {
     name: {
       firstName,
       lastName,
     },
+    contactNumber,
     ...rest,
   };
 
