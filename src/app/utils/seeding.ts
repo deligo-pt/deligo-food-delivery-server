@@ -4,6 +4,7 @@ import config from '../config';
 import { v4 as uuidv4 } from 'uuid';
 import { Admin } from '../modules/Admin/admin.model';
 import { USER_ROLE, USER_STATUS } from '../constant/user.constant';
+import { GlobalSettings } from '../modules/GlobalSetting/globalSetting.model';
 
 export const seed = async () => {
   try {
@@ -27,6 +28,16 @@ export const seed = async () => {
         status: USER_STATUS.APPROVED,
         isEmailVerified: true,
       });
+    }
+    // --------------------------------------------------
+    // Seed Global Settings
+    // --------------------------------------------------
+    const existingSettings = await GlobalSettings.findOne();
+
+    if (!existingSettings) {
+      console.log('Seeding global settings');
+
+      await GlobalSettings.create({});
     }
   } catch (error) {
     console.error('Error in seeding', error);

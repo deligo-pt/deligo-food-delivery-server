@@ -8,6 +8,10 @@ export type TPayout = {
   senderId: mongoose.Types.ObjectId;
   senderModel: 'Admin' | 'FleetManager';
 
+  startDate: Date;
+  endDate: Date;
+  paymentDate?: Date;
+
   amount: number;
   status: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
   paymentMethod: 'BANK_TRANSFER' | 'MOBILE_BANKING' | 'CASH';
