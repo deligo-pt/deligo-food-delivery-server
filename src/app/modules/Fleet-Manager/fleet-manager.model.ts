@@ -50,7 +50,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
 
     isUpdateLocked: {
       type: Boolean,
-      default: false
+      default: false,
     },
     isDeleted: { type: Boolean, default: false },
 
@@ -62,8 +62,8 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // Business Details
     // ------------------------------------------
     name: {
-      firstName: { type: String },
-      lastName: { type: String },
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
 
@@ -94,6 +94,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     bankDetails: {
       bankName: { type: String, default: '' },
       accountHolderName: { type: String, default: '' },
+      accountNumber: { type: String, default: '' },
       iban: { type: String, default: '' },
       swiftCode: { type: String, default: '' },
     },

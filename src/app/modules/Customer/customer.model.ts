@@ -15,12 +15,12 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     authUserId: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     customUserId: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     role: {
       type: String,
@@ -51,8 +51,8 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
 
     // Name & Contact Number
     name: {
-      firstName: { type: String },
-      lastName: { type: String },
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
 

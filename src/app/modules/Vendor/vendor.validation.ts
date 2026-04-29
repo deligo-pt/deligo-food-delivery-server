@@ -28,6 +28,7 @@ const vendorUpdateValidationSchema = z.object({
       .object({
         bankName: z.string().optional(),
         accountHolderName: z.string().optional(),
+        accountNumber: z.string().optional(),
         iban: z.string().optional(),
         swiftCode: z.string().optional(),
       })
