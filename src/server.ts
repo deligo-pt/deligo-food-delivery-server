@@ -5,7 +5,7 @@ import config from './app/config';
 import { seed } from './app/utils/seeding';
 import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
-import { initOrderCronJobs } from './app/utils/orderCleanup';
+import { initAllCronJobs } from './app/cron';
 const server = http.createServer(app);
 
 // Handle unexpected errors
@@ -40,7 +40,7 @@ async function bootstrap() {
     // Initialize Socket.IO
     initializeSocket(server);
 
-    initOrderCronJobs();
+    initAllCronJobs();
 
     // initAuthEventListener();
 
