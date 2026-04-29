@@ -1198,11 +1198,13 @@ const updateOrderStatusByDeliveryPartner = async (
     const notificationPayload = {
       title: `Order is now ${payload.orderStatus}`,
       body: `${
-        payload.orderStatus === 'ON_THE_WAY'
-          ? `Your order ${orderId} is now ON_THE_WAY.`
-          : payload.orderStatus === 'DELIVERED'
-            ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
-            : `Your order ${orderId} is  ${payload.orderStatus}.`
+        payload.orderStatus === 'PICKED_UP'
+          ? `Your order ${orderId} is now PICKED_UP.`
+          : payload.orderStatus === 'ON_THE_WAY'
+            ? `Your order ${orderId} is now ON_THE_WAY.`
+            : payload.orderStatus === 'DELIVERED'
+              ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
+              : `Your order ${orderId} is  ${payload.orderStatus}.`
       } `,
       data: {
         orderId,
