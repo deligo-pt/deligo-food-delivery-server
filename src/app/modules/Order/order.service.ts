@@ -1198,7 +1198,7 @@ const updateOrderStatusByDeliveryPartner = async (
     const notificationPayload = {
       title: `Order is now ${payload.orderStatus}`,
       body: `${
-        payload.orderStatus === 'PICKED_UP'
+        payload.orderStatus === 'PICKED_UP' // TODO: Notify Customer
           ? `Your order ${orderId} is now PICKED_UP.`
           : payload.orderStatus === 'ON_THE_WAY'
             ? `Your order ${orderId} is now ON_THE_WAY.`
@@ -1222,7 +1222,11 @@ const updateOrderStatusByDeliveryPartner = async (
         'ORDER',
       );
     }
-    if (vendorId) {
+    if (
+      vendorId &&
+      (payload.orderStatus === 'ON_THE_WAY' ||
+        payload.orderStatus === 'DELIVERED')
+    ) {
       NotificationService.sendToUser(
         vendorId!,
         notificationPayload.title,
