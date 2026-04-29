@@ -506,17 +506,39 @@ const initiateAutomatedSettlement = async () => {
     const settings = await GlobalSettings.findOne().lean();
     if (!settings) throw new Error('Global settings not found');
 
-    const { minPayoutAmount } = settings.payout;
+    const { minPayoutAmount, payoutWindowDays } = settings.payout;
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - (payoutWindowDays || 0));
 
     const eligibleWallets = await Wallet.find({
       totalUnpaidEarnings: { $gte: minPayoutAmount },
-    }).session(session);
+      userModel: { $in: ['Vendor', 'FleetManager', 'DeliveryPartner'] },
+    })
+      .populate('userId')
+      .session(session);
 
     if (eligibleWallets.length === 0) return;
 
     const superAdmin = await Admin.findOne({ role: 'SUPER_ADMIN' });
 
     for (const wallet of eligibleWallets) {
+      const user = wallet.userId as any;
+
+      if (wallet.userModel === 'DeliveryPartner') {
+        if (user?.registeredBy?.role === 'FLEET_MANAGER') {
+          continue;
+        }
+      }
+
+      const existingPendingPayout = await Payout.findOne({
+        userId: wallet.userId,
+        status: 'PENDING',
+      }).session(session);
+
+      if (existingPendingPayout) {
+        continue;
+      }
+
       const uniquePayoutId = customNanoId(8);
 
       await Payout.create(
@@ -530,6 +552,9 @@ const initiateAutomatedSettlement = async () => {
             amount: wallet.totalUnpaidEarnings,
             status: 'PENDING',
             paymentMethod: 'BANK_TRANSFER',
+
+            startDate: wallet.lastSettlementDate || wallet.createdAt,
+            endDate: endDate,
           },
         ],
         { session },
