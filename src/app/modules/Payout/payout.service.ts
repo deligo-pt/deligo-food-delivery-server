@@ -10,6 +10,8 @@ import { Wallet } from '../Wallet/wallet.model';
 import { Transaction } from '../Transaction/transaction.model';
 import { NotificationService } from '../Notification/notification.service';
 import customNanoId from '../../utils/customNanoId';
+import { Admin } from '../Admin/admin.model';
+import { GlobalSettings } from '../GlobalSetting/globalSetting.model';
 
 // initiate payout service
 const initiateSettlement = async (
@@ -496,6 +498,53 @@ const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
   };
 };
 
+const initiateAutomatedSettlement = async () => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const settings = await GlobalSettings.findOne().lean();
+    if (!settings) throw new Error('Global settings not found');
+
+    const { minPayoutAmount } = settings.payout;
+
+    const eligibleWallets = await Wallet.find({
+      totalUnpaidEarnings: { $gte: minPayoutAmount },
+    }).session(session);
+
+    if (eligibleWallets.length === 0) return;
+
+    const superAdmin = await Admin.findOne({ role: 'SUPER_ADMIN' });
+
+    for (const wallet of eligibleWallets) {
+      const uniquePayoutId = customNanoId(8);
+
+      await Payout.create(
+        [
+          {
+            payoutId: `PAY-${uniquePayoutId}`,
+            userId: wallet.userId,
+            userModel: wallet.userModel,
+            senderId: superAdmin?._id,
+            senderModel: 'Admin',
+            amount: wallet.totalUnpaidEarnings,
+            status: 'PENDING',
+            paymentMethod: 'BANK_TRANSFER',
+          },
+        ],
+        { session },
+      );
+    }
+
+    await session.commitTransaction();
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('Automated payout error:', error);
+  } finally {
+    session.endSession();
+  }
+};
+
 export const PayoutServices = {
   initiateSettlement,
   rejectPayout,
@@ -503,4 +552,5 @@ export const PayoutServices = {
   finalizeSettlement,
   getAllPayouts,
   getSinglePayout,
+  initiateAutomatedSettlement,
 };
