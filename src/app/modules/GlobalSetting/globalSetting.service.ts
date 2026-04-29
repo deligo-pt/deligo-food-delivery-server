@@ -113,6 +113,24 @@ const updateGlobalSettings = async (
   }
 
   // --------------------------------------------------
+  // Payout business validations
+  // --------------------------------------------------
+  if (payload.payout) {
+    // Payout days validation logic
+    const isAutoGenerate =
+      payload.payout.autoGenerate ?? existingSettings.payout?.autoGenerate;
+    const days =
+      payload.payout.payoutDays ?? existingSettings.payout?.payoutDays;
+
+    if (isAutoGenerate && (!days || days.length === 0)) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'At least one payout day must be provided when auto-generate is enabled',
+      );
+    }
+  }
+
+  // --------------------------------------------------
   // Cross-field business validations (important)
   // --------------------------------------------------
   if (
@@ -199,13 +217,6 @@ const getGlobalSettingsForAdmin = async (currentUser: AuthUser) => {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'Only admin can access global settings',
-    );
-  }
-
-  if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`,
     );
   }
 

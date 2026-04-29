@@ -66,62 +66,46 @@ export type TGlobalSettings = {
     };
   };
 
+  // --------------------------------------------------
+  // Payout & Settlement Rules
+  // --------------------------------------------------
+  payout: {
+    /**
+     * If true, the system will automatically generate pending payout records
+     * based on the defined schedule.
+     */
+    autoGenerate: boolean;
+
+    /**
+     * Specific days of the week when payouts should be triggered.
+     * Example: ['Tuesday', 'Friday']
+     */
+    payoutDays: (
+      | 'Sunday'
+      | 'Monday'
+      | 'Tuesday'
+      | 'Wednesday'
+      | 'Thursday'
+      | 'Friday'
+      | 'Saturday'
+    )[];
+
+    /**
+     * The minimum accumulated unpaid earnings required to generate a payout record.
+     */
+    minPayoutAmount: number;
+
+    /**
+     * Defines how many days before the payout day the transaction window closes.
+     * Example: If set to 1, a Tuesday payout will only include earnings up to Monday.
+     */
+    payoutWindowDays: number;
+  };
+
   // Meta Data
   meta: {
     updatedBy: mongoose.Types.ObjectId;
-    createdAt?: Date;
-    updatedAt?: Date;
   };
+  createdAt?: Date;
+  updatedAt?: Date;
 };
-
-// export type TGlobalSettings = {
-//   // Delivery pricing
-//   deliveryChargePerKm: number;
-//   baseDeliveryCharge: number;
-//   minDeliveryCharge: number;
-//   maxDeliveryCharge?: number;
-//   freeDeliveryAbove?: number;
-//   maxDeliveryDistanceKm?: number;
-
-//   // Platform commission
-//   platformCommissionPercent: number;
-//   platformCommissionVatRate: number;
-//   fleetManagerCommissionPercent?: number;
-//   deliveryPartnerCommissionPercent?: number;
-//   deliveryVatRate?: number;
-//   vendorVatPercent?: number;
-
-//   // customer nearest vendor search radius
-//   customerNearestVendorRadiusKm: number;
-
-//   // Order rules
-//   minOrderAmount?: number;
-//   maxOrderAmount?: number;
-//   maxItemsPerOrder?: number;
-
-//   // Cancellation & refund
-//   cancelTimeLimitMinutes?: number;
-//   refundProcessingDays?: number;
-
-//   // Offers
-//   isOfferEnabled: boolean;
-//   maxDiscountPercent?: number;
-
-//   // Order lifecycle automation
-//   autoCancelUnacceptedOrderMinutes?: number;
-//   autoMarkDeliveredAfterMinutes?: number;
-
-//   // OTP & security
-//   orderOtpEnabled: boolean;
-//   otpLength?: number;
-//   otpExpiryMinutes?: number;
-
-//   // Platform state
-//   isPlatformLive: boolean;
-//   maintenanceMessage?: string;
-
-//   // Meta
-//   updatedBy?: string;
-//   createdAt?: Date;
-//   updatedAt?: Date;
-// };
