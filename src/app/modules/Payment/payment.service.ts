@@ -5,7 +5,10 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { AuthUser } from '../../constant/user.constant';
-import { IIngredientOrder, TPaymentMethod } from '../Ingredient-Order/ing-order.interface';
+import {
+  IIngredientOrder,
+  TPaymentMethod,
+} from '../Ingredient-Order/ing-order.interface';
 import mongoose from 'mongoose';
 import { Vendor } from '../Vendor/vendor.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
@@ -138,7 +141,7 @@ const handlePaymentFailure = async (
 // create ingredients payment service
 const createIngredientRequniqPayment = async (
   payload: IIngredientOrder,
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ) => {
   const session = await mongoose.startSession();
 
@@ -146,8 +149,12 @@ const createIngredientRequniqPayment = async (
     session.startTransaction();
 
     const vendorInfo = await Vendor.findById(currentUser._id).session(session);
-    const ingredient = await Ingredient.findById(payload.orderDetails?.ingredient).session(session);
-    const adminInfo = await Admin.findOne({ role: "SUPER_ADMIN" }).select("address").session(session);
+    const ingredient = await Ingredient.findById(
+      payload.orderDetails?.ingredient,
+    ).session(session);
+    const adminInfo = await Admin.findOne({ role: 'SUPER_ADMIN' })
+      .select('address')
+      .session(session);
 
     if (!vendorInfo) {
       throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
@@ -156,7 +163,10 @@ const createIngredientRequniqPayment = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
     }
 
-    const vendorCoords = vendorInfo.currentSessionLocation?.coordinates as [number, number];
+    const vendorCoords = vendorInfo.currentSessionLocation?.coordinates as [
+      number,
+      number,
+    ];
 
     // 3. Calculate Distance and Delivery Charges
     const distanceData = await calculateGoggleRoadDistance(
@@ -169,12 +179,21 @@ const createIngredientRequniqPayment = async (
     const globalSettings = await GlobalSettingsService.getGlobalSettings();
     const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
 
-    const deliveryChargeBase = distanceData.meters <= 1000
-      ? BASE_FIXED_DELIVERY_CHARGE
-      : Number((distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0)).toFixed(2));
+    const deliveryChargeBase =
+      distanceData.meters <= 1000
+        ? BASE_FIXED_DELIVERY_CHARGE
+        : Number(
+            (
+              distanceData.meters *
+              (globalSettings?.deliveryChargePerMeter || 0)
+            ).toFixed(2),
+          );
 
-    const totalIngredientCost = payload.orderDetails.totalQuantity * Number(ingredient.price);
-    const grandTotal = Number((totalIngredientCost + deliveryChargeBase).toFixed(2));
+    const totalIngredientCost =
+      payload.orderDetails.totalQuantity * Number(ingredient.price);
+    const grandTotal = Number(
+      (totalIngredientCost + deliveryChargeBase).toFixed(2),
+    );
 
     const paymentMethod = payload.paymentMethod as TPaymentMethod;
     const solutionIds = {
@@ -188,31 +207,33 @@ const createIngredientRequniqPayment = async (
 
     // Create order within transaction
     const [newOrder] = await IngredientOrder.create(
-      [{
-        orderDetails: {
-          ...payload.orderDetails,
-          totalAmount: totalIngredientCost,
+      [
+        {
+          orderDetails: {
+            ...payload.orderDetails,
+            totalAmount: totalIngredientCost,
+          },
+          paymentMethod: paymentMethod,
+          vendor: currentUser._id,
+          deliveryAddress: vendorInfo.businessLocation,
+          delivery: {
+            charge: deliveryChargeBase,
+            distance: Number(distanceData.km.toFixed(2)),
+            estimatedTime: distanceData.durationMinutes,
+          },
+          grandTotal,
+          paymentStatus: 'PROCESSING',
+          orderStatus: 'PENDING',
         },
-        paymentMethod: paymentMethod,
-        vendor: currentUser._id,
-        deliveryAddress: vendorInfo.businessLocation,
-        delivery: {
-          charge: deliveryChargeBase,
-          distance: Number(distanceData.km.toFixed(2)),
-          estimatedTime: distanceData.durationMinutes,
-        },
-        grandTotal,
-        paymentStatus: 'PROCESSING',
-        orderStatus: 'PENDING',
-      }],
-      { session }
+      ],
+      { session },
     );
 
     const orderPayload = {
       method: 'initPayment',
       api: {
         username: config.reduniq.username,
-        password: config.reduniq.password
+        password: config.reduniq.password,
       },
       payment: {
         amount: Math.round(grandTotal * 100),
@@ -230,9 +251,11 @@ const createIngredientRequniqPayment = async (
       returnUrlError: `${config.frontend_urls.frontend_url_test}/vendor/ingredients/orders/payment-failed?orderId=${newOrder._id}`,
     };
 
-    const response = await axios.post(config.reduniq.api_url as string, orderPayload);
+    const response = await axios.post(
+      config.reduniq.api_url as string,
+      orderPayload,
+    );
     const { result, token, redirectUrl } = response.data;
-
 
     if (result.code === '00000000') {
       newOrder.transactionId = token;
@@ -242,14 +265,15 @@ const createIngredientRequniqPayment = async (
 
       return {
         redirectUrl: redirectUrl,
-        paymentToken: token
+        paymentToken: token,
       };
     } else {
       throw new Error('Payment initiation failed');
     }
   } catch (error: unknown) {
     await session.abortTransaction();
-    const errorMessage = error instanceof Error ? error.message : 'Transaction failed';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Transaction failed';
     throw new AppError(httpStatus.BAD_REQUEST, errorMessage);
   } finally {
     session.endSession();
@@ -259,5 +283,5 @@ const createIngredientRequniqPayment = async (
 export const PaymentServices = {
   createReduniqPayment,
   handlePaymentFailure,
-  createIngredientRequniqPayment
+  createIngredientRequniqPayment,
 };
