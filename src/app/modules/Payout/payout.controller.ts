@@ -52,6 +52,7 @@ const retryFailedPayout = catchAsync(async (req, res) => {
 // finalize payout controller
 const finalizeSettlement = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
+  console.log(req.params.payoutId, req.body, file, req.user);
   const result = await PayoutServices.finalizeSettlement(
     req.params.payoutId,
     req.body,
