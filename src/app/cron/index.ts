@@ -9,7 +9,7 @@ export const initAllCronJobs = () => {
   });
 
   // Payout Automated Settlement Cron
-  cron.schedule('0 0 * * *', async () => {
+  cron.schedule('* * * * *', async () => {
     await handlePayoutAutomatedCron();
   });
 };

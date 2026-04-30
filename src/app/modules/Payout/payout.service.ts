@@ -12,6 +12,7 @@ import { NotificationService } from '../Notification/notification.service';
 import customNanoId from '../../utils/customNanoId';
 import { Admin } from '../Admin/admin.model';
 import { GlobalSettings } from '../GlobalSetting/globalSetting.model';
+import { roundTo2 } from '../../utils/mathProvider';
 
 // initiate payout service
 const initiateSettlement = async (
@@ -89,7 +90,7 @@ const initiateSettlement = async (
     if (payout) {
       const NotificationPayload = {
         title: 'Payout initiated',
-        message: 'Payout initiated successfully',
+        body: 'Payout initiated successfully',
         data: {
           amount: String(payout.amount),
           status: String(payout.status),
@@ -100,7 +101,7 @@ const initiateSettlement = async (
       NotificationService.sendToUser(
         user.userId,
         NotificationPayload.title,
-        NotificationPayload.message,
+        NotificationPayload.body,
         NotificationPayload.data,
         'default',
         'PAYOUT',
@@ -156,7 +157,7 @@ const rejectPayout = async (
 
     const NotificationPayload = {
       title: 'Payout rejected',
-      message: `Payout has been rejected. Reason: ${reason}`,
+      body: `Payout has been rejected. Reason: ${reason}`,
       data: {
         amount: String(payout.amount),
         status: String(payout.status),
@@ -166,7 +167,7 @@ const rejectPayout = async (
     NotificationService.sendToUser(
       (payout.userId as any).userId,
       NotificationPayload.title,
-      NotificationPayload.message,
+      NotificationPayload.body,
       NotificationPayload.data,
       'default',
       'PAYOUT',
@@ -226,7 +227,7 @@ const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
 
   const NotificationPayload = {
     title: 'Payout retried',
-    message: 'Your payout has been retried. Now your payout is in processing.',
+    body: 'Your payout has been retried. Now your payout is in processing.',
     data: {
       amount: String(payout.amount),
       status: String(payout.status),
@@ -236,7 +237,7 @@ const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
   NotificationService.sendToUser(
     user.userId,
     NotificationPayload.title,
-    NotificationPayload.message,
+    NotificationPayload.body,
     NotificationPayload.data,
     'default',
     'PAYOUT',
@@ -267,26 +268,16 @@ const finalizeSettlement = async (
 
   try {
     const payout = await Payout.findOne({ payoutId })
-      .populate('userId', 'userId bankDetails')
+      .populate('userId', 'userId bankDetails name nif')
       .session(session);
-
-    if (!payout || payout.status !== 'PROCESSING') {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid payout session.');
+    if (!payout || payout.status !== 'PENDING') {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Invalid payout session or already paid.',
+      );
     }
 
     const user = payout.userId as any;
-
-    if (
-      !user ||
-      !user.bankDetails ||
-      !user.bankDetails.iban ||
-      !user.bankDetails.accountNumber
-    ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'User bank details not found.',
-      );
-    }
 
     if (!payoutProof) {
       throw new AppError(
@@ -294,12 +285,6 @@ const finalizeSettlement = async (
         'Payout proof image is mandatory.',
       );
     }
-
-    const settlementTypeMapper: Record<string, string> = {
-      Vendor: 'VENDOR_SETTLEMENT',
-      DeliveryPartner: 'DELIVERY_PARTNER_SETTLEMENT',
-      FleetManager: 'FLEET_SETTLEMENT',
-    };
 
     const amountToDeduct = payout.amount;
 
@@ -311,6 +296,12 @@ const finalizeSettlement = async (
       },
       { session },
     );
+
+    const settlementTypeMapper: Record<string, string> = {
+      Vendor: 'VENDOR_SETTLEMENT',
+      DeliveryPartner: 'DELIVERY_PARTNER_SETTLEMENT',
+      FleetManager: 'FLEET_SETTLEMENT',
+    };
 
     if (
       payout.userModel === 'DeliveryPartner' &&
@@ -346,20 +337,14 @@ const finalizeSettlement = async (
     payout.bankReferenceId = payload.bankReferenceId;
     payout.remarks = payload.remarks || 'Weekly settlement completed';
     payout.payoutProof = payoutProof;
-    payout.bankDetails = {
-      bankName: user?.bankDetails?.bankName,
-      accountHolderName: user?.bankDetails?.accountHolderName,
-      accountNumber: user?.bankDetails?.accountNumber,
-      iban: user?.bankDetails?.iban,
-      swiftCode: user?.bankDetails?.swiftCode,
-    };
+    payout.bankDetails = { ...user.bankDetails };
     const result = await payout.save({ session });
 
     await session.commitTransaction();
 
     const NotificationPayload = {
       title: 'Settlement completed',
-      message: `Your settlement of ${amountToDeduct} has been processed successfully.`,
+      body: `Your settlement of ${amountToDeduct} has been processed successfully.`,
       data: {
         amount: String(result.amount),
         status: String(result.status),
@@ -369,7 +354,7 @@ const finalizeSettlement = async (
     NotificationService.sendToUser(
       (result.userId as any).userId,
       NotificationPayload.title,
-      NotificationPayload.message,
+      NotificationPayload.body,
       NotificationPayload.data,
       'default',
       'PAYOUT',
@@ -514,7 +499,7 @@ const initiateAutomatedSettlement = async () => {
       totalUnpaidEarnings: { $gte: minPayoutAmount },
       userModel: { $in: ['Vendor', 'FleetManager', 'DeliveryPartner'] },
     })
-      .populate('userId')
+      .populate('userId', 'registeredBy bankDetails userId name')
       .session(session);
 
     if (eligibleWallets.length === 0) return;
@@ -528,6 +513,30 @@ const initiateAutomatedSettlement = async () => {
         if (user?.registeredBy?.role === 'FLEET_MANAGER') {
           continue;
         }
+      }
+      const hasCompleteBankDetails =
+        user?.bankDetails?.bankName &&
+        user?.bankDetails?.accountHolderName &&
+        user?.bankDetails?.accountNumber &&
+        user?.bankDetails?.iban;
+
+      if (!hasCompleteBankDetails) {
+        const formattedAmount = roundTo2(wallet.totalUnpaidEarnings);
+        const NotificationPayload = {
+          title: 'Bank Details Incomplete',
+          body: `We couldn't initiate your payout of ${formattedAmount}€ because your bank details are incomplete. Please update them to receive payments.`,
+        };
+
+        NotificationService.sendToUser(
+          user.userId,
+          NotificationPayload.title,
+          NotificationPayload.body,
+          {},
+          'default',
+          'PAYOUT_ALERT',
+        );
+
+        continue;
       }
 
       const existingPendingPayout = await Payout.findOne({
