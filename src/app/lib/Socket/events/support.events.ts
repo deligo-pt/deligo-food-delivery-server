@@ -17,7 +17,7 @@ type SendMessagePayload = {
 
 export const registerSupportEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as AuthUser;
-  const userId = user.userId; // Custom ID (e.g., C-VXX...)
+  const customUserId = user.customUserId; // Custom ID (e.g., C-VXX...)
   const userRole = user.role;
 
   // Admin joining a common room to receive notifications for all tickets
@@ -31,7 +31,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
   socket.on('join-conversation', ({ ticketId }: { ticketId: string }) => {
     if (!ticketId) return;
     socket.join(ticketId);
-    console.log(`User ${userId} joined ticket: ${ticketId}`);
+    console.log(`User ${customUserId} joined ticket: ${ticketId}`);
   });
 
   /**
@@ -42,7 +42,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
     ({ ticketId, isTyping }: { ticketId: string; isTyping: boolean }) => {
       if (!ticketId) return;
       socket.to(ticketId).emit('user-typing', {
-        userId,
+        customUserId,
         name: user.name || 'User',
         isTyping,
       });
@@ -100,7 +100,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
 
       socket.to(ticketId).emit('read-update', {
         ticketId,
-        userId,
+        customUserId,
         time: new Date(),
       });
     } catch (error) {
@@ -121,7 +121,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
 
         io.to(ticketId).emit('conversation-closed', {
           ticketId,
-          closedBy: userId,
+          closedBy: customUserId,
           time: new Date(),
         });
       } catch (error: any) {

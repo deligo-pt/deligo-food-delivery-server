@@ -33,15 +33,15 @@ export const initOrderCronJobs = () => {
 
           if (
             typeof order.vendorId === 'object' &&
-            (order.vendorId as any).userId
+            (order.vendorId as any).customUserId
           ) {
-            vendorUserId = (order.vendorId as any).userId;
+            vendorUserId = (order.vendorId as any).customUserId;
           } else if (order.vendorId) {
             const vendor = await Vendor.findById(order.vendorId).select(
-              'userId',
+              'customUserId',
             );
             if (vendor) {
-              vendorUserId = vendor.userId;
+              vendorUserId = vendor.customUserId;
             }
           }
 

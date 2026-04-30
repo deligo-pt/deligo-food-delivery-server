@@ -33,7 +33,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
   io.on('connection', (socket) => {
     if (config.NODE_ENV === 'development') {
       const user = socket.data.user;
-      console.log(`Socket connected: ${user?.userId}`);
+      console.log(`Socket connected: ${user?.customUserId}`);
     }
 
     registerSupportEvents(io, socket);

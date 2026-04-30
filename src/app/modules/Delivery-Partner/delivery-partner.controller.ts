@@ -50,23 +50,6 @@ const changeDeliveryPartnerStatus = catchAsync(async (req, res) => {
   });
 });
 
-// delivery partner doc image upload
-const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
-  const file = req.file;
-  const result = await DeliveryPartnerServices.deliverPartnerDocImageUpload(
-    file?.path,
-    req.body,
-    req.user as AuthUser,
-    req.params.deliveryPartnerId,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.existingDeliveryPartner,
-  });
-});
-
 // get all delivery partners
 const getAllDeliveryPartners = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.getAllDeliveryPartnersFromDB(
@@ -101,7 +84,6 @@ const getSingleDeliveryPartner = catchAsync(async (req, res) => {
 export const DeliveryPartnerControllers = {
   updateDeliveryPartner,
   updateDeliveryPartnerLiveLocation,
-  deliveryPartnerDocImageUpload,
   changeDeliveryPartnerStatus,
   getAllDeliveryPartners,
   getSingleDeliveryPartner,

@@ -19,7 +19,7 @@ export const initAuthEventListener = async () => {
         {
           $set: {
             authUserId: payload.id,
-            customUserId: payload.userId,
+            customUserId: payload.customUserId,
             email: payload.email,
             role: payload.role,
           },

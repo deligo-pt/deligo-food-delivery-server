@@ -17,7 +17,7 @@ export const seed = async () => {
       const id = `SA-${uuidv4().split('-')[0]}`;
 
       await Admin.create({
-        userId: id,
+        customUserId: id,
         name: 'Super Admin',
         role: USER_ROLE.SUPER_ADMIN,
         email: config.super_admin.super_admin_email,

@@ -61,7 +61,7 @@ export const getPopulateOptions = (
     addOption(key as keyof PopulateInput, key, isAdmin);
   });
 
-  addOption('id', 'userId.id');
+  addOption('id', 'userObjectId.id');
   addOption('product', 'items.productId');
   addOption('productCategory', 'category');
   addOption('orderId', 'orderId');

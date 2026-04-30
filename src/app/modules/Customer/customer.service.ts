@@ -5,7 +5,7 @@ import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import { TCustomer } from './customer.interface';
 import { Customer } from './customer.model';
-import { CustomerSearchableFields } from './customer.constant';
+import { AddressType, CustomerSearchableFields } from './customer.constant';
 import { TDeliveryAddress } from '../../constant/address.constant';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
@@ -16,8 +16,8 @@ const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
   currentUser: AuthUser,
-  profilePhoto?: string,
 ) => {
+  console.log("payload of profile", payload);
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -26,97 +26,93 @@ const updateCustomer = async (
   }
 
   const customer = await Customer.isUserExistsByUserId(customerId, false);
-  if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  if (!customer.isOtpVerified)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
+  if (!customer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
+  }
 
   if (
     currentUser.role === 'CUSTOMER' &&
-    currentUser.userId !== customer.userId
+    currentUser.customUserId !== customer.customUserId
   ) {
     throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized update');
   }
 
-  // -----------------------------
-  // Referral Code Generation (New Logic)
-  // -----------------------------
-  if (!currentUser.referralCode) {
-    const firstName =
-      payload.name?.firstName || currentUser.name.firstName || 'USER';
-    const newReferralCode = await generateReferralCode(firstName);
+  // ---------------------------------
+  // SAFE UPDATE OBJECT (IMPORTANT)
+  // ---------------------------------
+  const updateData: any = { ...payload };
 
-    payload.referralCode = newReferralCode;
+  // ---------------------------------
+  // Referral Code (use DB value)
+  // ---------------------------------
+  if (!customer.referralCode) {
+    const firstName = customer.name?.firstName || 'USER';
+    updateData.referralCode = await generateReferralCode(firstName);
   }
 
-  // ----------------------------------------------------------------------
-  // Photo update
-  // ----------------------------------------------------------------------
-  if (payload.profilePhoto) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Photo must be a file upload');
-  }
+  // ---------------------------------
+  // ADDRESS LOGIC
+  // ---------------------------------
+  let updatedDeliveryAddresses = customer.deliveryAddresses || [];
 
-  if (profilePhoto) payload.profilePhoto = profilePhoto;
+  if (payload.deliveryAddresses?.length) {
 
-  // ----------------------------------------------------------------------
-  // User sends a single address
-  // ----------------------------------------------------------------------
-  let updatedDeliveryAddresses = customer.deliveryAddresses;
+    const { longitude, latitude, geoAccuracy = 0 } =
+      payload.deliveryAddresses[0];
 
-  if (payload.address) {
-    const { longitude, latitude, geoAccuracy = 0 } = payload.address;
-
-    if (geoAccuracy !== undefined && geoAccuracy > 100) {
+    if (geoAccuracy > 100) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Geo accuracy must be less than or equal to 100.',
+        'Geo accuracy must be <= 100',
       );
     }
 
     const hasLng = typeof longitude === 'number';
     const hasLat = typeof latitude === 'number';
 
+    // ✅ Update location
     if (hasLng && hasLat) {
-      payload.currentSessionLocation = {
+      updateData.currentSessionLocation = {
         type: 'Point',
         coordinates: [longitude, latitude],
-        geoAccuracy: geoAccuracy,
+        geoAccuracy,
         lastLocationUpdate: new Date(),
       };
     }
 
     const newAddress = {
-      ...payload.address,
+      ...payload.deliveryAddresses[0],
       isActive: true,
+      addressType: AddressType.PRIMARY,
     };
 
-    // Check if this address already exists
-    const exists = customer?.deliveryAddresses?.some(
+    // ✅ Better comparison (stringified)
+    const exists = updatedDeliveryAddresses.some(
       (addr) =>
-        addr.longitude === newAddress.longitude &&
-        addr.latitude === newAddress.latitude,
+        Number(addr.longitude) === Number(newAddress.longitude) &&
+        Number(addr.latitude) === Number(newAddress.latitude)
     );
 
     if (!exists) {
-      // Deactivate all previous addresses
-      updatedDeliveryAddresses = customer?.deliveryAddresses?.map((addr) => ({
+      // deactivate all
+      updatedDeliveryAddresses = updatedDeliveryAddresses.map((addr) => ({
         ...addr,
         isActive: false,
       }));
 
-      // Add new active address
-      updatedDeliveryAddresses?.push({ ...newAddress, addressType: 'PRIMARY' });
+      updatedDeliveryAddresses.push(newAddress);
     }
 
-    payload.deliveryAddresses = updatedDeliveryAddresses;
+    updateData.deliveryAddresses = updatedDeliveryAddresses;
   }
 
-  // ----------------------------------------------------------------------
-  // Final Update
-  // ----------------------------------------------------------------------
+  // ---------------------------------
+  // FINAL UPDATE
+  // ---------------------------------
   const updated = await Customer.findOneAndUpdate(
-    { userId: customerId },
-    { $set: payload },
-    { new: true },
+    { customUserId: customerId },
+    { $set: updateData },
+    { new: true, runValidators: true }
   );
 
   return updated;
@@ -137,7 +133,7 @@ const updateCustomerLiveLocation = async (
     );
   }
 
-  if (currentUser?.userId !== customerId) {
+  if (currentUser?.customUserId !== customerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update live location!',
@@ -178,7 +174,7 @@ const updateCustomerLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updatedCustomer = await Customer.findOneAndUpdate(
-    { userId: currentUser.userId },
+    { customUserId: currentUser.customUserId },
     { $set: updateData },
     {
       new: true,
@@ -227,7 +223,7 @@ const addDeliveryAddress = async (
       'Only customers can add delivery addresses',
     );
   }
-  const userId = currentUser.userId;
+  const customUserId = currentUser.customUserId;
   if (currentUser.deliveryAddresses!.length >= 5) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -270,7 +266,7 @@ const addDeliveryAddress = async (
   // Deactivate previous addresses
   // --------------------------------------------------
   await Customer.updateOne(
-    { userId },
+    { customUserId },
     { $set: { 'deliveryAddresses.$[].isActive': false } },
   );
 
@@ -300,7 +296,7 @@ const addDeliveryAddress = async (
   // Push address
   // --------------------------------------------------
   await Customer.updateOne(
-    { userId },
+    { customUserId },
     { $push: { deliveryAddresses: newDeliveryAddress } },
   );
 
@@ -329,9 +325,9 @@ const updateDeliveryAddress = async (
   payload: Partial<TDeliveryAddress>,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.userId;
+  const customUserId = currentUser.customUserId;
   const customer = await Customer.findOne({
-    userId,
+    customUserId,
     'deliveryAddresses._id': addressId,
   });
 
@@ -374,7 +370,7 @@ const updateDeliveryAddress = async (
     }
   });
   const updateResult = await Customer.updateOne(
-    { userId, 'deliveryAddresses._id': addressId },
+    { customUserId, 'deliveryAddresses._id': addressId },
     { $set: updateFields },
     { runValidators: true },
   );
@@ -394,14 +390,14 @@ const toggleDeliveryAddressStatus = async (
   addressId: string,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.userId;
+  const customUserId = currentUser.customUserId;
   await Customer.updateOne(
-    { userId },
+    { customUserId },
     { $set: { 'deliveryAddresses.$[].isActive': false } },
   );
 
   const updatedCustomer = await Customer.findOneAndUpdate(
-    { userId, 'deliveryAddresses._id': addressId },
+    { customUserId, 'deliveryAddresses._id': addressId },
     { $set: { 'deliveryAddresses.$.isActive': true } },
     { new: true },
   );
@@ -430,9 +426,9 @@ const deleteDeliveryAddress = async (
   addressId: string,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser.userId;
+  const customUserId = currentUser.customUserId;
   const result = await Customer.findOne(
-    { userId },
+    { customUserId },
     { deliveryAddresses: { $elemMatch: { _id: addressId } } },
   );
 
@@ -450,7 +446,7 @@ const deleteDeliveryAddress = async (
     );
   }
   await Customer.updateOne(
-    { userId },
+    { customUserId },
     { $pull: { deliveryAddresses: { _id: addressId } } },
   );
   return null;
@@ -476,9 +472,9 @@ const getAllCustomersFromDB = async (
     .search(CustomerSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name customUserId role',
+    rejectedBy: 'name customUserId role',
+    blockedBy: 'name customUserId role',
   });
 
   populateOptions.forEach((option) => {
@@ -510,12 +506,12 @@ const getSingleCustomerFromDB = async (
   let query: any;
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     query = Customer.findOne({
-      userId: currentUser?.userId,
+      customUserId: currentUser?.customUserId,
       isDeleted: false,
     });
     if (
-      query?.userId !== currentUser?.userId ||
-      customerId !== currentUser?.userId
+      query?.customUserId !== currentUser?.customUserId ||
+      customerId !== currentUser?.customUserId
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
@@ -524,14 +520,14 @@ const getSingleCustomerFromDB = async (
     }
   } else {
     query = Customer.findOne({
-      userId: customerId,
+      customUserId: customerId,
     });
   }
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name customUserId role',
+    rejectedBy: 'name customUserId role',
+    blockedBy: 'name customUserId role',
   });
 
   populateOptions.forEach((option) => {

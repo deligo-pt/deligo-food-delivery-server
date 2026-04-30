@@ -5,7 +5,7 @@ export type TTransaction = {
   transactionId: string;
   orderId?: mongoose.Types.ObjectId;
   payoutId?: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
+  userObjectId: mongoose.Types.ObjectId;
   userModel:
     | 'Customer'
     | 'Vendor'

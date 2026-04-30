@@ -12,11 +12,11 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 
 // Checkout Service
-const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
+const checkout = async (currentUser: AuthUser, payload: TCheckoutPayload) => {
   const requiredFields = [
     { field: currentUser.name?.firstName, label: 'First Name' },
     { field: currentUser.contactNumber, label: 'Contact Number' },
-    { field: currentUser.address?.city, label: 'City' },
+    { field: currentUser?.deliveryAddresses, label: 'Delivery Address' },
   ];
 
   for (const item of requiredFields) {
@@ -66,8 +66,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const distanceData = await calculateGoggleRoadDistance(
     vendorCoords[0],
     vendorCoords[1],
-    activeAddress.longitude,
-    activeAddress.latitude,
+    activeAddress.longitude as number,
+    activeAddress.latitude as number,
   );
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
@@ -79,8 +79,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     distanceData.meters <= 1000
       ? BASE_FIXED_DELIVERY_CHARGE || 0
       : roundTo2(
-          distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
-        );
+        distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
+      );
   const deliveryGrossRaw = deliveryChargeBase * (1 + deliveryVatRate / 100);
 
   const totalDeliveryCharge = roundTo2(deliveryGrossRaw);
@@ -245,7 +245,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
 
   const fleetFee = roundTo2(
     deliveryChargeBase *
-      ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
+    ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
 
   const vendorNetPayout = roundTo2(

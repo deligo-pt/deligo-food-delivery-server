@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 import { USER_STATUS } from '../../constant/user.constant';
 
@@ -13,7 +14,17 @@ export type TVendor = {
   email: string;
   role: 'VENDOR' | 'SUB_VENDOR';
   isUpdateLocked: boolean;
+  isDeleted: boolean;
   status: keyof typeof USER_STATUS;
+
+  // --------------------------------------------------------
+  // Name
+  // --------------------------------------------------------
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  contactNumber?: string;
 
   // --------------------------------------------------------
   // Business Details
@@ -54,6 +65,12 @@ export type TVendor = {
     geoAccuracy?: number;
   };
 
+  // --------------------------------------------------------
+  // Referral Details
+  // --------------------------------------------------------
+  referralCode?: string;
+  referredBy?: mongoose.Types.ObjectId;
+
   currentSessionLocation?: TGeoJSONPoint;
 
   // --------------------------------------------------------
@@ -62,6 +79,7 @@ export type TVendor = {
   bankDetails?: {
     bankName: string;
     accountHolderName: string;
+    accountNumber: string;
     iban: string;
     swiftCode: string;
   };

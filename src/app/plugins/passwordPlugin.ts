@@ -5,7 +5,6 @@ import { Schema } from 'mongoose';
 export const userSchemaPlugin = <T extends { email?: string }>(
   schema: Schema<T>,
 ): void => {
-
   // Static: Check if user exists by email
   schema.statics.isUserExistsByEmail = async function (
     email: string,
@@ -29,7 +28,7 @@ export const userSchemaPlugin = <T extends { email?: string }>(
     return await dbQuery;
   };
 
-  // Static: Check if user exists by userId
+  // Static: Check if user exists by customUserId
   schema.statics.isUserExistsByUserId = async function (
     customUserId: string,
     isDeleted?: boolean,
@@ -38,6 +37,7 @@ export const userSchemaPlugin = <T extends { email?: string }>(
     if (typeof isDeleted === 'boolean') {
       query.isDeleted = isDeleted;
     }
-    return await this.findOne(query).select('+password');
+    const res = await this.findOne(query).select('+password');
+    return res;
   };
 };

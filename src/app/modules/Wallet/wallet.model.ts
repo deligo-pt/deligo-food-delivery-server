@@ -11,7 +11,7 @@ const walletSchema = new Schema<TWallet>(
       required: true,
       unique: true,
     },
-    userId: {
+    userObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       unique: true,

@@ -35,7 +35,12 @@ import { Wallet } from '../Wallet/wallet.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { PipelineStage } from 'mongoose';
-import { generateEmptyBuckets, getGroupingPipeline, getReportTimeframe, mapGrowthToTimeline } from './analytics.utils';
+import {
+  generateEmptyBuckets,
+  getGroupingPipeline,
+  getReportTimeframe,
+  mapGrowthToTimeline,
+} from './analytics.utils';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -271,9 +276,9 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
   const avgOrders =
     totalCustomers > 0
       ? (
-        customersRaw.reduce((acc: number, c: any) => acc + c.totalOrders, 0) /
-        totalCustomers
-      ).toFixed(1)
+          customersRaw.reduce((acc: number, c: any) => acc + c.totalOrders, 0) /
+          totalCustomers
+        ).toFixed(1)
       : '0.0';
 
   /** ---------------- DEMOGRAPHICS ---------------- */
@@ -1001,9 +1006,13 @@ const getAdminOrderReportAnalytics = async (
 const getAdminCustomerReportAnalytics = async (
   timeframe?: string,
   fromDate?: string | Date,
-  toDate?: string | Date
+  toDate?: string | Date,
 ) => {
-  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+  const { start, end, resolution, size } = getReportTimeframe(
+    timeframe,
+    fromDate,
+    toDate,
+  );
 
   const timelineMap = generateEmptyBuckets(start, end, resolution, size);
   const groupId = getGroupingPipeline(resolution, size, start);
@@ -1023,7 +1032,9 @@ const getAdminCustomerReportAnalytics = async (
             $group: {
               _id: null,
               totalCustomers: { $sum: 1 },
-              activeCustomers: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
+              activeCustomers: {
+                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
+              },
             },
           },
           {
@@ -1047,7 +1058,14 @@ const getAdminCustomerReportAnalytics = async (
         growth: [
           { $match: growthMatch },
           { $group: { _id: groupId, count: { $sum: 1 } } },
-          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
+          {
+            $sort: {
+              '_id.year': 1,
+              '_id.month': 1,
+              '_id.day': 1,
+              '_id.bucket': 1,
+            },
+          },
         ],
         statusStats: [
           { $match: { isDeleted: false } },
@@ -1066,7 +1084,7 @@ const getAdminCustomerReportAnalytics = async (
     end,
     resolution,
     size,
-  }).map(item => ({
+  }).map((item) => ({
     label: item.time,
     value: item.value,
   }));
@@ -1082,10 +1100,14 @@ const getAdminCustomerReportAnalytics = async (
     customerGrowth,
 
     statusDistribution: {
-      active: analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count || 0,
-      blocked: analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
-      pending: analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
-    }
+      active:
+        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
+        0,
+      blocked:
+        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
+      pending:
+        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+    },
   };
 };
 
@@ -1093,14 +1115,17 @@ const getAdminCustomerReportAnalytics = async (
 const getAdminVendorReportAnalytics = async (
   timeframe?: string,
   fromDate?: string | Date,
-  toDate?: string | Date
+  toDate?: string | Date,
 ) => {
-  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+  const { start, end, resolution, size } = getReportTimeframe(
+    timeframe,
+    fromDate,
+    toDate,
+  );
 
   // 1. Generate the exact timeline map with 0s
   const timelineMap = generateEmptyBuckets(start, end, resolution, size);
   const groupId = getGroupingPipeline(resolution, size, start);
-
 
   // Growth match based on timeframe (or all if timeframe is null)
   const growthMatch: any = { isDeleted: false };
@@ -1121,7 +1146,14 @@ const getAdminVendorReportAnalytics = async (
         growth: [
           { $match: growthMatch },
           { $group: { _id: groupId, count: { $sum: 1 } } },
-          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
+          {
+            $sort: {
+              '_id.year': 1,
+              '_id.month': 1,
+              '_id.day': 1,
+              '_id.bucket': 1,
+            },
+          },
         ],
       },
     },
@@ -1140,7 +1172,7 @@ const getAdminVendorReportAnalytics = async (
     end,
     resolution,
     size,
-  }).map(item => ({
+  }).map((item) => ({
     time: item.time,
     vendors: item.value,
   }));
@@ -1175,9 +1207,13 @@ const getAdminVendorReportAnalytics = async (
 const getAdminFleetManagerReportAnalytics = async (
   timeframe?: string,
   fromDate?: string | Date,
-  toDate?: string | Date
+  toDate?: string | Date,
 ) => {
-  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+  const { start, end, resolution, size } = getReportTimeframe(
+    timeframe,
+    fromDate,
+    toDate,
+  );
 
   // 1. Generate the exact timeline map with 0s
   const timelineMap = generateEmptyBuckets(start, end, resolution, size);
@@ -1198,7 +1234,9 @@ const getAdminFleetManagerReportAnalytics = async (
             $group: {
               _id: null,
               totalManagers: { $sum: 1 },
-              approvedManagers: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
+              approvedManagers: {
+                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
+              },
             },
           },
           {
@@ -1211,7 +1249,10 @@ const getAdminFleetManagerReportAnalytics = async (
           {
             $lookup: {
               from: 'orders',
-              pipeline: [{ $match: { isDeleted: false, status: 'DELIVERED' } }, { $count: 'count' }],
+              pipeline: [
+                { $match: { isDeleted: false, status: 'DELIVERED' } },
+                { $count: 'count' },
+              ],
               as: 'deliveryCount',
             },
           },
@@ -1219,7 +1260,14 @@ const getAdminFleetManagerReportAnalytics = async (
         growth: [
           { $match: growthMatch },
           { $group: { _id: groupId, count: { $sum: 1 } } },
-          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
+          {
+            $sort: {
+              '_id.year': 1,
+              '_id.month': 1,
+              '_id.day': 1,
+              '_id.bucket': 1,
+            },
+          },
         ],
         statusStats: [
           { $match: { isDeleted: false } },
@@ -1239,7 +1287,7 @@ const getAdminFleetManagerReportAnalytics = async (
     end,
     resolution,
     size,
-  }).map(item => ({
+  }).map((item) => ({
     time: item.time,
     managers: item.value,
   }));
@@ -1268,8 +1316,16 @@ const getAdminFleetManagerReportAnalytics = async (
 };
 
 // admin fleet manager report analytics
-const getAdminDeliveryPartnerReportAnalytics = async (timeframe?: string, fromDate?: string, toDate?: string) => {
-  const { start, end, resolution, size } = getReportTimeframe(timeframe, fromDate, toDate);
+const getAdminDeliveryPartnerReportAnalytics = async (
+  timeframe?: string,
+  fromDate?: string,
+  toDate?: string,
+) => {
+  const { start, end, resolution, size } = getReportTimeframe(
+    timeframe,
+    fromDate,
+    toDate,
+  );
 
   // 1. Generate the empty 0-value template
   const timelineMap = generateEmptyBuckets(start, end, resolution, size);
@@ -1288,8 +1344,12 @@ const getAdminDeliveryPartnerReportAnalytics = async (timeframe?: string, fromDa
             $group: {
               _id: null,
               totalPartners: { $sum: 1 },
-              approvedPartners: { $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] } },
-              totalDeliveries: { $sum: { $ifNull: ['$operationalData.totalDeliveries', 0] } },
+              approvedPartners: {
+                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
+              },
+              totalDeliveries: {
+                $sum: { $ifNull: ['$operationalData.totalDeliveries', 0] },
+              },
             },
           },
           {
@@ -1297,7 +1357,12 @@ const getAdminDeliveryPartnerReportAnalytics = async (timeframe?: string, fromDa
               from: 'wallets',
               pipeline: [
                 { $match: { userModel: 'DeliveryPartner' } },
-                { $group: { _id: null, totalEarned: { $sum: '$totalEarnings' } } },
+                {
+                  $group: {
+                    _id: null,
+                    totalEarned: { $sum: '$totalEarnings' },
+                  },
+                },
               ],
               as: 'walletStats',
             },
@@ -1307,15 +1372,22 @@ const getAdminDeliveryPartnerReportAnalytics = async (timeframe?: string, fromDa
         growth: [
           { $match: growthMatch },
           { $group: { _id: groupId, count: { $sum: 1 } } },
-          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.bucket': 1 } },
+          {
+            $sort: {
+              '_id.year': 1,
+              '_id.month': 1,
+              '_id.day': 1,
+              '_id.bucket': 1,
+            },
+          },
         ],
         // VEHICLE DISTRIBUTION
         vehicleStats: [
           { $match: { isDeleted: false } },
           { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
         ],
-      }
-    }
+      },
+    },
   ]);
 
   const summary = analytics.summary[0] || {};
@@ -1328,7 +1400,7 @@ const getAdminDeliveryPartnerReportAnalytics = async (timeframe?: string, fromDa
     end,
     resolution,
     size,
-  }).map(item => ({
+  }).map((item) => ({
     time: item.time,
     managers: item.value,
   }));
@@ -1347,7 +1419,7 @@ const getAdminDeliveryPartnerReportAnalytics = async (timeframe?: string, fromDa
     partnerGrowths,
 
     vehicleDistribution: {
-      "E-BIKE": getVehicleCount('E-BIKE'),
+      'E-BIKE': getVehicleCount('E-BIKE'),
       BICYCLE: getVehicleCount('BICYCLE'),
       SCOOTER: getVehicleCount('SCOOTER'),
       MOTORBIKE: getVehicleCount('MOTORBIKE'),
@@ -1702,7 +1774,7 @@ const getVendorCustomerReport = async (
 
 // get vendor tax report
 const getVendorTaxReport = async (
-  currentUser: AuthUser
+  currentUser: AuthUser,
 ): Promise<TTaxReport> => {
   const vendorId = new mongoose.Types.ObjectId(currentUser._id);
   const now = new Date();
@@ -1719,8 +1791,8 @@ const getVendorTaxReport = async (
         vendorId,
         isPaid: true,
         isDeleted: false,
-        createdAt: { $gte: sixMonthsAgo }
-      }
+        createdAt: { $gte: sixMonthsAgo },
+      },
     },
     {
       $facet: {
@@ -1730,17 +1802,17 @@ const getVendorTaxReport = async (
             $group: {
               _id: null,
               totalSales: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
-              totalTax: { $sum: '$payoutSummary.vendor.payableTax' }
-            }
+              totalTax: { $sum: '$payoutSummary.vendor.payableTax' },
+            },
           },
           {
             $project: {
               _id: 0,
               totalSales: 1,
               totalTax: 1,
-              netRevenue: { $subtract: ['$totalSales', '$totalTax'] }
-            }
-          }
+              netRevenue: { $subtract: ['$totalSales', '$totalTax'] },
+            },
+          },
         ],
 
         // 2. Product vs Addon Contribution (Donut Chart)
@@ -1755,36 +1827,55 @@ const getVendorTaxReport = async (
                   $reduce: {
                     input: '$items.addons',
                     initialValue: 0,
-                    in: { $add: ['$$value', '$$this.taxAmount'] }
-                  }
-                }
-              }
-            }
+                    in: { $add: ['$$value', '$$this.taxAmount'] },
+                  },
+                },
+              },
+            },
           },
           {
             $project: {
               _id: 0,
               total: { $add: ['$productTax', '$addonTax'] },
               productTax: 1,
-              addonTax: 1
-            }
+              addonTax: 1,
+            },
           },
           {
             $project: {
               contribution: [
                 {
                   name: 'Product',
-                  value: { $cond: [{ $eq: ['$total', 0] }, 0, { $multiply: [{ $divide: ['$productTax', '$total'] }, 100] }] }
+                  value: {
+                    $cond: [
+                      { $eq: ['$total', 0] },
+                      0,
+                      {
+                        $multiply: [
+                          { $divide: ['$productTax', '$total'] },
+                          100,
+                        ],
+                      },
+                    ],
+                  },
                 },
                 {
                   name: 'Addon',
-                  value: { $cond: [{ $eq: ['$total', 0] }, 0, { $multiply: [{ $divide: ['$addonTax', '$total'] }, 100] }] }
-                }
-              ]
-            }
+                  value: {
+                    $cond: [
+                      { $eq: ['$total', 0] },
+                      0,
+                      {
+                        $multiply: [{ $divide: ['$addonTax', '$total'] }, 100],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
           },
           { $unwind: '$contribution' },
-          { $replaceRoot: { newRoot: '$contribution' } }
+          { $replaceRoot: { newRoot: '$contribution' } },
         ],
 
         // 3. Tax by Category (Bar Chart)
@@ -1796,10 +1887,12 @@ const getVendorTaxReport = async (
               allTaxes: {
                 $concatArrays: [
                   // Product tax
-                  [{
-                    rate: '$items.productPricing.taxRate',
-                    amount: '$items.productPricing.taxAmount'
-                  }],
+                  [
+                    {
+                      rate: '$items.productPricing.taxRate',
+                      amount: '$items.productPricing.taxAmount',
+                    },
+                  ],
                   // Addon taxes
                   {
                     $map: {
@@ -1807,13 +1900,13 @@ const getVendorTaxReport = async (
                       as: 'addon',
                       in: {
                         rate: '$$addon.taxRate',
-                        amount: '$$addon.taxAmount'
-                      }
-                    }
-                  }
-                ]
-              }
-            }
+                        amount: '$$addon.taxAmount',
+                      },
+                    },
+                  },
+                ],
+              },
+            },
           },
 
           { $unwind: '$allTaxes' },
@@ -1822,8 +1915,8 @@ const getVendorTaxReport = async (
           {
             $group: {
               _id: '$allTaxes.rate',
-              totalTaxAmount: { $sum: '$allTaxes.amount' }
-            }
+              totalTaxAmount: { $sum: '$allTaxes.amount' },
+            },
           },
 
           // Calculate total tax across all rates (for percentage)
@@ -1831,8 +1924,8 @@ const getVendorTaxReport = async (
             $group: {
               _id: null,
               taxes: { $push: { rate: '$_id', amount: '$totalTaxAmount' } },
-              grandTotalTax: { $sum: '$totalTaxAmount' }
-            }
+              grandTotalTax: { $sum: '$totalTaxAmount' },
+            },
           },
 
           { $unwind: '$taxes' },
@@ -1841,7 +1934,7 @@ const getVendorTaxReport = async (
           {
             $project: {
               name: {
-                $concat: [{ $toString: '$taxes.rate' }, '%']
+                $concat: [{ $toString: '$taxes.rate' }, '%'],
               },
               value: '$taxes.amount',
               percentage: {
@@ -1851,16 +1944,16 @@ const getVendorTaxReport = async (
                   else: {
                     $multiply: [
                       { $divide: ['$taxes.amount', '$grandTotalTax'] },
-                      100
-                    ]
-                  }
-                }
+                      100,
+                    ],
+                  },
+                },
               },
-              _id: 0
-            }
+              _id: 0,
+            },
           },
 
-          { $sort: { name: 1 } }
+          { $sort: { name: 1 } },
         ],
 
         // 4. Monthly Raw Data (For Trend Chart)
@@ -1869,12 +1962,12 @@ const getVendorTaxReport = async (
             $group: {
               _id: {
                 month: { $month: '$createdAt' },
-                year: { $year: '$createdAt' }
+                year: { $year: '$createdAt' },
               },
               revenue: { $sum: '$payoutSummary.vendor.earningsWithoutTax' },
-              tax: { $sum: '$payoutSummary.vendor.payableTax' }
-            }
-          }
+              tax: { $sum: '$payoutSummary.vendor.payableTax' },
+            },
+          },
         ],
 
         // 5. Top Tax-Generating Addons (Horizontal Bar)
@@ -1884,19 +1977,32 @@ const getVendorTaxReport = async (
           {
             $group: {
               _id: '$items.addons.name',
-              tax: { $sum: '$items.addons.taxAmount' }
-            }
+              tax: { $sum: '$items.addons.taxAmount' },
+            },
           },
           { $sort: { tax: -1 } },
           { $limit: 5 },
-          { $project: { _id: 0, name: '$_id', tax: 1 } }
-        ]
-      }
-    }
+          { $project: { _id: 0, name: '$_id', tax: 1 } },
+        ],
+      },
+    },
   ]);
 
   // --- 6 Month Continuity Logic (Matches your Vibe) ---
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthNames = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   const revenueData = [];
 
   for (let i = 5; i >= 0; i--) {
@@ -1905,7 +2011,7 @@ const getVendorTaxReport = async (
     const y = d.getFullYear();
 
     const found = report?.monthlyRaw?.find(
-      (item: any) => item._id.month === m + 1 && item._id.year === y
+      (item: any) => item._id.month === m + 1 && item._id.year === y,
     );
 
     revenueData.push({
@@ -1916,7 +2022,11 @@ const getVendorTaxReport = async (
   }
 
   // Format final return
-  const stats = report?.stats?.[0] || { totalSales: 0, totalTax: 0, netRevenue: 0 };
+  const stats = report?.stats?.[0] || {
+    totalSales: 0,
+    totalTax: 0,
+    netRevenue: 0,
+  };
 
   return {
     stats: {
@@ -1925,8 +2035,14 @@ const getVendorTaxReport = async (
       netRevenue: Number(stats.netRevenue.toFixed(2)),
     },
     taxContribution: report.taxContribution.length
-      ? report.taxContribution.map((c: any) => ({ name: c.name, value: Number(c.value.toFixed(1)) }))
-      : [{ name: 'Product', value: 0 }, { name: 'Addon', value: 0 }],
+      ? report.taxContribution.map((c: any) => ({
+          name: c.name,
+          value: Number(c.value.toFixed(1)),
+        }))
+      : [
+          { name: 'Product', value: 0 },
+          { name: 'Addon', value: 0 },
+        ],
     taxByCategory: report.taxByCategory,
     revenueData,
     addonTax: report.addonTax,
@@ -2007,7 +2123,7 @@ const getFleetManagerPerformanceAnalytics = async (
             $project: {
               _id: 1,
               profilePhoto: 1,
-              userId: 1,
+              customUserId: 1,
               email: 1,
               status: 1,
               name: 1,
@@ -2159,8 +2275,10 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
   const now = new Date();
 
   // Fleet Manager
-  const fleetManager = await FleetManager.findOne({ userId: fleetManagerId })
-    .select('_id profilePhoto userId email status name address rating')
+  const fleetManager = await FleetManager.findOne({
+    customUserId: fleetManagerId,
+  })
+    .select('_id profilePhoto customUserId email status name address rating')
     .lean();
 
   if (!fleetManager) {
@@ -2172,7 +2290,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     'registeredBy.id': fleetManager._id,
     isDeleted: false,
   })
-    .select('_id userId name rating')
+    .select('_id customUserId name rating')
     .lean();
 
   const driverIds = drivers.map((d) => d._id);
@@ -2252,7 +2370,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     .slice(0, 4)
     .map((driver) => ({
       _id: driver._id,
-      userId: driver.userId,
+      customUserId: driver.customUserId,
       name: driver.name,
       rating: driver.rating?.average || 0,
     }));
@@ -2333,7 +2451,7 @@ const getDeliveryPartnerPerformanceAnalytics = async (
             $project: {
               _id: 1,
               profilePhoto: 1,
-              userId: 1,
+              customUserId: 1,
               email: 1,
               status: 1,
               name: 1,
@@ -2514,9 +2632,9 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   const now = new Date();
 
   // Find partner
-  const partner = await DeliveryPartner.findOne({ userId: partnerUserId })
+  const partner = await DeliveryPartner.findOne({ customUserId: partnerUserId })
     .select(
-      '_id profilePhoto userId email status name address operationalData rating',
+      '_id profilePhoto customUserId email status name address operationalData rating',
     )
     .lean();
 
@@ -3040,8 +3158,8 @@ const getAdminSalesAnalytics = async (query: any) => {
   const growthRate =
     previous.totalRevenue > 0
       ? ((current.totalRevenue - previous.totalRevenue) /
-        previous.totalRevenue) *
-      100
+          previous.totalRevenue) *
+        100
       : current.totalRevenue > 0
         ? 100
         : 0;
@@ -3299,7 +3417,7 @@ const getAdminCustomerInsights = async (query: {
       .sort((a: any, b: any) => b.totalSpent - a.totalSpent)
       .slice(0, 5)
       .map((c: any) => ({
-        customerId: c.userDetails?.userId || 'N/A',
+        customerId: c.userDetails?.customUserId || 'N/A',
         name: c.userDetails
           ? `${c.userDetails.name?.firstName} ${c.userDetails.name?.lastName}`.trim()
           : 'Anonymous',
@@ -3402,7 +3520,7 @@ const getTopVendors = async (query: {
     { $unwind: '$vendorInfo' },
     {
       $project: {
-        vendorId: '$vendorInfo.userId',
+        vendorId: '$vendorInfo.customUserId',
         vendorName: {
           $concat: [
             '$vendorInfo.name.firstName',
@@ -3640,7 +3758,7 @@ const getPeakHourAnalytics = async (query: {
         results.dayWise.find((d: any) => d._id === i + 1)?.orderCount || 0,
     })),
     heatmap: results.heatmap.map((item: any) => ({
-      day: DAYS_MAP[item._id.day - 1] || "Unknown",
+      day: DAYS_MAP[item._id.day - 1] || 'Unknown',
       hour: item._id.hour,
       orderCount: item.orderCount,
     })),
@@ -3648,7 +3766,7 @@ const getPeakHourAnalytics = async (query: {
   };
 };
 
-// get delivey insights analytics for admin
+// get delivery insights analytics for admin
 const getDeliveryInsights = async (query: {
   fromDate?: string;
   toDate?: string;
@@ -3765,7 +3883,7 @@ const getDeliveryInsights = async (query: {
             { $unwind: '$rider' },
             {
               $project: {
-                riderId: { $ifNull: ['$rider.userId', 'N/A'] },
+                riderId: { $ifNull: ['$rider.customUserId', 'N/A'] },
                 riderName: {
                   $concat: [
                     '$rider.name.firstName',
@@ -3872,7 +3990,7 @@ const getDeliveryInsights = async (query: {
       },
       {
         $project: {
-          riderId: { $toString: '$userId' },
+          riderId: { $toString: '$customUserId' },
           riderName: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
           idleTimeMinutes: {
             $round: [
@@ -3916,14 +4034,14 @@ const getDeliveryInsights = async (query: {
       lateDeliveryPercentage:
         summary.successOrders > 0
           ? Number(
-            ((summary.lateCount / summary.successOrders) * 100).toFixed(1),
-          )
+              ((summary.lateCount / summary.successOrders) * 100).toFixed(1),
+            )
           : 0,
       rejectedDeliveryPercentage:
         summary.totalOrders > 0
           ? Number(
-            ((summary.rejectedCount / summary.totalOrders) * 100).toFixed(1),
-          )
+              ((summary.rejectedCount / summary.totalOrders) * 100).toFixed(1),
+            )
           : 0,
     },
     riderPerformance: facet.riderPerformance,
@@ -4126,100 +4244,100 @@ const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
     totalOrders === 0
       ? []
       : await Order.aggregate([
-        // Vendor filter
-        {
-          $match: {
-            vendorId,
-            isDeleted: false,
-          },
-        },
-
-        // Unwind items
-        { $unwind: '$items' },
-
-        // Join products to get category
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'items.productId',
-            foreignField: '_id',
-            as: 'product',
-          },
-        },
-        { $unwind: '$product' },
-
-        {
-          $lookup: {
-            from: 'productcategories',
-            localField: 'product.category',
-            foreignField: '_id',
-            as: 'categoryDetails',
-          },
-        },
-        { $unwind: '$categoryDetails' },
-
-        // Count orders per category
-        {
-          $group: {
-            _id: {
-              categoryId: '$categoryDetails._id',
-              categoryName: '$categoryDetails.name',
-              orderId: '$_id',
+          // Vendor filter
+          {
+            $match: {
+              vendorId,
+              isDeleted: false,
             },
           },
-        },
 
-        {
-          $group: {
-            _id: '$_id.categoryId',
-            categoryName: { $first: '$_id.categoryName' },
-            orderCount: { $sum: 1 },
+          // Unwind items
+          { $unwind: '$items' },
+
+          // Join products to get category
+          {
+            $lookup: {
+              from: 'products',
+              localField: 'items.productId',
+              foreignField: '_id',
+              as: 'product',
+            },
           },
-        },
+          { $unwind: '$product' },
 
-        // Calculate TOTAL of all category orders
-        {
-          $group: {
-            _id: null,
-            totalCategoryOrders: { $sum: '$orderCount' },
-            categories: {
-              $push: {
-                name: '$categoryName',
-                orderCount: '$orderCount',
+          {
+            $lookup: {
+              from: 'productcategories',
+              localField: 'product.category',
+              foreignField: '_id',
+              as: 'categoryDetails',
+            },
+          },
+          { $unwind: '$categoryDetails' },
+
+          // Count orders per category
+          {
+            $group: {
+              _id: {
+                categoryId: '$categoryDetails._id',
+                categoryName: '$categoryDetails.name',
+                orderId: '$_id',
               },
             },
           },
-        },
 
-        // Calculate percentage (SUM = 100%)
-        { $unwind: '$categories' },
-        {
-          $project: {
-            _id: 0,
-            name: '$categories.name',
-            totalOrders: '$categories.orderCount',
-            percentage: {
-              $round: [
-                {
-                  $multiply: [
-                    {
-                      $divide: [
-                        '$categories.orderCount',
-                        '$totalCategoryOrders',
-                      ],
-                    },
-                    100,
-                  ],
-                },
-                2,
-              ],
+          {
+            $group: {
+              _id: '$_id.categoryId',
+              categoryName: { $first: '$_id.categoryName' },
+              orderCount: { $sum: 1 },
             },
           },
-        },
 
-        // Top category first
-        { $sort: { percentage: -1 } },
-      ]);
+          // Calculate TOTAL of all category orders
+          {
+            $group: {
+              _id: null,
+              totalCategoryOrders: { $sum: '$orderCount' },
+              categories: {
+                $push: {
+                  name: '$categoryName',
+                  orderCount: '$orderCount',
+                },
+              },
+            },
+          },
+
+          // Calculate percentage (SUM = 100%)
+          { $unwind: '$categories' },
+          {
+            $project: {
+              _id: 0,
+              name: '$categories.name',
+              totalOrders: '$categories.orderCount',
+              percentage: {
+                $round: [
+                  {
+                    $multiply: [
+                      {
+                        $divide: [
+                          '$categories.orderCount',
+                          '$totalCategoryOrders',
+                        ],
+                      },
+                      100,
+                    ],
+                  },
+                  2,
+                ],
+              },
+            },
+          },
+
+          // Top category first
+          { $sort: { percentage: -1 } },
+        ]);
 
   // --------------------------------------------------
   // Recent Orders
@@ -4482,7 +4600,7 @@ const getPartnerPerformanceAnalytics = async (
     'name.firstName',
     'name.lastName',
     'address.city',
-    'userId',
+    'customUserId',
   ];
   const partnerQuery = new QueryBuilder(
     DeliveryPartner.find({ 'registeredBy.id': managerId, isDeleted: false }),
@@ -4506,8 +4624,8 @@ const getPartnerPerformanceAnalytics = async (
   const avgAcceptanceRate =
     acceptanceData?.totalOffered > 0
       ? Math.round(
-        (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
-      )
+          (acceptanceData.totalAccepted / acceptanceData.totalOffered) * 100,
+        )
       : 0;
 
   return {
@@ -4524,23 +4642,23 @@ const getPartnerPerformanceAnalytics = async (
         const rowAcceptance =
           opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
             ? Math.round(
-              (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-            ) + '%'
+                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
+              ) + '%'
             : '0%';
 
         const rowAvgMins =
           opData?.completedDeliveries &&
-            opData.completedDeliveries > 0 &&
-            opData.totalDeliveryMinutes
+          opData.completedDeliveries > 0 &&
+          opData.totalDeliveryMinutes
             ? Math.round(
-              opData.totalDeliveryMinutes / opData.completedDeliveries,
-            )
+                opData.totalDeliveryMinutes / opData.completedDeliveries,
+              )
             : 0;
 
         return {
           id: partner._id,
           name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
-          displayId: partner.userId,
+          displayId: partner.customUserId,
           vehicle: partner?.vehicleInfo?.vehicleType,
           city: partner?.address?.city || 'N/A',
           deliveries: opData?.completedDeliveries || 0,
@@ -4574,7 +4692,7 @@ const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
   const earnings = await Transaction.aggregate([
     {
       $match: {
-        userId: riderObjectId,
+        userObjectId: riderObjectId,
         userModel: 'DeliveryPartner',
         status: 'SUCCESS',
         type: 'DELIVERY_PARTNER_EARNING',
@@ -4604,7 +4722,7 @@ const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
   ]);
 
   const wallet = await Wallet.findOne({
-    userId: riderObjectId,
+    userObjectId: riderObjectId,
     userModel: 'DeliveryPartner',
   }).select('totalUnpaidEarnings');
 
@@ -4644,7 +4762,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
   const stats = await Transaction.aggregate([
     {
       $match: {
-        userId: fleetObjectId,
+        userObjectId: fleetObjectId,
         userModel: 'FleetManager',
         status: 'SUCCESS',
         type: 'FLEET_EARNING',
@@ -4710,7 +4828,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
   ]);
 
   const wallet = await Wallet.findOne({
-    userId: fleetObjectId,
+    userObjectId: fleetObjectId,
     userModel: 'FleetManager',
   }).select('totalUnpaidEarnings totalRiderPayable totalEarnings');
 
@@ -4770,7 +4888,7 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
       Transaction.aggregate([
         {
           $match: {
-            userId: vendorObjectId,
+            userObjectId: vendorObjectId,
             userModel: 'Vendor',
             status: 'SUCCESS',
             type: 'VENDOR_EARNING',
@@ -4843,7 +4961,7 @@ const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
       Transaction.aggregate([
         {
           $match: {
-            userId: vendorObjectId,
+            userObjectId: vendorObjectId,
             userModel: 'Vendor',
             status: 'SUCCESS',
             type: 'VENDOR_EARNING',
@@ -5102,7 +5220,7 @@ const getVendorPerformanceAnalytics = async (
             $project: {
               _id: 1,
               profilePhoto: 1,
-              userId: 1,
+              customUserId: 1,
               email: 1,
               status: 1,
               name: 1,
@@ -5270,7 +5388,7 @@ const getSingleVendorPerformanceDetails = async (
   }
 
   const vendor = await Vendor.findOne({
-    userId: vendorUserId,
+    customUserId: vendorUserId,
     isDeleted: false,
   });
 
@@ -5379,7 +5497,7 @@ const getSingleVendorPerformanceDetails = async (
     vendorPerformance: {
       _id: vendor._id,
       profilePhoto: vendor.profilePhoto,
-      userId: vendor.userId,
+      customUserId: vendor.customUserId,
       email: vendor.email,
       status: vendor.status,
       name: vendor.name,

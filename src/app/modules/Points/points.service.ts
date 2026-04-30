@@ -13,7 +13,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
  * Formula: Order Amount * Global Points Per Euro Rate.
  */
 const addOrderPoints = async (
-  userId: Types.ObjectId | string,
+  userObjectId: Types.ObjectId | string,
   orderId: string,
   externalSession?: ClientSession,
 ) => {
@@ -25,7 +25,7 @@ const addOrderPoints = async (
   try {
     // 1. Check if points were already granted for this specific order
     const alreadyReceived = await PointsLog.findOne({
-      'userId.id': userId,
+      'userObjectId.id': userObjectId,
       referenceId: orderId,
       transactionType: 'EARN',
     }).session(session);
@@ -46,7 +46,7 @@ const addOrderPoints = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
     }
     // 3. Security: Ensure the points are being added for the correct customer
-    if (existsOrder.customerId?.toString() !== userId.toString()) {
+    if (existsOrder.customerId?.toString() !== userObjectId.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'Unauthorized: This order does not belong to the specified user.',
@@ -85,14 +85,14 @@ const addOrderPoints = async (
     if (pointsToAdd > 0) {
       // 6. Update user's point balance (Atomic Increment)
       await Points.findOneAndUpdate(
-        { 'userId.id': userId },
+        { 'userObjectId.id': userObjectId },
         {
           $inc: { currentPoints: pointsToAdd, totalEarned: pointsToAdd },
           $set: { expiryDate },
           $setOnInsert: {
-            'userId.id': userId,
-            'userId.model': 'Customer',
-            'userId.role': role,
+            'userObjectId.id': userObjectId,
+            'userObjectId.model': 'Customer',
+            'userObjectId.role': role,
           },
         },
         { upsert: true, session, new: true },
@@ -102,7 +102,7 @@ const addOrderPoints = async (
       await PointsLog.create(
         [
           {
-            userId: { id: userId, model: 'Customer', role: role },
+            userObjectId: { id: userObjectId, model: 'Customer', role: role },
             points: pointsToAdd,
             transactionType: 'EARN',
             referenceId: orderId,
@@ -124,7 +124,7 @@ const addOrderPoints = async (
     if (!externalSession) await session.abortTransaction();
     try {
       await PointsLog.create({
-        userId: { id: userId, model: 'Customer', role: role },
+        userObjectId: { id: userObjectId, model: 'Customer', role: role },
         points: 0,
         transactionType: 'FAILED_LOG',
         referenceId: orderId as any,
@@ -158,7 +158,7 @@ const addDeliveryPartnerPoints = async (
   try {
     // 1. Check if points already exists for this order to prevent double earning
     const alreadyReceived = await PointsLog.findOne({
-      'userId.id': deliveryPartnerId,
+      'userObjectId.id': deliveryPartnerId,
       referenceId: orderId,
       transactionType: 'EARN',
     }).session(session);
@@ -213,14 +213,14 @@ const addDeliveryPartnerPoints = async (
 
     // 6. Update points balance
     await Points.findOneAndUpdate(
-      { 'userId.id': deliveryPartnerId },
+      { 'userObjectId.id': deliveryPartnerId },
       {
         $inc: { currentPoints: points, totalEarned: points },
         $set: { expiryDate },
         $setOnInsert: {
-          'userId.id': deliveryPartnerId,
-          'userId.model': 'DeliveryPartner',
-          'userId.role': role,
+          'userObjectId.id': deliveryPartnerId,
+          'userObjectId.model': 'DeliveryPartner',
+          'userObjectId.role': role,
         },
       },
       { upsert: true, session, new: true },
@@ -230,7 +230,7 @@ const addDeliveryPartnerPoints = async (
     await PointsLog.create(
       [
         {
-          userId: {
+          userObjectId: {
             id: deliveryPartnerId,
             model: 'DeliveryPartner',
             role: role,
@@ -256,7 +256,11 @@ const addDeliveryPartnerPoints = async (
     // --- Database Logging: Save failure info to PointsLog as FAILED_LOG ---
     try {
       await PointsLog.create({
-        userId: { id: deliveryPartnerId, model: 'DeliveryPartner', role: role },
+        userObjectId: {
+          id: deliveryPartnerId,
+          model: 'DeliveryPartner',
+          role: role,
+        },
         points: 0,
         transactionType: 'FAILED_LOG',
         referenceId: orderId as any,
@@ -284,7 +288,7 @@ const addDeliveryPartnerPoints = async (
 // Fetch my points
 const getMyPoints = async (currentUser: AuthUser) => {
   const points = await Points.findOne({
-    'userId.id': currentUser._id,
+    'userObjectId.id': currentUser._id,
   }).lean();
 
   return {
@@ -300,7 +304,7 @@ const getMyPoints = async (currentUser: AuthUser) => {
 // Fetch all points
 const getAllPoints = async (query: Record<string, unknown>) => {
   const points = new QueryBuilder(
-    Points.find({}).populate('userId.id', 'name role email'),
+    Points.find({}).populate('userObjectId.id', 'name role email'),
     query,
   );
 

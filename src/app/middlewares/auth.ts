@@ -50,10 +50,13 @@ const auth = (...requiredRoles: TUserRole[]) => {
       config.jwt.jwt_access_secret as string,
     ) as JwtPayload;
 
-    const { role, iat, userId, deviceId } = decoded;
+    const { role, iat, customUserId, deviceId } = decoded;
 
     // 5. Fetch user and model information from the database
-    const result = await findUserById({ userId, isDeleted: false });
+    const result = await findUserById({
+      customUserId,
+      isDeleted: false,
+    });
     const foundModel = result?.model;
     const user = result?.user;
     const status = user?.status;

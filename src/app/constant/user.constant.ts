@@ -45,7 +45,7 @@ export const UrlPath = {
 
 export type AuthUser = {
   _id: mongoose.Types.ObjectId;
-  userId: string;
+  customUserId: string;
   moloniCustomerId?: number;
   name: {
     firstName: string;

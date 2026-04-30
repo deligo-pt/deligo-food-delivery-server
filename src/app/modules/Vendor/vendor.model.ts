@@ -38,13 +38,14 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       ],
     },
     isUpdateLocked: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
-    
-        // ------------------------------------------------------
+
+    // ------------------------------------------------------
     // Referral
     // ------------------------------------------------------
     referralCode: { type: String, unique: true },
@@ -53,6 +54,15 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       default: null,
       ref: 'Vendor',
     },
+
+    // -------------------------------------------------------
+    // Name
+    // -------------------------------------------------------
+    name: {
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
+    },
+    contactNumber: { type: String },
 
     // -------------------------------------------------------
     // Business Details
@@ -104,6 +114,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     bankDetails: {
       bankName: { type: String, default: '' },
       accountHolderName: { type: String, default: '' },
+      accountNumber: { type: String, default: '' },
       iban: { type: String, default: '' },
       swiftCode: { type: String, default: '' },
     },

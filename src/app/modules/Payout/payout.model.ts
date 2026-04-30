@@ -12,7 +12,7 @@ const payoutSchema = new Schema<TPayout>(
       required: true,
       unique: true,
     },
-    userId: {
+    userObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       refPath: 'userModel',
@@ -53,6 +53,10 @@ const payoutSchema = new Schema<TPayout>(
         trim: true,
       },
       accountHolderName: {
+        type: String,
+        trim: true,
+      },
+      accountNumber: {
         type: String,
         trim: true,
       },

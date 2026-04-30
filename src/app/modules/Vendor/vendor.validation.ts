@@ -6,7 +6,6 @@ import { addressValidationSchema } from '../Admin/admin.validation';
 // --------------------------------------------------
 const vendorUpdateValidationSchema = z.object({
   body: z.object({
-
     // Business Details
     businessDetails: z
       .object({
@@ -29,6 +28,7 @@ const vendorUpdateValidationSchema = z.object({
       .object({
         bankName: z.string().optional(),
         accountHolderName: z.string().optional(),
+        accountNumber: z.string().optional(),
         iban: z.string().optional(),
         swiftCode: z.string().optional(),
       })
@@ -40,26 +40,6 @@ const vendorUpdateValidationSchema = z.object({
 });
 
 // --------------------------------------------------
-// Document Image Validation
-// --------------------------------------------------
-const vendorDocImageValidationSchema = z.object({
-  body: z.object({
-    docImageTitle: z.enum(
-      [
-        'businessLicenseDoc',
-        'taxDoc',
-        'idProofFront',
-        'idProofBack',
-        'storePhoto',
-        'menuUpload',
-      ],
-      { required_error: 'Document title is required' },
-    ),
-  }),
-});
-
-// --------------------------------------------------
 export const VendorValidation = {
   vendorUpdateValidationSchema,
-  vendorDocImageValidationSchema,
 };

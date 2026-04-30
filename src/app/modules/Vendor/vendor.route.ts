@@ -3,8 +3,6 @@ import auth from '../../middlewares/auth';
 import { VendorControllers } from './vendor.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { VendorValidation } from './vendor.validation';
-import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
 import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
 
 const router = Router();
@@ -15,16 +13,6 @@ router.patch(
   auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
   validateRequest(VendorValidation.vendorUpdateValidationSchema),
   VendorControllers.vendorUpdate,
-);
-
-// Vendor doc image upload route
-router.patch(
-  '/:vendorId/docImage',
-  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
-  multerUpload.single('file'),
-  parseBody,
-  validateRequest(VendorValidation.vendorDocImageValidationSchema),
-  VendorControllers.vendorDocImageUpload,
 );
 
 // Vendor business location update route

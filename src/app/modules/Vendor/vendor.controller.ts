@@ -26,23 +26,6 @@ const vendorUpdate = catchAsync(async (req, res) => {
     data: result,
   });
 });
-//  vendor doc image upload controller
-const vendorDocImageUpload = catchAsync(async (req, res) => {
-  const file = req.file;
-  const result = await VendorServices.vendorDocImageUpload(
-    file?.path,
-    req.body,
-    req.user as AuthUser,
-    req.params.vendorId,
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
-  });
-});
 
 // vendor live location update controller
 const updateVendorLiveLocation = catchAsync(async (req, res) => {
@@ -123,7 +106,6 @@ const getAllVendorsForCustomer = catchAsync(async (req, res) => {
 
 export const VendorControllers = {
   vendorUpdate,
-  vendorDocImageUpload,
   updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,

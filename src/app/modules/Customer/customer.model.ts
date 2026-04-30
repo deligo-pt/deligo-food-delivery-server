@@ -15,12 +15,12 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     authUserId: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     customUserId: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     role: {
       type: String,
@@ -44,6 +44,17 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       enum: Object.keys(USER_STATUS),
       required: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Name & Contact Number
+    name: {
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
+    },
+    contactNumber: { type: String },
 
     // ------------------------------------------------------
     // Current/Real-Time Location Data
@@ -76,7 +87,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // ------------------------------------------------------
     // Referral
     // ------------------------------------------------------
-       referralCode: { type: String, default: '' },
+    referralCode: { type: String, default: '' },
     referredBy: { type: Schema.Types.ObjectId, default: null, ref: 'Customer' },
 
     // ------------------------------------------------------

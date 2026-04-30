@@ -20,7 +20,7 @@ export type TUserModel =
 export type TSupportTicket = {
   _id?: mongoose.Types.ObjectId;
   ticketId: string; // Unique human-readable ID (e.g., PT-2026-001)
-  userId: mongoose.Types.ObjectId;
+  userObjectId: mongoose.Types.ObjectId;
   userModel: TUserModel; // Points to the specific collection (refPath)
   activeHandler: THandlerType;
   assignedAdminId?: mongoose.Types.ObjectId | null;

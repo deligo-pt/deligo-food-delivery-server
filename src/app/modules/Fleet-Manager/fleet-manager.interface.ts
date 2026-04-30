@@ -12,8 +12,18 @@ export type TFleetManager = {
   email: string;
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
+  isDeleted: boolean;
 
   currentSessionLocation?: TGeoJSONPoint;
+
+  // ---------------------------------------------
+  // Name
+  // ---------------------------------------------
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  contactNumber?: string;
 
   // ---------------------------------------------
   // Business Details
@@ -42,6 +52,7 @@ export type TFleetManager = {
   bankDetails?: {
     bankName: string;
     accountHolderName: string;
+    accountNumber: string;
     iban: string;
     swiftCode: string;
   };
@@ -68,8 +79,4 @@ export type TFleetManager = {
   // ---------------------------------------------
   createdAt: Date;
   updatedAt: Date;
-};
-
-export type TFleetManagerImageDocuments = {
-  docImageTitle: 'idProofFront' | 'idProofBack' | 'businessLicense';
 };

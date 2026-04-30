@@ -3,10 +3,10 @@ import { AuthUser } from '../../../constant/user.constant';
 
 export const registerOrderEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as AuthUser;
-  const userId = user?.userId;
+  const customUserId = user?.customUserId;
 
-  if (userId) {
-    const personalRoom = `user_${userId}`;
+  if (customUserId) {
+    const personalRoom = `user_${customUserId}`;
     socket.join(personalRoom);
   }
 

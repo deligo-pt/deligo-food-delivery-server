@@ -4,11 +4,11 @@ import { USER_ROLE } from '../../constant/user.constant';
 
 const sosSchema = new Schema<TSos>(
   {
-    userId: {
+    userObjetId: {
       id: {
         type: Schema.Types.ObjectId,
         required: true,
-        refPath: 'userId.model',
+        refPath: 'userObjectId.model',
       },
       model: {
         type: String,

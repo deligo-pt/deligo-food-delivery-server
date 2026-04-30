@@ -15,6 +15,14 @@ export type TDeliveryPartner = {
   email: string;
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
+  isDeleted: boolean;
+
+  // Name
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  contactNumber?: string;
 
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)
@@ -49,6 +57,7 @@ export type TDeliveryPartner = {
   bankDetails?: {
     bankName?: string;
     accountHolderName?: string;
+    accountNumber?: string;
     iban?: string;
     swiftCode?: string;
   };
@@ -124,15 +133,4 @@ export type TDeliveryPartner = {
   // -------------------------------------------------
   createdAt?: Date;
   updatedAt?: Date;
-};
-
-// Document Upload Types (unchanged)
-export type TDeliveryPartnerImageDocuments = {
-  docImageTitle:
-    | 'idProofFront'
-    | 'idProofBack'
-    | 'drivingLicenseFront'
-    | 'drivingLicenseBack'
-    | 'vehicleRegistration'
-    | 'criminalRecordCertificate';
 };

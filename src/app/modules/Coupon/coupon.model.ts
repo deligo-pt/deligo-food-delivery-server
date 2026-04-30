@@ -3,7 +3,7 @@ import { TCoupon } from './coupon.interface';
 
 const couponSchema = new Schema<TCoupon>(
   {
-    userId: {
+    userObjectId: {
       type: Schema.Types.ObjectId,
       refPath: 'userModel',
       required: true,
@@ -39,7 +39,6 @@ const couponSchema = new Schema<TCoupon>(
   },
 );
 
-couponSchema.index({ code: 1 });
-couponSchema.index({ userId: 1, isUsed: 1 });
+couponSchema.index({ userObjectId: 1, isUsed: 1 });
 
 export const Coupon = model<TCoupon>('Coupon', couponSchema);

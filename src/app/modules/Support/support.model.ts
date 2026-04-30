@@ -6,7 +6,7 @@ import { USER_ROLE } from '../../constant/user.constant';
 const supportTicketSchema = new Schema<TSupportTicket>(
   {
     ticketId: { type: String, unique: true, required: true, index: true },
-    userId: {
+    userObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       refPath: 'userModel', // Dynamic reference to multiple collections

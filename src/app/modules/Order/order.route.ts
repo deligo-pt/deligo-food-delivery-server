@@ -49,7 +49,7 @@ router.patch(
 router.patch(
   '/:orderId/verify-otp',
   auth('VENDOR', 'SUB_VENDOR'),
-  OrderControllers.otpVerificationByVendor,
+  OrderControllers.otpVerificationByVendor, // eita baad gese
 );
 
 // update order status by delivery partner [On the way, Delivered, Reassign order to another delivery partner]

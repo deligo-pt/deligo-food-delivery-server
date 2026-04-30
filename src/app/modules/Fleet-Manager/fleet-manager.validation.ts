@@ -37,6 +37,7 @@ const fleetManagerUpdateValidationSchema = z.object({
       .object({
         bankName: z.string().optional(),
         accountHolderName: z.string().optional(),
+        accountNumber: z.string().optional(),
         iban: z.string().optional(),
         swiftCode: z.string().optional(),
       })
@@ -61,21 +62,6 @@ const fleetManagerUpdateValidationSchema = z.object({
 });
 
 // ----------------------------------------------------
-// Document Upload Validation
-// ----------------------------------------------------
-const fleetManagerDocImageValidationSchema = z.object({
-  body: z.object({
-    docImageTitle: z.enum(
-      ['myPhoto', 'idProofFront', 'idProofBack', 'businessLicense'],
-      {
-        required_error: 'Document title is required',
-      },
-    ),
-  }),
-});
-
-// ----------------------------------------------------
 export const FleetManagerValidation = {
   fleetManagerUpdateValidationSchema,
-  fleetManagerDocImageValidationSchema,
 };

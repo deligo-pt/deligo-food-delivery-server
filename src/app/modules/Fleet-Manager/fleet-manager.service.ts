@@ -4,12 +4,8 @@ import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { FleetManagerSearchableFields } from './fleet-manager.constant';
-import {
-  TFleetManager,
-  TFleetManagerImageDocuments,
-} from './fleet-manager.interface';
+import { TFleetManager } from './fleet-manager.interface';
 import { FleetManager } from './fleet-manager.model';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -21,7 +17,7 @@ const fleetManagerUpdate = async (
   // Find Fleet Manager
   // ---------------------------------------------------------
   const existingFleetManager = await FleetManager.findOne({
-    customUserId: fleetManagerId
+    customUserId: fleetManagerId,
   });
 
   if (!existingFleetManager) {
@@ -34,7 +30,8 @@ const fleetManagerUpdate = async (
   const isSelf =
     currentUser.role === 'FLEET_MANAGER' &&
     currentUser.customUserId === existingFleetManager.customUserId;
-  const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
+  const isAdmin =
+    currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
   if (!isSelf && !isAdmin) {
     throw new AppError(
@@ -107,72 +104,6 @@ const fleetManagerUpdate = async (
   return updatedFleetManager;
 };
 
-// fleet manager doc image upload service
-const fleetManagerDocImageUpload = async (
-  file: string | undefined,
-  data: TFleetManagerImageDocuments,
-  currentUser: AuthUser,
-  fleetManagerId: string,
-) => {
-  const existingFleetManager = await FleetManager.findOne({
-    userId: fleetManagerId,
-    isDeleted: false,
-  });
-  if (!existingFleetManager) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
-  }
-
-  // ---------------------------------------------------------
-  // Only the Fleet Manager can update their own profile
-  // ---------------------------------------------------------
-  const isSelf =
-    currentUser.role === 'FLEET_MANAGER' &&
-    currentUser.userId === existingFleetManager.userId;
-
-  if (!isSelf) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this Fleet Manager.',
-    );
-  }
-
-  // ---------------------------------------------------------
-  // Check if update is locked
-  // ---------------------------------------------------------
-  if (
-    currentUser.role === 'FLEET_MANAGER' &&
-    existingFleetManager.isUpdateLocked
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Fleet Manager update is locked. Please contact support.',
-    );
-  }
-
-  // delete previous image if exists
-  const docTitle = data?.docImageTitle;
-
-  if (docTitle && existingFleetManager?.documents?.[docTitle]) {
-    const oldImage = existingFleetManager?.documents?.[docTitle];
-    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.error(err);
-    });
-  }
-
-  if (data.docImageTitle && file) {
-    existingFleetManager.documents = {
-      ...existingFleetManager.documents,
-      [data.docImageTitle]: file,
-    };
-    await existingFleetManager.save();
-  }
-
-  return {
-    message: 'Fleet Manager document image updated successfully',
-    existingFleetManager,
-  };
-};
-
 // get all fleet managers
 const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
   const fleetManagers = new QueryBuilder(FleetManager.find(), query)
@@ -195,8 +126,11 @@ const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
   currentUser: AuthUser,
 ) => {
-  const userId = currentUser?.userId;
-  if (currentUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
+  const customUserId = currentUser?.customUserId;
+  if (
+    currentUser?.role === 'FLEET_MANAGER' &&
+    customUserId !== fleetManagerId
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this fleet manager!',
@@ -206,12 +140,12 @@ const getSingleFleetManagerFromDB = async (
 
   if (currentUser?.role === 'FLEET_MANAGER') {
     existingFleetManager = await FleetManager.findOne({
-      userId,
+      customUserId: fleetManagerId,
       isDeleted: false,
     });
   } else {
     existingFleetManager = await FleetManager.findOne({
-      userId: fleetManagerId,
+      customUserId: fleetManagerId,
     });
   }
 
@@ -224,7 +158,6 @@ const getSingleFleetManagerFromDB = async (
 
 export const FleetManagerServices = {
   fleetManagerUpdate,
-  fleetManagerDocImageUpload,
   getAllFleetManagersFromDb,
   getSingleFleetManagerFromDB,
 };

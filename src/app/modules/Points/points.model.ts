@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { TPoints, TPointsLog } from './points.interface';
 
-const ALL_USER_MODELS = [
+const ALL_USER_MODELS_ENUM = [
   'Admin',
   'Vendor',
   'FleetManager',
@@ -13,16 +13,16 @@ const ALL_USER_MODELS = [
 // --------------------------------------------------
 const PointsSchema = new Schema<TPoints>(
   {
-    userId: {
+    userObjectId: {
       id: {
         type: Schema.Types.ObjectId,
         required: true,
-        refPath: 'userId.model',
+        refPath: 'userObjectId.model',
       },
       model: {
         type: String,
         required: true,
-        enum: ALL_USER_MODELS,
+        enum: ALL_USER_MODELS_ENUM,
       },
     },
     currentPoints: { type: Number, default: 0 },
@@ -40,13 +40,13 @@ export const Points = model<TPoints>('Points', PointsSchema);
 // --------------------------------------------------
 const PointsLogSchema = new Schema<TPointsLog>(
   {
-    userId: {
+    userObjectId: {
       id: {
         type: Schema.Types.ObjectId,
         required: true,
-        refPath: 'userId.model',
+        refPath: 'userObjectId.model',
       },
-      model: { type: String, required: true, enum: ALL_USER_MODELS },
+      model: { type: String, required: true, enum: ALL_USER_MODELS_ENUM },
     },
     points: { type: Number, required: true },
     transactionType: {
@@ -71,4 +71,7 @@ const PointsLogSchema = new Schema<TPointsLog>(
 
 export const PointsLog = model<TPointsLog>('PointsLog', PointsLogSchema);
 
-PointsSchema.index({ 'userId.id': 1, 'userId.model': 1 }, { unique: true });
+PointsSchema.index(
+  { 'userObjectId.id': 1, 'userObjectId.model': 1 },
+  { unique: true },
+);

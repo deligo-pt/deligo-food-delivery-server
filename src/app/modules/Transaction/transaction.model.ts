@@ -21,7 +21,7 @@ const transactionSchema = new Schema<TTransaction>(
       type: Schema.Types.ObjectId,
       ref: 'Payout',
     },
-    userId: {
+    userObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       refPath: 'userModel',
@@ -98,8 +98,8 @@ const transactionSchema = new Schema<TTransaction>(
   },
 );
 
-transactionSchema.index({ userId: 1, type: 1 });
-transactionSchema.index({ userId: 1, createdAt: -1 });
+transactionSchema.index({ userObjectId: 1, type: 1 });
+transactionSchema.index({ userObjectId: 1, createdAt: -1 });
 
 export const Transaction = model<TTransaction>(
   'Transaction',

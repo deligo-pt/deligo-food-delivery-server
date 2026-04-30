@@ -61,14 +61,6 @@ const verifyOtpValidationSchema = z.object({
   }),
 });
 
-const adminDocImageValidationSchema = z.object({
-  body: z.object({
-    docImageTitle: z.enum(['idProofFront', 'idProofBack'], {
-      required_error: 'Document title is required',
-    }),
-  }),
-});
-
 // -----------------------------------------------------
 // Export Collection
 // -----------------------------------------------------
@@ -76,5 +68,4 @@ export const AdminValidation = {
   updateAdminDataValidationSchema,
   activateOrBlockUserValidationSchema,
   verifyOtpValidationSchema,
-  adminDocImageValidationSchema,
 };
