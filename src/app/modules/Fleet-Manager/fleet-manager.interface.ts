@@ -26,6 +26,7 @@ export type TFleetManager = {
     lastName?: string;
   };
   contactNumber?: string;
+  profilePhoto?: string;
   city?: string;
 
   // ---------------------------------------------

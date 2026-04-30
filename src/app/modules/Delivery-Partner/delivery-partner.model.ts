@@ -52,7 +52,7 @@ const deliveryPartnerSchema = new Schema<
       default: false,
     },
     isDeleted: { type: Boolean, default: false },
-    
+
     registeredBy: {
       id: {
         type: Schema.Types.ObjectId,
@@ -77,6 +77,7 @@ const deliveryPartnerSchema = new Schema<
       lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
+    profilePhoto: { type: String, default: '' },
     city: { type: String },
 
     // -------------------------------------------------

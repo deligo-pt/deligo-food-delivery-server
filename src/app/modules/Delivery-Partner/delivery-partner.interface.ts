@@ -29,6 +29,7 @@ export type TDeliveryPartner = {
     lastName?: string;
   };
   contactNumber?: string;
+  profilePhoto?: string;
   city?: string;
 
   // -------------------------------------------------

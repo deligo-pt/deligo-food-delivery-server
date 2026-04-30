@@ -74,6 +74,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
+    profilePhoto: { type: String, default: '' },
     city: { type: String },
 
     // ------------------------------------------
