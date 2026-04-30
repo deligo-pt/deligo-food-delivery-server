@@ -66,16 +66,19 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       type: liveLocationSchema,
     },
 
-    // ------------------------------------------
-    // Name & contactNumber & city
-    // ------------------------------------------
+    // Personal details
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-    contactNumber: { type: String },
+    contactNumber: { type: String, default: "" },
     profilePhoto: { type: String, default: '' },
-    city: { type: String },
+    address: {
+      city: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+    },
+
 
     // ------------------------------------------
     // Business Details

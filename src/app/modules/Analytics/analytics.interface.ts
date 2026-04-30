@@ -86,6 +86,7 @@ export type TFleetManagerPerformance = Pick<
   | 'email'
   | 'status'
   | 'name'
+  | 'address'
   | 'operationalData'
 > & {
   totalDeliveries: number;
@@ -142,6 +143,7 @@ export type TDeliveryPartnerPerformance = Pick<
   | 'email'
   | 'status'
   | 'name'
+  | 'address'
   | 'operationalData'
 > & {
   totalDeliveries: number;

@@ -37,6 +37,12 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
         'Please enter a valid email address',
       ],
     },
+    registeredBy: {
+      type: Schema.Types.ObjectId,
+      default: null,
+      ref: 'Admin',
+    },
+
     isUpdateLocked: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     status: {
@@ -55,14 +61,18 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       ref: 'Vendor',
     },
 
-    // Name & contactNumber & city
+    // Personal details
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
     contactNumber: { type: String, default: "" },
     profilePhoto: { type: String, default: '' },
-    city: { type: String, default: "" },
+    address: {
+      city: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+    },
 
     // -------------------------------------------------------
     // Business Details

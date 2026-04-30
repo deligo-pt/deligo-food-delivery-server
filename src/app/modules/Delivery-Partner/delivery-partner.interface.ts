@@ -22,15 +22,20 @@ export type TDeliveryPartner = {
     role: 'ADMIN' | 'SUPER_ADMIN' | 'FLEET_MANAGER';
   };
 
-
-  // Name & contactNumber & city
+  // --------------------------------------------------------
+  // Personal details
+  // --------------------------------------------------------
   name?: {
     firstName?: string;
     lastName?: string;
   };
   contactNumber?: string;
   profilePhoto?: string;
-  city?: string;
+  address?: {
+    city?: string;
+    longitude?: number;
+    latitude?: number;
+  };
 
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)

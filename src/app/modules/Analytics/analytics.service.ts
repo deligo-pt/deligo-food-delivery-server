@@ -2127,7 +2127,7 @@ const getFleetManagerPerformanceAnalytics = async (
               email: 1,
               status: 1,
               name: 1,
-              city: 1,
+              address: 1,
               totalDeliveries: 1,
               totalEarnings: 1,
             },
@@ -2278,7 +2278,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
   const fleetManager = await FleetManager.findOne({
     customUserId: fleetManagerId,
   })
-    .select('_id profilePhoto customUserId email status name city rating')
+    .select('_id profilePhoto customUserId email status name address rating')
     .lean();
 
   if (!fleetManager) {
@@ -2455,7 +2455,7 @@ const getDeliveryPartnerPerformanceAnalytics = async (
               email: 1,
               status: 1,
               name: 1,
-              city: 1,
+              address: 1,
               operationalData: 1,
               totalDeliveries: 1,
               totalEarnings: 1,
@@ -2634,7 +2634,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   // Find partner
   const partner = await DeliveryPartner.findOne({ customUserId: partnerUserId })
     .select(
-      '_id profilePhoto customUserId email status name city operationalData rating',
+      '_id profilePhoto customUserId email status name address operationalData rating',
     )
     .lean();
 
@@ -4599,7 +4599,7 @@ const getPartnerPerformanceAnalytics = async (
   const searchableFields = [
     'name.firstName',
     'name.lastName',
-    'city',
+    'address.city',
     'customUserId',
   ];
   const partnerQuery = new QueryBuilder(
@@ -4660,7 +4660,7 @@ const getPartnerPerformanceAnalytics = async (
           name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
           displayId: partner.customUserId,
           vehicle: partner?.vehicleInfo?.vehicleType,
-          city: partner?.city || 'N/A',
+          city: partner?.address?.city || 'N/A',
           deliveries: opData?.completedDeliveries || 0,
           avgMins: `${rowAvgMins} min`,
           acceptance: rowAcceptance,

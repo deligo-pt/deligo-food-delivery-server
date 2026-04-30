@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import { Types } from 'mongoose';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 import { USER_STATUS } from '../../constant/user.constant';
 
@@ -13,12 +13,13 @@ export type TVendor = {
   customUserId: string;
   email: string;
   role: 'VENDOR' | 'SUB_VENDOR';
+  registeredBy?: Types.ObjectId;
   isUpdateLocked: boolean;
   isDeleted: boolean;
   status: keyof typeof USER_STATUS;
 
   // --------------------------------------------------------
-  // Name & contactNumber & city
+  // Personal details
   // --------------------------------------------------------
   name?: {
     firstName?: string;
@@ -26,7 +27,11 @@ export type TVendor = {
   };
   contactNumber?: string;
   profilePhoto?: string;
-  city?: string;
+  address?: {
+    city?: string;
+    longitude?: number;
+    latitude?: number;
+  };
 
   // --------------------------------------------------------
   // Business Details
@@ -71,7 +76,7 @@ export type TVendor = {
   // Referral Details
   // --------------------------------------------------------
   referralCode?: string;
-  referredBy?: mongoose.Types.ObjectId;
+  referredBy?: Types.ObjectId;
 
   currentSessionLocation?: TGeoJSONPoint;
 
