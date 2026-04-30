@@ -1,11 +1,19 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import mongoose from 'mongoose';
+import mongoose, { ObjectId, Types } from 'mongoose';
 import { RedisService } from '../config/redis';
 import { ROLE_COLLECTION_MAP } from '../constant/user.constant';
 import AppError from '../errors/AppError';
 import httpStatus from 'http-status';
+import { Admin } from '../modules/Admin/admin.model';
+import { FleetManager } from '../modules/Fleet-Manager/fleet-manager.model';
+
+type TRegisteredBy = {
+  id: ObjectId;
+  role: Partial<typeof ROLE_COLLECTION_MAP>
+  model: "Admin" | "FleetManager" | "Vendor";
+}
 
 const STREAM_KEY = 'user:events';
 const GROUP_NAME = 'food-service-group';
@@ -113,10 +121,54 @@ const handleUserRegistered = async (
   Model: mongoose.Model<any>,
   payload: any,
 ) => {
-  const { id, customUserId, email, role, registeredBy, status, ...rest } =
-    payload;
+  const { id, customUserId, email, role, status, registeredByUserEmail, registeredByUserRole, ...rest } = payload;
+
+  let registeredBy: Types.ObjectId | TRegisteredBy | undefined = undefined;
 
   try {
+    if (registeredByUserRole) {
+      // onbaord delivery partner
+      if (role === "DELIVERY_PARTNER") {
+        if (registeredByUserRole === "ADMIN" || registeredByUserRole === "SUPER_ADMIN") {
+          const registeredByUser = await Admin.findOne({ email: registeredByUserEmail });
+          registeredBy = {
+            id: registeredByUser?._id as unknown as ObjectId,
+            role: registeredByUser?.role as Partial<typeof ROLE_COLLECTION_MAP>,
+            model: "Admin"
+          }
+        } else if (registeredByUserRole === "FLEET_MANAGER") {
+          const registeredByUser = await FleetManager.findOne({ email: registeredByUserEmail });
+          registeredBy = {
+            id: registeredByUser?._id as unknown as ObjectId,
+            role: registeredByUser?.role as Partial<typeof ROLE_COLLECTION_MAP>,
+            model: "FleetManager"
+          }
+        }
+      }
+      // onboard fleet, vendor, customer
+      if (role === "FLEET_MANAGER" || role === "VENDOR" || role === "CUSTOMER") {
+        const registeredByUser = await Admin.findOne({ email: registeredByUserEmail });
+        registeredBy = registeredByUser?._id as unknown as Types.ObjectId
+      }
+      // onboard subvendor
+      if (role === "SUB_VENDOR") {
+        if (registeredByUserRole === "ADMIN" || registeredByUserRole === "SUPER_ADMIN") {
+          const registeredByUser = await Admin.findOne({ email: registeredByUserEmail });
+          registeredBy = {
+            id: registeredByUser?._id as unknown as ObjectId,
+            role: registeredByUser?.role as Partial<typeof ROLE_COLLECTION_MAP>,
+            model: "Admin"
+          }
+        } else if (registeredByUserRole === "VENDOR") {
+          const registeredByUser = await FleetManager.findOne({ email: registeredByUserEmail });
+          registeredBy = {
+            id: registeredByUser?._id as unknown as ObjectId,
+            role: registeredByUser?.role as Partial<typeof ROLE_COLLECTION_MAP>,
+            model: "Vendor"
+          }
+        }
+      }
+    }
     // First try to find if already exists
     const existing = await Model.findOne({ authUserId: id });
 

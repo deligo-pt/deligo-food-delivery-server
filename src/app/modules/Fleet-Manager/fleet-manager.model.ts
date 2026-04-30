@@ -52,20 +52,33 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       type: Boolean,
       default: false,
     },
+
     isDeleted: { type: Boolean, default: false },
+
+    registeredBy: {
+      type: Schema.Types.ObjectId,
+      default: null,
+      ref: 'Admin',
+    },
+
 
     currentSessionLocation: {
       type: liveLocationSchema,
     },
 
-    // ------------------------------------------
-    // Business Details
-    // ------------------------------------------
+    // Personal details
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-    contactNumber: { type: String },
+    contactNumber: { type: String, default: "" },
+    profilePhoto: { type: String, default: '' },
+    address: {
+      city: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+    },
+
 
     // ------------------------------------------
     // Business Details

@@ -53,12 +53,37 @@ const deliveryPartnerSchema = new Schema<
     },
     isDeleted: { type: Boolean, default: false },
 
-    // Name
+    registeredBy: {
+      id: {
+        type: Schema.Types.ObjectId,
+        refPath: 'registeredBy.model',
+        default: null,
+      },
+      model: {
+        type: String,
+        enum: ['Admin', 'FleetManager'],
+        default: null,
+      },
+      role: {
+        type: String,
+        enum: ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
+        default: null,
+      },
+    },
+
+    // Personal details
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-    contactNumber: { type: String },
+    contactNumber: { type: String, default: "" },
+    profilePhoto: { type: String, default: '' },
+    address: {
+      city: { type: String, default: '' },
+      longitude: { type: Number },
+      latitude: { type: Number },
+    },
+
 
     // -------------------------------------------------
     // Live Location
@@ -67,6 +92,7 @@ const deliveryPartnerSchema = new Schema<
       type: liveLocationSchema,
     },
 
+    // personal information
     personalInfo: {
       dateOfBirth: { type: Date },
       gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'] },
