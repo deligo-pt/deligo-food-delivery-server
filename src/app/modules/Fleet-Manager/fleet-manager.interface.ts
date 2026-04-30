@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { USER_STATUS } from '../../constant/user.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
 
@@ -13,6 +14,7 @@ export type TFleetManager = {
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
   isDeleted: boolean;
+  registeredBy?: Types.ObjectId;
 
   currentSessionLocation?: TGeoJSONPoint;
 

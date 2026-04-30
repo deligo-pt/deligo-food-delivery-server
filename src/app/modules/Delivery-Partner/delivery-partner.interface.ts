@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import { Types } from 'mongoose';
 import { USER_STATUS } from '../../constant/user.constant';
 import { currentStatusOptions } from './delivery-partner.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
@@ -16,6 +16,12 @@ export type TDeliveryPartner = {
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
   isDeleted: boolean;
+  registeredBy?: {
+    id: Types.ObjectId;
+    model: TRegisteredByModel;
+    role: 'ADMIN' | 'SUPER_ADMIN' | 'FLEET_MANAGER';
+  };
+
 
   // Name & contactNumber & city
   name?: {
@@ -43,7 +49,7 @@ export type TDeliveryPartner = {
   // Referral
   // ------------------------------------------------------
   referralCode?: string;
-  referredBy?: mongoose.Types.ObjectId;
+  referredBy?: Types.ObjectId;
 
   // -------------------------------------------------
   // 2) Legal Status / Work Rights
@@ -117,9 +123,9 @@ export type TDeliveryPartner = {
     totalDeliveryMinutes?: number;
 
     currentStatus: keyof typeof currentStatusOptions; // Current working state (IDLE, ON_DELIVERY, OFFLINE)
-    assignmentZoneId: mongoose.Types.ObjectId;
-    currentZoneId?: mongoose.Types.ObjectId; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
-    currentOrderId?: mongoose.Types.ObjectId; // List of active order IDs they are currently fulfilling
+    assignmentZoneId: Types.ObjectId;
+    currentZoneId?: Types.ObjectId; // DeliGo Zone ID (e.g., 'Lisbon-Zone-02')
+    currentOrderId?: Types.ObjectId; // List of active order IDs they are currently fulfilling
     capacity: number; // Max number of orders the driver can carry (e.g., 2 or 3)
     isWorking: boolean; // Simple flag: Clocked in/out
 

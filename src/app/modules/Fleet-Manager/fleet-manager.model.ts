@@ -52,7 +52,15 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       type: Boolean,
       default: false,
     },
+
     isDeleted: { type: Boolean, default: false },
+
+    registeredBy: {
+      type: Schema.Types.ObjectId,
+      default: null,
+      ref: 'Admin',
+    },
+
 
     currentSessionLocation: {
       type: liveLocationSchema,

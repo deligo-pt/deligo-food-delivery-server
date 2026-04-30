@@ -52,6 +52,24 @@ const deliveryPartnerSchema = new Schema<
       default: false,
     },
     isDeleted: { type: Boolean, default: false },
+    
+    registeredBy: {
+      id: {
+        type: Schema.Types.ObjectId,
+        refPath: 'registeredBy.model',
+        default: null,
+      },
+      model: {
+        type: String,
+        enum: ['Admin', 'FleetManager'],
+        default: null,
+      },
+      role: {
+        type: String,
+        enum: ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
+        default: null,
+      },
+    },
 
     // Name & contactNumber & city
     name: {

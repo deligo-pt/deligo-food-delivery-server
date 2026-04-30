@@ -25,6 +25,7 @@ export type TVendor = {
     lastName?: string;
   };
   contactNumber?: string;
+  profilePhoto?: string;
   city?: string;
 
   // --------------------------------------------------------

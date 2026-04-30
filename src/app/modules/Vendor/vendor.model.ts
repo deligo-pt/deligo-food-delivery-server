@@ -60,9 +60,10 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-    contactNumber: { type: String },
-    city: { type: String },
-    
+    contactNumber: { type: String, default: "" },
+    profilePhoto: { type: String, default: '' },
+    city: { type: String, default: "" },
+
     // -------------------------------------------------------
     // Business Details
     // -------------------------------------------------------
