@@ -49,12 +49,13 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       default: false,
     },
 
-    // Name & Contact Number
+    // Name & contactNumber & city
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
+    city: { type: String },
 
     // ------------------------------------------------------
     // Current/Real-Time Location Data

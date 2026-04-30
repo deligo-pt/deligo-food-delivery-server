@@ -17,17 +17,20 @@ export type TDeliveryPartner = {
   isUpdateLocked: boolean;
   isDeleted: boolean;
 
-  // Name
+  // Name & contactNumber & city
   name?: {
     firstName?: string;
     lastName?: string;
   };
   contactNumber?: string;
+  city?: string;
 
   // -------------------------------------------------
   // Live Location (Required for Geo-Search & Nearest Match)
   // -------------------------------------------------
   currentSessionLocation: TGeoJSONPoint;
+
+  // personal information
   personalInfo?: {
     dateOfBirth?: Date;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';

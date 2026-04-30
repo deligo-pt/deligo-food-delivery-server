@@ -53,12 +53,13 @@ const deliveryPartnerSchema = new Schema<
     },
     isDeleted: { type: Boolean, default: false },
 
-    // Name
+    // Name & contactNumber & city
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
+    city: { type: String },
 
     // -------------------------------------------------
     // Live Location
@@ -67,6 +68,7 @@ const deliveryPartnerSchema = new Schema<
       type: liveLocationSchema,
     },
 
+    // personal information
     personalInfo: {
       dateOfBirth: { type: Date },
       gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'] },

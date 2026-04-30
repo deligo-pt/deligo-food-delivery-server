@@ -55,15 +55,14 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       ref: 'Vendor',
     },
 
-    // -------------------------------------------------------
-    // Name
-    // -------------------------------------------------------
+    // Name & contactNumber & city
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
-
+    city: { type: String },
+    
     // -------------------------------------------------------
     // Business Details
     // -------------------------------------------------------

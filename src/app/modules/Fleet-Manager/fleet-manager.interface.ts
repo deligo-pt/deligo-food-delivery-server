@@ -17,13 +17,14 @@ export type TFleetManager = {
   currentSessionLocation?: TGeoJSONPoint;
 
   // ---------------------------------------------
-  // Name
+  // Name & contactNumber & city
   // ---------------------------------------------
   name?: {
     firstName?: string;
     lastName?: string;
   };
   contactNumber?: string;
+  city?: string;
 
   // ---------------------------------------------
   // Business Details

@@ -59,13 +59,14 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     },
 
     // ------------------------------------------
-    // Business Details
+    // Name & contactNumber & city
     // ------------------------------------------
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
     contactNumber: { type: String },
+    city: { type: String },
 
     // ------------------------------------------
     // Business Details
