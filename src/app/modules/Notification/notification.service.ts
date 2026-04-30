@@ -7,6 +7,7 @@ import { ALL_USER_MODELS } from '../Auth/auth.constant';
 import { Notification } from './notification.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserById } from '../../utils/findUserByEmailOrId';
+import { TNotificationType } from './notification.interface';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -63,7 +64,7 @@ const sendToUser = (
   message: string,
   data?: Record<string, string>,
   channelId?: 'order_notification' | 'default',
-  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'PAYOUT' | 'ACCOUNT' | 'OTHER' = 'OTHER',
+  type: TNotificationType = 'OTHER',
 ) => {
   //  Detach from request lifecycle
   setImmediate(async () => {
@@ -107,7 +108,7 @@ const sendToRole = (
   message: string,
   data?: Record<string, string>,
   channelId?: 'order_notification' | 'default',
-  type: 'ORDER' | 'SYSTEM' | 'PROMO' | 'PAYOUT' | 'ACCOUNT' | 'OTHER' = 'OTHER',
+  type: TNotificationType = 'OTHER',
 ) => {
   setImmediate(async () => {
     try {
