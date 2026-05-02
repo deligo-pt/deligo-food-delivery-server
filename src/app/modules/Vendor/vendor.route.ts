@@ -23,6 +23,14 @@ router.patch(
   VendorControllers.vendorDocImageUpload,
 );
 
+// Vendor document delete route
+router.delete(
+  '/:vendorId/docImage',
+  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
+  validateRequest(VendorValidation.vendorDocImageDeleteValidationSchema),
+  VendorControllers.deleteVendorDocument,
+);
+
 // Vendor business location update route
 router.patch(
   '/:vendorId/liveLocation',
