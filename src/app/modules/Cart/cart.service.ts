@@ -59,10 +59,10 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
   let selectedPrice = existingProduct.pricing.price;
   let selectedVariantLabel = '';
-  let availableStock = existingProduct.stock.quantity;
+  let availableStock = existingProduct?.stock?.quantity ?? 0;
   let finalVariationSku = variationSku || null;
 
-  if (existingProduct.stock.hasVariations) {
+  if (existingProduct.stock && existingProduct.stock.hasVariations) {
     if (!variationSku)
       throw new AppError(httpStatus.BAD_REQUEST, 'Please select a variation.');
 
@@ -75,7 +75,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
     selectedPrice = targetOption.price;
     selectedVariantLabel = targetOption.label;
-    availableStock = targetOption.stockQuantity;
+    availableStock = targetOption.stockQuantity ?? 0;
     finalVariationSku = targetOption.sku;
   } else {
     finalVariationSku = null;
@@ -98,7 +98,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       ? `${existingProduct.name} - ${selectedVariantLabel}`
       : existingProduct.name,
     image: existingProduct?.images[0] || '',
-    hasVariations: existingProduct.stock.hasVariations,
+    hasVariations: existingProduct?.stock?.hasVariations,
     variationSku: finalVariationSku,
     isActive: true,
     addons: [],
@@ -298,8 +298,8 @@ const updateCartItemQuantity = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  let availableStock = product.stock.quantity;
-  if (product.stock.hasVariations && targetItem.variationSku) {
+  let availableStock = product?.stock?.quantity ?? 0;
+  if (product.stock?.hasVariations && targetItem.variationSku) {
     const option = (product?.variations ?? [])
       .flatMap((v: any) => v.options)
       .find((opt: any) => opt.sku === targetItem.variationSku);

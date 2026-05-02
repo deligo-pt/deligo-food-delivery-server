@@ -38,26 +38,14 @@ const createProductValidationSchema = z.object({
       currency: z.string().default('EUR'),
     }),
 
-    stock: z.object({
-      quantity: z.number().min(0, 'Quantity must be non-negative'),
-      unit: z.string().optional(),
-      availabilityStatus: z
-        .enum(['In Stock', 'Out of Stock', 'Limited'])
-        .default('In Stock'),
-    }),
-
-    tags: z.array(z.string()).optional(),
-
-    attributes: z
-      .record(
-        z.union([
-          z.string(),
-          z.number(),
-          z.boolean(),
-          z.array(z.string()),
-          z.null(),
-        ]),
-      )
+    stock: z
+      .object({
+        quantity: z.number().min(0, 'Quantity must be non-negative'),
+        unit: z.string().optional(),
+        availabilityStatus: z
+          .enum(['In Stock', 'Out of Stock', 'Limited'])
+          .default('In Stock'),
+      })
       .optional(),
 
     meta: z
@@ -97,8 +85,6 @@ const updateProductValidationSchema = z.object({
       .optional(),
 
     images: z.array(z.string()).optional(),
-    tags: z.array(z.string()).optional(),
-    attributes: z.record(z.any()).optional(),
     meta: z
       .object({
         isFeatured: z.boolean().optional(),
