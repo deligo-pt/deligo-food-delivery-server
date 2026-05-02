@@ -9,11 +9,21 @@ import { NextFunction, Request, Response } from 'express';
 import httpStatus from 'http-status';
 
 const getIP = (req: Request): string => {
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = Array.isArray(forwarded)
-    ? forwarded[0]
-    : forwarded || req.ip || 'anonymous';
-  return String(ip);
+  const ip =
+    req.headers['x-forwarded-for'] ||
+    req.headers['x-real-ip'] ||
+    req.headers['x-vercel-forwarded-for'] ||
+    req.connection.remoteAddress ||
+    req.ip ||
+    'anonymous';
+
+  const finalIp = Array.isArray(ip)
+    ? ip[0]
+    : typeof ip === 'string'
+      ? ip.split(',')[0]
+      : ip;
+
+  return String(finalIp).replace('::ffff:', '').trim();
 };
 
 const globalLimit = rateLimit({
