@@ -6,7 +6,6 @@ import { Vendor } from './vendor.model';
 import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
@@ -105,7 +104,7 @@ const vendorUpdate = async (
  * Handles old image cleanup, authorization, and update-lock bypass for admins.
  */
 const vendorDocImageUpload = async (
-  file: string | undefined,
+  docImages: string[],
   data: TVendorImageDocuments,
   currentUser: AuthUser,
   vendorId: string,
@@ -140,28 +139,19 @@ const vendorDocImageUpload = async (
 
   const docTitle = data?.docImageTitle;
 
-  // 5. Cleanup: If a new file is uploaded, delete the previous image from Cloudinary to save space
-  if (
-    docTitle &&
-    file &&
-    existingVendor.documents?.[
-      docTitle as keyof typeof existingVendor.documents
-    ]
-  ) {
-    const oldImage = (existingVendor.documents as any)[docTitle];
-
-    // Asynchronous cleanup: We don't want to block the user response if Cloudinary fails
-    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.error('Cloudinary deletion failed:', err);
-    });
-  }
-
   // 6. Update: Set the new file path to the specific document field
-  if (docTitle && file) {
+  if (docTitle && docImages.length > 0) {
+    const previousImages =
+      existingVendor.documents?.[
+        docTitle as keyof typeof existingVendor.documents
+      ] || [];
+
+    const allImages = [...previousImages, ...docImages];
+    const uniqueImages = [...new Set(allImages)];
     // Spread existing documents to prevent accidental data loss
     existingVendor.documents = {
       ...existingVendor.documents,
-      [docTitle]: file,
+      [docTitle]: uniqueImages,
     } as any;
 
     // Explicitly tell Mongoose that the nested 'documents' object has changed
