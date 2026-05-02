@@ -1,41 +1,65 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextFunction, Request, Response } from 'express';
-import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
 import redis from '../config/redis';
-export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
-  const windowMs = 1 * 60 * 1000;
-  const max = type === 'auth' ? 10 : 100;
+import { NextFunction, Request, Response } from 'express';
+import httpStatus from 'http-status';
 
-  return rateLimit({
-    windowMs,
-    max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    validate: {
-      default: false,
-    },
-    keyGenerator: (req: Request) => {
-      const ip = req.ip || req.headers['x-forwarded-for'] || 'anonymous';
-      return `${type}:${ip}`;
-    },
-    store: new RedisStore({
-      sendCommand: async (...args: string[]) => {
-        return (await redis.call(args[0], ...args.slice(1))) as any;
-      },
-      prefix: `rl:${type}:`,
-    }),
-    handler: (req: Request, res: Response, next: NextFunction) => {
-      const resetTime = (req as any).rateLimit.resetTime;
-      const secondsLeft = Math.ceil((resetTime.getTime() - Date.now()) / 1000);
-      next(
-        new AppError(
-          httpStatus.TOO_MANY_REQUESTS,
-          `Too many requests. Please try again after ${secondsLeft} seconds.`,
-        ),
-      );
-    },
-  });
+const getIP = (req: Request): string => {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = Array.isArray(forwarded)
+    ? forwarded[0]
+    : forwarded || req.ip || 'anonymous';
+  return String(ip);
+};
+
+const globalLimit = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: {
+    xForwardedForHeader: false,
+    default: false,
+  },
+  keyGenerator: (req) => getIP(req),
+  store: new RedisStore({
+    sendCommand: async (...args: string[]) =>
+      (await redis.call(args[0], ...args.slice(1))) as any,
+    prefix: 'rl:global:',
+  }),
+});
+
+const authLimit = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: {
+    xForwardedForHeader: false,
+    default: false,
+  },
+  keyGenerator: (req) => getIP(req),
+  store: new RedisStore({
+    sendCommand: async (...args: string[]) =>
+      (await redis.call(args[0], ...args.slice(1))) as any,
+    prefix: 'rl:auth:',
+  }),
+  handler: (req: Request, res: Response, next: NextFunction) => {
+    const resetTime = (req as any).rateLimit.resetTime;
+    const secondsLeft = Math.ceil((resetTime.getTime() - Date.now()) / 1000);
+    next(
+      new AppError(
+        httpStatus.TOO_MANY_REQUESTS,
+        `Too many auth attempts. Please try again after ${secondsLeft} seconds.`,
+      ),
+    );
+  },
+});
+
+export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
+  return type === 'auth' ? authLimit : globalLimit;
 };
