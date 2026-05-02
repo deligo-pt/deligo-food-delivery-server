@@ -164,21 +164,21 @@ router.get(
 router.get(
   '/admin/top-vendors',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getTopVendors,
+  AnalyticsControllers.getAdminTopVendors,
 );
 
 // get peak hours
 router.get(
   '/admin/peak-hours',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getPeakHourAnalytics,
+  AnalyticsControllers.getAdminPeakHourAnalytics,
 );
 
 // get delivery insights
 router.get(
   '/admin/delivery-insights',
   auth('ADMIN', 'SUPER_ADMIN'),
-  AnalyticsControllers.getDeliveryInsights,
+  AnalyticsControllers.getAdminDeliveryInsights,
 );
 
 
