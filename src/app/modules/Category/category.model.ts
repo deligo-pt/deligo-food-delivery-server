@@ -1,13 +1,13 @@
 import { Schema, model } from 'mongoose';
 import { TBusinessCategory, TProductCategory } from './category.interface';
 
-export const businessCategoryEnum = ['RESTAURANT', 'STORE'] as const;
+export const BusinessCategoryNameEnum = ['RESTAURANT', 'STORE'] as const;
 
 const businessCategorySchema = new Schema<TBusinessCategory>(
   {
     name: {
       type: String,
-      enum: businessCategoryEnum,
+      enum: BusinessCategoryNameEnum,
       required: true,
       unique: true,
     },

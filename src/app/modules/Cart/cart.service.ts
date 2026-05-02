@@ -3,7 +3,7 @@ import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { Product } from '../Product/product.model';
-import { TCart } from './cart.interface';
+import { TCartItemInput } from './cart.interface';
 import { Cart } from './cart.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { recalculateCartTotals } from './cart.constant';
@@ -12,7 +12,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
 
 // Add cart Service
-const addToCart = async (payload: TCart, currentUser: AuthUser) => {
+const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
   if (currentUser.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -32,7 +32,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'No items provided');
 
   const { productId, variationSku } = inputItem;
-  const quantity = inputItem.itemSummary?.quantity || 1;
+  const quantity = Number(inputItem.quantity) || 1;
 
   const existingProduct = await Product.findOne({
     _id: productId,
@@ -59,10 +59,10 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
   let selectedPrice = existingProduct.pricing.price;
   let selectedVariantLabel = '';
-  let availableStock = existingProduct.stock.quantity;
+  let availableStock = existingProduct?.stock?.quantity ?? 0;
   let finalVariationSku = variationSku || null;
 
-  if (existingProduct.stock.hasVariations) {
+  if (existingProduct.stock && existingProduct.stock.hasVariations) {
     if (!variationSku)
       throw new AppError(httpStatus.BAD_REQUEST, 'Please select a variation.');
 
@@ -75,7 +75,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
 
     selectedPrice = targetOption.price;
     selectedVariantLabel = targetOption.label;
-    availableStock = targetOption.stockQuantity;
+    availableStock = targetOption.stockQuantity ?? 0;
     finalVariationSku = targetOption.sku;
   } else {
     finalVariationSku = null;
@@ -98,7 +98,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
       ? `${existingProduct.name} - ${selectedVariantLabel}`
       : existingProduct.name,
     image: existingProduct?.images[0] || '',
-    hasVariations: existingProduct.stock.hasVariations,
+    hasVariations: existingProduct?.stock?.hasVariations,
     variationSku: finalVariationSku,
     isActive: true,
     addons: [],
@@ -298,8 +298,8 @@ const updateCartItemQuantity = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  let availableStock = product.stock.quantity;
-  if (product.stock.hasVariations && targetItem.variationSku) {
+  let availableStock = product?.stock?.quantity ?? 0;
+  if (product.stock?.hasVariations && targetItem.variationSku) {
     const option = (product?.variations ?? [])
       .flatMap((v: any) => v.options)
       .find((opt: any) => opt.sku === targetItem.variationSku);

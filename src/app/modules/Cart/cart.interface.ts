@@ -5,6 +5,15 @@ export type TCartItem = TOrderItemSnapshot & {
   isActive: boolean;
 };
 
+export type TCartItemInput = {
+  items: {
+    productId: string;
+    quantity: number;
+    variationSku?: string;
+    addons?: { addOnId: string; quantity: number }[];
+  }[];
+};
+
 export type TCart = {
   customerId: mongoose.Types.ObjectId;
 

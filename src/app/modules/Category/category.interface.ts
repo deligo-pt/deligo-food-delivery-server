@@ -1,8 +1,16 @@
 import mongoose from 'mongoose';
 
+export const BusinessCategoryName = {
+  RESTAURANT: 'RESTAURANT',
+  STORE: 'STORE',
+} as const;
+
+export type TBusinessCategoryName =
+  (typeof BusinessCategoryName)[keyof typeof BusinessCategoryName];
+
 export type TBusinessCategory = {
   _id?: string;
-  name: 'RESTAURANT' | 'STORE';
+  name: TBusinessCategoryName;
   slug: string;
   description?: string;
   icon: string;

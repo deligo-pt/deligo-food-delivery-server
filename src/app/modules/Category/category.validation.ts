@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { businessCategoryEnum } from './category.model';
+import { BusinessCategoryNameEnum } from './category.model';
 
 // Create Business Category Validation
 const createBusinessCategoryValidationSchema = z.object({
   body: z.object({
-    name: z.enum(businessCategoryEnum, {
+    name: z.enum(BusinessCategoryNameEnum, {
       required_error: 'Business category name is required',
     }),
     slug: z.string().optional(),
@@ -16,7 +16,7 @@ const createBusinessCategoryValidationSchema = z.object({
 // Update Business Category Validation
 const updateBusinessCategoryValidationSchema = z.object({
   body: z.object({
-    name: z.enum(businessCategoryEnum).optional(),
+    name: z.enum(BusinessCategoryNameEnum).optional(),
     slug: z.string().optional(),
     description: z.string().optional(),
     icon: z.string().optional(),
