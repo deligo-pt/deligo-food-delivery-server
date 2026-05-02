@@ -1,16 +1,23 @@
 import { Schema, model } from 'mongoose';
 import { TBusinessCategory, TProductCategory } from './category.interface';
 
+export const businessCategoryEnum = ['RESTAURANT', 'STORE'] as const;
+
 const businessCategorySchema = new Schema<TBusinessCategory>(
   {
-    name: { type: String, required: true, unique: true },
+    name: {
+      type: String,
+      enum: businessCategoryEnum,
+      required: true,
+      unique: true,
+    },
     slug: { type: String, required: true, unique: true },
     description: { type: String },
     icon: { type: String, required: true },
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const productCategorySchema = new Schema<TProductCategory>(
@@ -28,16 +35,16 @@ const productCategorySchema = new Schema<TProductCategory>(
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 productCategorySchema.index({ isActive: 1, isDeleted: 1 });
 
 export const BusinessCategory = model<TBusinessCategory>(
   'BusinessCategory',
-  businessCategorySchema
+  businessCategorySchema,
 );
 export const ProductCategory = model<TProductCategory>(
   'ProductCategory',
-  productCategorySchema
+  productCategorySchema,
 );

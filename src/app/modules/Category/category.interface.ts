@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 
 export type TBusinessCategory = {
   _id?: string;
-  name: string; // e.g. "Restaurant", "Grocery", "Pharmacy"
-  slug: string; // e.g. "restaurant"
+  name: 'RESTAURANT' | 'STORE';
+  slug: string;
   description?: string;
   icon: string;
   isActive: boolean;
