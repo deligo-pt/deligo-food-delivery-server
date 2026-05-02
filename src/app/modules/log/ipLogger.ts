@@ -22,6 +22,5 @@ export const logIPToDB = (req: Request, res: Response, next: NextFunction) => {
     timestamp: new Date(),
   }).catch((error) => console.error('Error saving IP to DB:', error));
 
-  console.log(`[DB LOG] IP: ${ip} | Path: ${path}`);
   next();
 };
