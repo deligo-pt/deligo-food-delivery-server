@@ -69,6 +69,9 @@ const vendorDocImageValidationSchema = z.object({
         ],
         { required_error: 'Document title is required' },
       ),
+      docImageUrls: z
+        .array(z.string().url())
+        .min(1, { message: 'At least one document image URL is required' }),
     })
     .strict(),
 });

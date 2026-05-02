@@ -28,16 +28,7 @@ const vendorUpdate = catchAsync(async (req, res) => {
 });
 //  vendor doc image upload controller
 const vendorDocImageUpload = catchAsync(async (req, res) => {
-  const images = req.files;
-  const docImages = images
-    ? Array.isArray(images)
-      ? images.map((file) => file.path)
-      : Object.values(images)
-          .flat()
-          .map((file) => file.path)
-    : [];
   const result = await VendorServices.vendorDocImageUpload(
-    docImages,
     req.body,
     req.user as AuthUser,
     req.params.vendorId,

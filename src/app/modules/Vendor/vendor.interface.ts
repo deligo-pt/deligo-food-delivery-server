@@ -183,4 +183,5 @@ export type TVendorImageDocuments = {
     | 'idProofBack'
     | 'storePhoto'
     | 'menuUpload';
+  docImageUrls: string[];
 };
