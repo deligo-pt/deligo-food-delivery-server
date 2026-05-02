@@ -7,7 +7,8 @@ const variationOptionSchema = z.object({
   sku: z.string().optional(),
   stockQuantity: z
     .number({ required_error: 'Variation stock quantity is required' })
-    .min(0),
+    .min(0)
+    .optional(),
   isOutOfStock: z.boolean().default(false),
 });
 

@@ -13,6 +13,7 @@ import { cleanForSKU, generateSlug } from './product.utils';
 import { Tax } from '../Tax/tax.model';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { CreateProductUtils } from './createProduct.utils';
+import customNanoId from '../../utils/customNanoId';
 
 // Create Product Service
 const createProduct = async (
@@ -176,13 +177,17 @@ const manageProductVariations = async (
     productId,
     ...((currentUser.role === 'VENDOR' ||
       currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
-  });
+  }).populate('vendorId', 'businessDetails.businessType');
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
   if (currentUser?.status !== 'APPROVED')
     throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+
+  const vendor = existingProduct.vendorId as any;
+  const isRestaurant =
+    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
 
   const { name, options } = payload;
   const normalizedName = name.trim();
@@ -200,7 +205,6 @@ const manageProductVariations = async (
 
   for (const opt of options) {
     const normalizedLabel = opt.label.trim();
-    const inputStockQty = opt.stockQuantity || 0;
 
     if (variationIndex > -1) {
       const isOptionExists = existingProduct.variations[
@@ -208,46 +212,48 @@ const manageProductVariations = async (
       ].options.some(
         (o: any) => o.label.toLowerCase() === normalizedLabel.toLowerCase(),
       );
-
       if (isOptionExists) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          `Option '${normalizedLabel}' already exists in '${normalizedName}'. Use update API to change stock or price.`,
+          `Option '${normalizedLabel}' already exists.`,
         );
       }
     }
 
     const generatedSku =
       opt.sku ||
-      `VAR-${productNamePart}-${cleanForSKU(normalizedLabel)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+      `VAR-${productNamePart}-${cleanForSKU(normalizedLabel)}-${customNanoId(3)}`;
 
     const isSkuTaken = await Product.findOne({
       'variations.options.sku': generatedSku,
     });
-
     if (isSkuTaken) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Generated SKU ${generatedSku} is already in use.`,
+        `SKU ${generatedSku} is already in use.`,
       );
     }
 
-    finalOptionsToPush.push({
-      ...opt,
+    const newOption: any = {
       label: normalizedLabel,
+      price: opt.price,
       sku: generatedSku,
-      stockQuantity: inputStockQty,
-      totalAddedQuantity: inputStockQty,
-      isOutOfStock: inputStockQty <= 0,
-    });
+    };
+
+    if (!isRestaurant) {
+      const inputStockQty = opt.stockQuantity || 0;
+      newOption.stockQuantity = inputStockQty;
+      newOption.totalAddedQuantity = inputStockQty;
+      newOption.isOutOfStock = inputStockQty <= 0;
+    }
+
+    finalOptionsToPush.push(newOption);
   }
 
   if (variationIndex > -1) {
-    if (finalOptionsToPush.length > 0) {
-      existingProduct.variations[variationIndex].options.push(
-        ...finalOptionsToPush,
-      );
-    }
+    existingProduct.variations[variationIndex].options.push(
+      ...finalOptionsToPush,
+    );
   } else {
     existingProduct.variations.push({
       name: normalizedName,
@@ -260,34 +266,31 @@ const manageProductVariations = async (
   let minPrice = Infinity;
 
   existingProduct.variations.forEach((v) => {
-    if (v.options && Array.isArray(v.options)) {
-      v.options.forEach((o: any) => {
-        const optionPrice = typeof o.price === 'number' ? o.price : 0;
-        const optionQty =
-          typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
-        const optionAddedQty =
-          typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
+    v.options.forEach((o: any) => {
+      if (o.price < minPrice) minPrice = o.price;
 
-        totalQty += optionQty;
-        totalAddedAcrossVariations += optionAddedQty;
-
-        if (optionPrice > 0 && optionPrice < minPrice) {
-          minPrice = optionPrice;
-        }
-      });
-    }
+      if (!isRestaurant) {
+        totalQty += o.stockQuantity || 0;
+        totalAddedAcrossVariations += o.totalAddedQuantity || 0;
+      }
+    });
   });
 
-  if (existingProduct.stock && existingProduct.stock.quantity) {
-    existingProduct.stock.quantity = totalQty;
-    existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
-    existingProduct.stock.hasVariations = true;
-    existingProduct.stock.availabilityStatus =
-      totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
-
-    if (minPrice !== Infinity) {
-      existingProduct.pricing.price = minPrice;
+  if (!isRestaurant) {
+    if (!existingProduct.stock) {
+      existingProduct.stock = { quantity: 0, hasVariations: true } as any;
     }
+    existingProduct.stock!.quantity = totalQty;
+    existingProduct.stock!.totalAddedQuantity = totalAddedAcrossVariations;
+    existingProduct.stock!.hasVariations = true;
+    existingProduct.stock!.availabilityStatus =
+      totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  } else {
+    existingProduct.stock = undefined;
+  }
+
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
   }
 
   await existingProduct.save();
@@ -466,14 +469,23 @@ const updateInventoryAndPricing = async (
   newPrice?: number,
   variationSku?: string,
 ) => {
-  const product = await Product.findOne({ productId });
+  const product = await Product.findOne({ productId }).populate(
+    'vendorId',
+    'businessDetails.businessType',
+  );
 
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
+  const vendor = product.vendorId as any;
+  const isRestaurant =
+    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
+
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
-    if (currentUser._id.toString() !== product?.vendorId.toString()) {
+    if (
+      currentUser._id.toString() !== (product.vendorId as any)._id.toString()
+    ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to update this product',
@@ -483,7 +495,7 @@ const updateInventoryAndPricing = async (
 
   const netQuantityChange = addedQuantity - reduceQuantity;
 
-  if (product.stock && product.stock.hasVariations) {
+  if (product.variations && product.variations.length > 0) {
     if (!variationSku) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Variation SKU is required');
     }
@@ -491,19 +503,24 @@ const updateInventoryAndPricing = async (
     let variationFound = false;
     let minPrice = Infinity;
 
-    product?.variations?.forEach((variation) => {
+    product.variations.forEach((variation) => {
       variation.options.forEach((opt) => {
         if (opt.sku === variationSku) {
-          if (reduceQuantity > 0 && reduceQuantity > opt.stockQuantity) {
-            throw new AppError(
-              httpStatus.BAD_REQUEST,
-              `Insufficient stock for SKU ${variationSku}. Available: ${opt.stockQuantity}`,
-            );
+          if (!isRestaurant) {
+            if (
+              reduceQuantity > 0 &&
+              reduceQuantity > (opt.stockQuantity || 0)
+            ) {
+              throw new AppError(
+                httpStatus.BAD_REQUEST,
+                `Insufficient stock. Available: ${opt.stockQuantity}`,
+              );
+            }
+            opt.stockQuantity = (opt.stockQuantity || 0) + netQuantityChange;
+            opt.totalAddedQuantity =
+              (opt.totalAddedQuantity || 0) + netQuantityChange;
+            opt.isOutOfStock = opt.stockQuantity <= 0;
           }
-
-          opt.stockQuantity += netQuantityChange;
-          opt.totalAddedQuantity += netQuantityChange;
-          opt.isOutOfStock = opt.stockQuantity <= 0;
 
           if (newPrice !== undefined) opt.price = newPrice;
           variationFound = true;
@@ -512,41 +529,37 @@ const updateInventoryAndPricing = async (
       });
     });
 
-    if (!variationFound) {
+    if (!variationFound)
       throw new AppError(httpStatus.NOT_FOUND, 'Variation SKU not found');
-    }
 
-    let totalStock = 0;
-    product?.variations?.forEach((v) =>
-      v.options.forEach((opt) => (totalStock += opt.stockQuantity)),
-    );
-
-    if (product.stock) {
-      product.stock.quantity = totalStock;
-      product.stock.totalAddedQuantity += netQuantityChange;
-      if (newPrice !== undefined) product.pricing.price = minPrice;
-    }
-  } else {
-    if (
-      product.stock &&
-      reduceQuantity > 0 &&
-      reduceQuantity > product.stock.quantity
-    ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Insufficient stock. Available: ${product.stock.quantity}`,
+    if (!isRestaurant && product.stock) {
+      let totalStock = 0;
+      product.variations.forEach((v) =>
+        v.options.forEach((opt) => (totalStock += opt.stockQuantity || 0)),
       );
+      product.stock.quantity = totalStock;
+      product.stock.totalAddedQuantity =
+        (product.stock.totalAddedQuantity || 0) + netQuantityChange;
     }
 
-    if (product.stock) {
+    if (newPrice !== undefined) product.pricing.price = minPrice;
+  } else {
+    if (!isRestaurant && product.stock) {
+      if (reduceQuantity > 0 && reduceQuantity > product.stock.quantity) {
+        throw new AppError(httpStatus.BAD_REQUEST, `Insufficient stock.`);
+      }
       product.stock.quantity += netQuantityChange;
-      product.stock.totalAddedQuantity += netQuantityChange;
-      if (newPrice !== undefined) product.pricing.price = newPrice;
+      product.stock.totalAddedQuantity =
+        (product.stock.totalAddedQuantity || 0) + netQuantityChange;
     }
+
+    if (newPrice !== undefined) product.pricing.price = newPrice;
   }
 
-  const finalQty = product.stock ? product.stock.quantity : 0;
-  if (product.stock) {
+  if (isRestaurant) {
+    product.stock = undefined;
+  } else if (product.stock) {
+    const finalQty = product.stock.quantity;
     product.stock.availabilityStatus =
       finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
   }

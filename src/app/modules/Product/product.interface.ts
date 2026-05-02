@@ -24,9 +24,9 @@ export type TProduct = {
       price: number;
       sku: string;
       pdItemId?: string;
-      stockQuantity: number;
-      totalAddedQuantity: number;
-      isOutOfStock: boolean;
+      stockQuantity?: number;
+      totalAddedQuantity?: number;
+      isOutOfStock?: boolean;
     }[];
   }[];
 
