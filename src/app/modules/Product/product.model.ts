@@ -11,9 +11,9 @@ const variationSchema = new Schema({
       label: { type: String, required: true }, // e.g., "Large"
       price: { type: Number, required: true }, // e.g., 500
       sku: { type: String },
-      stockQuantity: { type: Number, default: 0 },
-      totalAddedQuantity: { type: Number, default: 0 },
-      isOutOfStock: { type: Boolean, default: false },
+      stockQuantity: { type: Number },
+      totalAddedQuantity: { type: Number },
+      isOutOfStock: { type: Boolean },
     },
   ],
 });
