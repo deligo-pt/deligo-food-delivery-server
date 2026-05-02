@@ -3,7 +3,7 @@ import httpStatus from 'http-status';
 import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { Product } from '../Product/product.model';
-import { TCart } from './cart.interface';
+import { TCartItemInput } from './cart.interface';
 import { Cart } from './cart.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { recalculateCartTotals } from './cart.constant';
@@ -12,7 +12,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
 
 // Add cart Service
-const addToCart = async (payload: TCart, currentUser: AuthUser) => {
+const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
   if (currentUser.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -32,7 +32,7 @@ const addToCart = async (payload: TCart, currentUser: AuthUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'No items provided');
 
   const { productId, variationSku } = inputItem;
-  const quantity = inputItem.itemSummary?.quantity || 1;
+  const quantity = Number(inputItem.quantity) || 1;
 
   const existingProduct = await Product.findOne({
     _id: productId,
