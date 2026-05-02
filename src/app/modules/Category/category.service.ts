@@ -15,7 +15,6 @@ const createBusinessCategory = async (
   if (exists) {
     throw new AppError(httpStatus.CONFLICT, 'Business category already exists');
   }
-  payload.name = payload.name.toUpperCase();
 
   // generate slug
   payload.slug = payload.name
@@ -33,15 +32,15 @@ const updateBusinessCategory = async (
   payload: Partial<TBusinessCategory>,
   icon: string | null,
 ) => {
+  const category = await BusinessCategory.findById(id);
+  if (!category) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+  }
   if (payload.name)
     payload.slug = payload.name
       .toLowerCase()
       .replace(/[^\w ]+/g, '')
       .replace(/ +/g, '-');
-  const category = await BusinessCategory.findById(id);
-  if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
-  }
 
   if (payload?.isActive === category.isActive) {
     throw new AppError(
