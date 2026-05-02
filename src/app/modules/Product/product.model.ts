@@ -21,7 +21,6 @@ const variationSchema = new Schema({
 const productSchema = new Schema<TProduct>(
   {
     productId: { type: String, required: true, unique: true },
-    pdItemId: { type: String, default: null },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     sku: { type: String, required: true, unique: true },
     name: { type: String, required: true },
@@ -40,7 +39,11 @@ const productSchema = new Schema<TProduct>(
     subCategory: { type: String },
     brand: { type: String },
 
-    variations: [variationSchema],
+    variations: {
+      type: [variationSchema],
+      default: undefined,
+      required: false,
+    },
     addonGroups: [{ type: Schema.Types.ObjectId, ref: 'AddonGroup' }],
 
     pricing: {
@@ -56,22 +59,21 @@ const productSchema = new Schema<TProduct>(
     },
 
     stock: {
-      quantity: { type: Number, required: true },
-      totalAddedQuantity: { type: Number, default: 0 },
-      unit: { type: String },
-      availabilityStatus: {
-        type: String,
-        enum: ['In Stock', 'Out of Stock', 'Limited'],
-        default: 'In Stock',
+      type: {
+        quantity: { type: Number },
+        totalAddedQuantity: { type: Number },
+        unit: { type: String },
+        availabilityStatus: {
+          type: String,
+          enum: ['In Stock', 'Out of Stock', 'Limited'],
+          default: 'In Stock',
+        },
+        hasVariations: { type: Boolean, default: false },
       },
-      hasVariations: { type: Boolean, default: false },
+      required: false,
+      default: undefined,
     },
-
     images: [{ type: String }],
-
-    tags: [{ type: String }],
-
-    attributes: { type: Schema.Types.Mixed, default: {} },
 
     rating: {
       average: { type: Number, default: 0 },

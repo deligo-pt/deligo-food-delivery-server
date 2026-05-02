@@ -9,31 +9,19 @@ import { ProductSearchableFields } from './product.constant';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import { AddonGroup } from '../Add-Ons/addOns.model';
 import { cleanForSKU, generateSlug } from './product.utils';
 import { Tax } from '../Tax/tax.model';
-import { TTax } from '../Tax/tax.interface';
-import customNanoId from '../../utils/customNanoId';
+import { BusinessCategoryName } from '../Category/category.interface';
+import { CreateProductUtils } from './createProduct.utils';
 
-// Product Create Service
+// Create Product Service
 const createProduct = async (
   payload: TProduct,
   currentUser: AuthUser,
   images: string[],
 ) => {
-  if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Vendor is not approved to add products',
-    );
-  }
-
-  if (!payload.variations && !payload.pricing.price) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Price is required when no variations',
-    );
-  }
+  CreateProductUtils.validateVendor(currentUser);
+  CreateProductUtils.validateBasePayload(payload);
 
   const [vendorCategoryExist, category] = await Promise.all([
     BusinessCategory.findOne({
@@ -42,80 +30,24 @@ const createProduct = async (
     ProductCategory.findById(payload.category),
   ]);
 
-  if (!category) throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
+  CreateProductUtils.validateRestaurantStock(vendorCategoryExist, payload);
+  CreateProductUtils.validateCategory(vendorCategoryExist, category);
 
-  if (
-    category.businessCategoryId.toString() !==
-    vendorCategoryExist?._id.toString()
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Category is not under your business type',
-    );
-  }
+  await CreateProductUtils.validateAddons(payload, currentUser._id);
+  await CreateProductUtils.applyTax(payload);
 
-  if (payload.addonGroups?.length) {
-    const validAddonsCount = await AddonGroup.countDocuments({
-      _id: { $in: payload.addonGroups },
-      vendorId: currentUser._id,
-      isDeleted: false,
-    });
-    if (validAddonsCount !== payload.addonGroups.length) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'One or more invalid Addon Groups',
-      );
-    }
-  }
+  const { productNamePart } = CreateProductUtils.prepareBasicFields(
+    payload,
+    currentUser,
+    category,
+  );
 
-  if (payload.pricing.taxId) {
-    const tax: TTax | null = await Tax.findById(payload.pricing.taxId);
-    if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
-    payload.pricing.taxRate = tax.taxRate;
-  }
-
-  const shortId = customNanoId(6);
-  const productNamePart = cleanForSKU(payload.name);
-
-  payload.vendorId = currentUser._id;
-  payload.productId = `PROD-${shortId}`;
-  payload.slug = generateSlug(payload.name);
-  payload.sku = `${category.name.substring(0, 3).toUpperCase()}-${productNamePart}-${shortId.split('-').pop()}`;
-
-  if (payload.variations && payload.variations?.length > 0) {
-    let totalStock = 0;
-    let minNetPrice = Infinity;
-
-    payload.variations = payload.variations.map((variation) => ({
-      ...variation,
-      options: variation.options.map((option) => {
-        const currentOptionPrice = option.price;
-        if (currentOptionPrice < minNetPrice) minNetPrice = currentOptionPrice;
-
-        const stock = option.stockQuantity || 0;
-        totalStock += stock;
-
-        return {
-          ...option,
-          price: currentOptionPrice,
-          sku:
-            option.sku ||
-            `VAR-${productNamePart}-${cleanForSKU(option.label)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
-          stockQuantity: stock,
-          totalAddedQuantity: stock,
-          isOutOfStock: stock <= 0,
-        };
-      }),
-    }));
-
-    payload.pricing.price = minNetPrice === Infinity ? 0 : minNetPrice;
-    payload.stock.quantity = totalStock;
-    payload.stock.totalAddedQuantity = totalStock;
-    payload.stock.hasVariations = true;
-  } else {
-    payload.stock.hasVariations = false;
-    payload.stock.totalAddedQuantity = payload.stock.quantity;
-  }
+  CreateProductUtils.handleVariations(
+    payload,
+    productNamePart,
+    vendorCategoryExist,
+  );
+  CreateProductUtils.handleSimpleStock(payload, vendorCategoryExist);
 
   const newProduct = await Product.create({ ...payload, images });
 
@@ -132,7 +64,9 @@ const updateProduct = async (
   const existingProduct = await Product.findOne({
     productId,
     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
-  });
+  }).populate('vendorId', 'businessDetails.businessType');
+
+  console.log(existingProduct);
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
@@ -150,8 +84,6 @@ const updateProduct = async (
   if (payload.category) modifiedData.category = payload.category;
   if (payload.subCategory) modifiedData.subCategory = payload.subCategory;
   if (payload.brand) modifiedData.brand = payload.brand;
-  if (payload.tags) modifiedData.tags = payload.tags;
-  if (payload.attributes) modifiedData.attributes = payload.attributes;
   if (payload.addonGroups) modifiedData.addonGroups = payload.addonGroups;
 
   // Pricing & Tax Update
@@ -189,7 +121,13 @@ const updateProduct = async (
   );
 
   // Availability Status Auto-Update (Based on the current variation stock)
-  if (updatedProduct) {
+  const vendorBusinessType = (existingProduct?.vendorId as any)?.businessDetails
+    ?.businessType;
+  if (
+    updatedProduct &&
+    vendorBusinessType !== BusinessCategoryName.RESTAURANT &&
+    updatedProduct.stock
+  ) {
     const finalQty = updatedProduct.stock.quantity;
     updatedProduct.stock.availabilityStatus =
       finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
@@ -198,6 +136,35 @@ const updateProduct = async (
 
   return updatedProduct;
 };
+
+// const updateProduct = async (
+//   productId: string,
+//   payload: Partial<TProduct>,
+//   currentUser: AuthUser,
+//   images: string[],
+// ) => {
+//   const existingProduct = await UpdateProductUtils.getAndValidateProduct(
+//     productId,
+//     currentUser,
+//   );
+
+//   const modifiedData = await UpdateProductUtils.prepareUpdateData(payload);
+
+//   const updateQuery: any = { $set: modifiedData };
+//   if (images?.length > 0) {
+//     updateQuery.$push = { images: { $each: images } };
+//   }
+
+//   const updatedProduct = await Product.findOneAndUpdate(
+//     { productId },
+//     updateQuery,
+//     { new: true, runValidators: true },
+//   );
+
+//   await UpdateProductUtils.syncStockStatus(updatedProduct, existingProduct);
+
+//   return updatedProduct;
+// };
 
 // manage product variations service
 const manageProductVariations = async (
@@ -311,14 +278,16 @@ const manageProductVariations = async (
     }
   });
 
-  existingProduct.stock.quantity = totalQty;
-  existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
-  existingProduct.stock.hasVariations = true;
-  existingProduct.stock.availabilityStatus =
-    totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  if (existingProduct.stock && existingProduct.stock.quantity) {
+    existingProduct.stock.quantity = totalQty;
+    existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
+    existingProduct.stock.hasVariations = true;
+    existingProduct.stock.availabilityStatus =
+      totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
 
-  if (minPrice !== Infinity) {
-    existingProduct.pricing.price = minPrice;
+    if (minPrice !== Infinity) {
+      existingProduct.pricing.price = minPrice;
+    }
   }
 
   await existingProduct.save();
@@ -472,14 +441,16 @@ const removeProductVariations = async (
     }
   });
 
-  existingProduct.stock.quantity = totalQty;
-  existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
-  existingProduct.stock.hasVariations = existingProduct.variations.length > 0;
-  existingProduct.stock.availabilityStatus =
-    totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  if (existingProduct.stock && existingProduct.stock.quantity) {
+    existingProduct.stock.quantity = totalQty;
+    existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
+    existingProduct.stock.hasVariations = existingProduct.variations.length > 0;
+    existingProduct.stock.availabilityStatus =
+      totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
 
-  if (minPrice !== Infinity) {
-    existingProduct.pricing.price = minPrice;
+    if (minPrice !== Infinity) {
+      existingProduct.pricing.price = minPrice;
+    }
   }
 
   await existingProduct.save();
@@ -512,7 +483,7 @@ const updateInventoryAndPricing = async (
 
   const netQuantityChange = addedQuantity - reduceQuantity;
 
-  if (product.stock.hasVariations) {
+  if (product.stock && product.stock.hasVariations) {
     if (!variationSku) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Variation SKU is required');
     }
@@ -550,25 +521,35 @@ const updateInventoryAndPricing = async (
       v.options.forEach((opt) => (totalStock += opt.stockQuantity)),
     );
 
-    product.stock.quantity = totalStock;
-    product.stock.totalAddedQuantity += netQuantityChange;
-    if (newPrice !== undefined) product.pricing.price = minPrice;
+    if (product.stock) {
+      product.stock.quantity = totalStock;
+      product.stock.totalAddedQuantity += netQuantityChange;
+      if (newPrice !== undefined) product.pricing.price = minPrice;
+    }
   } else {
-    if (reduceQuantity > 0 && reduceQuantity > product.stock.quantity) {
+    if (
+      product.stock &&
+      reduceQuantity > 0 &&
+      reduceQuantity > product.stock.quantity
+    ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         `Insufficient stock. Available: ${product.stock.quantity}`,
       );
     }
 
-    product.stock.quantity += netQuantityChange;
-    product.stock.totalAddedQuantity += netQuantityChange;
-    if (newPrice !== undefined) product.pricing.price = newPrice;
+    if (product.stock) {
+      product.stock.quantity += netQuantityChange;
+      product.stock.totalAddedQuantity += netQuantityChange;
+      if (newPrice !== undefined) product.pricing.price = newPrice;
+    }
   }
 
-  const finalQty = product.stock.quantity;
-  product.stock.availabilityStatus =
-    finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  const finalQty = product.stock ? product.stock.quantity : 0;
+  if (product.stock) {
+    product.stock.availabilityStatus =
+      finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  }
 
   await product.save();
   return product;

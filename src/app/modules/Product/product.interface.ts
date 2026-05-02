@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 export type TProduct = {
   _id: mongoose.Types.ObjectId;
   productId: string;
-  pdItemId?: string;
   vendorId: mongoose.Types.ObjectId;
   sku: string;
   name: string;
@@ -41,7 +40,7 @@ export type TProduct = {
     currency: string;
   };
 
-  stock: {
+  stock?: {
     quantity: number;
     totalAddedQuantity: number;
     unit: string;
@@ -50,9 +49,6 @@ export type TProduct = {
   };
 
   images: string[];
-
-  tags?: string[];
-  attributes?: Record<string, string | number | boolean | string[] | null>;
 
   rating?: {
     average: number;
