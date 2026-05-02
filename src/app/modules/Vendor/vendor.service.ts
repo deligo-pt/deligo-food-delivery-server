@@ -12,6 +12,7 @@ import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.inte
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 
 /**
  * Service to update vendor profile information.
@@ -168,6 +169,56 @@ const vendorDocImageUpload = async (
 
   return {
     message: 'Vendor document image updated successfully',
+    data: existingVendor.documents,
+  };
+};
+
+const deleteVendorDocument = async (
+  payload: { docImageTitle: string; imageUrl: string },
+  currentUser: AuthUser,
+) => {
+  const { docImageTitle, imageUrl } = payload;
+  const existingVendor = await Vendor.findOne({ userId: currentUser.userId });
+  if (!existingVendor)
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+
+  const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  const isOwner = currentUser.userId === existingVendor.userId;
+  if (!isStaff && !isOwner)
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized for this action.',
+    );
+
+  if (existingVendor.isUpdateLocked && !isStaff) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile is locked. Contact support.',
+    );
+  }
+
+  const docArray = (existingVendor.documents as any)[docImageTitle];
+  if (!Array.isArray(docArray) || !docArray.includes(imageUrl)) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Image not found in this document category',
+    );
+  }
+
+  await deleteSingleImageFromCloudinary(imageUrl).catch((err) => {
+    console.error('Cloudinary deletion failed:', err);
+  });
+
+  existingVendor.documents = {
+    ...existingVendor.documents,
+    [docImageTitle]: docArray.filter((url: string) => url !== imageUrl),
+  } as any;
+
+  existingVendor.markModified('documents');
+  await existingVendor.save();
+
+  return {
+    message: 'Vendor document image deleted successfully',
     data: existingVendor.documents,
   };
 };
@@ -467,6 +518,7 @@ const getAllVendorsForCustomer = async (
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
+  deleteVendorDocument,
   updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,

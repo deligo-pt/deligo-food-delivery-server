@@ -77,7 +77,30 @@ const vendorDocImageValidationSchema = z.object({
 });
 
 // --------------------------------------------------
+// Vendor Document Delete Validation Schema
+// --------------------------------------------------
+const vendorDocImageDeleteValidationSchema = z.object({
+  body: z
+    .object({
+      docImageTitle: z.enum(
+        [
+          'businessLicenseDoc',
+          'taxDoc',
+          'idProofFront',
+          'idProofBack',
+          'storePhoto',
+          'menuUpload',
+        ],
+        { required_error: 'Document title is required' },
+      ),
+      imageUrl: z.string().url({ message: 'Valid image URL is required' }),
+    })
+    .strict(),
+});
+
+// --------------------------------------------------
 export const VendorValidation = {
   vendorUpdateValidationSchema,
   vendorDocImageValidationSchema,
+  vendorDocImageDeleteValidationSchema,
 };
