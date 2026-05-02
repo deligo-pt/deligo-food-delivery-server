@@ -104,8 +104,7 @@ const vendorUpdate = async (
  * Handles old image cleanup, authorization, and update-lock bypass for admins.
  */
 const vendorDocImageUpload = async (
-  docImages: string[],
-  data: TVendorImageDocuments,
+  payload: TVendorImageDocuments,
   currentUser: AuthUser,
   vendorId: string,
 ) => {
@@ -114,6 +113,8 @@ const vendorDocImageUpload = async (
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
+
+  const { docImageUrls } = payload;
 
   // 2. Define user roles and access rights
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -137,17 +138,23 @@ const vendorDocImageUpload = async (
     );
   }
 
-  const docTitle = data?.docImageTitle;
+  const docTitle = payload?.docImageTitle;
 
   // 6. Update: Set the new file path to the specific document field
-  if (docTitle && docImages.length > 0) {
+  if (docTitle && docImageUrls.length > 0) {
     const previousImages =
       existingVendor.documents?.[
         docTitle as keyof typeof existingVendor.documents
       ] || [];
 
-    const allImages = [...previousImages, ...docImages];
+    const allImages = [...previousImages, ...docImageUrls];
     const uniqueImages = [...new Set(allImages)];
+    if (uniqueImages.length > 3) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Maximum 3 images are allowed for ${payload.docImageTitle}. You already have ${previousImages.length} and trying to add ${docImageUrls.length}.`,
+      );
+    }
     // Spread existing documents to prevent accidental data loss
     existingVendor.documents = {
       ...existingVendor.documents,
