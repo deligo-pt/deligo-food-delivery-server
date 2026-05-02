@@ -21,7 +21,7 @@ router.patch(
 router.patch(
   '/:vendorId/docImage',
   auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
-  multerUpload.single('file'),
+  multerUpload.array('files', 5),
   parseBody,
   validateRequest(VendorValidation.vendorDocImageValidationSchema),
   VendorControllers.vendorDocImageUpload,

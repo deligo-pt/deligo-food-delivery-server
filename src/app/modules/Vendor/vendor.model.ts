@@ -163,12 +163,12 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // Documents * verification
     // -------------------------------------------------------
     documents: {
-      businessLicenseDoc: { type: String, default: '' },
-      taxDoc: { type: String, default: '' },
-      idProofFront: { type: String, default: '' },
-      idProofBack: { type: String, default: '' },
-      storePhoto: { type: String, default: '' },
-      menuUpload: { type: String, default: '' },
+      businessLicenseDoc: { type: [String], default: [] },
+      taxDoc: { type: [String], default: [] },
+      idProofFront: { type: [String], default: [] },
+      idProofBack: { type: [String], default: [] },
+      storePhoto: { type: [String], default: [] },
+      menuUpload: { type: [String], default: [] },
     },
 
     // -------------------------------------------------------
