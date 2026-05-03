@@ -133,6 +133,20 @@ const getAllVendorsForCustomer = catchAsync(async (req, res) => {
   });
 });
 
+// get single vendor for customer
+const getSingleVendorForCustomer = catchAsync(async (req, res) => {
+  const result = await VendorServices.getSingleVendorForCustomer(
+    req.params.vendorId,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendor Retrieved Successfully',
+    data: result,
+  });
+});
+
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
@@ -142,4 +156,5 @@ export const VendorControllers = {
   getAllVendors,
   getSingleVendor,
   getAllVendorsForCustomer,
+  getSingleVendorForCustomer,
 };
