@@ -109,11 +109,11 @@ const fleetManagerUpdate = async (
 
 // fleet manager doc image upload service
 const fleetManagerDocImageUpload = async (
-  file: string | undefined,
-  data: TFleetManagerImageDocuments,
+  payload: TFleetManagerImageDocuments,
   currentUser: AuthUser,
   fleetManagerId: string,
 ) => {
+  const { docImageTitle, docImageUrls } = payload;
   const existingFleetManager = await FleetManager.findOne({
     userId: fleetManagerId,
     isDeleted: false,
@@ -122,48 +122,47 @@ const fleetManagerDocImageUpload = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
   }
 
-  // ---------------------------------------------------------
-  // Only the Fleet Manager can update their own profile
-  // ---------------------------------------------------------
-  const isSelf =
+  const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  const isOwner =
     currentUser.role === 'FLEET_MANAGER' &&
     currentUser.userId === existingFleetManager.userId;
 
-  if (!isSelf) {
+  if (!isStaff && !isOwner) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to update this Fleet Manager.',
+      'You are not authorized for this action.',
     );
   }
 
   // ---------------------------------------------------------
   // Check if update is locked
   // ---------------------------------------------------------
-  if (
-    currentUser.role === 'FLEET_MANAGER' &&
-    existingFleetManager.isUpdateLocked
-  ) {
+  if (existingFleetManager.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Fleet Manager update is locked. Please contact support.',
     );
   }
 
-  // delete previous image if exists
-  const docTitle = data?.docImageTitle;
+  if (docImageTitle && docImageUrls.length > 0) {
+    const previousImages =
+      existingFleetManager.documents?.[
+        docImageTitle as keyof typeof existingFleetManager.documents
+      ] || [];
 
-  if (docTitle && existingFleetManager?.documents?.[docTitle]) {
-    const oldImage = existingFleetManager?.documents?.[docTitle];
-    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.error(err);
-    });
-  }
-
-  if (data.docImageTitle && file) {
+    const allImages = [...previousImages, ...docImageUrls];
+    const uniqueImages = [...new Set(allImages)];
+    if (uniqueImages.length > 3) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Maximum 3 images are allowed for ${payload.docImageTitle}. You already have ${previousImages.length} and trying to add ${docImageUrls.length}.`,
+      );
+    }
     existingFleetManager.documents = {
       ...existingFleetManager.documents,
-      [data.docImageTitle]: file,
-    };
+      [docImageTitle]: uniqueImages,
+    } as any;
+    await existingFleetManager.markModified('documents');
     await existingFleetManager.save();
   }
 
@@ -173,6 +172,58 @@ const fleetManagerDocImageUpload = async (
   };
 };
 
+// Service to delete a specific document image from a fleet manager's profile
+const deleteFleetManagerDocument = async (
+  payload: { docImageTitle: string; imageUrl: string },
+  currentUser: AuthUser,
+) => {
+  const { docImageTitle, imageUrl } = payload;
+  const existingFleetManager = await FleetManager.findOne({
+    userId: currentUser.userId,
+  });
+  if (!existingFleetManager)
+    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
+
+  const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  const isOwner = currentUser.userId === existingFleetManager.userId;
+  if (!isStaff && !isOwner)
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized for this action.',
+    );
+
+  if (existingFleetManager.isUpdateLocked && !isStaff) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Profile is locked. Contact support.',
+    );
+  }
+
+  const docArray = (existingFleetManager.documents as any)[docImageTitle];
+  if (!Array.isArray(docArray) || !docArray.includes(imageUrl)) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Image not found in this document category',
+    );
+  }
+
+  await deleteSingleImageFromCloudinary(imageUrl).catch((err) => {
+    console.error('Cloudinary deletion failed:', err);
+  });
+
+  existingFleetManager.documents = {
+    ...existingFleetManager.documents,
+    [docImageTitle]: docArray.filter((url: string) => url !== imageUrl),
+  } as any;
+
+  existingFleetManager.markModified('documents');
+  await existingFleetManager.save();
+
+  return {
+    message: 'Fleet Manager document image deleted successfully',
+    data: existingFleetManager.documents,
+  };
+};
 // get all fleet managers
 const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
   const fleetManagers = new QueryBuilder(FleetManager.find(), query)
@@ -225,6 +276,7 @@ const getSingleFleetManagerFromDB = async (
 export const FleetManagerServices = {
   fleetManagerUpdate,
   fleetManagerDocImageUpload,
+  deleteFleetManagerDocument,
   getAllFleetManagersFromDb,
   getSingleFleetManagerFromDB,
 };
