@@ -52,6 +52,12 @@ router.get(
   auth('CUSTOMER'),
   VendorControllers.getAllVendorsForCustomer,
 );
+// get single vendor for customer
+router.get(
+  '/customer/:vendorId',
+  auth('CUSTOMER'),
+  VendorControllers.getSingleVendorForCustomer,
+);
 
 // get all vendors
 router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);

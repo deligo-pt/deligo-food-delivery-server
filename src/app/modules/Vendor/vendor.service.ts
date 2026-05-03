@@ -514,6 +514,19 @@ const getAllVendorsForCustomer = async (
   };
 };
 
+// get single vendor for customer
+const getSingleVendorForCustomer = async (vendorId: string) => {
+  const existingVendor = await Vendor.findOne({
+    userId: vendorId,
+    isDeleted: false,
+  }).select('name userId email contactNumber businessDetails businessLocation');
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
+  }
+
+  return existingVendor;
+};
+
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
@@ -523,4 +536,5 @@ export const VendorServices = {
   getAllVendors,
   getSingleVendor,
   getAllVendorsForCustomer,
+  getSingleVendorForCustomer,
 };
