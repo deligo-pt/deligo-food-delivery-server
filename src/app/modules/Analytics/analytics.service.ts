@@ -60,7 +60,7 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
     {
       $match: {
         vendorId,
-        orderStatus: 'DELIVERED',
+        // orderStatus: 'DELIVERED',
         isPaid: true,
         isDeleted: false,
         createdAt: { $gte: sevenDaysAgo },
@@ -270,7 +270,7 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
   ).length;
 
   const returningCustomers = customersRaw.filter(
-    (c: any) => c.totalOrders > 1,
+    (c: any) => c.totalOrders > 0,
   ).length;
 
   const avgOrders =
@@ -404,7 +404,7 @@ const getOrderTrendInsights = async (currentUser: AuthUser) => {
     {
       $match: {
         vendorId,
-        orderStatus: 'DELIVERED',
+        // orderStatus: 'DELIVERED',
         isPaid: true,
         isDeleted: false,
         createdAt: { $gte: twentyEightDaysAgo },
@@ -1454,13 +1454,8 @@ const getVendorSalesReportAnalytics = async (
             $group: {
               _id: null,
               totalSales: {
-                $sum: {
-                  $cond: [
-                    { $eq: ['$orderStatus', 'DELIVERED'] },
-                    '$orderCalculation.totalOriginalPrice',
-                    0,
-                  ],
-                },
+                $sum:
+                  '$orderCalculation.totalOriginalPrice',
               },
               totalOrders: { $sum: 1 },
             },

@@ -473,41 +473,41 @@ export const AnalyticsControllers = {
   // ---------------------------------------
   // Analytics Services (Developer Morshed)
   // ---------------------------------------
-  getVendorSalesAnalytics,
-  getCustomerInsights,
-  getOrderTrendInsights,
-  getTopSellingItemsAnalytics,
+  getVendorSalesAnalytics, // \/
+  getCustomerInsights, // \/
+  getOrderTrendInsights, // \/
+  getTopSellingItemsAnalytics, // \/
   getAdminSalesReportAnalytics,
   getAdminOrderReportAnalytics,
-  getAdminCustomerReportAnalytics,
-  getAdminVendorReportAnalytics,
-  getAdminFleetManagerReportAnalytics,
-  getAdminDeliveryPartnerReportAnalytics,
-  getVendorSalesReportAnalytics,
+  getAdminCustomerReportAnalytics, // \/
+  getAdminVendorReportAnalytics, // \/
+  getAdminFleetManagerReportAnalytics, // \/
+  getAdminDeliveryPartnerReportAnalytics, // \/
+  getVendorSalesReportAnalytics, // \/
   getVendorCustomerReport,
-  getVendorTaxReport,
-  getFleetManagerPerformanceAnalytics,
-  getSingleFleetPerformanceDetailsAnalytics,
+  getVendorTaxReport, // \/
+  getFleetManagerPerformanceAnalytics, // \/
+  getSingleFleetPerformanceDetailsAnalytics, // \/
   getAdminSalesAnalytics, // \/
-  getDeliveryPartnerPerformanceAnalytics,
-  getSingleDeliveryPartnerPerformanceDetailsAnalytics,
+  getDeliveryPartnerPerformanceAnalytics, // \/
+  getSingleDeliveryPartnerPerformanceDetailsAnalytics, // \/
   getAdminCustomerInsights, // \/
-  getPlatformEarnings,
-  getAdminTopVendors,
-  getAdminPeakHourAnalytics,
-  getAdminDeliveryInsights,
+  getPlatformEarnings, // \/
+  getAdminTopVendors, // \/
+  getAdminPeakHourAnalytics, // \/
+  getAdminDeliveryInsights, // \/
 
   // ---------------------------------------
   // Analytics Services (Developer Umayer)
   // ---------------------------------------
   getAdminDashboardAnalytics, // \/
-  getVendorDashboardAnalytics,
-  getFleetDashboardAnalytics,
-  getPartnerPerformanceAnalytics,
-  getDeliveryPartnerEarningAnalytics,
-  getFleetManagerEarningAnalytics,
-  getVendorEarningsAnalytics,
-  getAllCustomerAnalytics,
-  getVendorPerformanceAnalytics,
-  getSingleVendorPerformanceDetails,
+  getVendorDashboardAnalytics, // \/
+  getFleetDashboardAnalytics, // \/
+  getPartnerPerformanceAnalytics, // \/
+  getDeliveryPartnerEarningAnalytics, // \/
+  getFleetManagerEarningAnalytics, // \/
+  getVendorEarningsAnalytics, // \/
+  getAllCustomerAnalytics, // \/
+  getVendorPerformanceAnalytics, // \/
+  getSingleVendorPerformanceDetails, // \/
 };
