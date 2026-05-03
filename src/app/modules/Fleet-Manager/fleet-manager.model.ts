@@ -141,10 +141,10 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // Documents
     // ------------------------------------------
     documents: {
-      myPhoto: { type: String, default: '' },
-      idProofFront: { type: String, default: '' },
-      idProofBack: { type: String, default: '' },
-      businessLicense: { type: String, default: '' },
+      myPhoto: { type: [String], default: [] },
+      idProofFront: { type: [String], default: [] },
+      idProofBack: { type: [String], default: [] },
+      businessLicense: { type: [String], default: [] },
     },
 
     // ------------------------------------------

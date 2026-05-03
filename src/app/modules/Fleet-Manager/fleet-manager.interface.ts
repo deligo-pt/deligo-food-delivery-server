@@ -98,10 +98,10 @@ export type TFleetManager = {
   // Documents & Verification
   // ---------------------------------------------
   documents?: {
-    myPhoto?: string;
-    idProofFront?: string;
-    idProofBack?: string;
-    businessLicense?: string;
+    myPhoto?: string[];
+    idProofFront?: string[];
+    idProofBack?: string[];
+    businessLicense?: string[];
   };
 
   // ---------------------------------------------
@@ -144,5 +144,6 @@ export type TFleetManager = {
 };
 
 export type TFleetManagerImageDocuments = {
-  docImageTitle: 'idProofFront' | 'idProofBack' | 'businessLicense';
+  docImageTitle: 'myPhoto' | 'idProofFront' | 'idProofBack' | 'businessLicense';
+  docImageUrls: string[];
 };

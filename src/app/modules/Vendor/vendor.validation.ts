@@ -56,24 +56,26 @@ const vendorUpdateValidationSchema = z.object({
 // Document Image Validation
 // --------------------------------------------------
 const vendorDocImageValidationSchema = z.object({
-  body: z
-    .object({
-      docImageTitle: z.enum(
-        [
-          'businessLicenseDoc',
-          'taxDoc',
-          'idProofFront',
-          'idProofBack',
-          'storePhoto',
-          'menuUpload',
-        ],
-        { required_error: 'Document title is required' },
-      ),
-      docImageUrls: z
-        .array(z.string().url())
-        .min(1, { message: 'At least one document image URL is required' }),
-    })
-    .strict(),
+  body: z.object({
+    docImageTitle: z.enum(
+      [
+        'businessLicenseDoc',
+        'taxDoc',
+        'idProofFront',
+        'idProofBack',
+        'storePhoto',
+        'menuUpload',
+      ],
+      { required_error: 'Document title is required' },
+    ),
+    docImageUrls: z
+      .array(
+        z
+          .string()
+          .url({ message: 'Each document image URL must be a valid URL' }),
+      )
+      .min(1, 'At least one document image URL is required'),
+  }),
 });
 
 // --------------------------------------------------
