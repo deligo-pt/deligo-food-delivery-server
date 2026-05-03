@@ -115,7 +115,7 @@ const vendorDocImageUpload = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
 
-  const { docImageUrls } = payload;
+  const { docImageTitle, docImageUrls } = payload;
 
   // 2. Define user roles and access rights
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -139,13 +139,11 @@ const vendorDocImageUpload = async (
     );
   }
 
-  const docTitle = payload?.docImageTitle;
-
   // 6. Update: Set the new file path to the specific document field
-  if (docTitle && docImageUrls.length > 0) {
+  if (docImageTitle && docImageUrls.length > 0) {
     const previousImages =
       existingVendor.documents?.[
-        docTitle as keyof typeof existingVendor.documents
+        docImageTitle as keyof typeof existingVendor.documents
       ] || [];
 
     const allImages = [...previousImages, ...docImageUrls];
@@ -159,7 +157,7 @@ const vendorDocImageUpload = async (
     // Spread existing documents to prevent accidental data loss
     existingVendor.documents = {
       ...existingVendor.documents,
-      [docTitle]: uniqueImages,
+      [docImageTitle]: uniqueImages,
     } as any;
 
     // Explicitly tell Mongoose that the nested 'documents' object has changed
@@ -173,6 +171,7 @@ const vendorDocImageUpload = async (
   };
 };
 
+// Service to delete a specific document image from a vendor's profile
 const deleteVendorDocument = async (
   payload: { docImageTitle: string; imageUrl: string },
   currentUser: AuthUser,

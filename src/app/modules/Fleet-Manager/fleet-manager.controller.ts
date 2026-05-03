@@ -10,7 +10,7 @@ const fleetManagerUpdate = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.fleetManagerUpdate(
     req.params.fleetManagerId,
     req.body,
-    currentUser
+    currentUser,
   );
 
   sendResponse(res, {
@@ -22,12 +22,10 @@ const fleetManagerUpdate = catchAsync(async (req, res) => {
 });
 //  fleet manager doc image upload controller
 const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
-  const file = req.file;
   const result = await FleetManagerServices.fleetManagerDocImageUpload(
-    file?.path,
     req.body,
     req.user as AuthUser,
-    req.params.fleetManagerId
+    req.params.fleetManagerId,
   );
 
   sendResponse(res, {
@@ -38,10 +36,25 @@ const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
   });
 });
 
+// fleet manager document delete controller
+const deleteFleetManagerDocument = catchAsync(async (req, res) => {
+  const result = await FleetManagerServices.deleteFleetManagerDocument(
+    req.body,
+    req.user as AuthUser,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
 // get all fleet managers
 const getAllFleetManagers = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.getAllFleetManagersFromDb(
-    req.query
+    req.query,
   );
 
   sendResponse(res, {
@@ -57,7 +70,7 @@ const getAllFleetManagers = catchAsync(async (req, res) => {
 const getSingleFleetManager = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.getSingleFleetManagerFromDB(
     req.params.fleetManagerId,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -71,6 +84,7 @@ const getSingleFleetManager = catchAsync(async (req, res) => {
 export const FleetManagerControllers = {
   fleetManagerUpdate,
   fleetManagerDocImageUpload,
+  deleteFleetManagerDocument,
   getAllFleetManagers,
   getSingleFleetManager,
 };

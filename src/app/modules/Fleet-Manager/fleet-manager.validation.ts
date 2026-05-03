@@ -72,6 +72,28 @@ const fleetManagerDocImageValidationSchema = z.object({
         required_error: 'Document title is required',
       },
     ),
+    docImageUrls: z
+      .array(
+        z
+          .string()
+          .url({ message: 'Each document image URL must be a valid URL' }),
+      )
+      .min(1, 'At least one document image URL is required'),
+  }),
+});
+
+// --------------------------------------------------
+// Fleet Manager Document Delete Validation Schema
+// --------------------------------------------------
+const fleetManagerDocImageDeleteValidationSchema = z.object({
+  body: z.object({
+    docImageTitle: z.enum(
+      ['myPhoto', 'idProofFront', 'idProofBack', 'businessLicense'],
+      {
+        required_error: 'Document image title is required',
+      },
+    ),
+    imageUrl: z.string({}).url({ message: 'Valid image URL is required' }),
   }),
 });
 
@@ -79,4 +101,5 @@ const fleetManagerDocImageValidationSchema = z.object({
 export const FleetManagerValidation = {
   fleetManagerUpdateValidationSchema,
   fleetManagerDocImageValidationSchema,
+  fleetManagerDocImageDeleteValidationSchema,
 };
