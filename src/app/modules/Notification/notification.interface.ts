@@ -1,5 +1,14 @@
 import { TUserRole } from '../../constant/user.constant';
 
+export type TNotificationType =
+  | 'ORDER'
+  | 'SYSTEM'
+  | 'PROMO'
+  | 'PAYOUT'
+  | 'ACCOUNT'
+  | 'PAYOUT_ALERT'
+  | 'OTHER';
+
 export type TNotification = {
   _id?: string;
   receiverId: string;
@@ -7,7 +16,7 @@ export type TNotification = {
   title: string;
   message: string;
   data?: Record<string, string>; // optional metadata
-  type?: 'ORDER' | 'SYSTEM' | 'PROMO' | 'PAYOUT' | 'ACCOUNT' | 'OTHER';
+  type?: TNotificationType;
   isRead: boolean;
   isDeleted: boolean;
   createdAt: Date;

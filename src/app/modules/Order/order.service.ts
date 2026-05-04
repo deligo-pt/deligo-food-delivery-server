@@ -284,8 +284,8 @@ const updateOrderStatusByVendor = async (
 
     const deliveryPartner = order.deliveryPartnerId
       ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
-        session,
-      })
+          session,
+        })
       : null;
     const deliveryPartnerId = deliveryPartner?.customUserId;
 
@@ -1076,7 +1076,7 @@ const updateOrderStatusByDeliveryPartner = async (
       { new: true, session },
     ).populate(
       'customerId vendorId',
-      'name userId role contactNumber currentSessionLocation profilePhoto',
+      'name customUserId role contactNumber currentSessionLocation profilePhoto',
     );
 
     if (!updatedOrder) {
@@ -1330,18 +1330,19 @@ const updateOrderStatusByDeliveryPartner = async (
     const customer = await Customer.findById(updatedOrder.customerId).lean();
     const customerId = customer?.customUserId;
     const vendor = await Vendor.findById(updatedOrder.vendorId).lean();
-    const vendorId = vendor?.customUserId
+    const vendorId = vendor?.customUserId;
 
     const notificationPayload = {
       title: `Order is now ${payload.orderStatus}`,
-      body: `${payload.orderStatus === 'PICKED_UP' // TODO: Notify Customer
-        ? `Your order ${orderId} is now PICKED_UP.`
-        : payload.orderStatus === 'ON_THE_WAY'
-          ? `Your order ${orderId} is now ON_THE_WAY.`
-          : payload.orderStatus === 'DELIVERED'
-            ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
-            : `Your order ${orderId} is  ${payload.orderStatus}.`
-        } `,
+      body: `${
+        payload.orderStatus === 'PICKED_UP' // TODO: Notify Customer
+          ? `Your order ${orderId} is now PICKED_UP.`
+          : payload.orderStatus === 'ON_THE_WAY'
+            ? `Your order ${orderId} is now ON_THE_WAY.`
+            : payload.orderStatus === 'DELIVERED'
+              ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
+              : `Your order ${orderId} is  ${payload.orderStatus}.`
+      } `,
       data: {
         orderId,
         orderStatus: payload.orderStatus,
@@ -1366,10 +1367,11 @@ const updateOrderStatusByDeliveryPartner = async (
       NotificationService.sendToUser(
         vendorId!,
         notificationPayload.title,
-        `${payload.orderStatus === 'ON_THE_WAY'
-          ? `Order ${orderId} is now ${payload.orderStatus}`
-          : payload.orderStatus === 'DELIVERED' &&
-          `Order ${orderId} is successfully ${payload.orderStatus} by delivery partner`
+        `${
+          payload.orderStatus === 'ON_THE_WAY'
+            ? `Order ${orderId} is now ${payload.orderStatus}`
+            : payload.orderStatus === 'DELIVERED' &&
+              `Order ${orderId} is successfully ${payload.orderStatus} by delivery partner`
         }`,
         notificationPayload.data,
         'default',

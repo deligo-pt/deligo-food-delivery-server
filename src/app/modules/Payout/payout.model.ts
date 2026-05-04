@@ -22,7 +22,7 @@ const payoutSchema = new Schema<TPayout>(
       required: true,
       enum: ['Vendor', 'DeliveryPartner', 'FleetManager'],
     },
-    senderId: {
+    senderObjectId: {
       type: Schema.Types.ObjectId,
       required: true,
       refPath: 'senderModel',

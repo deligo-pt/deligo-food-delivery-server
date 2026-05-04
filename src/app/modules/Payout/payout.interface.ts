@@ -5,8 +5,12 @@ export type TPayout = {
   userObjectId: mongoose.Types.ObjectId;
   userModel: 'Vendor' | 'DeliveryPartner' | 'FleetManager';
 
-  senderId: mongoose.Types.ObjectId;
+  senderObjectId: mongoose.Types.ObjectId;
   senderModel: 'Admin' | 'FleetManager';
+
+  startDate: Date;
+  endDate: Date;
+  paymentDate?: Date;
 
   amount: number;
   status: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';

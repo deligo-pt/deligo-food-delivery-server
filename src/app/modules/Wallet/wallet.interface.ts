@@ -11,4 +11,7 @@ export type TWallet = {
   totalEarnings: number;
   totalRiderPayable: number;
   totalFleetEarnings: number;
+
+  createdAt: Date;
+  updatedAt: Date;
 };
