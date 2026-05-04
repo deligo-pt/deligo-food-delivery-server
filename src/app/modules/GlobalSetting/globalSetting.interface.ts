@@ -45,7 +45,7 @@ export type TGlobalSettings = {
     cancelTimeLimitMinutes: number;
   };
 
-  // Loyalty & Rewards
+  //   Rewards
   rewards: {
     customerPointsPerEuro: number;
     riderPointsPerDelivery: number;
@@ -69,8 +69,46 @@ export type TGlobalSettings = {
     };
   };
 
+  // --------------------------------------------------
+  // Payout & Settlement Rules
+  // --------------------------------------------------
+  payout: {
+    /**
+     * If true, the system will automatically generate pending payout records
+     * based on the defined schedule.
+     */
+    autoGenerate: boolean;
+
+    /**
+     * Specific days of the week when payouts should be triggered.
+     * Example: ['Tuesday', 'Friday']
+     */
+    payoutDays: (
+      | 'Sunday'
+      | 'Monday'
+      | 'Tuesday'
+      | 'Wednesday'
+      | 'Thursday'
+      | 'Friday'
+      | 'Saturday'
+    )[];
+
+    /**
+     * The minimum accumulated unpaid earnings required to generate a payout record.
+     */
+    minPayoutAmount: number;
+
+    /**
+     * Defines how many days before the payout day the transaction window closes.
+     * Example: If set to 1, a Tuesday payout will only include earnings up to Monday.
+     */
+    payoutWindowDays: number;
+  };
+
   // Meta Data
   meta: {
     updatedBy: mongoose.Types.ObjectId;
   };
+  createdAt?: Date;
+  updatedAt?: Date;
 };
