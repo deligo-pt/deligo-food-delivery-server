@@ -1,5 +1,21 @@
 import { Schema, model } from 'mongoose';
-import { TGlobalSettings } from './globalSetting.interface';
+import { TGlobalSettings, TReferralMilestone } from './globalSetting.interface';
+
+// Referral Milestone Sub-Schema
+const ReferralMilestoneSchema = new Schema<TReferralMilestone>(
+  {
+    friendsRequired: { type: Number, required: true },
+    rewardType: {
+      type: String,
+      enum: ['CASHBACK', 'FREE_MEAL', 'FREE_DELIVERY', 'CREDIT', 'OTHER'],
+      required: true,
+    },
+    rewardValue: { type: Number, required: true, default: 0 },
+    minOrderAmountPerFriend: { type: Number, required: true, default: 0 },
+    validityDays: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
 
 const GlobalSettingsSchema = new Schema<TGlobalSettings>(
   {
@@ -44,23 +60,28 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
     // Loyalty & Rewards
     // --------------------------------------------------
     rewards: {
-      customerPointsPerEuro: { type: Number, default: 0 },
-      riderPointsPerDelivery: { type: Number, default: 0 },
-      referralPoints: { type: Number, default: 0 },
-      newRiderWelcomeBonus: { type: Number, default: 0 },
-      pointsExpiryDays: { type: Number, default: 0 },
+      customerPointsPerEuro: {
+        type: Number,
+        default: 0,
+      },
+      riderPointsPerDelivery: {
+        type: Number,
+        default: 0,
+      },
+      referralPoints: {
+        type: Number,
+        default: 0,
+      },
+      newRiderWelcomeBonus: {
+        type: Number,
+        default: 0,
+      },
+      pointsExpiryDays: {
+        type: Number,
+        default: 0,
+      },
       customerReferralMilestones: {
-        type: [
-          {
-            friendsRequired: Number,
-            rewardType: {
-              type: String,
-              enum: ['CASHBACK', 'FREE_MEAL', 'FREE_DELIVERY', 'CREDIT'],
-            },
-            rewardValue: Number,
-            minOrderAmountPerFriend: Number,
-          },
-        ],
+        type: [ReferralMilestoneSchema],
         default: [],
       },
     },

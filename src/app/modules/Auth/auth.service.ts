@@ -34,6 +34,7 @@ import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
+import { ReferralServices } from '../Referral/referral.service';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -413,23 +414,39 @@ const loginUser = async (
 
 // login customer
 const loginCustomer = async (payload: TLoginCustomer) => {
+  const { email, contactNumber, referralCode } = payload;
   // -----------------------------------------------------
   // Validate input
   // -----------------------------------------------------
-  if (!payload?.email && !payload?.contactNumber) {
+  if (!email && !contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Email or contact number is required',
     );
   }
 
+  // Helper with internal error handling
+  const handleReferral = async (user: any, code?: string) => {
+    if (!code) return;
+    try {
+      const res = await ReferralServices.createReferralEntry(user, code);
+      if (res?.referrerId) {
+        await Customer.findByIdAndUpdate(user._id, {
+          referredBy: res.referrerId,
+        });
+      }
+    } catch (error) {
+      console.error('Referral Processing Error:', error);
+    }
+  };
+
   // -----------------------------------------------------
   // Email Login Logic
   // -----------------------------------------------------
-  if (payload.email) {
+  if (email) {
     // Check if email exists in other user models
     const checkModels = ALL_USER_MODELS.map((M: any) =>
-      M.isUserExistsByEmail(payload.email).catch(() => null),
+      M.isUserExistsByEmail(email).catch(() => null),
     );
     const checkUser = await Promise.all(checkModels);
     const foundUser = checkUser.find((u) => u);
@@ -443,8 +460,16 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
     // Fetch existing customer by email
     const existingUser = await Customer.findOne({
-      email: payload.email,
+      email,
     }).lean();
+
+    // Prevent returning users from using referral codes
+    if (existingUser && referralCode) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Referral code is only valid for new registrations',
+      );
+    }
 
     // Generate OTP
     const { otp } = generateOtp();
@@ -454,12 +479,13 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     if (!existingUser) {
       const userId = generateUserId('/create-customer');
 
-      await Customer.create({
+      const newUser = await Customer.create({
         userId,
         role: 'CUSTOMER',
-        email: payload.email,
+        email,
         requiresOtpVerification: true,
       });
+      await handleReferral(newUser, referralCode);
     } else {
       await Customer.updateOne(
         { _id: existingUser._id },
@@ -489,18 +515,25 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   // -----------------------------------------------------
   // Mobile Login Logic
   // -----------------------------------------------------
-  if (payload.contactNumber) {
+  if (contactNumber) {
     // Fetch existing customer by mobile number
     const existingUser = await Customer.findOne({
-      contactNumber: payload.contactNumber,
+      contactNumber,
     }).lean();
 
+    if (existingUser && referralCode) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Referral code is only valid for new registrations',
+      );
+    }
+
     const isTestNumber =
-      payload.contactNumber ===
+      contactNumber ===
       (config.customer.test_customer_contact_number as string);
 
     // Send mobile OTP
-    const res = await sendMobileOtp(payload.contactNumber);
+    const res = await sendMobileOtp(contactNumber);
     const mobileOtpId = isTestNumber ? 'test-otp-id' : res.data.id;
 
     if (existingUser) {
@@ -514,13 +547,15 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       );
     } else {
       const userId = generateUserId('/create-customer');
-      await Customer.create({
+      const newUser = await Customer.create({
         userId,
         role: 'CUSTOMER',
-        contactNumber: payload.contactNumber,
+        contactNumber,
         mobileOtpId,
         requiresOtpVerification: true,
       });
+
+      await handleReferral(newUser, referralCode);
     }
 
     return {
