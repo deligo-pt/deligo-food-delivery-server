@@ -13,7 +13,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
  * Formula: Order Amount * Global Points Per Euro Rate.
  */
 const addOrderPoints = async (
-  userId: Types.ObjectId | string,
+  userObjectId: Types.ObjectId | string,
   orderId: string,
   externalSession?: ClientSession,
 ) => {
@@ -25,7 +25,7 @@ const addOrderPoints = async (
   try {
     // 1. Check if points were already granted for this specific order
     const alreadyReceived = await PointsLog.findOne({
-      'userId.id': userId,
+      'userId.id': userObjectId,
       referenceId: orderId,
       transactionType: 'EARN',
     }).session(session);
@@ -46,7 +46,7 @@ const addOrderPoints = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
     }
     // 3. Security: Ensure the points are being added for the correct customer
-    if (existsOrder.customerId?.toString() !== userId.toString()) {
+    if (existsOrder.customerId?.toString() !== userObjectId.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'Unauthorized: This order does not belong to the specified user.',
@@ -83,34 +83,17 @@ const addOrderPoints = async (
     expiryDate.setDate(expiryDate.getDate() + expiryDays);
 
     if (pointsToAdd > 0) {
-      // 6. Update user's point balance (Atomic Increment)
-      await Points.findOneAndUpdate(
-        { 'userId.id': userId },
-        {
-          $inc: { currentPoints: pointsToAdd, totalEarned: pointsToAdd },
-          $set: { expiryDate },
-          $setOnInsert: {
-            'userId.id': userId,
-            'userId.model': 'Customer',
-            'userId.role': role,
-          },
-        },
-        { upsert: true, session, new: true },
-      );
-
-      // 7. Record the point transaction in audit log
-      await PointsLog.create(
-        [
-          {
-            userId: { id: userId, model: 'Customer', role: role },
-            points: pointsToAdd,
-            transactionType: 'EARN',
-            referenceId: orderId,
-            onModel: 'Order',
-            description: `Earned ${pointsToAdd} points for completing order #${orderId} of €${orderAmount}`,
-          },
-        ],
-        { session },
+      await updatePointBalance(
+        userObjectId,
+        'Customer',
+        'CUSTOMER',
+        pointsToAdd,
+        'EARN',
+        orderId,
+        'Order',
+        `Earned ${pointsToAdd} points for order €${orderAmount}`,
+        session,
+        settings?.rewards?.pointsExpiryDays,
       );
     }
 
@@ -124,7 +107,7 @@ const addOrderPoints = async (
     if (!externalSession) await session.abortTransaction();
     try {
       await PointsLog.create({
-        userId: { id: userId, model: 'Customer', role: role },
+        userId: { id: userObjectId, model: 'Customer', role: role },
         points: 0,
         transactionType: 'FAILED_LOG',
         referenceId: orderId as any,
@@ -279,6 +262,79 @@ const addDeliveryPartnerPoints = async (
   } finally {
     if (!externalSession) session.endSession();
   }
+};
+
+const updatePointBalance = async (
+  userId: Types.ObjectId | string,
+  model: 'Customer' | 'DeliveryPartner' | 'Vendor',
+  role: string,
+  points: number,
+  type: 'EARN' | 'REFERRAL_BONUS' | 'REDEEM' | 'ADJUSTMENT',
+  refId: string,
+  refModel: 'Order' | 'Referral' | 'RewardClaim',
+  desc: string,
+  session: ClientSession,
+  expiryDays: number = 365,
+) => {
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
+  const pointsToUpdate =
+    type === 'REDEEM' ? -Math.abs(points) : Math.abs(points);
+
+  const updateQuery: any = {
+    'userId.id': userId,
+    'userId.model': model,
+  };
+
+  if (type === 'REDEEM') {
+    updateQuery.currentPoints = { $gte: Math.abs(points) };
+  }
+
+  const updatedPoints = await Points.findOneAndUpdate(
+    updateQuery,
+    {
+      $inc: {
+        currentPoints: pointsToUpdate,
+        totalEarned: type !== 'REDEEM' ? Math.abs(points) : 0,
+        totalSpent: type === 'REDEEM' ? Math.abs(points) : 0,
+      },
+      $set: { expiryDate },
+      $setOnInsert: {
+        'userId.id': userId,
+        'userId.model': model,
+        'userId.role': role,
+      },
+    },
+    {
+      upsert: type !== 'REDEEM',
+      session,
+      new: true,
+    },
+  );
+
+  if (!updatedPoints && type === 'REDEEM') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Insufficient points balance. Transaction declined to prevent negative balance.',
+    );
+  }
+
+  await PointsLog.create(
+    [
+      {
+        userId: { id: userId, model, role },
+        points: pointsToUpdate,
+        transactionType: type,
+        referenceId: refId,
+        onModel: refModel,
+        description: desc,
+      },
+    ],
+    { session },
+  );
+
+  return updatedPoints;
 };
 
 // Fetch my points

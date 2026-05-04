@@ -1,5 +1,13 @@
 import mongoose from 'mongoose';
 
+export type TReferralMilestone = {
+  friendsRequired: number;
+  rewardType: 'CASHBACK' | 'FREE_MEAL' | 'FREE_DELIVERY' | 'CREDIT' | 'OTHER';
+  rewardValue: number;
+  minOrderAmountPerFriend: number;
+  validityDays?: number;
+};
+
 export type TGlobalSettings = {
   // --------------------------------------------------
   // Delivery Pricing
@@ -37,19 +45,14 @@ export type TGlobalSettings = {
     cancelTimeLimitMinutes: number;
   };
 
-  // Loyalty & Rewards
+  //   Rewards
   rewards: {
     customerPointsPerEuro: number;
     riderPointsPerDelivery: number;
     referralPoints: number;
     newRiderWelcomeBonus: number;
     pointsExpiryDays: number;
-    customerReferralMilestones: {
-      friendsRequired: number;
-      rewardType: 'CASHBACK' | 'FREE_MEAL' | 'FREE_DELIVERY' | 'CREDIT';
-      rewardValue: number;
-      minOrderAmountPerFriend: number;
-    }[];
+    customerReferralMilestones: TReferralMilestone[];
   };
 
   // Security & System State
