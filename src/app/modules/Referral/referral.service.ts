@@ -259,7 +259,10 @@ const getReferralStats = async (currentUser: AuthUser) => {
     })),
     referralHistory: referrals.map((ref: any) => ({
       id: ref._id,
-      friendName: ref.referredId?.name?.firstName || 'DeliGo User',
+      friendName:
+        ref.referredId?.name?.firstName +
+          ' ' +
+          ref.referredId?.name?.lastName || 'DeliGo User',
       friendPhoto: ref.referredId?.profilePhoto,
       status: ref.status,
       date: ref.createdAt,
