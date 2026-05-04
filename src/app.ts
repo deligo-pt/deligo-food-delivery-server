@@ -10,7 +10,6 @@ import notFound from './app/middlewares/notFound';
 import config from './app/config';
 import { rateLimiter } from './app/middlewares/rateLimiter';
 import router from './app/routes';
-import { logIPToDB } from './app/modules/log/ipLogger';
 
 const app: Application = express();
 
@@ -35,7 +34,7 @@ app.use(cookieParser());
 //parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(logIPToDB);
+// app.use(logIPToDB);
 
 app.use(rateLimiter('global'));
 app.use('/api/v1', router);
