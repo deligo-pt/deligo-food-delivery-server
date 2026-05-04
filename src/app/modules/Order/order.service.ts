@@ -32,7 +32,6 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { Admin } from '../Admin/admin.model';
 import customNanoId from '../../utils/customNanoId';
 import { PointsServices } from '../Points/points.service';
-import { ReferralServices } from '../Referral/referral.service';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -285,8 +284,8 @@ const updateOrderStatusByVendor = async (
 
     const deliveryPartner = order.deliveryPartnerId
       ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
-          session,
-        })
+        session,
+      })
       : null;
     const deliveryPartnerId = deliveryPartner?.customUserId;
 
@@ -1017,6 +1016,7 @@ const updateOrderStatusByDeliveryPartner = async (
 
   // VALID state transitions
   const validTransitions: Record<string, string> = {
+    [ORDER_STATUS.PICKED_UP]: ORDER_STATUS.READY_FOR_PICKUP,
     [ORDER_STATUS.ON_THE_WAY]: ORDER_STATUS.PICKED_UP,
     [ORDER_STATUS.DELIVERED]: ORDER_STATUS.ON_THE_WAY,
     [ORDER_STATUS.REASSIGNMENT_NEEDED]: ORDER_STATUS.ASSIGNED,
@@ -1076,7 +1076,7 @@ const updateOrderStatusByDeliveryPartner = async (
       { new: true, session },
     ).populate(
       'customerId vendorId',
-      'name customUserId role contactNumber currentSessionLocation profilePhoto',
+      'name userId role contactNumber currentSessionLocation profilePhoto',
     );
 
     if (!updatedOrder) {
@@ -1095,24 +1095,16 @@ const updateOrderStatusByDeliveryPartner = async (
           `Order status is already ${payload.orderStatus}.`,
         );
       }
-
-      if (!orderCheck.isOtpVerified && payload.orderStatus === 'ON_THE_WAY') {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Please verify the OTP first to start delivery.',
-        );
-      } else {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
-        );
-      }
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+      );
     }
 
     // Update partner record
     if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
       const partner = await DeliveryPartner.findById(
-        updatedOrder.deliveryPartnerId,
+        updatedOrder?.deliveryPartnerId,
       );
       if (!partner) {
         throw new AppError(
@@ -1134,12 +1126,6 @@ const updateOrderStatusByDeliveryPartner = async (
           session,
         );
       }
-
-      await ReferralServices.distributeReferralBonus(
-        updatedOrder.customerId.toString(),
-        updatedOrder._id.toString(),
-        session,
-      );
 
       const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
 
@@ -1168,7 +1154,7 @@ const updateOrderStatusByDeliveryPartner = async (
 
       // --- Vendor Wallet Update ---
       await Wallet.findOneAndUpdate(
-        { customUserId: updatedOrder.vendorId, userModel: 'Vendor' },
+        { userObjectId: updatedOrder.vendorId?._id, userModel: 'Vendor' },
         {
           $setOnInsert: { walletId: `WAL-V-${customNanoId(8)}` },
           $inc: {
@@ -1303,7 +1289,7 @@ const updateOrderStatusByDeliveryPartner = async (
       );
 
       await DeliveryPartner.updateOne(
-        { customUserId: currentUser.customUserId },
+        { customUserId: currentUser?.customUserId },
         {
           $set: {
             'operationalData.currentOrderId': null,
@@ -1321,7 +1307,7 @@ const updateOrderStatusByDeliveryPartner = async (
       );
     } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
       await DeliveryPartner.updateOne(
-        { customUserId: currentUser.customUserId },
+        { customUserId: currentUser?.customUserId },
         {
           $set: {
             'operationalData.currentOrderId': null,
@@ -1344,17 +1330,18 @@ const updateOrderStatusByDeliveryPartner = async (
     const customer = await Customer.findById(updatedOrder.customerId).lean();
     const customerId = customer?.customUserId;
     const vendor = await Vendor.findById(updatedOrder.vendorId).lean();
-    const vendorId = vendor?.customUserId;
+    const vendorId = vendor?.customUserId
 
     const notificationPayload = {
       title: `Order is now ${payload.orderStatus}`,
-      body: `${
-        payload.orderStatus === 'ON_THE_WAY'
+      body: `${payload.orderStatus === 'PICKED_UP' // TODO: Notify Customer
+        ? `Your order ${orderId} is now PICKED_UP.`
+        : payload.orderStatus === 'ON_THE_WAY'
           ? `Your order ${orderId} is now ON_THE_WAY.`
           : payload.orderStatus === 'DELIVERED'
             ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
             : `Your order ${orderId} is  ${payload.orderStatus}.`
-      } `,
+        } `,
       data: {
         orderId,
         orderStatus: payload.orderStatus,
@@ -1371,15 +1358,18 @@ const updateOrderStatusByDeliveryPartner = async (
         'ORDER',
       );
     }
-    if (vendorId) {
+    if (
+      vendorId &&
+      (payload.orderStatus === 'ON_THE_WAY' ||
+        payload.orderStatus === 'DELIVERED')
+    ) {
       NotificationService.sendToUser(
         vendorId!,
         notificationPayload.title,
-        `${
-          payload.orderStatus === 'ON_THE_WAY'
-            ? `Order ${orderId} is now ${payload.orderStatus}`
-            : payload.orderStatus === 'DELIVERED' &&
-              `Order ${orderId} is successfully ${payload.orderStatus} by delivery partner`
+        `${payload.orderStatus === 'ON_THE_WAY'
+          ? `Order ${orderId} is now ${payload.orderStatus}`
+          : payload.orderStatus === 'DELIVERED' &&
+          `Order ${orderId} is successfully ${payload.orderStatus} by delivery partner`
         }`,
         notificationPayload.data,
         'default',
