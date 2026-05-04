@@ -32,6 +32,7 @@ import { IngredientRoutes } from '../modules/Ingredients/ingredients.route';
 import { IngredientOrderRoutes } from '../modules/Ingredient-Order/ing-order.route';
 import { PointsRoutes } from '../modules/Points/points.route';
 import { RestrictedItemsRoutes } from '../modules/RestrictedItems/restrictedItems.route';
+import { ReferralRoutes } from '../modules/Referral/referral.route';
 
 const router = Router();
 
@@ -168,6 +169,10 @@ const moduleRoutes = [
   {
     path: '/restricted-items',
     route: RestrictedItemsRoutes,
+  },
+  {
+    path: '/referrals',
+    route: ReferralRoutes,
   },
 ];
 
