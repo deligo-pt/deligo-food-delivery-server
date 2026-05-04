@@ -274,7 +274,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(async (re
 
 // get customer insights controller
 const getAdminCustomerInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminCustomerInsights(req.query);
+  const result = await AnalyticsServices.getAdminCustomerInsights();
 
   sendResponse(res, {
     success: true,
@@ -299,8 +299,8 @@ const getPlatformEarnings = catchAsync(async (req, res) => {
 });
 
 // get top vendors controller
-const getTopVendors = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getTopVendors(req.query);
+const getAdminTopVendors = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminTopVendors(req.query);
 
   sendResponse(res, {
     success: true,
@@ -311,8 +311,8 @@ const getTopVendors = catchAsync(async (req, res) => {
 });
 
 // get peak hours controller
-const getPeakHourAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getPeakHourAnalytics(req.query);
+const getAdminPeakHourAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminPeakHourAnalytics();
 
   sendResponse(res, {
     success: true,
@@ -323,8 +323,8 @@ const getPeakHourAnalytics = catchAsync(async (req, res) => {
 });
 
 // get delivery insights controller
-const getDeliveryInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getDeliveryInsights(req.query);
+const getAdminDeliveryInsights = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminDeliveryInsights(req.query);
 
   sendResponse(res, {
     success: true,
@@ -473,41 +473,41 @@ export const AnalyticsControllers = {
   // ---------------------------------------
   // Analytics Services (Developer Morshed)
   // ---------------------------------------
-  getVendorSalesAnalytics,
-  getCustomerInsights,
-  getOrderTrendInsights,
-  getTopSellingItemsAnalytics,
+  getVendorSalesAnalytics, // \/
+  getCustomerInsights, // \/
+  getOrderTrendInsights, // \/
+  getTopSellingItemsAnalytics, // \/
   getAdminSalesReportAnalytics,
   getAdminOrderReportAnalytics,
-  getAdminCustomerReportAnalytics,
-  getAdminVendorReportAnalytics,
-  getAdminFleetManagerReportAnalytics,
-  getAdminDeliveryPartnerReportAnalytics,
-  getVendorSalesReportAnalytics,
+  getAdminCustomerReportAnalytics, // \/
+  getAdminVendorReportAnalytics, // \/
+  getAdminFleetManagerReportAnalytics, // \/
+  getAdminDeliveryPartnerReportAnalytics, // \/
+  getVendorSalesReportAnalytics, // \/
   getVendorCustomerReport,
-  getVendorTaxReport,
-  getFleetManagerPerformanceAnalytics,
-  getSingleFleetPerformanceDetailsAnalytics,
-  getAdminSalesAnalytics,
-  getDeliveryPartnerPerformanceAnalytics,
-  getSingleDeliveryPartnerPerformanceDetailsAnalytics,
-  getAdminCustomerInsights,
-  getPlatformEarnings,
-  getTopVendors,
-  getPeakHourAnalytics,
-  getDeliveryInsights,
+  getVendorTaxReport, // \/
+  getFleetManagerPerformanceAnalytics, // \/
+  getSingleFleetPerformanceDetailsAnalytics, // \/
+  getAdminSalesAnalytics, // \/
+  getDeliveryPartnerPerformanceAnalytics, // \/
+  getSingleDeliveryPartnerPerformanceDetailsAnalytics, // \/
+  getAdminCustomerInsights, // \/
+  getPlatformEarnings, // \/
+  getAdminTopVendors, // \/
+  getAdminPeakHourAnalytics, // \/
+  getAdminDeliveryInsights, // \/
 
   // ---------------------------------------
   // Analytics Services (Developer Umayer)
   // ---------------------------------------
-  getAdminDashboardAnalytics,
-  getVendorDashboardAnalytics,
-  getFleetDashboardAnalytics,
-  getPartnerPerformanceAnalytics,
-  getDeliveryPartnerEarningAnalytics,
-  getFleetManagerEarningAnalytics,
-  getVendorEarningsAnalytics,
-  getAllCustomerAnalytics,
-  getVendorPerformanceAnalytics,
-  getSingleVendorPerformanceDetails,
+  getAdminDashboardAnalytics, // \/
+  getVendorDashboardAnalytics, // \/
+  getFleetDashboardAnalytics, // \/
+  getPartnerPerformanceAnalytics, // \/
+  getDeliveryPartnerEarningAnalytics, // \/
+  getFleetManagerEarningAnalytics, // \/
+  getVendorEarningsAnalytics, // \/
+  getAllCustomerAnalytics, // \/
+  getVendorPerformanceAnalytics, // \/
+  getSingleVendorPerformanceDetails, // \/
 };

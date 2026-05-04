@@ -60,7 +60,7 @@ const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
     {
       $match: {
         vendorId,
-        orderStatus: 'DELIVERED',
+        // orderStatus: 'DELIVERED',
         isPaid: true,
         isDeleted: false,
         createdAt: { $gte: sevenDaysAgo },
@@ -270,7 +270,7 @@ const getCustomerInsights = async (currentUser: AuthUser) => {
   ).length;
 
   const returningCustomers = customersRaw.filter(
-    (c: any) => c.totalOrders > 1,
+    (c: any) => c.totalOrders > 0,
   ).length;
 
   const avgOrders =
@@ -404,7 +404,7 @@ const getOrderTrendInsights = async (currentUser: AuthUser) => {
     {
       $match: {
         vendorId,
-        orderStatus: 'DELIVERED',
+        // orderStatus: 'DELIVERED',
         isPaid: true,
         isDeleted: false,
         createdAt: { $gte: twentyEightDaysAgo },
@@ -1454,13 +1454,8 @@ const getVendorSalesReportAnalytics = async (
             $group: {
               _id: null,
               totalSales: {
-                $sum: {
-                  $cond: [
-                    { $eq: ['$orderStatus', 'DELIVERED'] },
-                    '$orderCalculation.totalOriginalPrice',
-                    0,
-                  ],
-                },
+                $sum:
+                  '$orderCalculation.totalOriginalPrice',
               },
               totalOrders: { $sum: 1 },
             },
@@ -3117,7 +3112,7 @@ const getAdminSalesAnalytics = async (query: any) => {
             $group: {
               _id: '$vendorId',
               revenue: {
-                $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] },
+                $sum: { $ifNull: ['$payoutSummary.vendor.earningsWithoutTax', 0] },
               },
             },
           },
@@ -3237,20 +3232,10 @@ const getAdminSalesAnalytics = async (query: any) => {
 };
 
 // get admin customer insights analytics api
-const getAdminCustomerInsights = async (query: {
-  fromDate?: string;
-  toDate?: string;
-}): Promise<TCustomerInsights> => {
+const getAdminCustomerInsights = async (): Promise<TCustomerInsights> => {
   const now = new Date();
-  const to = query.toDate ? new Date(query.toDate) : now;
-  const from = query.fromDate
-    ? new Date(query.fromDate)
-    : new Date(new Date().setDate(to.getDate() - 30));
 
-  from.setHours(0, 0, 0, 0);
-  to.setHours(23, 59, 59, 999);
-
-  // Time-frames for AU and Churn
+  // Time-frames for AU and Churn snapshots (Keep these for relative activity)
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -3275,21 +3260,6 @@ const getAdminCustomerInsights = async (query: {
               },
               firstOrderDate: { $min: '$createdAt' },
               lastOrderDate: { $max: '$createdAt' },
-              // Count orders specifically within the user-selected range
-              ordersInSelectedRange: {
-                $sum: {
-                  $cond: [
-                    {
-                      $and: [
-                        { $gte: ['$createdAt', from] },
-                        { $lte: ['$createdAt', to] },
-                      ],
-                    },
-                    1,
-                    0,
-                  ],
-                },
-              },
             },
           },
           {
@@ -3305,32 +3275,22 @@ const getAdminCustomerInsights = async (query: {
           },
           {
             $addFields: {
-              /** NEW CUSTOMER: First order ever happened in this range */
+              /** NEW CUSTOMER: First order ever happened in the last 30 days */
               isNew: {
                 $cond: [
-                  {
-                    $and: [
-                      { $gte: ['$firstOrderDate', from] },
-                      { $lte: ['$firstOrderDate', to] },
-                    ],
-                  },
+                  { $gte: ['$firstOrderDate', thirtyDaysAgo] },
                   1,
                   0,
                 ],
               },
-              /** RETURNING CUSTOMER: Had orders before this range AND ordered again within this range */
+              /** RETURNING CUSTOMER: Has more than 1 lifetime order */
               isReturning: {
-                $cond: [{ $gt: ['$totalOrders', 0] }, 1, 0],
+                $cond: [{ $gt: ['$totalOrders', 1] }, 1, 0],
               },
-              /** CHURNED: Hasn't ordered in recent times */
+              /** CHURNED: Hasn't ordered in the last 30 days */
               isChurned: {
                 $cond: [
-                  {
-                    $and: [
-                      { $gt: ['$totalOrders', 0] }, // had history
-                      { $eq: ['$ordersInRange', 0] }, // inactive now
-                    ],
-                  },
+                  { $lt: ['$lastOrderDate', thirtyDaysAgo] },
                   1,
                   0,
                 ],
@@ -3339,10 +3299,10 @@ const getAdminCustomerInsights = async (query: {
           },
         ],
         hourlyDistribution: [
-          { $match: { createdAt: { $gte: from, $lte: to } } },
+          // Removed the $match filter to include all-time distribution
           {
             $group: {
-              _id: { $hour: { date: '$createdAt', timezone: 'Asia/Dhaka' } },
+              _id: { $hour: { date: '$createdAt', timezone: timezone } },
               count: { $sum: 1 },
             },
           },
@@ -3389,7 +3349,6 @@ const getAdminCustomerInsights = async (query: {
     (c: any) => c.isChurned === 1,
   ).length;
 
-  // CLV should be based on Total Spent by all non-deleted customers
   const totalLifetimeRevenue = customerBase.reduce(
     (acc: number, c: any) => acc + c.totalSpent,
     0,
@@ -3428,26 +3387,26 @@ const getAdminCustomerInsights = async (query: {
       {
         range: '1 order',
         userCount: customerBase.filter(
-          (c: any) => c.ordersInSelectedRange === 1,
+          (c: any) => c.totalOrders === 1,
         ).length,
       },
       {
         range: '2-3 orders',
         userCount: customerBase.filter(
           (c: any) =>
-            c.ordersInSelectedRange >= 2 && c.ordersInSelectedRange <= 3,
+            c.totalOrders >= 2 && c.totalOrders <= 3,
         ).length,
       },
       {
         range: '4-5 orders',
         userCount: customerBase.filter(
           (c: any) =>
-            c.ordersInSelectedRange >= 4 && c.ordersInSelectedRange <= 5,
+            c.totalOrders >= 4 && c.totalOrders <= 5,
         ).length,
       },
       {
         range: '5+ orders',
-        userCount: customerBase.filter((c: any) => c.ordersInSelectedRange > 5)
+        userCount: customerBase.filter((c: any) => c.totalOrders > 5)
           .length,
       },
     ],
@@ -3460,7 +3419,7 @@ const getAdminCustomerInsights = async (query: {
 };
 
 // get top vendors for admin
-const getTopVendors = async (query: {
+const getAdminTopVendors = async (query: {
   fromDate?: string;
   toDate?: string;
 }): Promise<TVendorInsights> => {
@@ -3600,18 +3559,7 @@ const getTopVendors = async (query: {
 };
 
 // get peak hourly analytics for admin
-const getPeakHourAnalytics = async (query: {
-  fromDate?: string;
-  toDate?: string;
-}): Promise<TPeakHoursInsights> => {
-  const now = new Date();
-  const to = query.toDate ? new Date(query.toDate) : now;
-  const from = query.fromDate
-    ? new Date(query.fromDate)
-    : new Date(new Date().setDate(to.getDate() - 7));
-
-  from.setHours(0, 0, 0, 0);
-  to.setHours(23, 59, 59, 999);
+const getAdminPeakHourAnalytics = async (): Promise<TPeakHoursInsights> => {
 
   // 1. Get real efficiency: (Total Delivered Orders / Unique Rider-Hours)
   const [efficiencyData] = await Order.aggregate([
@@ -3651,7 +3599,6 @@ const getPeakHourAnalytics = async (query: {
     {
       $match: {
         isDeleted: false,
-        createdAt: { $gte: from, $lte: to },
       },
     },
     {
@@ -3708,8 +3655,6 @@ const getPeakHourAnalytics = async (query: {
   const riderDemandGap = hourlyOrders
     .filter((h) => h.orderCount > 0)
     .map((h) => {
-      // Logic: Use the count of riders who actually took orders,
-      // or fall back to 80% of current online pool as a capacity baseline
       const activeRiders = Math.max(
         h.activeRidersInHour,
         Math.floor(onlineRidersCount * 0.8),
@@ -3767,7 +3712,7 @@ const getPeakHourAnalytics = async (query: {
 };
 
 // get delivery insights analytics for admin
-const getDeliveryInsights = async (query: {
+const getAdminDeliveryInsights = async (query: {
   fromDate?: string;
   toDate?: string;
 }): Promise<TDeliveryInsights> => {
@@ -5537,9 +5482,9 @@ export const AnalyticsServices = {
   getSingleDeliveryPartnerPerformanceDetailsAnalytics,
   getAdminCustomerInsights,
   getPlatformEarnings,
-  getTopVendors,
-  getPeakHourAnalytics,
-  getDeliveryInsights,
+  getAdminTopVendors,
+  getAdminPeakHourAnalytics,
+  getAdminDeliveryInsights,
 
   // ----------------------------------
   // New Analytics Services (Developer: Umayer)
