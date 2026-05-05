@@ -39,7 +39,7 @@ const payoutSchema = new Schema<TPayout>(
     },
     status: {
       type: String,
-      enum: ['PENDING', 'PROCESSING', 'PAID', 'FAILED'],
+      enum: ['PENDING', 'PAID'],
       default: 'PENDING',
     },
     paymentMethod: {

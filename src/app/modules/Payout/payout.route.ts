@@ -11,24 +11,9 @@ const router = Router();
 // initiate payout
 router.post(
   '/initiate-settlement',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  auth('FLEET_MANAGER'),
   validateRequest(PayoutValidation.InitiateSettlementValidationSchema),
   PayoutController.initiateSettlement,
-);
-
-// reject payout
-router.post(
-  '/reject-payout/:payoutId',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
-  validateRequest(PayoutValidation.RejectPayoutValidationSchema),
-  PayoutController.rejectPayout,
-);
-
-// retry failed payout
-router.post(
-  '/retry-failed-payout/:payoutId',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
-  PayoutController.retryFailedPayout,
 );
 
 // finalize payout
