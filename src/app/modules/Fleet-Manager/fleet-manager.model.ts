@@ -57,11 +57,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     isDeleted: { type: Boolean, default: false },
     isUpdateLocked: { type: Boolean, default: false },
 
-    // ------------------------------------------
-    // FCM Tokens
-    // ------------------------------------------
-    fcmTokens: { type: [String], default: [] },
-
     // --------------------------------------------------------
     // Pending temporary Email and contact number
     // --------------------------------------------------------

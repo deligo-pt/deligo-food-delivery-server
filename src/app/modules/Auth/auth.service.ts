@@ -294,7 +294,7 @@ const onboardUser = async <
 
 // Login User
 const loginUser = async (
-  payload: TLoginUser & { deviceDetails?: TLoginDevice; forceLogin?: boolean },
+  payload: TLoginUser & { deviceDetails: TLoginDevice; forceLogin?: boolean },
 ) => {
   // checking if the user is exist
   const { user, model } = await findUserByEmail({
@@ -336,49 +336,57 @@ const loginUser = async (
   }
 
   const deviceLimit = ROLE_DEVICE_LIMITS[user.role] || 3;
+  const { deviceId, fcmToken, deviceType, deviceName, userAgent, ip } =
+    payload.deviceDetails;
 
   const newDevice: TLoginDevice = {
-    deviceId: payload.deviceDetails?.deviceId || 'unknown',
-    deviceType: payload.deviceDetails?.deviceType || 'unknown',
-    deviceName: payload.deviceDetails?.deviceName || '',
-    userAgent: payload.deviceDetails?.userAgent || '',
-    ip: payload.deviceDetails?.ip || '',
+    deviceId: deviceId || 'unknown',
+    deviceType: deviceType || 'unknown',
+    deviceName: deviceName || '',
+    fcmToken: fcmToken || '',
+    userAgent: userAgent || '',
+    ip: ip || '',
     isVerified: true,
+    isLoggedIn: true,
     lastLogin: new Date(),
   };
 
   const existingDeviceIndex = user.loginDevices?.findIndex(
     (device: TLoginDevice) => device.deviceId === newDevice.deviceId,
   );
-  const isSameDevice = existingDeviceIndex > -1;
 
-  if (!isSameDevice && user.loginDevices?.length >= deviceLimit) {
-    if (!payload.forceLogin) {
-      throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
-    }
-  }
-
+  const isExisting =
+    existingDeviceIndex !== undefined && existingDeviceIndex > -1;
   let updateQuery: any;
+  const options: any = { new: true };
 
-  if (isSameDevice) {
+  if (isExisting) {
     updateQuery = {
-      $set: { [`loginDevices.${existingDeviceIndex}`]: newDevice },
+      $set: { ['loginDevices.$[elem]']: newDevice },
     };
-  } else if (payload.forceLogin && user.loginDevices?.length >= deviceLimit) {
-    if (deviceLimit === 1) {
-      updateQuery = { $set: { loginDevices: [newDevice] } };
-    } else {
-      await model.findOneAndUpdate(
-        { _id: user._id },
-        { $pop: { loginDevices: -1 } },
-      );
-      updateQuery = { $push: { loginDevices: newDevice } };
-    }
+    options.arrayFilters = [{ 'elem.deviceId': newDevice.deviceId }];
   } else {
-    updateQuery = { $push: { loginDevices: newDevice } };
+    if (user.loginDevices?.length >= deviceLimit) {
+      if (!payload.forceLogin) {
+        throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
+      }
+
+      updateQuery = {
+        $push: {
+          loginDevices: {
+            $each: [newDevice],
+            $slice: -deviceLimit,
+          },
+        },
+      };
+    } else {
+      updateQuery = {
+        $push: { loginDevices: newDevice },
+      };
+    }
   }
 
-  await model.findOneAndUpdate({ _id: user._id }, updateQuery, { new: true });
+  await model.findOneAndUpdate({ _id: user._id }, updateQuery, options);
   //create token and sent to the  client
   const jwtPayload = {
     userId: user?.userId,
@@ -601,11 +609,7 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
 };
 
 // Logout User
-const logoutUser = async (email: string, token: string, deviceId?: string) => {
-  if (!token) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Fcm token is required');
-  }
-
+const logoutUser = async (email: string, deviceId: string) => {
   const result = await findUserByEmail({ email, isDeleted: false });
   const { user, model } = result || {};
 
@@ -614,18 +618,21 @@ const logoutUser = async (email: string, token: string, deviceId?: string) => {
   }
 
   const updateQuery: any = {
-    $pull: { fcmTokens: token },
+    $set: {
+      'loginDevices.$[elem].isLoggedIn': false,
+    },
   };
 
-  if (deviceId) {
-    updateQuery.$pull.loginDevices = { deviceId: deviceId };
-  }
-
   if (user.role === 'CUSTOMER') {
-    updateQuery.$set = { isEmailVerified: false };
+    updateQuery.$set.isEmailVerified = false;
   }
 
-  await model.findOneAndUpdate({ _id: user._id }, updateQuery, { new: true });
+  const options = {
+    new: true,
+    arrayFilters: [{ 'elem.deviceId': deviceId }],
+  };
+
+  await model.findOneAndUpdate({ _id: user._id }, updateQuery, options);
 
   return {
     message:
@@ -1172,6 +1179,40 @@ const verifyOtp = async (
   let userModel: any = undefined;
 
   if (email) {
+    const result = await findUserByEmail({ email });
+    userData = result?.user;
+    userModel = result?.model;
+  } else if (contactNumber) {
+    userData = await Customer.findOne({
+      contactNumber,
+      isDeleted: false,
+    }).lean();
+    userModel = Customer;
+  }
+
+  if (!userData || !userModel) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'User not found. Please register.',
+    );
+  }
+
+  const deviceLimit = ROLE_DEVICE_LIMITS[userData.role] || 3;
+  const currentDeviceId = deviceDetails?.deviceId || 'unknown';
+
+  const existingDeviceIndex = userData.loginDevices?.findIndex(
+    (d: TLoginDevice) => d.deviceId === currentDeviceId,
+  );
+  const isExisting =
+    existingDeviceIndex !== undefined && existingDeviceIndex > -1;
+
+  if (!isExisting && (userData.loginDevices?.length || 0) >= deviceLimit) {
+    if (!forceLogin) {
+      throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
+    }
+  }
+
+  if (email) {
     const redisOtpKey = `otp:${email}`;
     const storedOtp = await RedisService.get(redisOtpKey);
 
@@ -1185,28 +1226,8 @@ const verifyOtp = async (
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
     }
 
-    const result = await findUserByEmail({ email });
-    userData = result?.user;
-    userModel = result?.model;
-    if (!userData)
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'User not found. Please register.',
-      );
-
     await RedisService.del(redisOtpKey);
   } else if (contactNumber) {
-    userData = await Customer.findOne({
-      contactNumber,
-      isDeleted: false,
-    }).lean();
-    userModel = Customer;
-    if (!userData)
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'User not found. Please register.',
-      );
-
     if (contactNumber === config.customer.test_customer_contact_number) {
       if (otp !== config.customer.test_customer_contact_otp) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
@@ -1214,77 +1235,57 @@ const verifyOtp = async (
         console.log('Contact otp verification bypassed for test customer');
       }
     } else {
-      console.log(userData.mobileOtpId);
       const res = await verifyMobileOtp(
         userData.mobileOtpId as string,
         otp as string,
       );
 
-      console.log(res);
       if (!res?.data?.verified) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
       }
     }
   }
 
-  if (!userData) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'User not found. Please register.',
-    );
-  }
-
-  const deviceLimit = ROLE_DEVICE_LIMITS[userData.role] || 3;
-
   const newDevice: TLoginDevice = {
     deviceId: deviceDetails?.deviceId || 'unknown',
     deviceType: deviceDetails?.deviceType || 'unknown',
     deviceName: deviceDetails?.deviceName || '',
+    fcmToken: deviceDetails?.fcmToken || '',
     userAgent: deviceDetails?.userAgent || '',
     ip: deviceDetails?.ip || '',
     isVerified: true,
+    isLoggedIn: true,
     lastLogin: new Date(),
   };
-
-  const existingDeviceIndex = userData.loginDevices?.findIndex(
-    (d: TLoginDevice) => d.deviceId === newDevice.deviceId,
-  );
-  const isSameDevice = existingDeviceIndex > -1;
-
-  if (!isSameDevice && (userData.loginDevices?.length || 0) >= deviceLimit) {
-    if (!forceLogin) {
-      throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
-    }
-  }
 
   const updateQuery: any = {
     $set: { isOtpVerified: true, requiresOtpVerification: false },
   };
 
+  const options: any = { new: true };
+
   if (email) updateQuery.$set.isEmailVerified = true;
 
-  if (isSameDevice) {
-    updateQuery.$set[`loginDevices.${existingDeviceIndex}`] = newDevice;
-  } else if (
-    forceLogin &&
-    (userData.loginDevices?.length || 0) >= deviceLimit
-  ) {
-    if (deviceLimit === 1) {
-      updateQuery.$set.loginDevices = [newDevice];
+  if (isExisting) {
+    updateQuery.$set['loginDevices.$[elem]'] = newDevice;
+    options.arrayFilters = [{ 'elem.deviceId': newDevice.deviceId }];
+  } else {
+    if ((userData.loginDevices?.length || 0) >= deviceLimit) {
+      if (!forceLogin)
+        throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
+
+      updateQuery.$push = {
+        loginDevices: {
+          $each: [newDevice],
+          $slice: -deviceLimit,
+        },
+      };
     } else {
-      await userModel.findOneAndUpdate(
-        { _id: userData._id },
-        { $pop: { loginDevices: -1 } },
-      );
       updateQuery.$push = { loginDevices: newDevice };
     }
-  } else {
-    updateQuery.$push = { loginDevices: newDevice };
   }
 
-  await userModel.findOneAndUpdate({ _id: userData._id }, updateQuery, {
-    new: true,
-  });
+  await userModel.findOneAndUpdate({ _id: userData._id }, updateQuery, options);
 
   const jwtPayload = {
     userId: userData.userId,

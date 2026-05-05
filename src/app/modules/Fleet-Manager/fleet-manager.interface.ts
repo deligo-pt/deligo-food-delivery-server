@@ -18,9 +18,6 @@ export type TFleetManager = {
   isDeleted: boolean;
   isUpdateLocked: boolean;
 
-  // Push notifications
-  fcmTokens?: string[];
-
   // --------------------------------------------------------
   // Pending temporary Email and contact number
   // --------------------------------------------------------

@@ -41,11 +41,6 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     isOtpVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
 
-    // ----------------------------------------------------------------
-    // FCM Tokens
-    // ----------------------------------------------------------------
-    fcmTokens: { type: [String], default: [] },
-
     // --------------------------------------------------------
     // Pending temporary Email and contact number
     // --------------------------------------------------------

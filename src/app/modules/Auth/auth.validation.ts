@@ -30,10 +30,20 @@ const loginValidationSchema = z.object({
         deviceType: z.string({
           required_error: 'Device Type is required',
         }),
-        deviceName: z.string().optional(),
-        userAgent: z.string().optional(),
+        deviceName: z.string({
+          required_error: 'Device Name is required',
+        }),
+        fcmToken: z.string({
+          required_error: 'FCM Token is required',
+        }),
+        userAgent: z.string({
+          required_error: 'User Agent is required',
+        }),
+        isLoggedIn: z.boolean({
+          required_error: 'isLoggedIn is required',
+        }),
       })
-      .optional(),
+      .required(),
     forceLogin: z.boolean().optional(),
   }),
 });
@@ -52,6 +62,13 @@ const loginCustomerValidationSchema = z.object({
       })
       .optional(),
     referralCode: z.string().optional(),
+  }),
+});
+const logoutValidationSchema = z.object({
+  body: z.object({
+    deviceId: z.string({
+      required_error: 'Device ID is required',
+    }),
   }),
 });
 
@@ -136,7 +153,9 @@ const verifyOtpValidationSchema = z.object({
           required_error: 'Device Type is required',
         }),
         deviceName: z.string().optional(),
+        fcmToken: z.string().optional(),
         userAgent: z.string().optional(),
+        isLoggedIn: z.boolean().optional(),
       })
       .optional(),
     forceLogin: z.boolean().optional(),
@@ -163,6 +182,7 @@ export const AuthValidation = {
   registerValidationSchema,
   loginValidationSchema,
   loginCustomerValidationSchema,
+  logoutValidationSchema,
   changePasswordValidationSchema,
   forgotPasswordValidationSchema,
   resetPasswordValidationSchema,
