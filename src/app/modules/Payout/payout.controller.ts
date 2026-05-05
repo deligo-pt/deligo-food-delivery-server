@@ -20,39 +20,9 @@ const initiateSettlement = catchAsync(async (req, res) => {
   });
 });
 
-// reject payout controller
-const rejectPayout = catchAsync(async (req, res) => {
-  const result = await PayoutServices.rejectPayout(
-    req.params.payoutId,
-    req.body.reason,
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
-  });
-});
-
-// retry failed payout controller
-const retryFailedPayout = catchAsync(async (req, res) => {
-  const result = await PayoutServices.retryFailedPayout(
-    req.params.payoutId,
-    req.user as AuthUser,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
-  });
-});
-
 // finalize payout controller
 const finalizeSettlement = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
-  console.log(req.params.payoutId, req.body, file, req.user);
   const result = await PayoutServices.finalizeSettlement(
     req.params.payoutId,
     req.body,
@@ -98,8 +68,6 @@ const getSinglePayout = catchAsync(async (req, res) => {
 
 export const PayoutController = {
   initiateSettlement,
-  rejectPayout,
-  retryFailedPayout,
   finalizeSettlement,
   getAllPayouts,
   getSinglePayout,

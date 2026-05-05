@@ -13,7 +13,7 @@ export type TPayout = {
   paymentDate?: Date;
 
   amount: number;
-  status: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
+  status: 'PENDING' | 'PAID';
   paymentMethod: 'BANK_TRANSFER' | 'MOBILE_BANKING' | 'CASH';
   bankDetails?: {
     bankName: string;

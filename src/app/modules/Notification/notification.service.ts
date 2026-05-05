@@ -463,12 +463,9 @@ const sendBroadcastNotification = async (payload: {
   } = payload;
 
   for (const role of targetAudience) {
-    console.log(`🚀 Broadcast started for role: ${role}`);
-
     const modelName =
       ROLE_COLLECTION_MAP[role as keyof typeof ROLE_COLLECTION_MAP];
     const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
-    console.log({ Model });
     if (!Model) continue;
 
     const query: any = {
