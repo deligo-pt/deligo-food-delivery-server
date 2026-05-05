@@ -54,6 +54,35 @@ const initiateSettlement = async (
         );
       }
     }
+
+    const hasCompleteBankDetails =
+      user?.bankDetails?.bankName &&
+      user?.bankDetails?.accountHolderName &&
+      user?.bankDetails?.accountNumber &&
+      user?.bankDetails?.iban &&
+      user?.bankDetails?.swiftCode;
+
+    if (!hasCompleteBankDetails) {
+      const alertPayload = {
+        title: 'Bank Details Incomplete',
+        body: `Settlement could not be initiated because your bank details are missing. Please update them.`,
+      };
+
+      NotificationService.sendToUser(
+        user.userId,
+        alertPayload.title,
+        alertPayload.body,
+        {},
+        'default',
+        'PAYOUT_ALERT',
+      );
+
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Cannot initiate settlement. Delivery partner has incomplete bank details.',
+      );
+    }
+
     const wallet = await Wallet.findOne({
       userId,
       userModel: targetUserModel,
@@ -78,8 +107,15 @@ const initiateSettlement = async (
           senderId: senderId,
           senderModel: senderModel,
           amount: snapshotAmount,
-          status: 'PROCESSING',
+          status: 'PENDING',
           paymentMethod: 'BANK_TRANSFER',
+          bankDetails: {
+            bankName: user.bankDetails.bankName,
+            accountHolderName: user.bankDetails.accountHolderName,
+            accountNumber: user.bankDetails.accountNumber,
+            iban: user.bankDetails.iban,
+            swiftCode: user.bankDetails.swiftCode,
+          },
         },
       ],
       { session },
@@ -115,138 +151,6 @@ const initiateSettlement = async (
   } finally {
     session.endSession();
   }
-};
-
-// reject payout service
-const rejectPayout = async (
-  payoutId: string,
-  reason: string,
-  currentUser: AuthUser,
-) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const payout = await Payout.findOne({ payoutId })
-      .populate('userId', 'userId')
-      .session(session);
-
-    if (!payout) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Payout record not found.');
-    }
-
-    if (payout.senderId.toString() !== currentUser._id.toString()) {
-      throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized action.');
-    }
-
-    if (payout.status !== 'PROCESSING') {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Cannot reject a payout that is already ${payout.status}.`,
-      );
-    }
-
-    payout.status = 'FAILED';
-    payout.remarks = reason || 'Terminated due to incorrect bank details.';
-    payout.failedAt = new Date();
-    payout.failedReason = reason || 'Terminated due to incorrect bank details.';
-
-    await payout.save({ session });
-
-    await session.commitTransaction();
-
-    const NotificationPayload = {
-      title: 'Payout rejected',
-      body: `Payout has been rejected. Reason: ${reason}`,
-      data: {
-        amount: String(payout.amount),
-        status: String(payout.status),
-        paymentMethod: String(payout.paymentMethod),
-      },
-    };
-    NotificationService.sendToUser(
-      (payout.userId as any).userId,
-      NotificationPayload.title,
-      NotificationPayload.body,
-      NotificationPayload.data,
-      'default',
-      'PAYOUT',
-    );
-
-    return {
-      success: true,
-      message:
-        'Payout has been marked as FAILED. No balance was deducted from the wallet.',
-      data: payout,
-    };
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
-  }
-};
-
-// retry failed payout service
-const retryFailedPayout = async (payoutId: string, currentUser: AuthUser) => {
-  const payout = await Payout.findOne({ payoutId }).populate(
-    'userId',
-    'userId bankDetails',
-  );
-
-  if (!payout || payout.status !== 'FAILED') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Only failed payouts can be retried.',
-    );
-  }
-
-  if (payout.senderId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized action.');
-  }
-
-  const user = payout.userId as any;
-
-  if (
-    !user?.bankDetails?.iban ||
-    !user?.bankDetails?.swiftCode ||
-    !user?.bankDetails?.bankName ||
-    !user?.bankDetails?.accountHolderName ||
-    !user?.bankDetails?.accountNumber
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Update bank details before retrying.',
-    );
-  }
-
-  payout.status = 'PROCESSING';
-  payout.remarks = `Retried by ${currentUser.role} on ${new Date().toLocaleDateString()}`;
-  payout.retryAt = new Date();
-  payout.retryRemarks = `Retried by ${currentUser.role} on ${new Date().toLocaleDateString()}`;
-
-  const NotificationPayload = {
-    title: 'Payout retried',
-    body: 'Your payout has been retried. Now your payout is in processing.',
-    data: {
-      amount: String(payout.amount),
-      status: String(payout.status),
-      paymentMethod: String(payout.paymentMethod),
-    },
-  };
-  NotificationService.sendToUser(
-    user.userId,
-    NotificationPayload.title,
-    NotificationPayload.body,
-    NotificationPayload.data,
-    'default',
-    'PAYOUT',
-  );
-
-  await payout.save();
-  return {
-    message: 'Payout is now in processing again. You can now finalize it.',
-  };
 };
 
 // finalize payout service
@@ -581,8 +485,6 @@ const initiateAutomatedSettlement = async () => {
 
 export const PayoutServices = {
   initiateSettlement,
-  rejectPayout,
-  retryFailedPayout,
   finalizeSettlement,
   getAllPayouts,
   getSinglePayout,
