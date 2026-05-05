@@ -468,7 +468,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     }).lean();
 
     // Prevent returning users from using referral codes
-    if (existingUser && referralCode) {
+    if (existingUser?.referredBy && referralCode) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'Referral code is only valid for new registrations',
@@ -525,7 +525,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       contactNumber,
     }).lean();
 
-    if (existingUser && referralCode) {
+    if (existingUser?.referredBy && referralCode) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'Referral code is only valid for new registrations',

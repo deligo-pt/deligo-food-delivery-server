@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser, TUserRole } from '../../constant/user.constant';
+import {
+  AuthUser,
+  ROLE_COLLECTION_MAP,
+  TUserRole,
+} from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
@@ -8,6 +12,7 @@ import { Notification } from './notification.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserById } from '../../utils/findUserByEmailOrId';
 import { TNotificationType } from './notification.interface';
+import { EmailHelper } from '../../utils/emailSender';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -438,6 +443,102 @@ const permanentDeleteAllNotifications = async (currentUser: AuthUser) => {
   };
 };
 
+const sendBroadcastNotification = async (payload: {
+  communicationType: 'EMAIL' | 'PUSH' | 'BOTH';
+  targetAudience: string[];
+  customUserIds?: string[];
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+  type?: TNotificationType;
+}) => {
+  const {
+    communicationType,
+    targetAudience,
+    customUserIds: userIds,
+    title,
+    body,
+    data,
+    type = 'PROMOTIONAL',
+  } = payload;
+
+  for (const role of targetAudience) {
+    const modelName =
+      ROLE_COLLECTION_MAP[role as keyof typeof ROLE_COLLECTION_MAP];
+    const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
+
+    if (!Model) continue;
+
+    const query: any = {
+      isDeleted: false,
+      role: role,
+    };
+
+    if (userIds && userIds.length > 0) {
+      query.userId = { $in: userIds };
+    }
+
+    if (communicationType !== 'EMAIL') {
+      query['loginDevices.fcmToken'] = { $exists: true, $ne: '' };
+    }
+
+    const userCursor = Model.find(query).cursor();
+
+    setImmediate(async () => {
+      try {
+        for (
+          let user = await userCursor.next();
+          user != null;
+          user = await userCursor.next()
+        ) {
+          const userName = user.name?.firstName || 'User';
+          const personalizedBody = body.replace(/{name}/g, userName);
+
+          if (communicationType === 'PUSH' || communicationType === 'BOTH') {
+            const allStoredTokens =
+              user.loginDevices
+                ?.filter((d: any) => d.fcmToken)
+                .map((d: any) => d.fcmToken) || [];
+
+            const uniqueTokens = [...new Set(allStoredTokens as string[])];
+
+            if (uniqueTokens.length > 0) {
+              await sendPushSafely(uniqueTokens, {
+                title,
+                body: personalizedBody,
+                data: { ...data, type },
+                channelId: 'default',
+              });
+            }
+          }
+
+          if (
+            (communicationType === 'EMAIL' || communicationType === 'BOTH') &&
+            user.email
+          ) {
+            EmailHelper.sendEmail(user.email, personalizedBody, title).catch(
+              (err) => console.error(`Email failed for ${user.email}:`, err),
+            );
+          }
+
+          await logNotification({
+            receiverId: user.userId,
+            receiverRole: user.role,
+            title,
+            message: personalizedBody,
+            data,
+            type,
+          });
+        }
+      } catch (error) {
+        console.error(`Broadcast failed for role ${role}:`, error);
+      }
+    });
+  }
+
+  return { success: true, message: 'Broadcast processing started' };
+};
+
 export const NotificationService = {
   sendToUser,
   sendToRole,
@@ -451,4 +552,5 @@ export const NotificationService = {
   permanentDeleteSingleNotification,
   permanentDeleteMultipleNotifications,
   permanentDeleteAllNotifications,
+  sendBroadcastNotification,
 };

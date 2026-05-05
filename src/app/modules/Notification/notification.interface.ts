@@ -2,11 +2,13 @@ import { TUserRole } from '../../constant/user.constant';
 
 export type TNotificationType =
   | 'ORDER'
+  | 'OFFER'
   | 'SYSTEM'
-  | 'PROMO'
   | 'PAYOUT'
   | 'ACCOUNT'
   | 'PAYOUT_ALERT'
+  | 'TRANSACTION'
+  | 'PROMOTIONAL'
   | 'OTHER';
 
 export type TNotification = {
