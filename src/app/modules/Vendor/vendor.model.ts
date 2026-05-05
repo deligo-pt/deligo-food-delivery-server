@@ -182,7 +182,6 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       average: { type: Number, default: 0 },
       totalReviews: { type: Number, default: 0 },
     },
-    lastLoginAt: { type: Date, default: null },
 
     // -------------------------------------------------------
     // Admin Workflow / Audit

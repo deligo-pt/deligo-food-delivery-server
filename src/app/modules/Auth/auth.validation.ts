@@ -44,19 +44,17 @@ const loginValidationSchema = z.object({
 
 // login customer
 const loginCustomerValidationSchema = z.object({
-  body: z.object({
-    email: z
-      .string({
-        required_error: 'Email is required',
-      })
-      .optional(),
-    contactNumber: z
-      .string({
-        required_error: 'Mobile number is required',
-      })
-      .optional(),
-    referralCode: z.string().optional(),
-  }),
+  body: z
+    .object({
+      email: z.string().email('Invalid email format').optional(),
+      contactNumber: z.string().optional(),
+      referralCode: z.string().optional(),
+    })
+    .strict()
+    .refine((data) => data.email || data.contactNumber, {
+      message: 'Either Email or Contact Number is required',
+      path: ['email'],
+    }),
 });
 const logoutValidationSchema = z.object({
   body: z.object({

@@ -38,6 +38,7 @@ const createReferralEntry = async (
   if (!target) throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role');
 
   const referrer = await target.model.findOne({ referralCode }).lean();
+
   const modelName = target.name;
 
   if (!referrer) {

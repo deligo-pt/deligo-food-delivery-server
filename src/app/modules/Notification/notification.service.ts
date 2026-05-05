@@ -463,15 +463,17 @@ const sendBroadcastNotification = async (payload: {
   } = payload;
 
   for (const role of targetAudience) {
+    console.log(`🚀 Broadcast started for role: ${role}`);
+
     const modelName =
       ROLE_COLLECTION_MAP[role as keyof typeof ROLE_COLLECTION_MAP];
     const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
-
+    console.log({ Model });
     if (!Model) continue;
 
     const query: any = {
       isDeleted: false,
-      role: role,
+      role: role.toLocaleUpperCase() as TUserRole,
     };
 
     if (userIds && userIds.length > 0) {
@@ -479,7 +481,11 @@ const sendBroadcastNotification = async (payload: {
     }
 
     if (communicationType !== 'EMAIL') {
-      query['loginDevices.fcmToken'] = { $exists: true, $ne: '' };
+      query.loginDevices = {
+        $elemMatch: {
+          fcmToken: { $exists: true, $ne: '' },
+        },
+      };
     }
 
     const userCursor = Model.find(query).cursor();
@@ -501,8 +507,6 @@ const sendBroadcastNotification = async (payload: {
                 .map((d: any) => d.fcmToken) || [];
 
             const uniqueTokens = [...new Set(allStoredTokens as string[])];
-
-            console.log({ uniqueTokens });
 
             if (uniqueTokens.length > 0) {
               await sendPushSafely(uniqueTokens, {
