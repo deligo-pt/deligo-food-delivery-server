@@ -568,10 +568,18 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   }
 };
 
-//save FCM Token
-const saveFcmToken = async (currentUser: AuthUser, token: string) => {
-  if (!token) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
+//update FCM Token
+const updateFcmToken = async (
+  currentUser: AuthUser,
+  payload: { token: string; deviceId: string },
+) => {
+  const { token, deviceId } = payload;
+
+  if (!token || !deviceId) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'FCM token and device ID are required',
+    );
   }
 
   if (!currentUser) {
@@ -582,25 +590,27 @@ const saveFcmToken = async (currentUser: AuthUser, token: string) => {
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
   const model = mongoose.model(modelName) as any;
 
-  const deviceLimit = ROLE_DEVICE_LIMITS[currentUser.role] || 3;
-
-  const updateOperation =
-    deviceLimit === 1
-      ? { $set: { fcmTokens: [token] } }
-      : { $addToSet: { fcmTokens: token } };
-
   const updatedUser = await model.findOneAndUpdate(
-    { _id: currentUser._id },
-    updateOperation,
+    { _id: currentUser._id, 'loginDevices.deviceId': deviceId },
+    {
+      $set: {
+        'loginDevices.$.fcmToken': token,
+        'loginDevices.$.isLoggedIn': true,
+        'loginDevices.$.lastLogin': new Date(),
+      },
+    },
     { new: true },
   );
 
   if (!updatedUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Device not registered for this user',
+    );
   }
 
   return {
-    message: 'FCM token saved successfully',
+    message: 'FCM token synchronized successfully',
   };
 };
 
@@ -1492,7 +1502,7 @@ export const AuthServices = {
   onboardUser,
   loginUser,
   loginCustomer,
-  saveFcmToken,
+  updateFcmToken,
   logoutUser,
   changePassword,
   forgotPassword,
