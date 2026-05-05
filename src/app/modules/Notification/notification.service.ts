@@ -502,6 +502,8 @@ const sendBroadcastNotification = async (payload: {
 
             const uniqueTokens = [...new Set(allStoredTokens as string[])];
 
+            console.log({ uniqueTokens });
+
             if (uniqueTokens.length > 0) {
               await sendPushSafely(uniqueTokens, {
                 title,

@@ -22,32 +22,22 @@ const loginValidationSchema = z.object({
       required_error: 'Email is required',
     }),
     password: z.string({ required_error: 'Password is required' }),
-    deviceDetails: z
-      .object({
-        deviceId: z.string({
-          required_error: 'Device ID is required',
-        }),
-        deviceType: z.string({
-          required_error: 'Device Type is required',
-        }),
-        deviceName: z.string({
-          required_error: 'Device Name is required',
-        }),
-        fcmToken: z.string({
-          required_error: 'FCM Token is required',
-        }),
-        userAgent: z
-          .string({
-            required_error: 'User Agent is required',
-          })
-          .optional(),
-        isLoggedIn: z
-          .boolean({
-            required_error: 'isLoggedIn is required',
-          })
-          .optional(),
-      })
-      .required(),
+    deviceDetails: z.object({
+      deviceId: z.string({
+        required_error: 'Device ID is required',
+      }),
+      deviceType: z.string({
+        required_error: 'Device Type is required',
+      }),
+      deviceName: z.string({
+        required_error: 'Device Name is required',
+      }),
+      fcmToken: z.string({
+        required_error: 'FCM Token is required',
+      }),
+      userAgent: z.string().optional(),
+      isLoggedIn: z.boolean().optional(),
+    }),
     forceLogin: z.boolean().optional(),
   }),
 });
