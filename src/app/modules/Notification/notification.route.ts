@@ -16,9 +16,9 @@ router.get(
     'DELIVERY_PARTNER',
     'FLEET_MANAGER',
     'ADMIN',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
-  NotificationControllers.getMyNotifications
+  NotificationControllers.getMyNotifications,
 );
 
 // Mark one as read
@@ -31,9 +31,9 @@ router.patch(
     'DELIVERY_PARTNER',
     'FLEET_MANAGER',
     'ADMIN',
-    'SUPER_ADMIN'
+    'SUPER_ADMIN',
   ),
-  NotificationControllers.markAsRead
+  NotificationControllers.markAsRead,
 );
 
 // mark all as read
@@ -46,9 +46,9 @@ router.patch(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
-  NotificationControllers.markAllAsRead
+  NotificationControllers.markAllAsRead,
 );
 
 // Admin get all
@@ -61,9 +61,9 @@ router.get(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
-  NotificationControllers.getAllNotifications
+  NotificationControllers.getAllNotifications,
 );
 
 // soft delete single notification
@@ -76,9 +76,9 @@ router.delete(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
-  NotificationControllers.softDeleteSingleNotification
+  NotificationControllers.softDeleteSingleNotification,
 );
 
 // soft delete multiple notifications
@@ -91,12 +91,12 @@ router.delete(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
   validateRequest(
-    NotificationValidation.deleteMultipleNotificationsValidationSchema
+    NotificationValidation.deleteMultipleNotificationsValidationSchema,
   ),
-  NotificationControllers.softDeleteMultipleNotifications
+  NotificationControllers.softDeleteMultipleNotifications,
 );
 
 // soft delete all notifications
@@ -109,9 +109,9 @@ router.delete(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
-  NotificationControllers.softDeleteAllNotifications
+  NotificationControllers.softDeleteAllNotifications,
 );
 
 // permanent delete single notification
@@ -124,9 +124,9 @@ router.delete(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
-  NotificationControllers.permanentDeleteSingleNotification
+  NotificationControllers.permanentDeleteSingleNotification,
 );
 
 // permanent delete multiple notifications
@@ -139,12 +139,12 @@ router.delete(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
   validateRequest(
-    NotificationValidation.deleteMultipleNotificationsValidationSchema
+    NotificationValidation.deleteMultipleNotificationsValidationSchema,
   ),
-  NotificationControllers.permanentDeleteMultipleNotifications
+  NotificationControllers.permanentDeleteMultipleNotifications,
 );
 
 // permanent delete all notifications
@@ -157,9 +157,19 @@ router.delete(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-    'FLEET_MANAGER'
+    'FLEET_MANAGER',
   ),
-  NotificationControllers.permanentDeleteAllNotifications
+  NotificationControllers.permanentDeleteAllNotifications,
+);
+
+// send broadcast notification
+router.post(
+  '/broadcast',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(
+    NotificationValidation.sendBroadcastNotificationValidationSchema,
+  ),
+  NotificationControllers.sendBroadcastNotification,
 );
 
 export const NotificationRoutes = router;

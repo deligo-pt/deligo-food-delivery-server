@@ -144,6 +144,17 @@ const permanentDeleteAllNotifications = catchAsync(async (req, res) => {
   });
 });
 
+// Broadcast Notification Controller
+const sendBroadcastNotification = catchAsync(async (req, res) => {
+  const result = await NotificationService.sendBroadcastNotification(req.body);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 export const NotificationControllers = {
   getMyNotifications,
   markAsRead,
@@ -155,4 +166,5 @@ export const NotificationControllers = {
   permanentDeleteSingleNotification,
   permanentDeleteMultipleNotifications,
   permanentDeleteAllNotifications,
+  sendBroadcastNotification,
 };
