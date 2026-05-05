@@ -63,11 +63,6 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     isDeleted: { type: Boolean, default: false },
     isUpdateLocked: { type: Boolean, default: false },
 
-    // -------------------------------------------------------
-    // Save fcm tokens
-    // -------------------------------------------------------
-    fcmTokens: { type: [String], default: [] },
-
     // --------------------------------------------------------
     // Pending temporary Email and contact number
     // --------------------------------------------------------

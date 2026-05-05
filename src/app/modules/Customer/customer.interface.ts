@@ -16,9 +16,6 @@ export type TCustomer = {
   isOtpVerified: boolean;
   isDeleted: boolean;
 
-  // Push notifications
-  fcmTokens?: string[];
-
   // --------------------------------------------------------
   // Pending temporary Email and contact number
   // --------------------------------------------------------

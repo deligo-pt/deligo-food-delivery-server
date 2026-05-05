@@ -82,6 +82,8 @@ router.post(
     'FLEET_MANAGER',
     'SUPER_ADMIN',
   ),
+  validateRequest(AuthValidation.logoutValidationSchema),
+  rateLimiter('auth'),
   AuthControllers.logoutUser,
 );
 // Change Password

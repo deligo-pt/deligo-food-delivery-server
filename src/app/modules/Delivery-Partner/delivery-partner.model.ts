@@ -68,11 +68,6 @@ const deliveryPartnerSchema = new Schema<
     isDeleted: { type: Boolean, default: false },
     isUpdateLocked: { type: Boolean, default: false },
 
-    //-------------------------------------------------
-    // FCM Tokens
-    //-------------------------------------------------
-    fcmTokens: { type: [String], default: [] },
-
     // --------------------------------------------------------
     // Pending temporary Email and contact number
     // --------------------------------------------------------
