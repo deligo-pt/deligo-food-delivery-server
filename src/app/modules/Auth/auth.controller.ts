@@ -74,10 +74,12 @@ const loginCustomer = catchAsync(async (req, res) => {
   });
 });
 
-// Save FCM Token Controller
-const saveFcmToken = catchAsync(async (req, res) => {
-  const { token } = req.body;
-  const result = await AuthServices.saveFcmToken(req.user as AuthUser, token);
+// Update FCM Token Controller
+const updateFcmToken = catchAsync(async (req, res) => {
+  const result = await AuthServices.updateFcmToken(
+    req.user as AuthUser,
+    req.body,
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -261,7 +263,7 @@ export const AuthControllers = {
   onboardUser,
   loginUser,
   loginCustomer,
-  saveFcmToken,
+  updateFcmToken,
   logoutUser,
   changePassword,
   forgotPassword,

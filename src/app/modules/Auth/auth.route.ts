@@ -55,9 +55,9 @@ router.post(
   AuthControllers.loginCustomer,
 );
 
-// Save FCM Token Route
+// Update FCM Token Route
 router.post(
-  '/save-fcm-token',
+  '/update-fcm-token',
   auth(
     'ADMIN',
     'CUSTOMER',
@@ -67,7 +67,7 @@ router.post(
     'FLEET_MANAGER',
     'SUPER_ADMIN',
   ),
-  AuthControllers.saveFcmToken,
+  AuthControllers.updateFcmToken,
 );
 
 // Logout User Route
