@@ -436,15 +436,11 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   // Helper with internal error handling
   const handleReferral = async (user: any, code?: string) => {
     if (!code) return;
-    try {
-      const res = await ReferralServices.createReferralEntry(user, code);
-      if (res?.referrerId) {
-        await Customer.findByIdAndUpdate(user._id, {
-          referredBy: res.referrerId,
-        });
-      }
-    } catch (error) {
-      console.error('Referral Processing Error:', error);
+    const res = await ReferralServices.createReferralEntry(user, code);
+    if (res?.referrerId) {
+      await Customer.findByIdAndUpdate(user._id, {
+        referredBy: res.referrerId,
+      });
     }
   };
 
