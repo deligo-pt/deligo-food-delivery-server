@@ -423,6 +423,7 @@ const loginUser = async (
 // login customer
 const loginCustomer = async (payload: TLoginCustomer) => {
   const { email, contactNumber, referralCode } = payload;
+
   // -----------------------------------------------------
   // Validate input
   // -----------------------------------------------------
@@ -471,7 +472,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     if (existingUser?.referredBy && referralCode) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Referral code is only valid for new registrations',
+        'You have already been referred by someone. Please login using your email/contact number to use the referral code.',
       );
     }
 
@@ -491,6 +492,9 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       });
       await handleReferral(newUser, referralCode);
     } else {
+      if (!existingUser.referredBy && referralCode) {
+        await handleReferral(existingUser, referralCode);
+      }
       await Customer.updateOne(
         { _id: existingUser._id },
         { requiresOtpVerification: true, isOtpVerified: false },
@@ -528,7 +532,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     if (existingUser?.referredBy && referralCode) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Referral code is only valid for new registrations',
+        'You have already been referred by someone. Please login using your email/contact number to use the referral code.',
       );
     }
 
@@ -541,6 +545,9 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     const mobileOtpId = isTestNumber ? 'test-otp-id' : res.data.id;
 
     if (existingUser) {
+      if (!existingUser.referredBy && referralCode) {
+        await handleReferral(existingUser, referralCode);
+      }
       await Customer.updateOne(
         { _id: existingUser._id },
         {
