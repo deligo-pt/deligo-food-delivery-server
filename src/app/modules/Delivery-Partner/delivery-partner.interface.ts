@@ -23,9 +23,6 @@ export type TDeliveryPartner = {
   isDeleted: boolean;
   isUpdateLocked: boolean;
 
-  // FCM tokens for push notifications
-  fcmTokens?: string[];
-
   // --------------------------------------------------------
   // Pending temporary Email and contact number
   // --------------------------------------------------------

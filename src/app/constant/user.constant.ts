@@ -54,7 +54,6 @@ export type AuthUser = {
   password: string;
   role: TUserRole;
   status: keyof typeof USER_STATUS;
-  fcmTokens?: string[];
   profilePhoto?: string;
   mobileOtpId?: string;
   contactNumber: string;
@@ -108,9 +107,11 @@ export type TLoginDevice = {
   deviceId: string;
   deviceType: string;
   deviceName?: string;
+  fcmToken?: string;
   userAgent?: string;
   ip?: string;
   isVerified: boolean;
+  isLoggedIn: boolean;
   lastLogin?: Date | null;
 };
 
@@ -128,6 +129,10 @@ export const loginDeviceSchema = new Schema(
       type: String,
       default: '',
     },
+    fcmToken: {
+      type: String,
+      required: true,
+    },
     userAgent: {
       type: String,
       default: '',
@@ -137,6 +142,10 @@ export const loginDeviceSchema = new Schema(
       default: '',
     },
     isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isLoggedIn: {
       type: Boolean,
       default: false,
     },

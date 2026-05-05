@@ -75,15 +75,24 @@ const sendToUser = (
 
       if (!user) return;
 
-      const uniqueTokens = [...new Set((user.fcmTokens as string[]) || [])];
+      const deviceTokens =
+        user.loginDevices
+          ?.filter(
+            (device: any) => device.isLoggedIn === true && device.fcmToken,
+          )
+          .map((device: any) => device.fcmToken) || [];
 
-      // Push notification (parallel)
-      await sendPushSafely(uniqueTokens, {
-        title,
-        body: message,
-        data,
-        channelId: channelId || 'default',
-      });
+      const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
+
+      if (uniqueTokens.length > 0) {
+        // Push notification (parallel)
+        await sendPushSafely(uniqueTokens, {
+          title,
+          body: message,
+          data,
+          channelId: channelId || 'default',
+        });
+      }
 
       // Save log (DB)
       await logNotification({
@@ -100,7 +109,7 @@ const sendToUser = (
   });
 };
 
-//  Send to role (bulk)
+// Send to role(s)
 const sendToRole = (
   modelName: string,
   roles: TUserRole[],
@@ -117,19 +126,32 @@ const sendToRole = (
 
       const users = await Model.find({
         isDeleted: false,
-        fcmTokens: { $exists: true, $ne: [] },
         role: { $in: roles },
+        loginDevices: {
+          $elemMatch: {
+            isLoggedIn: true,
+            fcmToken: { $exists: true, $ne: '' },
+          },
+        },
       });
 
       for (const user of users) {
-        const uniqueTokens = [...new Set((user.fcmTokens as string[]) || [])];
+        const deviceTokens =
+          user.loginDevices
+            ?.filter(
+              (device: any) => device.isLoggedIn === true && device.fcmToken,
+            )
+            .map((device: any) => device.fcmToken) || [];
+        const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
 
-        await sendPushSafely(uniqueTokens, {
-          title,
-          body: message,
-          data,
-          channelId: channelId || 'default',
-        });
+        if (uniqueTokens.length > 0) {
+          await sendPushSafely(uniqueTokens, {
+            title,
+            body: message,
+            data,
+            channelId: channelId || 'default',
+          });
+        }
 
         await logNotification({
           receiverId: user.userId,

@@ -57,14 +57,6 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     },
 
     // --------------------------------------------------------
-    // Push Tokens
-    // --------------------------------------------------------
-    fcmTokens: {
-      type: [String],
-      default: [],
-    },
-
-    // --------------------------------------------------------
     // Pending temporary Email and contact number
     // --------------------------------------------------------
     pendingEmail: { type: String },

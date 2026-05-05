@@ -60,23 +60,23 @@ export const sendPushNotification = async (
         console.log('Cleanup needed: Token is no longer valid.');
       }
 
+      const cleanupQuery = {
+        $pull: {
+          loginDevices: { fcmToken: token },
+        },
+      };
+
       await Promise.all([
         DeliveryPartner.updateMany(
-          { fcmTokens: token },
-          { $pull: { fcmTokens: token } },
+          { 'loginDevices.fcmToken': token },
+          cleanupQuery,
         ),
-        Vendor.updateMany(
-          { fcmTokens: token },
-          { $pull: { fcmTokens: token } },
-        ),
-        Admin.updateMany({ fcmTokens: token }, { $pull: { fcmTokens: token } }),
-        Customer.updateMany(
-          { fcmTokens: token },
-          { $pull: { fcmTokens: token } },
-        ),
+        Vendor.updateMany({ 'loginDevices.fcmToken': token }, cleanupQuery),
+        Admin.updateMany({ 'loginDevices.fcmToken': token }, cleanupQuery),
+        Customer.updateMany({ 'loginDevices.fcmToken': token }, cleanupQuery),
         FleetManager.updateMany(
-          { fcmTokens: token },
-          { $pull: { fcmTokens: token } },
+          { 'loginDevices.fcmToken': token },
+          cleanupQuery,
         ),
       ]);
     }
