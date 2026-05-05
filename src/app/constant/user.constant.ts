@@ -111,7 +111,7 @@ export type TLoginDevice = {
   userAgent?: string;
   ip?: string;
   isVerified: boolean;
-  isLoggedIn: boolean;
+  isLoggedIn?: boolean;
   lastLogin?: Date | null;
 };
 
