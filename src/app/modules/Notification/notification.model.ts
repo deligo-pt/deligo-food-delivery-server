@@ -2,13 +2,15 @@ import { Schema, model } from 'mongoose';
 import { TNotification } from './notification.interface';
 import { USER_ROLE } from '../../constant/user.constant';
 
-const notificationTypes = [
+export const notificationTypes = [
   'ORDER',
+  'OFFER',
   'SYSTEM',
-  'PROMO',
   'PAYOUT',
   'ACCOUNT',
   'PAYOUT_ALERT',
+  'TRANSACTION',
+  'PROMOTIONAL',
   'OTHER',
 ];
 

@@ -36,9 +36,11 @@ const loginValidationSchema = z.object({
         fcmToken: z.string({
           required_error: 'FCM Token is required',
         }),
-        userAgent: z.string({
-          required_error: 'User Agent is required',
-        }),
+        userAgent: z
+          .string({
+            required_error: 'User Agent is required',
+          })
+          .optional(),
         isLoggedIn: z.boolean({
           required_error: 'isLoggedIn is required',
         }),
