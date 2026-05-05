@@ -151,8 +151,6 @@ export type TVendor = {
     totalReviews: number;
   };
 
-  lastLoginAt?: Date;
-
   // --------------------------------------------------------
   // Admin Workflow / Audit
   // --------------------------------------------------------
