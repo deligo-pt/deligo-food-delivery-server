@@ -310,7 +310,10 @@ const getAllPayouts = async (
 
   const payoutQuery = new QueryBuilder(
     Payout.find()
-      .populate('userId', 'name profilePhoto userId role')
+      .populate(
+        'userId',
+        'name profilePhoto userId role businessDetails personalInfo NIF',
+      )
       .populate('senderId', 'name role'),
     filter,
   )
@@ -325,6 +328,10 @@ const getAllPayouts = async (
 
   const result = rawResult.map((payout: any) => {
     let payoutCategory = 'GENERAL';
+    const user = payout.userId as any;
+
+    const unifiedNif =
+      user?.NIF || user?.businessDetails?.NIF || user?.personalInfo?.NIF || '';
 
     if (role === 'FLEET_MANAGER') {
       if (payout.userId?._id?.toString() === currentUserId.toString()) {
@@ -335,9 +342,23 @@ const getAllPayouts = async (
         payoutCategory = 'PAID_TO_PARTNER';
       }
     }
+
+    let updatedUser = null;
+
+    if (user) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+      const { businessDetails, personalInfo, NIF, ...restUser } =
+        user.toObject();
+      updatedUser = {
+        ...restUser,
+        NIF: unifiedNif,
+      };
+    }
+
     return {
       ...payout.toObject(),
       payoutCategory,
+      userId: updatedUser,
     };
   });
 
@@ -352,7 +373,10 @@ const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
   const { role, _id: currentUserId } = currentUser;
 
   const payout = await Payout.findOne({ payoutId })
-    .populate('userId', 'name profilePhoto userId email phone bankDetails')
+    .populate(
+      'userId',
+      'name profilePhoto userId role businessDetails personalInfo NIF bankDetails email phone',
+    )
     .populate('senderId', 'name role profilePhoto');
 
   if (!payout) {
@@ -372,6 +396,10 @@ const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
     }
   }
 
+  const user = payout.userId as any;
+  const unifiedNif =
+    user?.NIF || user?.businessDetails?.NIF || user?.personalInfo?.NIF || '';
+
   let payoutCategory = 'GENERAL';
   if (role === 'FLEET_MANAGER') {
     if (payout.userId._id.toString() === currentUserId.toString()) {
@@ -381,9 +409,21 @@ const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
     }
   }
 
+  let updatedUser = null;
+
+  if (user) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    const { businessDetails, personalInfo, NIF, ...restUser } = user.toObject();
+    updatedUser = {
+      ...restUser,
+      NIF: unifiedNif,
+    };
+  }
+
   return {
     ...payout.toObject(),
     payoutCategory,
+    userId: updatedUser,
   };
 };
 
