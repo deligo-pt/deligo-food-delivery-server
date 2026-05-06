@@ -8,17 +8,19 @@ const emailSchema = z
   .string({ required_error: 'Email is required' })
   .email('Invalid email address');
 
-export const addressValidationSchema = z.object({
-  street: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-  postalCode: z.string().optional(),
-  longitude: z.number().optional(),
-  latitude: z.number().optional(),
-  geoAccuracy: z.number().optional(),
-  detailedAddress: z.string().optional(),
-});
+export const addressValidationSchema = z
+  .object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional(),
+    longitude: z.number().optional(),
+    latitude: z.number().optional(),
+    geoAccuracy: z.number().optional(),
+    detailedAddress: z.string().optional(),
+  })
+  .strict();
 
 // -----------------------------------------------------
 // Update Admin Profile Schema
@@ -32,6 +34,7 @@ const updateAdminDataValidationSchema = z.object({
           firstName: z.string().optional(),
           lastName: z.string().optional(),
         })
+        .strict()
         .optional(),
 
       contactNumber: z.string().optional(),

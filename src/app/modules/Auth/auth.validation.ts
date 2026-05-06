@@ -179,18 +179,14 @@ const verifyOtpValidationSchema = z.object({
 const resendOtpValidationSchema = z.object({
   body: z
     .object({
-      email: z
-        .string({
-          required_error: 'Email is required',
-        })
-        .optional(),
-      contactNumber: z
-        .string({
-          required_error: 'Mobile number is required',
-        })
-        .optional(),
+      email: z.string().optional(),
+      contactNumber: z.string().optional(),
     })
-    .strict(),
+    .strict()
+    .refine((data) => data.email || data.contactNumber, {
+      message: 'Either Email or Contact Number is required',
+      path: ['email'],
+    }),
 });
 
 export const AuthValidation = {
