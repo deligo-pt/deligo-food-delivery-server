@@ -24,3 +24,19 @@ export type TNotification = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type TBroadcastNotificationPayload = {
+  communicationType: 'EMAIL' | 'PUSH' | 'BOTH';
+  targetAudience:
+    | 'CUSTOMER'
+    | 'DELIVERY_PARTNER'
+    | 'VENDOR'
+    | 'SUB_VENDOR'
+    | 'FLEET_MANAGER';
+  customUserIds?: string[];
+  title: string;
+  body: string;
+  imageUrl?: string;
+  data?: Record<string, string>; // optional metadata
+  type?: TNotificationType;
+};

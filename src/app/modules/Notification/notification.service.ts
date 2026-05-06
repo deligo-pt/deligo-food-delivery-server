@@ -11,7 +11,10 @@ import { ALL_USER_MODELS } from '../Auth/auth.constant';
 import { Notification } from './notification.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserById } from '../../utils/findUserByEmailOrId';
-import { TNotificationType } from './notification.interface';
+import {
+  TBroadcastNotificationPayload,
+  TNotificationType,
+} from './notification.interface';
 import { EmailHelper } from '../../utils/emailSender';
 
 //  Helper: Save Notification Log
@@ -47,6 +50,7 @@ const sendPushSafely = async (
   payload: {
     title: string;
     body: string;
+    imageUrl?: string;
     data?: Record<string, string>;
     channelId?: 'order_notification' | 'default';
   },
@@ -443,21 +447,16 @@ const permanentDeleteAllNotifications = async (currentUser: AuthUser) => {
   };
 };
 
-const sendBroadcastNotification = async (payload: {
-  communicationType: 'EMAIL' | 'PUSH' | 'BOTH';
-  targetAudience: string[];
-  customUserIds?: string[];
-  title: string;
-  body: string;
-  data?: Record<string, string>;
-  type?: TNotificationType;
-}) => {
+const sendBroadcastNotification = async (
+  payload: TBroadcastNotificationPayload,
+) => {
   const {
     communicationType,
     targetAudience,
     customUserIds: userIds,
     title,
     body,
+    imageUrl,
     data,
     type = 'PROMOTIONAL',
   } = payload;
@@ -509,6 +508,7 @@ const sendBroadcastNotification = async (payload: {
               await sendPushSafely(uniqueTokens, {
                 title,
                 body: personalizedBody,
+                imageUrl,
                 data: { ...data, type },
                 channelId: 'default',
               });
@@ -519,9 +519,23 @@ const sendBroadcastNotification = async (payload: {
             (communicationType === 'EMAIL' || communicationType === 'BOTH') &&
             user.email
           ) {
-            EmailHelper.sendEmail(user.email, personalizedBody, title).catch(
-              (err) => console.error(`Email failed for ${user.email}:`, err),
-            );
+            const emailData = {
+              title,
+              personalizedBody,
+              imageUrl,
+              currentYear: new Date().getFullYear(),
+              data: data || {},
+            };
+            EmailHelper.createEmailContent(emailData, 'broadcast-email')
+              .then((htmlContent) => {
+                return EmailHelper.sendEmail(user.email, htmlContent, title);
+              })
+              .catch((err) => {
+                console.error(
+                  `Email delivery failed for ${user.email}:`,
+                  err.message,
+                );
+              });
           }
 
           await logNotification({
