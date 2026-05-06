@@ -1,0 +1,127 @@
+{{! DeliGo Broadcast Email Template }}
+
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <style>
+      body { 
+        margin: 0; 
+        padding: 0; 
+        background-color: #f4f7f9; 
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+      }
+      .wrapper { width: 100%; background-color: #f4f7f9; padding: 20px 0; }
+      .container { 
+        max-width: 600px; 
+        margin: 0 auto; 
+        background: #ffffff; 
+        border-radius: 12px; 
+        overflow: hidden; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+      }
+      
+      /* Header */
+      .header { 
+        background: linear-gradient(135deg, #dc3173 0%, #a80e52 100%); 
+        padding: 25px; 
+        text-align: center;
+      }
+      .header img { width: 110px; height: auto; }
+      
+      /* Hero Image (Conditional) */
+      .hero-image { width: 100%; height: auto; display: block; }
+      
+      /* Content */
+      .body-section { padding: 35px 30px; text-align: left; }
+      .email-title { 
+        font-size: 22px; 
+        font-weight: 700; 
+        color: #1a1a1a; 
+        margin-bottom: 15px; 
+        line-height: 1.3;
+      }
+      .email-body { 
+        font-size: 16px; 
+        color: #4a4a4a; 
+        line-height: 1.7; 
+        margin-bottom: 25px; 
+        white-space: pre-line; /* preserves line breaks from admin panel */
+      }
+      
+      /* Footer */
+      .footer { 
+        background: #fdf2f6; 
+        padding: 25px; 
+        text-align: center; 
+        border-top: 1px solid #eee;
+      }
+      .social-icons a { text-decoration: none; margin: 0 8px; }
+      .footer-text { 
+        font-size: 12px; 
+        color: #888; 
+        margin-top: 15px; 
+        line-height: 1.5; 
+      }
+      
+      @media only screen and (max-width: 480px) {
+        .body-section { padding: 25px 20px; }
+        .email-title { font-size: 19px; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <div class='container'>
+        
+        <!-- HEADER -->
+        <div class='header'>
+          <img src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763599290/DeliGo-White_cfd6my.png' alt='DeliGo' />
+        </div>
+
+        <!-- HERO IMAGE (Only if imageUrl is provided) -->
+        {{#if imageUrl}}
+        <img src="{{imageUrl}}" alt="Promotion" class="hero-image" />
+        {{/if}}
+
+        <!-- BODY -->
+        <div class='body-section'>
+          <div class='email-title'>{{title}}</div>
+          
+          <div class='email-body'>
+            {{!-- personalizedBody contains the 'Hi John,' replacement --}}
+            {{{personalizedBody}}}
+          </div>
+
+          {{#if data.actionLink}}
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="{{data.actionLink}}" 
+               style="background-color: #dc3173; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+               Check Details
+            </a>
+          </div>
+          {{/if}}
+        </div>
+
+        <!-- FOOTER -->
+        <div class='social-footer footer'>
+          <div class='social-icons'>
+            <a href='https://www.facebook.com/deligoeu'><img src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/facebook_pcla1y.png' width='26' alt='FB'></a>
+            <a href='https://www.instagram.com/deligo.pt/'><img src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520443/instagram_lwmdxa.png' width='26' alt='IG'></a>
+            <a href='https://www.linkedin.com/in/deligopt'><img src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/linkedin_bhmzdk.png' width='26' alt='LI'></a>
+          </div>
+
+          <div class='footer-text'>
+            <strong>DeliGo / Operated by Pixel Miracle Lda</strong><br>
+            Rua Joaquim Agostinho 16C, 1750-126 Lisbon, Portugal<br>
+            <p style="margin-top: 10px;">You are receiving this as a valued member of the DeliGo community.</p>
+            &copy; {{currentYear}} DeliGo. All rights reserved.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </body>
+</html>

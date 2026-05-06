@@ -10,6 +10,7 @@ import { Vendor } from '../modules/Vendor/vendor.model';
 export type TPushNotificationPayload = {
   title: string;
   body: string;
+  imageUrl?: string;
   data?: Record<string, string>;
   sound?: string;
   channelId?: 'order_notification' | 'default';
@@ -41,6 +42,7 @@ export const sendPushNotification = async (
       data: {
         title: payload.title,
         body: payload.body,
+        imageUrl: payload.imageUrl || '',
         sound: payload.sound || 'default',
         channelId: payload.channelId || 'default',
         ...(payload.data || {}),
@@ -48,7 +50,6 @@ export const sendPushNotification = async (
     };
 
     const response = await fcm.send(message);
-    console.log({ response });
     return { success: true, response };
   } catch (error: any) {
     console.error('Error sending push notification:', error);
