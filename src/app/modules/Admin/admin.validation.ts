@@ -24,49 +24,57 @@ export const addressValidationSchema = z.object({
 // Update Admin Profile Schema
 // -----------------------------------------------------
 const updateAdminDataValidationSchema = z.object({
-  body: z.object({
-    // Personal Details
-    name: z
-      .object({
-        firstName: z.string().optional(),
-        lastName: z.string().optional(),
-      })
-      .optional(),
+  body: z
+    .object({
+      // Personal Details
+      name: z
+        .object({
+          firstName: z.string().optional(),
+          lastName: z.string().optional(),
+        })
+        .optional(),
 
-    contactNumber: z.string().optional(),
+      contactNumber: z.string().optional(),
 
-    // Address Details
-    address: addressValidationSchema.optional(),
-  }),
+      // Address Details
+      address: addressValidationSchema.optional(),
+    })
+    .strict(),
 });
 
 // -----------------------------------------------------
 // Change Admin Status (Activate / Block)
 // -----------------------------------------------------
 const activateOrBlockUserValidationSchema = z.object({
-  body: z.object({
-    status: z.nativeEnum(USER_STATUS, {
-      required_error: 'Status is required',
-    }),
-  }),
+  body: z
+    .object({
+      status: z.nativeEnum(USER_STATUS, {
+        required_error: 'Status is required',
+      }),
+    })
+    .strict(),
 });
 
 // -----------------------------------------------------
 // OTP Verification Schema
 // -----------------------------------------------------
 const verifyOtpValidationSchema = z.object({
-  body: z.object({
-    email: emailSchema,
-    otp: z.string({ required_error: 'OTP is required' }),
-  }),
+  body: z
+    .object({
+      email: emailSchema,
+      otp: z.string({ required_error: 'OTP is required' }),
+    })
+    .strict(),
 });
 
 const adminDocImageValidationSchema = z.object({
-  body: z.object({
-    docImageTitle: z.enum(['idProofFront', 'idProofBack'], {
-      required_error: 'Document title is required',
-    }),
-  }),
+  body: z
+    .object({
+      docImageTitle: z.enum(['idProofFront', 'idProofBack'], {
+        required_error: 'Document title is required',
+      }),
+    })
+    .strict(),
 });
 
 // -----------------------------------------------------
