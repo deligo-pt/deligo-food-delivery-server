@@ -119,11 +119,11 @@ export const loginDeviceSchema = new Schema(
   {
     deviceId: {
       type: String,
-      required: true,
+      default: '',
     },
     deviceType: {
       type: String,
-      required: true,
+      default: '',
     },
     deviceName: {
       type: String,
@@ -131,7 +131,7 @@ export const loginDeviceSchema = new Schema(
     },
     fcmToken: {
       type: String,
-      required: true,
+      default: '',
     },
     userAgent: {
       type: String,
