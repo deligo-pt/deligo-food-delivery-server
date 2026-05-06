@@ -86,9 +86,12 @@ const sendToUser = (
 
       const deviceTokens =
         user.loginDevices
-          ?.filter(
-            (device: any) => device.isLoggedIn === true && device.fcmToken,
-          )
+          ?.filter((device: any) => {
+            if (user.role === 'CUSTOMER') {
+              return !!device.fcmToken;
+            }
+            return device.isLoggedIn === true && device.fcmToken;
+          })
           .map((device: any) => device.fcmToken) || [];
 
       const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];

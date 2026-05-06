@@ -2,11 +2,13 @@ import { z } from 'zod';
 import { notificationTypes } from './notification.model';
 
 const deleteMultipleNotificationsValidationSchema = z.object({
-  body: z.object({
-    notificationIds: z
-      .array(z.string())
-      .min(1, 'At least one notification ID is required'),
-  }),
+  body: z
+    .object({
+      notificationIds: z
+        .array(z.string())
+        .min(1, 'At least one notification ID is required'),
+    })
+    .strict(),
 });
 
 const sendBroadcastNotificationValidationSchema = z.object({

@@ -26,7 +26,11 @@ export const BLOCKED_FOR_ORDER_CANCEL = [
 export const DELIVERY_SEARCH_TIERS_METERS = [3000, 4000, 5000];
 
 export const OrderSearchableFields = [
-  'deliveryAddress.street',
+  'orderId',
+  'customerId.name.firstName',
+  'customerId.name.lastName',
   'deliveryAddress.city',
   'deliveryAddress.country',
+  'pickupAddress.city',
+  'pickupAddress.country',
 ];
