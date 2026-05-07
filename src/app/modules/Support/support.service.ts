@@ -6,9 +6,10 @@ import { TUserModel } from './support.interface';
 import { SupportMessage, SupportTicket } from './support.model';
 import AppError from '../../errors/AppError';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { AuthUser, ROLE_COLLECTION_MAP } from '../../constant/user.constant';
+import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
 import { Order } from '../Order/order.model';
 import { findUserById } from '../../utils/findUserByEmailOrId';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 /**
  * Checks for an existing active ticket.

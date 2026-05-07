@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { TUserRole } from '../../constant/user.constant';
+import { TUserRole } from '../../constant/GlobalConstant/user.constant';
 export type TSosStatus =
   | 'ACTIVE'
   | 'INVESTIGATING'

@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { VendorServices } from './vendor.service';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Vendor Update Controller
 const vendorUpdate = catchAsync(async (req, res) => {

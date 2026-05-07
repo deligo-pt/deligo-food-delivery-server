@@ -4,24 +4,24 @@ import jwt from 'jsonwebtoken';
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import config from '../../config';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 export const socketAuthMiddleware = (
   socket: Socket,
-  next: (error?: Error) => void
+  next: (error?: Error) => void,
 ) => {
   try {
     const token = socket.handshake.auth?.token;
 
     if (!token) {
       return next(
-        new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!')
+        new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!'),
       );
     }
 
     const decoded = jwt.verify(
       token,
-      config.jwt.jwt_access_secret as string
+      config.jwt.jwt_access_secret as string,
     ) as AuthUser;
 
     socket.data.user = decoded;

@@ -1,6 +1,7 @@
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { AuthUser, ROLE_COLLECTION_MAP } from '../../constant/user.constant';
+import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TSos } from './sos.interface';

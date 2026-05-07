@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { AnalyticsSecondServices } from './analyticsSecond.service';
 
 // ----------------------------------------------------------------------------------
@@ -157,7 +157,6 @@ const getOfferAnalyticsForAdmin = catchAsync(async (req, res) => {
 });
 
 const getTaxReportAnalyticsForVendor = catchAsync(async (req, res) => {
-  console.log(req.user);
   const result = await AnalyticsSecondServices.getTaxReportAnalyticsForVendor(
     req.user as AuthUser,
   );

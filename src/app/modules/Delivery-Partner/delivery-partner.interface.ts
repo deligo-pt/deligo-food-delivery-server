@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
-import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
+import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 import { currentStatusOptions } from './delivery-partner.constant';
-import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
+import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
 
 export type TRegisteredByModel = 'Admin' | 'FleetManager';
 export type TDeliveryPartner = {

@@ -3,7 +3,7 @@ import auth from '../../middlewares/auth';
 import { VendorControllers } from './vendor.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { VendorValidation } from './vendor.validation';
-import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
+import { LocationValidation } from '../../constant/GlobalValidation/location.validation';
 
 const router = Router();
 
@@ -35,7 +35,7 @@ router.delete(
 router.patch(
   '/:vendorId/liveLocation',
   auth('VENDOR', 'SUB_VENDOR'),
-  validateRequest(GlobalValidation.UpdateLiveLocationValidationSchema),
+  validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
   VendorControllers.updateVendorLiveLocation,
 );
 

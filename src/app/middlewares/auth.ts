@@ -5,7 +5,10 @@ import config from '../config';
 import AppError from '../errors/AppError';
 import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
-import { TUserRole, USER_STATUS } from '../constant/user.constant';
+import {
+  TUserRole,
+  USER_STATUS,
+} from '../constant/GlobalConstant/user.constant';
 import { findUserById } from '../utils/findUserByEmailOrId';
 
 /**

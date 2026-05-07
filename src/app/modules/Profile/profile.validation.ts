@@ -5,43 +5,48 @@ import { addressValidationSchema } from '../Admin/admin.validation';
 // User Profile Update Validation
 // ---------------------------------------------
 const userProfileUpdateValidationSchema = z.object({
-  body: z.object({
-    name: z
-      .object({
-        firstName: z.string({
-          required_error: 'First name is required',
-        }),
-        lastName: z.string({
-          required_error: 'Last name is required',
-        }),
-      })
-      .optional(),
+  body: z
+    .object({
+      name: z
+        .object({
+          firstName: z.string({
+            required_error: 'First name is required',
+          }),
+          lastName: z.string({
+            required_error: 'Last name is required',
+          }),
+        })
+        .strict()
+        .optional(),
 
-    contactNumber: z
-      .string({
-        required_error: 'Contact number is required',
-      })
-      .optional(),
-    NIF: z.string().optional().nullable(),
+      contactNumber: z
+        .string({
+          required_error: 'Contact number is required',
+        })
+        .optional(),
+      NIF: z.string().optional().nullable(),
 
-    profilePhoto: z.string().nullable().optional(),
+      profilePhoto: z.string().nullable().optional(),
 
-    address: addressValidationSchema.optional(),
-  }),
+      address: addressValidationSchema.optional(),
+    })
+    .strict(),
 });
 
 // ---------------------------------------------
 // Update Contact Number Validation
 // ---------------------------------------------
 const updateContactNumberValidationSchema = z.object({
-  body: z.object({
-    contactNumber: z
-      .string({
-        required_error: 'Contact number is required',
-      })
-      .optional(),
-    email: z.string({ required_error: 'Email is required' }).optional(),
-  }),
+  body: z
+    .object({
+      contactNumber: z
+        .string({
+          required_error: 'Contact number is required',
+        })
+        .optional(),
+      email: z.string({ required_error: 'Email is required' }).optional(),
+    })
+    .strict(),
 });
 
 export const ProfileValidation = {

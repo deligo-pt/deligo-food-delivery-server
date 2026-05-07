@@ -2,15 +2,15 @@ import httpStatus from 'http-status';
 import { CategoryService } from './category.service';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { AuthUser } from '../../constant/user.constant';
 import { TImageFile } from '../../interfaces/image.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
   const result = await CategoryService.createBusinessCategory(
     req.body,
-    file?.path ?? null
+    file?.path ?? null,
   );
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -26,7 +26,7 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.updateBusinessCategory(
     req.params.id,
     req.body,
-    file?.path ?? null
+    file?.path ?? null,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -40,7 +40,7 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
 const getAllBusinessCategories = catchAsync(async (req, res) => {
   const result = await CategoryService.getAllBusinessCategories(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -54,7 +54,7 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
 const getSingleBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.getSingleBusinessCategory(
     req.params.id,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -67,7 +67,7 @@ const getSingleBusinessCategory = catchAsync(async (req, res) => {
 // soft Delete Business Category Controllers
 const softDeleteBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.softDeleteBusinessCategory(
-    req.params.id
+    req.params.id,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -80,7 +80,7 @@ const softDeleteBusinessCategory = catchAsync(async (req, res) => {
 // Permanent Delete Business Category Controllers
 const permanentDeleteBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.permanentDeleteBusinessCategory(
-    req.params.id
+    req.params.id,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -95,7 +95,7 @@ const createProductCategory = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
   const result = await CategoryService.createProductCategory(
     req.body,
-    file?.path ?? null
+    file?.path ?? null,
   );
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -111,7 +111,7 @@ const updateProductCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.updateProductCategory(
     req.params.id,
     req.body,
-    file?.path ?? null
+    file?.path ?? null,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -125,7 +125,7 @@ const updateProductCategory = catchAsync(async (req, res) => {
 const getAllProductCategories = catchAsync(async (req, res) => {
   const result = await CategoryService.getAllProductCategories(
     req.query,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -139,7 +139,7 @@ const getAllProductCategories = catchAsync(async (req, res) => {
 const getSingleProductCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.getSingleProductCategory(
     req.params.id,
-    req.user as AuthUser
+    req.user as AuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -163,7 +163,7 @@ const softDeleteProductCategory = catchAsync(async (req, res) => {
 // Permanent Delete Product Category Controllers
 const permanentDeleteProductCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.permanentDeleteProductCategory(
-    req.params.id
+    req.params.id,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

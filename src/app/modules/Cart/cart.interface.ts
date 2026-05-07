@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { TOrderItemSnapshot } from '../../constant/order.constant';
+import { TOrderItemSnapshot } from '../../constant/GlobalInterface/order.interface';
 
 export type TCartItem = TOrderItemSnapshot & {
   isActive: boolean;

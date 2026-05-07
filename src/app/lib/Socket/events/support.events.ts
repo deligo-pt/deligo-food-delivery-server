@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server, Socket } from 'socket.io';
-import { AuthUser } from '../../../constant/user.constant';
 import { SupportService } from '../../../modules/Support/support.service';
+import { AuthUser } from '../../../constant/GlobalInterface/user.interface';
 
 type SendMessagePayload = {
   ticketId?: string; // Optional: first message won't have a ticketId

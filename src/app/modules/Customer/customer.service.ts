@@ -2,14 +2,14 @@
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { TCustomer } from './customer.interface';
 import { Customer } from './customer.model';
 import { CustomerSearchableFields } from './customer.constant';
-import { TDeliveryAddress } from '../../constant/address.constant';
+import { TDeliveryAddress } from '../../constant/GlobalInterface/address.interface';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 import { generateReferralCode } from '../../utils/generateReferralCode';
+import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 
 // update customer service
 const updateCustomer = async (
@@ -243,7 +243,7 @@ const addDeliveryAddress = async (
     if (a == null || b == null) return false;
     return Math.abs(a - b) <= tolerance;
   };
-  const isDuplicate = currentUser.deliveryAddresses?.some((addr) => {
+  const isDuplicate = currentUser.deliveryAddresses?.some((addr: TDeliveryAddress) => {
     const textMatch =
       normalize(addr.street) === normalize(deliveryAddress.street) &&
       normalize(addr.city) === normalize(deliveryAddress.city) &&

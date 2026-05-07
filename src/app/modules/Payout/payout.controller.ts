@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { TImageFile } from '../../interfaces/image.interface';
 import { PayoutServices } from './payout.service';
 
@@ -72,3 +72,4 @@ export const PayoutController = {
   getAllPayouts,
   getSinglePayout,
 };
+

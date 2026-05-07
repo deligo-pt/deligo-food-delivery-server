@@ -5,7 +5,7 @@ import { CheckoutSummary } from './checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { Product } from '../Product/product.model';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';

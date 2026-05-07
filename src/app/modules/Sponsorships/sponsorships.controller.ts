@@ -2,8 +2,8 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { SponsorshipServices } from './sponsorships.service';
-import { AuthUser } from '../../constant/user.constant';
 import { TImageFile } from '../../interfaces/image.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // create Sponsorship Controller
 const createSponsorship = catchAsync(async (req, res) => {

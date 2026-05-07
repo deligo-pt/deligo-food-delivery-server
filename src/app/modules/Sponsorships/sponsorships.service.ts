@@ -1,10 +1,10 @@
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { TSponsorship } from './sponsorships.interface';
 import { Sponsorship } from './sponsorships.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Create sponsorship
 const createSponsorship = async (

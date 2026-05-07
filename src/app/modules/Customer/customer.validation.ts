@@ -5,59 +5,72 @@ import { addressValidationSchema } from '../Admin/admin.validation';
 // Update Customer Data Validation Schema
 // ---------------------------------------------
 const updateCustomerDataValidationSchema = z.object({
-  body: z.object({
-    // Personal Details
-    name: z
-      .object({
-        firstName: z.string().optional(),
-        lastName: z.string().optional(),
-      })
-      .optional(),
+  body: z
+    .object({
+      // Personal Details
+      name: z
+        .object({
+          firstName: z.string().optional(),
+          lastName: z.string().optional(),
+        })
+        .strict()
+        .optional(),
 
-    contactNumber: z.string().optional(),
-    profilePhoto: z.string().optional(),
+      contactNumber: z.string().optional(),
+      profilePhoto: z.string().optional(),
 
-    // Main Customer Address
-    address: addressValidationSchema.optional(),
+      // Main Customer Address
+      address: addressValidationSchema.optional(),
 
-    // Delivery Addresses (multiple saved addresses)
-    deliveryAddresses: z
-      .array(
-        addressValidationSchema.extend({
-          isActive: z.boolean().optional(),
-        }),
-      )
-      .optional(),
-  }),
+      // Delivery Addresses (multiple saved addresses)
+      deliveryAddresses: z
+        .array(
+          addressValidationSchema
+            .extend({
+              isActive: z.boolean().optional(),
+              addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
+            })
+            .strict(),
+        )
+        .optional(),
+    })
+    .strict(),
 });
 
 // ---------------------------------------------
 //  add Delivery Address Validation Schema
 // ---------------------------------------------
 const addDeliveryAddressValidationSchema = z.object({
-  body: z.object({
-    deliveryAddress: addressValidationSchema.extend({
-      isActive: z.boolean().optional(),
+  body: z
+    .object({
+      deliveryAddress: addressValidationSchema
+        .extend({
+          isActive: z.boolean().optional(),
 
-      // zoneId: z.string().optional(),
-      addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
-      notes: z.string().optional(),
-    }),
-  }),
+          // zoneId: z.string().optional(),
+          addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
+          notes: z.string().optional(),
+        })
+        .strict(),
+    })
+    .strict(),
 });
 
 // ---------------------------------------------
 // Update Delivery Address Validation Schema
 // ---------------------------------------------
 const updateDeliveryAddressValidationSchema = z.object({
-  body: z.object({
-    deliveryAddress: addressValidationSchema
-      .extend({
-        addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
-        notes: z.string().optional(),
-      })
-      .partial(),
-  }),
+  body: z
+    .object({
+      deliveryAddress: addressValidationSchema
+        .extend({
+          addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
+          notes: z.string().optional(),
+        })
+        .strict()
+        .partial(),
+    })
+    .strict(),
 });
 
 // ---------------------------------------------

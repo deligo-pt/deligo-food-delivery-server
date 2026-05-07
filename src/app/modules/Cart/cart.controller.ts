@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { CartServices } from './cart.service';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {

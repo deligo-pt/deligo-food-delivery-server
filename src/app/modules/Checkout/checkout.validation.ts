@@ -1,4 +1,4 @@
-import z from 'zod';
+import { z } from 'zod';
 
 const checkoutValidationSchema = z.object({
   body: z
@@ -9,29 +9,23 @@ const checkoutValidationSchema = z.object({
           z
             .object({
               productId: z.string().min(1, 'Product ID is required'),
-              quantity: z
-                .number()
-                .min(1, 'Quantity must be at least 1')
-                .optional(),
+              quantity: z.number().min(1, 'Quantity must be at least 1'),
+              variationSku: z.string().optional(),
             })
             .strict(),
         )
         .optional(),
-
-      offerCode: z.string().optional(),
-      estimatedDeliveryTime: z.string().optional(),
-      discount: z.number().optional(),
     })
     .strict()
     .refine(
       (data) => {
-        if (!data.useCart) {
-          return data.items && data.items.length > 0;
+        if (data.useCart === false) {
+          return Array.isArray(data.items) && data.items.length > 0;
         }
         return true;
       },
       {
-        message: 'Items are required when not using cart',
+        message: 'Items are required for direct checkout when not using cart',
         path: ['items'],
       },
     ),

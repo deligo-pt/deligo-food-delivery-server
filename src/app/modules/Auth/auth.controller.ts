@@ -2,8 +2,8 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { AuthServices } from './auth.service';
 import { catchAsync } from '../../utils/catchAsync';
-import { AuthUser } from '../../constant/user.constant';
 import config from '../../config';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 //register User Controller [Vendor, Fleet Manager, Admin]
 const registerUser = catchAsync(async (req, res) => {

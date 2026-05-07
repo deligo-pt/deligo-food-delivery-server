@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 import { OfferType } from '../Offer/offer.constant';
-import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
+import {
+  TAddress,
+  TOrderItemSnapshot,
+} from '../../constant/GlobalInterface/order.interface';
+import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 
 export type TAppliedOfferSnapshot = {
   promoId: mongoose.Types.ObjectId;
@@ -99,13 +103,7 @@ export type TCheckoutSummary = {
 
   deliveryAddress: TAddress;
 
-  paymentMethod?:
-    | 'CARD'
-    | 'MB_WAY'
-    | 'APPLE_PAY'
-    | 'PAYPAL'
-    | 'GOOGLE_PAY'
-    | 'OTHER';
+  paymentMethod?: TPaymentMethod;
   paymentStatus?: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
   transactionId?: string; // Stripe PaymentIntent ID
 

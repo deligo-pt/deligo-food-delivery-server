@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { ProductServices } from './product.service';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Product create Controller
 const productCreate = catchAsync(async (req, res) => {
@@ -244,3 +244,4 @@ export const ProductControllers = {
   permanentDeleteProduct,
   getOutOfStockAlerts,
 };
+

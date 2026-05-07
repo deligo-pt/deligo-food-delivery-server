@@ -2,10 +2,10 @@
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import {
-  AuthUser,
   ROLE_COLLECTION_MAP,
   USER_STATUS,
-} from '../../constant/user.constant';
+} from '../../constant/GlobalConstant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TUserProfileUpdate } from './profile.interface';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';

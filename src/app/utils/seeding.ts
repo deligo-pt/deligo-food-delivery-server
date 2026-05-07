@@ -3,7 +3,10 @@ import config from '../config';
 
 import { v4 as uuidv4 } from 'uuid';
 import { Admin } from '../modules/Admin/admin.model';
-import { USER_ROLE, USER_STATUS } from '../constant/user.constant';
+import {
+  USER_ROLE,
+  USER_STATUS,
+} from '../constant/GlobalConstant/user.constant';
 import { GlobalSettings } from '../modules/GlobalSetting/globalSetting.model';
 
 export const seed = async () => {

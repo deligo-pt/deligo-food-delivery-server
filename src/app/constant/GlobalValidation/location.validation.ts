@@ -14,9 +14,9 @@ const UpdateLiveLocationValidationSchema = z.object({
     speed: z.number().min(0).optional(),
     isMocked: z.boolean().optional(),
     timestamp: z.string().datetime().optional(),
-  }),
-});
+  }).strict(),
+}).strict();
 
-export const GlobalValidation = {
+export const LocationValidation = {
   UpdateLiveLocationValidationSchema,
 };

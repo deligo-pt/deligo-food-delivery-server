@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import {
-  AuthUser,
   ROLE_COLLECTION_MAP,
   TUserRole,
-} from '../../constant/user.constant';
+} from '../../constant/GlobalConstant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';

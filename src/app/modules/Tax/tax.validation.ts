@@ -58,14 +58,22 @@ const taxLogicRefine = (data: any, ctx: z.RefinementCtx) => {
 };
 
 // Create Schema
-const createTaxValidationSchema = z.object({
-  body: z.object(baseTaxSchema).superRefine(taxLogicRefine),
-});
+const createTaxValidationSchema = z
+  .object({
+    body: z.object(baseTaxSchema).strict().superRefine(taxLogicRefine),
+  })
+  .strict();
 
 // Update Schema
-const updateTaxValidationSchema = z.object({
-  body: z.object(baseTaxSchema).partial().superRefine(taxLogicRefine),
-});
+const updateTaxValidationSchema = z
+  .object({
+    body: z
+      .object(baseTaxSchema)
+      .partial()
+      .strict()
+      .superRefine(taxLogicRefine),
+  })
+  .strict();
 
 export const TaxValidations = {
   createTaxValidationSchema,
