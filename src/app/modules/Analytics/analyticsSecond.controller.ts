@@ -157,7 +157,6 @@ const getOfferAnalyticsForAdmin = catchAsync(async (req, res) => {
 });
 
 const getTaxReportAnalyticsForVendor = catchAsync(async (req, res) => {
-  console.log(req.user);
   const result = await AnalyticsSecondServices.getTaxReportAnalyticsForVendor(
     req.user as AuthUser,
   );

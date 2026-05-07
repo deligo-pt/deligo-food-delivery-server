@@ -67,8 +67,6 @@ const updateProduct = async (
     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
   }).populate('vendorId', 'businessDetails.businessType');
 
-  console.log(existingProduct);
-
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 

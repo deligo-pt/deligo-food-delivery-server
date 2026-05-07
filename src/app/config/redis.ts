@@ -26,7 +26,6 @@ subscriber.on('error', (err) => console.error('Redis Subscriber Error:', err));
 const subscriptions = new Map<string, (data: any) => void>();
 
 subscriber.on('message', (channel, message) => {
-  console.log(`Raw message received on channel: ${channel}`);
   const callback = subscriptions.get(channel);
   if (callback) {
     try {
@@ -64,8 +63,7 @@ export const RedisService = {
   publish: async (channel: string, message: unknown) => {
     const data =
       typeof message === 'object' ? JSON.stringify(message) : String(message);
-    const result = await redis.publish(channel, data);
-    console.log(`Published to ${channel}. Recipients: ${result}`);
+    await redis.publish(channel, data);
   },
 
   subscribe: async (channel: string, callback: (data: any) => void) => {
