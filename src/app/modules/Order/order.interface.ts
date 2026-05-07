@@ -1,7 +1,11 @@
 import mongoose from 'mongoose';
 import { OrderStatus } from './order.constant';
-import { TAddress, TOrderItemSnapshot } from '../../constant/order.constant';
 import { TAppliedOfferSnapshot } from '../Checkout/checkout.interface';
+import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
+import {
+  TAddress,
+  TOrderItemSnapshot,
+} from '../../constant/GlobalInterface/order.interface';
 
 export type TInvoiceSync = {
   isSynced: boolean;
@@ -76,13 +80,7 @@ export type TOrder = {
     offerApplied?: TAppliedOfferSnapshot;
   };
 
-  paymentMethod:
-    | 'CARD'
-    | 'MB_WAY'
-    | 'APPLE_PAY'
-    | 'PAYPAL'
-    | 'GOOGLE_PAY'
-    | 'OTHER';
+  paymentMethod: TPaymentMethod;
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   transactionId?: string;
   isPaid: boolean;

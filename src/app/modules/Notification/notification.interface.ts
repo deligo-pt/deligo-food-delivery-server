@@ -1,4 +1,4 @@
-import { TUserRole } from '../../constant/user.constant';
+import { TUserRole } from '../../constant/GlobalConstant/user.constant';
 
 export type TNotificationType =
   | 'ORDER'

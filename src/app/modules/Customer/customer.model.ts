@@ -2,10 +2,11 @@
 import { Schema, model } from 'mongoose';
 import { TCustomer } from './customer.interface';
 import { IUserModel } from '../../interfaces/user.interface';
-import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
+import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { AddressType } from './customer.constant';
-import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
+import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 
 const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
   {

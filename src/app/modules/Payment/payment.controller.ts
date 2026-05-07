@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { PaymentServices } from './payment.service';
 import sendResponse from '../../utils/sendResponse';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
-// create reduniq payment intent controller
-const createReduniqPayment = catchAsync(async (req, res) => {
+// create redUniq payment intent controller
+const createRedUniqPayment = catchAsync(async (req, res) => {
   const { checkoutSummaryId, paymentMethod } = req.body;
 
-  const session = await PaymentServices.createReduniqPayment(
+  const session = await PaymentServices.createRedUniqPayment(
     checkoutSummaryId,
     paymentMethod,
   );
@@ -16,7 +16,7 @@ const createReduniqPayment = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Reduniq payment session created',
+    message: 'RedUniq payment session created',
     data: session,
   });
 });
@@ -35,28 +35,27 @@ const handlePaymentFailure = catchAsync(async (req, res) => {
   });
 });
 
-
-// create ingredient reduniq payment intent controller
-const createIngredientRequniqPayment = catchAsync(async (req, res) => {
+// create ingredient redUniq payment intent controller
+const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
   const payload = req.body;
   const currentUser = req.user as AuthUser;
 
-  const session = await PaymentServices.createIngredientRequniqPayment(
+  const session = await PaymentServices.createIngredientRedUniqPayment(
     payload,
-    currentUser
+    currentUser,
   );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Ingredient reduniq payment session created',
+    message: 'Ingredient redUniq payment session created',
     data: session,
   });
 });
 
-
 export const PaymentController = {
-  createReduniqPayment,
+  createRedUniqPayment,
   handlePaymentFailure,
-  createIngredientRequniqPayment
+  createIngredientRedUniqPayment,
 };
+

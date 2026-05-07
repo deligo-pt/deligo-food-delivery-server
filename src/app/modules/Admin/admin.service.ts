@@ -1,11 +1,11 @@
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
 import { TAdmin } from './admin.interface';
 import { Admin, TAdminImageDocuments } from './admin.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,

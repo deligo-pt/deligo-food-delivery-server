@@ -1,4 +1,4 @@
-import { UrlPath } from '../../constant/user.constant';
+import { UrlPath } from '../../constant/GlobalConstant/user.constant';
 import auth from '../../middlewares/auth';
 import { rateLimiter } from '../../middlewares/rateLimiter';
 import validateRequest, {

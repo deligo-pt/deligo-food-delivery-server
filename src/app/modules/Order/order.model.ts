@@ -1,7 +1,7 @@
 import { model, Schema } from 'mongoose';
 import { TOrder, TInvoiceSync } from './order.interface';
 import { ORDER_STATUS } from './order.constant';
-import { addressSchema } from '../../constant/address.constant';
+import { addressSchema } from '../../constant/GlobalModel/address.model';
 
 const invoiceSyncSchema = new Schema<TInvoiceSync>(
   {

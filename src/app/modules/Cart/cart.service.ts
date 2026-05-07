@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { Product } from '../Product/product.model';
 import { TCartItemInput } from './cart.interface';
@@ -10,6 +9,7 @@ import { recalculateCartTotals } from './cart.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Add cart Service
 const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {

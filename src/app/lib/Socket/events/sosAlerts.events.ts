@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server, Socket } from 'socket.io';
-import { AuthUser } from '../../../constant/user.constant';
 import { SosModel } from '../../../modules/Sos/sos.model';
+import { AuthUser } from '../../../constant/GlobalInterface/user.interface';
 
 const sosLastDbUpdateMap = new Map<string, number>();
 

@@ -2,9 +2,9 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { BusinessCategory, ProductCategory } from './category.model';
 import { TBusinessCategory, TProductCategory } from './category.interface';
-import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 //  Create Business Category
 const createBusinessCategory = async (

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server, Socket } from 'socket.io';
-import { AuthUser } from '../../../constant/user.constant';
 import { DeliveryPartnerServices } from '../../../modules/Delivery-Partner/delivery-partner.service';
+import { AuthUser } from '../../../constant/GlobalInterface/user.interface';
 
 type LiveLocationPayload = {
   orderId: string;

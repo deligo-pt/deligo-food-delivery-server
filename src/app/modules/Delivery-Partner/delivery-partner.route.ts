@@ -5,7 +5,7 @@ import { DeliveryPartnerValidation } from './delivery-partner.validation';
 import { DeliveryPartnerControllers } from './delivery-partner.controller';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
-import { GlobalValidation } from '../../constant/GlobalValidation/global.validation';
+import { LocationValidation } from '../../constant/GlobalValidation/location.validation';
 
 const router = Router();
 
@@ -23,7 +23,7 @@ router.patch(
 router.patch(
   '/:deliveryPartnerId/liveLocation',
   auth('DELIVERY_PARTNER'),
-  validateRequest(GlobalValidation.UpdateLiveLocationValidationSchema),
+  validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
   DeliveryPartnerControllers.updateDeliveryPartnerLiveLocation,
 );
 

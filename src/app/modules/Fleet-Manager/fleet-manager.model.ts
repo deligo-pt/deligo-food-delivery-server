@@ -1,10 +1,11 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TFleetManager } from './fleet-manager.interface';
-import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
+import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
-import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
+import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 
 const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   {

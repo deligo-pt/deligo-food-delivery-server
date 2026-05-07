@@ -5,7 +5,7 @@ import AppError from '../../errors/AppError';
 import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
 import { NotificationService } from '../Notification/notification.service';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { IngredientOrder } from './ing-order.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
 import { IIngredients } from '../Ingredients/ingredients.interface';
@@ -48,18 +48,18 @@ const confirmIngredientOrder = async (
   const ingredientData = existingOrder.orderDetails
     .ingredient as Partial<IIngredients>;
 
-  // 4. Verify Payment with Reduniq (getResult)
+  // 4. Verify Payment with RedUniq (getResult)
   const verifyPayload = {
     method: 'getResult',
     api: {
-      username: config.reduniq.username,
-      password: config.reduniq.password,
+      username: config.redUniq.username,
+      password: config.redUniq.password,
     },
     token: paymentToken,
   };
 
   const verifyRes = await axios.post(
-    config.reduniq.api_url as string,
+    config.redUniq.api_url as string,
     verifyPayload,
   );
 
@@ -319,3 +319,4 @@ export const IngredientOrderService = {
   getSingleIngredientOrder,
   updateIngredientOrderStatus,
 };
+

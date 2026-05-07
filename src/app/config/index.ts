@@ -54,7 +54,7 @@ export default {
     email: process.env.PD_EMAIL,
     password: process.env.PD_PASSWORD,
   },
-  reduniq: {
+  redUniq: {
     api_url: process.env.REDUNIQ_API_URL,
     username: process.env.REDUNIQ_USERNAME,
     password: process.env.REDUNIQ_PASSWORD,
@@ -65,5 +65,5 @@ export default {
     test_customer_contact_number: process.env.TEST_CUSTOMER_CONTACT_NUMBER,
     test_customer_otp: process.env.TEST_CUSTOMER_OTP,
     test_customer_contact_otp: process.env.TEST_CUSTOMER_CONTACT_OTP,
-  }
+  },
 };

@@ -17,6 +17,6 @@ const UpdateLiveLocationValidationSchema = z.object({
   }),
 });
 
-export const GlobalValidation = {
+export const LocationValidation = {
   UpdateLiveLocationValidationSchema,
 };

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose, { Types } from 'mongoose';
-import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { FleetManager } from '../Fleet-Manager/fleet-manager.model';
@@ -35,6 +34,7 @@ import {
 } from './analytics.utils';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------

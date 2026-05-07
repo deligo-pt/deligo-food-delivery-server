@@ -4,7 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { ProfileServices } from './profile.service';
 import { TImageFile } from '../../interfaces/image.interface';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // get my profile controller
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
@@ -24,7 +24,7 @@ const updateMyProfile = catchAsync(async (req, res) => {
   const result = await ProfileServices.updateMyProfile(
     req.user as AuthUser,
     file?.path ?? null,
-    req?.body
+    req?.body,
   );
 
   sendResponse(res, {
@@ -50,7 +50,7 @@ const sendOtp = catchAsync(async (req, res) => {
 const updateEmailOrContactNumber = catchAsync(async (req, res) => {
   const result = await ProfileServices.updateEmailOrContactNumber(
     req.user as AuthUser,
-    req.body.otp
+    req.body.otp,
   );
   sendResponse(res, {
     success: true,

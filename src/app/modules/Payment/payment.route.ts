@@ -6,11 +6,11 @@ import { IngredientOrderValidation } from '../Ingredient-Order/ing-order.validat
 
 const router = Router();
 
-// create reduniq payment intent
+// create redUniq payment intent
 router.post(
   '/reduniq/create-payment-intent',
   auth('CUSTOMER'),
-  PaymentController.createReduniqPayment,
+  PaymentController.createRedUniqPayment,
 );
 
 // handle payment failure
@@ -20,12 +20,14 @@ router.post(
   PaymentController.handlePaymentFailure,
 );
 
-// create ingredient reduniq payment intent
+// create ingredient redUniq payment intent
 router.post(
   '/ingredient/create-payment-intent',
   auth('VENDOR', 'SUB_VENDOR'),
-  validateRequest(IngredientOrderValidation.createIngredientOrderValidationSchema),
-  PaymentController.createIngredientRequniqPayment,
+  validateRequest(
+    IngredientOrderValidation.createIngredientOrderValidationSchema,
+  ),
+  PaymentController.createIngredientRedUniqPayment,
 );
 
 export const PaymentRoutes = router;

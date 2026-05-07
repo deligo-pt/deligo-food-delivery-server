@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose from 'mongoose';
 import { Wallet } from './wallet.model';
-import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // get all wallets
 const getAllWallets = async (

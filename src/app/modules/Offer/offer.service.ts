@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';
@@ -700,3 +700,4 @@ export const OfferServices = {
   softDeleteOffer,
   permanentDeleteOffer,
 };
+

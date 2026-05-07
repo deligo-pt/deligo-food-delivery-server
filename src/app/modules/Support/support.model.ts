@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { TSupportMessage, TSupportTicket } from './support.interface';
-import { USER_ROLE } from '../../constant/user.constant';
+import { USER_ROLE } from '../../constant/GlobalConstant/user.constant';
 
 // TICKET SCHEMA: Handles session metadata
 const supportTicketSchema = new Schema<TSupportTicket>(

@@ -5,7 +5,7 @@ import { Tax } from '../Tax/tax.model';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { generateSlug } from './product.utils';
 import { TProduct } from './product.interface';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { Product } from './product.model';
 
 const getAndValidateProduct = async (
@@ -84,3 +84,4 @@ export const UpdateProductUtils = {
   prepareUpdateData,
   syncStockStatus,
 };
+

@@ -2,7 +2,10 @@
 import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
 import { ALL_USER_MODELS } from '../modules/Auth/auth.constant';
-import { ROLE_PREFIX_MAP, TUserRole } from '../constant/user.constant';
+import {
+  ROLE_PREFIX_MAP,
+  TUserRole,
+} from '../constant/GlobalConstant/user.constant';
 import { IUserModel } from '../interfaces/user.interface';
 import { Admin } from '../modules/Admin/admin.model';
 import { Customer } from '../modules/Customer/customer.model';

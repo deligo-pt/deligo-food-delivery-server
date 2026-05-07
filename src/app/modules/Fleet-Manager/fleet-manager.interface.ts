@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
-import { TLoginDevice, USER_STATUS } from '../../constant/user.constant';
-import { TGeoJSONPoint } from '../../constant/GlobalInterface/global.interface';
+import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
+import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
+import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
 
 export type TFleetManager = {
   // ---------------------------------------------

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 // Register
 const registerValidationSchema = z.object({
   body: z
