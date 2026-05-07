@@ -301,6 +301,19 @@ const updateCartItemQuantity = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
+  const vendor = await Vendor.findOne({
+    _id: product.vendorId,
+    isDeleted: false,
+  }).lean();
+
+  if (!vendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  const isRestaurant = vendor?.businessDetails?.businessType === 'RESTAURANT';
+
+  const shouldCheckStock = !isRestaurant;
+
   let availableStock = product?.stock?.quantity ?? 0;
   if (product.stock?.hasVariations && targetItem.variationSku) {
     const option = (product?.variations ?? [])
@@ -312,7 +325,7 @@ const updateCartItemQuantity = async (
   let currentQty = targetItem.itemSummary.quantity;
 
   if (action === 'increment') {
-    if (currentQty + quantity > availableStock) {
+    if (shouldCheckStock && currentQty + quantity > availableStock) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
     }
     currentQty += quantity;
