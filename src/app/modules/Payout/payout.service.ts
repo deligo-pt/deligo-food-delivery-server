@@ -469,7 +469,7 @@ const initiateAutomatedSettlement = async () => {
         const formattedAmount = roundTo2(wallet.totalUnpaidEarnings);
         const NotificationPayload = {
           title: 'Dados Bancários Incompletos',
-          body: `Não conseguimos iniciar o seu pagamento de ${formattedAmount}€ porque os seus dados bancários estão incompletos. Por favor, atualize-os para receber os pagamentos.`,
+          body: `Não conseguimos iniciar o seu pagamento de €${formattedAmount} porque os seus dados bancários estão incompletos. Por favor, atualize-os para receber os pagamentos.`,
         };
 
         NotificationService.sendToUser(
