@@ -468,8 +468,8 @@ const initiateAutomatedSettlement = async () => {
       if (!hasCompleteBankDetails) {
         const formattedAmount = roundTo2(wallet.totalUnpaidEarnings);
         const NotificationPayload = {
-          title: 'Bank Details Incomplete',
-          body: `We couldn't initiate your payout of ${formattedAmount}€ because your bank details are incomplete. Please update them to receive payments.`,
+          title: 'Dados Bancários Incompletos',
+          body: `Não conseguimos iniciar o seu pagamento de ${formattedAmount}€ porque os seus dados bancários estão incompletos. Por favor, atualize-os para receber os pagamentos.`,
         };
 
         NotificationService.sendToUser(
