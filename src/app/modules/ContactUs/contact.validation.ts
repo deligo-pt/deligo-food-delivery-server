@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const contactValidation = z.object({
   body: z
     .object({
-      name: z.string().trim().min(3, 'Name must be at least 3 characters'),
+      name: z.string().min(3, 'Name must be at least 3 characters'),
 
       sender: z
         .string()
