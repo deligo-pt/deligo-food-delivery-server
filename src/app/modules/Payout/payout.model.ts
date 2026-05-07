@@ -32,6 +32,14 @@ const payoutSchema = new Schema<TPayout>(
       required: true,
       enum: ['Admin', 'FleetManager'],
     },
+    startDate: {
+      type: Date,
+      required: true,
+    },
+    endDate: {
+      type: Date,
+      required: true,
+    },
     amount: {
       type: Number,
       required: true,
