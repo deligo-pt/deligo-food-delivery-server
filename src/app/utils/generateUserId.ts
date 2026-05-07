@@ -1,4 +1,4 @@
-import { USER_ROLE } from '../constant/user.constant';
+import { USER_ROLE } from '../constant/GlobalConstant/user.constant';
 import customNanoId from './customNanoId';
 
 export const USER_TYPE_MAP = {

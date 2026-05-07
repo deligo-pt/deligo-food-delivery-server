@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import customNanoId from '../../utils/customNanoId';
 import { BusinessCategoryName } from '../Category/category.interface';
@@ -174,3 +174,4 @@ export const CreateProductUtils = {
   handleVariations,
   handleSimpleStock,
 };
+

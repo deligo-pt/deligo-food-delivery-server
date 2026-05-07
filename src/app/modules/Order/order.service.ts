@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { Order } from './order.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
@@ -58,13 +58,13 @@ const createOrderAfterRedUniqPayment = async (
   const verifyPayload = {
     method: 'getResult',
     api: {
-      username: config.reduniq.username,
-      password: config.reduniq.password,
+      username: config.redUniq.username,
+      password: config.redUniq.password,
     },
     token: paymentToken,
   };
   const verifyRes = await axios.post(
-    config.reduniq.api_url as string,
+    config.redUniq.api_url as string,
     verifyPayload,
   );
   const paymentData = verifyRes.data;
@@ -1464,3 +1464,4 @@ export const OrderServices = {
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
 };
+

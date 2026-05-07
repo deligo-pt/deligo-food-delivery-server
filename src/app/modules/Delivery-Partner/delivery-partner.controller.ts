@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { DeliveryPartnerServices } from './delivery-partner.service';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Delivery Partner Update Controller
 const updateDeliveryPartner = catchAsync(async (req, res) => {

@@ -3,16 +3,16 @@ import AppError from '../../errors/AppError';
 import { TVendor, TVendorImageDocuments } from './vendor.interface';
 import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
-import { AuthUser } from '../../constant/user.constant';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 /**
  * Service to update vendor profile information.

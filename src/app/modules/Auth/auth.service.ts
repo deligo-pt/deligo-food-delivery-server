@@ -11,14 +11,12 @@ import {
   USER_MODEL_MAP,
 } from './auth.constant';
 import {
-  AuthUser,
   ROLE_COLLECTION_MAP,
   ROLE_DEVICE_LIMITS,
-  TLoginDevice,
   TUserRole,
   USER_ROLE,
   USER_STATUS,
-} from '../../constant/user.constant';
+} from '../../constant/GlobalConstant/user.constant';
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginCustomer, TLoginUser } from './auth.interface';
@@ -35,6 +33,10 @@ import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
 import { ReferralServices } from '../Referral/referral.service';
+import {
+  AuthUser,
+  TLoginDevice,
+} from '../../constant/GlobalInterface/user.interface';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose from 'mongoose';
-import { ROLE_COLLECTION_MAP } from '../constant/user.constant';
-import { USER_ROLE } from '../constant/user.constant';
+import { ROLE_COLLECTION_MAP } from '../constant/GlobalConstant/user.constant';
+import { USER_ROLE } from '../constant/GlobalConstant/user.constant';
 import customNanoId from './customNanoId';
 
 export const generateReferralCode = async (

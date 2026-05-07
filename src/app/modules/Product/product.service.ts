@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { TProduct } from './product.interface';
 import { Product } from './product.model';
@@ -66,8 +66,6 @@ const updateProduct = async (
     productId,
     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
   }).populate('vendorId', 'businessDetails.businessType');
-
-  console.log(existingProduct);
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
@@ -890,3 +888,4 @@ export const ProductServices = {
   permanentDeleteProduct,
   getOutOfStockAlerts,
 };
+

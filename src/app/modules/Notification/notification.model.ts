@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { TNotification } from './notification.interface';
-import { USER_ROLE } from '../../constant/user.constant';
+import { USER_ROLE } from '../../constant/GlobalConstant/user.constant';
 
 export const notificationTypes = [
   'ORDER',

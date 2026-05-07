@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { TImageFile } from '../../interfaces/image.interface';
 import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
 
@@ -169,3 +169,4 @@ export const OrderControllers = {
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
 };
+

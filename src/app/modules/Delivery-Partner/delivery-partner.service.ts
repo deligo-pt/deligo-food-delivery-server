@@ -2,7 +2,7 @@
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import {
   TDeliveryPartner,
   TDeliveryPartnerImageDocuments,
@@ -11,7 +11,7 @@ import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import { TLiveLocationPayload } from '../../constant/GlobalInterface/global.interface';
+import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (

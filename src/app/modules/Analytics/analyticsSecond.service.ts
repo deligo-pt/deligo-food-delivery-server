@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose, { Types } from 'mongoose';
-import { AuthUser } from '../../constant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { currentStatusOptions } from '../Delivery-Partner/delivery-partner.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
@@ -17,6 +16,7 @@ import { Wallet } from '../Wallet/wallet.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { Offer } from '../Offer/offer.model';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------

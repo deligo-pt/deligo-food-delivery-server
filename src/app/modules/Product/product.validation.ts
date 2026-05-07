@@ -1,133 +1,152 @@
 import { z } from 'zod';
 
 // Variation Options Schema (e.g., Small, Medium, Large)
-const variationOptionSchema = z.object({
-  label: z.string({ required_error: 'Variation label is required' }),
-  price: z.number().min(0, 'Variation price must be non-negative'),
-  sku: z.string().optional(),
-  stockQuantity: z
-    .number({ required_error: 'Variation stock quantity is required' })
-    .min(0)
-    .optional(),
-  isOutOfStock: z.boolean().default(false),
-});
+const variationOptionSchema = z
+  .object({
+    label: z.string({ required_error: 'Variation label is required' }),
+    price: z.number().min(0, 'Variation price must be non-negative'),
+    sku: z.string().optional(),
+    stockQuantity: z
+      .number({ required_error: 'Variation stock quantity is required' })
+      .min(0)
+      .optional(),
+    isOutOfStock: z.boolean().default(false),
+  })
+  .strict();
 
 // Variation Group Schema (e.g., Size, Color)
-const variationSchema = z.object({
-  name: z.string({ required_error: 'Variation name is required' }),
-  options: z
-    .array(variationOptionSchema)
-    .min(1, 'At least one option is required'),
-});
+const variationSchema = z
+  .object({
+    name: z.string({ required_error: 'Variation name is required' }),
+    options: z
+      .array(variationOptionSchema)
+      .min(1, 'At least one option is required'),
+  })
+  .strict();
 
 // createProductValidationSchema
 const createProductValidationSchema = z.object({
-  body: z.object({
-    name: z.string().min(1, 'Product name is required'),
-    description: z.string({ required_error: 'Description is required' }),
-    category: z.string().min(1, 'Category is required'),
-    subCategory: z.string().optional(),
-    brand: z.string().optional(),
+  body: z
+    .object({
+      name: z.string().min(1, 'Product name is required'),
+      description: z.string({ required_error: 'Description is required' }),
+      category: z.string().min(1, 'Category is required'),
+      subCategory: z.string().optional(),
+      brand: z.string().optional(),
 
-    variations: z.array(variationSchema).optional(),
-    addonGroups: z.array(z.string()).optional(),
+      variations: z.array(variationSchema).optional(),
+      addonGroups: z.array(z.string()).optional(),
 
-    pricing: z.object({
-      price: z.number().optional(),
-      discount: z.number().min(0).max(100).default(0),
-      taxId: z.string({ required_error: 'Tax ID is required' }),
-      currency: z.string().default('EUR'),
-    }),
+      pricing: z
+        .object({
+          price: z.number().optional(),
+          discount: z.number().min(0).max(100).default(0),
+          taxId: z.string({ required_error: 'Tax ID is required' }),
+          currency: z.string().default('EUR'),
+        })
+        .strict(),
 
-    stock: z
-      .object({
-        quantity: z.number().min(0, 'Quantity must be non-negative'),
-        unit: z.string().optional(),
-        availabilityStatus: z
-          .enum(['In Stock', 'Out of Stock', 'Limited'])
-          .default('In Stock'),
-      })
-      .optional(),
+      stock: z
+        .object({
+          quantity: z.number().min(0, 'Quantity must be non-negative'),
+          unit: z.string().optional(),
+          availabilityStatus: z
+            .enum(['In Stock', 'Out of Stock', 'Limited'])
+            .default('In Stock'),
+        })
+        .strict()
+        .optional(),
 
-    meta: z
-      .object({
-        isFeatured: z.boolean().default(false),
-        isAvailableForPreOrder: z.boolean().default(false),
-        status: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
-        origin: z.string().optional(),
-      })
-      .optional(),
-  }),
+      meta: z
+        .object({
+          isFeatured: z.boolean().default(false),
+          isAvailableForPreOrder: z.boolean().default(false),
+          status: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
+          origin: z.string().optional(),
+        })
+        .strict()
+        .optional(),
+    })
+    .strict(),
 });
 
 // updateProductValidationSchema
 const updateProductValidationSchema = z.object({
-  body: z.object({
-    name: z.string().optional(),
-    description: z.string().optional(),
-    category: z.string().optional(),
-    subCategory: z.string().optional(),
-    brand: z.string().optional(),
+  body: z
+    .object({
+      name: z.string().optional(),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      subCategory: z.string().optional(),
+      brand: z.string().optional(),
 
-    addonGroups: z.array(z.string()).optional(),
+      addonGroups: z.array(z.string()).optional(),
 
-    pricing: z
-      .object({
-        discount: z.number().min(0).max(100).optional(),
-        taxId: z.string().optional(),
-        currency: z.string().optional(),
-      })
-      .optional(),
+      pricing: z
+        .object({
+          discount: z.number().min(0).max(100).optional(),
+          taxId: z.string().optional(),
+          currency: z.string().optional(),
+        })
+        .strict()
+        .optional(),
 
-    stock: z
-      .object({
-        unit: z.string().optional(),
-      })
-      .optional(),
+      stock: z
+        .object({
+          unit: z.string().optional(),
+        })
+        .strict()
+        .optional(),
 
-    images: z.array(z.string()).optional(),
-    meta: z
-      .object({
-        isFeatured: z.boolean().optional(),
-        isAvailableForPreOrder: z.boolean().optional(),
-        status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
-      })
-      .optional(),
-  }),
+      images: z.array(z.string()).optional(),
+      meta: z
+        .object({
+          isFeatured: z.boolean().optional(),
+          isAvailableForPreOrder: z.boolean().optional(),
+          status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+        })
+        .strict()
+        .optional(),
+    })
+    .strict(),
 });
 
 // manageVariationValidationSchema
 const manageVariationValidationSchema = z.object({
-  body: z.object({
-    name: z
-      .string({
-        required_error: 'Variation group name is required',
-      })
-      .min(1, 'Name cannot be empty')
-      .trim(),
-    options: z
-      .array(
-        z.object({
-          label: z
-            .string({
-              required_error: 'Option label is required (e.g., Small, Red)',
+  body: z
+    .object({
+      name: z
+        .string({
+          required_error: 'Variation group name is required',
+        })
+        .min(1, 'Name cannot be empty')
+        .trim(),
+      options: z
+        .array(
+          z
+            .object({
+              label: z
+                .string({
+                  required_error: 'Option label is required (e.g., Small, Red)',
+                })
+                .min(1)
+                .trim(),
+              price: z
+                .number({
+                  required_error: 'Price is required',
+                })
+                .min(0, 'Price cannot be negative'),
+              sku: z.string().optional(),
+              stockQuantity: z
+                .number()
+                .min(0, 'Stock cannot be negative')
+                .default(0),
             })
-            .min(1)
-            .trim(),
-          price: z
-            .number({
-              required_error: 'Price is required',
-            })
-            .min(0, 'Price cannot be negative'),
-          sku: z.string().optional(),
-          stockQuantity: z
-            .number()
-            .min(0, 'Stock cannot be negative')
-            .default(0),
-        }),
-      )
-      .min(1, 'At least one option must be provided'),
-  }),
+            .strict(),
+        )
+        .min(1, 'At least one option must be provided'),
+    })
+    .strict(),
 });
 
 const renameVariationValidationSchema = z.object({
@@ -145,6 +164,7 @@ const renameVariationValidationSchema = z.object({
 
       newLabel: z.string().optional(),
     })
+    .strict()
     .refine(
       (data) => {
         const isRenamingGroup = !!data.newName;
@@ -163,15 +183,17 @@ const renameVariationValidationSchema = z.object({
 
 // removeVariationValidationSchema
 const removeVariationValidationSchema = z.object({
-  body: z.object({
-    name: z
-      .string({
-        required_error: 'Variation name is required',
-      })
-      .min(1, 'Variation name cannot be empty'),
+  body: z
+    .object({
+      name: z
+        .string({
+          required_error: 'Variation name is required',
+        })
+        .min(1, 'Variation name cannot be empty'),
 
-    labelToRemove: z.string().optional(),
-  }),
+      labelToRemove: z.string().optional(),
+    })
+    .strict(),
 });
 
 // updateStockAndPriceValidationSchema
@@ -183,6 +205,7 @@ const updateStockAndPriceValidationSchema = z.object({
       newPrice: z.number().min(0, 'Price cannot be negative').optional(),
       variationSku: z.string().optional(),
     })
+    .strict()
     .refine((data) => !(data.addedQuantity && data.reduceQuantity), {
       message:
         'You cannot provide both addedQuantity and reduceQuantity at the same time',
@@ -192,10 +215,12 @@ const updateStockAndPriceValidationSchema = z.object({
 
 // approveProductValidationSchema
 const approveProductValidationSchema = z.object({
-  body: z.object({
-    isApproved: z.boolean({ required_error: 'isApproved is required' }),
-    remarks: z.string().optional(),
-  }),
+  body: z
+    .object({
+      isApproved: z.boolean({ required_error: 'isApproved is required' }),
+      remarks: z.string().optional(),
+    })
+    .strict(),
 });
 
 export const ProductValidation = {

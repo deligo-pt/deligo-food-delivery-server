@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { GlobalSettingsService } from './globalSetting.service';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // create global settings controller
 const createGlobalSettings = catchAsync(async (req, res) => {
@@ -50,3 +50,4 @@ export const GlobalSettingControllers = {
   updateGlobalSettings,
   getGlobalSettingsForAdmin,
 };
+

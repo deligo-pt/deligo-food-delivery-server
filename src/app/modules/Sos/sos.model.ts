@@ -1,6 +1,6 @@
 import { model, Schema } from 'mongoose';
 import { TSos } from './sos.interface';
-import { USER_ROLE } from '../../constant/user.constant';
+import { USER_ROLE } from '../../constant/GlobalConstant/user.constant';
 
 const sosSchema = new Schema<TSos>(
   {

@@ -9,7 +9,8 @@ import {
   calcAndUpdateProduct,
   calcAndUpdateVendorAllProductStats,
 } from './rating.constant';
-import { AuthUser, ROLE_COLLECTION_MAP } from '../../constant/user.constant';
+import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Order } from '../Order/order.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';

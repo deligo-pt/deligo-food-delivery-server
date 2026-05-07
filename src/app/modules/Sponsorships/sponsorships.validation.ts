@@ -28,6 +28,7 @@ const createSponsorshipValidationSchema = z.object({
 
       isActive: z.boolean().default(true).optional(),
     })
+    .strict()
     .refine((data) => data.endDate > data.startDate, {
       message: 'End date must be later than start date',
       path: ['endDate'],
@@ -44,6 +45,7 @@ const updateSponsorshipValidationSchema = z.object({
       endDate: z.coerce.date().optional(),
       isActive: z.boolean().optional(),
     })
+    .strict()
     .refine(
       (data) => {
         if (data.startDate && data.endDate) {

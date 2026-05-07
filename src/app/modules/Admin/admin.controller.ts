@@ -1,8 +1,8 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { AuthUser } from '../../constant/user.constant';
 import { AdminServices } from './admin.service';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 //  Admin update  Controller
 const updateAdmin = catchAsync(async (req, res) => {
@@ -10,7 +10,7 @@ const updateAdmin = catchAsync(async (req, res) => {
   const result = await AdminServices.updateAdmin(
     req.body,
     req.params.adminId,
-    currentUser
+    currentUser,
   );
   sendResponse(res, {
     success: true,
@@ -27,7 +27,7 @@ const adminDocImageUpload = catchAsync(async (req, res) => {
     file?.path,
     req.body,
     req.user as AuthUser,
-    req.params.adminId
+    req.params.adminId,
   );
   sendResponse(res, {
     success: true,
@@ -54,7 +54,7 @@ const getSingleAdmin = catchAsync(async (req, res) => {
   const currentUser = req.user as AuthUser;
   const result = await AdminServices.getSingleAdmin(
     req.params.adminId,
-    currentUser
+    currentUser,
   );
   sendResponse(res, {
     success: true,

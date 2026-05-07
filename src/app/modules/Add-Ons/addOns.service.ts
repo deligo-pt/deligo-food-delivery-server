@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { AuthUser } from '../../constant/user.constant';
 import { TAddonGroup } from './addOns.interface';
 import { AddonGroup } from './addOns.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Tax } from '../Tax/tax.model';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // create addon group service
 const createAddonGroup = async (

@@ -5,7 +5,7 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Order } from '../Order/order.model';
 import { Points, PointsLog } from './points.model';
 import mongoose, { ClientSession, Types } from 'mongoose';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 
 /**
@@ -380,3 +380,4 @@ export const PointsServices = {
   getMyPoints,
   getAllPoints,
 };
+

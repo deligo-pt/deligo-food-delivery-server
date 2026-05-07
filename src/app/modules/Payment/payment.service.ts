@@ -4,11 +4,7 @@ import config from '../../config';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
-import { AuthUser } from '../../constant/user.constant';
-import {
-  IIngredientOrder,
-  TPaymentMethod,
-} from '../Ingredient-Order/ing-order.interface';
+import { IIngredientOrder } from '../Ingredient-Order/ing-order.interface';
 import mongoose from 'mongoose';
 import { Vendor } from '../Vendor/vendor.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
@@ -16,17 +12,13 @@ import { IngredientOrder } from '../Ingredient-Order/ing-order.model';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Admin } from '../Admin/admin.model';
+import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
-// create reduniq payment intent service
-const createReduniqPayment = async (
+// create redUniq payment intent service
+const createRedUniqPayment = async (
   checkoutSummaryId: string,
-  paymentMethod:
-    | 'CARD'
-    | 'MB_WAY'
-    | 'APPLE_PAY'
-    | 'PAYPAL'
-    | 'GOOGLE_PAY'
-    | 'OTHER',
+  paymentMethod: TPaymentMethod,
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'Summary not found');
@@ -52,10 +44,10 @@ const createReduniqPayment = async (
     );
   }
 
-  if (!config.reduniq.api_url) {
+  if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Reduniq API URL is not configured',
+      'RedUniq API URL is not configured',
     );
   }
 
@@ -71,8 +63,8 @@ const createReduniqPayment = async (
   const payload = {
     method: 'initPayment',
     api: {
-      username: config.reduniq.username,
-      password: config.reduniq.password,
+      username: config.redUniq.username,
+      password: config.redUniq.password,
     },
     payment: {
       amount: Math.round(summary.payoutSummary.grandTotal * 100),
@@ -92,7 +84,7 @@ const createReduniqPayment = async (
     languageCode: 'pt',
   };
 
-  const response = await axios.post(config.reduniq.api_url, payload);
+  const response = await axios.post(config.redUniq.api_url, payload);
   const { result, token, redirectUrl } = response.data;
 
   if (response.data.token) {
@@ -139,7 +131,7 @@ const handlePaymentFailure = async (
 };
 
 // create ingredients payment service
-const createIngredientRequniqPayment = async (
+const createIngredientRedUniqPayment = async (
   payload: IIngredientOrder,
   currentUser: AuthUser,
 ) => {
@@ -232,8 +224,8 @@ const createIngredientRequniqPayment = async (
     const orderPayload = {
       method: 'initPayment',
       api: {
-        username: config.reduniq.username,
-        password: config.reduniq.password,
+        username: config.redUniq.username,
+        password: config.redUniq.password,
       },
       payment: {
         amount: Math.round(grandTotal * 100),
@@ -252,7 +244,7 @@ const createIngredientRequniqPayment = async (
     };
 
     const response = await axios.post(
-      config.reduniq.api_url as string,
+      config.redUniq.api_url as string,
       orderPayload,
     );
     const { result, token, redirectUrl } = response.data;
@@ -281,7 +273,7 @@ const createIngredientRequniqPayment = async (
 };
 
 export const PaymentServices = {
-  createReduniqPayment,
+  createRedUniqPayment,
   handlePaymentFailure,
-  createIngredientRequniqPayment,
+  createIngredientRedUniqPayment,
 };

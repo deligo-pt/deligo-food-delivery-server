@@ -1,6 +1,6 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { TGlobalSettings } from './globalSetting.interface';
 import { GlobalSettings } from './globalSetting.model';
 import { ClientSession } from 'mongoose';
@@ -259,3 +259,4 @@ export const GlobalSettingsService = {
   getGlobalSettingsForAdmin,
   getGlobalSettings,
 };
+

@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose, { ClientSession, Types } from 'mongoose';
 import {
-  AuthUser,
   ROLE_COLLECTION_MAP,
   USER_ROLE,
-} from '../../constant/user.constant';
+} from '../../constant/GlobalConstant/user.constant';
 import { Customer } from '../Customer/customer.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { Vendor } from '../Vendor/vendor.model';
@@ -18,6 +17,7 @@ import { Coupon } from '../Coupon/coupon.model';
 import { Order } from '../Order/order.model';
 import { generateTransactionId } from '../../utils/generateTransactionId';
 import { DeliGoBalance } from '../DeliGo_Balance/deliGoBalance.model';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 const createReferralEntry = async (
   newUser: { _id: Types.ObjectId | string; role: string },

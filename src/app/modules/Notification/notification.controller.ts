@@ -2,7 +2,7 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { NotificationService } from './notification.service';
-import { AuthUser } from '../../constant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Get notifications for current user
 const getMyNotifications = catchAsync(async (req, res) => {
@@ -168,3 +168,4 @@ export const NotificationControllers = {
   permanentDeleteAllNotifications,
   sendBroadcastNotification,
 };
+

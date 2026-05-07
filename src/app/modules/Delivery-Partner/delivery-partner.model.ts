@@ -3,9 +3,10 @@ import { Schema, model } from 'mongoose';
 import { TDeliveryPartner } from './delivery-partner.interface';
 import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
-import { loginDeviceSchema, USER_STATUS } from '../../constant/user.constant';
+import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
+import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { currentStatusOptions } from './delivery-partner.constant';
-import { liveLocationSchema } from '../../constant/GlobalModel/global.model';
+import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 
 const deliveryPartnerSchema = new Schema<
   TDeliveryPartner,

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/user.constant';
 import AppError from '../../errors/AppError';
 import { Product } from '../Product/product.model';
 import { TCartItemInput } from './cart.interface';
@@ -10,6 +9,7 @@ import { recalculateCartTotals } from './cart.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Add cart Service
 const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
@@ -57,6 +57,9 @@ const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
     );
   }
 
+  const isRestaurant =
+    existingVendor?.businessDetails?.businessType === 'RESTAURANT';
+
   let selectedPrice = existingProduct.pricing.price;
   let selectedVariantLabel = '';
   let availableStock = existingProduct?.stock?.quantity ?? 0;
@@ -81,7 +84,7 @@ const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
     finalVariationSku = null;
   }
 
-  if (quantity > availableStock)
+  if (!isRestaurant && quantity > availableStock)
     throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient stock');
 
   const { discount = 0, taxRate = 0 } = existingProduct.pricing;
@@ -137,7 +140,7 @@ const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
       const currentItem = cart.items[itemIndex];
       const finalQuantity = currentItem.itemSummary.quantity + quantity;
 
-      if (finalQuantity > availableStock) {
+      if (!isRestaurant && finalQuantity > availableStock) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
           `Insufficient stock. You already have ${currentItem.itemSummary.quantity} in cart.`,
