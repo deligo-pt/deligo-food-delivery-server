@@ -1,4 +1,4 @@
-import { genAi } from '../../config/genai';
+import { genAi } from '../../config/genAi';
 import { TGenerateProductDescriptionPayload } from './ai-content-generator.interface';
 
 // const generateProductDescription = async (
