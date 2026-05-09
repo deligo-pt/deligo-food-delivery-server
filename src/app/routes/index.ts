@@ -33,6 +33,7 @@ import { IngredientOrderRoutes } from '../modules/Ingredient-Order/ing-order.rou
 import { PointsRoutes } from '../modules/Points/points.route';
 import { RestrictedItemsRoutes } from '../modules/RestrictedItems/restrictedItems.route';
 import { ReferralRoutes } from '../modules/Referral/referral.route';
+import { AIContentGeneratorRoutes } from '../modules/Ai-Content-Generator/ai-content-generator.route';
 
 const router = Router();
 
@@ -173,6 +174,10 @@ const moduleRoutes = [
   {
     path: '/referrals',
     route: ReferralRoutes,
+  },
+  {
+    path: '/ai',
+    route: AIContentGeneratorRoutes,
   },
 ];
 

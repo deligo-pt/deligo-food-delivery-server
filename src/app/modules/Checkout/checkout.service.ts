@@ -54,6 +54,12 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor is closed');
   }
 
+  const isRestaurant =
+    existingVendor.businessDetails?.businessType?.toUpperCase() ===
+    'RESTAURANT';
+
+  const shouldCheckStock = !isRestaurant;
+
   const activeAddress = currentUser?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
   );
@@ -181,7 +187,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
         ? `${product.name} - ${selectedVariantLabel}`
         : product.name,
       image: product.images?.[0] || '',
-      hasVariations: product.stock?.hasVariations || false,
+      hasVariations: product?.stock?.hasVariations || false,
       variationSku: item.variationSku || null,
       addons: processedAddons,
       productPricing: {
