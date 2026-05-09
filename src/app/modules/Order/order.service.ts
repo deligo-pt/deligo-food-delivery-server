@@ -249,11 +249,18 @@ const updateOrderStatusByVendor = async (
       },
       null,
       { session },
-    );
+    ).populate('vendorId', '_id businessDetails');
 
     if (!order) {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
     }
+
+    const vendor = order.vendorId as any;
+
+    const isRestaurant =
+      vendor?.businessDetails?.businessType?.toUpperCase() === 'RESTAURANT';
+
+    const shouldCheckStock = !isRestaurant;
     // ---------------------------------------------------------
     // Only paid orders can be processed
     // ---------------------------------------------------------
@@ -338,7 +345,7 @@ const updateOrderStatusByVendor = async (
       );
     }
 
-    if (currentUser._id.toString() !== order.vendorId.toString()) {
+    if (currentUser._id.toString() !== vendor._id.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to accept or reject orders.',
@@ -366,23 +373,27 @@ const updateOrderStatusByVendor = async (
       // --------------------------------------------------------
       // Reduce product stock
       // --------------------------------------------------------
-      const stockOperations = order.items.map((item) => ({
-        updateOne: {
-          filter: {
-            _id: new mongoose.Types.ObjectId(item.productId),
-            'stock.quantity': { $gte: item.itemSummary.quantity },
+      if (shouldCheckStock) {
+        const stockOperations = order.items.map((item) => ({
+          updateOne: {
+            filter: {
+              _id: new mongoose.Types.ObjectId(item.productId),
+              'stock.quantity': { $gte: item.itemSummary.quantity },
+            },
+            update: {
+              $inc: { 'stock.quantity': -item.itemSummary.quantity },
+            },
           },
-          update: {
-            $inc: { 'stock.quantity': -item.itemSummary.quantity },
-          },
-        },
-      }));
-      const stockResult = await Product.bulkWrite(stockOperations, { session });
-      if (stockResult.modifiedCount !== order.items.length) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Stock check failed. One or more products are out of stock or inventory was insufficient.',
-        );
+        }));
+        const stockResult = await Product.bulkWrite(stockOperations, {
+          session,
+        });
+        if (stockResult.modifiedCount !== order.items.length) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            'Stock check failed. One or more products are out of stock or inventory was insufficient.',
+          );
+        }
       }
 
       const notificationPayload = {
@@ -444,15 +455,17 @@ const updateOrderStatusByVendor = async (
       // --------------------------------------------------------
       // Add product to stock
       // --------------------------------------------------------
-      const stockOperations = order.items.map((item) => ({
-        updateOne: {
-          filter: { _id: new mongoose.Types.ObjectId(item.productId) },
-          update: {
-            $inc: { 'stock.quantity': item.itemSummary.quantity },
+      if (shouldCheckStock) {
+        const stockOperations = order.items.map((item) => ({
+          updateOne: {
+            filter: { _id: new mongoose.Types.ObjectId(item.productId) },
+            update: {
+              $inc: { 'stock.quantity': item.itemSummary.quantity },
+            },
           },
-        },
-      }));
-      await Product.bulkWrite(stockOperations, { session });
+        }));
+        await Product.bulkWrite(stockOperations, { session });
+      }
       const notificationPayload = {
         title: 'Order Canceled',
         body: `Your order has been canceled for ${action.reason}`,
@@ -1464,4 +1477,3 @@ export const OrderServices = {
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
 };
-
