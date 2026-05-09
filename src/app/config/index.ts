@@ -6,7 +6,10 @@ dotenv.config({ path: path.join((process.cwd(), '.env')) });
 export default {
   NODE_ENV: process.env.NODE_ENV,
   port: process.env.PORT,
-  openai: { apiKey: process.env.OPENAI_API_KEY },
+  ai: {
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    openAiApiKey: process.env.OPENAI_API_KEY,
+  },
   frontend_urls: {
     frontend_url_vendor: process.env.FRONTEND_URL_VENDOR,
     frontend_url_admin: process.env.FRONTEND_URL_ADMIN,

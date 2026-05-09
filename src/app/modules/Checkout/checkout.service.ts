@@ -54,11 +54,11 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor is closed');
   }
 
-  const isRestaurant =
-    existingVendor.businessDetails?.businessType?.toUpperCase() ===
-    'RESTAURANT';
+  // const isRestaurant =
+  //   existingVendor.businessDetails?.businessType?.toUpperCase() ===
+  //   'RESTAURANT';
 
-  const shouldCheckStock = !isRestaurant;
+  // const shouldCheckStock = !isRestaurant;
 
   const activeAddress = currentUser?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
