@@ -15,7 +15,8 @@ const getMyTransactions = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Transactions fetched successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

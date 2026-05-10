@@ -10,6 +10,7 @@ import httpStatus from 'http-status';
 import generateOtp from '../../utils/generateOtp';
 import { EmailHelper } from '../../utils/emailSender';
 import { RedisService } from '../../config/redis';
+import { uploadLocalFileToCloudinary } from '../../utils/uploadToCloudinary';
 
 const initiateAgreement = async (payload: TInitiateAgreementPayload) => {
   const normalizedEmail = payload.email.toLowerCase();
@@ -111,7 +112,7 @@ const verifyAgreementOtp = async (payload: { email: string; otp: string }) => {
   agreement.status = AGREEMENT_STATUS.VERIFIED;
 
   // 8. Generate draft PDF
-  const draftPdfPath = await agreementPdfService.generateDraftPdf(
+  const localDraftPdfPath = await agreementPdfService.generateDraftPdf(
     {
       establishmentName: agreement.establishmentName,
       email: agreement.email,
@@ -121,8 +122,15 @@ const verifyAgreementOtp = async (payload: { email: string; otp: string }) => {
     agreement._id.toString(),
   );
 
+  const draftPdfUrl = await uploadLocalFileToCloudinary(
+    localDraftPdfPath,
+    'agreements',
+    `draft-${agreement._id}`,
+    'auto',
+  );
+
+  agreement.draftPdfPath = draftPdfUrl;
   // 9. Update agreement
-  agreement.draftPdfPath = draftPdfPath;
   agreement.status = AGREEMENT_STATUS.DRAFT;
 
   await agreement.save();
@@ -202,6 +210,13 @@ const signAgreement = async (agreementId: string, signatureImage: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
   }
 
+  if (agreement.status !== AGREEMENT_STATUS.DRAFT) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Agreement is not ready for signing',
+    );
+  }
+
   if (!agreement.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -209,26 +224,38 @@ const signAgreement = async (agreementId: string, signatureImage: string) => {
     );
   }
 
-  // Save signature file (optional, for record keeping)
-  const signaturePath = await saveSignatureImage(
+  const localSignaturePath = await saveSignatureImage(
     signatureImage,
     agreement._id.toString(),
   );
 
-  // IMPORTANT: Pass the ORIGINAL Base64 string to the PDF service
-  const signedPdfPath = await agreementPdfService.generateSignedPdf(
+  const signatureUrl = await uploadLocalFileToCloudinary(
+    localSignaturePath,
+    'signatures',
+    `signature-${agreement._id}`,
+    'image',
+  );
+
+  const localSignedPdfPath = await agreementPdfService.generateSignedPdf(
     {
       establishmentName: agreement.establishmentName,
       email: agreement.email,
       contactNumber: agreement.contactNumber,
       nif: agreement.nif,
-      signatureImage, // <-- Base64 Data URL
+      signatureImage,
     },
     agreement._id.toString(),
   );
 
-  agreement.signaturePath = signaturePath;
-  agreement.signedPdfPath = signedPdfPath;
+  const signedPdfUrl = await uploadLocalFileToCloudinary(
+    localSignedPdfPath,
+    'agreements',
+    `signed-${agreement._id}`,
+    'auto',
+  );
+
+  agreement.signaturePath = signatureUrl;
+  agreement.signedPdfPath = signedPdfUrl;
   agreement.status = AGREEMENT_STATUS.SIGNED;
   agreement.signedAt = new Date();
 
@@ -236,7 +263,7 @@ const signAgreement = async (agreementId: string, signatureImage: string) => {
 
   return {
     agreementId: agreement._id,
-    signedPdfPath,
+    signedPdfPath: agreement.signedPdfPath,
     status: agreement.status,
   };
 };
