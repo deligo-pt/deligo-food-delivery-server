@@ -1,5 +1,5 @@
 import { z } from 'zod';
-const generateAgreementValidationSchema = z.object({
+const initiateAgreementValidationSchema = z.object({
   body: z
     .object({
       establishmentName: z
@@ -14,11 +14,11 @@ const generateAgreementValidationSchema = z.object({
         })
         .email('Invalid email address'),
 
-      phone: z
+      contactNumber: z
         .string({
-          required_error: 'Phone is required',
+          required_error: 'Contact number is required',
         })
-        .min(1, 'Phone is required'),
+        .min(1, 'Contact number is required'),
 
       nif: z
         .string({
@@ -29,15 +29,39 @@ const generateAgreementValidationSchema = z.object({
     .strict(),
 });
 
+const verifyAgreementOtpValidationSchema = z.object({
+  body: z
+    .object({
+      email: z
+        .string({
+          required_error: 'Email is required',
+        })
+        .email('Invalid email address'),
+
+      otp: z
+        .string({
+          required_error: 'OTP is required',
+        })
+        .min(1, 'OTP is required'),
+    })
+    .strict(),
+});
+
+const resendAgreementOtpValidationSchema = z.object({
+  body: z
+    .object({
+      email: z
+        .string({
+          required_error: 'Email is required',
+        })
+        .email('Invalid email address'),
+    })
+    .strict(),
+});
+
 const signAgreementValidationSchema = z.object({
   body: z
     .object({
-      agreementId: z
-        .string({
-          required_error: 'Agreement ID is required',
-        })
-        .min(1, 'Agreement ID is required'),
-
       signatureImage: z
         .string({
           required_error: 'Signature image is required',
@@ -48,6 +72,8 @@ const signAgreementValidationSchema = z.object({
 });
 
 export const AgreementValidation = {
-  generateAgreementValidationSchema,
+  initiateAgreementValidationSchema,
+  verifyAgreementOtpValidationSchema,
+  resendAgreementOtpValidationSchema,
   signAgreementValidationSchema,
 };

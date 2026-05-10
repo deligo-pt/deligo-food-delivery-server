@@ -34,6 +34,7 @@ import { PointsRoutes } from '../modules/Points/points.route';
 import { RestrictedItemsRoutes } from '../modules/RestrictedItems/restrictedItems.route';
 import { ReferralRoutes } from '../modules/Referral/referral.route';
 import { AIContentGeneratorRoutes } from '../modules/Ai-Content-Generator/ai-content-generator.route';
+import { AgreementRoutes } from '../modules/Agreement/agreement.route';
 
 const router = Router();
 
@@ -178,6 +179,10 @@ const moduleRoutes = [
   {
     path: '/ai',
     route: AIContentGeneratorRoutes,
+  },
+  {
+    path: '/agreements',
+    route: AgreementRoutes,
   },
 ];
 
