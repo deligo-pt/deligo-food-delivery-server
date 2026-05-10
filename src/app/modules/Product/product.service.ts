@@ -888,4 +888,3 @@ export const ProductServices = {
   permanentDeleteProduct,
   getOutOfStockAlerts,
 };
-
