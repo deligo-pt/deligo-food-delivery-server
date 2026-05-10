@@ -1,6 +1,8 @@
 import { Types } from 'mongoose';
 
 export const AGREEMENT_STATUS = {
+  PENDING_VERIFICATION: 'pending_verification',
+  VERIFIED: 'verified',
   DRAFT: 'draft',
   SIGNED: 'signed',
   EMAILED: 'emailed',
@@ -12,29 +14,52 @@ export type TAgreementStatus =
 export type TAgreement = {
   _id?: Types.ObjectId;
 
+  // ------------------------------------------------------------------
   // Business Information
+  // ------------------------------------------------------------------
   establishmentName: string;
   email: string;
-  phone: string;
+  contactNumber: string;
   nif: string;
 
+  // ------------------------------------------------------------------
+  // Email Verification
+  // ------------------------------------------------------------------
+  isEmailVerified?: boolean;
+  emailVerifiedAt?: Date | null;
+
+  // ------------------------------------------------------------------
   // File Paths
+  // ------------------------------------------------------------------
   draftPdfPath: string;
   signaturePath?: string | null;
   signedPdfPath?: string | null;
 
-  // Status
+  // ------------------------------------------------------------------
+  // Agreement Status
+  // ------------------------------------------------------------------
   status: TAgreementStatus;
 
-  // Dates
+  // ------------------------------------------------------------------
+  // Agreement Lifecycle Dates
+  // ------------------------------------------------------------------
   signedAt?: Date | null;
   emailedAt?: Date | null;
 
+  // ------------------------------------------------------------------
   // Optional Relations
+  // ------------------------------------------------------------------
   vendor?: Types.ObjectId | null;
   createdBy?: Types.ObjectId | null;
 
+  // ------------------------------------------------------------------
   // Timestamps
+  // ------------------------------------------------------------------
   createdAt?: Date;
   updatedAt?: Date;
 };
+
+export type TInitiateAgreementPayload = Pick<
+  TAgreement,
+  'establishmentName' | 'email' | 'contactNumber' | 'nif'
+>;
