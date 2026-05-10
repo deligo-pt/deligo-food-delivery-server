@@ -6,7 +6,7 @@ export const saveSignatureImage = async (
   agreementId: string,
 ): Promise<string> => {
   // Expected format:
-  // data:image/png;base64,iVBORw0KGgoAAAANS...
+  // data:image/png;base64,iVBORw0KGgoAAAANS
 
   const matches = signatureImage.match(
     /^data:image\/(png|jpg|jpeg);base64,(.+)$/,
