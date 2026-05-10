@@ -236,7 +236,10 @@ const getAllProductCategories = async (
   query: Record<string, unknown>,
   currentUser: AuthUser,
 ) => {
-  if (currentUser.role === 'VENDOR') {
+  console.log(currentUser);
+  const isAdmin =
+    currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
+  if (!isAdmin) {
     query.isActive = true;
     query.isDeleted = false;
     const findBusinessCategory = await BusinessCategory.findOne({
@@ -265,7 +268,9 @@ const getSingleProductCategory = async (id: string, currentUser: AuthUser) => {
   const category = await ProductCategory.findById(id);
   if (!category)
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
-  if (currentUser.role === 'VENDOR' && category.isActive === false) {
+  const isAdmin =
+    currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
+  if (!isAdmin && category.isActive === false) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
   }
 
