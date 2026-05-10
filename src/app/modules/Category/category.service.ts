@@ -71,7 +71,9 @@ const getAllBusinessCategories = async (
   query: Record<string, unknown>,
   currentUser: AuthUser,
 ) => {
-  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+  const { role } = currentUser;
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  if (!isAdmin) {
     ((query.isActive = true), (query.isDeleted = false));
   }
   const businessCategories = new QueryBuilder(BusinessCategory.find(), query)
@@ -90,15 +92,15 @@ const getAllBusinessCategories = async (
 
 //  Get Single Business Category
 const getSingleBusinessCategory = async (id: string, currentUser: AuthUser) => {
+  const { role } = currentUser;
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
+
   const category = await BusinessCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  if (
-    (currentUser.role === 'VENDOR' || currentUser.role === 'FLEET_MANAGER') &&
-    category.isActive === false
-  ) {
+  if (!isAdmin && category.isActive === false && category.isDeleted === true) {
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
@@ -236,19 +238,30 @@ const getAllProductCategories = async (
   query: Record<string, unknown>,
   currentUser: AuthUser,
 ) => {
-  console.log(currentUser);
-  const isAdmin =
-    currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
+  const { role } = currentUser;
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const isVendor = role === 'VENDOR';
+
+  // Apply filters for non-admin users
   if (!isAdmin) {
     query.isActive = true;
     query.isDeleted = false;
-    const findBusinessCategory = await BusinessCategory.findOne({
+  }
+
+  // Additional filter for vendors: restrict to their business category
+  if (isVendor) {
+    const businessCategory = await BusinessCategory.findOne({
       name: currentUser?.businessDetails?.businessType,
     })
       .select('_id')
       .lean();
-    query.businessCategoryId = findBusinessCategory?._id;
+
+    if (businessCategory) {
+      query.businessCategoryId = businessCategory._id;
+    }
   }
+
+  // Build and execute the query
   const productCategories = new QueryBuilder(ProductCategory.find(), query)
     .fields()
     .paginate()
@@ -260,18 +273,40 @@ const getAllProductCategories = async (
     productCategories.countTotal(),
     productCategories.modelQuery,
   ]);
+
   return { meta, data };
 };
 
 // get single product category
 const getSingleProductCategory = async (id: string, currentUser: AuthUser) => {
   const category = await ProductCategory.findById(id);
-  if (!category)
+  if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
-  const isAdmin =
-    currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
-  if (!isAdmin && category.isActive === false) {
+  }
+
+  const { role } = currentUser;
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const isVendor = role === 'VENDOR';
+
+  // Non-admin users cannot access deleted or inactive categories
+  if (!isAdmin && (category.isDeleted || !category.isActive)) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+  }
+
+  // Vendors can only access categories from their business type
+  if (isVendor) {
+    const userBusinessCategory = await BusinessCategory.findOne({
+      name: currentUser?.businessDetails?.businessType,
+    })
+      .select('_id')
+      .lean();
+
+    if (
+      !userBusinessCategory ||
+      String(category.businessCategoryId) !== String(userBusinessCategory._id)
+    ) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+    }
   }
 
   return category;

@@ -3,6 +3,9 @@ import { AGREEMENT_STATUS, TAgreement } from './agreement.interface';
 
 const agreementSchema = new Schema<TAgreement>(
   {
+    // ------------------------------------------------------------------
+    // Business Information
+    // ------------------------------------------------------------------
     establishmentName: {
       type: String,
       required: true,
@@ -16,7 +19,7 @@ const agreementSchema = new Schema<TAgreement>(
       lowercase: true,
     },
 
-    phone: {
+    contactNumber: {
       type: String,
       required: true,
       trim: true,
@@ -28,9 +31,25 @@ const agreementSchema = new Schema<TAgreement>(
       trim: true,
     },
 
+    // ------------------------------------------------------------------
+    // Email Verification
+    // ------------------------------------------------------------------
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ------------------------------------------------------------------
+    // File Paths
+    // ------------------------------------------------------------------
     draftPdfPath: {
       type: String,
-      required: true,
+      default: null,
     },
 
     signaturePath: {
@@ -43,12 +62,18 @@ const agreementSchema = new Schema<TAgreement>(
       default: null,
     },
 
+    // ------------------------------------------------------------------
+    // Status
+    // ------------------------------------------------------------------
     status: {
       type: String,
       enum: Object.values(AGREEMENT_STATUS),
-      default: AGREEMENT_STATUS.DRAFT,
+      default: AGREEMENT_STATUS.PENDING_VERIFICATION,
     },
 
+    // ------------------------------------------------------------------
+    // Lifecycle Dates
+    // ------------------------------------------------------------------
     signedAt: {
       type: Date,
       default: null,
@@ -59,6 +84,9 @@ const agreementSchema = new Schema<TAgreement>(
       default: null,
     },
 
+    // ------------------------------------------------------------------
+    // Optional Relations
+    // ------------------------------------------------------------------
     vendor: {
       type: Schema.Types.ObjectId,
       ref: 'Vendor',
@@ -73,6 +101,14 @@ const agreementSchema = new Schema<TAgreement>(
   },
   {
     timestamps: true,
+  },
+);
+
+// Optional: prevent duplicate agreements per email
+agreementSchema.index(
+  { email: 1 },
+  {
+    unique: true,
   },
 );
 

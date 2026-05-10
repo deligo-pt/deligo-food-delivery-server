@@ -1,0 +1,327 @@
+<!-- views/agreement.template.hbs -->
+<html lang='pt'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta
+      name='viewport'
+      content='width=device-width, initial-scale=1.0'
+    />
+
+    <style>
+      @page {
+        size: A4;
+        margin: 20mm 15mm;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f3f4fa;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #333333;
+      }
+
+      .container {
+        max-width: 850px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+      }
+
+      /* HEADER */
+      .header {
+        background: linear-gradient(135deg, #dc3173, #a80e52);
+        padding: 22px 30px;
+      }
+
+      .header-date {
+        color: #ffffff;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      /* BODY */
+      .middle {
+        background: #ffffff;
+      }
+
+      .title {
+        text-align: center;
+        font-size: 28px;
+        font-weight: bold;
+        padding: 30px 20px 10px;
+        color: #1e1e1e;
+        text-transform: uppercase;
+      }
+
+      .subtitle {
+        text-align: center;
+        font-size: 14px;
+        color: #666;
+        padding-bottom: 20px;
+      }
+
+      .content {
+        padding: 0 35px 35px 35px;
+        font-size: 13px;
+        color: #333333;
+        line-height: 1.75;
+        text-align: justify;
+      }
+
+      .content p {
+        margin: 0 0 12px 0;
+      }
+
+      .section-title {
+        font-size: 15px;
+        font-weight: bold;
+        margin-top: 28px;
+        margin-bottom: 12px;
+        color: #1e1e1e;
+        text-transform: uppercase;
+      }
+
+      .party-box {
+        background: #fafafa;
+        border: 1px solid #ececec;
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 25px;
+      }
+
+      .highlight {
+        color: #dc3173;
+        font-weight: bold;
+      }
+
+      /* SIGNATURE */
+      .signature-section {
+        margin-top: 50px;
+        page-break-inside: avoid;
+      }
+
+      .signature-title {
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 15px;
+      }
+
+      .signature-image {
+        min-height: 100px;
+        margin-bottom: 10px;
+      }
+
+      .signature-image img {
+        max-height: 100px;
+        max-width: 320px;
+        display: block;
+      }
+
+      .signature-line {
+        border-top: 1px solid #000;
+        width: 320px;
+        padding-top: 6px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      /* FOOTER */
+      .footer {
+        font-size: 14px;
+        text-align: center;
+        color: #666;
+        padding: 20px 30px 30px 30px;
+        border-top: 1px solid #e4e4e4;
+        background: #fae0ea;
+      }
+
+      /* RESPONSIVE */
+      @media only screen and (max-width: 480px) {
+        .title {
+          font-size: 22px !important;
+        }
+
+        .content {
+          padding: 0 20px 25px 20px !important;
+          font-size: 12px !important;
+        }
+
+        .signature-line {
+          width: 100% !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <br />
+
+    <div class='container'>
+      <!-- HEADER -->
+      <div class='header'>
+        <table width='100%' cellspacing='0' cellpadding='0'>
+          <tr>
+            <td align='left' style='vertical-align: middle;'>
+              <img
+                src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763599290/DeliGo-White_cfd6my.png'
+                alt='DeliGo Logo'
+                width='70'
+              />
+            </td>
+
+            <td
+              align='right'
+              class='header-date'
+              style='vertical-align: middle;'
+            >
+              {{currentDate}}
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- BODY -->
+      <div class='middle'>
+        <div class='title'>Contrato de Prestação de Serviços</div>
+        <div class='subtitle'>
+          Agreement between DeliGo and {{establishmentName}}
+        </div>
+
+        <div class='content'>
+          <!-- PARTIES -->
+          <div class='party-box'>
+            <p>
+              <strong>EMPRESA:</strong>
+              PIXELMIRACLE LDA., NIF 518758176, com sede em Lisboa, Portugal.
+            </p>
+
+            <p>
+              <strong>ESTABELECIMENTO:</strong>
+              <span class='highlight'>{{establishmentName}}</span>
+            </p>
+
+            <p>
+              <strong>Email:</strong>
+              {{email}}<br />
+              <strong>Contact Number:</strong>
+              {{contactNumber}}<br />
+              <strong>NIF:</strong>
+              {{nif}}
+            </p>
+          </div>
+
+          <!-- INTRODUCTION -->
+          <p>
+            O presente Contrato de Prestação de Serviços é celebrado entre a
+            PIXELMIRACLE LDA., operadora da plataforma DeliGo, e o
+            ESTABELECIMENTO acima identificado.
+          </p>
+
+          <!-- LEGAL TEXT -->
+          <!-- Replace the content below with your complete legal agreement -->
+          <div class='section-title'>Objeto</div>
+          <p>
+            O presente Contrato regula a prestação de serviços pela EMPRESA ao
+            ESTABELECIMENTO, com o objetivo de facilitar a comercialização,
+            venda e entrega de produtos através da plataforma DeliGo.
+          </p>
+
+          <div class='section-title'>Plataforma</div>
+          <p>
+            O ESTABELECIMENTO utilizará a aplicação e o website da DeliGo para
+            gerir os seus produtos, preços e encomendas.
+          </p>
+
+          <div class='section-title'>Remuneração</div>
+          <p>
+            A EMPRESA cobrará uma taxa de serviço conforme os termos acordados
+            entre as Partes.
+          </p>
+
+          <div class='section-title'>Confidencialidade</div>
+          <p>
+            O ESTABELECIMENTO compromete-se a manter confidenciais todas as
+            informações obtidas no âmbito deste Contrato.
+          </p>
+
+          <div class='section-title'>Proteção de Dados</div>
+          <p>
+            As Partes comprometem-se a cumprir integralmente o Regulamento (UE)
+            2016/679 (RGPD) e demais legislação aplicável.
+          </p>
+
+          <div class='section-title'>Lei Aplicável</div>
+          <p>
+            O presente Contrato rege-se pela legislação portuguesa e qualquer
+            litígio será submetido aos Tribunais da Comarca de Lisboa.
+          </p>
+
+          <!-- Replace everything above with your full Portuguese legal text from your source document -->
+          <!-- Your original legal content can be pasted here. :contentReference[oaicite:0]{index=0} -->
+
+          <p style='margin-top: 30px;'>
+            Executado em <strong>{{currentDate}}</strong>, em duas vias,
+            destinando-se uma cópia a cada uma das Partes.
+          </p>
+
+          <!-- SIGNATURE -->
+          <div class='signature-section'>
+            <div class='signature-title'>
+              Em representação do ESTABELECIMENTO:
+            </div>
+
+            {{#if signatureImage}}
+              <div class='signature-image'>
+                <img src='{{signatureImage}}' alt='Assinatura' />
+              </div>
+            {{else}}
+              <div class='signature-image'></div>
+            {{/if}}
+
+            <div class='signature-line'>
+              {{establishmentName}}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class='footer'>
+        <p
+          style='margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #1e1e1e;'
+        >
+          DeliGo / Operated by Pixel Miracle Lda
+        </p>
+
+        <p
+          style='margin: 0; font-size: 14px; color: #555; line-height: 1.5;'
+        >
+          <strong>NIF / Tax Number:</strong>
+          518758176
+          <br />
+          <strong>Address:</strong>
+          Rua Joaquim Agostinho 16C, 1750-126 Lisbon, Portugal
+          <br />
+          <strong>Phone:</strong>
+          +351 920 136 680 | +351 217 570 184
+          <br />
+          <strong>Email:</strong>
+          contact@deligo.pt |
+          <strong>Website:</strong>
+          https://deligo.pt
+        </p>
+
+        <p
+          style='margin: 15px 0 0 0; font-size: 13px; color: #999; border-top: 1px solid #ddd; padding-top: 10px;'
+        >
+          &copy; {{currentYear}} DeliGo. All rights reserved.
+        </p>
+      </div>
+    </div>
+
+    <br />
+  </body>
+</html>
