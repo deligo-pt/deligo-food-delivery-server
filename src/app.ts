@@ -13,6 +13,7 @@ import router from './app/routes';
 
 const app: Application = express();
 
+//proxy
 app.set('trust proxy', 1);
 
 const allowedOrigins = config.origins?.split(',') ?? [];
