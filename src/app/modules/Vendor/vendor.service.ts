@@ -175,9 +175,10 @@ const vendorDocImageUpload = async (
 const deleteVendorDocument = async (
   payload: { docImageTitle: string; imageUrl: string },
   currentUser: AuthUser,
+  vendorId: string,
 ) => {
   const { docImageTitle, imageUrl } = payload;
-  const existingVendor = await Vendor.findOne({ userId: currentUser.userId });
+  const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor)
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
 
