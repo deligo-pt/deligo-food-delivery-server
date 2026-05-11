@@ -26,11 +26,13 @@
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
       }
 
+      /* HEADER */
       .header {
         background: linear-gradient(135deg, #dc3173, #a80e52);
         padding: 22px 30px;
       }
 
+      /* BODY */
       .middle {
         background: #fae0ea;
       }
@@ -50,28 +52,51 @@
         line-height: 1.7;
       }
 
-      .otp-box {
-        font-size: 36px;
-        font-weight: 800;
-        letter-spacing: 4px;
-        padding: 18px 0;
-        background: #fafafa;
-        border-radius: 10px;
-        display: inline-block;
-        width: 240px;
-        color: #dc3173;
-        border: 1px solid #e0e0e0;
-        margin: 15px auto 10px;
+      .download-button-wrapper {
         text-align: center;
+        padding: 10px 30px 25px 30px;
+      }
+
+      .download-button {
+        display: inline-block;
+        background: linear-gradient(135deg, #dc3173, #a80e52);
+        color: #ffffff !important;
+        text-decoration: none;
+        padding: 14px 30px;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 700;
+        box-shadow: 0 6px 20px rgba(220, 49, 115, 0.25);
+      }
+
+      .download-link-box {
+        margin: 0 30px 20px 30px;
+        padding: 14px;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 12px;
+        color: #dc3173;
+        line-height: 1.6;
+        word-break: break-all;
+        text-align: center;
+      }
+
+      .download-link-box a {
+        color: #dc3173;
+        text-decoration: none;
+        font-weight: bold;
       }
 
       .note {
         font-size: 15px;
-        color: #ff3b3b;
+        color: #666666;
         text-align: center;
-        margin-bottom: 25px;
+        margin: 0 30px 25px 30px;
+        line-height: 1.6;
       }
 
+      /* SOCIAL */
       .social-section {
         text-align: center;
         padding: 20px 0;
@@ -82,6 +107,7 @@
         width: 34px;
       }
 
+      /* FOOTER */
       .footer {
         font-size: 14px;
         text-align: center;
@@ -91,20 +117,21 @@
         background: #fae0ea;
       }
 
+      /* RESPONSIVE */
       @media only screen and (max-width: 480px) {
         .title {
           font-size: 22px !important;
         }
 
-        .otp-box {
-          width: 200px !important;
-          font-size: 30px !important;
-          letter-spacing: 2px;
-        }
-
         .content {
           padding: 0 20px 25px 20px !important;
           font-size: 16px !important;
+        }
+
+        .download-button {
+          display: block !important;
+          font-size: 15px !important;
+          padding: 14px 20px !important;
         }
 
         .social-section img {
@@ -146,35 +173,51 @@
 
       <!-- BODY -->
       <div class='middle'>
-        <div class='title'>Agreement Verification OTP</div>
+        <div class='title'>Agreement Successfully Signed</div>
 
         <div class='content'>
           <strong>Dear {{establishmentName}},</strong><br /><br />
 
-          To verify your email address and proceed with signing your
-          <strong>DeliGo Service Agreement</strong>, please use the One-Time
-          Password (OTP) below:
+          Your service agreement with
+          <strong>DeliGo</strong>
+          has been successfully signed and finalized.<br /><br />
+
+          A copy of your signed agreement is now ready for download. Please
+          click the button below to save the document for your records.
         </div>
 
-        <div style='text-align:center;'>
-          <div class='otp-box'>{{otp}}</div>
+        <!-- Download Button -->
+        <div class='download-button-wrapper'>
+          <a
+            href='{{pdfUrl}}'
+            target='_blank'
+            download='DeliGo-Signed-Agreement.pdf'
+            class='download-button'
+          >
+            Download Signed Agreement
+          </a>
         </div>
 
+        <!-- Backup Link -->
+        <div class='download-link-box'>
+          If the button above does not work, copy and open this link:<br /><br
+          />
+          <a href='{{pdfUrl}}' target='_blank'>
+            {{pdfUrl}}
+          </a>
+        </div>
+
+        <!-- Note -->
         <div class='note'>
-          Note: This OTP is valid for 5 minutes only.
+          Please keep this signed agreement in a safe place for future
+          reference.
         </div>
 
+        <!-- Closing -->
         <div class='content'>
-          Once your email is verified, you will be able to review and sign your
-          agreement securely.
-
+          If you have any questions regarding your agreement, please feel free
+          to contact our support team.
           <br /><br />
-
-          If you did not request this verification, please ignore this email or
-          contact our support team immediately.
-
-          <br /><br />
-
           Regards,<br />
           Team DeliGo
         </div>
@@ -204,7 +247,7 @@
               <a href='https://www.youtube.com/@DeliGoPT' target='_blank'>
                 <img
                   src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/youtube_f3hzep.png'
-                  alt='Youtube'
+                  alt='YouTube'
                   width='34'
                 />
               </a>

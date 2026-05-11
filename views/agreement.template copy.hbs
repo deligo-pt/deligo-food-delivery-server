@@ -31,7 +31,6 @@
         font-size: 11px;
         line-height: 1.65;
         color: var(--text);
-        background: #ffffff;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
@@ -40,22 +39,97 @@
         position: relative;
       }
 
+      /* Background design */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -2;
+        background:
+          radial-gradient(
+            circle at 0% 30%,
+            rgba(220, 50, 116, 0.05) 0,
+            rgba(220, 50, 116, 0.05) 70px,
+            transparent 71px
+          ),
+          radial-gradient(
+            circle at 100% 15%,
+            rgba(220, 50, 116, 0.04) 0,
+            rgba(220, 50, 116, 0.04) 80px,
+            transparent 81px
+          ),
+          radial-gradient(
+            circle at 100% 85%,
+            rgba(220, 50, 116, 0.03) 0,
+            rgba(220, 50, 116, 0.03) 60px,
+            transparent 61px
+          ),
+          radial-gradient(
+            circle at 0% 100%,
+            rgba(220, 50, 116, 0.025) 0,
+            rgba(220, 50, 116, 0.025) 90px,
+            transparent 91px
+          );
+      }
+
       .page {
         position: relative;
       }
 
       /* Header */
       .header {
-        background: var(--primary);
-        color: #ffffff;
-        border-radius: 8px;
-        padding: 24px 28px;
+        position: relative;
+        background: linear-gradient(
+          135deg,
+          #e3387b 0%,
+          #c61f63 55%,
+          #aa0f4e 100%
+        );
+        color: #fff;
+        border-radius: 18px 18px 24px 24px;
+        padding: 24px 28px 30px;
         margin-bottom: 24px;
+        box-shadow: 0 12px 28px rgba(220, 50, 116, 0.2);
+        overflow: hidden;
+      }
+
+      .header::before,
+      .header::after {
+        content: '';
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .header::before {
+        width: 240px;
+        height: 240px;
+        top: -120px;
+        right: -40px;
+      }
+
+      .header::after {
+        width: 180px;
+        height: 180px;
+        bottom: -90px;
+        left: -50px;
+      }
+
+      .header-wave {
+        position: absolute;
+        left: -2%;
+        right: -2%;
+        bottom: -28px;
+        height: 56px;
+        background: #ffffff;
+        border-radius: 0 0 60% 60% / 0 0 100% 100%;
       }
 
       .header-top {
         display: table;
         width: 100%;
+        position: relative;
+        z-index: 2;
       }
 
       .logo-cell,
@@ -67,6 +141,7 @@
       .date-cell {
         text-align: right;
         font-size: 11px;
+        opacity: 0.95;
       }
 
       .brand {
@@ -78,9 +153,12 @@
       .brand-sub {
         margin-top: 4px;
         font-size: 11px;
+        letter-spacing: 0.4px;
       }
 
       .title {
+        position: relative;
+        z-index: 2;
         margin: 12px 0 0;
         text-align: center;
         font-size: 28px;
@@ -91,6 +169,8 @@
       }
 
       .subtitle {
+        position: relative;
+        z-index: 2;
         margin-top: 8px;
         text-align: center;
         font-size: 11px;
@@ -99,10 +179,11 @@
 
       /* Cards */
       .card {
-        background: #ffffff;
+        background: #fff;
         border: 1px solid #f1d7e2;
-        border-radius: 6px;
+        border-radius: 14px;
         padding: 18px 22px;
+        box-shadow: 0 4px 14px rgba(220, 50, 116, 0.05);
         margin-bottom: 20px;
       }
 
@@ -131,7 +212,7 @@
         margin-bottom: 10px;
       }
 
-      /* Sections */
+      /* Section header */
       .section {
         margin-bottom: 16px;
         page-break-inside: avoid;
@@ -145,7 +226,7 @@
         color: var(--primary-dark);
         background: var(--primary-light);
         border-left: 4px solid var(--primary);
-        border-radius: 4px;
+        border-radius: 999px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
@@ -154,26 +235,28 @@
         margin-left: 18px;
       }
 
-      /* Company Signatures */
-      .signature-card,
-      .establishment-signature {
-        background: #ffffff;
+      /* Company signatures */
+      .signature-card {
+        background: linear-gradient(180deg, #fff, #fff9fc);
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 16px;
         padding: 0;
         margin-top: 18px;
         overflow: hidden;
         page-break-inside: avoid;
-        break-inside: avoid;
       }
 
       .signature-card-header {
         display: inline-block;
         margin: 14px 0 0 16px;
-        background: var(--primary);
-        color: #ffffff;
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-dark)
+        );
+        color: #fff;
         padding: 6px 14px;
-        border-radius: 4px;
+        border-radius: 8px;
         font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
@@ -199,8 +282,12 @@
 
       .signature-script {
         height: 52px;
-        display: block;
-        text-align: center;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        font-family: 'Brush Script MT', 'Segoe Script', cursive;
+        font-size: 30px;
+        color: #111827;
         margin-bottom: 6px;
       }
 
@@ -223,7 +310,18 @@
         font-weight: 700;
       }
 
-      /* Establishment Signature */
+      /* Establishment signature */
+      .establishment-signature {
+        background: var(--primary-ultra);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 0;
+        margin-top: 16px;
+        overflow: hidden;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
       .establishment-body {
         padding: 20px 22px 24px;
       }
