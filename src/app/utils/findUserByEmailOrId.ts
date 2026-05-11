@@ -33,6 +33,7 @@ export const findUserById = async ({
     VENDOR: Vendor,
     SUB_VENDOR: Vendor,
     DELIVERY_PARTNER: DeliveryPartner,
+    AGENT: Admin,
   };
 
   if (role) {

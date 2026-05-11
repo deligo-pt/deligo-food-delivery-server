@@ -10,7 +10,7 @@ export type TAdmin = {
   _id: string;
   userId: string;
   registeredBy?: mongoose.Types.ObjectId;
-  role: 'ADMIN' | 'SUPER_ADMIN';
+  role: 'ADMIN' | 'SUPER_ADMIN' | 'AGENT';
   email: string;
   password: string;
   status: keyof typeof USER_STATUS;

@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import Handlebars from 'handlebars';
 import puppeteer from 'puppeteer';
+import config from '../../config';
 
 type TAgreementPdfData = {
   establishmentName: string;
@@ -9,6 +10,10 @@ type TAgreementPdfData = {
   contactNumber: string;
   nif: string;
   signatureImage?: string | null;
+
+  // Company signatures
+  companySignature1?: string | null;
+  companySignature2?: string | null;
 };
 
 class AgreementPdfService {
@@ -31,6 +36,14 @@ class AgreementPdfService {
     return template({
       ...data,
       currentDate: new Date().toLocaleDateString('pt-PT'),
+      companySignature1:
+        data.companySignature1 ||
+        config.signature.company_signature_1_url ||
+        '',
+      companySignature2:
+        data.companySignature2 ||
+        config.signature.company_signature_2_url ||
+        '',
     });
   }
 
@@ -62,7 +75,7 @@ class AgreementPdfService {
       await page.pdf({
         path: pdfPath,
         format: 'A4',
-        printBackground: true,
+        printBackground: false,
       });
 
       return pdfPath;
