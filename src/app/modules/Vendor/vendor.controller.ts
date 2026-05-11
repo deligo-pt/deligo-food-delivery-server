@@ -46,6 +46,7 @@ const deleteVendorDocument = catchAsync(async (req, res) => {
   const result = await VendorServices.deleteVendorDocument(
     req.body,
     req.user as AuthUser,
+    req.params.vendorId,
   );
 
   sendResponse(res, {
