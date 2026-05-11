@@ -25,7 +25,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     },
     role: {
       type: String,
-      enum: ['ADMIN', 'SUPER_ADMIN'],
+      enum: ['ADMIN', 'SUPER_ADMIN', 'AGENT'],
       required: true,
     },
     email: {

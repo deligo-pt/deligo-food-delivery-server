@@ -1,6 +1,7 @@
 import { Agreement } from './agreement.model';
 import {
   AGREEMENT_STATUS,
+  TAgreementStatus,
   TInitiateAgreementPayload,
 } from './agreement.interface';
 import { agreementPdfService } from './agreement.pdf.service';
@@ -11,61 +12,97 @@ import generateOtp from '../../utils/generateOtp';
 import { EmailHelper } from '../../utils/emailSender';
 import { RedisService } from '../../config/redis';
 import { uploadLocalFileToCloudinary } from '../../utils/uploadToCloudinary';
+import { sendAgreementSignedEmail } from '../../helpers/sendAgreementSignedEmail';
 
 const initiateAgreement = async (payload: TInitiateAgreementPayload) => {
   const normalizedEmail = payload.email.toLowerCase();
 
   // 1. Check if agreement already exists
-  const existingAgreement = await Agreement.findOne({
+  let agreement = await Agreement.findOne({
     email: normalizedEmail,
   });
 
-  if (existingAgreement) {
+  // 2. Statuses that should block creating/resending
+  const blockedStatuses: TAgreementStatus[] = [
+    AGREEMENT_STATUS.VERIFIED,
+    AGREEMENT_STATUS.DRAFT,
+    AGREEMENT_STATUS.SIGNED,
+    AGREEMENT_STATUS.EMAILED,
+  ];
+
+  // 3. If agreement already exists and is verified/completed, block request
+  if (
+    agreement &&
+    agreement.isEmailVerified &&
+    blockedStatuses.includes(agreement.status)
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'An agreement already exists for this email.',
     );
   }
 
-  // 2. Create agreement with pending verification status
-  const agreement = await Agreement.create({
-    ...payload,
-    email: normalizedEmail,
-    status: AGREEMENT_STATUS.PENDING_VERIFICATION,
-    isEmailVerified: false,
-    draftPdfPath: null,
-  });
+  // 4. If agreement exists but email is not verified,
+  // update the record and resend OTP
+  if (agreement && !agreement.isEmailVerified) {
+    agreement.establishmentName = payload.establishmentName;
+    agreement.contactNumber = payload.contactNumber;
+    agreement.nif = payload.nif;
+    agreement.status = AGREEMENT_STATUS.PENDING_VERIFICATION;
+    agreement.isEmailVerified = false;
 
-  // 3. Generate OTP
+    await agreement.save();
+  } else if (!agreement) {
+    // 5. Create new agreement if none exists
+    agreement = await Agreement.create({
+      ...payload,
+      email: normalizedEmail,
+      status: AGREEMENT_STATUS.PENDING_VERIFICATION,
+      isEmailVerified: false,
+      draftPdfPath: null,
+    });
+  }
+
+  // At this point, agreement is guaranteed to exist
+  if (!agreement) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to create agreement.',
+    );
+  }
+
+  // 6. Generate OTP
   const { otp } = generateOtp();
 
-  // 4. Save OTP in Redis (10 minutes)
+  // 7. Save OTP in Redis (10 minutes)
   await RedisService.set(`agreement-otp:${agreement.email}`, otp, 600);
 
-  // 5. Generate email HTML from template
+  // 8. Generate email HTML
   const html = await EmailHelper.createEmailContent(
     {
       establishmentName: agreement.establishmentName,
       otp,
-      expiryMinutes: 10,
+      date: new Date().toLocaleDateString('en-GB'),
+      currentYear: new Date().getFullYear(),
     },
     'agreement-otp',
   );
 
-  // 6. Send email
+  // 9. Send email
   await EmailHelper.sendEmail(
-    normalizedEmail,
+    agreement.email,
     html,
     'DeliGo Email Verification Code',
   );
 
-  // 7. Return response
+  // 10. Return response
   return {
     message: 'Verification code sent successfully.',
     data: {
       agreementId: agreement._id,
       email: agreement.email,
       status: agreement.status,
+      isEmailVerified: agreement.isEmailVerified,
     },
   };
 };
@@ -126,7 +163,7 @@ const verifyAgreementOtp = async (payload: { email: string; otp: string }) => {
     localDraftPdfPath,
     'agreements',
     `draft-${agreement._id}`,
-    'auto',
+    'raw',
   );
 
   agreement.draftPdfPath = draftPdfUrl;
@@ -251,13 +288,26 @@ const signAgreement = async (agreementId: string, signatureImage: string) => {
     localSignedPdfPath,
     'agreements',
     `signed-${agreement._id}`,
-    'auto',
+    'raw',
   );
 
   agreement.signaturePath = signatureUrl;
   agreement.signedPdfPath = signedPdfUrl;
   agreement.status = AGREEMENT_STATUS.SIGNED;
   agreement.signedAt = new Date();
+
+  await agreement.save();
+
+  // Send final agreement email
+  await sendAgreementSignedEmail({
+    to: agreement.email,
+    establishmentName: agreement.establishmentName,
+    pdfUrl: agreement.signedPdfPath,
+  });
+
+  // Update email status
+  agreement.status = AGREEMENT_STATUS.EMAILED;
+  agreement.emailedAt = new Date();
 
   await agreement.save();
 
