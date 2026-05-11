@@ -83,21 +83,6 @@ const agreementSchema = new Schema<TAgreement>(
       type: Date,
       default: null,
     },
-
-    // ------------------------------------------------------------------
-    // Optional Relations
-    // ------------------------------------------------------------------
-    vendor: {
-      type: Schema.Types.ObjectId,
-      ref: 'Vendor',
-      default: null,
-    },
-
-    createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
-    },
   },
   {
     timestamps: true,
