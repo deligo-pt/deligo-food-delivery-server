@@ -43,7 +43,12 @@ import { TGenerateProductDescriptionPayload } from './ai-content-generator.inter
 const generateProductDescription = async (
   payload: TGenerateProductDescriptionPayload,
 ): Promise<string> => {
-  const { productName, productCategory, productImageUrl } = payload;
+  const {
+    productName,
+    productCategory,
+    productImageUrl,
+    language = 'English',
+  } = payload;
 
   const prompt = `
 Generate an attractive and professional food description.
@@ -56,6 +61,7 @@ Requirements:
 - Appetizing tone
 - No false claims
 - Return only the description text.
+- Language: ${language}
 `;
 
   const response = await genAi.models.generateContent({

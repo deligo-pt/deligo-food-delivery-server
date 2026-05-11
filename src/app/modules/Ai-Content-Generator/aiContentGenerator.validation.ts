@@ -24,6 +24,7 @@ const generateProductDescriptionValidationSchema = z.object({
       })
       .trim()
       .url('Please provide a valid image URL'),
+    language: z.string().optional(),
   }),
 });
 
