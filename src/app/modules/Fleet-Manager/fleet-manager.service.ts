@@ -32,11 +32,14 @@ const fleetManagerUpdate = async (
   // ---------------------------------------------------------
   // Only the Fleet Manager can update their own profile
   // ---------------------------------------------------------
+
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+
   const isSelf =
     currentUser.role === 'FLEET_MANAGER' &&
     currentUser.userId === existingFleetManager.userId;
 
-  if (!isSelf) {
+  if (!isSelf && !isAdmin) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to update this Fleet Manager.',
