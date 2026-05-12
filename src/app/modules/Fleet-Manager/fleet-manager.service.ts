@@ -176,10 +176,11 @@ const fleetManagerDocImageUpload = async (
 const deleteFleetManagerDocument = async (
   payload: { docImageTitle: string; imageUrl: string },
   currentUser: AuthUser,
+  fleetManagerId: string,
 ) => {
   const { docImageTitle, imageUrl } = payload;
   const existingFleetManager = await FleetManager.findOne({
-    userId: currentUser.userId,
+    userId: fleetManagerId,
   });
   if (!existingFleetManager)
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
@@ -280,4 +281,3 @@ export const FleetManagerServices = {
   getAllFleetManagersFromDb,
   getSingleFleetManagerFromDB,
 };
-
