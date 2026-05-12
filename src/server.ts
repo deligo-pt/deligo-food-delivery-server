@@ -6,6 +6,7 @@ import { seed } from './app/utils/seeding';
 import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
 import { initAllCronJobs } from './app/cron';
+import './app/BullMQ/Workers/index';
 const server = http.createServer(app);
 
 // Handle unexpected errors
