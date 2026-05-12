@@ -45,7 +45,7 @@ export const UrlPath = {
 
 export const ROLE_DEVICE_LIMITS: Record<string, number> = {
   DELIVERY_PARTNER: 1,
-  SUPER_ADMIN: 3,
+  SUPER_ADMIN: 5,
   ADMIN: 3,
   CUSTOMER: 3,
   FLEET_MANAGER: 3,
