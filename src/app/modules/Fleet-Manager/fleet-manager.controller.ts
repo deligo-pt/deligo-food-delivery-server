@@ -41,6 +41,7 @@ const deleteFleetManagerDocument = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.deleteFleetManagerDocument(
     req.body,
     req.user as AuthUser,
+    req.params.fleetManagerId,
   );
 
   sendResponse(res, {
