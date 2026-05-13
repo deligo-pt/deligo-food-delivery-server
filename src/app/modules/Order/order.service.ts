@@ -22,7 +22,6 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { getIO } from '../../lib/Socket';
-import { OrderPdService } from '../PdInvoice/orderPd.service';
 import axios from 'axios';
 import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
@@ -161,26 +160,13 @@ const createOrderAfterRedUniqPayment = async (
 
     await session.commitTransaction();
 
-    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
-      console.error(err);
+    await orderQueue.add('NEW_ORDER_POST_PROCESS', {
+      orderId: order._id.toString(),
+      vendorId: existingVendor._id.toString(),
+      vendorUserId: existingVendor.userId,
+      orderDisplayId: order.orderId,
+      grandTotal: order.payoutSummary.grandTotal,
     });
-
-    const notificationPayload = {
-      title: 'You have a new order',
-      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
-      data: {
-        orderId: order.orderId,
-      },
-    };
-
-    NotificationService.sendToUser(
-      existingVendor.userId,
-      notificationPayload.title,
-      notificationPayload.body,
-      notificationPayload.data,
-      'order_notification',
-      'ORDER',
-    );
 
     return order;
   } catch (err) {
