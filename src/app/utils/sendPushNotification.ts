@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import config from '../config';
 import { fcm } from '../config/firebase';
-import { Admin } from '../modules/Admin/admin.model';
-import { Customer } from '../modules/Customer/customer.model';
-import { DeliveryPartner } from '../modules/Delivery-Partner/delivery-partner.model';
-import { FleetManager } from '../modules/Fleet-Manager/fleet-manager.model';
-import { Vendor } from '../modules/Vendor/vendor.model';
 
 export type TPushNotificationPayload = {
   title: string;
@@ -59,28 +54,8 @@ export const sendPushNotification = async (
       error.code === 'messaging/invalid-registration-token'
     ) {
       if (config.NODE_ENV === 'development') {
-        console.log('Cleanup needed: Token is no longer valid.');
+        console.error('Cleanup needed: Token is no longer valid.');
       }
-
-      const cleanupQuery = {
-        $pull: {
-          loginDevices: { fcmToken: token },
-        },
-      };
-
-      await Promise.all([
-        DeliveryPartner.updateMany(
-          { 'loginDevices.fcmToken': token },
-          cleanupQuery,
-        ),
-        Vendor.updateMany({ 'loginDevices.fcmToken': token }, cleanupQuery),
-        Admin.updateMany({ 'loginDevices.fcmToken': token }, cleanupQuery),
-        Customer.updateMany({ 'loginDevices.fcmToken': token }, cleanupQuery),
-        FleetManager.updateMany(
-          { 'loginDevices.fcmToken': token },
-          cleanupQuery,
-        ),
-      ]);
     }
 
     return { success: false, error: error.message };

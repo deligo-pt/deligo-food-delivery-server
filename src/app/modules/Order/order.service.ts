@@ -873,6 +873,22 @@ const updateOrderStatusByDeliveryPartner = async (
     throw new AppError(httpStatus.FORBIDDEN, 'Delivery Partner not found.');
   }
 
+  const orderCheck = await Order.findOne({
+    orderId,
+    isDeleted: false,
+  }).select('orderStatus');
+
+  if (orderCheck?.orderStatus === ORDER_STATUS.DELIVERED) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Order already delivered.');
+  }
+
+  if (orderCheck?.orderStatus === payload.orderStatus) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Order status is already ${payload.orderStatus}.`,
+    );
+  }
+
   // VALID state transitions
   const validTransitions: Record<string, string> = {
     [ORDER_STATUS.PICKED_UP]: ORDER_STATUS.READY_FOR_PICKUP,
@@ -934,25 +950,7 @@ const updateOrderStatusByDeliveryPartner = async (
   );
 
   if (!updatedOrder) {
-    const orderCheck = await Order.findOne({
-      orderId,
-      isDeleted: false,
-    }).select('orderStatus');
-
-    if (!orderCheck) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
-    }
-
-    if (orderCheck?.orderStatus === payload.orderStatus) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Order status is already ${payload.orderStatus}.`,
-      );
-    }
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
   }
 
   await orderQueue.add('PROCESS_ORDER_POST_UPDATE', {
