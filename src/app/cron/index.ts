@@ -3,7 +3,7 @@ import { handleOrderExpiryCron } from './order.cron';
 import { handlePayoutAutomatedCron } from './payout.cron';
 
 export const initAllCronJobs = () => {
-  // Order Expiry
+  // Order Expiry cron
   cron.schedule('* * * * *', async () => {
     await handleOrderExpiryCron();
   });
