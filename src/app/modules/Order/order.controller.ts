@@ -3,7 +3,6 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { AuthUser } from '../../constant/GlobalInterface/user.interface';
-import { TImageFile } from '../../interfaces/image.interface';
 import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
 
 // create order after redUniq payment
@@ -99,11 +98,9 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
 
 // update order status by delivery partner controller
 const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
-  const file = req.file as TImageFile | undefined;
   const result = await OrderServices.updateOrderStatusByDeliveryPartner(
     req.params.orderId,
     req.user as AuthUser,
-    file?.path ?? null,
     req.body,
   );
   sendResponse(res, {
@@ -169,4 +166,3 @@ export const OrderControllers = {
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
 };
-

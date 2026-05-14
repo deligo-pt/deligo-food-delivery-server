@@ -3,8 +3,6 @@ import auth from '../../middlewares/auth';
 import { OrderControllers } from './order.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { OrderValidation } from './order.validation';
-import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
 
 const router = Router();
 
@@ -49,8 +47,6 @@ router.patch(
 router.patch(
   '/:orderId/update-order-status',
   auth('DELIVERY_PARTNER'),
-  multerUpload.single('file'),
-  parseBody,
   validateRequest(
     OrderValidation.updateOrderStatusByDeliveryPartnerValidationSchema,
   ),

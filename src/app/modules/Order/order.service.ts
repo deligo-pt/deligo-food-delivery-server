@@ -863,30 +863,15 @@ const partnerAcceptsDispatchedOrder = async (
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
   currentUser: AuthUser,
-  deliveryProofImage: string | null,
   payload: {
     orderStatus: OrderStatus;
+    deliveryProofImage: string | null;
     reason?: string;
   },
 ) => {
+  const { orderStatus, deliveryProofImage, reason } = payload;
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(httpStatus.FORBIDDEN, 'Delivery Partner not found.');
-  }
-
-  const orderCheck = await Order.findOne({
-    orderId,
-    isDeleted: false,
-  }).select('orderStatus');
-
-  if (orderCheck?.orderStatus === ORDER_STATUS.DELIVERED) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order already delivered.');
-  }
-
-  if (orderCheck?.orderStatus === payload.orderStatus) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Order status is already ${payload.orderStatus}.`,
-    );
   }
 
   // VALID state transitions
@@ -897,24 +882,21 @@ const updateOrderStatusByDeliveryPartner = async (
     [ORDER_STATUS.REASSIGNMENT_NEEDED]: ORDER_STATUS.ASSIGNED,
   };
 
-  const requiredCurrentStatus = validTransitions[payload.orderStatus];
+  const requiredCurrentStatus = validTransitions[orderStatus];
 
   if (!requiredCurrentStatus) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You cannot change status to ${payload.orderStatus}.`,
+      `You cannot change status to ${orderStatus}.`,
     );
   }
 
   // REASSIGNMENT needs a reason
-  if (
-    payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED &&
-    !payload.reason
-  ) {
+  if (orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && !reason) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Reason is required.');
   }
 
-  if (payload.orderStatus === ORDER_STATUS.DELIVERED && !deliveryProofImage) {
+  if (orderStatus === ORDER_STATUS.DELIVERED && !deliveryProofImage) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Delivery proof image is required.',
@@ -930,16 +912,16 @@ const updateOrderStatusByDeliveryPartner = async (
     },
     {
       $set: {
-        orderStatus: payload.orderStatus,
-        ...(payload.orderStatus === ORDER_STATUS.DELIVERED && {
+        orderStatus: orderStatus,
+        ...(orderStatus === ORDER_STATUS.DELIVERED && {
           deliveredAt: new Date(),
           ...(deliveryProofImage && {
             'delivery.deliveryProofImage': deliveryProofImage,
           }),
         }),
-        ...(payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
+        ...(orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
           deliveryPartnerId: null,
-          deliveryPartnerCancelReason: payload.reason,
+          deliveryPartnerCancelReason: reason,
         }),
       },
     },
@@ -950,12 +932,43 @@ const updateOrderStatusByDeliveryPartner = async (
   );
 
   if (!updatedOrder) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+    const orderCheck = await Order.findOne({
+      orderId,
+      isDeleted: false,
+    }).select('orderStatus');
+
+    if (!orderCheck) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+    }
+
+    if (orderCheck?.orderStatus === payload.orderStatus) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Order status is already ${payload.orderStatus}.`,
+      );
+    }
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+    );
+  }
+
+  // Update partner record
+  if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
+    const partner = await DeliveryPartner.findById(
+      updatedOrder?.deliveryPartnerId,
+    );
+    if (!partner) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Delivery Partner not found for this order.',
+      );
+    }
   }
 
   await orderQueue.add('PROCESS_ORDER_POST_UPDATE', {
     orderDbId: updatedOrder._id,
-    orderStatus: payload.orderStatus,
+    orderStatus: orderStatus,
     partnerUserId: currentUser.userId,
     orderDisplayId: orderId,
   });
