@@ -89,7 +89,6 @@ export type TDeliveryPartner = {
   bankDetails?: {
     bankName?: string;
     accountHolderName?: string;
-    accountNumber?: string;
     iban?: string;
     swiftCode?: string;
   };

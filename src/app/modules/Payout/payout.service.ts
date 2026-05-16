@@ -59,7 +59,6 @@ const initiateSettlement = async (
     const hasCompleteBankDetails =
       user?.bankDetails?.bankName &&
       user?.bankDetails?.accountHolderName &&
-      user?.bankDetails?.accountNumber &&
       user?.bankDetails?.iban &&
       user?.bankDetails?.swiftCode;
 
@@ -113,7 +112,6 @@ const initiateSettlement = async (
           bankDetails: {
             bankName: user.bankDetails.bankName,
             accountHolderName: user.bankDetails.accountHolderName,
-            accountNumber: user.bankDetails.accountNumber,
             iban: user.bankDetails.iban,
             swiftCode: user.bankDetails.swiftCode,
           },
@@ -462,7 +460,6 @@ const initiateAutomatedSettlement = async () => {
       const hasCompleteBankDetails =
         user?.bankDetails?.bankName &&
         user?.bankDetails?.accountHolderName &&
-        user?.bankDetails?.accountNumber &&
         user?.bankDetails?.iban;
 
       if (!hasCompleteBankDetails) {
