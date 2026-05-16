@@ -121,7 +121,6 @@ export type TVendor = {
   bankDetails?: {
     bankName: string;
     accountHolderName: string;
-    accountNumber: string;
     iban: string;
     swiftCode: string;
   };

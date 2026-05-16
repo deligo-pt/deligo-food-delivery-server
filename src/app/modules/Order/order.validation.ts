@@ -25,9 +25,24 @@ const updateOrderStatusByDeliveryPartnerValidationSchema = z.object({
         'ON_THE_WAY',
         'DELIVERED',
       ]),
+      deliveryProofImage: z.string().optional(),
       reason: z.string().optional(),
     })
-    .strict(),
+    .strict()
+    .refine(
+      (data) => {
+        if (data.orderStatus === 'DELIVERED') {
+          return (
+            !!data.deliveryProofImage && data.deliveryProofImage.trim() !== ''
+          );
+        }
+        return true;
+      },
+      {
+        message: 'Delivery proof image is required for delivered status',
+        path: ['deliveryProofImage'],
+      },
+    ),
 });
 
 const partnerAcceptDispatchOrder = z.object({

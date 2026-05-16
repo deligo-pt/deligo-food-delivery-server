@@ -22,16 +22,11 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { getIO } from '../../lib/Socket';
-import { OrderPdService } from '../PdInvoice/orderPd.service';
 import axios from 'axios';
 import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
-import { Wallet } from '../Wallet/wallet.model';
-import { roundTo2 } from '../../utils/mathProvider';
-import { Admin } from '../Admin/admin.model';
 import customNanoId from '../../utils/customNanoId';
-import { PointsServices } from '../Points/points.service';
-import { ReferralServices } from '../Referral/referral.service';
+import { orderQueue } from '../../BullMQ/Queue/order.queue';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -165,26 +160,13 @@ const createOrderAfterRedUniqPayment = async (
 
     await session.commitTransaction();
 
-    OrderPdService.syncOrderWithPd(order._id.toString()).catch((err) => {
-      console.error(err);
+    await orderQueue.add('NEW_ORDER_POST_PROCESS', {
+      orderId: order._id.toString(),
+      vendorId: existingVendor._id.toString(),
+      vendorUserId: existingVendor.userId,
+      orderDisplayId: order.orderId,
+      grandTotal: order.payoutSummary.grandTotal,
     });
-
-    const notificationPayload = {
-      title: 'You have a new order',
-      body: `You have a new order with order id ${order.orderId} and total amount ${order.payoutSummary.grandTotal}. Please check your orders to accept or reject the order.`,
-      data: {
-        orderId: order.orderId,
-      },
-    };
-
-    NotificationService.sendToUser(
-      existingVendor.userId,
-      notificationPayload.title,
-      notificationPayload.body,
-      notificationPayload.data,
-      'order_notification',
-      'ORDER',
-    );
 
     return order;
   } catch (err) {
@@ -881,12 +863,13 @@ const partnerAcceptsDispatchedOrder = async (
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
   currentUser: AuthUser,
-  deliveryProofImage: string | null,
   payload: {
     orderStatus: OrderStatus;
+    deliveryProofImage: string | null;
     reason?: string;
   },
 ) => {
+  const { orderStatus, deliveryProofImage, reason } = payload;
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(httpStatus.FORBIDDEN, 'Delivery Partner not found.');
   }
@@ -899,378 +882,101 @@ const updateOrderStatusByDeliveryPartner = async (
     [ORDER_STATUS.REASSIGNMENT_NEEDED]: ORDER_STATUS.ASSIGNED,
   };
 
-  const requiredCurrentStatus = validTransitions[payload.orderStatus];
+  const requiredCurrentStatus = validTransitions[orderStatus];
 
   if (!requiredCurrentStatus) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You cannot change status to ${payload.orderStatus}.`,
+      `You cannot change status to ${orderStatus}.`,
     );
   }
 
   // REASSIGNMENT needs a reason
-  if (
-    payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED &&
-    !payload.reason
-  ) {
+  if (orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && !reason) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Reason is required.');
   }
 
-  if (payload.orderStatus === ORDER_STATUS.DELIVERED && !deliveryProofImage) {
+  if (orderStatus === ORDER_STATUS.DELIVERED && !deliveryProofImage) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Delivery proof image is required.',
     );
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    // Atomic update attempt
-    const updatedOrder = await Order.findOneAndUpdate(
-      {
-        orderId,
-        deliveryPartnerId: currentUser._id.toString(),
-        orderStatus: requiredCurrentStatus,
-        isDeleted: false,
-      },
-      {
-        $set: {
-          orderStatus: payload.orderStatus,
-          ...(payload.orderStatus === ORDER_STATUS.DELIVERED && {
-            deliveredAt: new Date(),
-            ...(deliveryProofImage && {
-              'delivery.deliveryProofImage': deliveryProofImage,
-            }),
+  const updatedOrder = await Order.findOneAndUpdate(
+    {
+      orderId,
+      deliveryPartnerId: currentUser._id.toString(),
+      orderStatus: requiredCurrentStatus,
+      isDeleted: false,
+    },
+    {
+      $set: {
+        orderStatus: orderStatus,
+        ...(orderStatus === ORDER_STATUS.DELIVERED && {
+          deliveredAt: new Date(),
+          ...(deliveryProofImage && {
+            'delivery.deliveryProofImage': deliveryProofImage,
           }),
-          ...(payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
-            deliveryPartnerId: null,
-            deliveryPartnerCancelReason: payload.reason,
-          }),
-        },
+        }),
+        ...(orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
+          deliveryPartnerId: null,
+          deliveryPartnerCancelReason: reason,
+        }),
       },
-      { new: true, session },
-    ).populate(
-      'customerId vendorId',
-      'name userId role contactNumber currentSessionLocation profilePhoto',
-    );
+    },
+    { new: true },
+  ).populate(
+    'customerId vendorId',
+    'name userId role contactNumber currentSessionLocation profilePhoto',
+  );
 
-    if (!updatedOrder) {
-      const orderCheck = await Order.findOne({
-        orderId,
-        isDeleted: false,
-      }).select('orderStatus');
+  if (!updatedOrder) {
+    const orderCheck = await Order.findOne({
+      orderId,
+      isDeleted: false,
+    }).select('orderStatus');
 
-      if (!orderCheck) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
-      }
+    if (!orderCheck) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+    }
 
-      if (orderCheck?.orderStatus === payload.orderStatus) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          `Order status is already ${payload.orderStatus}.`,
-        );
-      }
+    if (orderCheck?.orderStatus === payload.orderStatus) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+        `Order status is already ${payload.orderStatus}.`,
       );
     }
-
-    // Update partner record
-    if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
-      const partner = await DeliveryPartner.findById(
-        updatedOrder?.deliveryPartnerId,
-      );
-      if (!partner) {
-        throw new AppError(
-          httpStatus.NOT_FOUND,
-          'Delivery Partner not found for this order.',
-        );
-      }
-
-      await PointsServices.addOrderPoints(
-        updatedOrder.customerId._id,
-        updatedOrder._id.toString(),
-        session,
-      );
-
-      if (updatedOrder.deliveryPartnerId) {
-        await PointsServices.addDeliveryPartnerPoints(
-          updatedOrder.deliveryPartnerId,
-          updatedOrder._id.toString(),
-          session,
-        );
-      }
-
-      await ReferralServices.distributeReferralBonus(
-        updatedOrder.customerId._id.toString(),
-        updatedOrder._id.toString(),
-        session,
-      );
-
-      const { payoutSummary, delivery, _id: orderDbId } = updatedOrder;
-
-      const vendorEarningsBeforeTax =
-        payoutSummary?.vendor?.earningsWithoutTax || 0;
-      const vendorPayableTax = payoutSummary?.vendor?.payableTax || 0;
-      const vendorNetPayout = payoutSummary?.vendor?.vendorNetPayout || 0;
-      const riderEarningsBeforeTax =
-        payoutSummary?.rider?.earningsWithoutTax || 0;
-      const riderPayableTax = payoutSummary?.rider?.payableTax || 0;
-      const riderNetEarnings = payoutSummary?.rider?.riderNetEarnings || 0;
-      const totalDeliveryCharge = delivery?.totalDeliveryCharge || 0;
-      const deliGoCommission = payoutSummary?.deliGoCommission?.amount || 0;
-      const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
-      const deliGoCommissionNet =
-        payoutSummary?.deliGoCommission?.totalDeduction || 0;
-
-      const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
-      const fleetManagerId = isManagedByFleet
-        ? partner?.registeredBy?.id
-        : null;
-
-      const riderEarningAmount = isManagedByFleet
-        ? riderNetEarnings
-        : totalDeliveryCharge;
-
-      // --- Vendor Wallet Update ---
-      await Wallet.findOneAndUpdate(
-        { userId: updatedOrder.vendorId, userModel: 'Vendor' },
-        {
-          $setOnInsert: { walletId: `WAL-V-${customNanoId(8)}` },
-          $inc: {
-            totalUnpaidTax: roundTo2(vendorPayableTax) || 0,
-            totalTax: roundTo2(vendorPayableTax) || 0,
-            totalUnpaidEarnings: roundTo2(vendorNetPayout) || 0,
-            totalEarnings: roundTo2(vendorNetPayout) || 0,
-          },
-        },
-        { session, upsert: true },
-      );
-
-      // --- Delivery Partner Wallet Update ---
-      await Wallet.findOneAndUpdate(
-        { userId: partner?._id, userModel: 'DeliveryPartner' },
-        {
-          $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
-          $inc: {
-            totalUnpaidTax: roundTo2(riderPayableTax) || 0,
-            totalTax: roundTo2(riderPayableTax) || 0,
-            totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
-            totalEarnings: roundTo2(riderEarningAmount) || 0,
-          },
-        },
-        { session, upsert: true },
-      );
-
-      const SYSTEM_ADMIN = await Admin.findOne({ role: 'SUPER_ADMIN' })
-        .select('_id')
-        .lean();
-      // Admin Wallet
-      await Wallet.findOneAndUpdate(
-        { userId: SYSTEM_ADMIN, userModel: 'Admin' },
-        {
-          $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
-          $inc: {
-            totalUnpaidTax: roundTo2(commissionVat) || 0,
-            totalTax: roundTo2(commissionVat) || 0,
-            totalEarnings: roundTo2(deliGoCommissionNet) || 0,
-          },
-        },
-        { session, upsert: true },
-      );
-
-      // Fleet Manager Wallet (If applicable)
-      if (isManagedByFleet && fleetManagerId) {
-        await Wallet.findOneAndUpdate(
-          { userId: fleetManagerId, userModel: 'FleetManager' },
-          {
-            $setOnInsert: { walletId: `WAL-F-${customNanoId(8)}` },
-            $inc: {
-              totalUnpaidEarnings: totalDeliveryCharge || 0,
-              totalRiderPayable: riderNetEarnings || 0,
-              totalFleetEarnings: payoutSummary.fleet.fee || 0,
-              totalEarnings: totalDeliveryCharge || 0,
-            },
-          },
-          { session, upsert: true },
-        );
-      }
-
-      // --- Transaction Records ---
-      const transactionsToCreate = [
-        {
-          transactionId: `TXN-V-${orderId}`,
-          orderId: orderDbId,
-          userId: updatedOrder.vendorId,
-          userModel: 'Vendor',
-          baseAmount: roundTo2(vendorEarningsBeforeTax),
-          taxAmount: roundTo2(vendorPayableTax),
-          totalAmount: roundTo2(vendorNetPayout),
-          type: 'VENDOR_EARNING',
-          status: 'SUCCESS',
-          paymentMethod: 'WALLET',
-          remarks: `Earnings for Order: ${orderId}`,
-        },
-        {
-          transactionId: `TXN-DP-${orderId}`,
-          orderId: orderDbId,
-          userId: partner._id,
-          userModel: 'DeliveryPartner',
-          baseAmount: roundTo2(riderEarningsBeforeTax),
-          taxAmount: roundTo2(riderPayableTax),
-          totalAmount: roundTo2(riderEarningAmount),
-          type: 'DELIVERY_PARTNER_EARNING',
-          status: 'SUCCESS',
-          paymentMethod: 'WALLET',
-          remarks: isManagedByFleet
-            ? 'Fleet Managed Earning'
-            : 'Direct Earning',
-        },
-        {
-          transactionId: `TXN-DELIGO-${orderId}`,
-          orderId: orderDbId,
-          userId: SYSTEM_ADMIN,
-          userModel: 'Admin',
-          baseAmount: roundTo2(deliGoCommission),
-          taxAmount: roundTo2(commissionVat),
-          totalAmount: roundTo2(deliGoCommissionNet),
-          type: 'PLATFORM_COMMISSION',
-          status: 'SUCCESS',
-          paymentMethod: 'WALLET',
-          remarks: `Commission from Order: ${orderId}`,
-        },
-      ];
-
-      if (isManagedByFleet && fleetManagerId) {
-        transactionsToCreate.push({
-          transactionId: `TXN-F-${orderId}`,
-          orderId: orderDbId,
-          userId: fleetManagerId,
-          userModel: 'FleetManager',
-          baseAmount: roundTo2(totalDeliveryCharge),
-          taxAmount: 0,
-          totalAmount: roundTo2(totalDeliveryCharge),
-          type: 'FLEET_EARNING',
-          status: 'SUCCESS',
-          paymentMethod: 'WALLET',
-          remarks: `Managed Revenue for Order: ${orderId}`,
-        });
-      }
-
-      await Transaction.insertMany(transactionsToCreate, { session });
-
-      const pickupTime = updatedOrder.pickedUpAt
-        ? new Date(updatedOrder.pickedUpAt).getTime()
-        : Date.now();
-      const deliveryTime = new Date().getTime();
-      const durationMinutes = Math.max(
-        1,
-        Math.round((deliveryTime - pickupTime) / 60000),
-      );
-
-      await DeliveryPartner.updateOne(
-        { userId: currentUser.userId },
-        {
-          $set: {
-            'operationalData.currentOrderId': null,
-            'operationalData.currentStatus': 'IDLE',
-          },
-          $inc: {
-            'operationalData.totalDeliveries': 1,
-            'operationalData.completedDeliveries': 1,
-            'operationalData.totalDeliveryMinutes': durationMinutes,
-          },
-        },
-        {
-          session,
-        },
-      );
-    } else if (payload.orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED) {
-      await DeliveryPartner.updateOne(
-        { userId: currentUser.userId },
-        {
-          $set: {
-            'operationalData.currentOrderId': null,
-            'operationalData.currentStatus': 'IDLE',
-          },
-          $inc: {
-            'operationalData.canceledDeliveries': 1,
-            'operationalData.totalRejectedOrders': 1,
-          },
-        },
-        {
-          session,
-        },
-      );
-    }
-    await session.commitTransaction();
-    session.endSession();
-
-    // TODO: Notify Customer (Order is now ON_THE_WAY)
-    const customer = await Customer.findById(updatedOrder.customerId).lean();
-    const customerId = customer?.userId;
-    const vendor = await Vendor.findById(updatedOrder.vendorId).lean();
-    const vendorId = vendor?.userId;
-
-    const notificationPayload = {
-      title: `Order is now ${payload.orderStatus}`,
-      body: `${
-        payload.orderStatus === 'PICKED_UP' // TODO: Notify Customer
-          ? `Your order ${orderId} is now PICKED_UP.`
-          : payload.orderStatus === 'ON_THE_WAY'
-            ? `Your order ${orderId} is now ON_THE_WAY.`
-            : payload.orderStatus === 'DELIVERED'
-              ? `Your order ${orderId} is  DELIVERED. Please leave a review.`
-              : `Your order ${orderId} is  ${payload.orderStatus}.`
-      } `,
-      data: {
-        orderId,
-        orderStatus: payload.orderStatus,
-        type: 'ORDER_STATUS',
-      },
-    };
-    if (customerId) {
-      NotificationService.sendToUser(
-        customerId,
-        notificationPayload.title,
-        notificationPayload.body,
-        notificationPayload.data,
-        'default',
-        'ORDER',
-      );
-    }
-    if (
-      vendorId &&
-      (payload.orderStatus === 'ON_THE_WAY' ||
-        payload.orderStatus === 'DELIVERED')
-    ) {
-      NotificationService.sendToUser(
-        vendorId!,
-        notificationPayload.title,
-        `${
-          payload.orderStatus === 'ON_THE_WAY'
-            ? `Order ${orderId} is now ${payload.orderStatus}`
-            : payload.orderStatus === 'DELIVERED' &&
-              `Order ${orderId} is successfully ${payload.orderStatus} by delivery partner`
-        }`,
-        notificationPayload.data,
-        'default',
-        'ORDER',
-      );
-    }
-
-    return {
-      message: 'Order status updated successfully.',
-      data: updatedOrder,
-    };
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+    );
   }
+
+  // Update partner record
+  if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
+    const partner = await DeliveryPartner.findById(
+      updatedOrder?.deliveryPartnerId,
+    );
+    if (!partner) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Delivery Partner not found for this order.',
+      );
+    }
+  }
+
+  await orderQueue.add('PROCESS_ORDER_POST_UPDATE', {
+    orderDbId: updatedOrder._id,
+    orderStatus: orderStatus,
+    partnerUserId: currentUser.userId,
+    orderDisplayId: orderId,
+  });
+
+  return {
+    message: 'Order status updated successfully.',
+    data: updatedOrder,
+  };
 };
 
 // get all order service
