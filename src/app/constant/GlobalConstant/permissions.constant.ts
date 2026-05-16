@@ -1,4 +1,4 @@
-import USER_ROLE from '../GlobalConstant/user.constant';
+import { USER_ROLE } from './user.constant';
 
 export const ROLE_PERMISSIONS = {
   [USER_ROLE.SUPER_ADMIN]: ['*'],
