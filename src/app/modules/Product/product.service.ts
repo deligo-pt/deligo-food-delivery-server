@@ -16,11 +16,7 @@ import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
 
 // Create Product Service
-const createProduct = async (
-  payload: TProduct,
-  currentUser: AuthUser,
-  images: string[],
-) => {
+const createProduct = async (payload: TProduct, currentUser: AuthUser) => {
   CreateProductUtils.validateVendor(currentUser);
   CreateProductUtils.validateBasePayload(payload);
 
@@ -50,7 +46,7 @@ const createProduct = async (
   );
   CreateProductUtils.handleSimpleStock(payload, vendorCategoryExist);
 
-  const newProduct = await Product.create({ ...payload, images });
+  const newProduct = await Product.create(payload);
 
   return newProduct;
 };

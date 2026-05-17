@@ -6,18 +6,9 @@ import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Product create Controller
 const productCreate = catchAsync(async (req, res) => {
-  const images = req.files;
-  const fileUrls = images
-    ? Array.isArray(images)
-      ? images.map((file) => file.path)
-      : Object.values(images)
-          .flat()
-          .map((file) => file.path)
-    : [];
   const result = await ProductServices.createProduct(
     req.body,
     req.user as AuthUser,
-    fileUrls,
   );
 
   sendResponse(res, {
@@ -244,4 +235,3 @@ export const ProductControllers = {
   permanentDeleteProduct,
   getOutOfStockAlerts,
 };
-

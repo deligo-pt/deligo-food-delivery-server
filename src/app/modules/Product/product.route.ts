@@ -8,12 +8,10 @@ import { ProductValidation } from './product.validation';
 
 const router = Router();
 
-// Product create
+// Product create route
 router.post(
   '/create-product',
   auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
-  multerUpload.array('files', 5),
-  parseBody,
   validateRequest(ProductValidation.createProductValidationSchema),
   ProductControllers.productCreate,
 );
