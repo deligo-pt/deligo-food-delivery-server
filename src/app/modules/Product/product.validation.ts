@@ -101,7 +101,7 @@ const updateProductValidationSchema = z.object({
         .strict()
         .optional(),
 
-      images: z.array(z.string()).optional(),
+      images: z.array(z.string().url()).optional(),
       meta: z
         .object({
           isFeatured: z.boolean().optional(),

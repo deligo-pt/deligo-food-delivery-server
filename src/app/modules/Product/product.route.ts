@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import auth from '../../middlewares/auth';
 import { ProductControllers } from './product.controller';
-import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
 import validateRequest from '../../middlewares/validateRequest';
 import { ProductValidation } from './product.validation';
 
@@ -27,8 +25,6 @@ router.get(
 router.patch(
   '/:productId',
   auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
-  multerUpload.array('files', 5),
-  parseBody,
   validateRequest(ProductValidation.updateProductValidationSchema),
   ProductControllers.updateProduct,
 );

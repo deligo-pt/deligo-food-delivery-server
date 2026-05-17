@@ -56,8 +56,8 @@ const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
   currentUser: AuthUser,
-  images: string[],
 ) => {
+  const { images } = payload;
   const existingProduct = await Product.findOne({
     productId,
     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
@@ -104,11 +104,11 @@ const updateProduct = async (
   }
 
   // Database Update Query
-  const updateQuery: any = { $set: modifiedData };
   if (images && images.length > 0) {
-    updateQuery.$push = { images: { $each: images } };
+    modifiedData.images = images;
   }
 
+  const updateQuery: any = { $set: modifiedData };
   const updatedProduct = await Product.findOneAndUpdate(
     { productId },
     updateQuery,
