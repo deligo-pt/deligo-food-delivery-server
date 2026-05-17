@@ -16,11 +16,7 @@ import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
 
 // Create Product Service
-const createProduct = async (
-  payload: TProduct,
-  currentUser: AuthUser,
-  images: string[],
-) => {
+const createProduct = async (payload: TProduct, currentUser: AuthUser) => {
   CreateProductUtils.validateVendor(currentUser);
   CreateProductUtils.validateBasePayload(payload);
 
@@ -50,7 +46,7 @@ const createProduct = async (
   );
   CreateProductUtils.handleSimpleStock(payload, vendorCategoryExist);
 
-  const newProduct = await Product.create({ ...payload, images });
+  const newProduct = await Product.create(payload);
 
   return newProduct;
 };
@@ -60,8 +56,8 @@ const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
   currentUser: AuthUser,
-  images: string[],
 ) => {
+  const { images } = payload;
   const existingProduct = await Product.findOne({
     productId,
     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
@@ -108,11 +104,11 @@ const updateProduct = async (
   }
 
   // Database Update Query
-  const updateQuery: any = { $set: modifiedData };
   if (images && images.length > 0) {
-    updateQuery.$push = { images: { $each: images } };
+    modifiedData.images = images;
   }
 
+  const updateQuery: any = { $set: modifiedData };
   const updatedProduct = await Product.findOneAndUpdate(
     { productId },
     updateQuery,
