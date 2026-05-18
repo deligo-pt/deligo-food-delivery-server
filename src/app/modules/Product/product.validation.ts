@@ -36,6 +36,9 @@ const createProductValidationSchema = z.object({
 
       variations: z.array(variationSchema).optional(),
       addonGroups: z.array(z.string()).optional(),
+      images: z
+        .array(z.string().url())
+        .min(1, 'At least one image is required'),
 
       pricing: z
         .object({
@@ -98,7 +101,7 @@ const updateProductValidationSchema = z.object({
         .strict()
         .optional(),
 
-      images: z.array(z.string()).optional(),
+      images: z.array(z.string().url()).optional(),
       meta: z
         .object({
           isFeatured: z.boolean().optional(),
