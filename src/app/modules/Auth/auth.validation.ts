@@ -35,9 +35,11 @@ const loginValidationSchema = z.object({
         deviceName: z.string({
           required_error: 'Device Name is required',
         }),
-        fcmToken: z.string({
-          required_error: 'FCM Token is required',
-        }),
+        fcmToken: z
+          .string({
+            required_error: 'FCM Token is required',
+          })
+          .optional(),
         userAgent: z.string().optional(),
         isLoggedIn: z.boolean().optional(),
       }),
