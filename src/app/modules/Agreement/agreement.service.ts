@@ -13,6 +13,7 @@ import { EmailHelper } from '../../utils/emailSender';
 import { RedisService } from '../../config/redis';
 import { uploadLocalFileToCloudinary } from '../../utils/uploadToCloudinary';
 import { sendAgreementSignedEmail } from '../../helpers/sendAgreementSignedEmail';
+import { QueryBuilder } from '../../builder/QueryBuilder';
 
 const initiateAgreement = async (payload: TInitiateAgreementPayload) => {
   const normalizedEmail = payload.email.toLowerCase();
@@ -331,10 +332,31 @@ const getAgreementById = async (agreementId: string) => {
   };
 };
 
+const getAllAgreements = async (query: Record<string, unknown>) => {
+  const agreements = new QueryBuilder(Agreement.find(), query)
+    .fields()
+    .paginate()
+    .sort()
+    .filter()
+    .search(['email', 'establishmentName']);
+
+  const [meta, data] = await Promise.all([
+    agreements.countTotal(),
+    agreements.modelQuery,
+  ]);
+
+  return {
+    message: 'Agreements retrieved successfully',
+    data,
+    meta,
+  };
+};
+
 export const AgreementService = {
   initiateAgreement,
   verifyAgreementOtp,
   resendAgreementOtp,
-  getAgreementById,
   signAgreement,
+  getAgreementById,
+  getAllAgreements,
 };
