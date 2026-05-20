@@ -36,10 +36,14 @@ router.post(
 
 router.get(
   '/:agreementId',
-  auth('AGENT'),
+  auth('AGENT', 'ADMIN', 'SUPER_ADMIN'),
   AgreementController.getAgreementById,
 );
 
-router.get('/', auth('AGENT'), AgreementController.getAllAgreements);
+router.get(
+  '/',
+  auth('AGENT', 'ADMIN', 'SUPER_ADMIN'),
+  AgreementController.getAllAgreements,
+);
 
 export const AgreementRoutes = router;
