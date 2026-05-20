@@ -1049,30 +1049,42 @@ const refreshToken = async (token: string) => {
 
 // submit approval request service
 const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
-  const { user: submittedUser } = await findUserById({
-    userId,
-  });
-  if (!submittedUser) {
+  const authUser = await AuthUser.findOne({ customUserId: userId });
+  if (!authUser || authUser.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (submittedUser?.status === 'SUBMITTED') {
+  if (authUser?.status === 'SUBMITTED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You have already submitted the approval request. Please wait for admin approval.',
     );
   }
-  if (submittedUser?.status === 'APPROVED') {
+  if (authUser?.status === 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Your account is already approved.',
     );
   }
 
-  if (submittedUser?.role === 'DELIVERY_PARTNER') {
+  const modelName =
+    ROLE_COLLECTION_MAP[authUser.role as keyof typeof USER_ROLE];
+  if (!modelName) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping');
+  }
+
+  const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+  const submittedProfile = await TargetModel.findById(authUser.userObjectId);
+
+  if (!submittedProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
+  }
+
+  if (authUser?.role === 'DELIVERY_PARTNER') {
     if (
       currentUser?.role === 'FLEET_MANAGER' &&
-      submittedUser?.registeredBy?.id.toString() !== currentUser._id.toString()
+      submittedProfile?.registeredBy?.id.toString() !==
+        currentUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
@@ -1080,7 +1092,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
       );
     }
   } else {
-    if (submittedUser.userId !== currentUser.userId) {
+    if (authUser.customUserId !== currentUser.userId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to submit approval request for this user',
@@ -1089,18 +1101,37 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   }
 
   const submissionTime = new Date();
-  submittedUser.status = 'SUBMITTED';
-  submittedUser.submittedForApprovalAt = submissionTime;
-  submittedUser.isUpdateLocked = true;
-  await submittedUser.save();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    authUser.status = 'SUBMITTED';
+    await authUser.save({ session });
+
+    submittedProfile.status = 'SUBMITTED';
+    submittedProfile.submittedForApprovalAt = submissionTime;
+    submittedProfile.isUpdateLocked = true;
+    await submittedProfile.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to submit approval request',
+    );
+  }
 
   // Prepare & send email to admin for user approval
   const emailHtml = await EmailHelper.createEmailContent(
     {
-      userName: submittedUser.name?.firstName || 'User',
-      userId: submittedUser.userId,
+      userName: submittedProfile.name?.firstName || 'User',
+      userId: submittedProfile.userId,
       currentYear: new Date().getFullYear(),
-      userRole: submittedUser.role,
+      userRole: authUser.role,
       date: new Date().toDateString(),
     },
     'user-approval-submission-notification',
@@ -1108,16 +1139,16 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
 
   try {
     await EmailHelper.sendEmail(
-      submittedUser?.email,
+      authUser?.email,
       emailHtml,
-      `New ${submittedUser?.role} Submission for Approval`,
+      `New ${authUser?.role} Submission for Approval`,
     );
   } catch (err: any) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
   }
 
   const userName =
-    `${submittedUser.name?.firstName || ''} ${submittedUser.name?.lastName || ''}`.trim() ||
+    `${submittedProfile.name?.firstName || ''} ${submittedProfile.name?.lastName || ''}`.trim() ||
     'A User';
   const formattedTime = submissionTime.toLocaleString('en-US', {
     hour: 'numeric',
@@ -1131,15 +1162,15 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   NotificationService.sendToRole(
     'Admin',
     ['ADMIN', 'SUPER_ADMIN'],
-    `New ${submittedUser?.role} Submission for Approval`,
-    `${userName} (${submittedUser?.role}) has submitted for approval at ${formattedTime}.`,
-    { userId: submittedUser?._id.toString(), role: submittedUser?.role },
+    `New ${authUser?.role} Submission for Approval`,
+    `${userName} (${authUser?.role}) has submitted for approval at ${formattedTime}.`,
+    { userId: authUser?._id.toString(), role: authUser?.role },
     'default',
     'ACCOUNT',
   );
 
   return {
-    message: `${submittedUser?.role} submitted for approval successfully`,
+    message: `${authUser?.role} submitted for approval successfully`,
   };
 };
 
