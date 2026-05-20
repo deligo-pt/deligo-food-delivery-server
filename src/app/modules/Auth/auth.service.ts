@@ -201,29 +201,35 @@ const onboardUser = async <
     );
   }
 
-  const { Model, idField } = modelData;
-  const mongooseModel = Model as unknown as Model<T>;
+  const { Model: TargetModel, idField } = modelData;
+  const mongooseModel = TargetModel as unknown as Model<T>;
 
   const userID = generateUserId(mapKey);
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
-  // const checkModels = ALL_USER_MODELS.map((M: any) =>
-  //   M.isUserExistsByEmail(payload.email).catch(() => null),
-  // );
-  // const checkResults = await Promise.all(checkModels);
+  const existingUser = await AuthUser.findOne({ email: payload.email });
 
-  const checkUserPromise = Promise.all(
-    ALL_USER_MODELS.map((M: any) =>
-      M.isUserExistsByEmail(
-        payload.email,
-        false,
-        'email isEmailVerified role',
-      ).catch(() => null),
-    ),
-  );
+  if (existingUser) {
+    if (existingUser.status === 'APPROVED') {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${existingUser.email} is already registered as ${existingUser.role}.`,
+      );
+    } else {
+      const modelName =
+        ROLE_COLLECTION_MAP[existingUser.role as keyof typeof USER_ROLE];
+      if (modelName) {
+        const OldProfileModel = mongoose.model(
+          modelName,
+        ) as unknown as Model<any>;
+        await OldProfileModel.deleteOne({ _id: existingUser.userObjectId });
+      }
+      await AuthUser.deleteOne({ _id: existingUser._id });
+    }
+  }
 
-  const emailContentPromise = await EmailHelper.createEmailContent(
+  const emailHtml = await EmailHelper.createEmailContent(
     {
       otp,
       userEmail: payload.email,
@@ -234,34 +240,10 @@ const onboardUser = async <
     'verify-email',
   );
 
-  const [checkResults, emailHtml] = await Promise.all([
-    checkUserPromise,
-    emailContentPromise,
-  ]);
-
-  const existingUser = checkResults.find((user) => user && user.email);
-
-  if (existingUser) {
-    if (existingUser.isEmailVerified) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        `${existingUser.email} is already registered as ${existingUser.role}.`,
-      );
-    } else {
-      const index = checkResults.findIndex(
-        (u) => u?.email === existingUser.email,
-      );
-      await ALL_USER_MODELS[index].deleteOne({ email: existingUser.email });
-    }
-  }
-
   let registeredByValue: any;
+  const onboardingRole = targetRole.toLowerCase();
 
-  if (
-    ['vendor', 'sub-vendor', 'delivery-partner'].includes(
-      targetRole.toLowerCase(),
-    )
-  ) {
+  if (['vendor', 'sub-vendor', 'delivery-partner'].includes(onboardingRole)) {
     registeredByValue = {
       id: currentUser._id,
       model:
@@ -276,21 +258,50 @@ const onboardUser = async <
     registeredByValue = currentUser._id;
   }
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   let createdUser;
   try {
-    const result = await mongooseModel.create([
-      {
-        ...payload,
-        [idField]: userID,
-        registeredBy: registeredByValue,
-        isEmailVerified: false,
-        status: USER_STATUS.PENDING,
-      },
-    ]);
+    const result = await mongooseModel.create(
+      [
+        {
+          ...payload,
+          [idField]: userID,
+          registeredBy: registeredByValue,
+          isEmailVerified: false,
+          status: 'PENDING',
+        },
+      ],
+      { session },
+    );
     createdUser = result[0];
+
+    await AuthUser.create(
+      [
+        {
+          authUserId: `AUTH-${userID}`,
+          userObjectId: createdUser._id,
+          customUserId: userID,
+          email: payload.email,
+          role: payload.role,
+          status: 'PENDING',
+          permissions: [],
+          isDeleted: false,
+        },
+      ],
+      { session },
+    );
+
     const redisOtpKey = `otp:${payload.email}`;
     await RedisService.set(redisOtpKey, otp, 300);
+
+    await session.commitTransaction();
+    session.endSession();
   } catch (err: any) {
+    await session.abortTransaction();
+    session.endSession();
+
     if (err?.code === 11000)
       throw new AppError(
         httpStatus.CONFLICT,
@@ -310,7 +321,6 @@ const onboardUser = async <
     data: createdUser,
   };
 };
-
 // Login User
 const loginUser = async (
   payload: TLoginUser & { deviceDetails: TLoginDevice; forceLogin?: boolean },
@@ -984,23 +994,27 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
   }
 
-  if (authUser?.role === 'DELIVERY_PARTNER') {
-    if (
-      currentUser?.role === 'FLEET_MANAGER' &&
-      submittedProfile?.registeredBy?.id.toString() !==
-        currentUser._id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user',
-      );
-    }
-  } else {
-    if (authUser.customUserId !== currentUser.userId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user',
-      );
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+
+  if (!isAdmin) {
+    if (authUser?.role === 'DELIVERY_PARTNER') {
+      if (
+        currentUser?.role === 'FLEET_MANAGER' &&
+        submittedProfile?.registeredBy?.id.toString() !==
+          currentUser._id.toString()
+      ) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You do not have permission to submit approval request for this user',
+        );
+      }
+    } else {
+      if (authUser.customUserId !== currentUser.userId) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You do not have permission to submit approval request for this user',
+        );
+      }
     }
   }
 
