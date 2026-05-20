@@ -56,8 +56,19 @@ const getAgreementById = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Agreement retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
+  });
+});
+
+const getAllAgreements = catchAsync(async (req, res) => {
+  const result = await AgreementService.getAllAgreements(req.query);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -67,4 +78,5 @@ export const AgreementController = {
   resendAgreementOtp,
   signAgreement,
   getAgreementById,
+  getAllAgreements,
 };
