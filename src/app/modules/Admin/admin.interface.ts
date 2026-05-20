@@ -12,7 +12,6 @@ export type TAdmin = {
   registeredBy?: mongoose.Types.ObjectId;
   role: 'ADMIN' | 'SUPER_ADMIN' | 'AGENT';
   email: string;
-  password: string;
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;

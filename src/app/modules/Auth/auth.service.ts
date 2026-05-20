@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
@@ -43,6 +45,7 @@ const registerUser = async <
   T extends {
     email: string;
     role: TUserRole;
+    password: string;
     isEmailVerified?: boolean;
   },
 >(
@@ -93,6 +96,9 @@ const registerUser = async <
     'verify-email',
   );
 
+  const rawPassword = payload.password;
+  const { password: _, ...profilePayload } = payload;
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -101,7 +107,7 @@ const registerUser = async <
     const result = await mongooseModel.create(
       [
         {
-          ...payload,
+          ...profilePayload,
           [idField]: userID,
         },
       ],
@@ -112,10 +118,11 @@ const registerUser = async <
     await AuthUser.create(
       [
         {
-          authUserId: `AUTH-${userID}`, // ফিউচারে মেইন অথ সার্ভিসের UUID এর সাথে সিঙ্ক হবে
-          userObjectId: createdUser._id, // নির্দিষ্ট প্রোফাইলের ObjectId (রিলেশনের জন্য)
-          customUserId: userID, // জেনারেটেড কাস্টম আইডি (e.g., VND-1002)
+          authUserId: `AUTH-${userID}`,
+          userObjectId: createdUser._id,
+          customUserId: userID,
           email: payload.email,
+          password: rawPassword,
           role: payload.role,
           status: 'PENDING',
           permissions: [],
@@ -126,7 +133,7 @@ const registerUser = async <
     );
 
     const redisOtpKey = `otp:${payload.email}`;
-    await RedisService.set(redisOtpKey, otp, 300); // ৫ মিনিট পর এক্সপায়ার হবে
+    await RedisService.set(redisOtpKey, otp, 300);
 
     await session.commitTransaction();
     session.endSession();
@@ -135,7 +142,10 @@ const registerUser = async <
     session.endSession();
 
     if (err?.code === 11000) {
-      throw new AppError(httpStatus.CONFLICT, 'Email already in use');
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'The email already exists. Please use another email.',
+      );
     }
     throw err;
   }
@@ -156,6 +166,7 @@ const onboardUser = async <
   T extends {
     email: string;
     role: TUserRole;
+    password: string;
     isEmailVerified?: boolean;
     registeredBy?: any;
   },
@@ -240,6 +251,9 @@ const onboardUser = async <
     'verify-email',
   );
 
+  const rawPassword = payload.password;
+  const { password: _, ...profilePayload } = payload;
+
   let registeredByValue: any;
   const onboardingRole = targetRole.toLowerCase();
 
@@ -266,7 +280,7 @@ const onboardUser = async <
     const result = await mongooseModel.create(
       [
         {
-          ...payload,
+          ...profilePayload,
           [idField]: userID,
           registeredBy: registeredByValue,
           isEmailVerified: false,
@@ -284,6 +298,7 @@ const onboardUser = async <
           userObjectId: createdUser._id,
           customUserId: userID,
           email: payload.email,
+          password: rawPassword,
           role: payload.role,
           status: 'PENDING',
           permissions: [],
@@ -326,9 +341,8 @@ const loginUser = async (
   payload: TLoginUser & { deviceDetails: TLoginDevice; forceLogin?: boolean },
 ) => {
   // checking if the user is exist
-  const { user, model } = await findUserByEmail({
-    email: payload?.email,
-  });
+  const user = await AuthUser.isUserExistsByEmail(payload?.email);
+
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
@@ -347,7 +361,7 @@ const loginUser = async (
     );
   }
 
-  if (!payload.password || !model) {
+  if (!payload.password) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Password or Model information missing',
@@ -355,9 +369,9 @@ const loginUser = async (
   }
 
   //checking if the password is correct
-  const isPasswordMatched = await model.isPasswordMatched(
+  const isPasswordMatched = await AuthUser.isPasswordMatched(
     payload.password,
-    user.password,
+    user.password as string,
   );
 
   if (!isPasswordMatched) {
@@ -380,7 +394,9 @@ const loginUser = async (
     lastLogin: new Date(),
   };
 
-  const existingDeviceIndex = user.loginDevices?.findIndex(
+  const loginDevices = user.loginDevices || [];
+
+  const existingDeviceIndex = loginDevices.findIndex(
     (device: TLoginDevice) => device.deviceId === newDevice.deviceId,
   );
 
@@ -395,7 +411,7 @@ const loginUser = async (
     };
     options.arrayFilters = [{ 'elem.deviceId': newDevice.deviceId }];
   } else {
-    if (user.loginDevices?.length >= deviceLimit) {
+    if (loginDevices?.length >= deviceLimit) {
       if (!payload.forceLogin) {
         throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
       }
@@ -415,14 +431,14 @@ const loginUser = async (
     }
   }
 
-  await model.findOneAndUpdate({ _id: user._id }, updateQuery, options);
+  await AuthUser.findOneAndUpdate({ _id: user._id }, updateQuery, options);
   //create token and sent to the  client
   const jwtPayload = {
-    userId: user?.userId,
-    name: {
-      firstName: user?.name?.firstName,
-      lastName: user?.name?.lastName,
-    },
+    userId: user?.customUserId,
+    // name: {
+    //   firstName: user?.name?.firstName,
+    //   lastName: user?.name?.lastName,
+    // },
     email: user?.email,
     contactNumber: user?.contactNumber,
     role: user?.role,
@@ -1057,7 +1073,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
 
   try {
     await EmailHelper.sendEmail(
-      authUser?.email,
+      authUser.email,
       emailHtml,
       `New ${authUser?.role} Submission for Approval`,
     );

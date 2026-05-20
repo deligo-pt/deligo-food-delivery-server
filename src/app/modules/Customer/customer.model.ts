@@ -1,14 +1,14 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TCustomer } from './customer.interface';
-import { IUserModel } from '../../interfaces/user.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { AddressType } from './customer.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
+import { authLookupPlugin } from '../../plugins/authLookupPlugin';
+import { IAuthLookupModel } from '../../interfaces/user.interface';
 
-const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
+const customerSchema = new Schema<TCustomer, IAuthLookupModel<TCustomer>>(
   {
     // ----------------------------------------------------------------
     // Core Identifiers
@@ -154,9 +154,9 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
 // GEO INDEX FOR REAL-TIME LOCATION
 customerSchema.index({ currentSessionLocation: '2dsphere' });
 
-customerSchema.plugin(passwordPlugin);
+customerSchema.plugin(authLookupPlugin);
 
-export const Customer = model<TCustomer, IUserModel<TCustomer>>(
+export const Customer = model<TCustomer, IAuthLookupModel<TCustomer>>(
   'Customer',
   customerSchema,
 );

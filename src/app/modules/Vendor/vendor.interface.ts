@@ -25,7 +25,6 @@ export type TVendor = {
   };
   role: 'VENDOR' | 'SUB_VENDOR';
   email: string;
-  password: string;
 
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;

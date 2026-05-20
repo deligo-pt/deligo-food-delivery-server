@@ -12,7 +12,6 @@ export type TFleetManager = {
   registeredBy?: mongoose.Types.ObjectId;
   role: 'FLEET_MANAGER';
   email: string;
-  password: string;
 
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;

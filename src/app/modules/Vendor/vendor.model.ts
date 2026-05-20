@@ -1,13 +1,13 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
-import { IUserModel } from '../../interfaces/user.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
+import { authLookupPlugin } from '../../plugins/authLookupPlugin';
+import { IAuthLookupModel } from '../../interfaces/user.interface';
 
-const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
+const vendorSchema = new Schema<TVendor, IAuthLookupModel<TVendor>>(
   {
     // -------------------------------------------------------
     // Core Identifiers
@@ -49,11 +49,6 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})$/,
         'Please enter a valid email address',
       ],
-    },
-    password: {
-      type: String,
-      required: true,
-      select: false,
     },
     status: {
       type: String,
@@ -201,9 +196,9 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
 
 vendorSchema.index({ currentSessionLocation: '2dsphere' });
 
-vendorSchema.plugin(passwordPlugin);
+vendorSchema.plugin(authLookupPlugin);
 
-export const Vendor = model<TVendor, IUserModel<TVendor>>(
+export const Vendor = model<TVendor, IAuthLookupModel<TVendor>>(
   'Vendor',
   vendorSchema,
 );

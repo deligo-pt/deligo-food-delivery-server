@@ -13,8 +13,13 @@ import { EmailHelper } from '../../utils/emailSender';
 import { RedisService } from '../../config/redis';
 import { uploadLocalFileToCloudinary } from '../../utils/uploadToCloudinary';
 import { sendAgreementSignedEmail } from '../../helpers/sendAgreementSignedEmail';
+import { QueryBuilder } from '../../builder/QueryBuilder';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
-const initiateAgreement = async (payload: TInitiateAgreementPayload) => {
+const initiateAgreement = async (
+  payload: TInitiateAgreementPayload,
+  currentUser: TCurrentUser,
+) => {
   const normalizedEmail = payload.email.toLowerCase();
 
   // 1. Check if agreement already exists
@@ -60,6 +65,7 @@ const initiateAgreement = async (payload: TInitiateAgreementPayload) => {
       status: AGREEMENT_STATUS.PENDING_VERIFICATION,
       isEmailVerified: false,
       draftPdfPath: null,
+      createdBy: currentUser._id,
     });
   }
 
@@ -108,7 +114,10 @@ const initiateAgreement = async (payload: TInitiateAgreementPayload) => {
 };
 
 // Verify Agreement OTP
-const verifyAgreementOtp = async (payload: { email: string; otp: string }) => {
+const verifyAgreementOtp = async (
+  payload: { email: string; otp: string },
+  currentUser: TCurrentUser,
+) => {
   const { email, otp } = payload;
   const normalizedEmail = email.toLowerCase();
   // 1. Validate input
@@ -119,11 +128,23 @@ const verifyAgreementOtp = async (payload: { email: string; otp: string }) => {
     );
   }
 
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
+
   // 2. Find agreement
   const agreement = await Agreement.findOne({ email: normalizedEmail });
 
   if (!agreement) {
     throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
+  }
+
+  if (
+    !isAdmin &&
+    agreement?.createdBy?.toString() !== currentUser._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to perform this action',
+    );
   }
 
   // 3. Check if already verified
@@ -186,18 +207,30 @@ const verifyAgreementOtp = async (payload: { email: string; otp: string }) => {
 };
 
 // Resend Agreement OTP
-const resendAgreementOtp = async (email: string) => {
+const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
   // 1. Validate input
   if (!email) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Agreement Email is required');
   }
   const normalizedEmail = email.toLowerCase();
 
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
+
   // 2. Find agreement
   const agreement = await Agreement.findOne({ email: normalizedEmail });
 
   if (!agreement) {
     throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
+  }
+
+  if (
+    !isAdmin &&
+    agreement?.createdBy?.toString() !== currentUser._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to perform this action',
+    );
   }
 
   // 3. Prevent resend if already verified
@@ -240,11 +273,26 @@ const resendAgreementOtp = async (email: string) => {
   };
 };
 
-const signAgreement = async (agreementId: string, signatureImage: string) => {
+const signAgreement = async (
+  agreementId: string,
+  signatureImage: string,
+  currentUser: TCurrentUser,
+) => {
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
   const agreement = await Agreement.findById(agreementId);
 
   if (!agreement) {
     throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
+  }
+
+  if (
+    !isAdmin &&
+    agreement?.createdBy?.toString() !== currentUser._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to perform this action',
+    );
   }
 
   if (agreement.status !== AGREEMENT_STATUS.DRAFT) {
@@ -318,11 +366,25 @@ const signAgreement = async (agreementId: string, signatureImage: string) => {
   };
 };
 
-const getAgreementById = async (agreementId: string) => {
+const getAgreementById = async (
+  agreementId: string,
+  currentUser: TCurrentUser,
+) => {
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
   const agreement = await Agreement.findById(agreementId);
 
   if (!agreement) {
     throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
+  }
+
+  if (
+    !isAdmin &&
+    agreement?.createdBy?.toString() !== currentUser._id.toString()
+  ) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to view this agreement',
+    );
   }
 
   return {
@@ -331,10 +393,39 @@ const getAgreementById = async (agreementId: string) => {
   };
 };
 
+const getAllAgreements = async (
+  query: Record<string, unknown>,
+  currentUser: TCurrentUser,
+) => {
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  if (!isAdmin) {
+    query.createdBy = currentUser._id;
+  }
+
+  const agreements = new QueryBuilder(Agreement.find(), query)
+    .fields()
+    .paginate()
+    .sort()
+    .filter()
+    .search(['email', 'establishmentName']);
+
+  const [meta, data] = await Promise.all([
+    agreements.countTotal(),
+    agreements.modelQuery,
+  ]);
+
+  return {
+    message: 'Agreements retrieved successfully',
+    data,
+    meta,
+  };
+};
+
 export const AgreementService = {
   initiateAgreement,
   verifyAgreementOtp,
   resendAgreementOtp,
-  getAgreementById,
   signAgreement,
+  getAgreementById,
+  getAllAgreements,
 };

@@ -84,6 +84,15 @@ const agreementSchema = new Schema<TAgreement>(
       type: Date,
       default: null,
     },
+
+    // ------------------------------------------------------------------
+    // Actions
+    // ------------------------------------------------------------------
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Admin',
+    },
   },
   {
     timestamps: true,

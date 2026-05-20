@@ -1,14 +1,13 @@
 /* eslint-disable no-useless-escape */
-
 import { model, Schema } from 'mongoose';
 import { TAdmin } from './admin.interface';
-import { IUserModel } from '../../interfaces/user.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
+import { authLookupPlugin } from '../../plugins/authLookupPlugin';
+import { IAuthLookupModel } from '../../interfaces/user.interface';
 
-const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
+const adminSchema = new Schema<TAdmin, IAuthLookupModel<TAdmin>>(
   {
     // --------------------------------------------------------
     // Core Identifiers
@@ -34,10 +33,6 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       unique: true,
       lowercase: true,
       trim: true,
-    },
-    password: {
-      type: String,
-      required: true,
     },
     status: {
       type: String,
@@ -157,9 +152,12 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
 );
 
 // password hashing plugin
-adminSchema.plugin(passwordPlugin);
+adminSchema.plugin(authLookupPlugin);
 
-export const Admin = model<TAdmin, IUserModel<TAdmin>>('Admin', adminSchema);
+export const Admin = model<TAdmin, IAuthLookupModel<TAdmin>>(
+  'Admin',
+  adminSchema,
+);
 
 export type TAdminImageDocuments = {
   docImageTitle: 'idProofFront' | 'idProofBack';

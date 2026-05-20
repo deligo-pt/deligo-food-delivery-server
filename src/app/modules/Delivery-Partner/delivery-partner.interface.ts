@@ -18,7 +18,6 @@ export type TDeliveryPartner = {
   };
   role: 'DELIVERY_PARTNER';
   email: string;
-  password: string;
   status: keyof typeof USER_STATUS;
   isEmailVerified: boolean;
   isDeleted: boolean;

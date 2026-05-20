@@ -3,11 +3,14 @@ import { Schema, model } from 'mongoose';
 import { TFleetManager } from './fleet-manager.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
-import { IUserModel } from '../../interfaces/user.interface';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
+import { authLookupPlugin } from '../../plugins/authLookupPlugin';
+import { IAuthLookupModel } from '../../interfaces/user.interface';
 
-const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
+const fleetManagerSchema = new Schema<
+  TFleetManager,
+  IAuthLookupModel<TFleetManager>
+>(
   {
     // ------------------------------------------
     // Core Identifiers
@@ -40,12 +43,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
         'Please fill a valid email address',
       ],
-    },
-
-    password: {
-      type: String,
-      required: true,
-      select: false,
     },
 
     status: {
@@ -184,9 +181,9 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   },
 );
 
-fleetManagerSchema.plugin(passwordPlugin);
+fleetManagerSchema.plugin(authLookupPlugin);
 
-export const FleetManager = model<TFleetManager, IUserModel<TFleetManager>>(
-  'FleetManager',
-  fleetManagerSchema,
-);
+export const FleetManager = model<
+  TFleetManager,
+  IAuthLookupModel<TFleetManager>
+>('FleetManager', fleetManagerSchema);

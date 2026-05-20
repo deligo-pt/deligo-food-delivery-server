@@ -6,12 +6,12 @@ import {
   ROLE_PREFIX_MAP,
   TUserRole,
 } from '../constant/GlobalConstant/user.constant';
-import { IUserModel } from '../interfaces/user.interface';
 import { Admin } from '../modules/Admin/admin.model';
 import { Customer } from '../modules/Customer/customer.model';
 import { FleetManager } from '../modules/Fleet-Manager/fleet-manager.model';
 import { Vendor } from '../modules/Vendor/vendor.model';
 import { DeliveryPartner } from '../modules/Delivery-Partner/delivery-partner.model';
+import { IAuthLookupModel } from '../interfaces/user.interface';
 
 export const findUserById = async ({
   userId,
@@ -25,7 +25,7 @@ export const findUserById = async ({
   }
   const prefix = userId.split('-')[0].toUpperCase();
   const role = ROLE_PREFIX_MAP[prefix];
-  const ROLE_MODEL_MAP: Record<TUserRole, IUserModel<any>> = {
+  const ROLE_MODEL_MAP: Record<TUserRole, IAuthLookupModel<any>> = {
     SUPER_ADMIN: Admin,
     ADMIN: Admin,
     CUSTOMER: Customer,
@@ -37,7 +37,7 @@ export const findUserById = async ({
   };
 
   if (role) {
-    const Model = ROLE_MODEL_MAP[role as TUserRole] as IUserModel<any>;
+    const Model = ROLE_MODEL_MAP[role as TUserRole] as IAuthLookupModel<any>;
 
     if (!Model) {
       throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
