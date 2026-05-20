@@ -28,7 +28,6 @@ import { Customer } from '../Customer/customer.model';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import { resendMobileOtp } from '../../utils/resendMobileOtp';
-import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
@@ -152,101 +151,6 @@ const registerUser = async <
     data: createdUser,
   };
 };
-// const registerUser = async <
-//   T extends {
-//     email: string;
-//     role: TUserRole;
-//     isEmailVerified?: boolean;
-//   },
-// >(
-//   payload: T,
-//   url: string,
-// ) => {
-//   const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
-//   const userTypeData = USER_TYPE_MAP[userType];
-//   const modelData = USER_MODEL_MAP[userType];
-//   if (!userTypeData || !modelData) {
-//     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
-//   }
-
-//   const { Model, idField } = modelData;
-//   const mongooseModel = Model as unknown as Model<T>;
-
-//   // Generate userId & OTP
-//   const userID = generateUserId(userType);
-//   payload.role = userTypeData.role;
-//   const { otp } = generateOtp();
-
-//   const checkUserPromise = Promise.all(
-//     ALL_USER_MODELS.map((M: any) =>
-//       M.isUserExistsByEmail(
-//         payload.email,
-//         false,
-//         'email isEmailVerified role',
-//       ).catch(() => null),
-//     ),
-//   );
-
-//   const emailContentPromise = EmailHelper.createEmailContent(
-//     {
-//       otp,
-//       userEmail: payload.email,
-//       currentYear: new Date().getFullYear(),
-//       date: new Date().toDateString(),
-//       user: payload?.role.toLocaleLowerCase(),
-//     },
-//     'verify-email',
-//   );
-
-//   const [checkUserResults, emailHtml] = await Promise.all([
-//     checkUserPromise,
-//     emailContentPromise,
-//   ]);
-
-//   const existingUser = checkUserResults.find((user) => user && user.email);
-//   if (existingUser) {
-//     if (existingUser.isEmailVerified) {
-//       throw new AppError(
-//         httpStatus.CONFLICT,
-//         `${existingUser.email} is already registered as ${existingUser.role}.`,
-//       );
-//     }
-//     const index = checkUserResults.findIndex(
-//       (user) => user?.email === existingUser.email,
-//     );
-//     await ALL_USER_MODELS[index].deleteOne({ email: existingUser.email });
-//   }
-
-//   let createdUser: any = null;
-//   try {
-//     const result = await mongooseModel.create([
-//       {
-//         ...payload,
-//         [idField]: userID,
-//       },
-//     ]);
-//     createdUser = result[0];
-
-//     const redisOtpKey = `otp:${payload.email}`;
-//     await RedisService.set(redisOtpKey, otp, 300); // Store OTP in Redis with 5 minutes expiration
-//   } catch (err: any) {
-//     if (err?.code === 11000)
-//       throw new AppError(httpStatus.CONFLICT, 'Email already in use');
-//     throw err;
-//   }
-
-//   // send email
-//   EmailHelper.sendEmail(
-//     payload.email,
-//     emailHtml,
-//     'Verify your email for DeliGo',
-//   ).catch((err) => console.error('Email sending failed:', err));
-
-//   return {
-//     message: `${payload.role} registered. Check your email for OTP.`,
-//     data: createdUser,
-//   };
-// };
 
 const onboardUser = async <
   T extends {
@@ -1190,23 +1094,30 @@ const approvedOrRejectedUser = async (
     );
   }
 
-  const admin = await Admin.findOne({
-    userId: currentUser.userId,
+  const adminUser = await AuthUser.findOne({
+    customUserId: currentUser.userId,
     isDeleted: false,
   });
-  if (!admin) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Admin not found');
+
+  if (!adminUser || !['ADMIN', 'SUPER_ADMIN'].includes(adminUser.role)) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Admin not found or unauthorized',
+    );
   }
 
-  const { user: submittedUser } = await findUserById({
-    userId,
+  const authUser = await AuthUser.findOne({
+    customUserId: userId,
+    isDeleted: false,
   });
 
-  if (!submittedUser) {
+  if (!authUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (submittedUser.status === payload.status) {
+  const role = authUser.role as TUserRole;
+
+  if (authUser.status === payload.status) {
     //
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -1230,30 +1141,65 @@ const approvedOrRejectedUser = async (
   // --------------------------------------------------------------
   // Apply Status Changes
   // --------------------------------------------------------------
-  submittedUser.status = payload.status;
-  submittedUser.approvedOrRejectedOrBlockedAt = new Date();
 
-  switch (payload.status) {
+  const modelName = ROLE_COLLECTION_MAP[role];
+  if (!modelName) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping');
+  }
+
+  const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+  const submittedProfile = await TargetModel.findById(authUser.userObjectId);
+
+  if (!submittedProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
+  }
+
+  submittedProfile.status = payload.status;
+  submittedProfile.approvedOrRejectedOrBlockedAt = new Date();
+
+  const targetAuthStatus = payload.status;
+
+  const finalRemarks =
+    payload.remarks ||
+    (payload.status === 'APPROVED'
+      ? 'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.'
+      : '');
+
+  submittedProfile.remarks = finalRemarks;
+
+  switch (targetAuthStatus) {
     case 'APPROVED':
-      submittedUser.approvedBy = admin._id;
-      submittedUser.remarks =
-        payload.remarks ||
-        'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.';
+      submittedProfile.approvedBy = authUser.userObjectId;
       break;
 
     case 'REJECTED':
-      submittedUser.rejectedBy = admin._id;
-      submittedUser.remarks = payload.remarks!;
-      submittedUser.isUpdateLocked = false;
+      submittedProfile.rejectedBy = authUser?.userObjectId;
+      submittedProfile.isUpdateLocked = false;
       break;
 
     case 'BLOCKED':
-      submittedUser.blockedBy = admin._id;
-      submittedUser.remarks = payload.remarks!;
+      submittedProfile.blockedBy = authUser.userObjectId;
       break;
   }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  await submittedUser.save();
+  try {
+    authUser.status = targetAuthStatus;
+    await authUser.save({ session });
+
+    await submittedProfile.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to update user approval status',
+    );
+  }
   // --------------------------------------------------------------
   // Push Notification (Non-blocking)
   // --------------------------------------------------------------
@@ -1264,12 +1210,12 @@ const approvedOrRejectedUser = async (
   };
 
   NotificationService.sendToUser(
-    submittedUser.userId,
+    authUser.customUserId,
     notificationTitleMap[payload.status],
-    submittedUser.remarks || '',
+    finalRemarks,
     {
-      userId: submittedUser._id.toString(),
-      role: submittedUser.role,
+      userId: authUser.userObjectId.toString(),
+      role: role,
     },
     'default',
     'ACCOUNT',
@@ -1280,10 +1226,10 @@ const approvedOrRejectedUser = async (
   // --------------------------------------------------------------
   const emailHtml = await EmailHelper.createEmailContent(
     {
-      userName: submittedUser.name?.firstName || 'User',
-      userRole: submittedUser.role,
+      userName: submittedProfile.name?.firstName || 'User',
+      userRole: role,
       currentYear: new Date().getFullYear(),
-      remarks: submittedUser.remarks || '',
+      remarks: finalRemarks,
       date: new Date().toDateString(),
       status: payload.status,
     },
@@ -1291,7 +1237,7 @@ const approvedOrRejectedUser = async (
   );
 
   const emailSubject = `Your ${
-    submittedUser.role
+    authUser.role
   } Application has been ${payload.status.toLowerCase()}`;
 
   if (
@@ -1302,20 +1248,18 @@ const approvedOrRejectedUser = async (
       'VENDOR',
       'DELIVERY_PARTNER',
       'SUB_VENDOR',
-    ].includes(submittedUser.role) ||
-    (submittedUser.role === 'CUSTOMER' && submittedUser.email)
+    ].includes(role) ||
+    (role === 'CUSTOMER' && authUser.email)
   ) {
     try {
-      await EmailHelper.sendEmail(submittedUser.email, emailHtml, emailSubject);
+      await EmailHelper.sendEmail(authUser.email, emailHtml, emailSubject);
     } catch (err: any) {
       console.error('Email sending failed:', err);
     }
   }
 
   return {
-    message: `${
-      submittedUser.role
-    } ${payload.status.toLowerCase()} successfully`,
+    message: `${role} ${targetAuthStatus.toLowerCase()} successfully`,
   };
 };
 
