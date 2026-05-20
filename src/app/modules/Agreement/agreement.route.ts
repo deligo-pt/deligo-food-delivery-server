@@ -40,4 +40,6 @@ router.get(
   AgreementController.getAgreementById,
 );
 
+router.get('/', auth('AGENT'), AgreementController.getAllAgreements);
+
 export const AgreementRoutes = router;
