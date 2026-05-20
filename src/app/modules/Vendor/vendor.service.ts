@@ -12,7 +12,7 @@ import { Product } from '../Product/product.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 /**
  * Service to update vendor profile information.
@@ -22,7 +22,7 @@ import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 const vendorUpdate = async (
   id: string,
   payload: Partial<TVendor>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // 1. Initial check to ensure the vendor exists in the system
   const existingVendor = await Vendor.findOne({ userId: id });
@@ -36,7 +36,6 @@ const vendorUpdate = async (
   const isOwner =
     (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
     currentUser.userId === existingVendor.userId;
-
   // 3. Authorization: Block unauthorized users from modifying the vendor profile
   if (!isStaff && !isOwner) {
     throw new AppError(
@@ -106,7 +105,7 @@ const vendorUpdate = async (
  */
 const vendorDocImageUpload = async (
   payload: TVendorImageDocuments,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   vendorId: string,
 ) => {
   // 1. Check if the vendor exists in the database
@@ -174,7 +173,7 @@ const vendorDocImageUpload = async (
 // Service to delete a specific document image from a vendor's profile
 const deleteVendorDocument = async (
   payload: { docImageTitle: string; imageUrl: string },
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   vendorId: string,
 ) => {
   const { docImageTitle, imageUrl } = payload;
@@ -226,7 +225,7 @@ const deleteVendorDocument = async (
 // vendor business location update service
 const updateVendorLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   vendorId: string,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
@@ -302,7 +301,7 @@ const updateVendorLiveLocation = async (
 };
 
 // toggle vendor store open/close service
-const toggleVendorStoreOpenClose = async (currentUser: AuthUser) => {
+const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -324,7 +323,7 @@ const toggleVendorStoreOpenClose = async (currentUser: AuthUser) => {
 // get all vendors
 const getAllVendors = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
@@ -359,7 +358,7 @@ const getAllVendors = async (
 };
 
 // get single vendor
-const getSingleVendor = async (vendorId: string, currentUser: AuthUser) => {
+const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -400,7 +399,7 @@ const getSingleVendor = async (vendorId: string, currentUser: AuthUser) => {
 // get all vendors for customer
 const getAllVendorsForCustomer = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // 1. Get Customer Coordinates from currentSessionLocation
   const coordinates = currentUser?.currentSessionLocation?.coordinates;

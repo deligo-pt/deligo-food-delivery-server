@@ -1,0 +1,91 @@
+import { z } from 'zod';
+import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
+
+// -----------------------------------------------------
+// Reusable Schemas
+// -----------------------------------------------------
+const emailSchema = z
+  .string({ required_error: 'Email is required' })
+  .email('Invalid email address');
+
+export const addressValidationSchema = z
+  .object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional(),
+    longitude: z.number().optional(),
+    latitude: z.number().optional(),
+    geoAccuracy: z.number().optional(),
+    detailedAddress: z.string().optional(),
+  })
+  .strict();
+
+// -----------------------------------------------------
+// Update Admin Profile Schema
+// -----------------------------------------------------
+const updateAdminDataValidationSchema = z.object({
+  body: z
+    .object({
+      // Personal Details
+      name: z
+        .object({
+          firstName: z.string().optional(),
+          lastName: z.string().optional(),
+        })
+        .strict()
+        .optional(),
+
+      contactNumber: z.string().optional(),
+
+      // Address Details
+      address: addressValidationSchema.optional(),
+    })
+    .strict(),
+});
+
+// -----------------------------------------------------
+// Change Admin Status (Activate / Block)
+// -----------------------------------------------------
+const activateOrBlockUserValidationSchema = z.object({
+  body: z
+    .object({
+      status: z.nativeEnum(USER_STATUS, {
+        required_error: 'Status is required',
+      }),
+    })
+    .strict(),
+});
+
+// -----------------------------------------------------
+// OTP Verification Schema
+// -----------------------------------------------------
+const verifyOtpValidationSchema = z.object({
+  body: z
+    .object({
+      email: emailSchema,
+      otp: z.string({ required_error: 'OTP is required' }),
+    })
+    .strict(),
+});
+
+const adminDocImageValidationSchema = z.object({
+  body: z
+    .object({
+      docImageTitle: z.enum(['idProofFront', 'idProofBack'], {
+        required_error: 'Document title is required',
+      }),
+    })
+    .strict(),
+});
+
+// -----------------------------------------------------
+// Export Collection
+// -----------------------------------------------------
+export const AdminValidation = {
+  updateAdminDataValidationSchema,
+  activateOrBlockUserValidationSchema,
+  verifyOtpValidationSchema,
+  adminDocImageValidationSchema,
+};

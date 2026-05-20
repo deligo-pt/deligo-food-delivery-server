@@ -4,11 +4,11 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { ProfileServices } from './profile.service';
 import { TImageFile } from '../../interfaces/image.interface';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // get my profile controller
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
-  const result = await ProfileServices.getMyProfile(req.user as AuthUser);
+  const result = await ProfileServices.getMyProfile(req.user as TCurrentUser);
 
   sendResponse(res, {
     success: true,
@@ -22,7 +22,7 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
 const updateMyProfile = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
   const result = await ProfileServices.updateMyProfile(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     file?.path ?? null,
     req?.body,
   );
@@ -37,7 +37,10 @@ const updateMyProfile = catchAsync(async (req, res) => {
 
 // send otp controller
 const sendOtp = catchAsync(async (req, res) => {
-  const result = await ProfileServices.sendOtp(req.user as AuthUser, req.body);
+  const result = await ProfileServices.sendOtp(
+    req.user as TCurrentUser,
+    req.body,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -49,7 +52,7 @@ const sendOtp = catchAsync(async (req, res) => {
 // update email or contact number controller
 const updateEmailOrContactNumber = catchAsync(async (req, res) => {
   const result = await ProfileServices.updateEmailOrContactNumber(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     req.body.otp,
   );
   sendResponse(res, {

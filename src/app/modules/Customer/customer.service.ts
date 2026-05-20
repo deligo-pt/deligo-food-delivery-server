@@ -2,7 +2,7 @@
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TCustomer } from './customer.interface';
 import { Customer } from './customer.model';
 import { CustomerSearchableFields } from './customer.constant';
@@ -15,7 +15,7 @@ import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.in
 const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   profilePhoto?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -127,7 +127,7 @@ const updateCustomer = async (
 // --------------------------------------------------------------
 const updateCustomerLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   customerId: string,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
@@ -205,7 +205,7 @@ const updateCustomerLiveLocation = async (
 // --------------------------------------------------------------
 const addDeliveryAddress = async (
   deliveryAddress: TDeliveryAddress,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // --------------------------------------------------
   // Validate payload
@@ -243,19 +243,21 @@ const addDeliveryAddress = async (
     if (a == null || b == null) return false;
     return Math.abs(a - b) <= tolerance;
   };
-  const isDuplicate = currentUser.deliveryAddresses?.some((addr: TDeliveryAddress) => {
-    const textMatch =
-      normalize(addr.street) === normalize(deliveryAddress.street) &&
-      normalize(addr.city) === normalize(deliveryAddress.city) &&
-      normalize(addr.country) === normalize(deliveryAddress.country) &&
-      normalize(addr.postalCode) === normalize(deliveryAddress.postalCode);
+  const isDuplicate = currentUser.deliveryAddresses?.some(
+    (addr: TDeliveryAddress) => {
+      const textMatch =
+        normalize(addr.street) === normalize(deliveryAddress.street) &&
+        normalize(addr.city) === normalize(deliveryAddress.city) &&
+        normalize(addr.country) === normalize(deliveryAddress.country) &&
+        normalize(addr.postalCode) === normalize(deliveryAddress.postalCode);
 
-    const geoMatch =
-      isClose(addr.latitude, deliveryAddress.latitude) &&
-      isClose(addr.longitude, deliveryAddress.longitude);
+      const geoMatch =
+        isClose(addr.latitude, deliveryAddress.latitude) &&
+        isClose(addr.longitude, deliveryAddress.longitude);
 
-    return textMatch || geoMatch;
-  });
+      return textMatch || geoMatch;
+    },
+  );
 
   if (isDuplicate) {
     throw new AppError(
@@ -327,7 +329,7 @@ const addDeliveryAddress = async (
 const updateDeliveryAddress = async (
   addressId: string,
   payload: Partial<TDeliveryAddress>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const userId = currentUser.userId;
   const customer = await Customer.findOne({
@@ -392,7 +394,7 @@ const updateDeliveryAddress = async (
 // Active or deactivate delivery address
 const toggleDeliveryAddressStatus = async (
   addressId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const userId = currentUser.userId;
   await Customer.updateOne(
@@ -428,7 +430,7 @@ const toggleDeliveryAddressStatus = async (
 // delete delivery address
 const deleteDeliveryAddress = async (
   addressId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const userId = currentUser.userId;
   const result = await Customer.findOne(
@@ -459,7 +461,7 @@ const deleteDeliveryAddress = async (
 //get all customers
 const getAllCustomersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -498,7 +500,7 @@ const getAllCustomersFromDB = async (
 // get single customer
 const getSingleCustomerFromDB = async (
   customerId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(

@@ -34,9 +34,10 @@ import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
 import { ReferralServices } from '../Referral/referral.service';
 import {
-  AuthUser,
+  TCurrentUser,
   TLoginDevice,
 } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -64,17 +65,25 @@ const registerUser = async <
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
-  const checkUserPromise = Promise.all(
-    ALL_USER_MODELS.map((M: any) =>
-      M.isUserExistsByEmail(
-        payload.email,
-        false,
-        'email isEmailVerified role',
-      ).catch(() => null),
-    ),
-  );
+  const existingUser = await AuthUser.findOne({ email: payload.email });
+  if (existingUser) {
+    if (existingUser.status === 'APPROVED') {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${existingUser.email} is already registered as ${existingUser.role}.`,
+      );
+    }
+    const prevModelData =
+      ROLE_COLLECTION_MAP[existingUser.role as keyof typeof USER_ROLE];
+    if (prevModelData) {
+      const prevModel = mongoose.model(prevModelData);
+      await prevModel.deleteOne({ _id: existingUser.userObjectId });
+    }
 
-  const emailContentPromise = EmailHelper.createEmailContent(
+    await AuthUser.deleteOne({ _id: existingUser._id });
+  }
+
+  const emailHtml = await EmailHelper.createEmailContent(
     {
       otp,
       userEmail: payload.email,
@@ -85,44 +94,53 @@ const registerUser = async <
     'verify-email',
   );
 
-  const [checkUserResults, emailHtml] = await Promise.all([
-    checkUserPromise,
-    emailContentPromise,
-  ]);
-
-  const existingUser = checkUserResults.find((user) => user && user.email);
-  if (existingUser) {
-    if (existingUser.isEmailVerified) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        `${existingUser.email} is already registered as ${existingUser.role}.`,
-      );
-    }
-    const index = checkUserResults.findIndex(
-      (user) => user?.email === existingUser.email,
-    );
-    await ALL_USER_MODELS[index].deleteOne({ email: existingUser.email });
-  }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   let createdUser: any = null;
   try {
-    const result = await mongooseModel.create([
-      {
-        ...payload,
-        [idField]: userID,
-      },
-    ]);
+    const result = await mongooseModel.create(
+      [
+        {
+          ...payload,
+          [idField]: userID,
+        },
+      ],
+      { session },
+    );
     createdUser = result[0];
 
+    await AuthUser.create(
+      [
+        {
+          authUserId: `AUTH-${userID}`, // ফিউচারে মেইন অথ সার্ভিসের UUID এর সাথে সিঙ্ক হবে
+          userObjectId: createdUser._id, // নির্দিষ্ট প্রোফাইলের ObjectId (রিলেশনের জন্য)
+          customUserId: userID, // জেনারেটেড কাস্টম আইডি (e.g., VND-1002)
+          email: payload.email,
+          role: payload.role,
+          status: 'PENDING',
+          permissions: [],
+          isDeleted: false,
+        },
+      ],
+      { session },
+    );
+
     const redisOtpKey = `otp:${payload.email}`;
-    await RedisService.set(redisOtpKey, otp, 300); // Store OTP in Redis with 5 minutes expiration
+    await RedisService.set(redisOtpKey, otp, 300); // ৫ মিনিট পর এক্সপায়ার হবে
+
+    await session.commitTransaction();
+    session.endSession();
   } catch (err: any) {
-    if (err?.code === 11000)
+    await session.abortTransaction();
+    session.endSession();
+
+    if (err?.code === 11000) {
       throw new AppError(httpStatus.CONFLICT, 'Email already in use');
+    }
     throw err;
   }
 
-  // send email
   EmailHelper.sendEmail(
     payload.email,
     emailHtml,
@@ -130,10 +148,105 @@ const registerUser = async <
   ).catch((err) => console.error('Email sending failed:', err));
 
   return {
-    message: `${payload.role} registered. Check your email for OTP.`,
+    message: `${payload.role} registered successfully. Check your email for OTP.`,
     data: createdUser,
   };
 };
+// const registerUser = async <
+//   T extends {
+//     email: string;
+//     role: TUserRole;
+//     isEmailVerified?: boolean;
+//   },
+// >(
+//   payload: T,
+//   url: string,
+// ) => {
+//   const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
+//   const userTypeData = USER_TYPE_MAP[userType];
+//   const modelData = USER_MODEL_MAP[userType];
+//   if (!userTypeData || !modelData) {
+//     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
+//   }
+
+//   const { Model, idField } = modelData;
+//   const mongooseModel = Model as unknown as Model<T>;
+
+//   // Generate userId & OTP
+//   const userID = generateUserId(userType);
+//   payload.role = userTypeData.role;
+//   const { otp } = generateOtp();
+
+//   const checkUserPromise = Promise.all(
+//     ALL_USER_MODELS.map((M: any) =>
+//       M.isUserExistsByEmail(
+//         payload.email,
+//         false,
+//         'email isEmailVerified role',
+//       ).catch(() => null),
+//     ),
+//   );
+
+//   const emailContentPromise = EmailHelper.createEmailContent(
+//     {
+//       otp,
+//       userEmail: payload.email,
+//       currentYear: new Date().getFullYear(),
+//       date: new Date().toDateString(),
+//       user: payload?.role.toLocaleLowerCase(),
+//     },
+//     'verify-email',
+//   );
+
+//   const [checkUserResults, emailHtml] = await Promise.all([
+//     checkUserPromise,
+//     emailContentPromise,
+//   ]);
+
+//   const existingUser = checkUserResults.find((user) => user && user.email);
+//   if (existingUser) {
+//     if (existingUser.isEmailVerified) {
+//       throw new AppError(
+//         httpStatus.CONFLICT,
+//         `${existingUser.email} is already registered as ${existingUser.role}.`,
+//       );
+//     }
+//     const index = checkUserResults.findIndex(
+//       (user) => user?.email === existingUser.email,
+//     );
+//     await ALL_USER_MODELS[index].deleteOne({ email: existingUser.email });
+//   }
+
+//   let createdUser: any = null;
+//   try {
+//     const result = await mongooseModel.create([
+//       {
+//         ...payload,
+//         [idField]: userID,
+//       },
+//     ]);
+//     createdUser = result[0];
+
+//     const redisOtpKey = `otp:${payload.email}`;
+//     await RedisService.set(redisOtpKey, otp, 300); // Store OTP in Redis with 5 minutes expiration
+//   } catch (err: any) {
+//     if (err?.code === 11000)
+//       throw new AppError(httpStatus.CONFLICT, 'Email already in use');
+//     throw err;
+//   }
+
+//   // send email
+//   EmailHelper.sendEmail(
+//     payload.email,
+//     emailHtml,
+//     'Verify your email for DeliGo',
+//   ).catch((err) => console.error('Email sending failed:', err));
+
+//   return {
+//     message: `${payload.role} registered. Check your email for OTP.`,
+//     data: createdUser,
+//   };
+// };
 
 const onboardUser = async <
   T extends {
@@ -145,7 +258,7 @@ const onboardUser = async <
 >(
   payload: T,
   targetRole: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const mapKey = `/create-${targetRole}` as keyof typeof USER_TYPE_MAP;
 
@@ -579,7 +692,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
 //update FCM Token
 const updateFcmToken = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   payload: { token: string; deviceId: string },
 ) => {
   const { token, deviceId } = payload;
@@ -658,7 +771,7 @@ const logoutUser = async (email: string, deviceId: string) => {
 };
 // Change Password
 const changePassword = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   payload: { oldPassword: string; newPassword: string },
 ) => {
   // checking if the user is exist
@@ -935,7 +1048,7 @@ const refreshToken = async (token: string) => {
 };
 
 // submit approval request service
-const submitForApproval = async (userId: string, currentUser: AuthUser) => {
+const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   const { user: submittedUser } = await findUserById({
     userId,
   });
@@ -1034,7 +1147,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
 const approvedOrRejectedUser = async (
   userId: string,
   payload: TApprovedRejectsPayload,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // --------------------------------------------------------------
   // Authorization & Validation
@@ -1414,7 +1527,7 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
 };
 
 // soft delete user service
-const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
+const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -1470,7 +1583,10 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 };
 
 // permanent delete user service
-const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
+const permanentDeleteUser = async (
+  userId: string,
+  currentUser: TCurrentUser,
+) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,

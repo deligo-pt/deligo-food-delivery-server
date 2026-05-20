@@ -17,7 +17,7 @@ import { Coupon } from '../Coupon/coupon.model';
 import { Order } from '../Order/order.model';
 import { generateTransactionId } from '../../utils/generateTransactionId';
 import { DeliGoBalance } from '../DeliGo_Balance/deliGoBalance.model';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 const createReferralEntry = async (
   newUser: { _id: Types.ObjectId | string; role: string },
@@ -201,7 +201,7 @@ const distributeReferralBonus = async (
   }
 };
 
-const getReferralStats = async (currentUser: AuthUser) => {
+const getReferralStats = async (currentUser: TCurrentUser) => {
   const userModel =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
   const [referrals, settings, userBalance, userData] = await Promise.all([

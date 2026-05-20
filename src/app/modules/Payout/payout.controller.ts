@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TImageFile } from '../../interfaces/image.interface';
 import { PayoutServices } from './payout.service';
 
@@ -10,7 +10,7 @@ const initiateSettlement = catchAsync(async (req, res) => {
   const { targetUserId } = req.body;
   const result = await PayoutServices.initiateSettlement(
     targetUserId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -27,7 +27,7 @@ const finalizeSettlement = catchAsync(async (req, res) => {
     req.params.payoutId,
     req.body,
     file?.path ?? null,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -41,7 +41,7 @@ const finalizeSettlement = catchAsync(async (req, res) => {
 const getAllPayouts = catchAsync(async (req, res) => {
   const result = await PayoutServices.getAllPayouts(
     req.query,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -56,7 +56,7 @@ const getAllPayouts = catchAsync(async (req, res) => {
 const getSinglePayout = catchAsync(async (req, res) => {
   const result = await PayoutServices.getSinglePayout(
     req.params.payoutId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -72,4 +72,3 @@ export const PayoutController = {
   getAllPayouts,
   getSinglePayout,
 };
-

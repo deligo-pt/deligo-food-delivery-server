@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { ProductServices } from './product.service';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // Product create Controller
 const productCreate = catchAsync(async (req, res) => {
   const result = await ProductServices.createProduct(
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -25,7 +25,7 @@ const updateProduct = catchAsync(async (req, res) => {
   const result = await ProductServices.updateProduct(
     productId,
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -42,7 +42,7 @@ const renameProductVariation = catchAsync(async (req, res) => {
   const result = await ProductServices.renameProductVariation(
     productId,
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -58,7 +58,7 @@ const manageProductVariations = catchAsync(async (req, res) => {
   const result = await ProductServices.manageProductVariations(
     productId,
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -74,7 +74,7 @@ const removeProductVariations = catchAsync(async (req, res) => {
   const result = await ProductServices.removeProductVariations(
     productId,
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -89,7 +89,7 @@ const updateInventoryAndPricing = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const { addedQuantity, newPrice, variationSku, reduceQuantity } = req.body;
   const result = await ProductServices.updateInventoryAndPricing(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     productId,
     addedQuantity,
     reduceQuantity,
@@ -109,7 +109,7 @@ const approvedProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.approvedProduct(
     productId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     req.body,
   );
   sendResponse(res, {
@@ -128,7 +128,7 @@ const deleteProductImages = catchAsync(async (req, res) => {
   const result = await ProductServices.deleteProductImages(
     productId,
     images,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -143,7 +143,7 @@ const deleteProductImages = catchAsync(async (req, res) => {
 const getAllProducts = catchAsync(async (req, res) => {
   const result = await ProductServices.getAllProducts(
     req.query,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -160,7 +160,7 @@ const getSingleProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.getSingleProduct(
     productId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -175,7 +175,7 @@ const softDeleteProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.softDeleteProduct(
     productId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -190,7 +190,7 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.permanentDeleteProduct(
     productId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,

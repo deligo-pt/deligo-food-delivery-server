@@ -28,6 +28,7 @@ const agreementSchema = new Schema<TAgreement>(
     nif: {
       type: String,
       required: true,
+      unique: true,
       trim: true,
     },
 

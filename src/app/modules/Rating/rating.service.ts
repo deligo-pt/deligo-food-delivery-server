@@ -10,7 +10,7 @@ import {
   calcAndUpdateVendorAllProductStats,
 } from './rating.constant';
 import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Order } from '../Order/order.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
@@ -18,7 +18,7 @@ import { Product } from '../Product/product.model';
 import mongoose from 'mongoose';
 
 // create rating
-const createRating = async (payload: TRating, currentUser: AuthUser) => {
+const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
@@ -125,7 +125,7 @@ const createRating = async (payload: TRating, currentUser: AuthUser) => {
 
 const getAllRatings = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const myDeliveryPartners = await DeliveryPartner.find({
@@ -175,7 +175,7 @@ const getAllRatings = async (
 };
 
 // get single rating
-const getSingleRating = async (ratingId: string, currentUser: AuthUser) => {
+const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
   const rating = await Rating.findById(ratingId)
     .populate('reviewerId', 'name image role userId')
     .populate('targetId', 'name image role userId')
@@ -230,7 +230,7 @@ const getSingleRating = async (ratingId: string, currentUser: AuthUser) => {
   return rating;
 };
 
-const getRatingSummary = async (currentUser: AuthUser) => {
+const getRatingSummary = async (currentUser: TCurrentUser) => {
   const myProducts = await Product.find({
     vendorId: currentUser._id,
     isDeleted: false,

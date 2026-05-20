@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { TUserRole, USER_STATUS } from '../GlobalConstant/user.constant';
 import { TDeliveryAddress } from './address.interface';
 
-export type AuthUser = {
+export type TCurrentUser = {
   _id: mongoose.Types.ObjectId;
   userId: string;
   moloniCustomerId?: number;
