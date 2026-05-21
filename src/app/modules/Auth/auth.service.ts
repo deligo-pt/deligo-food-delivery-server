@@ -68,8 +68,7 @@ const registerUser = async <
     ALL_USER_MODELS.map((M: any) =>
       M.isUserExistsByEmail(
         payload.email,
-        false,
-        'email isEmailVerified role',
+        'email isEmailVerified role isDeleted',
       ).catch(() => null),
     ),
   );
@@ -92,6 +91,12 @@ const registerUser = async <
 
   const existingUser = checkUserResults.find((user) => user && user.email);
   if (existingUser) {
+    if (existingUser?.isDeleted) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'User already deleted. Please contact support for use this email.',
+      );
+    }
     if (existingUser.isEmailVerified) {
       throw new AppError(
         httpStatus.CONFLICT,
@@ -200,8 +205,7 @@ const onboardUser = async <
     ALL_USER_MODELS.map((M: any) =>
       M.isUserExistsByEmail(
         payload.email,
-        false,
-        'email isEmailVerified role',
+        'email isEmailVerified role isDeleted',
       ).catch(() => null),
     ),
   );
@@ -225,6 +229,12 @@ const onboardUser = async <
   const existingUser = checkResults.find((user) => user && user.email);
 
   if (existingUser) {
+    if (existingUser?.isDeleted) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'User already deleted. Please contact support for use this email.',
+      );
+    }
     if (existingUser.isEmailVerified) {
       throw new AppError(
         httpStatus.CONFLICT,
