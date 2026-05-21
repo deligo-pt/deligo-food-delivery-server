@@ -59,15 +59,17 @@ const registerUser = async <
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
 
-  const { Model, idField } = modelData;
-  const mongooseModel = Model as unknown as Model<T>;
+  const { Model: TargetModel, idField } = modelData;
+  const mongooseModel = TargetModel as unknown as Model<T>;
 
   // Generate userId & OTP
   const userID = generateUserId(userType);
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
-  const existingUser = await AuthUser.findOne({ email: payload.email });
+  const existingUser = await AuthUser.findOne({ email: payload.email }).select(
+    'email role status userObjectId _id',
+  );
   if (existingUser) {
     if (existingUser.status === 'APPROVED') {
       throw new AppError(
@@ -120,6 +122,7 @@ const registerUser = async <
         {
           authUserId: `AUTH-${userID}`,
           userObjectId: createdUser._id,
+          onModel: TargetModel.modelName,
           customUserId: userID,
           email: payload.email,
           password: rawPassword,
@@ -158,7 +161,11 @@ const registerUser = async <
 
   return {
     message: `${payload.role} registered successfully. Check your email for OTP.`,
-    data: createdUser,
+    data: {
+      email: payload.email,
+      role: payload.role,
+      status: 'PENDING',
+    },
   };
 };
 
@@ -219,7 +226,9 @@ const onboardUser = async <
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
-  const existingUser = await AuthUser.findOne({ email: payload.email });
+  const existingUser = await AuthUser.findOne({ email: payload.email }).select(
+    'email role status userObjectId _id',
+  );
 
   if (existingUser) {
     if (existingUser.status === 'APPROVED') {
@@ -296,6 +305,7 @@ const onboardUser = async <
         {
           authUserId: `AUTH-${userID}`,
           userObjectId: createdUser._id,
+          onModel: TargetModel.modelName,
           customUserId: userID,
           email: payload.email,
           password: rawPassword,
@@ -333,7 +343,11 @@ const onboardUser = async <
 
   return {
     message: `${payload.role} onboarded successfully. Verification email sent to ${payload.email}`,
-    data: createdUser,
+    data: {
+      email: payload.email,
+      role: payload.role,
+      status: 'PENDING',
+    },
   };
 };
 // Login User
@@ -432,19 +446,46 @@ const loginUser = async (
   }
 
   await AuthUser.findOneAndUpdate({ _id: user._id }, updateQuery, options);
+
+  const targetModelName =
+    ROLE_COLLECTION_MAP[user.role as keyof typeof USER_ROLE];
+  let populatedUser: any = null;
+
+  if (targetModelName) {
+    populatedUser = await AuthUser.findById(user._id)
+      .select('userObjectId email customUserId role status contactNumber')
+      .populate({
+        path: 'userObjectId',
+        model: targetModelName,
+        select: 'name',
+      });
+  } else {
+    populatedUser = await AuthUser.findById(user._id).select(
+      'userObjectId email customUserId role status contactNumber',
+    );
+  }
+
+  console.log({ populatedUser });
+
+  const profileDetails = populatedUser?.userObjectId as any;
+
+  console.log({ profileDetails });
+
   //create token and sent to the  client
   const jwtPayload = {
-    userId: user?.customUserId,
-    // name: {
-    //   firstName: user?.name?.firstName,
-    //   lastName: user?.name?.lastName,
-    // },
-    email: user?.email,
-    contactNumber: user?.contactNumber,
-    role: user?.role,
-    status: user?.status,
+    userId: populatedUser?.customUserId,
+    name: {
+      firstName: profileDetails?.name?.firstName || '',
+      lastName: profileDetails?.name?.lastName || '',
+    },
+    email: populatedUser?.email,
+    contactNumber: populatedUser?.contactNumber,
+    role: populatedUser?.role,
+    status: populatedUser?.status,
     deviceId: newDevice.deviceId,
   };
+
+  console.log({ jwtPayload });
 
   const accessToken = createToken(
     jwtPayload,
@@ -1309,21 +1350,17 @@ const verifyOtp = async (
   }
 
   let userData: any = undefined;
-  let userModel: any = undefined;
 
   if (email) {
-    const result = await findUserByEmail({ email });
-    userData = result?.user;
-    userModel = result?.model;
+    userData = await AuthUser.isUserExistsByEmail(email);
   } else if (contactNumber) {
-    userData = await Customer.findOne({
+    userData = await AuthUser.findOne({
       contactNumber,
       isDeleted: false,
     }).lean();
-    userModel = Customer;
   }
 
-  if (!userData || !userModel) {
+  if (!userData) {
     throw new AppError(
       httpStatus.NOT_FOUND,
       'User not found. Please register.',
@@ -1333,13 +1370,15 @@ const verifyOtp = async (
   const deviceLimit = ROLE_DEVICE_LIMITS[userData.role] || 3;
   const currentDeviceId = deviceDetails?.deviceId || 'unknown';
 
-  const existingDeviceIndex = userData.loginDevices?.findIndex(
+  const loginDevices = userData.loginDevices || [];
+
+  const existingDeviceIndex = loginDevices?.findIndex(
     (d: TLoginDevice) => d.deviceId === currentDeviceId,
   );
   const isExisting =
     existingDeviceIndex !== undefined && existingDeviceIndex > -1;
 
-  if (!isExisting && (userData.loginDevices?.length || 0) >= deviceLimit) {
+  if (!isExisting && (loginDevices?.length || 0) >= deviceLimit) {
     if (!forceLogin) {
       throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
     }
@@ -1403,7 +1442,7 @@ const verifyOtp = async (
     updateQuery.$set['loginDevices.$[elem]'] = newDevice;
     options.arrayFilters = [{ 'elem.deviceId': newDevice.deviceId }];
   } else {
-    if ((userData.loginDevices?.length || 0) >= deviceLimit) {
+    if ((loginDevices?.length || 0) >= deviceLimit) {
       if (!forceLogin)
         throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
 
@@ -1418,18 +1457,33 @@ const verifyOtp = async (
     }
   }
 
-  await userModel.findOneAndUpdate({ _id: userData._id }, updateQuery, options);
+  await AuthUser.findOneAndUpdate({ _id: userData._id }, updateQuery, options);
+
+  const targetModelName =
+    ROLE_COLLECTION_MAP[userData.role as keyof typeof USER_ROLE];
+  let populatedAuthUser: any = null;
+
+  if (targetModelName) {
+    populatedAuthUser = await AuthUser.findById(userData._id).populate({
+      path: 'userObjectId',
+      model: targetModelName,
+    });
+  } else {
+    populatedAuthUser = await AuthUser.findById(userData._id);
+  }
+
+  const profileDetails = populatedAuthUser?.userObjectId as any;
 
   const jwtPayload = {
-    userId: userData.userId,
+    userId: populatedAuthUser?.customUserId,
     name: {
-      firstName: userData.name.firstName || '',
-      lastName: userData.name.lastName || '',
+      firstName: profileDetails?.name?.firstName || '',
+      lastName: profileDetails?.name?.lastName || '',
     },
-    email: userData.email || '',
-    contactNumber: userData.contactNumber || '',
-    role: userData.role,
-    status: userData.status,
+    email: populatedAuthUser?.email || '',
+    contactNumber: populatedAuthUser?.contactNumber || '',
+    role: populatedAuthUser?.role,
+    status: populatedAuthUser?.status,
     deviceId: newDevice.deviceId,
   };
 

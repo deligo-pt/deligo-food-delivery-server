@@ -17,6 +17,12 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
     userObjectId: {
       type: Schema.Types.ObjectId,
       required: [true, 'User Object ID reference is required'],
+      refPath: 'onModel',
+    },
+    onModel: {
+      type: String,
+      required: [true, 'User Object ID reference is required'],
+      enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner', 'Admin'],
     },
     customUserId: {
       type: String,
