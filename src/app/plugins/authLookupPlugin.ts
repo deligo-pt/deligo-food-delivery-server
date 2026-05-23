@@ -32,9 +32,7 @@ export const authLookupPlugin = <T extends { email?: string }>(
     userCustomId: string,
     isDeleted?: boolean,
   ) {
-    const query: any = {
-      userCustomId,
-    };
+    const query: any = { userCustomId };
     if (typeof isDeleted === 'boolean') {
       query.isDeleted = isDeleted;
     }
