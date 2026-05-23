@@ -1,21 +1,16 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
 
 export type TFleetManager = {
   // ---------------------------------------------
   // Core Identifiers
   // ---------------------------------------------
-  _id?: string;
+  _id?: mongoose.Types.ObjectId;
   userId: string;
   registeredBy?: mongoose.Types.ObjectId;
-  role: 'FLEET_MANAGER';
-  email: string;
 
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
-  isDeleted: boolean;
   isUpdateLocked: boolean;
 
   // --------------------------------------------------------
@@ -25,16 +20,6 @@ export type TFleetManager = {
   pendingContactNumber?: string;
 
   // ---------------------------------------------
-  // OTP & Password Reset
-  // ---------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
-
-  // ---------------------------------------------
   // Personal Information
   // ---------------------------------------------
   name?: {
@@ -42,7 +27,6 @@ export type TFleetManager = {
     lastName?: string;
   };
 
-  contactNumber?: string;
   profilePhoto?: string;
 
   address?: {
@@ -108,12 +92,6 @@ export type TFleetManager = {
     activeVehicles?: number;
     totalDeliveries?: number;
   };
-
-  // ---------------------------------------------
-  // Security & Access
-  // ---------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
 
   // ---------------------------------------------
   // Admin Workflow / Audit

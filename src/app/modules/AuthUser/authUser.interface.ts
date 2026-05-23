@@ -12,9 +12,9 @@ export type TAuthUser = {
   // 1. Core Identifiers & Relations Mapping
   // ------------------------------------------------------------------
   authUserId: string; // UUID for future central Auth Service synchronization
+  customUserId: string; // Generated readable custom ID (e.g., 'VND-1002', 'FM-MLSE40CI')
   userObjectId: mongoose.Types.ObjectId; // Reference to the specific profile document's MongoDB _id
   onModel: TUserModel;
-  customUserId: string; // Generated readable custom ID (e.g., 'VND-1002', 'FM-MLSE40CI')
   email: string; // Unique primary email used as the login identifier
   contactNumber: string; // Unique mobile number used as the login identifier
   role: TUserRole; // System role (e.g., 'SUPER_ADMIN', 'VENDOR', 'CUSTOMER', etc.)
@@ -36,6 +36,9 @@ export type TAuthUser = {
   // ------------------------------------------------------------------
   isEmailVerified: boolean; // Global flag to track email verification state
   isContactNumberVerified: boolean; // Global flag to track mobile number verification state
+
+  requiresOtpVerification?: boolean;
+  mobileOtpId?: string;
   // ------------------------------------------------------------------
   // 5. Password Credentials & Security Audit Logs
   // ------------------------------------------------------------------

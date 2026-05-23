@@ -3,11 +3,8 @@ import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
-import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
-import { authLookupPlugin } from '../../plugins/authLookupPlugin';
-import { IAuthLookupModel } from '../../interfaces/user.interface';
 
-const vendorSchema = new Schema<TVendor, IAuthLookupModel<TVendor>>(
+const vendorSchema = new Schema<TVendor>(
   {
     // -------------------------------------------------------
     // Core Identifiers
@@ -34,29 +31,11 @@ const vendorSchema = new Schema<TVendor, IAuthLookupModel<TVendor>>(
         default: null,
       },
     },
-    role: {
-      type: String,
-      enum: ['VENDOR', 'SUB_VENDOR'],
-      required: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [
-        /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})$/,
-        'Please enter a valid email address',
-      ],
-    },
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
-    isEmailVerified: { type: Boolean, default: false },
-    isDeleted: { type: Boolean, default: false },
     isUpdateLocked: { type: Boolean, default: false },
 
     // --------------------------------------------------------
@@ -66,22 +45,12 @@ const vendorSchema = new Schema<TVendor, IAuthLookupModel<TVendor>>(
     pendingContactNumber: { type: String },
 
     // -------------------------------------------------------
-    // OTP & Password Reset (UNCHANGED)
-    // -------------------------------------------------------
-    otp: { type: String, default: '' },
-    isOtpExpired: { type: Date, default: null },
-    passwordResetToken: { type: String, default: '' },
-    passwordResetTokenExpiresAt: { type: Date, default: null },
-    passwordChangedAt: { type: Date, default: null },
-
-    // -------------------------------------------------------
     // Personal Details
     // -------------------------------------------------------
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-    contactNumber: { type: String, default: '' },
     profilePhoto: { type: String, default: '' },
     address: {
       street: { type: String, default: '' },
@@ -162,15 +131,6 @@ const vendorSchema = new Schema<TVendor, IAuthLookupModel<TVendor>>(
     },
 
     // -------------------------------------------------------
-    // Security & Access
-    // -------------------------------------------------------
-    twoFactorEnabled: { type: Boolean, default: false },
-    loginDevices: {
-      type: [loginDeviceSchema],
-      default: [],
-    },
-
-    // -------------------------------------------------------
     // Rating & Activity
     // -------------------------------------------------------
     rating: {
@@ -196,9 +156,4 @@ const vendorSchema = new Schema<TVendor, IAuthLookupModel<TVendor>>(
 
 vendorSchema.index({ currentSessionLocation: '2dsphere' });
 
-vendorSchema.plugin(authLookupPlugin);
-
-export const Vendor = model<TVendor, IAuthLookupModel<TVendor>>(
-  'Vendor',
-  vendorSchema,
-);
+export const Vendor = model<TVendor>('Vendor', vendorSchema);

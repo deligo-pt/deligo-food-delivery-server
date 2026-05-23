@@ -1,20 +1,15 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
-import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 
 export type TAdmin = {
   // ------------------------------------------------------------------
   // Core Identifiers
   // ------------------------------------------------------------------
-  _id: string;
+  _id: mongoose.Types.ObjectId;
   userId: string;
   registeredBy?: mongoose.Types.ObjectId;
-  role: 'ADMIN' | 'SUPER_ADMIN' | 'AGENT';
-  email: string;
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
-  isDeleted: boolean;
   isUpdateLocked: boolean;
 
   // --------------------------------------------------------
@@ -22,16 +17,6 @@ export type TAdmin = {
   // --------------------------------------------------------
   pendingEmail?: string;
   pendingContactNumber?: string;
-
-  // ------------------------------------------------------
-  // OTP & Password Reset
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
 
   // ------------------------------------------------------------------
   // Personal Information
@@ -41,7 +26,6 @@ export type TAdmin = {
     lastName?: string;
   };
 
-  contactNumber?: string;
   profilePhoto?: string;
 
   address?: {
@@ -67,18 +51,6 @@ export type TAdmin = {
     idProofFront?: string;
     idProofBack?: string;
   };
-
-  // ------------------------------------------------------------------
-  // Security & Authentication
-  // ------------------------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
-
-  // ------------------------------------------------------------------
-  // Permissions & Role Controls
-  // ------------------------------------------------------------------
-  permissions?: string[];
-  // Example: ['MANAGE_USERS', 'APPROVE_VENDORS']
 
   // ------------------------------------------------------------------
   // Admin Workflow & Audit Logs

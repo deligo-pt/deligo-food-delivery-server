@@ -2,45 +2,21 @@
 import { Schema, model } from 'mongoose';
 import { TCustomer } from './customer.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { AddressType } from './customer.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
-import { authLookupPlugin } from '../../plugins/authLookupPlugin';
-import { IAuthLookupModel } from '../../interfaces/user.interface';
 
-const customerSchema = new Schema<TCustomer, IAuthLookupModel<TCustomer>>(
+const customerSchema = new Schema<TCustomer>(
   {
     // ----------------------------------------------------------------
     // Core Identifiers
     // ----------------------------------------------------------------
     userId: { type: String, required: true, unique: true },
 
-    role: {
-      type: String,
-      enum: ['CUSTOMER'],
-      required: true,
-    },
-
-    email: {
-      type: String,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      sparse: true,
-      match: [
-        /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
-        'Please fill a valid email address',
-      ],
-    },
-
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.APPROVED,
     },
-
-    isOtpVerified: { type: Boolean, default: false },
-    isDeleted: { type: Boolean, default: false },
 
     // --------------------------------------------------------
     // Pending temporary Email and contact number
@@ -49,22 +25,12 @@ const customerSchema = new Schema<TCustomer, IAuthLookupModel<TCustomer>>(
     pendingContactNumber: { type: String },
 
     // ----------------------------------------------------------------
-    // OTP
-    // ----------------------------------------------------------------
-    otp: { type: String, default: '' },
-    isOtpExpired: { type: Date, default: null },
-    requiresOtpVerification: { type: Boolean, default: true },
-    mobileOtpId: { type: String, default: '' },
-
-    // ----------------------------------------------------------------
     // Personal Details
     // ----------------------------------------------------------------
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-
-    contactNumber: { type: String, unique: true, sparse: true },
 
     profilePhoto: { type: String, default: '' },
 
@@ -103,21 +69,10 @@ const customerSchema = new Schema<TCustomer, IAuthLookupModel<TCustomer>>(
         detailedAddress: { type: String },
         isActive: { type: Boolean, default: false },
 
-        zoneId: { type: Schema.Types.ObjectId, default: null, ref: 'Zone' },
         addressType: { type: String, enum: Object.keys(AddressType) },
         notes: { type: String },
       },
     ],
-
-    // ----------------------------------------------------------------
-    // Security & Access
-    // ----------------------------------------------------------------
-    twoFactorEnabled: { type: Boolean, default: false },
-
-    loginDevices: {
-      type: [loginDeviceSchema],
-      default: [],
-    },
 
     // ----------------------------------------------------------------
     // Referral & Loyalty
@@ -132,18 +87,6 @@ const customerSchema = new Schema<TCustomer, IAuthLookupModel<TCustomer>>(
     blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },
-
-    // ----------------------------------------------------------------
-    // Payment Methods
-    // ----------------------------------------------------------------
-    paymentMethods: [
-      {
-        cardType: { type: String, required: true },
-        lastFourDigits: { type: String, required: true },
-        expiryDate: { type: String, required: true },
-        isDefault: { type: Boolean, default: false },
-      },
-    ],
   },
   {
     timestamps: true,
@@ -154,9 +97,4 @@ const customerSchema = new Schema<TCustomer, IAuthLookupModel<TCustomer>>(
 // GEO INDEX FOR REAL-TIME LOCATION
 customerSchema.index({ currentSessionLocation: '2dsphere' });
 
-customerSchema.plugin(authLookupPlugin);
-
-export const Customer = model<TCustomer, IAuthLookupModel<TCustomer>>(
-  'Customer',
-  customerSchema,
-);
+export const Customer = model<TCustomer>('Customer', customerSchema);

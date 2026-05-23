@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 import { currentStatusOptions } from './delivery-partner.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
 
@@ -9,18 +8,14 @@ export type TDeliveryPartner = {
   // -------------------------------------------------
   // Core Identifiers & Credentials
   // -------------------------------------------------
-  _id?: string;
+  _id?: mongoose.Types.ObjectId;
   userId: string;
   registeredBy?: {
     id: mongoose.Types.ObjectId;
     model: TRegisteredByModel;
     role: 'ADMIN' | 'SUPER_ADMIN' | 'FLEET_MANAGER';
   };
-  role: 'DELIVERY_PARTNER';
-  email: string;
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
-  isDeleted: boolean;
   isUpdateLocked: boolean;
 
   // --------------------------------------------------------
@@ -29,17 +24,6 @@ export type TDeliveryPartner = {
   pendingEmail?: string;
   pendingContactNumber?: string;
 
-  // ------------------------------------------------------
-  // OTP & Password Reset
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-  requiresOtpVerification?: boolean;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
-
   // -------------------------------------------------
   // 1) Personal Information
   // -------------------------------------------------
@@ -47,7 +31,6 @@ export type TDeliveryPartner = {
     firstName?: string;
     lastName?: string;
   };
-  contactNumber?: string;
   profilePhoto?: string;
   address?: {
     street?: string;
@@ -167,12 +150,6 @@ export type TDeliveryPartner = {
     activity?: string;
     insurancePolicy?: string;
   };
-
-  // -------------------------------------------------
-  // 10) Security & Access
-  // -------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
 
   // -------------------------------------------------
   // 11) Admin Workflow (Approval System)

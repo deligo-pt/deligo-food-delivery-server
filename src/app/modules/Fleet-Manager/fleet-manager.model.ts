@@ -2,15 +2,9 @@
 import { Schema, model } from 'mongoose';
 import { TFleetManager } from './fleet-manager.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
-import { authLookupPlugin } from '../../plugins/authLookupPlugin';
-import { IAuthLookupModel } from '../../interfaces/user.interface';
 
-const fleetManagerSchema = new Schema<
-  TFleetManager,
-  IAuthLookupModel<TFleetManager>
->(
+const fleetManagerSchema = new Schema<TFleetManager>(
   {
     // ------------------------------------------
     // Core Identifiers
@@ -27,32 +21,12 @@ const fleetManagerSchema = new Schema<
       ref: 'Admin',
     },
 
-    role: {
-      type: String,
-      enum: ['FLEET_MANAGER'],
-      required: true,
-    },
-
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [
-        /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
-        'Please fill a valid email address',
-      ],
-    },
-
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
 
-    isEmailVerified: { type: Boolean, default: false },
-    isDeleted: { type: Boolean, default: false },
     isUpdateLocked: { type: Boolean, default: false },
 
     // --------------------------------------------------------
@@ -62,16 +36,6 @@ const fleetManagerSchema = new Schema<
     pendingContactNumber: { type: String },
 
     // ------------------------------------------
-    // OTP & Password Reset
-    // ------------------------------------------
-    otp: { type: String, default: '' },
-    isOtpExpired: { type: Date, default: null },
-
-    passwordResetToken: { type: String, default: '' },
-    passwordResetTokenExpiresAt: { type: Date, default: null },
-    passwordChangedAt: { type: Date, default: null },
-
-    // ------------------------------------------
     // Personal Details
     // ------------------------------------------
     name: {
@@ -79,7 +43,6 @@ const fleetManagerSchema = new Schema<
       lastName: { type: String, default: '' },
     },
 
-    contactNumber: { type: String, default: '' },
     profilePhoto: { type: String, default: '' },
 
     address: {
@@ -149,16 +112,6 @@ const fleetManagerSchema = new Schema<
     },
 
     // ------------------------------------------
-    // Security & Access
-    // ------------------------------------------
-    twoFactorEnabled: { type: Boolean, default: false },
-
-    loginDevices: {
-      type: [loginDeviceSchema],
-      default: [],
-    },
-
-    // ------------------------------------------
     // Admin Workflow / Audit
     // ------------------------------------------
     approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
@@ -181,9 +134,7 @@ const fleetManagerSchema = new Schema<
   },
 );
 
-fleetManagerSchema.plugin(authLookupPlugin);
-
-export const FleetManager = model<
-  TFleetManager,
-  IAuthLookupModel<TFleetManager>
->('FleetManager', fleetManagerSchema);
+export const FleetManager = model<TFleetManager>(
+  'FleetManager',
+  fleetManagerSchema,
+);

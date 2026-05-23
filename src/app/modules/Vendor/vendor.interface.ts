@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
-import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 
 // export type TVendorSchedule = {
 //   day: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
@@ -23,12 +22,8 @@ export type TVendor = {
     model: TRegisteredByModel;
     role: 'ADMIN' | 'SUPER_ADMIN' | 'VENDOR';
   };
-  role: 'VENDOR' | 'SUB_VENDOR';
-  email: string;
 
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
-  isDeleted: boolean;
   isUpdateLocked: boolean;
 
   // --------------------------------------------------------
@@ -38,16 +33,6 @@ export type TVendor = {
   pendingContactNumber?: string;
 
   // --------------------------------------------------------
-  // OTP & Password Reset
-  // --------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
-
-  // --------------------------------------------------------
   // Personal Information
   // --------------------------------------------------------
   name?: {
@@ -55,7 +40,6 @@ export type TVendor = {
     lastName?: string;
   };
 
-  contactNumber?: string;
   profilePhoto?: string;
 
   address?: {
@@ -135,12 +119,6 @@ export type TVendor = {
     storePhoto?: string[];
     menuUpload?: string[];
   };
-
-  // --------------------------------------------------------
-  // Security & Access
-  // --------------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
 
   // --------------------------------------------------------
   // Rating & Activity

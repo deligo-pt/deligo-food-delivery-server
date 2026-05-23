@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 import { AddressType } from './customer.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
 
@@ -8,28 +7,15 @@ export type TCustomer = {
   // ------------------------------------------------------
   // Core Identifiers
   // ------------------------------------------------------
-  _id?: string;
+  _id?: mongoose.Types.ObjectId;
   userId: string;
-  role: 'CUSTOMER';
-  email?: string;
-
   status: keyof typeof USER_STATUS;
-  isOtpVerified: boolean;
-  isDeleted: boolean;
 
   // --------------------------------------------------------
   // Pending temporary Email and contact number
   // --------------------------------------------------------
   pendingEmail?: string;
   pendingContactNumber?: string;
-
-  // ------------------------------------------------------
-  // OTP
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-  requiresOtpVerification?: boolean;
-  mobileOtpId?: string;
 
   // ------------------------------------------------------
   // Personal Information
@@ -39,7 +25,6 @@ export type TCustomer = {
     lastName?: string;
   };
 
-  contactNumber?: string;
   profilePhoto?: string;
 
   // Primary/Billing Address (Can be simple)
@@ -79,16 +64,9 @@ export type TCustomer = {
     isActive: boolean;
 
     // Zone Integration & Metadata
-    zoneId?: mongoose.Types.ObjectId; // CRITICAL: Links address to a defined delivery zone
     addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
     notes?: string; // Specific delivery instructions
   }>;
-
-  // ------------------------------------------------------
-  // Security & Access
-  // ------------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
 
   // ------------------------------------------------------
   // Referral
@@ -104,16 +82,6 @@ export type TCustomer = {
   blockedBy?: mongoose.Types.ObjectId;
   approvedOrRejectedOrBlockedAt?: Date;
   remarks?: string;
-
-  // ------------------------------------------------------
-  // Payment Methods
-  // ------------------------------------------------------
-  paymentMethods?: Array<{
-    cardType: string;
-    lastFourDigits: string;
-    expiryDate: string;
-    isDefault: boolean;
-  }>;
 
   // ------------------------------------------------------
   // Timestamps
