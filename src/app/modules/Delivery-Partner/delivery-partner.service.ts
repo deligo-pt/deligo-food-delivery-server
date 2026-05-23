@@ -14,15 +14,16 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
 import mongoose from 'mongoose';
+import { flattenObject } from '../../utils/flattenObject';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
-  deliveryPartnerId: string,
+  deliveryPartnerCustomId: string,
   currentUser: TCurrentUser,
 ) => {
   const centralAuthUser = await AuthUser.findOne({
-    userCustomId: deliveryPartnerId,
+    userCustomId: deliveryPartnerCustomId,
     isDeleted: false,
   });
   if (!centralAuthUser) {
@@ -37,7 +38,7 @@ const updateDeliveryPartner = async (
   }
 
   const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userCustomId: deliveryPartnerId,
+    userCustomId: deliveryPartnerCustomId,
   });
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
@@ -85,21 +86,23 @@ const updateDeliveryPartner = async (
     payload.status = 'PENDING';
   }
 
+  const flattenedUpdateData = flattenObject(payload);
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     if (payload.status === 'PENDING') {
       await AuthUser.findOneAndUpdate(
-        { userCustomId: deliveryPartnerId },
+        { userCustomId: deliveryPartnerCustomId },
         { $set: { status: 'PENDING' } },
         { session },
       );
     }
 
     const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
-      { userCustomId: deliveryPartnerId },
-      { $set: payload },
+      { userCustomId: deliveryPartnerCustomId },
+      { $set: flattenedUpdateData },
       {
         new: true,
         session,
@@ -129,7 +132,7 @@ const updateDeliveryPartner = async (
 const updateDeliveryPartnerLiveLocation = async (
   payload: TLiveLocationPayload,
   currentUser: TCurrentUser,
-  deliveryPartnerId?: string,
+  deliveryPartnerCustomId?: string,
 ) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(
@@ -138,7 +141,10 @@ const updateDeliveryPartnerLiveLocation = async (
     );
   }
 
-  if (deliveryPartnerId && currentUser.userCustomId !== deliveryPartnerId) {
+  if (
+    deliveryPartnerCustomId &&
+    currentUser.userCustomId !== deliveryPartnerCustomId
+  ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorize to update live location!',
@@ -201,6 +207,100 @@ const updateDeliveryPartnerLiveLocation = async (
   };
 };
 
+// update doc image
+const deliverPartnerDocImageUpload = async (
+  file: string | undefined,
+  data: TDeliveryPartnerImageDocuments,
+  currentUser: TCurrentUser,
+  deliveryPartnerCustomId: string,
+) => {
+  const existingDeliveryPartner = await DeliveryPartner.findOne({
+    userCustomId: deliveryPartnerCustomId,
+  });
+  if (!existingDeliveryPartner) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found');
+  }
+
+  if (currentUser?.role === 'FLEET_MANAGER') {
+    if (
+      currentUser?._id.toString() !==
+      existingDeliveryPartner?.registeredBy?.id.toString()
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'You are not authorize to upload document image!',
+      );
+    }
+  }
+
+  // delete previous image if exists
+  const docTitle = data?.docImageTitle;
+
+  if (!docTitle || !file) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Document title and file must be provided',
+    );
+  }
+
+  if (existingDeliveryPartner?.documents?.[docTitle]) {
+    const oldImage = existingDeliveryPartner?.documents?.[docTitle];
+    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
+      console.error(err);
+    });
+  }
+
+  const updateData: Record<string, any> = {
+    [`documents.${docTitle}`]: file,
+  };
+
+  if (
+    currentUser.role === 'DELIVERY_PARTNER' ||
+    currentUser.role === 'FLEET_MANAGER'
+  ) {
+    updateData['status'] = 'PENDING';
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    if (updateData['status'] === 'PENDING') {
+      await AuthUser.findOneAndUpdate(
+        { userCustomId: deliveryPartnerCustomId },
+        { $set: { status: 'PENDING' } },
+        { session },
+      );
+    }
+
+    const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
+      { userCustomId: deliveryPartnerCustomId },
+      { $set: updateData },
+      {
+        new: true,
+        session,
+        runValidators: true,
+      },
+    ).select('userCustomId name status documents updatedAt');
+
+    if (!updatedDeliveryPartner) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Failed to update document image.',
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return updatedDeliveryPartner;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
 const changeDeliveryPartnerStatus = async (
   currentUser: TCurrentUser,
   payload: { status: 'IDLE' | 'OFFLINE' },
@@ -253,56 +353,6 @@ const changeDeliveryPartnerStatus = async (
   };
 };
 
-// update doc image
-const deliverPartnerDocImageUpload = async (
-  file: string | undefined,
-  data: TDeliveryPartnerImageDocuments,
-  currentUser: TCurrentUser,
-  deliveryPartnerId: string,
-) => {
-  const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userCustomId: deliveryPartnerId,
-  });
-  if (!existingDeliveryPartner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
-  }
-
-  if (currentUser?.role === 'FLEET_MANAGER') {
-    if (
-      currentUser?._id.toString() !==
-      existingDeliveryPartner?.registeredBy?.id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'You are not authorize to upload document image!',
-      );
-    }
-  }
-
-  // delete previous image if exists
-  const docTitle = data?.docImageTitle;
-
-  if (docTitle && existingDeliveryPartner?.documents?.[docTitle]) {
-    const oldImage = existingDeliveryPartner?.documents?.[docTitle];
-    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.error(err);
-    });
-  }
-
-  if (data.docImageTitle && file) {
-    existingDeliveryPartner.documents = {
-      ...existingDeliveryPartner.documents,
-      [data.docImageTitle]: file,
-    };
-    await existingDeliveryPartner.save();
-  }
-
-  return {
-    message: 'Delivery Partner document image updated successfully',
-    existingDeliveryPartner: existingDeliveryPartner,
-  };
-};
-
 //get all delivery partners
 const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
@@ -340,12 +390,12 @@ const getAllDeliveryPartnersFromDB = async (
 
 // get single delivery partner from db
 const getSingleDeliveryPartnerFromDB = async (
-  deliveryPartnerId: string,
+  deliveryPartnerCustomId: string,
   currentUser: TCurrentUser,
 ) => {
   if (
     currentUser?.role === 'DELIVERY_PARTNER' &&
-    currentUser?.userCustomId !== deliveryPartnerId
+    currentUser?.userCustomId !== deliveryPartnerCustomId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -357,12 +407,12 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
     existingDeliveryPartner = await DeliveryPartner.findOne({
-      userCustomId: deliveryPartnerId,
+      userCustomId: deliveryPartnerCustomId,
       isDeleted: false,
     });
   } else {
     existingDeliveryPartner = await DeliveryPartner.findOne({
-      userCustomId: deliveryPartnerId,
+      userCustomId: deliveryPartnerCustomId,
     });
   }
 

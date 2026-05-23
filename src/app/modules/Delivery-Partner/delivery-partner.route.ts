@@ -11,7 +11,7 @@ const router = Router();
 
 // Delivery Partner Update Route
 router.patch(
-  '/:deliveryPartnerId',
+  '/:deliveryPartnerCustomId',
   auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
   validateRequest(
     DeliveryPartnerValidation.updateDeliveryPartnerDataValidationSchema,
@@ -21,7 +21,7 @@ router.patch(
 
 // update delivery partner live location
 router.patch(
-  '/:deliveryPartnerId/liveLocation',
+  '/:deliveryPartnerCustomId/liveLocation',
   auth('DELIVERY_PARTNER'),
   validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
   DeliveryPartnerControllers.updateDeliveryPartnerLiveLocation,
@@ -29,7 +29,7 @@ router.patch(
 
 // Delivery Partner Doc Image Upload Route
 router.patch(
-  '/:deliveryPartnerId/docImage',
+  '/:deliveryPartnerCustomId/docImage',
   auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
   multerUpload.single('file'),
   parseBody,
@@ -58,7 +58,7 @@ router.get(
 
 // Get Single Delivery Partner Route
 router.get(
-  '/:deliveryPartnerId',
+  '/:deliveryPartnerCustomId',
   auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
   DeliveryPartnerControllers.getSingleDeliveryPartner,
 );

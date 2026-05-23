@@ -9,7 +9,7 @@ const updateDeliveryPartner = catchAsync(async (req, res) => {
   const currentUser = req.user as TCurrentUser;
   const result = await DeliveryPartnerServices.updateDeliveryPartner(
     req.body,
-    req.params.deliveryPartnerId,
+    req.params.deliveryPartnerCustomId,
     currentUser,
   );
   sendResponse(res, {
@@ -26,7 +26,7 @@ const updateDeliveryPartnerLiveLocation = catchAsync(async (req, res) => {
     await DeliveryPartnerServices.updateDeliveryPartnerLiveLocation(
       req.body,
       req.user as TCurrentUser,
-      req.params.deliveryPartnerId,
+      req.params.deliveryPartnerCustomId,
     );
   sendResponse(res, {
     success: true,
@@ -37,6 +37,23 @@ const updateDeliveryPartnerLiveLocation = catchAsync(async (req, res) => {
 });
 
 // change delivery partner status
+// delivery partner doc image upload
+const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
+  const file = req.file;
+  const result = await DeliveryPartnerServices.deliverPartnerDocImageUpload(
+    file?.path,
+    req.body,
+    req.user as TCurrentUser,
+    req.params.deliveryPartnerCustomId,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Delivery Partner document image updated successfully',
+    data: result,
+  });
+});
+
 const changeDeliveryPartnerStatus = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.changeDeliveryPartnerStatus(
     req.user as TCurrentUser,
@@ -47,23 +64,6 @@ const changeDeliveryPartnerStatus = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     message: result?.message,
     data: null,
-  });
-});
-
-// delivery partner doc image upload
-const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
-  const file = req.file;
-  const result = await DeliveryPartnerServices.deliverPartnerDocImageUpload(
-    file?.path,
-    req.body,
-    req.user as TCurrentUser,
-    req.params.deliveryPartnerId,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.existingDeliveryPartner,
   });
 });
 
@@ -86,7 +86,7 @@ const getAllDeliveryPartners = catchAsync(async (req, res) => {
 // get single delivery partner
 const getSingleDeliveryPartner = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.getSingleDeliveryPartnerFromDB(
-    req.params.deliveryPartnerId,
+    req.params.deliveryPartnerCustomId,
     req.user as TCurrentUser,
   );
 
