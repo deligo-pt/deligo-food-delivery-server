@@ -181,7 +181,7 @@ const updateDeliveryPartnerLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updated = await DeliveryPartner.findOneAndUpdate(
-    { userCustomId: currentUser.userCustomId, isDeleted: false },
+    { userCustomId: currentUser.userCustomId },
     { $set: updateData },
     {
       new: true,
