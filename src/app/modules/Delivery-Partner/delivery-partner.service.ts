@@ -361,32 +361,71 @@ const getAllDeliveryPartnersFromDB = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser?.role === 'FLEET_MANAGER') {
-    query['registeredBy.id'] = currentUser?._id.toString();
+    const fleetManagedPartners = await DeliveryPartner.find({
+      'registeredBy.id': currentUser?._id.toString(),
+    }).select('_id');
+
+    const partnerObjectIds = fleetManagedPartners.map((partner) => partner._id);
+
+    query['userObjectId'] = { $in: partnerObjectIds };
   }
 
-  const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
+  query['role'] = 'DELIVERY_PARTNER';
+  const authBaseQuery: Record<string, any> = {};
+
+  if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
+    authBaseQuery.isDeleted = false;
+  }
+
+  const deliveryPartnersQuery = new QueryBuilder(
+    AuthUser.find(authBaseQuery),
+    query,
+  )
     .fields()
     .paginate()
     .sort()
     .filter()
     .search(DeliveryPartnerSearchableFields);
 
-  const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userCustomId role',
-    rejectedBy: 'name userCustomId role',
-    blockedBy: 'name userCustomId role',
-  });
-  populateOptions.forEach((option) => {
-    deliveryPartners.modelQuery = deliveryPartners.modelQuery.populate(option);
+  deliveryPartnersQuery.modelQuery = deliveryPartnersQuery.modelQuery.populate({
+    path: 'userObjectId',
+    populate: [
+      { path: 'approvedBy', select: 'name userCustomId role' },
+      { path: 'rejectedBy', select: 'name userCustomId role' },
+      { path: 'blockedBy', select: 'name userCustomId role' },
+    ],
   });
 
-  const meta = await deliveryPartners.countTotal();
+  const meta = await deliveryPartnersQuery.countTotal();
 
-  const data = await deliveryPartners.modelQuery;
+  const rawAuthUsers = await deliveryPartnersQuery.modelQuery;
+
+  const mergedData = rawAuthUsers.map((authUserDoc) => {
+    const authUserObj = authUserDoc.toObject();
+    const profileData = authUserObj.userObjectId as unknown as TDeliveryPartner;
+
+    if (!profileData) {
+      return authUserObj;
+    }
+
+    const {
+      password,
+      passwordResetToken,
+      passwordResetTokenExpiresAt,
+      passwordChangedAt,
+      userObjectId,
+      ...cleanAuthData
+    } = authUserObj;
+
+    return {
+      ...cleanAuthData,
+      ...profileData,
+    };
+  });
 
   return {
     meta,
-    data,
+    data: mergedData,
   };
 };
 
