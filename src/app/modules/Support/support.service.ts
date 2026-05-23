@@ -241,7 +241,7 @@ const markReadByAdminOrUser = async (
 };
 
 const closeTicket = async (ticketId: string, currentUser: TCurrentUser) => {
-  const { user: loggedInUser } = await findUserById({
+  const loggedInUser = await findUserById({
     userCustomId: currentUser.userCustomId,
   });
   const ticket = await SupportTicket.findOne({
