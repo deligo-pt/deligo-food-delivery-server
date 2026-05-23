@@ -7,6 +7,7 @@ import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
 import { initAllCronJobs } from './app/cron';
 import './app/BullMQ/Workers/index';
+import '../src/app/modules/Permission/permission.model';
 const server = http.createServer(app);
 
 // Handle unexpected errors

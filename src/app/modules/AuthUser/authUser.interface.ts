@@ -23,7 +23,7 @@ export type TAuthUser = {
   // 2. Live Status & Access Control (RBAC)
   // ------------------------------------------------------------------
   status: TUserStatus; // Account state: 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'BLOCKED'
-  permissions: string[]; // Granular permissions array for custom routing/RBAC
+  permissions: mongoose.Types.ObjectId[]; // Granular permissions array for custom routing/RBAC
   isDeleted: boolean; // Soft delete flag for database retention
 
   // ------------------------------------------------------------------

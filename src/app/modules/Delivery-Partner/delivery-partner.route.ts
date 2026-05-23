@@ -22,7 +22,7 @@ router.patch(
 // update delivery partner live location
 router.patch(
   '/:deliveryPartnerCustomId/liveLocation',
-  auth('DELIVERY_PARTNER'),
+  auth('DELIVERY_PARTNER')(),
   validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
   DeliveryPartnerControllers.updateDeliveryPartnerLiveLocation,
 );
@@ -30,7 +30,7 @@ router.patch(
 // Delivery Partner Doc Image Upload Route
 router.patch(
   '/:deliveryPartnerCustomId/docImage',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER')(),
   multerUpload.single('file'),
   parseBody,
   validateRequest(
@@ -42,7 +42,7 @@ router.patch(
 // Change Delivery Partner Status Route
 router.patch(
   '/status/change',
-  auth('DELIVERY_PARTNER'),
+  auth('DELIVERY_PARTNER')(),
   validateRequest(
     DeliveryPartnerValidation.deliveryPartnerStatusChangeValidationSchema,
   ),
@@ -52,14 +52,19 @@ router.patch(
 // Get All Delivery Partners Route
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  auth(
+    'ADMIN',
+    'SUPER_ADMIN',
+    'FLEET_MANAGER',
+    'DELIVERY_PARTNER',
+  )('VIEW_DELIVERY_PARTNERS'),
   DeliveryPartnerControllers.getAllDeliveryPartners,
 );
 
 // Get Single Delivery Partner Route
 router.get(
   '/:deliveryPartnerCustomId',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER')(),
   DeliveryPartnerControllers.getSingleDeliveryPartner,
 );
 

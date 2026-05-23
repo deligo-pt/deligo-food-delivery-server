@@ -481,8 +481,6 @@ const loginUser = async (
     deviceId: newDevice.deviceId,
   };
 
-  console.log({ jwtPayload });
-
   const accessToken = createToken(
     jwtPayload,
     config.jwt.jwt_access_secret as string,

@@ -58,10 +58,13 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
       default: 'PENDING',
       trim: true,
     },
-    permissions: {
-      type: [String],
-      default: [],
-    },
+    permissions: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Permission',
+        default: [],
+      },
+    ],
     isDeleted: {
       type: Boolean,
       default: false,
