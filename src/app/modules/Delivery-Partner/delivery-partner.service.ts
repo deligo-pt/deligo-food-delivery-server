@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
@@ -403,27 +405,36 @@ const getSingleDeliveryPartnerFromDB = async (
     );
   }
 
-  let existingDeliveryPartner;
+  let authUserData;
 
   if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
-    existingDeliveryPartner = await DeliveryPartner.findOne({
+    authUserData = await AuthUser.findOne({
       userCustomId: deliveryPartnerCustomId,
       isDeleted: false,
-    });
+    }).populate('userObjectId');
   } else {
-    existingDeliveryPartner = await DeliveryPartner.findOne({
+    authUserData = await AuthUser.findOne({
       userCustomId: deliveryPartnerCustomId,
-    });
+    }).populate('userObjectId');
   }
 
-  if (!existingDeliveryPartner) {
+  if (!authUserData) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
+  }
+
+  const authUserObj = authUserData.toObject();
+  const profileData = authUserObj.userObjectId as unknown as TDeliveryPartner;
+
+  if (!profileData) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Delivery Partner Profile details missing!',
+    );
   }
 
   if (
     currentUser?.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner?.registeredBy?.id.toString() !==
-      currentUser?._id.toString()
+    profileData?.registeredBy?.id.toString() !== currentUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -431,7 +442,21 @@ const getSingleDeliveryPartnerFromDB = async (
     );
   }
 
-  return existingDeliveryPartner;
+  const {
+    password,
+    passwordResetToken,
+    passwordResetTokenExpiresAt,
+    passwordChangedAt,
+    userObjectId,
+    ...cleanAuthData
+  } = authUserObj;
+
+  const combinedFlatResponse = {
+    ...cleanAuthData,
+    ...profileData,
+  };
+
+  return combinedFlatResponse;
 };
 
 export const DeliveryPartnerServices = {
