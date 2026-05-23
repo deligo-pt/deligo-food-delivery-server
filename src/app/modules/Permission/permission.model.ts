@@ -1,12 +1,6 @@
 import { model, Schema } from 'mongoose';
 import { TPermission } from './permission.interface';
-
-export const PermissionActions = [
-  'CREATE',
-  'READ',
-  'UPDATE',
-  'DELETE',
-] as const;
+import { PERMISSION_SUBJECTS, PermissionActions } from './permission.constant';
 
 const permissionSchema = new Schema<TPermission>(
   {
@@ -16,7 +10,7 @@ const permissionSchema = new Schema<TPermission>(
       enum: PermissionActions,
       required: true,
     },
-    subject: { type: String, required: true },
+    subject: { type: String, enum: PERMISSION_SUBJECTS, required: true },
     description: { type: String },
   },
   { timestamps: true },

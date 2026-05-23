@@ -2,8 +2,9 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { AuthUser } from '../AuthUser/authUser.model';
 import { Permission } from './permission.model';
+import { TPermission } from './permission.interface';
 
-const seedInitialPermissionsIntoDB = async () => {
+const seedInitialPermissions = async () => {
   const initialPermissions = [
     {
       name: 'VIEW_DELIVERY_PARTNERS',
@@ -70,6 +71,76 @@ const seedInitialPermissionsIntoDB = async () => {
   };
 };
 
+const createPermission = async (
+  payload: Omit<TPermission, 'name'> & { name?: string },
+) => {
+  const { action, subject } = payload;
+
+  let generatedName = '';
+
+  if (action === 'READ') {
+    generatedName = `VIEW_${subject.toUpperCase()}S`;
+  } else {
+    generatedName = `${action}_${subject.toUpperCase()}`;
+  }
+
+  payload.name = generatedName;
+
+  const isExist = await Permission.findOne({ name: generatedName });
+  if (isExist) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `The permission '${generatedName}' already exists!`,
+    );
+  }
+
+  const result = await Permission.create(payload);
+  return result;
+};
+
+const updatePermission = async (
+  permissionId: string,
+  payload: Partial<TPermission>,
+) => {
+  const isExist = await Permission.findById(permissionId);
+  if (!isExist) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
+  }
+
+  if (payload.action || payload.subject) {
+    const finalAction = payload.action || isExist.action;
+    const finalSubject = payload.subject || isExist.subject;
+
+    let newGeneratedName = '';
+    if (finalAction === 'READ') {
+      newGeneratedName = `VIEW_${finalSubject.toUpperCase()}S`;
+    } else {
+      newGeneratedName = `${finalAction}_${finalSubject.toUpperCase()}`;
+    }
+
+    payload.name = newGeneratedName;
+
+    const isNameConflict = await Permission.findOne({
+      name: newGeneratedName,
+      _id: { $ne: permissionId },
+    });
+    if (isNameConflict) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Another permission with the name '${newGeneratedName}' already exists!`,
+      );
+    }
+  }
+
+  const result = await Permission.findByIdAndUpdate(
+    permissionId,
+    { $set: payload },
+    { new: true, runValidators: true },
+  );
+
+  return result;
+};
+
 const assignPermissionsToUser = async (payload: {
   userCustomId: string;
   permissionIds: string[];
@@ -103,7 +174,33 @@ const assignPermissionsToUser = async (payload: {
   return updatedUser;
 };
 
+const revokePermissionsFromUser = async (payload: {
+  userCustomId: string;
+  permissionIds: string[];
+}) => {
+  const { userCustomId, permissionIds } = payload;
+
+  const isUserExist = await AuthUser.findOne({
+    userCustomId,
+    isDeleted: false,
+  });
+  if (!isUserExist) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Target user not found!');
+  }
+
+  const updatedUser = await AuthUser.findOneAndUpdate(
+    { userCustomId },
+    { $pull: { permissions: { $in: permissionIds } } },
+    { new: true, runValidators: true },
+  ).populate('permissions');
+
+  return updatedUser;
+};
+
 export const PermissionServices = {
-  seedInitialPermissionsIntoDB,
+  seedInitialPermissions,
+  createPermission,
+  updatePermission,
   assignPermissionsToUser,
+  revokePermissionsFromUser,
 };
