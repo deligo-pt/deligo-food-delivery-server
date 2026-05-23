@@ -159,8 +159,8 @@ const getAllRatings = async (
     .search(['review', 'ratingType']);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    reviewerId: 'name userId role',
-    targetId: 'name userId role',
+    reviewerId: 'name userCustomId role',
+    targetId: 'name userCustomId role',
     orderId: 'orderId',
   });
 
@@ -177,8 +177,8 @@ const getAllRatings = async (
 // get single rating
 const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
   const rating = await Rating.findById(ratingId)
-    .populate('reviewerId', 'name image role userId')
-    .populate('targetId', 'name image role userId')
+    .populate('reviewerId', 'name image role userCustomId')
+    .populate('targetId', 'name image role userCustomId')
     .populate('productId', 'name image')
     .populate('orderId', 'orderId');
 

@@ -52,7 +52,9 @@ export const processOrderPostUpdate = async (job: Job) => {
 
   try {
     if (orderStatus === 'DELIVERED') {
-      const partner = await DeliveryPartner.findOne({ userId: partnerUserId });
+      const partner = await DeliveryPartner.findOne({
+        userCustomId: partnerUserId,
+      });
       if (!partner) throw new Error('Delivery Partner not found');
 
       await PointsServices.addOrderPoints(
@@ -99,7 +101,7 @@ export const processOrderPostUpdate = async (job: Job) => {
 
       // --- Vendor Wallet Update ---
       await Wallet.findOneAndUpdate(
-        { userId: updatedOrder.vendorId, userModel: 'Vendor' },
+        { userObjectId: updatedOrder.vendorId, userModel: 'Vendor' },
         {
           $setOnInsert: { walletId: `WAL-V-${customNanoId(8)}` },
           $inc: {
@@ -114,7 +116,7 @@ export const processOrderPostUpdate = async (job: Job) => {
 
       // --- Delivery Partner Wallet Update ---
       await Wallet.findOneAndUpdate(
-        { userId: partner?._id, userModel: 'DeliveryPartner' },
+        { userObjectId: partner?._id, userModel: 'DeliveryPartner' },
         {
           $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
           $inc: {
@@ -132,7 +134,7 @@ export const processOrderPostUpdate = async (job: Job) => {
         .lean();
       // Admin Wallet
       await Wallet.findOneAndUpdate(
-        { userId: SYSTEM_ADMIN, userModel: 'Admin' },
+        { userObjectId: SYSTEM_ADMIN, userModel: 'Admin' },
         {
           $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
           $inc: {
@@ -147,7 +149,7 @@ export const processOrderPostUpdate = async (job: Job) => {
       // Fleet Manager Wallet (If applicable)
       if (isManagedByFleet && fleetManagerId) {
         await Wallet.findOneAndUpdate(
-          { userId: fleetManagerId, userModel: 'FleetManager' },
+          { userObjectId: fleetManagerId, userModel: 'FleetManager' },
           {
             $setOnInsert: { walletId: `WAL-F-${customNanoId(8)}` },
             $inc: {
@@ -166,7 +168,7 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           transactionId: `TXN-V-${orderDisplayId}`,
           orderId: orderDbId,
-          userId: updatedOrder.vendorId,
+          userObjectId: updatedOrder.vendorId,
           userModel: 'Vendor',
           baseAmount: roundTo2(vendorEarningsBeforeTax),
           taxAmount: roundTo2(vendorPayableTax),
@@ -179,7 +181,7 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           transactionId: `TXN-DP-${orderDisplayId}`,
           orderId: orderDbId,
-          userId: partner._id,
+          userObjectId: partner._id,
           userModel: 'DeliveryPartner',
           baseAmount: roundTo2(riderEarningsBeforeTax),
           taxAmount: roundTo2(riderPayableTax),
@@ -194,7 +196,7 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           transactionId: `TXN-DELIGO-${orderDisplayId}`,
           orderId: orderDbId,
-          userId: SYSTEM_ADMIN,
+          userObjectId: SYSTEM_ADMIN,
           userModel: 'Admin',
           baseAmount: roundTo2(deliGoCommission),
           taxAmount: roundTo2(commissionVat),
@@ -210,7 +212,7 @@ export const processOrderPostUpdate = async (job: Job) => {
         transactionsToCreate.push({
           transactionId: `TXN-F-${orderDisplayId}`,
           orderId: orderDbId,
-          userId: fleetManagerId,
+          userObjectId: fleetManagerId,
           userModel: 'FleetManager',
           baseAmount: roundTo2(totalDeliveryCharge),
           taxAmount: 0,
@@ -234,7 +236,7 @@ export const processOrderPostUpdate = async (job: Job) => {
       );
 
       await DeliveryPartner.updateOne(
-        { userId: partnerUserId },
+        { userCustomId: partnerUserId },
         {
           $set: {
             'operationalData.currentOrderId': null,
@@ -252,7 +254,7 @@ export const processOrderPostUpdate = async (job: Job) => {
       );
     } else if (orderStatus === 'REASSIGNMENT_NEEDED') {
       await DeliveryPartner.updateOne(
-        { userId: partnerUserId },
+        { userCustomId: partnerUserId },
         {
           $set: {
             'operationalData.currentOrderId': null,
@@ -270,9 +272,9 @@ export const processOrderPostUpdate = async (job: Job) => {
     await session.commitTransaction();
 
     const customer = await Customer.findById(updatedOrder.customerId).lean();
-    const customerId = customer?.userId;
+    const customerId = customer?.userCustomId;
     const vendor = await Vendor.findById(updatedOrder.vendorId).lean();
-    const vendorId = vendor?.userId;
+    const vendorId = vendor?.userCustomId;
 
     const notificationPayload = {
       title: `Order is now ${orderStatus}`,

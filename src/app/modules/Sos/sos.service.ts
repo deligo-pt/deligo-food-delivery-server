@@ -26,7 +26,7 @@ const triggerSos = async (
   }
   const sosData = {
     ...payload,
-    userId: {
+    userObjectId: {
       id: currentUser._id,
       model: userModelType,
       role: currentUser.role,
@@ -141,7 +141,7 @@ const getAllSosAlerts = async (
 
     const partnerIds = partners.map((p) => p._id);
 
-    filterConditions = { 'userId.id': { $in: partnerIds } };
+    filterConditions = { 'userObjectId.id': { $in: partnerIds } };
   }
   const sosQuery = new QueryBuilder(SosModel.find(filterConditions), query)
     .filter()
@@ -151,8 +151,8 @@ const getAllSosAlerts = async (
     .search(['status', 'role', 'issueTags']);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    id: 'name userId',
-    resolvedBy: 'name userId role',
+    id: 'name userCustomId',
+    resolvedBy: 'name userCustomId role',
   });
 
   populateOptions.forEach((option) => {
@@ -180,7 +180,7 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
   }
 
   if (currentUser.role === 'FLEET_MANAGER') {
-    const partner = await DeliveryPartner.findById(result.userId.id);
+    const partner = await DeliveryPartner.findById(result.userObjectId.id);
 
     if (
       !partner ||
@@ -199,11 +199,11 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
 // get sos alerts by user id
 const getUserSosHistory = async (
   currentUser: TCurrentUser,
-  userId: string,
+  userObjectId: string,
   query: Record<string, unknown>,
 ) => {
   const sosQuery = new QueryBuilder(
-    SosModel.find({ 'userId.id': userId }),
+    SosModel.find({ 'userObjectId.id': userObjectId }),
     query,
   )
     .filter()
@@ -214,7 +214,7 @@ const getUserSosHistory = async (
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     id: 'name',
-    resolvedBy: 'name userId role',
+    resolvedBy: 'name userCustomId role',
   });
 
   populateOptions.forEach((option) => {
@@ -241,7 +241,7 @@ const getSosStats = async (currentUser: TCurrentUser) => {
   const stats = await SosModel.aggregate([
     {
       $group: {
-        _id: '$userId.model',
+        _id: '$userObjectId.model',
         count: { $sum: 1 },
       },
     },

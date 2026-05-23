@@ -14,16 +14,16 @@ import { DeliveryPartner } from '../modules/Delivery-Partner/delivery-partner.mo
 import { IAuthLookupModel } from '../interfaces/user.interface';
 
 export const findUserById = async ({
-  userId,
+  userCustomId,
   isDeleted = false,
 }: {
-  userId: string;
+  userCustomId: string;
   isDeleted?: boolean;
 }) => {
-  if (!userId) {
+  if (!userCustomId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'User ID must be provided');
   }
-  const prefix = userId.split('-')[0].toUpperCase();
+  const prefix = userCustomId.split('-')[0].toUpperCase();
   const role = ROLE_PREFIX_MAP[prefix];
   const ROLE_MODEL_MAP: Record<TUserRole, IAuthLookupModel<any>> = {
     SUPER_ADMIN: Admin,
@@ -43,14 +43,14 @@ export const findUserById = async ({
       throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
     }
 
-    const foundUser = await Model.isUserExistsByUserId(userId, isDeleted);
+    const foundUser = await Model.isUserExistsByUserId(userCustomId, isDeleted);
     if (foundUser) {
       return { user: foundUser, model: Model };
     }
   }
   throw new AppError(
     httpStatus.NOT_FOUND,
-    `No user found with ID "${userId}".`,
+    `No user found with ID "${userCustomId}".`,
   );
 };
 export const findUserByEmail = async ({

@@ -27,12 +27,12 @@ const initiateSettlement = async (
   const senderModel =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
 
-  const { user } = await findUserById({ userId: targetUserId });
+  const { user } = await findUserById({ userCustomId: targetUserId });
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
   }
-  const userId = user?._id;
+  const userObjectId = user?._id;
   const targetUserModel =
     ROLE_COLLECTION_MAP[user?.role as keyof typeof ROLE_COLLECTION_MAP];
 
@@ -69,7 +69,7 @@ const initiateSettlement = async (
       };
 
       NotificationService.sendToUser(
-        user.userId,
+        user.userCustomId,
         alertPayload.title,
         alertPayload.body,
         {},
@@ -84,7 +84,7 @@ const initiateSettlement = async (
     }
 
     const wallet = await Wallet.findOne({
-      userId,
+      userObjectId: userObjectId,
       userModel: targetUserModel,
     }).session(session);
 
@@ -102,7 +102,7 @@ const initiateSettlement = async (
       [
         {
           payoutId: `PAY-${uniquePayoutId}`,
-          userId,
+          userObjectId,
           userModel: targetUserModel,
           senderId: senderId,
           senderModel: senderModel,
@@ -134,7 +134,7 @@ const initiateSettlement = async (
       };
 
       NotificationService.sendToUser(
-        user.userId,
+        user.userCustomId,
         NotificationPayload.title,
         NotificationPayload.body,
         NotificationPayload.data,
@@ -171,7 +171,7 @@ const finalizeSettlement = async (
 
   try {
     const payout = await Payout.findOne({ payoutId })
-      .populate('userId', 'userId bankDetails name nif')
+      .populate('userObjectId', 'userCustomId bankDetails name nif')
       .session(session);
     if (!payout || payout.status !== 'PENDING') {
       throw new AppError(
@@ -180,7 +180,7 @@ const finalizeSettlement = async (
       );
     }
 
-    const user = payout.userId as any;
+    const user = payout.userObjectId as any;
 
     if (!payoutProof) {
       throw new AppError(
@@ -192,7 +192,7 @@ const finalizeSettlement = async (
     const amountToDeduct = payout.amount;
 
     await Wallet.findOneAndUpdate(
-      { userId: payout.userId, userModel: payout.userModel },
+      { userObjectId: payout.userObjectId, userModel: payout.userModel },
       {
         $inc: { totalUnpaidEarnings: -amountToDeduct },
         $set: { lastSettlementDate: new Date() },
@@ -211,7 +211,7 @@ const finalizeSettlement = async (
       payout.senderModel === 'FleetManager'
     ) {
       await Wallet.findOneAndUpdate(
-        { userId: payout.senderId, userModel: 'FleetManager' },
+        { userObjectId: payout.senderId, userModel: 'FleetManager' },
         { $inc: { totalRiderPayable: -amountToDeduct } },
         { session },
       );
@@ -222,7 +222,7 @@ const finalizeSettlement = async (
         {
           transactionId: `TXN-SETTLE-${Date.now()}`,
           payoutId: payout._id,
-          userId: payout.userId,
+          userObjectId: payout.userObjectId,
           userModel: payout.userModel,
           totalAmount: amountToDeduct,
           type: settlementTypeMapper[payout.userModel],
@@ -255,7 +255,7 @@ const finalizeSettlement = async (
       },
     };
     NotificationService.sendToUser(
-      (result.userId as any).userId,
+      (result.userObjectId as any).userCustomId,
       NotificationPayload.title,
       NotificationPayload.body,
       NotificationPayload.data,
@@ -277,19 +277,22 @@ const getAllPayouts = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
 ) => {
-  const { role, _id: currentUserId } = currentUser;
+  const { role, _id: currentUserObjectId } = currentUser;
   const { startDate, endDate, ...remainingQuery } = query;
   const filter: Record<string, any> = { ...remainingQuery };
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
     if (role === 'FLEET_MANAGER') {
-      filter.$or = [{ senderId: currentUserId }, { userId: currentUserId }];
+      filter.$or = [
+        { senderId: currentUserObjectId },
+        { userObjectId: currentUserObjectId },
+      ];
 
-      if (query.userId) {
-        filter.userId = query.userId;
+      if (query.userObjectId) {
+        filter.userObjectId = query.userObjectId;
       }
     } else {
-      filter.userId = currentUserId;
+      filter.userObjectId = currentUserObjectId;
     }
   }
 
@@ -310,8 +313,8 @@ const getAllPayouts = async (
   const payoutQuery = new QueryBuilder(
     Payout.find()
       .populate(
-        'userId',
-        'name profilePhoto userId role businessDetails personalInfo NIF',
+        'userObjectId',
+        'name profilePhoto userCustomId role businessDetails personalInfo NIF',
       )
       .populate('senderId', 'name role'),
     filter,
@@ -327,16 +330,18 @@ const getAllPayouts = async (
 
   const result = rawResult.map((payout: any) => {
     let payoutCategory = 'GENERAL';
-    const user = payout.userId as any;
+    const user = payout.userObjectId as any;
 
     const unifiedNif =
       user?.NIF || user?.businessDetails?.NIF || user?.personalInfo?.NIF || '';
 
     if (role === 'FLEET_MANAGER') {
-      if (payout.userId?._id?.toString() === currentUserId.toString()) {
+      if (
+        payout.userObjectId?._id?.toString() === currentUserObjectId.toString()
+      ) {
         payoutCategory = 'RECEIVED_FROM_ADMIN';
       } else if (
-        payout.senderId?._id?.toString() === currentUserId.toString()
+        payout.senderId?._id?.toString() === currentUserObjectId.toString()
       ) {
         payoutCategory = 'PAID_TO_PARTNER';
       }
@@ -357,7 +362,7 @@ const getAllPayouts = async (
     return {
       ...payout.toObject(),
       payoutCategory,
-      userId: updatedUser,
+      userObjectId: updatedUser,
     };
   });
 
@@ -369,12 +374,12 @@ const getAllPayouts = async (
 
 // get single payout service
 const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
-  const { role, _id: currentUserId } = currentUser;
+  const { role, _id: currentUserObjectId } = currentUser;
 
   const payout = await Payout.findOne({ payoutId })
     .populate(
-      'userId',
-      'name profilePhoto userId role businessDetails personalInfo NIF bankDetails email phone',
+      'userObjectId',
+      'name profilePhoto userCustomId role businessDetails personalInfo NIF bankDetails email phone',
     )
     .populate('senderId', 'name role profilePhoto');
 
@@ -383,9 +388,10 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   }
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
-    const isOwner = payout.userId._id.toString() === currentUserId.toString();
+    const isOwner =
+      payout.userObjectId._id.toString() === currentUserObjectId.toString();
     const isSender =
-      payout.senderId._id.toString() === currentUserId.toString();
+      payout.senderId._id.toString() === currentUserObjectId.toString();
 
     if (!isOwner && !isSender) {
       throw new AppError(
@@ -395,15 +401,17 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
     }
   }
 
-  const user = payout.userId as any;
+  const user = payout.userObjectId as any;
   const unifiedNif =
     user?.NIF || user?.businessDetails?.NIF || user?.personalInfo?.NIF || '';
 
   let payoutCategory = 'GENERAL';
   if (role === 'FLEET_MANAGER') {
-    if (payout.userId._id.toString() === currentUserId.toString()) {
+    if (payout.userObjectId._id.toString() === currentUserObjectId.toString()) {
       payoutCategory = 'RECEIVED_FROM_ADMIN';
-    } else if (payout.senderId._id.toString() === currentUserId.toString()) {
+    } else if (
+      payout.senderId._id.toString() === currentUserObjectId.toString()
+    ) {
       payoutCategory = 'PAID_TO_PARTNER';
     }
   }
@@ -422,7 +430,7 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   return {
     ...payout.toObject(),
     payoutCategory,
-    userId: updatedUser,
+    userObjectId: updatedUser,
   };
 };
 
@@ -442,7 +450,7 @@ const initiateAutomatedSettlement = async () => {
       totalUnpaidEarnings: { $gte: minPayoutAmount },
       userModel: { $in: ['Vendor', 'FleetManager', 'DeliveryPartner'] },
     })
-      .populate('userId', 'registeredBy bankDetails userId name')
+      .populate('userObjectId', 'registeredBy bankDetails userCustomId name')
       .session(session);
 
     if (eligibleWallets.length === 0) return;
@@ -450,7 +458,7 @@ const initiateAutomatedSettlement = async () => {
     const superAdmin = await Admin.findOne({ role: 'SUPER_ADMIN' });
 
     for (const wallet of eligibleWallets) {
-      const user = wallet.userId as any;
+      const user = wallet.userObjectId as any;
 
       if (wallet.userModel === 'DeliveryPartner') {
         if (user?.registeredBy?.role === 'FLEET_MANAGER') {
@@ -470,7 +478,7 @@ const initiateAutomatedSettlement = async () => {
         };
 
         NotificationService.sendToUser(
-          user.userId,
+          user.userCustomId,
           NotificationPayload.title,
           NotificationPayload.body,
           {},
@@ -482,7 +490,7 @@ const initiateAutomatedSettlement = async () => {
       }
 
       const existingPendingPayout = await Payout.findOne({
-        userId: wallet.userId,
+        userObjectId: wallet.userObjectId,
         status: 'PENDING',
       }).session(session);
 
@@ -496,7 +504,7 @@ const initiateAutomatedSettlement = async () => {
         [
           {
             payoutId: `PAY-${uniquePayoutId}`,
-            userId: wallet.userId,
+            userObjectId: wallet.userObjectId,
             userModel: wallet.userModel,
             senderId: superAdmin?._id,
             senderModel: 'Admin',

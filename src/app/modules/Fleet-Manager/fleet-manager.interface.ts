@@ -7,7 +7,7 @@ export type TFleetManager = {
   // Core Identifiers
   // ---------------------------------------------
   _id?: mongoose.Types.ObjectId;
-  userId: string;
+  userCustomId: string;
   registeredBy?: mongoose.Types.ObjectId;
 
   status: keyof typeof USER_STATUS;

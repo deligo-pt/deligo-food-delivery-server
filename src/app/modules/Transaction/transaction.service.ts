@@ -25,7 +25,7 @@ const getMyTransactions = async (
     };
 
     filter = {
-      userId: currentUser._id,
+      userObjectId: currentUser._id,
       userModel: roleMapping[currentUser.role],
     };
   }

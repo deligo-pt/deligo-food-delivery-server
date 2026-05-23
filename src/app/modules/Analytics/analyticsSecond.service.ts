@@ -566,7 +566,7 @@ const getPartnerPerformanceAnalytics = async (
     'name.firstName',
     'name.lastName',
     'address.city',
-    'userId',
+    'userCustomId',
   ];
   const partnerQuery = new QueryBuilder(
     DeliveryPartner.find({ 'registeredBy.id': managerId, isDeleted: false }),
@@ -624,7 +624,7 @@ const getPartnerPerformanceAnalytics = async (
         return {
           id: partner._id,
           name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
-          displayId: partner.userId,
+          displayId: partner.userCustomId,
           vehicle: partner?.vehicleInfo?.vehicleType,
           city: partner?.address?.city || 'N/A',
           deliveries: opData?.completedDeliveries || 0,
@@ -660,7 +660,7 @@ const getDeliveryPartnerEarningAnalytics = async (
   const earnings = await Transaction.aggregate([
     {
       $match: {
-        userId: riderObjectId,
+        userObjectId: riderObjectId,
         userModel: 'DeliveryPartner',
         status: 'SUCCESS',
         type: 'DELIVERY_PARTNER_EARNING',
@@ -690,7 +690,7 @@ const getDeliveryPartnerEarningAnalytics = async (
   ]);
 
   const wallet = await Wallet.findOne({
-    userId: riderObjectId,
+    userObjectId: riderObjectId,
     userModel: 'DeliveryPartner',
   }).select('totalUnpaidEarnings');
 
@@ -730,7 +730,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
   const stats = await Transaction.aggregate([
     {
       $match: {
-        userId: fleetObjectId,
+        userObjectId: fleetObjectId,
         userModel: 'FleetManager',
         status: 'SUCCESS',
         type: 'FLEET_EARNING',
@@ -796,7 +796,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
   ]);
 
   const wallet = await Wallet.findOne({
-    userId: fleetObjectId,
+    userObjectId: fleetObjectId,
     userModel: 'FleetManager',
   }).select('totalUnpaidEarnings totalRiderPayable totalEarnings');
 
@@ -856,7 +856,7 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
       Transaction.aggregate([
         {
           $match: {
-            userId: vendorObjectId,
+            userObjectId: vendorObjectId,
             userModel: 'Vendor',
             status: 'SUCCESS',
             type: 'VENDOR_EARNING',
@@ -929,7 +929,7 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
       Transaction.aggregate([
         {
           $match: {
-            userId: vendorObjectId,
+            userObjectId: vendorObjectId,
             userModel: 'Vendor',
             status: 'SUCCESS',
             type: 'VENDOR_EARNING',
@@ -1188,7 +1188,7 @@ const getVendorPerformanceAnalytics = async (
             $project: {
               _id: 1,
               profilePhoto: 1,
-              userId: 1,
+              userCustomId: 1,
               email: 1,
               status: 1,
               name: 1,
@@ -1345,7 +1345,7 @@ const getVendorPerformanceAnalytics = async (
 
 // get single vendor performance details
 const getSingleVendorPerformanceDetails = async (
-  vendorUserId: string,
+  vendorUserCustomId: string,
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
@@ -1356,7 +1356,7 @@ const getSingleVendorPerformanceDetails = async (
   }
 
   const vendor = await Vendor.findOne({
-    userId: vendorUserId,
+    userCustomId: vendorUserCustomId,
     isDeleted: false,
   });
 
@@ -1465,7 +1465,7 @@ const getSingleVendorPerformanceDetails = async (
     vendorPerformance: {
       _id: vendor._id,
       profilePhoto: vendor.profilePhoto,
-      userId: vendor.userId,
+      userCustomId: vendor.userCustomId,
       email: vendor.email,
       status: vendor.status,
       name: vendor.name,

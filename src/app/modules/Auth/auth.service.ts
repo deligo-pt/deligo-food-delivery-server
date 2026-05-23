@@ -62,8 +62,8 @@ const registerUser = async <
   const { Model: TargetModel, idField } = modelData;
   const mongooseModel = TargetModel as unknown as Model<T>;
 
-  // Generate userId & OTP
-  const userID = generateUserId(userType);
+  // Generate userCustomId & OTP
+  const userCustomId = generateUserId(userType);
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
@@ -110,7 +110,7 @@ const registerUser = async <
       [
         {
           ...profilePayload,
-          [idField]: userID,
+          [idField]: userCustomId,
         },
       ],
       { session },
@@ -120,10 +120,10 @@ const registerUser = async <
     await AuthUser.create(
       [
         {
-          authUserId: `AUTH-${userID}`,
+          userAuthId: `AUTH-${userCustomId}`,
           userObjectId: createdUser._id,
           onModel: TargetModel.modelName,
-          customUserId: userID,
+          userCustomId,
           email: payload.email,
           password: rawPassword,
           role: payload.role,
@@ -222,7 +222,7 @@ const onboardUser = async <
   const { Model: TargetModel, idField } = modelData;
   const mongooseModel = TargetModel as unknown as Model<T>;
 
-  const userID = generateUserId(mapKey);
+  const userCustomId = generateUserId(mapKey);
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
@@ -290,7 +290,7 @@ const onboardUser = async <
       [
         {
           ...profilePayload,
-          [idField]: userID,
+          [idField]: userCustomId,
           registeredBy: registeredByValue,
           isEmailVerified: false,
           status: 'PENDING',
@@ -303,10 +303,10 @@ const onboardUser = async <
     await AuthUser.create(
       [
         {
-          authUserId: `AUTH-${userID}`,
+          userAuthId: `AUTH-${userCustomId}`,
           userObjectId: createdUser._id,
           onModel: TargetModel.modelName,
-          customUserId: userID,
+          userCustomId,
           email: payload.email,
           password: rawPassword,
           role: payload.role,
@@ -453,7 +453,7 @@ const loginUser = async (
 
   if (targetModelName) {
     populatedUser = await AuthUser.findById(user._id)
-      .select('userObjectId email customUserId role status contactNumber')
+      .select('userObjectId email userCustomId role status contactNumber')
       .populate({
         path: 'userObjectId',
         model: targetModelName,
@@ -461,19 +461,15 @@ const loginUser = async (
       });
   } else {
     populatedUser = await AuthUser.findById(user._id).select(
-      'userObjectId email customUserId role status contactNumber',
+      'userObjectId email userCustomId role status contactNumber',
     );
   }
 
-  console.log({ populatedUser });
-
   const profileDetails = populatedUser?.userObjectId as any;
-
-  console.log({ profileDetails });
 
   //create token and sent to the  client
   const jwtPayload = {
-    userId: populatedUser?.customUserId,
+    userCustomId: populatedUser?.userCustomId,
     name: {
       firstName: profileDetails?.name?.firstName || '',
       lastName: profileDetails?.name?.lastName || '',
@@ -568,10 +564,10 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     await RedisService.set(redisOtpKey, otp, 300); // Store OTP in Redis with 5 minutes expiration
 
     if (!existingUser) {
-      const userId = generateUserId('/create-customer');
+      const userCustomId = generateUserId('/create-customer');
 
       const newUser = await Customer.create({
-        userId,
+        userCustomId,
         role: 'CUSTOMER',
         email,
         requiresOtpVerification: true,
@@ -643,9 +639,9 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         },
       );
     } else {
-      const userId = generateUserId('/create-customer');
+      const userCustomId = generateUserId('/create-customer');
       const newUser = await Customer.create({
-        userId,
+        userCustomId,
         role: 'CUSTOMER',
         contactNumber,
         mobileOtpId,
@@ -799,7 +795,7 @@ const changePassword = async (
 
   await model.updateOne(
     {
-      userId: currentUser.userId,
+      userCustomId: currentUser.userCustomId,
       role: currentUser.role,
     },
     {
@@ -956,9 +952,9 @@ const refreshToken = async (token: string) => {
     config.jwt.jwt_refresh_secret as string,
   ) as JwtPayload;
 
-  const { iat, userId, deviceId } = decoded;
+  const { iat, userCustomId, deviceId } = decoded;
 
-  const result = await findUserById({ userId });
+  const result = await findUserById({ userCustomId });
 
   const user = result?.user;
   const model = result?.model;
@@ -995,7 +991,7 @@ const refreshToken = async (token: string) => {
   }
 
   const jwtPayload = {
-    userId: user?.userId,
+    userCustomId: user?.userCustomId,
     name: {
       firstName: user?.name?.firstName,
       lastName: user?.name?.lastName,
@@ -1019,8 +1015,11 @@ const refreshToken = async (token: string) => {
 };
 
 // submit approval request service
-const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
-  const authUser = await AuthUser.findOne({ customUserId: userId });
+const submitForApproval = async (
+  userCustomId: string,
+  currentUser: TCurrentUser,
+) => {
+  const authUser = await AuthUser.findOne({ userCustomId });
   if (!authUser || authUser.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
@@ -1066,7 +1065,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
         );
       }
     } else {
-      if (authUser.customUserId !== currentUser.userId) {
+      if (authUser.userCustomId !== currentUser.userCustomId) {
         throw new AppError(
           httpStatus.FORBIDDEN,
           'You do not have permission to submit approval request for this user',
@@ -1104,7 +1103,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   const emailHtml = await EmailHelper.createEmailContent(
     {
       userName: submittedProfile.name?.firstName || 'User',
-      userId: submittedProfile.userId,
+      userCustomId: submittedProfile.userCustomId,
       currentYear: new Date().getFullYear(),
       userRole: authUser.role,
       date: new Date().toDateString(),
@@ -1139,7 +1138,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
     ['ADMIN', 'SUPER_ADMIN'],
     `New ${authUser?.role} Submission for Approval`,
     `${userName} (${authUser?.role}) has submitted for approval at ${formattedTime}.`,
-    { userId: authUser?._id.toString(), role: authUser?.role },
+    { userObjectId: authUser?._id.toString(), role: authUser?.role },
     'default',
     'ACCOUNT',
   );
@@ -1151,14 +1150,14 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
 
 // Active or Block User Service
 const approvedOrRejectedUser = async (
-  userId: string,
+  userCustomId: string,
   payload: TApprovedRejectsPayload,
   currentUser: TCurrentUser,
 ) => {
   // --------------------------------------------------------------
   // Authorization & Validation
   // --------------------------------------------------------------
-  if (userId === currentUser.userId) {
+  if (userCustomId === currentUser.userCustomId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You cannot change your own status',
@@ -1166,7 +1165,7 @@ const approvedOrRejectedUser = async (
   }
 
   const adminUser = await AuthUser.findOne({
-    customUserId: currentUser.userId,
+    userCustomId: currentUser.userCustomId,
     isDeleted: false,
   });
 
@@ -1178,7 +1177,7 @@ const approvedOrRejectedUser = async (
   }
 
   const authUser = await AuthUser.findOne({
-    customUserId: userId,
+    userCustomId: userCustomId,
     isDeleted: false,
   });
 
@@ -1281,11 +1280,11 @@ const approvedOrRejectedUser = async (
   };
 
   NotificationService.sendToUser(
-    authUser.customUserId,
+    authUser.userCustomId,
     notificationTitleMap[payload.status],
     finalRemarks,
     {
-      userId: authUser.userObjectId.toString(),
+      userObjectId: authUser.userObjectId.toString(),
       role: role,
     },
     'default',
@@ -1475,7 +1474,7 @@ const verifyOtp = async (
   const profileDetails = populatedAuthUser?.userObjectId as any;
 
   const jwtPayload = {
-    userId: populatedAuthUser?.customUserId,
+    userCustomId: populatedAuthUser?.userCustomId,
     name: {
       firstName: profileDetails?.name?.firstName || '',
       lastName: profileDetails?.name?.lastName || '',
@@ -1586,7 +1585,10 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
 };
 
 // soft delete user service
-const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
+const softDeleteUser = async (
+  userCustomId: string,
+  currentUser: TCurrentUser,
+) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -1595,7 +1597,7 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
   }
 
   const { user: existingUser } = await findUserById({
-    userId,
+    userCustomId,
   });
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
@@ -1607,7 +1609,7 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
     currentUser?.role === 'VENDOR',
     currentUser?.role === 'FLEET_MANAGER')
   ) {
-    if (currentUser?.userId !== existingUser?.userId) {
+    if (currentUser?.userCustomId !== existingUser?.userCustomId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You do not have permission to delete this user!',
@@ -1643,7 +1645,7 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
 
 // permanent delete user service
 const permanentDeleteUser = async (
-  userId: string,
+  userCustomId: string,
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -1654,7 +1656,7 @@ const permanentDeleteUser = async (
   }
 
   const { user: existingUser, model } = await findUserById({
-    userId,
+    userCustomId,
     isDeleted: true,
   });
   if (!existingUser) {
@@ -1674,7 +1676,7 @@ const permanentDeleteUser = async (
   if (existingUser.role === USER_ROLE.SUPER_ADMIN) {
     throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
   }
-  await model?.deleteOne({ userId: existingUser.userId });
+  await model?.deleteOne({ userCustomId: existingUser.userCustomId });
 
   return {
     message: `${existingUser?.role} permanently deleted successfully`,

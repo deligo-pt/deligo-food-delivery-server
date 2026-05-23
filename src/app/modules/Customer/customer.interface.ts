@@ -8,7 +8,7 @@ export type TCustomer = {
   // Core Identifiers
   // ------------------------------------------------------
   _id?: mongoose.Types.ObjectId;
-  userId: string;
+  userCustomId: string;
   status: keyof typeof USER_STATUS;
 
   // --------------------------------------------------------

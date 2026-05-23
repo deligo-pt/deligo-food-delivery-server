@@ -8,7 +8,7 @@ import { IAuthUserModel } from '../../interfaces/user.interface';
 const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
   {
     // 1. Core Identifiers & Relations Mapping
-    authUserId: {
+    userAuthId: {
       type: String,
       required: [true, 'Auth User ID (UUID) is required'],
       unique: true,
@@ -24,7 +24,7 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
       required: [true, 'User Object ID reference is required'],
       enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner', 'Admin'],
     },
-    customUserId: {
+    userCustomId: {
       type: String,
       required: [true, 'Custom User ID is required'],
       unique: true,

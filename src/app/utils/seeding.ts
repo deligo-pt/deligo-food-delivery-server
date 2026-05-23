@@ -19,27 +19,22 @@ export const seed = async () => {
     // --------------------------------------------------
     // Seed Super Admin
     // --------------------------------------------------
-    const superAdmin = await Admin.findOne({
+    const superAdmin = await AuthUser.findOne({
       role: USER_ROLE.SUPER_ADMIN,
       email: config.super_admin.super_admin_email,
     }).session(session);
 
     if (!superAdmin) {
       console.log('Seeding Super Admin and creating AuthUser shadow entry...');
-      const customId = `SA-${customNanoId(8)}`;
+      const userCustomId = `SA-${customNanoId(8)}`;
 
       const [newAdminProfile] = await Admin.create(
         [
           {
-            userId: customId,
+            userCustomId,
             name: 'Super Admin',
-            role: USER_ROLE.SUPER_ADMIN,
-            email: config.super_admin.super_admin_email,
-            password: config.super_admin.super_admin_password,
             profilePhoto: config.super_admin.super_admin_profile_photo,
-            contactNumber: config.super_admin.super_admin_contact_number,
             status: USER_STATUS.APPROVED,
-            isEmailVerified: true,
           },
         ],
         { session },
@@ -48,12 +43,16 @@ export const seed = async () => {
       await AuthUser.create(
         [
           {
-            authUserId: `AUTH-${customId}`,
+            userAuthId: `AUTH-${userCustomId}`,
             userObjectId: newAdminProfile._id,
-            customUserId: customId,
+            onModel: 'Admin',
+            userCustomId,
             email: config.super_admin.super_admin_email,
+            password: config.super_admin.super_admin_password,
+            contactNumber: config.super_admin.super_admin_contact_number,
             role: USER_ROLE.SUPER_ADMIN,
             status: USER_STATUS.APPROVED,
+            isEmailVerified: true,
             permissions: [],
             isDeleted: false,
           },
@@ -65,7 +64,7 @@ export const seed = async () => {
     // --------------------------------------------------
     // Seed Agent
     // --------------------------------------------------
-    const agent = await Admin.findOne({
+    const agent = await AuthUser.findOne({
       role: USER_ROLE.AGENT,
       email: config.agent.email,
     }).session(session);
@@ -78,20 +77,16 @@ export const seed = async () => {
         email: config.agent.email,
       }).session(session);
 
-      const customId = `AG-${customNanoId(8)}`;
+      const userCustomId = `AG-${customNanoId(8)}`;
 
       const [newAgentProfile] = await Admin.create(
         [
           {
-            userId: customId,
+            userCustomId,
             name: 'Agent',
             role: USER_ROLE.AGENT,
-            email: config.agent.email,
-            password: config.agent.password,
             profilePhoto: config.agent.profile_photo,
-            contactNumber: config.agent.contact_number,
             status: USER_STATUS.APPROVED,
-            isEmailVerified: true,
           },
         ],
         { session },
@@ -100,13 +95,17 @@ export const seed = async () => {
       await AuthUser.create(
         [
           {
-            authUserId: `AUTH-${customId}`,
+            userAuthId: `AUTH-${userCustomId}`,
             userObjectId: newAgentProfile._id,
-            customUserId: customId,
+            onModel: 'Admin',
+            userCustomId,
             email: config.agent.email,
+            password: config.agent.password,
+            contactNumber: config.agent.contact_number,
             role: USER_ROLE.AGENT,
-            status: 'ACTIVE',
+            status: USER_STATUS.APPROVED,
             permissions: [],
+            isEmailVerified: true,
             isDeleted: false,
           },
         ],

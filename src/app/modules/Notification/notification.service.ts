@@ -68,7 +68,7 @@ const sendPushSafely = async (
 
 //  Send to one user
 const sendToUser = (
-  userId: string,
+  userCustomId: string,
   title: string,
   message: string,
   data?: Record<string, string>,
@@ -79,7 +79,7 @@ const sendToUser = (
   setImmediate(async () => {
     try {
       const { user } = await findUserById({
-        userId,
+        userCustomId,
       });
 
       if (!user) return;
@@ -108,7 +108,7 @@ const sendToUser = (
 
       // Save log (DB)
       await logNotification({
-        receiverId: user.userId,
+        receiverId: user.userCustomId,
         receiverRole: user.role,
         title,
         message,
@@ -166,7 +166,7 @@ const sendToRole = (
         }
 
         await logNotification({
-          receiverId: user.userId,
+          receiverId: user.userCustomId,
           receiverRole: user.role,
           title,
           message,
@@ -187,7 +187,7 @@ const markAsRead = async (id: string, currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Notification not found');
   }
 
-  if (currentUser.userId !== notification.receiverId) {
+  if (currentUser.userCustomId !== notification.receiverId) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'You are not authorized to perform this action',
@@ -201,7 +201,7 @@ const markAsRead = async (id: string, currentUser: TCurrentUser) => {
 // mark as read (all)
 const markAllAsRead = async (currentUser: TCurrentUser) => {
   await Notification.updateMany(
-    { receiverId: currentUser.userId },
+    { receiverId: currentUser.userCustomId },
     { isRead: true },
   );
   return null;
@@ -213,7 +213,7 @@ const getMyNotifications = async (
 ) => {
   const notifications = new QueryBuilder(
     Notification.find({
-      receiverId: currentUser.userId,
+      receiverId: currentUser.userCustomId,
     }),
     query,
   )
@@ -236,7 +236,7 @@ const getAllNotifications = async (
   query: Record<string, unknown>,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.userId;
+    query.receiverId = currentUser.userCustomId;
   }
 
   const notifications = new QueryBuilder(Notification.find(), query)
@@ -266,7 +266,7 @@ const softDeleteSingleNotification = async (
 
   // If NOT super admin, restrict to own notification
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.userId;
+    query.receiverId = currentUser.userCustomId;
   }
 
   // --------------------------------------------------
@@ -311,7 +311,7 @@ const softDeleteMultipleNotifications = async (
 
   // Restrict only if NOT super admin
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.userId;
+    query.receiverId = currentUser.userCustomId;
   }
 
   // --------------------------------------------------
@@ -337,7 +337,7 @@ const softDeleteAllNotifications = async (currentUser: TCurrentUser) => {
 
   // Only restrict if NOT super admin
   if (currentUser.role !== 'SUPER_ADMIN') {
-    query.receiverId = currentUser.userId;
+    query.receiverId = currentUser.userCustomId;
   }
 
   // --------------------------------------------------
@@ -456,7 +456,7 @@ const sendBroadcastNotification = async (
   const {
     communicationType,
     targetAudience,
-    customUserIds: userIds,
+    customUserIds,
     title,
     body,
     imageUrl,
@@ -475,8 +475,8 @@ const sendBroadcastNotification = async (
       role: role.toLocaleUpperCase() as TUserRole,
     };
 
-    if (userIds && userIds.length > 0) {
-      query.userId = { $in: userIds };
+    if (customUserIds && customUserIds.length > 0) {
+      query.userCustomId = { $in: customUserIds };
     }
 
     if (communicationType !== 'EMAIL') {
@@ -542,7 +542,7 @@ const sendBroadcastNotification = async (
           }
 
           await logNotification({
-            receiverId: user.userId,
+            receiverId: user.userCustomId,
             receiverRole: user.role,
             title,
             message: personalizedBody,

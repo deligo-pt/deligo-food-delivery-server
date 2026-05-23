@@ -12,6 +12,8 @@ import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
+import mongoose from 'mongoose';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
@@ -19,27 +21,28 @@ const updateDeliveryPartner = async (
   deliveryPartnerId: string,
   currentUser: TCurrentUser,
 ) => {
-  // ---------------------------------------------------------
-  // Check if target delivery partner exists
-  // ---------------------------------------------------------
-  const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userId: deliveryPartnerId,
+  const centralAuthUser = await AuthUser.findOne({
+    userCustomId: deliveryPartnerId,
+    isDeleted: false,
   });
-
-  if (!existingDeliveryPartner) {
+  if (!centralAuthUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
 
-  if (!existingDeliveryPartner.isEmailVerified) {
+  if (!centralAuthUser.isEmailVerified) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Please verify your email before updating your profile.',
     );
   }
 
-  // ---------------------------------------------------------
-  // Check if update is locked
-  // ---------------------------------------------------------
+  const existingDeliveryPartner = await DeliveryPartner.findOne({
+    userCustomId: deliveryPartnerId,
+  });
+  if (!existingDeliveryPartner) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
+  }
+
   if (
     (currentUser.role === 'FLEET_MANAGER' ||
       currentUser.role === 'DELIVERY_PARTNER') &&
@@ -51,21 +54,16 @@ const updateDeliveryPartner = async (
     );
   }
 
-  // ---------------------------------------------------------
-  // Authorization Logic
-  // ---------------------------------------------------------
-
-  // Delivery Partner updating their own profile
-  if (currentUser.role === 'DELIVERY_PARTNER') {
-    if (existingDeliveryPartner.userId !== currentUser?.userId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You are not authorized to update this profile.',
-      );
-    }
+  if (
+    currentUser.role === 'DELIVERY_PARTNER' &&
+    existingDeliveryPartner.userCustomId !== currentUser?.userCustomId
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this profile.',
+    );
   }
 
-  // Admin/SuperAdmin updating a partner they registered
   if (
     currentUser.role === 'FLEET_MANAGER' &&
     existingDeliveryPartner.registeredBy?.id.toString() !==
@@ -77,24 +75,54 @@ const updateDeliveryPartner = async (
     );
   }
 
-  payload.status = 'PENDING';
-  // ---------------------------------------------------------
-  // Update the delivery partner
-  // ---------------------------------------------------------
-  const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
-    { userId: deliveryPartnerId },
-    { $set: payload },
-    { new: true },
-  );
+  const updatedFields = Object.keys(payload);
+  const projectionFields = [...updatedFields, 'status', 'updatedAt'].join(' ');
 
-  if (!updatedDeliveryPartner) {
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update Delivery Partner.',
-    );
+  if (
+    currentUser.role === 'DELIVERY_PARTNER' ||
+    currentUser.role === 'FLEET_MANAGER'
+  ) {
+    payload.status = 'PENDING';
   }
 
-  return updatedDeliveryPartner;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    if (payload.status === 'PENDING') {
+      await AuthUser.findOneAndUpdate(
+        { userCustomId: deliveryPartnerId },
+        { $set: { status: 'PENDING' } },
+        { session },
+      );
+    }
+
+    const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
+      { userCustomId: deliveryPartnerId },
+      { $set: payload },
+      {
+        new: true,
+        session,
+        runValidators: true,
+      },
+    ).select(projectionFields);
+
+    if (!updatedDeliveryPartner) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Failed to update Delivery Partner.',
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return updatedDeliveryPartner;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };
 
 // update delivery partner live location
@@ -110,7 +138,7 @@ const updateDeliveryPartnerLiveLocation = async (
     );
   }
 
-  if (deliveryPartnerId && currentUser.userId !== deliveryPartnerId) {
+  if (deliveryPartnerId && currentUser.userCustomId !== deliveryPartnerId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorize to update live location!',
@@ -153,7 +181,7 @@ const updateDeliveryPartnerLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updated = await DeliveryPartner.findOneAndUpdate(
-    { userId: currentUser.userId, isDeleted: false },
+    { userCustomId: currentUser.userCustomId, isDeleted: false },
     { $set: updateData },
     {
       new: true,
@@ -184,7 +212,9 @@ const changeDeliveryPartnerStatus = async (
     );
   }
 
-  const partner = await DeliveryPartner.findOne({ userId: currentUser.userId });
+  const partner = await DeliveryPartner.findOne({
+    userCustomId: currentUser.userCustomId,
+  });
 
   if (!partner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery partner not found');
@@ -207,7 +237,7 @@ const changeDeliveryPartnerStatus = async (
   }
 
   const result = await DeliveryPartner.findOneAndUpdate(
-    { userId: currentUser.userId },
+    { userCustomId: currentUser.userCustomId },
     {
       $set: {
         'operationalData.currentStatus': payload.status,
@@ -231,7 +261,7 @@ const deliverPartnerDocImageUpload = async (
   deliveryPartnerId: string,
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userId: deliveryPartnerId,
+    userCustomId: deliveryPartnerId,
   });
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
@@ -290,9 +320,9 @@ const getAllDeliveryPartnersFromDB = async (
     .search(DeliveryPartnerSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name userCustomId role',
+    rejectedBy: 'name userCustomId role',
+    blockedBy: 'name userCustomId role',
   });
   populateOptions.forEach((option) => {
     deliveryPartners.modelQuery = deliveryPartners.modelQuery.populate(option);
@@ -315,7 +345,7 @@ const getSingleDeliveryPartnerFromDB = async (
 ) => {
   if (
     currentUser?.role === 'DELIVERY_PARTNER' &&
-    currentUser?.userId !== deliveryPartnerId
+    currentUser?.userCustomId !== deliveryPartnerId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -327,12 +357,12 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
     existingDeliveryPartner = await DeliveryPartner.findOne({
-      userId: deliveryPartnerId,
+      userCustomId: deliveryPartnerId,
       isDeleted: false,
     });
   } else {
     existingDeliveryPartner = await DeliveryPartner.findOne({
-      userId: deliveryPartnerId,
+      userCustomId: deliveryPartnerId,
     });
   }
 

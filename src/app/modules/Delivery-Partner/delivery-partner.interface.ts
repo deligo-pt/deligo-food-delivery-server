@@ -9,7 +9,7 @@ export type TDeliveryPartner = {
   // Core Identifiers & Credentials
   // -------------------------------------------------
   _id?: mongoose.Types.ObjectId;
-  userId: string;
+  userCustomId: string;
   registeredBy?: {
     id: mongoose.Types.ObjectId;
     model: TRegisteredByModel;

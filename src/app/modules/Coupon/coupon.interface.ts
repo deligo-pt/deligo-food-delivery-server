@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 export type TCouponType = 'FREE_MEAL' | 'FREE_DELIVERY';
 
 export type TCoupon = {
-  userId: Types.ObjectId;
+  userObjectId: Types.ObjectId;
   userModel:
     | 'Customer'
     | 'Vendor'

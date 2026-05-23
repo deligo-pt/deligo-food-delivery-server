@@ -139,7 +139,7 @@ export type TFleetManagerPerformance = Pick<
   TFleetManager,
   | '_id'
   | 'profilePhoto'
-  | 'userId'
+  | 'userCustomId'
   | 'email'
   | 'status'
   | 'name'
@@ -196,7 +196,7 @@ export type TDeliveryPartnerPerformance = Pick<
   TDeliveryPartner,
   | '_id'
   | 'profilePhoto'
-  | 'userId'
+  | 'userCustomId'
   | 'email'
   | 'status'
   | 'name'

@@ -16,7 +16,7 @@ export type TVendor = {
   // Core Identifiers
   // --------------------------------------------------------
   _id?: string;
-  userId: string;
+  userCustomId: string;
   registeredBy?: {
     id: mongoose.Types.ObjectId;
     model: TRegisteredByModel;

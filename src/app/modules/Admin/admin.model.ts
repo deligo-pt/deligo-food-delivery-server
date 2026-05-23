@@ -10,7 +10,7 @@ const adminSchema = new Schema<TAdmin, IAuthLookupModel<TAdmin>>(
     // --------------------------------------------------------
     // Core Identifiers
     // --------------------------------------------------------
-    userId: {
+    userCustomId: {
       type: String,
       required: true,
       unique: true,

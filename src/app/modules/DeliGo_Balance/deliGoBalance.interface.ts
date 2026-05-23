@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
 
 export type TDeliGoBalance = {
-  userId: Types.ObjectId;
+  userObjectId: Types.ObjectId;
   userModel: 'Customer' | 'Vendor' | 'DeliveryPartner' | 'FleetManager';
   totalBalance: number;
   pendingBalance: number;

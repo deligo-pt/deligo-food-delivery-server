@@ -27,13 +27,13 @@ export const authLookupPlugin = <T extends { email?: string }>(
     return await dbQuery;
   };
 
-  // Static: Check if user exists by userId
+  // Static: Check if user exists by userCustomId
   schema.statics.isUserExistsByUserId = async function (
-    userId: string,
+    userCustomId: string,
     isDeleted?: boolean,
   ) {
     const query: any = {
-      $or: [{ customUserId: userId }, { userId: userId }],
+      userCustomId,
     };
     if (typeof isDeleted === 'boolean') {
       query.isDeleted = isDeleted;

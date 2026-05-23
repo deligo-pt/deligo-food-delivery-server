@@ -25,7 +25,7 @@ const vendorUpdate = async (
   currentUser: TCurrentUser,
 ) => {
   // 1. Initial check to ensure the vendor exists in the system
-  const existingVendor = await Vendor.findOne({ userId: id });
+  const existingVendor = await Vendor.findOne({ userCustomId: id });
 
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found.');
@@ -35,7 +35,7 @@ const vendorUpdate = async (
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner =
     (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
-    currentUser.userId === existingVendor.userId;
+    currentUser.userCustomId === existingVendor.userCustomId;
   // 3. Authorization: Block unauthorized users from modifying the vendor profile
   if (!isStaff && !isOwner) {
     throw new AppError(
@@ -84,7 +84,7 @@ const vendorUpdate = async (
 
   // 8. Execution: Perform the update using findOneAndUpdate with the atomic $set operator
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { userId: existingVendor.userId },
+    { userCustomId: existingVendor.userCustomId },
     { $set: flattenedPayload },
     { new: true, runValidators: true }, // Ensure new data adheres to schema rules
   );
@@ -109,7 +109,7 @@ const vendorDocImageUpload = async (
   vendorId: string,
 ) => {
   // 1. Check if the vendor exists in the database
-  const existingVendor = await Vendor.findOne({ userId: vendorId });
+  const existingVendor = await Vendor.findOne({ userCustomId: vendorId });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
@@ -120,7 +120,7 @@ const vendorDocImageUpload = async (
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner =
     (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
-    currentUser.userId === existingVendor.userId;
+    currentUser.userCustomId === existingVendor.userCustomId;
 
   // 3. Authorization: Only Admins or the Account Owner can perform this action
   if (!isStaff && !isOwner) {
@@ -177,12 +177,12 @@ const deleteVendorDocument = async (
   vendorId: string,
 ) => {
   const { docImageTitle, imageUrl } = payload;
-  const existingVendor = await Vendor.findOne({ userId: vendorId });
+  const existingVendor = await Vendor.findOne({ userCustomId: vendorId });
   if (!existingVendor)
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
 
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
-  const isOwner = currentUser.userId === existingVendor.userId;
+  const isOwner = currentUser.userCustomId === existingVendor.userCustomId;
   if (!isStaff && !isOwner)
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -235,7 +235,7 @@ const updateVendorLiveLocation = async (
     );
   }
 
-  if (currentUser?.userId !== vendorId) {
+  if (currentUser?.userCustomId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update live location!',
@@ -278,7 +278,7 @@ const updateVendorLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { userId: currentUser.userId },
+    { userCustomId: currentUser.userCustomId },
     { $set: updateData },
     {
       new: true,
@@ -339,9 +339,9 @@ const getAllVendors = async (
     .search(VendorSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name userCustomId role',
+    rejectedBy: 'name userCustomId role',
+    blockedBy: 'name userCustomId role',
   });
 
   populateOptions.forEach((option) => {
@@ -359,7 +359,7 @@ const getAllVendors = async (
 
 // get single vendor
 const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
-  if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
+  if (currentUser.role === 'VENDOR' && currentUser.userCustomId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this vendor!',
@@ -369,19 +369,19 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   let query: any;
   if (currentUser.role === 'VENDOR') {
     query = Vendor.findOne({
-      userId: currentUser.userId,
+      userCustomId: currentUser.userCustomId,
       isDeleted: false,
     });
   } else {
     query = Vendor.findOne({
-      userId: vendorId,
+      userCustomId: vendorId,
     });
   }
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
+    approvedBy: 'name userCustomId role',
+    rejectedBy: 'name userCustomId role',
+    blockedBy: 'name userCustomId role',
   });
 
   populateOptions.forEach((option) => {
@@ -465,7 +465,7 @@ const getAllVendorsForCustomer = async (
 
   // 5. Select parent paths to avoid 'Path Collision'
   vendors.modelQuery = vendors.modelQuery.select(
-    'name userId  businessDetails businessLocation documents rating currentSessionLocation',
+    'name userCustomId  businessDetails businessLocation documents rating currentSessionLocation',
   );
 
   const meta = await vendors.countTotal();
@@ -488,7 +488,7 @@ const getAllVendorsForCustomer = async (
 
       return {
         id: vendor._id,
-        userId: vendor.userId,
+        userCustomId: vendor.userCustomId,
         name: vendor.name,
         businessDetails: {
           businessName: vendor.businessDetails?.businessName,
@@ -517,9 +517,11 @@ const getAllVendorsForCustomer = async (
 // get single vendor for customer
 const getSingleVendorForCustomer = async (vendorId: string) => {
   const existingVendor = await Vendor.findOne({
-    userId: vendorId,
+    userCustomId: vendorId,
     isDeleted: false,
-  }).select('name userId email contactNumber businessDetails businessLocation');
+  }).select(
+    'name userCustomId email contactNumber businessDetails businessLocation',
+  );
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
   }

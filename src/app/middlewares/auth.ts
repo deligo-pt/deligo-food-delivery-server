@@ -9,7 +9,7 @@ import {
   TUserRole,
   USER_STATUS,
 } from '../constant/GlobalConstant/user.constant';
-import { findUserById } from '../utils/findUserByEmailOrId';
+import { AuthUser } from '../modules/AuthUser/authUser.model';
 
 /**
  * Authentication & Authorization Middleware
@@ -53,12 +53,21 @@ const auth = (...requiredRoles: TUserRole[]) => {
       config.jwt.jwt_access_secret as string,
     ) as JwtPayload;
 
-    const { role, iat, userId, deviceId } = decoded;
+    const { role, iat, userCustomId, deviceId } = decoded;
 
     // 5. Fetch user and model information from the database
-    const result = await findUserById({ userId, isDeleted: false });
-    const foundModel = result?.model;
-    const user = result?.user;
+    const user = await AuthUser.findOne({ userCustomId });
+    if (!user) {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'User not found');
+    }
+
+    if (user.isDeleted) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'Your account is deleted. Please contact support.',
+      );
+    }
+
     const status = user?.status;
 
     // 6. Security Check: Prevent access if the user is blocked
@@ -70,17 +79,16 @@ const auth = (...requiredRoles: TUserRole[]) => {
     }
 
     // 7. Token Expiry Check: If password was changed after token issuance, invalidate the token
-    if (
-      user.passwordChangedAt &&
-      foundModel?.isJWTIssuedBeforePasswordChanged(
-        user.passwordChangedAt,
-        iat as number,
-      )
-    ) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        'Your password was recently changed. Please log in again.',
+    if (user.passwordChangedAt) {
+      const passwordChangedTime = Math.floor(
+        new Date(user.passwordChangedAt).getTime() / 1000,
       );
+      if (passwordChangedTime > (iat as number)) {
+        throw new AppError(
+          httpStatus.UNAUTHORIZED,
+          'Your password was recently changed. Please log in again.',
+        );
+      }
     }
 
     // 8. Session Validation: Check if the current deviceId exists in active loginDevices

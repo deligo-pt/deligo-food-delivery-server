@@ -10,22 +10,19 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
     //-------------------------------------------------
     // Core Identifiers
     //-------------------------------------------------
-    userId: { type: String, required: true, unique: true },
+    userCustomId: { type: String, required: true, unique: true },
     registeredBy: {
       id: {
         type: Schema.Types.ObjectId,
         refPath: 'registeredBy.model',
-        default: null,
       },
       model: {
         type: String,
         enum: ['Admin', 'FleetManager'],
-        default: null,
       },
       role: {
         type: String,
         enum: ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
-        default: null,
       },
     },
 

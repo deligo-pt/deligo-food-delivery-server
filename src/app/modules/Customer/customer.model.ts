@@ -10,7 +10,7 @@ const customerSchema = new Schema<TCustomer>(
     // ----------------------------------------------------------------
     // Core Identifiers
     // ----------------------------------------------------------------
-    userId: { type: String, required: true, unique: true },
+    userCustomId: { type: String, required: true, unique: true },
 
     status: {
       type: String,

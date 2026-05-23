@@ -129,14 +129,14 @@ router.post(
 
 // submit approval request Route
 router.patch(
-  '/:userId/submitForApproval',
+  '/:userCustomId/submitForApproval',
   auth('VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN', 'SUPER_ADMIN'),
   AuthControllers.submitForApproval,
 );
 
 // Approved or Rejected User Route
 router.patch(
-  '/:userId/approved-rejected-user',
+  '/:userCustomId/approved-rejected-user',
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.approvedOrRejectedUserValidationSchema),
   AuthControllers.approvedOrRejectedUser,
@@ -158,7 +158,7 @@ router.post(
 
 // soft Delete User Route
 router.delete(
-  '/soft-delete/:userId',
+  '/soft-delete/:userCustomId',
   auth(
     'ADMIN',
     'SUPER_ADMIN',
@@ -173,7 +173,7 @@ router.delete(
 
 // permanent Delete User Route
 router.delete(
-  '/permanent-delete/:userId',
+  '/permanent-delete/:userCustomId',
   auth('ADMIN', 'SUPER_ADMIN'),
   AuthControllers.permanentDeleteUser,
 );

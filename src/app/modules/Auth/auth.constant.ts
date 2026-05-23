@@ -16,14 +16,14 @@ export const ALL_USER_MODELS = [
 ] as IAuthLookupModel<any>[];
 
 export const USER_MODEL_MAP = {
-  '/create-vendor': { Model: Vendor, idField: 'userId' },
-  '/create-sub-vendor': { Model: Vendor, idField: 'userId' },
-  '/create-fleet-manager': { Model: FleetManager, idField: 'userId' },
-  '/create-customer': { Model: Customer, idField: 'userId' },
-  '/create-admin': { Model: Admin, idField: 'userId' },
+  '/create-vendor': { Model: Vendor, idField: 'userCustomId' },
+  '/create-sub-vendor': { Model: Vendor, idField: 'userCustomId' },
+  '/create-fleet-manager': { Model: FleetManager, idField: 'userCustomId' },
+  '/create-customer': { Model: Customer, idField: 'userCustomId' },
+  '/create-admin': { Model: Admin, idField: 'userCustomId' },
   '/create-delivery-partner': {
     Model: DeliveryPartner,
-    idField: 'userId',
+    idField: 'userCustomId',
   },
 } as const;
 

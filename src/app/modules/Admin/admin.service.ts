@@ -9,13 +9,13 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
-  adminId: string,
+  adminCustomId: string,
   currentUser: TCurrentUser,
 ) => {
   // -----------------------------------------
   // Check if admin exists
   // -----------------------------------------
-  const existingAdmin = await Admin.findOne({ userId: adminId });
+  const existingAdmin = await Admin.findOne({ userCustomId: adminCustomId });
 
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
@@ -65,7 +65,7 @@ const updateAdmin = async (
   // -----------------------------------------
   if (
     currentUser.role === 'ADMIN' &&
-    currentUser.userId !== existingAdmin.userId
+    currentUser.userCustomId !== existingAdmin.userCustomId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -77,7 +77,7 @@ const updateAdmin = async (
   // Update admin
   // -----------------------------------------
   const updatedAdmin = await Admin.findOneAndUpdate(
-    { userId: adminId },
+    { userCustomId: adminCustomId },
     { $set: payload },
     { new: true },
   );
@@ -97,9 +97,9 @@ const adminDocImageUpload = async (
   file: string | undefined,
   data: TAdminImageDocuments,
   currentUser: TCurrentUser,
-  adminId: string,
+  adminCustomId: string,
 ) => {
-  const existingAdmin = await Admin.findOne({ userId: adminId });
+  const existingAdmin = await Admin.findOne({ userCustomId: adminCustomId });
 
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
@@ -112,7 +112,10 @@ const adminDocImageUpload = async (
     );
   }
 
-  if (currentUser.role === 'ADMIN' && existingAdmin.userId !== adminId) {
+  if (
+    currentUser.role === 'ADMIN' &&
+    existingAdmin.userCustomId !== adminCustomId
+  ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to update this admin account.',
@@ -162,11 +165,17 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
 };
 
 // get single admin service
-const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
+const getSingleAdmin = async (
+  adminCustomId: string,
+  currentUser: TCurrentUser,
+) => {
   // ---------------------------------------------------------
   // Authorization Logic
   // ---------------------------------------------------------
-  if (currentUser.role === 'ADMIN' && currentUser.userId !== adminId) {
+  if (
+    currentUser.role === 'ADMIN' &&
+    currentUser.userCustomId !== adminCustomId
+  ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to access this admin.',
@@ -176,7 +185,7 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
   // ---------------------------------------------------------
   // Fetch the TARGET admin by passed adminId
   // ---------------------------------------------------------
-  const existingAdmin = await Admin.findOne({ userId: adminId });
+  const existingAdmin = await Admin.findOne({ userCustomId: adminCustomId });
 
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
