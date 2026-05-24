@@ -12,7 +12,7 @@ const router = Router();
 // Delivery Partner Update Route
 router.patch(
   '/:deliveryPartnerCustomId',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'DELIVERY_PARTNER')(),
   validateRequest(
     DeliveryPartnerValidation.updateDeliveryPartnerDataValidationSchema,
   ),

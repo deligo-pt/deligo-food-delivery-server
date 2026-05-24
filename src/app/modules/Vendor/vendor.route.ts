@@ -10,7 +10,7 @@ const router = Router();
 // Vendor update Route
 router.patch(
   '/:vendorId',
-  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
+  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN')(),
   validateRequest(VendorValidation.vendorUpdateValidationSchema),
   VendorControllers.vendorUpdate,
 );
@@ -18,7 +18,7 @@ router.patch(
 // Vendor doc image upload route
 router.patch(
   '/:vendorId/docImage',
-  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
+  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN')(),
   validateRequest(VendorValidation.vendorDocImageValidationSchema),
   VendorControllers.vendorDocImageUpload,
 );
@@ -26,7 +26,7 @@ router.patch(
 // Vendor document delete route
 router.delete(
   '/:vendorId/docImage',
-  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN'),
+  auth('VENDOR', 'SUPER_ADMIN', 'ADMIN')(),
   validateRequest(VendorValidation.vendorDocImageDeleteValidationSchema),
   VendorControllers.deleteVendorDocument,
 );
@@ -34,7 +34,7 @@ router.delete(
 // Vendor business location update route
 router.patch(
   '/:vendorId/liveLocation',
-  auth('VENDOR', 'SUB_VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR')(),
   validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
   VendorControllers.updateVendorLiveLocation,
 );
@@ -42,29 +42,29 @@ router.patch(
 // Vendor toggle store open close route
 router.patch(
   '/toggle/store-open-close',
-  auth('VENDOR'),
+  auth('VENDOR')(),
   VendorControllers.toggleVendorStoreOpenClose,
 );
 
 // get all vendors for customer
 router.get(
   '/customer',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   VendorControllers.getAllVendorsForCustomer,
 );
 // get single vendor for customer
 router.get(
   '/customer/:vendorId',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   VendorControllers.getSingleVendorForCustomer,
 );
 
 // get all vendors
-router.get('/', auth('ADMIN', 'SUPER_ADMIN'), VendorControllers.getAllVendors);
+router.get('/', auth('ADMIN', 'SUPER_ADMIN')(), VendorControllers.getAllVendors);
 // get single vendor
 router.get(
   '/:vendorId',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR')(),
   VendorControllers.getSingleVendor,
 );
 

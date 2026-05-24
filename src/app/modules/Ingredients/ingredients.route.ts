@@ -12,7 +12,7 @@ const router = Router();
 // 1. Create Ingredient
 router.post(
     '/create-ingredient',
-    auth('ADMIN', 'SUPER_ADMIN'),
+    auth('ADMIN', 'SUPER_ADMIN')(),
     multerUpload.single('file'),
     parseBody,
     validateRequest(IngredientValidation.createIngredientValidationSchema),
@@ -22,7 +22,7 @@ router.post(
 // 2. Update ingredient
 router.patch(
     '/update-ingredient',
-    auth('ADMIN', 'SUPER_ADMIN'),
+    auth('ADMIN', 'SUPER_ADMIN')(),
     multerUpload.single('file'),
     parseBody,
     validateRequest(IngredientValidation.updateIngredientValidationSchema),
@@ -32,14 +32,14 @@ router.patch(
 // 3. Ingredients Details
 router.get(
     '/:sku',
-    auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+    auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR')(),
     IngredientsController.getIngredientDetails,
 );
 
 // 4. All Ingredients
 router.get(
     '/',
-    auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+    auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR')(),
     IngredientsController.getAllIngredients,
 );
 

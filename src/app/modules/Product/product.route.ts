@@ -9,7 +9,7 @@ const router = Router();
 // Product create route
 router.post(
   '/create-product',
-  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN')(),
   validateRequest(ProductValidation.createProductValidationSchema),
   ProductControllers.productCreate,
 );
@@ -17,14 +17,14 @@ router.post(
 // get out of stock alerts
 router.get(
   '/out-of-stock-alerts',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   ProductControllers.getOutOfStockAlerts,
 );
 
 // Product update
 router.patch(
   '/:productId',
-  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN')(),
   validateRequest(ProductValidation.updateProductValidationSchema),
   ProductControllers.updateProduct,
 );
@@ -32,7 +32,7 @@ router.patch(
 // manageProductVariations route
 router.patch(
   '/manage-product-variations/:productId',
-  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN')(),
   validateRequest(ProductValidation.manageVariationValidationSchema),
   ProductControllers.manageProductVariations,
 );
@@ -40,7 +40,7 @@ router.patch(
 // rename product variations route
 router.patch(
   '/rename-product-variations/:productId',
-  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN')(),
   validateRequest(ProductValidation.renameVariationValidationSchema),
   ProductControllers.renameProductVariation,
 );
@@ -48,7 +48,7 @@ router.patch(
 // remove product variations route
 router.patch(
   '/remove-product-variations/:productId',
-  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN')(),
   validateRequest(ProductValidation.removeVariationValidationSchema),
   ProductControllers.removeProductVariations,
 );
@@ -56,7 +56,7 @@ router.patch(
 // Update inventory and pricing route
 router.patch(
   '/update-inventory-and-pricing/:productId',
-  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN')(),
   validateRequest(ProductValidation.updateStockAndPriceValidationSchema),
   ProductControllers.updateInventoryAndPricing,
 );
@@ -64,7 +64,7 @@ router.patch(
 // Approved product by Admin
 router.patch(
   '/approveOrReject/:productId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(ProductValidation.approveProductValidationSchema),
   ProductControllers.approvedProduct,
 );
@@ -72,7 +72,7 @@ router.patch(
 // Product delete images
 router.delete(
   '/:productId/images',
-  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN')(),
   ProductControllers.deleteProductImages,
 );
 
@@ -87,7 +87,7 @@ router.get(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-  ),
+  )(),
   ProductControllers.getAllProducts,
 );
 
@@ -102,21 +102,21 @@ router.get(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-  ),
+  )(),
   ProductControllers.getSingleProduct,
 );
 
 // Soft delete product
 router.delete(
   '/soft-delete/:productId',
-  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'SUB_VENDOR', 'ADMIN', 'SUPER_ADMIN')(),
   ProductControllers.softDeleteProduct,
 );
 
 // Permanent delete product
 router.delete(
   '/permanent-delete/:productId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   ProductControllers.permanentDeleteProduct,
 );
 

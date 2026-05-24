@@ -11,7 +11,7 @@ const router = Router();
 // initiate payout
 router.post(
   '/initiate-settlement',
-  auth('FLEET_MANAGER'),
+  auth('FLEET_MANAGER')(),
   validateRequest(PayoutValidation.InitiateSettlementValidationSchema),
   PayoutController.initiateSettlement,
 );
@@ -19,7 +19,7 @@ router.post(
 // finalize payout
 router.post(
   '/finalize-settlement/:payoutId',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER')(),
   multerUpload.single('file'),
   parseBody,
   validateRequest(PayoutValidation.FinalizeSettlementValidationSchema),
@@ -36,7 +36,7 @@ router.get(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-  ),
+  )(),
   PayoutController.getAllPayouts,
 );
 
@@ -50,7 +50,7 @@ router.get(
     'DELIVERY_PARTNER',
     'VENDOR',
     'SUB_VENDOR',
-  ),
+  )(),
   PayoutController.getSinglePayout,
 );
 

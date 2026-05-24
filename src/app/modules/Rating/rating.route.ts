@@ -9,7 +9,7 @@ const router = Router();
 // create rating
 router.post(
   '/create-rating',
-  auth('CUSTOMER', 'DELIVERY_PARTNER'),
+  auth('CUSTOMER', 'DELIVERY_PARTNER')(),
   validateRequest(RatingValidation.createRatingValidationSchema),
   RatingControllers.createRating,
 );
@@ -25,7 +25,7 @@ router.get(
     'VENDOR',
     'SUB_VENDOR',
     'CUSTOMER',
-  ),
+  )(),
   RatingControllers.getAllRatings,
 );
 
@@ -39,7 +39,7 @@ router.get(
     'FLEET_MANAGER',
     'VENDOR',
     'SUB_VENDOR',
-  ),
+  )(),
   RatingControllers.getRatingSummary,
 );
 
@@ -54,7 +54,7 @@ router.get(
     'VENDOR',
     'SUB_VENDOR',
     'CUSTOMER',
-  ),
+  )(),
   RatingControllers.getSingleRating,
 );
 

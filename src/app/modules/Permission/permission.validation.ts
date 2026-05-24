@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { PERMISSION_SUBJECTS, PermissionActions } from './permission.constant';
+import { Types } from 'mongoose';
+
+const isValidObjectId = (val: string) => Types.ObjectId.isValid(val);
 
 const createPermissionValidationSchema = z.object({
   body: z
@@ -32,6 +35,34 @@ const updatePermissionValidationSchema = z.object({
     .strict(),
 });
 
+const assignPermissionsValidationSchema = z.object({
+  body: z
+    .object({
+      userCustomId: z
+        .string({
+          required_error: 'User Custom ID is required',
+        })
+        .trim()
+        .min(1, 'User Custom ID cannot be empty'),
+
+      permissionIds: z
+        .array(
+          z
+            .string({
+              invalid_type_error: 'Each Permission ID must be a valid string',
+            })
+            .refine(isValidObjectId, {
+              message: 'Invalid Permission Object ID format',
+            }),
+          {
+            required_error: 'Permission IDs array is required',
+          },
+        )
+        .min(1, 'At least one Permission ID must be provided inside the array'),
+    })
+    .strict(),
+});
+
 const revokePermissionsValidationSchema = z.object({
   body: z
     .object({
@@ -58,5 +89,6 @@ const revokePermissionsValidationSchema = z.object({
 export const PermissionValidations = {
   createPermissionValidationSchema,
   updatePermissionValidationSchema,
+  assignPermissionsValidationSchema,
   revokePermissionsValidationSchema,
 };

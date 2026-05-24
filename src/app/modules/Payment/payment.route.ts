@@ -9,21 +9,21 @@ const router = Router();
 // create redUniq payment intent
 router.post(
   '/reduniq/create-payment-intent',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   PaymentController.createRedUniqPayment,
 );
 
 // handle payment failure
 router.post(
   '/reduniq/handle-payment-failure/:checkoutSummaryId',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   PaymentController.handlePaymentFailure,
 );
 
 // create ingredient redUniq payment intent
 router.post(
   '/ingredient/create-payment-intent',
-  auth('VENDOR', 'SUB_VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR')(),
   validateRequest(
     IngredientOrderValidation.createIngredientOrderValidationSchema,
   ),

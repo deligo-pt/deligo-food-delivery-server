@@ -9,7 +9,7 @@ const router = Router();
 // Create Offer
 router.post(
   '/create-offer',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR')(),
   validateRequest(OfferValidation.createOfferValidation),
   OfferControllers.createOffer,
 );
@@ -17,7 +17,7 @@ router.post(
 // Update Offer
 router.patch(
   '/:offerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR')(),
   validateRequest(OfferValidation.updateOfferValidation),
   OfferControllers.updateOffer,
 );
@@ -25,14 +25,14 @@ router.patch(
 // toggle Offer Status
 router.patch(
   '/toggle-status/:offerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR')(),
   OfferControllers.toggleOfferStatus,
 );
 
 // Validate and Apply Offer
 router.post(
   '/validate-apply-offer',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(OfferValidation.applyOfferSchema),
   OfferControllers.validateAndApplyOffer,
 );
@@ -40,35 +40,35 @@ router.post(
 // Get Available Offers for Checkout
 router.get(
   '/available-offers/:checkoutId',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   OfferControllers.getAvailableOffersForCheckout,
 );
 
 // Get All Offers
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER')(),
   OfferControllers.getAllOffers,
 );
 
 // Get Single Offer
 router.get(
   '/:offerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER')(),
   OfferControllers.getSingleOffer,
 );
 
 // Soft Delete Offer
 router.delete(
   '/soft-delete/:offerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR')(),
   OfferControllers.softDeleteOffer,
 );
 
 // Permanent Delete Offer
 router.delete(
   '/permanent-delete/:offerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR')(),
   OfferControllers.permanentDeleteOffer,
 );
 

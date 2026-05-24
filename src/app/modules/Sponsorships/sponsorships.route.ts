@@ -11,7 +11,7 @@ const router = Router();
 // create sponsorship route
 router.post(
   '/create-sponsorship',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   multerUpload.single('file'),
   parseBody,
   validateRequest(SponsorshipValidation.createSponsorshipValidationSchema),
@@ -21,7 +21,7 @@ router.post(
 // update sponsorship route
 router.patch(
   '/update-sponsorship/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   multerUpload.single('file'),
   parseBody,
   validateRequest(SponsorshipValidation.updateSponsorshipValidationSchema),
@@ -31,28 +31,28 @@ router.patch(
 // get all sponsorships route
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER')(),
   SponsorshipControllers.getAllSponsorships,
 );
 
 // get single sponsorship route
 router.get(
   '/:id',
-  auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER')(),
   SponsorshipControllers.getSingleSponsorship,
 );
 
 // soft delete sponsorship route
 router.delete(
   '/soft-delete/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   SponsorshipControllers.softDeleteSponsorship,
 );
 
 // permanent delete sponsorship route
 router.delete(
   '/permanent-delete/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   SponsorshipControllers.permanentDeleteSponsorship,
 );
 

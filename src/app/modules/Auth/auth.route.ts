@@ -24,7 +24,7 @@ router.post(
 // Register User Route (Registered by Fleet Manager[Delivery Partner], Admin, Super Admin,Vendor[Sub Vendor])
 router.post(
   '/register/onboard/:targetRole',
-  auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN', 'VENDOR'),
+  auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN', 'VENDOR')(),
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),
   AuthControllers.onboardUser,
@@ -33,7 +33,7 @@ router.post(
 // Register Sub Vendor Route
 // router.post(
 //   [UrlPath.SUB_VENDOR],
-//   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
+//   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR')(),
 //   validateRequest(AuthValidation.registerValidationSchema),
 //   rateLimiter('auth'),
 //   AuthControllers.registerUser,
@@ -66,7 +66,7 @@ router.post(
     'SUB_VENDOR',
     'FLEET_MANAGER',
     'SUPER_ADMIN',
-  ),
+  )(),
   AuthControllers.updateFcmToken,
 );
 
@@ -81,7 +81,7 @@ router.post(
     'SUB_VENDOR',
     'FLEET_MANAGER',
     'SUPER_ADMIN',
-  ),
+  )(),
   validateRequest(AuthValidation.logoutValidationSchema),
   rateLimiter('auth'),
   AuthControllers.logoutUser,
@@ -97,7 +97,7 @@ router.post(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   validateRequest(AuthValidation.changePasswordValidationSchema),
   rateLimiter('auth'),
   AuthControllers.changePassword,
@@ -130,14 +130,14 @@ router.post(
 // submit approval request Route
 router.patch(
   '/:userCustomId/submitForApproval',
-  auth('VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN', 'SUPER_ADMIN'),
+  auth('VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN', 'SUPER_ADMIN')(),
   AuthControllers.submitForApproval,
 );
 
 // Approved or Rejected User Route
 router.patch(
   '/:userCustomId/approved-rejected-user',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(AuthValidation.approvedOrRejectedUserValidationSchema),
   AuthControllers.approvedOrRejectedUser,
 );
@@ -167,14 +167,14 @@ router.delete(
     'VENDOR',
     'SUB_VENDOR',
     'CUSTOMER',
-  ),
+  )(),
   AuthControllers.softDeleteUser,
 );
 
 // permanent Delete User Route
 router.delete(
   '/permanent-delete/:userCustomId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   AuthControllers.permanentDeleteUser,
 );
 

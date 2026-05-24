@@ -9,7 +9,7 @@ const router = Router();
 // create addon group
 router.post(
   '/create-group',
-  auth('VENDOR', 'SUB_VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR')(),
   validateRequest(AddOnsValidation.createAddonGroupValidationSchema),
   AddOnsControllers.createAddonGroup,
 );
@@ -17,7 +17,7 @@ router.post(
 // update addon group
 router.patch(
   '/:addonGroupId',
-  auth('VENDOR', 'SUB_VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR')(),
   validateRequest(AddOnsValidation.updateAddonGroupValidationSchema),
   AddOnsControllers.updateAddonGroup,
 );
@@ -25,42 +25,42 @@ router.patch(
 // add option to addon group
 router.patch(
   '/:addonGroupId/add-option',
-  auth('VENDOR', 'SUB_VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR')(),
   AddOnsControllers.addOptionToGroup,
 );
 
 // toggle option status
 router.patch(
   '/:addonGroupId/toggle-option-status',
-  auth('VENDOR', 'SUB_VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR')(),
   AddOnsControllers.toggleOptionStatus,
 );
 
 // delete option from addon group
 router.delete(
   '/:addonGroupId/delete-option',
-  auth('VENDOR', 'SUB_VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR')(),
   AddOnsControllers.deleteOptionFromGroup,
 );
 
 // get all addon groups
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER')(),
   AddOnsControllers.getAllAddonGroups,
 );
 
 // get single addon group
 router.get(
   '/:addonGroupId',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER')(),
   AddOnsControllers.getSingleAddonGroup,
 );
 
 // soft delete addon group
 router.delete(
   '/:addonGroupId/soft-delete',
-  auth('VENDOR', 'SUB_VENDOR'),
+  auth('VENDOR', 'SUB_VENDOR')(),
   AddOnsControllers.softDeleteAddonGroup,
 );
 

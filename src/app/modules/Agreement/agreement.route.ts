@@ -8,41 +8,41 @@ const router = express.Router();
 
 router.post(
   '/initiate',
-  auth('AGENT'),
+  auth('AGENT')(),
   validateRequest(AgreementValidation.initiateAgreementValidationSchema),
   AgreementController.initiateAgreement,
 );
 
 router.post(
   '/verify-otp',
-  auth('AGENT'),
+  auth('AGENT')(),
   validateRequest(AgreementValidation.verifyAgreementOtpValidationSchema),
   AgreementController.verifyAgreementOtp,
 );
 
 router.post(
   '/resend-otp',
-  auth('AGENT'),
+  auth('AGENT')(),
   validateRequest(AgreementValidation.resendAgreementOtpValidationSchema),
   AgreementController.resendAgreementOtp,
 );
 
 router.post(
   '/sign/:agreementId',
-  auth('AGENT'),
+  auth('AGENT')(),
   validateRequest(AgreementValidation.signAgreementValidationSchema),
   AgreementController.signAgreement,
 );
 
 router.get(
   '/:agreementId',
-  auth('AGENT', 'ADMIN', 'SUPER_ADMIN'),
+  auth('AGENT', 'ADMIN', 'SUPER_ADMIN')(),
   AgreementController.getAgreementById,
 );
 
 router.get(
   '/',
-  auth('AGENT', 'ADMIN', 'SUPER_ADMIN'),
+  auth('AGENT', 'ADMIN', 'SUPER_ADMIN')(),
   AgreementController.getAllAgreements,
 );
 

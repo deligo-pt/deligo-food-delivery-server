@@ -18,7 +18,7 @@ router.get(
     'FLEET_MANAGER',
     'VENDOR',
     'SUPER_ADMIN',
-  ),
+  )(),
   ProfileController.getMyProfile,
 );
 
@@ -32,7 +32,7 @@ router.patch(
     'FLEET_MANAGER',
     'VENDOR',
     'SUPER_ADMIN',
-  ),
+  )(),
   multerUpload.single('file'),
   parseBody,
   validateRequest(ProfileValidation.userProfileUpdateValidationSchema),
@@ -50,7 +50,7 @@ router.patch(
     'VENDOR',
     'SUB_VENDOR',
     'SUPER_ADMIN',
-  ),
+  )(),
   validateRequest(ProfileValidation.updateContactNumberValidationSchema),
   ProfileController.sendOtp,
 );
@@ -66,7 +66,7 @@ router.patch(
     'VENDOR',
     'SUB_VENDOR',
     'SUPER_ADMIN',
-  ),
+  )(),
   ProfileController.updateEmailOrContactNumber,
 );
 

@@ -8,6 +8,7 @@ import { catchAsync } from '../utils/catchAsync';
 import { verifyToken } from '../utils/verifyJWT';
 import {
   TUserRole,
+  USER_ROLE,
   USER_STATUS,
 } from '../constant/GlobalConstant/user.constant';
 import { AuthUser } from '../modules/AuthUser/authUser.model';
@@ -109,7 +110,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
         }
 
         // 9. Role-Based Access Control: Check if the user has the required role to access the route
-        if (requiredRoles && !requiredRoles.includes(role)) {
+        if (requiredRoles.length && !requiredRoles.includes(role)) {
           throw new AppError(
             httpStatus.FORBIDDEN,
             'Access denied. You do not have the necessary permissions.',
@@ -117,19 +118,29 @@ const auth = (...requiredRoles: TUserRole[]) => {
         }
 
         if (requiredPermission) {
-          const userPermissionNames = (user.permissions as any[]).map((p) =>
-            p?.name?.toUpperCase(),
-          );
-
-          const hasPermission = userPermissionNames.includes(
-            requiredPermission.toUpperCase(),
-          );
-
-          if (!hasPermission) {
-            throw new AppError(
-              httpStatus.FORBIDDEN,
-              `Forbidden: You lack the specific permission '${requiredPermission}' to perform this action!`,
+          const bypassRoles = [
+            USER_ROLE.SUPER_ADMIN,
+            USER_ROLE.CUSTOMER,
+            USER_ROLE.VENDOR,
+            USER_ROLE.SUB_VENDOR,
+            USER_ROLE.DELIVERY_PARTNER,
+            USER_ROLE.FLEET_MANAGER,
+          ];
+          if (!bypassRoles.includes(role)) {
+            const userPermissionNames = (user.permissions as any[]).map((p) =>
+              p?.name?.toUpperCase(),
             );
+
+            const hasPermission = userPermissionNames.includes(
+              requiredPermission.toUpperCase(),
+            );
+
+            if (!hasPermission) {
+              throw new AppError(
+                httpStatus.FORBIDDEN,
+                `Forbidden: You lack the specific permission '${requiredPermission}' to perform this action!`,
+              );
+            }
           }
         }
 

@@ -7,31 +7,31 @@ const router = Router();
 
 router.post(
     '/',
-    auth('VENDOR', 'SUB_VENDOR'),
+    auth('VENDOR', 'SUB_VENDOR')(),
     IngredientOrderController.confirmIngredientOrder,
 );
 
 router.get(
     '/vendor/my-orders',
-    auth("VENDOR", "SUB_VENDOR"),
+    auth("VENDOR", "SUB_VENDOR")(),
     IngredientOrderController.getMyIngredientOrders
 );
 
 router.get(
     '/admin/all',
-    auth("ADMIN", "SUPER_ADMIN"),
+    auth("ADMIN", "SUPER_ADMIN")(),
     IngredientOrderController.getAllIngredientOrdersForAdmin
 );
 
 router.get(
     '/:orderId', // orderId eita
-    auth("ADMIN", "SUPER_ADMIN", "VENDOR", "SUB_VENDOR"),
+    auth("ADMIN", "SUPER_ADMIN", "VENDOR", "SUB_VENDOR")(),
     IngredientOrderController.getSingleIngredientOrder
 );
 
 router.patch(
     '/:id/status', //_id eita
-    auth("ADMIN", "SUPER_ADMIN"),
+    auth("ADMIN", "SUPER_ADMIN")(),
     IngredientOrderController.updateIngredientOrderStatus
 );
 

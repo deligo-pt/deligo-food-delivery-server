@@ -19,7 +19,7 @@ router.post(
     'VENDOR',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-  ),
+  )(),
   multerUpload.array('files', 5),
   parseBody,
   UploadControllers.uploadFiles,

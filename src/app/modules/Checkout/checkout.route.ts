@@ -9,7 +9,7 @@ const router = Router();
 // checkout
 router.post(
   '/',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(CheckoutValidation.checkoutValidationSchema),
   CheckoutController.checkout
 );
@@ -17,7 +17,7 @@ router.post(
 // get checkout summary
 router.get(
   '/summary/:checkoutSummaryId',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   CheckoutController.getCheckoutSummary
 );
 

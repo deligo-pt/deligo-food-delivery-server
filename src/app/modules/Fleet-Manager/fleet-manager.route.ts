@@ -9,7 +9,7 @@ const router = Router();
 // Agent update Route
 router.patch(
   '/:fleetManagerId',
-  auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN'),
+  auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN')(),
   validateRequest(FleetManagerValidation.fleetManagerUpdateValidationSchema),
   FleetManagerControllers.fleetManagerUpdate,
 );
@@ -17,7 +17,7 @@ router.patch(
 // fleet manager doc image upload route
 router.patch(
   '/:fleetManagerId/docImage',
-  auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN'),
+  auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN')(),
   validateRequest(FleetManagerValidation.fleetManagerDocImageValidationSchema),
   FleetManagerControllers.fleetManagerDocImageUpload,
 );
@@ -25,7 +25,7 @@ router.patch(
 // fleet manager document delete route
 router.delete(
   '/:fleetManagerId/docImage',
-  auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN'),
+  auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN')(),
   validateRequest(
     FleetManagerValidation.fleetManagerDocImageDeleteValidationSchema,
   ),
@@ -34,12 +34,12 @@ router.delete(
 
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   FleetManagerControllers.getAllFleetManagers,
 );
 router.get(
   '/:fleetManagerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER')(),
   FleetManagerControllers.getSingleFleetManager,
 );
 

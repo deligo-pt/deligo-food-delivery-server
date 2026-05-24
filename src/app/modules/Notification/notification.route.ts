@@ -17,7 +17,7 @@ router.get(
     'FLEET_MANAGER',
     'ADMIN',
     'SUPER_ADMIN',
-  ),
+  )(),
   NotificationControllers.getMyNotifications,
 );
 
@@ -32,7 +32,7 @@ router.patch(
     'FLEET_MANAGER',
     'ADMIN',
     'SUPER_ADMIN',
-  ),
+  )(),
   NotificationControllers.markAsRead,
 );
 
@@ -47,7 +47,7 @@ router.patch(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   NotificationControllers.markAllAsRead,
 );
 
@@ -62,7 +62,7 @@ router.get(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   NotificationControllers.getAllNotifications,
 );
 
@@ -77,7 +77,7 @@ router.delete(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   NotificationControllers.softDeleteSingleNotification,
 );
 
@@ -92,7 +92,7 @@ router.delete(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   validateRequest(
     NotificationValidation.deleteMultipleNotificationsValidationSchema,
   ),
@@ -110,7 +110,7 @@ router.delete(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   NotificationControllers.softDeleteAllNotifications,
 );
 
@@ -125,7 +125,7 @@ router.delete(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   NotificationControllers.permanentDeleteSingleNotification,
 );
 
@@ -140,7 +140,7 @@ router.delete(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   validateRequest(
     NotificationValidation.deleteMultipleNotificationsValidationSchema,
   ),
@@ -158,14 +158,14 @@ router.delete(
     'VENDOR',
     'SUB_VENDOR',
     'FLEET_MANAGER',
-  ),
+  )(),
   NotificationControllers.permanentDeleteAllNotifications,
 );
 
 // send broadcast notification
 router.post(
   '/broadcast',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(
     NotificationValidation.sendBroadcastNotificationValidationSchema,
   ),

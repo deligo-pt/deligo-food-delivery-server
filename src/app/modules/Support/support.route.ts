@@ -16,7 +16,7 @@ router.post(
     'VENDOR',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-  ),
+  )(),
   validateRequest(SupportValidation.sendMessageSchema),
   SupportControllers.sendMessage,
 );
@@ -32,7 +32,7 @@ router.get(
     'SUB_VENDOR',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-  ),
+  )(),
   SupportControllers.getAllTickets,
 );
 
@@ -46,7 +46,7 @@ router.get(
     'VENDOR',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-  ),
+  )(),
   SupportControllers.getMessagesByTicketId,
 );
 
@@ -60,14 +60,14 @@ router.patch(
     'VENDOR',
     'FLEET_MANAGER',
     'DELIVERY_PARTNER',
-  ),
+  )(),
   SupportControllers.markAsRead,
 );
 
 // Closing session
 router.patch(
   '/tickets/:ticketId/close',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   SupportControllers.closeTicket,
 );
 

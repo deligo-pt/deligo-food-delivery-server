@@ -13,7 +13,7 @@ router.post(
   '/businessCategory',
   multerUpload.single('file'),
   parseBody,
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(CategoryValidation.createBusinessCategoryValidationSchema),
   CategoryController.createBusinessCategory,
 );
@@ -23,7 +23,7 @@ router.patch(
   '/businessCategory/:id',
   multerUpload.single('file'),
   parseBody,
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(CategoryValidation.updateBusinessCategoryValidationSchema),
   CategoryController.updateBusinessCategory,
 );
@@ -38,7 +38,7 @@ router.get(
     'VENDOR',
     'SUB_VENDOR',
     'CUSTOMER',
-  ),
+  )(),
   CategoryController.getAllBusinessCategories,
 );
 
@@ -52,21 +52,21 @@ router.get(
     'VENDOR',
     'SUB_VENDOR',
     'CUSTOMER',
-  ),
+  )(),
   CategoryController.getSingleBusinessCategory,
 );
 
 // soft Delete Business Category
 router.delete(
   '/businessCategory/soft-delete/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   CategoryController.softDeleteBusinessCategory,
 );
 
 // Permanent Delete Business Category
 router.delete(
   '/businessCategory/permanent-delete/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   CategoryController.permanentDeleteBusinessCategory,
 );
 
@@ -75,7 +75,7 @@ router.post(
   '/productCategory',
   multerUpload.single('file'),
   parseBody,
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(CategoryValidation.createProductCategoryValidationSchema),
   CategoryController.createProductCategory,
 );
@@ -85,7 +85,7 @@ router.patch(
   '/productCategory/:id',
   multerUpload.single('file'),
   parseBody,
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(CategoryValidation.updateProductCategoryValidationSchema),
   CategoryController.updateProductCategory,
 );
@@ -93,28 +93,28 @@ router.patch(
 // Get All Product Categories
 router.get(
   '/productCategory',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER')(),
   CategoryController.getAllProductCategories,
 );
 
 // Get Single Product Category
 router.get(
   '/productCategory/:id',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER')(),
   CategoryController.getSingleProductCategory,
 );
 
 // Soft Delete Product Category
 router.delete(
   '/productCategory/soft-delete/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   CategoryController.softDeleteProductCategory,
 );
 
 // Permanent Delete Product Category
 router.delete(
   '/productCategory/permanent-delete/:id',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   CategoryController.permanentDeleteProductCategory,
 );
 

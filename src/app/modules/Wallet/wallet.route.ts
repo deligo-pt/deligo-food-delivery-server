@@ -7,7 +7,7 @@ const router = Router();
 // get all wallets
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER')(),
   WalletControllers.getAllWallets,
 );
 
@@ -21,14 +21,14 @@ router.get(
     'VENDOR',
     'SUB_VENDOR',
     'DELIVERY_PARTNER',
-  ),
+  )(),
   WalletControllers.getMyWallet,
 );
 
 // get single wallet
 router.get(
   '/:walletId',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER')(),
   WalletControllers.getSingleWallet,
 );
 

@@ -11,7 +11,7 @@ const router = Router();
 // Admin Update Route
 router.patch(
   '/:adminId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(AdminValidation.updateAdminDataValidationSchema),
   AdminControllers.updateAdmin,
 );
@@ -19,7 +19,7 @@ router.patch(
 // admin doc image upload route
 router.patch(
   '/:adminId/docImage',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   multerUpload.single('file'),
   parseBody,
   validateRequest(AdminValidation.adminDocImageValidationSchema),
@@ -27,12 +27,12 @@ router.patch(
 );
 
 // get all admin route
-router.get('/', auth('ADMIN', 'SUPER_ADMIN'), AdminControllers.getAllAdmins);
+router.get('/', auth('ADMIN', 'SUPER_ADMIN')(), AdminControllers.getAllAdmins);
 
 // get single admin route
 router.get(
   '/:adminId',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   AdminControllers.getSingleAdmin,
 );
 

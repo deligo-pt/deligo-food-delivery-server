@@ -12,7 +12,7 @@ const router = Router();
 // User Update Route
 router.patch(
   '/:customerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER')(),
   multerUpload.single('file'),
   parseBody,
   validateRequest(CustomerValidation.updateCustomerDataValidationSchema),
@@ -22,7 +22,7 @@ router.patch(
 // update customer live location
 router.patch(
   '/:customerId/update-live-location',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
   CustomerControllers.updateCustomerLiveLocation,
 );
@@ -30,7 +30,7 @@ router.patch(
 // add delivery address
 router.post(
   '/add-delivery-address',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(CustomerValidation.addDeliveryAddressValidationSchema),
   CustomerControllers.addDeliveryAddress,
 );
@@ -38,7 +38,7 @@ router.post(
 // update delivery address
 router.patch(
   '/update-delivery-address/:addressId',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(CustomerValidation.updateDeliveryAddressValidationSchema),
   CustomerControllers.updateDeliveryAddress,
 );
@@ -46,27 +46,27 @@ router.patch(
 // toggle delivery address status
 router.patch(
   '/toggle-delivery-address-status/:addressId',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   CustomerControllers.toggleDeliveryAddressStatus,
 );
 
 // Delete delivery address
 router.delete(
   '/delete-delivery-address/:addressId',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   CustomerControllers.deleteDeliveryAddress,
 );
 
 // Get all customers
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   CustomerControllers.getAllCustomers,
 );
 // Get single customer
 router.get(
   '/:customerId',
-  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'VENDOR')(),
   CustomerControllers.getSingleCustomer,
 );
 

@@ -6,7 +6,7 @@ const router = Router();
 
 router.get(
   '/my-referrals',
-  auth('CUSTOMER', 'DELIVERY_PARTNER', 'VENDOR'),
+  auth('CUSTOMER', 'DELIVERY_PARTNER', 'VENDOR')(),
   ReferralController.getMyReferralStats,
 );
 

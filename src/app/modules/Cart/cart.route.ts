@@ -9,7 +9,7 @@ const router = Router();
 // Cart add
 router.post(
   '/add-to-cart',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(CartValidation.addToCartValidationSchema),
   CartControllers.addToCart,
 );
@@ -17,14 +17,14 @@ router.post(
 // activate item
 router.patch(
   '/activate-item/:productId',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   CartControllers.activateItem,
 );
 
 // update cart item quantity
 router.patch(
   '/update-quantity',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(CartValidation.updateCartItemQuantityValidationSchema),
   CartControllers.updateCartItemQuantity,
 );
@@ -32,7 +32,7 @@ router.patch(
 // update addon quantity
 router.patch(
   '/update-addon-quantity',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(CartValidation.updateAddonQuantityValidationSchema),
   CartControllers.updateAddonQuantity,
 );
@@ -40,21 +40,21 @@ router.patch(
 // delete cart item
 router.delete(
   '/delete-item',
-  auth('CUSTOMER'),
+  auth('CUSTOMER')(),
   validateRequest(CartValidation.deleteCartItemValidationSchema),
   CartControllers.deleteCartItem,
 );
 
 // clear cart
-router.delete('/clear-cart', auth('CUSTOMER'), CartControllers.clearCart);
+router.delete('/clear-cart', auth('CUSTOMER')(), CartControllers.clearCart);
 
 // get all cart
-router.get('/', auth('ADMIN', 'SUPER_ADMIN'), CartControllers.getAllCart);
+router.get('/', auth('ADMIN', 'SUPER_ADMIN')(), CartControllers.getAllCart);
 
 // view cart
 router.get(
   '/view-cart',
-  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
+  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN')(),
   CartControllers.viewCart,
 );
 
