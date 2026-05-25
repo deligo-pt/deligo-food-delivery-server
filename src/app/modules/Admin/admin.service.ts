@@ -22,13 +22,6 @@ const updateAdmin = async (
   }
 
   // -----------------------------------------
-  // Email verification check
-  // -----------------------------------------
-  if (!existingAdmin.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email.');
-  }
-
-  // -----------------------------------------
   // Update lock check
   // -----------------------------------------
   if (existingAdmin.isUpdateLocked) {

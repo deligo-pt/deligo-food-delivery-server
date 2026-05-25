@@ -17,7 +17,6 @@ const adminSchema = new Schema<TAdmin, IAuthLookupModel<TAdmin>>(
     },
     registeredBy: {
       type: Schema.Types.ObjectId,
-      default: null,
       ref: 'Admin',
     },
     status: {

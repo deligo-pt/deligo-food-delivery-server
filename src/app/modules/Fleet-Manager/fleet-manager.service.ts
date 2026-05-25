@@ -22,7 +22,6 @@ const fleetManagerUpdate = async (
   // ---------------------------------------------------------
   const existingFleetManager = await FleetManager.findOne({
     userCustomId: fleetManagerCustomId,
-    isDeleted: false,
   });
 
   if (!existingFleetManager) {
@@ -43,16 +42,6 @@ const fleetManagerUpdate = async (
     throw new AppError(
       httpStatus.FORBIDDEN,
       'You are not authorized to update this Fleet Manager.',
-    );
-  }
-
-  // ---------------------------------------------------------
-  // Ensure email is verified before self-update
-  // ---------------------------------------------------------
-  if (!existingFleetManager.isEmailVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please verify your email before updating your profile.',
     );
   }
 
@@ -119,7 +108,6 @@ const fleetManagerDocImageUpload = async (
   const { docImageTitle, docImageUrls } = payload;
   const existingFleetManager = await FleetManager.findOne({
     userCustomId: fleetManagerCustomId,
-    isDeleted: false,
   });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');

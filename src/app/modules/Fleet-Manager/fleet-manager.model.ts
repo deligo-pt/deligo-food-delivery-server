@@ -17,7 +17,6 @@ const fleetManagerSchema = new Schema<TFleetManager>(
 
     registeredBy: {
       type: Schema.Types.ObjectId,
-      default: null,
       ref: 'Admin',
     },
 

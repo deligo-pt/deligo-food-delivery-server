@@ -63,7 +63,7 @@ const vendorUpdate = async (
     }
   }
 
-  // 6. Geospatial Data: Generate GeoJSON Point if latitude and longitude are provided
+  // 6. GeoSpatial Data: Generate GeoJSON Point if latitude and longitude are provided
   if (payload.businessLocation) {
     const { longitude, latitude } = payload.businessLocation;
 
