@@ -3,6 +3,7 @@ import AppError from '../../errors/AppError';
 import { AuthUser } from '../AuthUser/authUser.model';
 import { Permission } from './permission.model';
 import { TPermission } from './permission.interface';
+import { QueryBuilder } from '../../builder/QueryBuilder';
 
 const seedInitialPermissions = async () => {
   const initialPermissions = [
@@ -458,10 +459,20 @@ const revokePermissionsFromUser = async (payload: {
   return updatedUser;
 };
 
+const getAllPermissions = async (query: Record<string, unknown>) => {
+  const permissions = new QueryBuilder(Permission.find(), query);
+
+  const meta = await permissions.countTotal();
+  const data = await permissions.modelQuery;
+
+  return { meta, data };
+};
+
 export const PermissionServices = {
   seedInitialPermissions,
   createPermission,
   updatePermission,
   assignPermissionsToUser,
   revokePermissionsFromUser,
+  getAllPermissions,
 };

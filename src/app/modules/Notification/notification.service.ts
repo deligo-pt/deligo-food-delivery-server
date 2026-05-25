@@ -10,12 +10,12 @@ import { sendPushNotification } from '../../utils/sendPushNotification';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
 import { Notification } from './notification.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { findUserById } from '../../utils/findUserByEmailOrId';
 import {
   TBroadcastNotificationPayload,
   TNotificationType,
 } from './notification.interface';
 import { EmailHelper } from '../../utils/emailSender';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -78,9 +78,7 @@ const sendToUser = (
   //  Detach from request lifecycle
   setImmediate(async () => {
     try {
-      const { user } = await findUserById({
-        userCustomId,
-      });
+      const user = await AuthUser.findOne({ userCustomId });
 
       if (!user) return;
 

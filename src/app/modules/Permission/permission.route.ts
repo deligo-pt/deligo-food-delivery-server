@@ -13,6 +13,20 @@ router.post(
   PermissionController.seedPermissions,
 );
 
+router.patch(
+  '/assign-permissions',
+  auth('SUPER_ADMIN', 'ADMIN')(SYSTEM_PERMISSIONS.MANAGE_PERMISSION),
+  validateRequest(PermissionValidations.assignPermissionsValidationSchema),
+  PermissionController.assignPermissionsToUser,
+);
+
+router.patch(
+  '/revoke-permissions',
+  auth('SUPER_ADMIN', 'ADMIN')(SYSTEM_PERMISSIONS.MANAGE_PERMISSION),
+  validateRequest(PermissionValidations.revokePermissionsValidationSchema),
+  PermissionController.revokePermissionsFromUser,
+);
+
 router.post(
   '/create',
   auth('SUPER_ADMIN', 'ADMIN')(SYSTEM_PERMISSIONS.CREATE_PERMISSION),
@@ -27,18 +41,10 @@ router.patch(
   PermissionController.updatePermission,
 );
 
-router.patch(
-  '/assign-permissions',
-  auth('SUPER_ADMIN', 'ADMIN')(SYSTEM_PERMISSIONS.MANAGE_PERMISSION),
-  validateRequest(PermissionValidations.assignPermissionsValidationSchema),
-  PermissionController.assignPermissionsToUser,
-);
-
-router.patch(
-  '/revoke-permissions',
-  auth('SUPER_ADMIN', 'ADMIN')(SYSTEM_PERMISSIONS.MANAGE_PERMISSION),
-  validateRequest(PermissionValidations.revokePermissionsValidationSchema),
-  PermissionController.revokePermissionsFromUser,
+router.get(
+  '/',
+  auth('SUPER_ADMIN', 'ADMIN')(SYSTEM_PERMISSIONS.VIEW_PERMISSIONS),
+  PermissionController.getAllPermissions,
 );
 
 export const PermissionRoutes = router;

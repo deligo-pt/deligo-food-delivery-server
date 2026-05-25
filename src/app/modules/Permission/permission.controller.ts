@@ -14,6 +14,28 @@ const seedPermissions = catchAsync(async (req, res) => {
   });
 });
 
+const assignPermissionsToUser = catchAsync(async (req, res) => {
+  const result = await PermissionServices.assignPermissionsToUser(req.body);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Permissions assigned to the user successfully!',
+    data: result,
+  });
+});
+
+const revokePermissionsFromUser = catchAsync(async (req, res) => {
+  const result = await PermissionServices.revokePermissionsFromUser(req.body);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Permissions revoked from the user successfully!',
+    data: result,
+  });
+});
+
 const createPermission = catchAsync(async (req, res) => {
   const result = await PermissionServices.createPermission(req.body);
 
@@ -40,32 +62,23 @@ const updatePermission = catchAsync(async (req, res) => {
   });
 });
 
-const assignPermissionsToUser = catchAsync(async (req, res) => {
-  const result = await PermissionServices.assignPermissionsToUser(req.body);
+const getAllPermissions = catchAsync(async (req, res) => {
+  const result = await PermissionServices.getAllPermissions(req.query);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Permissions assigned to the user successfully!',
-    data: result,
-  });
-});
-
-const revokePermissionsFromUser = catchAsync(async (req, res) => {
-  const result = await PermissionServices.revokePermissionsFromUser(req.body);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Permissions revoked from the user successfully!',
-    data: result,
+    message: 'Permissions fetched successfully!',
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
 export const PermissionController = {
   seedPermissions,
-  createPermission,
-  updatePermission,
   assignPermissionsToUser,
   revokePermissionsFromUser,
+  createPermission,
+  updatePermission,
+  getAllPermissions,
 };
