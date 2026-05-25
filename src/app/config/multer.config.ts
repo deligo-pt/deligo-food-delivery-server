@@ -9,14 +9,21 @@ const removeExtension = (filename: string) => {
 const storage = new CloudinaryStorage({
   cloudinary: cloudinaryUpload,
   params: {
-    public_id: (_req, file) =>
-      Math.random().toString(36).substring(2) +
-      '-' +
-      Date.now() +
-      '-' +
-      file.fieldname +
-      '-' +
-      removeExtension(file.originalname),
+    public_id: (_req, file) => {
+      const cleanName = removeExtension(file.originalname)
+        .toLowerCase()
+        .replace(/[^\w-]/g, '-');
+
+      return (
+        Math.random().toString(36).substring(2) +
+        '-' +
+        Date.now() +
+        '-' +
+        file.fieldname +
+        '-' +
+        cleanName
+      );
+    },
   },
 });
 export const multerUpload = multer({
