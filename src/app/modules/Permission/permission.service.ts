@@ -467,6 +467,13 @@ const getAllPermissions = async (query: Record<string, unknown>) => {
 
   return { meta, data };
 };
+const getSinglePermission = async (permissionId: string) => {
+  const result = await Permission.findById(permissionId);
+  if (!result) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
+  }
+  return result;
+};
 
 export const PermissionServices = {
   seedInitialPermissions,
@@ -475,4 +482,5 @@ export const PermissionServices = {
   assignPermissionsToUser,
   revokePermissionsFromUser,
   getAllPermissions,
+  getSinglePermission,
 };

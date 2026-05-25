@@ -74,6 +74,18 @@ const getAllPermissions = catchAsync(async (req, res) => {
   });
 });
 
+const getSinglePermission = catchAsync(async (req, res) => {
+  const { permissionId } = req.params;
+  const result = await PermissionServices.getSinglePermission(permissionId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Permission fetched successfully!',
+    data: result,
+  });
+});
+
 export const PermissionController = {
   seedPermissions,
   assignPermissionsToUser,
@@ -81,4 +93,5 @@ export const PermissionController = {
   createPermission,
   updatePermission,
   getAllPermissions,
+  getSinglePermission,
 };

@@ -47,4 +47,10 @@ router.get(
   PermissionController.getAllPermissions,
 );
 
+router.get(
+  '/:permissionId',
+  auth('SUPER_ADMIN', 'ADMIN')(SYSTEM_PERMISSIONS.VIEW_PERMISSIONS),
+  PermissionController.getSinglePermission,
+);
+
 export const PermissionRoutes = router;
