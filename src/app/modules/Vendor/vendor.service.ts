@@ -301,7 +301,7 @@ const updateVendorLiveLocation = async (
 };
 
 // toggle vendor store open/close service
-const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
+const toggleVendorStoreOpenClose = async (currentUser: any) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -309,13 +309,20 @@ const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
     );
   }
 
-  currentUser.businessDetails!.isStoreOpen =
-    !currentUser.businessDetails?.isStoreOpen;
-  currentUser.businessDetails!.storeClosedAt = new Date();
-  await (currentUser as any).save();
+  await currentUser.populate('userObjectId', 'businessDetails');
+  const vendorProfile = currentUser.userObjectId;
+
+  if (!vendorProfile) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Vendor profile not found');
+  }
+
+  vendorProfile.businessDetails!.isStoreOpen =
+    !vendorProfile.businessDetails?.isStoreOpen;
+  vendorProfile.businessDetails!.storeClosedAt = new Date();
+  await (vendorProfile as any).save();
   return {
     message: `Store is ${
-      currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
+      vendorProfile?.businessDetails?.isStoreOpen ? 'open' : 'closed'
     }`,
   };
 };
