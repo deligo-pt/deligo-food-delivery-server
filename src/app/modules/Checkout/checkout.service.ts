@@ -5,7 +5,7 @@ import { CheckoutSummary } from './checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { Product } from '../Product/product.model';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
@@ -63,15 +63,24 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const activeAddress = currentUser?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
   );
-  const vendorCoords = existingVendor.currentSessionLocation?.coordinates;
-
-  if (!activeAddress || !vendorCoords || vendorCoords.length < 2) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Location data missing');
+  if (!activeAddress) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'No active delivery address found',
+    );
   }
 
+  const vendorLocation = existingVendor.businessLocation;
+
+  if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not found');
+  }
+
+  const { latitude, longitude } = vendorLocation;
+
   const distanceData = await calculateGoggleRoadDistance(
-    vendorCoords[0],
-    vendorCoords[1],
+    longitude,
+    latitude,
     activeAddress.longitude,
     activeAddress.latitude,
   );
@@ -335,7 +344,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
 // get checkout summary
 const getCheckoutSummary = async (
   checkoutSummaryId: string,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
