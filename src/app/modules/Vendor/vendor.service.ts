@@ -266,6 +266,8 @@ const updateVendorLiveLocation = async (
     'currentSessionLocation.lastLocationUpdate': timestamp
       ? new Date(timestamp)
       : new Date(),
+    // 'businessLocation.longitude': longitude,
+    // 'businessLocation.latitude': latitude,
   };
 
   if (geoAccuracy !== undefined)
