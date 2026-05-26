@@ -63,15 +63,24 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const activeAddress = currentUser?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
   );
-  const vendorCoords = existingVendor.currentSessionLocation?.coordinates;
-
-  if (!activeAddress || !vendorCoords || vendorCoords.length < 2) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Location data missing');
+  if (!activeAddress) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'No active delivery address found',
+    );
   }
 
+  const vendorLocation = existingVendor.businessLocation;
+
+  if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not found');
+  }
+
+  const { latitude, longitude } = vendorLocation;
+
   const distanceData = await calculateGoggleRoadDistance(
-    vendorCoords[0],
-    vendorCoords[1],
+    longitude,
+    latitude,
     activeAddress.longitude,
     activeAddress.latitude,
   );
