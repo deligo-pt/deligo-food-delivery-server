@@ -5,11 +5,11 @@ import { CheckoutSummary } from './checkout.model';
 import { Cart } from '../Cart/cart.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { Product } from '../Product/product.model';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
@@ -344,7 +344,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
 // get checkout summary
 const getCheckoutSummary = async (
   checkoutSummaryId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
