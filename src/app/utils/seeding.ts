@@ -62,58 +62,6 @@ export const seed = async () => {
     }
 
     // --------------------------------------------------
-    // Seed Agent
-    // --------------------------------------------------
-    const agent = await AuthUser.findOne({
-      role: USER_ROLE.AGENT,
-      email: config.agent.email,
-    }).session(session);
-
-    if (!agent) {
-      console.log('Seeding Agent and creating AuthUser shadow entry...');
-      await Admin.deleteMany({ role: USER_ROLE.AGENT }).session(session);
-      await AuthUser.deleteMany({
-        role: USER_ROLE.AGENT,
-        email: config.agent.email,
-      }).session(session);
-
-      const userCustomId = `AG-${customNanoId(8)}`;
-
-      const [newAgentProfile] = await Admin.create(
-        [
-          {
-            userCustomId,
-            name: 'Agent',
-            role: USER_ROLE.AGENT,
-            profilePhoto: config.agent.profile_photo,
-            status: USER_STATUS.APPROVED,
-          },
-        ],
-        { session },
-      );
-
-      await AuthUser.create(
-        [
-          {
-            userAuthId: `AUTH-${userCustomId}`,
-            userObjectId: newAgentProfile._id,
-            onModel: 'Admin',
-            userCustomId,
-            email: config.agent.email,
-            password: config.agent.password,
-            contactNumber: config.agent.contact_number,
-            role: USER_ROLE.AGENT,
-            status: USER_STATUS.APPROVED,
-            permissions: [],
-            isEmailVerified: true,
-            isDeleted: false,
-          },
-        ],
-        { session },
-      );
-    }
-
-    // --------------------------------------------------
     // Seed Global Settings
     // --------------------------------------------------
     const existingSettings = await GlobalSettings.findOne().session(session);

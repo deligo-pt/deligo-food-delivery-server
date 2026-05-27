@@ -45,7 +45,7 @@ const updateBusinessCategory = async (
   if (payload?.isActive === category.isActive) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `Business category is already ${category.isActive}`,
+      `Business category is already ${category.isActive ? 'active' : 'inactive'}`,
     );
   }
 
@@ -216,7 +216,7 @@ const updateProductCategory = async (
   if (payload?.isActive === category.isActive) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `Product category is already ${category.isActive}`,
+      `Product category is already ${category.isActive ? 'active' : 'inactive'}`,
     );
   }
 

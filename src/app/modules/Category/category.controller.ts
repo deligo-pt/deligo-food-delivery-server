@@ -46,7 +46,8 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Business categories fetched successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -131,7 +132,8 @@ const getAllProductCategories = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Product categories fetched successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

@@ -27,8 +27,11 @@ const updateCustomer = async (
 
   const customer = await Customer.findOne({ userCustomId: customerId });
   if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  if (!customer.isOtpVerified)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
+  if (customer.requiresOtpVerification)
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please verify your email or phone number first.',
+    );
 
   if (
     currentUser.role === 'CUSTOMER' &&

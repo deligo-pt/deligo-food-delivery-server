@@ -526,30 +526,41 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   };
 
   // -----------------------------------------------------
+  // 2. Global Role Cross-Checking Helper
+  // -----------------------------------------------------
+  const verifyNoRoleConflict = async (
+    field: 'email' | 'contactNumber',
+    value: string,
+  ) => {
+    const foundAuthUser = await AuthUser.findOne({ [field]: value });
+
+    if (foundAuthUser && foundAuthUser.role !== USER_ROLE.CUSTOMER) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `This ${
+          field === 'email' ? 'email' : 'contact number'
+        } is already registered as (${foundAuthUser.role}).`,
+      );
+    }
+  };
+
+  // -----------------------------------------------------
   // Email Login Logic
   // -----------------------------------------------------
   if (email) {
-    // Check if email exists in other user models
-    const checkModels = ALL_USER_MODELS.map((M: any) =>
-      M.isUserExistsByEmail(email).catch(() => null),
-    );
-    const checkUser = await Promise.all(checkModels);
-    const foundUser = checkUser.find((u) => u);
-
-    if (foundUser && foundUser.role !== 'CUSTOMER') {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'This email is already registered as a different role',
-      );
-    }
+    await verifyNoRoleConflict('email', email);
 
     // Fetch existing customer by email
-    const existingUser = await Customer.findOne({
+    const existingUser = await AuthUser.findOne({
       email,
-    }).lean();
+    })
+      .populate('userObjectId', 'referredBy')
+      .lean();
+
+    const existingCustomer = existingUser?.userObjectId as any;
 
     // Prevent returning users from using referral codes
-    if (existingUser?.referredBy && referralCode) {
+    if (existingCustomer?.referredBy && referralCode) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'You have already been referred by someone. Please login using your email/contact number to use the referral code.',
@@ -563,21 +574,31 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
     if (!existingUser) {
       const userCustomId = generateUserId('/create-customer');
+      const userAuthId = `AUTH-${userCustomId}`;
 
       const newUser = await Customer.create({
         userCustomId,
-        role: 'CUSTOMER',
+        status: USER_STATUS.PENDING,
+      });
+
+      await AuthUser.create({
+        userAuthId,
+        userCustomId,
+        userObjectId: newUser._id,
+        onModel: 'Customer',
         email,
+        role: USER_ROLE.CUSTOMER,
+        status: USER_STATUS.PENDING,
         requiresOtpVerification: true,
       });
       await handleReferral(newUser, referralCode);
     } else {
-      if (!existingUser.referredBy && referralCode) {
-        await handleReferral(existingUser, referralCode);
+      if (!existingCustomer.referredBy && referralCode) {
+        await handleReferral(existingCustomer, referralCode);
       }
-      await Customer.updateOne(
-        { _id: existingUser._id },
-        { requiresOtpVerification: true, isOtpVerified: false },
+      await AuthUser.updateOne(
+        { userObjectId: existingCustomer._id },
+        { requiresOtpVerification: true },
       );
     }
 
@@ -587,7 +608,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         userEmail: payload.email,
         currentYear: new Date().getFullYear(),
         date: new Date().toDateString(),
-        user: existingUser?.name?.firstName || 'Customer',
+        user: existingCustomer?.name?.firstName || 'Customer',
       },
       'verify-email',
     );
@@ -604,12 +625,17 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   // Mobile Login Logic
   // -----------------------------------------------------
   if (contactNumber) {
+    await verifyNoRoleConflict('contactNumber', contactNumber);
     // Fetch existing customer by mobile number
-    const existingUser = await Customer.findOne({
+    const existingUser = await AuthUser.findOne({
       contactNumber,
-    }).lean();
+    })
+      .populate('userObjectId', 'referredBy')
+      .lean();
 
-    if (existingUser?.referredBy && referralCode) {
+    const existingCustomer = existingUser?.userObjectId as any;
+
+    if (existingCustomer?.referredBy && referralCode) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'You have already been referred by someone. Please login using your email/contact number to use the referral code.',
@@ -625,25 +651,34 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     const mobileOtpId = isTestNumber ? 'test-otp-id' : res.data.id;
 
     if (existingUser) {
-      if (!existingUser.referredBy && referralCode) {
-        await handleReferral(existingUser, referralCode);
+      if (!existingCustomer.referredBy && referralCode) {
+        await handleReferral(existingCustomer, referralCode);
       }
-      await Customer.updateOne(
-        { _id: existingUser._id },
+      await AuthUser.updateOne(
+        { userObjectId: existingCustomer._id },
         {
           mobileOtpId,
-          isOtpVerified: false,
           requiresOtpVerification: true,
         },
       );
     } else {
       const userCustomId = generateUserId('/create-customer');
+      const userAuthId = `AUTH-${userCustomId}`;
       const newUser = await Customer.create({
         userCustomId,
-        role: 'CUSTOMER',
+        status: USER_STATUS.PENDING,
+      });
+
+      await AuthUser.create({
+        userAuthId,
+        userCustomId,
+        userObjectId: newUser._id,
+        onModel: 'Customer',
         contactNumber,
-        mobileOtpId,
+        role: USER_ROLE.CUSTOMER,
+        status: USER_STATUS.PENDING,
         requiresOtpVerification: true,
+        mobileOtpId,
       });
 
       await handleReferral(newUser, referralCode);
@@ -1428,12 +1463,16 @@ const verifyOtp = async (
   };
 
   const updateQuery: any = {
-    $set: { isOtpVerified: true, requiresOtpVerification: false },
+    $set: { requiresOtpVerification: false },
   };
 
   const options: any = { new: true };
 
-  if (email) updateQuery.$set.isEmailVerified = true;
+  if (email) {
+    updateQuery.$set.isEmailVerified = true;
+  } else if (contactNumber) {
+    updateQuery.$set.isContactNumberVerified = true;
+  }
 
   if (isExisting) {
     updateQuery.$set['loginDevices.$[elem]'] = newDevice;
@@ -1529,7 +1568,6 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
       );
     }
     await resendMobileOtp(id as string);
-    user.isOtpVerified = false;
     user.requiresOtpVerification = true;
     await user.save();
   }

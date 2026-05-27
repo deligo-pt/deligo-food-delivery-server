@@ -83,6 +83,15 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
       default: false,
     },
 
+    requiresOtpVerification: {
+      type: Boolean,
+      default: false,
+    },
+    mobileOtpId: {
+      type: String,
+      default: null,
+    },
+
     // 5. Password Credentials & Security Audit Logs
     password: {
       type: String,
