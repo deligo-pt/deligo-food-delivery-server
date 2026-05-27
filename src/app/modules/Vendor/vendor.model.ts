@@ -15,20 +15,8 @@ const vendorSchema = new Schema<TVendor>(
       unique: true,
     },
     registeredBy: {
-      id: {
-        type: Schema.Types.ObjectId,
-        refPath: 'registeredBy.model',
-      },
-      model: {
-        type: String,
-        enum: ['Admin', 'Vendor'],
-        default: null,
-      },
-      role: {
-        type: String,
-        enum: ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
-        default: null,
-      },
+      type: Schema.Types.ObjectId,
+      ref: 'AuthUser',
     },
     status: {
       type: String,
@@ -140,9 +128,9 @@ const vendorSchema = new Schema<TVendor>(
     // -------------------------------------------------------
     // Admin Workflow / Audit
     // -------------------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },

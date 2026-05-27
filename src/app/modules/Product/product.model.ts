@@ -28,7 +28,7 @@ const productSchema = new Schema<TProduct>(
     description: { type: String },
     isDeleted: { type: Boolean, default: false },
     isApproved: { type: Boolean, default: true },
-    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
     remarks: { type: String },
 
     category: {

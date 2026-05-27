@@ -12,18 +12,8 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
     //-------------------------------------------------
     userCustomId: { type: String, required: true, unique: true },
     registeredBy: {
-      id: {
-        type: Schema.Types.ObjectId,
-        refPath: 'registeredBy.model',
-      },
-      model: {
-        type: String,
-        enum: ['Admin', 'FleetManager'],
-      },
-      role: {
-        type: String,
-        enum: ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
-      },
+      type: Schema.Types.ObjectId,
+      ref: 'AuthUser',
     },
 
     status: {
@@ -196,9 +186,9 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
     //-------------------------------------------------
     // Admin Workflow / Audit
     //-------------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
 
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },

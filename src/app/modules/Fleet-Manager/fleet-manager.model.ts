@@ -17,7 +17,7 @@ const fleetManagerSchema = new Schema<TFleetManager>(
 
     registeredBy: {
       type: Schema.Types.ObjectId,
-      ref: 'Admin',
+      ref: 'AuthUser',
     },
 
     status: {
@@ -113,9 +113,9 @@ const fleetManagerSchema = new Schema<TFleetManager>(
     // ------------------------------------------
     // Admin Workflow / Audit
     // ------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
 
     submittedForApprovalAt: { type: Date, default: null },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },

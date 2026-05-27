@@ -17,11 +17,7 @@ export type TVendor = {
   // --------------------------------------------------------
   _id?: string;
   userCustomId: string;
-  registeredBy?: {
-    id: mongoose.Types.ObjectId;
-    model: TRegisteredByModel;
-    role: 'ADMIN' | 'SUPER_ADMIN' | 'VENDOR';
-  };
+  registeredBy?: mongoose.Types.ObjectId;
 
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;

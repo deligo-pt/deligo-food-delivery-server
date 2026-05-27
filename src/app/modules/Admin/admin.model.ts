@@ -17,7 +17,7 @@ const adminSchema = new Schema<TAdmin, IAuthLookupModel<TAdmin>>(
     },
     registeredBy: {
       type: Schema.Types.ObjectId,
-      ref: 'Admin',
+      ref: 'AuthUser',
     },
     status: {
       type: String,
@@ -73,9 +73,9 @@ const adminSchema = new Schema<TAdmin, IAuthLookupModel<TAdmin>>(
     // --------------------------------------------------------
     // Admin Workflow & Audit
     // --------------------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
 
     submittedForApprovalAt: {
       type: Date,

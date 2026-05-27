@@ -10,11 +10,7 @@ export type TDeliveryPartner = {
   // -------------------------------------------------
   _id?: mongoose.Types.ObjectId;
   userCustomId: string;
-  registeredBy?: {
-    id: mongoose.Types.ObjectId;
-    model: TRegisteredByModel;
-    role: 'ADMIN' | 'SUPER_ADMIN' | 'FLEET_MANAGER';
-  };
+  registeredBy?: mongoose.Types.ObjectId;
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
 

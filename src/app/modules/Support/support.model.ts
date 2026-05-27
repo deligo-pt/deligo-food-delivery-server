@@ -23,8 +23,7 @@ const supportTicketSchema = new Schema<TSupportTicket>(
     },
     assignedAdminId: {
       type: Schema.Types.ObjectId,
-      ref: 'Admin',
-      default: null,
+      ref: 'AuthUser',
     },
     status: {
       type: String,
@@ -42,7 +41,7 @@ const supportTicketSchema = new Schema<TSupportTicket>(
     lastMessageTime: { type: Date, default: Date.now },
     unreadCount: { type: Map, of: Number, default: {} },
     closedAt: { type: Date },
-    closedBy: { type: Schema.Types.ObjectId, ref: 'Admin' },
+    closedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
   },
   { timestamps: true },
 );

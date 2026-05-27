@@ -13,6 +13,8 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
+import { USER_ROLE } from '../../constant/GlobalConstant/user.constant';
 
 /**
  * Service to update vendor profile information.
@@ -336,7 +338,15 @@ const getAllVendors = async (
       `You are not approved to view vendors. Your account is ${currentUser?.status}`,
     );
   }
-  const vendors = new QueryBuilder(Vendor.find(), query)
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+
+  const queryFilter: any = { role: USER_ROLE.VENDOR };
+
+  if (!isAdmin) {
+    queryFilter.isDeleted = false;
+  }
+  const vendorQueryBase = AuthUser.find(queryFilter);
+  const vendors = new QueryBuilder(vendorQueryBase, query)
     .fields()
     .paginate()
     .sort()
@@ -344,6 +354,7 @@ const getAllVendors = async (
     .search(VendorSearchableFields);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
+    userObjectId: true,
     approvedBy: 'name userCustomId role',
     rejectedBy: 'name userCustomId role',
     blockedBy: 'name userCustomId role',
@@ -354,11 +365,32 @@ const getAllVendors = async (
   });
 
   const meta = await vendors.countTotal();
-  const data = await vendors.modelQuery;
+  const rawData = await vendors.modelQuery;
+  const formattedData = rawData
+    .map((authDoc: any) => {
+      const vendorProfile = authDoc.userObjectId;
+
+      if (!vendorProfile) return null;
+
+      return {
+        _id: vendorProfile._id,
+        authUserId: authDoc._id,
+        userCustomId: authDoc.userCustomId,
+        email: authDoc.email,
+        role: authDoc.role,
+        status: authDoc.status,
+        isDeleted: authDoc.isDeleted,
+        isEmailVerified: authDoc.isEmailVerified,
+        loginDevices: authDoc.loginDevices,
+
+        ...vendorProfile.toObject(),
+      };
+    })
+    .filter((item) => item !== null);
 
   return {
     meta,
-    data,
+    data: formattedData,
   };
 };
 
@@ -371,34 +403,52 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
     );
   }
 
-  let query: any;
-  if (currentUser.role === 'VENDOR') {
-    query = Vendor.findOne({
-      userCustomId: currentUser.userCustomId,
-      isDeleted: false,
-    });
-  } else {
-    query = Vendor.findOne({
-      userCustomId: vendorId,
-    });
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+
+  const findCondition: any = {
+    userCustomId: vendorId,
+    role: USER_ROLE.VENDOR,
+  };
+
+  if (!isAdmin) {
+    findCondition.isDeleted = false;
   }
 
+  const vendorAuthQuery = AuthUser.findOne(findCondition);
+
   const populateOptions = getPopulateOptions(currentUser.role, {
+    userObjectId: true,
     approvedBy: 'name userCustomId role',
     rejectedBy: 'name userCustomId role',
     blockedBy: 'name userCustomId role',
   });
 
   populateOptions.forEach((option) => {
-    query = query.populate(option);
+    vendorAuthQuery.populate(option);
   });
 
-  const existingVendor = await query;
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
+  const authDoc: any = await vendorAuthQuery;
+  if (!authDoc || !authDoc.userObjectId) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor profile not found!');
   }
 
-  return existingVendor;
+  const vendorProfile = authDoc.userObjectId;
+
+  const formattedVendor = {
+    _id: vendorProfile._id,
+    authUserId: authDoc._id,
+    userCustomId: authDoc.userCustomId,
+    email: authDoc.email,
+    role: authDoc.role,
+    status: authDoc.status,
+    isDeleted: authDoc.isDeleted,
+    isEmailVerified: authDoc.isEmailVerified,
+    loginDevices: authDoc.loginDevices,
+
+    ...vendorProfile.toObject(),
+  };
+
+  return formattedVendor;
 };
 
 // get all vendors for customer

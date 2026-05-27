@@ -75,7 +75,7 @@ const sosSchema = new Schema<TSos>(
     },
     resolvedBy: {
       type: Schema.Types.ObjectId,
-      ref: 'Admin',
+      ref: 'AuthUser',
     },
     resolvedAt: {
       type: Date,

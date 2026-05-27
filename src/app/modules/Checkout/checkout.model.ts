@@ -6,7 +6,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     customerId: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: 'Customer',
+      ref: 'AuthUser',
     },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     customerEmail: { type: String, default: '' },
@@ -22,7 +22,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         vendorId: {
           type: Schema.Types.ObjectId,
           required: true,
-          ref: 'Vendor',
+          ref: 'AuthUser',
         },
         name: { type: String, required: true },
         image: { type: String },

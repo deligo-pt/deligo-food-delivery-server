@@ -139,7 +139,7 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
     meta: {
       updatedBy: {
         type: Schema.Types.ObjectId,
-        ref: 'Admin',
+        ref: 'AuthUser',
       },
     },
   },

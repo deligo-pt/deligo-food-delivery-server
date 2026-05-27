@@ -78,13 +78,13 @@ const customerSchema = new Schema<TCustomer>(
     // Referral & Loyalty
     // ----------------------------------------------------------------
     referralCode: { type: String, default: '' },
-    referredBy: { type: Schema.Types.ObjectId, default: null, ref: 'Customer' },
+    referredBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
     // ----------------------------------------------------------------
     // Admin Workflow / Audit
     // ----------------------------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    rejectedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
-    blockedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
     approvedOrRejectedOrBlockedAt: { type: Date, default: null },
     remarks: { type: String, default: '' },
   },

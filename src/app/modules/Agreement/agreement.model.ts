@@ -91,7 +91,7 @@ const agreementSchema = new Schema<TAgreement>(
     createdBy: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: 'Admin',
+      ref: 'AuthUser',
     },
   },
   {

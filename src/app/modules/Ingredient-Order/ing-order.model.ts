@@ -20,8 +20,8 @@ const ingredientOrderDetailSchema = new Schema<IIngredientOrderDetail>(
 
 const ingredientOrderSchema = new Schema<IIngredientOrder>(
   {
-    vendor: { type: Schema.Types.ObjectId, ref: 'Vendor', required: true },
-    admin: { type: Schema.Types.ObjectId, ref: 'Admin' },
+    vendor: { type: Schema.Types.ObjectId, ref: 'AuthUser', required: true },
+    admin: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
     orderId: { type: String },
     orderDetails: { type: ingredientOrderDetailSchema, required: true },
     deliveryAddress: {

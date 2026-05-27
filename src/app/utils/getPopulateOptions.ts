@@ -28,6 +28,8 @@ type PopulateInput = {
   reviewerId?: string;
   targetId?: string;
   orderId?: string;
+
+  userObjectId?: boolean | PopulateOptions[];
 };
 
 export const getPopulateOptions = (
@@ -59,7 +61,7 @@ export const getPopulateOptions = (
 
   // Admin only fields
   ['approvedBy', 'rejectedBy', 'blockedBy', 'resolvedBy'].forEach((key) => {
-    addOption(key as keyof PopulateInput, key, isAdmin);
+    addOption(key as keyof PopulateInput, key, isAdmin && !fields.userObjectId);
   });
 
   addOption('id', 'userObjectId.id');
@@ -77,5 +79,27 @@ export const getPopulateOptions = (
     'targetId',
     isAdmin || ['VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'].includes(role),
   );
+
+  if (fields.userObjectId) {
+    const subPopulateOptions: PopulateOptions[] = [];
+
+    if (isAdmin && fields.approvedBy)
+      subPopulateOptions.push({
+        path: 'approvedBy',
+        select: fields.approvedBy,
+      });
+    if (isAdmin && fields.rejectedBy)
+      subPopulateOptions.push({
+        path: 'rejectedBy',
+        select: fields.rejectedBy,
+      });
+    if (isAdmin && fields.blockedBy)
+      subPopulateOptions.push({ path: 'blockedBy', select: fields.blockedBy });
+
+    options.push({
+      path: 'userObjectId',
+      populate: subPopulateOptions.length ? subPopulateOptions : undefined, // সাব-পপুলেট থাকলে চেইন করবে
+    });
+  }
   return options;
 };

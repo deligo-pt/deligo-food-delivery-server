@@ -39,11 +39,11 @@ const offerSchema = new Schema<TOffer>(
 
     adminId: {
       type: Schema.Types.ObjectId,
-      ref: 'Admin',
+      ref: 'AuthUser',
       default: null,
     },
     isGlobal: { type: Boolean, default: false },
-    vendorId: { type: Schema.Types.ObjectId, default: null, ref: 'Vendor' },
+    vendorId: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
 
     discountValue: {
       type: Number,

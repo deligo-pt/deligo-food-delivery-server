@@ -263,23 +263,7 @@ const onboardUser = async <
   const rawPassword = payload.password;
   const { password: _, ...profilePayload } = payload;
 
-  let registeredByValue: any;
   const onboardingRole = targetRole.toLowerCase();
-
-  if (['vendor', 'sub-vendor', 'delivery-partner'].includes(onboardingRole)) {
-    registeredByValue = {
-      id: currentUser._id,
-      model:
-        currentUser.role === 'FLEET_MANAGER'
-          ? 'FleetManager'
-          : currentUser.role === 'VENDOR'
-            ? 'Vendor'
-            : 'Admin',
-      role: currentUser.role,
-    };
-  } else {
-    registeredByValue = currentUser._id;
-  }
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -291,7 +275,7 @@ const onboardUser = async <
         {
           ...profilePayload,
           [idField]: userCustomId,
-          registeredBy: registeredByValue,
+          registeredBy: currentUser._id,
           isEmailVerified: false,
           status: 'PENDING',
         },
@@ -324,13 +308,14 @@ const onboardUser = async <
     await session.commitTransaction();
     session.endSession();
   } catch (err: any) {
+    console.log(err);
     await session.abortTransaction();
     session.endSession();
 
     if (err?.code === 11000)
       throw new AppError(
         httpStatus.CONFLICT,
-        'User ID or Email already exists',
+        'User Id or Email already exists',
       );
     throw err;
   }

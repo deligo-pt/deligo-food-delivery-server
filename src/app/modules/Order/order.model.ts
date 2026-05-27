@@ -18,7 +18,7 @@ const invoiceSyncSchema = new Schema<TInvoiceSync>(
 const orderItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
-    vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor' },
+    vendorId: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
     name: { type: String, required: true },
     image: { type: String },
     hasVariations: { type: Boolean, required: true },
@@ -80,13 +80,12 @@ const orderSchema = new Schema<TOrder>(
     customerId: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: 'Customer',
+      ref: 'AuthUser',
     },
-    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'AuthUser' },
     deliveryPartnerId: {
       type: Schema.Types.ObjectId,
-      default: null,
-      ref: 'DeliveryPartner',
+      ref: 'AuthUser',
     },
     deliveryPartnerCancelReason: { type: String, default: null },
 
