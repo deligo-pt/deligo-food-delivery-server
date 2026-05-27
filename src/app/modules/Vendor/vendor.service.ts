@@ -5,7 +5,7 @@ import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
-import { BusinessCategory, ProductCategory } from '../Category/category.model';
+import { BusinessCategory } from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
@@ -14,7 +14,10 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
-import { USER_ROLE } from '../../constant/GlobalConstant/user.constant';
+import {
+  USER_ROLE,
+  USER_STATUS,
+} from '../../constant/GlobalConstant/user.constant';
 
 /**
  * Service to update vendor profile information.
@@ -454,10 +457,18 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
 // get all vendors for customer
 const getAllVendorsForCustomer = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: any,
 ) => {
+  await currentUser.populate('userObjectId');
+  const customerProfile = currentUser.userObjectId;
+  if (!customerProfile) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Customer profile data not found!',
+    );
+  }
   // 1. Get Customer Coordinates from currentSessionLocation
-  const coordinates = currentUser?.currentSessionLocation?.coordinates;
+  const coordinates = customerProfile?.currentSessionLocation?.coordinates;
 
   if (!coordinates || coordinates.length < 2) {
     throw new AppError(
@@ -467,19 +478,34 @@ const getAllVendorsForCustomer = async (
   }
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
+  const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
 
   const [lng, lat] = coordinates;
-  const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
+
+  const activeAuthVendors = await AuthUser.find({
+    role: USER_ROLE.VENDOR,
+    status: USER_STATUS.APPROVED,
+    isDeleted: false,
+  })
+    .select('userObjectId')
+    .lean();
+
+  const approvedVendorProfileIds = activeAuthVendors.map(
+    (auth) => auth.userObjectId,
+  );
+
+  if (approvedVendorProfileIds.length === 0) {
+    return { meta: { total: 0, page: 1, limit: 10, totalPage: 0 }, data: [] };
+  }
 
   const activeProductVendorIds = await Product.distinct('vendorId', {
     isDeleted: false,
+    vendorId: { $in: approvedVendorProfileIds },
   });
 
   // 2. Filter vendors
   const filter: any = {
     _id: { $in: activeProductVendorIds },
-    status: 'APPROVED',
-    isDeleted: false,
     currentSessionLocation: {
       $geoWithin: {
         $centerSphere: [[lng, lat], radiusInRadians],
@@ -510,13 +536,14 @@ const getAllVendorsForCustomer = async (
     delete query.productCategory;
   }
 
+  const vendorsQuery = Vendor.find(filter);
   // 4. QueryBuilder Execution
-  const vendors = new QueryBuilder(Vendor.find(filter), query)
-    .search(['businessDetails.businessName'])
+  const vendors = new QueryBuilder(vendorsQuery, query)
     .filter()
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search(['businessDetails.businessName']);
 
   // 5. Select parent paths to avoid 'Path Collision'
   vendors.modelQuery = vendors.modelQuery.select(
@@ -524,44 +551,54 @@ const getAllVendorsForCustomer = async (
   );
 
   const meta = await vendors.countTotal();
-  const rawData = await vendors.modelQuery;
+  const rawVendors = await vendors.modelQuery;
 
   // 6. Map to the exact structure required by your Frontend
 
-  const data = await Promise.all(
-    rawData.map(async (vendor: any) => {
-      // Find unique categories for this specific vendor from Product model
-      const vendorCategories = await Product.distinct('category', {
-        vendorId: vendor._id,
-        isDeleted: false,
-      });
+  const currentVendorIds = rawVendors.map((v) => v._id);
+  const allProductsForTheseVendors = await Product.find({
+    vendorId: { $in: currentVendorIds },
+    isDeleted: false,
+  })
+    .populate({
+      path: 'category',
+      select: 'name icon',
+    })
+    .lean();
 
-      // Populate category details (optional: if you need name/icon)
-      const populatedCategories = await ProductCategory.find({
-        _id: { $in: vendorCategories },
-      }).select('name icon'); // Assuming you have name and icon in ProductCategory
+  const data = rawVendors.map((vendor: any) => {
+    const vendorProducts = allProductsForTheseVendors.filter(
+      (p: any) => String(p.vendorId) === String(vendor._id),
+    );
 
-      return {
-        id: vendor._id,
-        userCustomId: vendor.userCustomId,
-        name: vendor.name,
-        businessDetails: {
-          businessName: vendor.businessDetails?.businessName,
-          businessType: vendor.businessDetails?.businessType,
-          openingHours: vendor.businessDetails?.openingHours,
-          closingHours: vendor.businessDetails?.closingHours,
-          closingDays: vendor.businessDetails?.closingDays,
-          isStoreOpen: vendor.businessDetails?.isStoreOpen,
-        },
-        businessLocation: vendor.businessLocation,
-        storePhoto: vendor.documents?.storePhoto || '',
-        rating: vendor.rating,
-        currentSessionLocation: vendor.currentSessionLocation,
-        // Adding the categories here
-        availableCategories: populatedCategories,
-      };
-    }),
-  );
+    const categoryMap = new Map();
+    vendorProducts.forEach((product: any) => {
+      if (product.category && !categoryMap.has(String(product.category._id))) {
+        categoryMap.set(String(product.category._id), product.category);
+      }
+    });
+
+    const availableCategories = Array.from(categoryMap.values());
+
+    return {
+      id: vendor._id,
+      userCustomId: vendor.userCustomId,
+      name: vendor.name,
+      businessDetails: {
+        businessName: vendor.businessDetails?.businessName,
+        businessType: vendor.businessDetails?.businessType,
+        openingHours: vendor.businessDetails?.openingHours,
+        closingHours: vendor.businessDetails?.closingHours,
+        closingDays: vendor.businessDetails?.closingDays,
+        isStoreOpen: vendor.businessDetails?.isStoreOpen,
+      },
+      businessLocation: vendor.businessLocation,
+      storePhoto: vendor.documents?.storePhoto || [],
+      rating: vendor.rating,
+      currentSessionLocation: vendor.currentSessionLocation,
+      availableCategories,
+    };
+  });
 
   return {
     meta,
