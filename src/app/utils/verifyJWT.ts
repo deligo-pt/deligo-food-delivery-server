@@ -9,7 +9,7 @@ import {
 
 export const createToken = (
   jwtPayload: {
-    userCustomId: string;
+    userId: string;
     name?: {
       firstName: string;
       lastName: string;

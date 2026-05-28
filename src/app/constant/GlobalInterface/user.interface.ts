@@ -4,7 +4,7 @@ import { TDeliveryAddress } from './address.interface';
 
 export type TCurrentUser = {
   _id: mongoose.Types.ObjectId;
-  userCustomId: string;
+  userId: string;
   name: {
     firstName: string;
     lastName: string;

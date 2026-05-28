@@ -687,7 +687,7 @@ const getAllProducts = async (
 
   const populateOptions = getPopulateOptions(role, {
     vendor:
-      'userCustomId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
+      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
   });
 
@@ -736,7 +736,7 @@ const getSingleProduct = async (
   }
   const populateOptions = getPopulateOptions(currentUser.role, {
     vendor:
-      'userCustomId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
+      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
   });
 
@@ -855,7 +855,7 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
     .select(
       'name sku stock variations vendorId category images createdAt updatedAt',
     )
-    .populate('vendorId', 'userCustomId businessDetails')
+    .populate('vendorId', 'userId businessDetails')
     .populate('category')
     .sort(sortBy as string)
     .skip(skip)

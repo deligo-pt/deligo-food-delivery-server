@@ -4,16 +4,16 @@ import AppError from '../errors/AppError';
 import { AuthUser } from '../modules/AuthUser/authUser.model';
 
 export const findUserById = async ({
-  userCustomId,
+  userId,
 }: {
-  userCustomId: string;
+  userId: string;
   isDeleted?: boolean;
 }) => {
-  if (!userCustomId) {
+  if (!userId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'User ID must be provided');
   }
 
-  const user = await AuthUser.findOne({ userCustomId });
+  const user = await AuthUser.findOne({ userId });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }

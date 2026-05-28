@@ -27,7 +27,7 @@ const initiateSettlement = async (
   const senderModel =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
 
-  const { user } = await findUserById({ userCustomId: targetUserId });
+  const { user } = await findUserById({ userId: targetUserId });
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
@@ -69,7 +69,7 @@ const initiateSettlement = async (
       };
 
       NotificationService.sendToUser(
-        user.userCustomId,
+        user.userId,
         alertPayload.title,
         alertPayload.body,
         {},
@@ -134,7 +134,7 @@ const initiateSettlement = async (
       };
 
       NotificationService.sendToUser(
-        user.userCustomId,
+        user.userId,
         NotificationPayload.title,
         NotificationPayload.body,
         NotificationPayload.data,
@@ -171,7 +171,7 @@ const finalizeSettlement = async (
 
   try {
     const payout = await Payout.findOne({ payoutId })
-      .populate('userObjectId', 'userCustomId bankDetails name nif')
+      .populate('userObjectId', 'userId bankDetails name nif')
       .session(session);
     if (!payout || payout.status !== 'PENDING') {
       throw new AppError(
@@ -255,7 +255,7 @@ const finalizeSettlement = async (
       },
     };
     NotificationService.sendToUser(
-      (result.userObjectId as any).userCustomId,
+      (result.userObjectId as any).userId,
       NotificationPayload.title,
       NotificationPayload.body,
       NotificationPayload.data,
@@ -314,7 +314,7 @@ const getAllPayouts = async (
     Payout.find()
       .populate(
         'userObjectId',
-        'name profilePhoto userCustomId role businessDetails personalInfo NIF',
+        'name profilePhoto userId role businessDetails personalInfo NIF',
       )
       .populate('senderId', 'name role'),
     filter,
@@ -379,7 +379,7 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   const payout = await Payout.findOne({ payoutId })
     .populate(
       'userObjectId',
-      'name profilePhoto userCustomId role businessDetails personalInfo NIF bankDetails email phone',
+      'name profilePhoto userId role businessDetails personalInfo NIF bankDetails email phone',
     )
     .populate('senderId', 'name role profilePhoto');
 
@@ -450,7 +450,7 @@ const initiateAutomatedSettlement = async () => {
       totalUnpaidEarnings: { $gte: minPayoutAmount },
       userModel: { $in: ['Vendor', 'FleetManager', 'DeliveryPartner'] },
     })
-      .populate('userObjectId', 'registeredBy bankDetails userCustomId name')
+      .populate('userObjectId', 'registeredBy bankDetails userId name')
       .session(session);
 
     if (eligibleWallets.length === 0) return;
@@ -478,7 +478,7 @@ const initiateAutomatedSettlement = async () => {
         };
 
         NotificationService.sendToUser(
-          user.userCustomId,
+          user.userId,
           NotificationPayload.title,
           NotificationPayload.body,
           {},

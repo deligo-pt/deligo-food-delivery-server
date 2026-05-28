@@ -22,7 +22,7 @@ const getAllWallets = async (
     query.userModel = 'DeliveryPartner';
   }
   const wallets = new QueryBuilder(
-    Wallet.find().populate('userObjectId', 'userCustomId name email'),
+    Wallet.find().populate('userObjectId', 'userId name email'),
     query,
   )
     .fields()
@@ -42,7 +42,7 @@ const getAllWallets = async (
 const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
   const wallet = await Wallet.findOne({ walletId }).populate(
     'userObjectId',
-    'name email userCustomId',
+    'name email userId',
   );
 
   if (!wallet) {
@@ -75,11 +75,11 @@ const getMyWallet = async (currentUser: TCurrentUser) => {
   if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') {
     wallet = await Wallet.findOne({
       userObjectId,
-    }).populate('userObjectId', 'name email userCustomId');
+    }).populate('userObjectId', 'name email userId');
   } else {
     wallet = await Wallet.findOne({
       userObjectId,
-    }).populate('userObjectId', 'name email userCustomId');
+    }).populate('userObjectId', 'name email userId');
   }
   if (!wallet) {
     throw new AppError(httpStatus.NOT_FOUND, 'Wallet not found for this user');

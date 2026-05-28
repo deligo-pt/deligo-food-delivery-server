@@ -3,10 +3,10 @@ import { TCurrentUser } from '../../../constant/GlobalInterface/user.interface';
 
 export const registerOrderEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as TCurrentUser;
-  const userCustomId = user?.userCustomId;
+  const userId = user?.userId;
 
-  if (userCustomId) {
-    const personalRoom = `user_${userCustomId}`;
+  if (userId) {
+    const personalRoom = `user_${userId}`;
     socket.join(personalRoom);
   }
 

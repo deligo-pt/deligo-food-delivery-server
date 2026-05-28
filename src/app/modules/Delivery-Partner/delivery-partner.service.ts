@@ -25,7 +25,7 @@ const updateDeliveryPartner = async (
   currentUser: TCurrentUser,
 ) => {
   const centralAuthUser = await AuthUser.findOne({
-    userCustomId: deliveryPartnerCustomId,
+    userId: deliveryPartnerCustomId,
     isDeleted: false,
   });
   if (!centralAuthUser) {
@@ -40,7 +40,7 @@ const updateDeliveryPartner = async (
   }
 
   const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userCustomId: deliveryPartnerCustomId,
+    userId: deliveryPartnerCustomId,
   });
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
@@ -59,7 +59,7 @@ const updateDeliveryPartner = async (
 
   if (
     currentUser.role === 'DELIVERY_PARTNER' &&
-    existingDeliveryPartner.userCustomId !== currentUser?.userCustomId
+    existingDeliveryPartner.userId !== currentUser?.userId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -96,14 +96,14 @@ const updateDeliveryPartner = async (
   try {
     if (payload.status === 'PENDING') {
       await AuthUser.findOneAndUpdate(
-        { userCustomId: deliveryPartnerCustomId },
+        { userId: deliveryPartnerCustomId },
         { $set: { status: 'PENDING' } },
         { session },
       );
     }
 
     const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
-      { userCustomId: deliveryPartnerCustomId },
+      { userId: deliveryPartnerCustomId },
       { $set: flattenedUpdateData },
       {
         new: true,
@@ -145,7 +145,7 @@ const updateDeliveryPartnerLiveLocation = async (
 
   if (
     deliveryPartnerCustomId &&
-    currentUser.userCustomId !== deliveryPartnerCustomId
+    currentUser.userId !== deliveryPartnerCustomId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -189,7 +189,7 @@ const updateDeliveryPartnerLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updated = await DeliveryPartner.findOneAndUpdate(
-    { userCustomId: currentUser.userCustomId },
+    { userId: currentUser.userId },
     { $set: updateData },
     {
       new: true,
@@ -217,7 +217,7 @@ const deliverPartnerDocImageUpload = async (
   deliveryPartnerCustomId: string,
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
-    userCustomId: deliveryPartnerCustomId,
+    userId: deliveryPartnerCustomId,
   });
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found');
@@ -269,21 +269,21 @@ const deliverPartnerDocImageUpload = async (
   try {
     if (updateData['status'] === 'PENDING') {
       await AuthUser.findOneAndUpdate(
-        { userCustomId: deliveryPartnerCustomId },
+        { userId: deliveryPartnerCustomId },
         { $set: { status: 'PENDING' } },
         { session },
       );
     }
 
     const updatedDeliveryPartner = await DeliveryPartner.findOneAndUpdate(
-      { userCustomId: deliveryPartnerCustomId },
+      { userId: deliveryPartnerCustomId },
       { $set: updateData },
       {
         new: true,
         session,
         runValidators: true,
       },
-    ).select('userCustomId name status documents updatedAt');
+    ).select('userId name status documents updatedAt');
 
     if (!updatedDeliveryPartner) {
       throw new AppError(
@@ -315,7 +315,7 @@ const changeDeliveryPartnerStatus = async (
   }
 
   const partner = await DeliveryPartner.findOne({
-    userCustomId: currentUser.userCustomId,
+    userId: currentUser.userId,
   });
 
   if (!partner) {
@@ -339,7 +339,7 @@ const changeDeliveryPartnerStatus = async (
   }
 
   const result = await DeliveryPartner.findOneAndUpdate(
-    { userCustomId: currentUser.userCustomId },
+    { userId: currentUser.userId },
     {
       $set: {
         'operationalData.currentStatus': payload.status,
@@ -390,9 +390,9 @@ const getAllDeliveryPartnersFromDB = async (
   deliveryPartnersQuery.modelQuery = deliveryPartnersQuery.modelQuery.populate({
     path: 'userObjectId',
     populate: [
-      { path: 'approvedBy', select: 'name userCustomId role' },
-      { path: 'rejectedBy', select: 'name userCustomId role' },
-      { path: 'blockedBy', select: 'name userCustomId role' },
+      { path: 'approvedBy', select: 'name userId role' },
+      { path: 'rejectedBy', select: 'name userId role' },
+      { path: 'blockedBy', select: 'name userId role' },
     ],
   });
 
@@ -436,7 +436,7 @@ const getSingleDeliveryPartnerFromDB = async (
 ) => {
   if (
     currentUser?.role === 'DELIVERY_PARTNER' &&
-    currentUser?.userCustomId !== deliveryPartnerCustomId
+    currentUser?.userId !== deliveryPartnerCustomId
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -448,12 +448,12 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
     authUserData = await AuthUser.findOne({
-      userCustomId: deliveryPartnerCustomId,
+      userId: deliveryPartnerCustomId,
       isDeleted: false,
     }).populate('userObjectId');
   } else {
     authUserData = await AuthUser.findOne({
-      userCustomId: deliveryPartnerCustomId,
+      userId: deliveryPartnerCustomId,
     }).populate('userObjectId');
   }
 

@@ -67,7 +67,7 @@ const getOrCreateActiveTicket = async (
 
 const createMessage = async (payload: any, currentUser: TCurrentUser) => {
   const { user: loggedInUser } = await findUserById({
-    userCustomId: currentUser.userCustomId,
+    userId: currentUser.userId,
   });
   const isAgent =
     currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
@@ -78,7 +78,7 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
     : loggedInUser?._id.toString();
   const targetUserCustomId = isAgent
     ? payload.targetUserId
-    : currentUser.userCustomId;
+    : currentUser.userId;
   const targetUserModel = isAgent
     ? payload.targetUserModel
     : ROLE_COLLECTION_MAP[currentUser.role];
@@ -131,12 +131,12 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
   // 4. Create the message
   const newMessage = await SupportMessage.create({
     ticketId: ticket.ticketId,
-    senderId: currentUser.userCustomId, // Custom ID like C-VXXS...
+    senderId: currentUser.userId, // Custom ID like C-VXXS...
     senderRole: currentUser.role,
     message: payload.message,
     messageType: payload.messageType || 'TEXT',
     attachments: payload.attachments || [],
-    readBy: new Map([[currentUser.userCustomId, true]]),
+    readBy: new Map([[currentUser.userId, true]]),
   });
 
   let recipientId: string;
@@ -151,7 +151,7 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
 
       if (ticket.unreadCount.has('ADMIN_GENERAL')) {
         const generalCount = ticket.unreadCount.get('ADMIN_GENERAL') || 0;
-        ticket.unreadCount.set(currentUser.userCustomId, generalCount);
+        ticket.unreadCount.set(currentUser.userId, generalCount);
         ticket.unreadCount.delete('ADMIN_GENERAL');
       }
     }
@@ -188,10 +188,10 @@ const getAllTickets = async (
     findQuery
       .populate(
         'userObjectId',
-        'userCustomId name businessDetails.businessName profilePhoto',
+        'userId name businessDetails.businessName profilePhoto',
       )
       .populate('referenceOrderId', 'orderId status')
-      .populate('assignedAdminId', 'userCustomId name email'),
+      .populate('assignedAdminId', 'userId name email'),
     query,
   )
     .search(['ticketId', 'lastMessage'])
@@ -217,17 +217,17 @@ const markReadByAdminOrUser = async (
   ticketId: string,
   currentUser: TCurrentUser,
 ) => {
-  const userCustomId = currentUser.userCustomId;
+  const userId = currentUser.userId;
   await SupportMessage.updateMany(
-    { ticketId: ticketId, [`readBy.${userCustomId}`]: { $ne: true } },
-    { $set: { [`readBy.${userCustomId}`]: true } },
+    { ticketId: ticketId, [`readBy.${userId}`]: { $ne: true } },
+    { $set: { [`readBy.${userId}`]: true } },
   );
   const ticket = await SupportTicket.findOne({ ticketId: ticketId });
   if (!ticket) {
     throw new AppError(httpStatus.NOT_FOUND, 'Ticket not found');
   }
   if (ticket?.unreadCount) {
-    ticket.unreadCount.set(userCustomId, 0);
+    ticket.unreadCount.set(userId, 0);
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
     if (isAdmin) {
       ticket.unreadCount.set('ADMIN_GENERAL', 0);
@@ -242,7 +242,7 @@ const markReadByAdminOrUser = async (
 
 const closeTicket = async (ticketId: string, currentUser: TCurrentUser) => {
   const loggedInUser = await findUserById({
-    userCustomId: currentUser.userCustomId,
+    userId: currentUser.userId,
   });
   const ticket = await SupportTicket.findOne({
     ticketId: ticketId,
@@ -262,7 +262,7 @@ const closeTicket = async (ticketId: string, currentUser: TCurrentUser) => {
   // Send automated closing message (Portuguese)
   await SupportMessage.create({
     ticketId: ticket.ticketId,
-    senderId: currentUser.userCustomId,
+    senderId: currentUser.userId,
     senderRole: currentUser.role,
     message:
       'O suporte foi encerrado. Envie uma nova mensagem para iniciar um novo ticket.',

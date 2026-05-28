@@ -9,7 +9,7 @@ const vendorSchema = new Schema<TVendor>(
     // -------------------------------------------------------
     // Core Identifiers
     // -------------------------------------------------------
-    userCustomId: {
+    userId: {
       type: String,
       required: true,
       unique: true,

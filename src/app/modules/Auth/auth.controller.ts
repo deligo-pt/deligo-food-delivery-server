@@ -161,7 +161,7 @@ const refreshToken = catchAsync(async (req, res) => {
 //  Submit Approval Request Controller
 const submitForApproval = catchAsync(async (req, res) => {
   const result = await AuthServices.submitForApproval(
-    req.params.userCustomId,
+    req.params.userId,
     req.user as TCurrentUser,
   );
 
@@ -177,7 +177,7 @@ const submitForApproval = catchAsync(async (req, res) => {
 const approvedOrRejectedUser = catchAsync(async (req, res) => {
   const currentUser = req.user as TCurrentUser;
   const result = await AuthServices.approvedOrRejectedUser(
-    req.params.userCustomId,
+    req.params.userId,
     req.body,
     currentUser,
   );
@@ -231,7 +231,7 @@ const resendOtp = catchAsync(async (req, res) => {
 // soft delete user controller
 const softDeleteUser = catchAsync(async (req, res) => {
   const result = await AuthServices.softDeleteUser(
-    req.params.userCustomId,
+    req.params.userId,
     req.user as TCurrentUser,
   );
 
@@ -246,7 +246,7 @@ const softDeleteUser = catchAsync(async (req, res) => {
 // permanent delete user controller
 const permanentDeleteUser = catchAsync(async (req, res) => {
   const result = await AuthServices.permanentDeleteUser(
-    req.params.userCustomId,
+    req.params.userId,
     req.user as TCurrentUser,
   );
 

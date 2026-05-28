@@ -21,7 +21,7 @@ const fleetManagerUpdate = async (
   // Find Fleet Manager
   // ---------------------------------------------------------
   const existingFleetManager = await FleetManager.findOne({
-    userCustomId: fleetManagerCustomId,
+    userId: fleetManagerCustomId,
   });
 
   if (!existingFleetManager) {
@@ -36,7 +36,7 @@ const fleetManagerUpdate = async (
 
   const isSelf =
     currentUser.role === 'FLEET_MANAGER' &&
-    currentUser.userCustomId === existingFleetManager.userCustomId;
+    currentUser.userId === existingFleetManager.userId;
 
   if (!isSelf && !isAdmin) {
     throw new AppError(
@@ -84,7 +84,7 @@ const fleetManagerUpdate = async (
   // Perform Update
   // ---------------------------------------------------------
   const updatedFleetManager = await FleetManager.findOneAndUpdate(
-    { userCustomId: fleetManagerCustomId },
+    { userId: fleetManagerCustomId },
     { $set: payload },
     { new: true },
   );
@@ -107,7 +107,7 @@ const fleetManagerDocImageUpload = async (
 ) => {
   const { docImageTitle, docImageUrls } = payload;
   const existingFleetManager = await FleetManager.findOne({
-    userCustomId: fleetManagerCustomId,
+    userId: fleetManagerCustomId,
   });
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
@@ -116,7 +116,7 @@ const fleetManagerDocImageUpload = async (
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner =
     currentUser.role === 'FLEET_MANAGER' &&
-    currentUser.userCustomId === existingFleetManager.userCustomId;
+    currentUser.userId === existingFleetManager.userId;
 
   if (!isStaff && !isOwner) {
     throw new AppError(
@@ -171,14 +171,13 @@ const deleteFleetManagerDocument = async (
 ) => {
   const { docImageTitle, imageUrl } = payload;
   const existingFleetManager = await FleetManager.findOne({
-    userCustomId: fleetManagerCustomId,
+    userId: fleetManagerCustomId,
   });
   if (!existingFleetManager)
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
 
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
-  const isOwner =
-    currentUser.userCustomId === existingFleetManager.userCustomId;
+  const isOwner = currentUser.userId === existingFleetManager.userId;
   if (!isStaff && !isOwner)
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -239,10 +238,10 @@ const getSingleFleetManagerFromDB = async (
   fleetManagerCustomId: string,
   currentUser: TCurrentUser,
 ) => {
-  const userCustomId = currentUser?.userCustomId;
+  const userId = currentUser?.userId;
   if (
     currentUser?.role === 'FLEET_MANAGER' &&
-    userCustomId !== fleetManagerCustomId
+    userId !== fleetManagerCustomId
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -253,12 +252,12 @@ const getSingleFleetManagerFromDB = async (
 
   if (currentUser?.role === 'FLEET_MANAGER') {
     existingFleetManager = await FleetManager.findOne({
-      userCustomId,
+      userId,
       isDeleted: false,
     });
   } else {
     existingFleetManager = await FleetManager.findOne({
-      userCustomId: fleetManagerCustomId,
+      userId: fleetManagerCustomId,
     });
   }
 

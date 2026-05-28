@@ -31,15 +31,13 @@ export const handleOrderExpiryCron = async () => {
 
         if (
           typeof order.vendorId === 'object' &&
-          (order.vendorId as any).userCustomId
+          (order.vendorId as any).userId
         ) {
-          vendorUserId = (order.vendorId as any).userCustomId;
+          vendorUserId = (order.vendorId as any).userId;
         } else if (order.vendorId) {
-          const vendor = await Vendor.findById(order.vendorId).select(
-            'userCustomId',
-          );
+          const vendor = await Vendor.findById(order.vendorId).select('userId');
           if (vendor) {
-            vendorUserId = vendor.userCustomId;
+            vendorUserId = vendor.userId;
           }
         }
 

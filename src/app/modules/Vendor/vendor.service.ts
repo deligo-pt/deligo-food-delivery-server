@@ -30,7 +30,7 @@ const vendorUpdate = async (
   currentUser: TCurrentUser,
 ) => {
   // 1. Initial check to ensure the vendor exists in the system
-  const existingVendor = await Vendor.findOne({ userCustomId: id });
+  const existingVendor = await Vendor.findOne({ userId: id });
 
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found.');
@@ -40,7 +40,7 @@ const vendorUpdate = async (
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner =
     (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
-    currentUser.userCustomId === existingVendor.userCustomId;
+    currentUser.userId === existingVendor.userId;
   // 3. Authorization: Block unauthorized users from modifying the vendor profile
   if (!isStaff && !isOwner) {
     throw new AppError(
@@ -89,7 +89,7 @@ const vendorUpdate = async (
 
   // 8. Execution: Perform the update using findOneAndUpdate with the atomic $set operator
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { userCustomId: existingVendor.userCustomId },
+    { userId: existingVendor.userId },
     { $set: flattenedPayload },
     { new: true, runValidators: true }, // Ensure new data adheres to schema rules
   );
@@ -114,7 +114,7 @@ const vendorDocImageUpload = async (
   vendorId: string,
 ) => {
   // 1. Check if the vendor exists in the database
-  const existingVendor = await Vendor.findOne({ userCustomId: vendorId });
+  const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
@@ -125,7 +125,7 @@ const vendorDocImageUpload = async (
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner =
     (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
-    currentUser.userCustomId === existingVendor.userCustomId;
+    currentUser.userId === existingVendor.userId;
 
   // 3. Authorization: Only Admins or the Account Owner can perform this action
   if (!isStaff && !isOwner) {
@@ -182,12 +182,12 @@ const deleteVendorDocument = async (
   vendorId: string,
 ) => {
   const { docImageTitle, imageUrl } = payload;
-  const existingVendor = await Vendor.findOne({ userCustomId: vendorId });
+  const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor)
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
 
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
-  const isOwner = currentUser.userCustomId === existingVendor.userCustomId;
+  const isOwner = currentUser.userId === existingVendor.userId;
   if (!isStaff && !isOwner)
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -240,7 +240,7 @@ const updateVendorLiveLocation = async (
     );
   }
 
-  if (currentUser?.userCustomId !== vendorId) {
+  if (currentUser?.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to update live location!',
@@ -281,7 +281,7 @@ const updateVendorLiveLocation = async (
     updateData['currentSessionLocation.isMocked'] = isMocked;
 
   const updatedVendor = await Vendor.findOneAndUpdate(
-    { userCustomId: currentUser.userCustomId },
+    { userId: currentUser.userId },
     { $set: updateData },
     {
       new: true,
@@ -358,9 +358,9 @@ const getAllVendors = async (
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     userObjectId: true,
-    approvedBy: 'name userCustomId role',
-    rejectedBy: 'name userCustomId role',
-    blockedBy: 'name userCustomId role',
+    approvedBy: 'name userId role',
+    rejectedBy: 'name userId role',
+    blockedBy: 'name userId role',
   });
 
   populateOptions.forEach((option) => {
@@ -378,7 +378,7 @@ const getAllVendors = async (
       return {
         _id: vendorProfile._id,
         authUserId: authDoc._id,
-        userCustomId: authDoc.userCustomId,
+        userId: authDoc.userId,
         email: authDoc.email,
         role: authDoc.role,
         status: authDoc.status,
@@ -399,7 +399,7 @@ const getAllVendors = async (
 
 // get single vendor
 const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
-  if (currentUser.role === 'VENDOR' && currentUser.userCustomId !== vendorId) {
+  if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You are not authorize to access this vendor!',
@@ -409,7 +409,7 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
   const findCondition: any = {
-    userCustomId: vendorId,
+    userId: vendorId,
     role: USER_ROLE.VENDOR,
   };
 
@@ -421,9 +421,9 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     userObjectId: true,
-    approvedBy: 'name userCustomId role',
-    rejectedBy: 'name userCustomId role',
-    blockedBy: 'name userCustomId role',
+    approvedBy: 'name userId role',
+    rejectedBy: 'name userId role',
+    blockedBy: 'name userId role',
   });
 
   populateOptions.forEach((option) => {
@@ -440,7 +440,7 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   const formattedVendor = {
     _id: vendorProfile._id,
     authUserId: authDoc._id,
-    userCustomId: authDoc.userCustomId,
+    userId: authDoc.userId,
     email: authDoc.email,
     role: authDoc.role,
     status: authDoc.status,
@@ -547,7 +547,7 @@ const getAllVendorsForCustomer = async (
 
   // 5. Select parent paths to avoid 'Path Collision'
   vendors.modelQuery = vendors.modelQuery.select(
-    'name userCustomId  businessDetails businessLocation documents rating currentSessionLocation',
+    'name userId  businessDetails businessLocation documents rating currentSessionLocation',
   );
 
   const meta = await vendors.countTotal();
@@ -582,7 +582,7 @@ const getAllVendorsForCustomer = async (
 
     return {
       id: vendor._id,
-      userCustomId: vendor.userCustomId,
+      userId: vendor.userId,
       name: vendor.name,
       businessDetails: {
         businessName: vendor.businessDetails?.businessName,
@@ -608,17 +608,48 @@ const getAllVendorsForCustomer = async (
 
 // get single vendor for customer
 const getSingleVendorForCustomer = async (vendorId: string) => {
-  const existingVendor = await Vendor.findOne({
-    userCustomId: vendorId,
+  const vendorAuth = await AuthUser.findOne({
+    userId: vendorId,
+    role: USER_ROLE.VENDOR,
+    status: USER_STATUS.APPROVED,
     isDeleted: false,
-  }).select(
-    'name userCustomId email contactNumber businessDetails businessLocation',
-  );
-  if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
+  })
+    .populate({
+      path: 'userObjectId',
+      select: 'name userId businessDetails businessLocation documents rating', // কাস্টমারের জন্য প্রয়োজনীয় ফিল্ডস
+    })
+    .lean();
+
+  if (!vendorAuth || !vendorAuth.userObjectId) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Vendor profile not found or currently unavailable!',
+    );
   }
 
-  return existingVendor;
+  const vendorProfile = vendorAuth.userObjectId as any;
+
+  const formattedVendor = {
+    id: vendorProfile._id,
+    userId: vendorAuth.userId,
+    name: vendorProfile.name,
+    email: vendorAuth.email || '',
+    contactNumber: vendorAuth.contactNumber || '',
+    businessDetails: {
+      businessName: vendorProfile.businessDetails?.businessName,
+      businessType: vendorProfile.businessDetails?.businessType,
+      openingHours: vendorProfile.businessDetails?.openingHours,
+      closingHours: vendorProfile.businessDetails?.closingHours,
+      closingDays: vendorProfile.businessDetails?.closingDays,
+      isStoreOpen: vendorProfile.businessDetails?.isStoreOpen,
+    },
+    businessLocation: vendorProfile.businessLocation,
+    storePhoto: vendorProfile.documents?.storePhoto || [],
+    rating: vendorProfile.rating,
+    currentSessionLocation: vendorProfile.currentSessionLocation,
+  };
+
+  return formattedVendor;
 };
 
 export const VendorServices = {

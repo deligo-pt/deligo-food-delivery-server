@@ -8,10 +8,7 @@ export interface IAuthLookupModel<T> extends Model<T> {
     isDeleted?: boolean,
     fields?: string,
   ): Promise<T | null>;
-  isUserExistsByUserId(
-    userCustomId: string,
-    isDeleted?: boolean,
-  ): Promise<T | null>;
+  isUserExistsByUserId(userId: string, isDeleted?: boolean): Promise<T | null>;
   isUserExistsByContactNumber?(
     contactNumber: string,
     isDeleted?: boolean,
@@ -25,7 +22,7 @@ export interface IAuthUserModel extends Model<TAuthUser> {
     fields?: string,
   ): Promise<TAuthUser | null>;
   isUserExistsByUserId(
-    userCustomId: string,
+    userId: string,
     isDeleted?: boolean,
   ): Promise<TAuthUser | null>;
   isUserExistsByContactNumber(

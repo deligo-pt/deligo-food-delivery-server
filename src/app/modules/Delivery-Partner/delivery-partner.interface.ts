@@ -9,7 +9,7 @@ export type TDeliveryPartner = {
   // Core Identifiers & Credentials
   // -------------------------------------------------
   _id?: mongoose.Types.ObjectId;
-  userCustomId: string;
+  userId: string;
   registeredBy?: mongoose.Types.ObjectId;
   status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;

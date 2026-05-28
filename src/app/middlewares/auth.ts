@@ -57,12 +57,10 @@ const auth = (...requiredRoles: TUserRole[]) => {
           config.jwt.jwt_access_secret as string,
         ) as JwtPayload;
 
-        const { role, iat, userCustomId, deviceId } = decoded;
+        const { role, iat, userId, deviceId } = decoded;
 
         // 5. Fetch user and model information from the database
-        const user = await AuthUser.findOne({ userCustomId }).populate(
-          'permissions',
-        );
+        const user = await AuthUser.findOne({ userId }).populate('permissions');
         if (!user) {
           throw new AppError(httpStatus.UNAUTHORIZED, 'User not found');
         }

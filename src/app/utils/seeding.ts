@@ -26,12 +26,12 @@ export const seed = async () => {
 
     if (!superAdmin) {
       console.log('Seeding Super Admin and creating AuthUser shadow entry...');
-      const userCustomId = `SA-${customNanoId(8)}`;
+      const userId = `SA-${customNanoId(8)}`;
 
       const [newAdminProfile] = await Admin.create(
         [
           {
-            userCustomId,
+            userId,
             name: 'Super Admin',
             profilePhoto: config.super_admin.super_admin_profile_photo,
             status: USER_STATUS.APPROVED,
@@ -43,10 +43,10 @@ export const seed = async () => {
       await AuthUser.create(
         [
           {
-            userAuthId: `AUTH-${userCustomId}`,
+            userAuthId: `AUTH-${userId}`,
             userObjectId: newAdminProfile._id,
             onModel: 'Admin',
-            userCustomId,
+            userId,
             email: config.super_admin.super_admin_email,
             password: config.super_admin.super_admin_password,
             contactNumber: config.super_admin.super_admin_contact_number,

@@ -108,7 +108,7 @@ const updateMyProfile = async (
   // Update User Document
   // -----------------------------
   const updatedUser = await model.findOneAndUpdate(
-    { userCustomId: currentUser.userCustomId },
+    { userId: currentUser.userId },
     { $set: payload },
     { new: true },
   );

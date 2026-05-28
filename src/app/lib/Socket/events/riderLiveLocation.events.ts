@@ -16,7 +16,7 @@ export const registerDriverLiveLocationEvents = (
   socket: Socket,
 ) => {
   const user = socket.data.user as TCurrentUser;
-  const userCustomId = user?.userCustomId;
+  const userId = user?.userId;
   const userRole = user?.role;
 
   // --------------------------------------------
@@ -47,7 +47,7 @@ export const registerDriverLiveLocationEvents = (
       try {
         const { orderId, latitude, longitude, geoAccuracy = 0 } = payload;
 
-        if (!orderId || !userCustomId) return;
+        if (!orderId || !userId) return;
 
         // Only delivery partner can send location
         if (userRole !== 'DELIVERY_PARTNER') return;
@@ -75,9 +75,9 @@ export const registerDriverLiveLocationEvents = (
         });
 
         const now = Date.now();
-        const lastUpdate = lastDbUpdateMap.get(userCustomId) || 0;
+        const lastUpdate = lastDbUpdateMap.get(userId) || 0;
         if (now - lastUpdate > 5000) {
-          lastDbUpdateMap.set(userCustomId, now);
+          lastDbUpdateMap.set(userId, now);
           DeliveryPartnerServices.updateDeliveryPartnerLiveLocation(
             { latitude, longitude, geoAccuracy },
             user,

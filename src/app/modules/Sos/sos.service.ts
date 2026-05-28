@@ -151,8 +151,8 @@ const getAllSosAlerts = async (
     .search(['status', 'role', 'issueTags']);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
-    id: 'name userCustomId',
-    resolvedBy: 'name userCustomId role',
+    id: 'name userId',
+    resolvedBy: 'name userId role',
   });
 
   populateOptions.forEach((option) => {
@@ -214,7 +214,7 @@ const getUserSosHistory = async (
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     id: 'name',
-    resolvedBy: 'name userCustomId role',
+    resolvedBy: 'name userId role',
   });
 
   populateOptions.forEach((option) => {

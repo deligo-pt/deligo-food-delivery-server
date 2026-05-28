@@ -566,7 +566,7 @@ const getPartnerPerformanceAnalytics = async (
     'name.firstName',
     'name.lastName',
     'address.city',
-    'userCustomId',
+    'userId',
   ];
   const partnerQuery = new QueryBuilder(
     DeliveryPartner.find({ 'registeredBy.id': managerId, isDeleted: false }),
@@ -624,7 +624,7 @@ const getPartnerPerformanceAnalytics = async (
         return {
           id: partner._id,
           name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
-          displayId: partner.userCustomId,
+          displayId: partner.userId,
           vehicle: partner?.vehicleInfo?.vehicleType,
           city: partner?.address?.city || 'N/A',
           deliveries: opData?.completedDeliveries || 0,
@@ -1188,7 +1188,7 @@ const getVendorPerformanceAnalytics = async (
             $project: {
               _id: 1,
               profilePhoto: 1,
-              userCustomId: 1,
+              userId: 1,
               email: 1,
               status: 1,
               name: 1,
@@ -1356,7 +1356,7 @@ const getSingleVendorPerformanceDetails = async (
   }
 
   const vendor = await Vendor.findOne({
-    userCustomId: vendorUserCustomId,
+    userId: vendorUserCustomId,
     isDeleted: false,
   });
 
@@ -1465,7 +1465,7 @@ const getSingleVendorPerformanceDetails = async (
     vendorPerformance: {
       _id: vendor._id,
       profilePhoto: vendor.profilePhoto,
-      userCustomId: vendor.userCustomId,
+      userId: vendor.userId,
       email: vendor.email,
       status: vendor.status,
       name: vendor.name,

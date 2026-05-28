@@ -12,7 +12,7 @@ export type TAuthUser = {
   // 1. Core Identifiers & Relations Mapping
   // ------------------------------------------------------------------
   userAuthId: string; // UUID for future central Auth Service synchronization
-  userCustomId: string; // Generated readable custom ID (e.g., 'VND-1002', 'FM-MLSE40CI')
+  userId: string; // Generated readable custom ID (e.g., 'VND-1002', 'FM-MLSE40CI')
   userObjectId: mongoose.Types.ObjectId; // Reference to the specific profile document's MongoDB _id
   onModel: TUserModel;
   email: string; // Unique primary email used as the login identifier

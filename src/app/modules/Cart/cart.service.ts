@@ -695,7 +695,7 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     customer: 'name',
-    itemVendor: 'name userCustomId',
+    itemVendor: 'name userId',
   });
   populateOptions.forEach((option) => {
     query = query.populate(option);

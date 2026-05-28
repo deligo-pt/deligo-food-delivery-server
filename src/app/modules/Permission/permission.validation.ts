@@ -38,7 +38,7 @@ const updatePermissionValidationSchema = z.object({
 const assignPermissionsValidationSchema = z.object({
   body: z
     .object({
-      userCustomId: z
+      userId: z
         .string({
           required_error: 'User Custom ID is required',
         })
@@ -66,7 +66,7 @@ const assignPermissionsValidationSchema = z.object({
 const revokePermissionsValidationSchema = z.object({
   body: z
     .object({
-      userCustomId: z
+      userId: z
         .string({
           required_error: 'User Custom ID is required',
         })

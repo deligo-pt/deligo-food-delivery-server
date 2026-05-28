@@ -2045,7 +2045,7 @@ const getFleetManagerPerformanceAnalytics = async (
             $project: {
               _id: 1,
               profilePhoto: 1,
-              userCustomId: 1,
+              userId: 1,
               email: 1,
               status: 1,
               name: 1,
@@ -2198,9 +2198,9 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
 
   // Fleet Manager
   const fleetManager = await FleetManager.findOne({
-    userCustomId: fleetManagerCustomId,
+    userId: fleetManagerCustomId,
   })
-    .select('_id profilePhoto userCustomId email status name address rating')
+    .select('_id profilePhoto userId email status name address rating')
     .lean();
 
   if (!fleetManager) {
@@ -2212,7 +2212,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     'registeredBy.id': fleetManager._id,
     isDeleted: false,
   })
-    .select('_id userCustomId name rating')
+    .select('_id userId name rating')
     .lean();
 
   const driverIds = drivers.map((d) => d._id);
@@ -2292,7 +2292,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     .slice(0, 4)
     .map((driver) => ({
       _id: driver._id,
-      userCustomId: driver.userCustomId,
+      userId: driver.userId,
       name: driver.name,
       rating: driver.rating?.average || 0,
     }));
@@ -2373,7 +2373,7 @@ const getDeliveryPartnerPerformanceAnalytics = async (
             $project: {
               _id: 1,
               profilePhoto: 1,
-              userCustomId: 1,
+              userId: 1,
               email: 1,
               status: 1,
               name: 1,
@@ -2555,10 +2555,10 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
 
   // Find partner
   const partner = await DeliveryPartner.findOne({
-    userCustomId: partnerCustomUserId,
+    userId: partnerCustomUserId,
   })
     .select(
-      '_id profilePhoto userCustomId email status name address operationalData rating',
+      '_id profilePhoto userId email status name address operationalData rating',
     )
     .lean();
 
@@ -3341,7 +3341,7 @@ const getAdminCustomerInsights = async (query: {
       .sort((a: any, b: any) => b.totalSpent - a.totalSpent)
       .slice(0, 5)
       .map((c: any) => ({
-        customerId: c.userDetails?.userCustomId || 'N/A',
+        customerId: c.userDetails?.userId || 'N/A',
         name: c.userDetails
           ? `${c.userDetails.name?.firstName} ${c.userDetails.name?.lastName}`.trim()
           : 'Anonymous',
@@ -3444,7 +3444,7 @@ const getTopVendors = async (query: {
     { $unwind: '$vendorInfo' },
     {
       $project: {
-        vendorId: '$vendorInfo.userCustomId',
+        vendorId: '$vendorInfo.userId',
         vendorName: {
           $concat: [
             '$vendorInfo.name.firstName',
@@ -3807,7 +3807,7 @@ const getDeliveryInsights = async (query: {
             { $unwind: '$rider' },
             {
               $project: {
-                riderId: { $ifNull: ['$rider.userCustomId', 'N/A'] },
+                riderId: { $ifNull: ['$rider.userId', 'N/A'] },
                 riderName: {
                   $concat: [
                     '$rider.name.firstName',
@@ -3914,7 +3914,7 @@ const getDeliveryInsights = async (query: {
       },
       {
         $project: {
-          riderId: { $toString: '$userCustomId' },
+          riderId: { $toString: '$userId' },
           riderName: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
           idleTimeMinutes: {
             $round: [

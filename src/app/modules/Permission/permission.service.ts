@@ -404,13 +404,13 @@ const updatePermission = async (
 };
 
 const assignPermissionsToUser = async (payload: {
-  userCustomId: string;
+  userId: string;
   permissionIds: string[];
 }) => {
-  const { userCustomId, permissionIds } = payload;
+  const { userId, permissionIds } = payload;
 
   const isUserExist = await AuthUser.findOne({
-    userCustomId,
+    userId,
     isDeleted: false,
   });
   if (!isUserExist) {
@@ -428,7 +428,7 @@ const assignPermissionsToUser = async (payload: {
   }
 
   const updatedUser = await AuthUser.findOneAndUpdate(
-    { userCustomId },
+    { userId },
     { $addToSet: { permissions: { $each: permissionIds } } },
     { new: true, runValidators: true },
   ).populate('permissions');
@@ -437,13 +437,13 @@ const assignPermissionsToUser = async (payload: {
 };
 
 const revokePermissionsFromUser = async (payload: {
-  userCustomId: string;
+  userId: string;
   permissionIds: string[];
 }) => {
-  const { userCustomId, permissionIds } = payload;
+  const { userId, permissionIds } = payload;
 
   const isUserExist = await AuthUser.findOne({
-    userCustomId,
+    userId,
     isDeleted: false,
   });
   if (!isUserExist) {
@@ -451,7 +451,7 @@ const revokePermissionsFromUser = async (payload: {
   }
 
   const updatedUser = await AuthUser.findOneAndUpdate(
-    { userCustomId },
+    { userId },
     { $pull: { permissions: { $in: permissionIds } } },
     { new: true, runValidators: true },
   ).populate('permissions');

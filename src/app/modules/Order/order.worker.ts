@@ -53,7 +53,7 @@ export const processOrderPostUpdate = async (job: Job) => {
   try {
     if (orderStatus === 'DELIVERED') {
       const partner = await DeliveryPartner.findOne({
-        userCustomId: partnerUserId,
+        userId: partnerUserId,
       });
       if (!partner) throw new Error('Delivery Partner not found');
 
@@ -236,7 +236,7 @@ export const processOrderPostUpdate = async (job: Job) => {
       );
 
       await DeliveryPartner.updateOne(
-        { userCustomId: partnerUserId },
+        { userId: partnerUserId },
         {
           $set: {
             'operationalData.currentOrderId': null,
@@ -254,7 +254,7 @@ export const processOrderPostUpdate = async (job: Job) => {
       );
     } else if (orderStatus === 'REASSIGNMENT_NEEDED') {
       await DeliveryPartner.updateOne(
-        { userCustomId: partnerUserId },
+        { userId: partnerUserId },
         {
           $set: {
             'operationalData.currentOrderId': null,
@@ -272,9 +272,9 @@ export const processOrderPostUpdate = async (job: Job) => {
     await session.commitTransaction();
 
     const customer = await Customer.findById(updatedOrder.customerId).lean();
-    const customerId = customer?.userCustomId;
+    const customerId = customer?.userId;
     const vendor = await Vendor.findById(updatedOrder.vendorId).lean();
-    const vendorId = vendor?.userCustomId;
+    const vendorId = vendor?.userId;
 
     const notificationPayload = {
       title: `Order is now ${orderStatus}`,

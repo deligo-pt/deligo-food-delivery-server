@@ -10,7 +10,7 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
     //-------------------------------------------------
     // Core Identifiers
     //-------------------------------------------------
-    userCustomId: { type: String, required: true, unique: true },
+    userId: { type: String, required: true, unique: true },
     registeredBy: {
       type: Schema.Types.ObjectId,
       ref: 'AuthUser',

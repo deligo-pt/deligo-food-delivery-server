@@ -9,7 +9,7 @@ const fleetManagerSchema = new Schema<TFleetManager>(
     // ------------------------------------------
     // Core Identifiers
     // ------------------------------------------
-    userCustomId: {
+    userId: {
       type: String,
       required: true,
       unique: true,
