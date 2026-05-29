@@ -3,14 +3,14 @@ import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { SponsorshipServices } from './sponsorships.service';
 import { TImageFile } from '../../interfaces/image.interface';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // create Sponsorship Controller
 const createSponsorship = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
   const result = await SponsorshipServices.createSponsorship(
     req.body,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     file?.path ?? null,
   );
 
@@ -44,7 +44,7 @@ const updateSponsorship = catchAsync(async (req, res) => {
 // get all sponsorships controller
 const getAllSponsorships = catchAsync(async (req, res) => {
   const result = await SponsorshipServices.getAllSponsorships(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.query,
   );
   sendResponse(res, {
@@ -59,7 +59,7 @@ const getAllSponsorships = catchAsync(async (req, res) => {
 // get single sponsorships controller
 const getSingleSponsorship = catchAsync(async (req, res) => {
   const result = await SponsorshipServices.getSingleSponsorship(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.params.id,
   );
   sendResponse(res, {
@@ -74,7 +74,7 @@ const getSingleSponsorship = catchAsync(async (req, res) => {
 const softDeleteSponsorship = catchAsync(async (req, res) => {
   const { id } = req.params;
   const result = await SponsorshipServices.softDeletedSponsorship(
-    req?.user as TCurrentUser,
+    req?.user as TAuthUser,
     id,
   );
   sendResponse(res, {
@@ -89,7 +89,7 @@ const softDeleteSponsorship = catchAsync(async (req, res) => {
 const permanentDeleteSponsorship = catchAsync(async (req, res) => {
   const { id } = req.params;
   const result = await SponsorshipServices.permanentDeleteSponsorship(
-    req?.user as TCurrentUser,
+    req?.user as TAuthUser,
     id,
   );
   sendResponse(res, {

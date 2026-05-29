@@ -6,11 +6,11 @@ import httpStatus from 'http-status';
 import { TTransaction } from './transaction.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TOrderItemSnapshot } from '../../constant/GlobalInterface/order.interface';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // get all transactions
 const getMyTransactions = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   query: Record<string, unknown>,
 ) => {
   let filter: Record<string, unknown> = {};

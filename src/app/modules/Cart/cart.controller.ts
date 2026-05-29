@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { CartServices } from './cart.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {
   const result = await CartServices.addToCart(
     req.body,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
 
   sendResponse(res, {
@@ -23,7 +23,7 @@ const addToCart = catchAsync(async (req, res) => {
 const activateItem = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await CartServices.activateItem(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     productId,
     req.body.variationSku,
   );
@@ -38,7 +38,7 @@ const activateItem = catchAsync(async (req, res) => {
 // update cart item Controller
 const updateCartItemQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateCartItemQuantity(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.body,
   );
   sendResponse(res, {
@@ -52,7 +52,7 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
 // update add on quantity Controller
 const updateAddonQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateAddonQuantity(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.body,
   );
   sendResponse(res, {
@@ -68,7 +68,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
   const itemsToDelete = Array.isArray(req.body) ? req.body : [req.body];
 
   const result = await CartServices.deleteCartItem(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     itemsToDelete,
   );
 
@@ -82,7 +82,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
 
 // clear cart Controller
 const clearCart = catchAsync(async (req, res) => {
-  const result = await CartServices.clearCart(req.user as TCurrentUser);
+  const result = await CartServices.clearCart(req.user as TAuthUser);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -94,7 +94,7 @@ const clearCart = catchAsync(async (req, res) => {
 // get all cart Controller
 const getAllCart = catchAsync(async (req, res) => {
   const result = await CartServices.getAllCart(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.query,
   );
   sendResponse(res, {
@@ -109,7 +109,7 @@ const getAllCart = catchAsync(async (req, res) => {
 const viewCart = catchAsync(async (req, res) => {
   const { cartCustomerId } = req.body;
   const result = await CartServices.viewCart(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     cartCustomerId,
   );
 

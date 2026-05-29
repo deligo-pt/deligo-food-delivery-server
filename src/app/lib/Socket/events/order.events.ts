@@ -1,8 +1,8 @@
 import { Server, Socket } from 'socket.io';
-import { TCurrentUser } from '../../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../../../modules/AuthUser/authUser.interface';
 
 export const registerOrderEvents = (io: Server, socket: Socket) => {
-  const user = socket.data.user as TCurrentUser;
+  const user = socket.data.user as TAuthUser;
   const userId = user?.userId;
 
   if (userId) {

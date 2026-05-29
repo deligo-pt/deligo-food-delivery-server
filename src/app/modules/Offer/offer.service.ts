@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { TOffer } from './offer.interface';
 import { Offer } from './offer.model';
@@ -15,9 +14,10 @@ import {
   rebuildCheckoutSummary,
 } from './offer.utils';
 import { Order } from '../Order/order.model';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // create offer service
-const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
+const createOffer = async (payload: TOffer, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -155,7 +155,7 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
 const updateOffer = async (
   id: string,
   payload: Partial<TOffer>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -318,7 +318,7 @@ const updateOffer = async (
 };
 
 // toggle offer status service
-const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
+const toggleOfferStatus = async (id: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -365,7 +365,7 @@ const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
 const validateAndApplyOffer = async (
   checkoutId: string,
   offerIdentifier: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData)
@@ -418,7 +418,7 @@ const validateAndApplyOffer = async (
 // get available offers for checkout service
 const getAvailableOffersForCheckout = async (
   checkoutId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData) {
@@ -499,7 +499,7 @@ const getAvailableOffersForCheckout = async (
 
 // get all offers service
 const getAllOffers = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   query: Record<string, unknown>,
 ) => {
   const now = new Date();
@@ -544,7 +544,7 @@ const getAllOffers = async (
 };
 
 // get single offer service
-const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
+const getSingleOffer = async (id: string, currentUser: TAuthUser) => {
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isCustomer = currentUser.role === 'CUSTOMER';
@@ -579,7 +579,7 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
 };
 
 // soft delete offer service
-const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
+const softDeleteOffer = async (id: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -636,7 +636,7 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
 };
 
 // permanent delete offer service
-const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
+const permanentDeleteOffer = async (id: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,

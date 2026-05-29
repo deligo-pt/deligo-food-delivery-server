@@ -34,11 +34,9 @@ import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
 import { ReferralServices } from '../Referral/referral.service';
-import {
-  TCurrentUser,
-  TLoginDevice,
-} from '../../constant/GlobalInterface/user.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -182,7 +180,7 @@ const onboardUser = async <
 >(
   payload: T,
   targetRole: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const mapKey = `/create-${targetRole}` as keyof typeof USER_TYPE_MAP;
 
@@ -679,7 +677,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
 //update FCM Token
 const updateFcmToken = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   payload: { token: string; deviceId: string },
 ) => {
   const { token, deviceId } = payload;
@@ -758,7 +756,7 @@ const logoutUser = async (email: string, deviceId: string) => {
 };
 // Change Password
 const changePassword = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   payload: { oldPassword: string; newPassword: string },
 ) => {
   // checking if the user is exist
@@ -1035,7 +1033,7 @@ const refreshToken = async (token: string) => {
 };
 
 // submit approval request service
-const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
+const submitForApproval = async (userId: string, currentUser: TAuthUser) => {
   const authUser = await AuthUser.findOne({ userId });
   if (!authUser || authUser.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -1169,7 +1167,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
 const approvedOrRejectedUser = async (
   userId: string,
   payload: TApprovedRejectsPayload,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   // --------------------------------------------------------------
   // Authorization & Validation
@@ -1605,7 +1603,7 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
 };
 
 // soft delete user service
-const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
+const softDeleteUser = async (userId: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -1663,7 +1661,7 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
 // permanent delete user service
 const permanentDeleteUser = async (
   userId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(

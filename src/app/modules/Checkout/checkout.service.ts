@@ -9,7 +9,7 @@ import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Checkout Service
 const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
@@ -344,7 +344,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
 // get checkout summary
 const getCheckoutSummary = async (
   checkoutSummaryId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(

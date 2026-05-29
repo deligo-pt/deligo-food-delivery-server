@@ -5,8 +5,8 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Order } from '../Order/order.model';
 import { Points, PointsLog } from './points.model';
 import mongoose, { ClientSession, Types } from 'mongoose';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 /**
  * Adds loyalty points to a customer based on their order amount.
@@ -342,7 +342,7 @@ const updatePointBalance = async (
 };
 
 // Fetch my points
-const getMyPoints = async (currentUser: TCurrentUser) => {
+const getMyPoints = async (currentUser: TAuthUser) => {
   const points = await Points.findOne({
     'userObjectId.id': currentUser._id,
   }).lean();

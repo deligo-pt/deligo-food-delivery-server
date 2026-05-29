@@ -14,11 +14,11 @@ import { RedisService } from '../../config/redis';
 import { uploadLocalFileToCloudinary } from '../../utils/uploadToCloudinary';
 import { sendAgreementSignedEmail } from '../../helpers/sendAgreementSignedEmail';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 const initiateAgreement = async (
   payload: TInitiateAgreementPayload,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const normalizedEmail = payload.email.toLowerCase();
 
@@ -116,7 +116,7 @@ const initiateAgreement = async (
 // Verify Agreement OTP
 const verifyAgreementOtp = async (
   payload: { email: string; otp: string },
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const { email, otp } = payload;
   const normalizedEmail = email.toLowerCase();
@@ -207,7 +207,7 @@ const verifyAgreementOtp = async (
 };
 
 // Resend Agreement OTP
-const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
+const resendAgreementOtp = async (email: string, currentUser: TAuthUser) => {
   // 1. Validate input
   if (!email) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Agreement Email is required');
@@ -276,7 +276,7 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
 const signAgreement = async (
   agreementId: string,
   signatureImage: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
   const agreement = await Agreement.findById(agreementId);
@@ -368,7 +368,7 @@ const signAgreement = async (
 
 const getAgreementById = async (
   agreementId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
   const agreement = await Agreement.findById(agreementId);
@@ -395,7 +395,7 @@ const getAgreementById = async (
 
 const getAllAgreements = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   if (!isAdmin) {

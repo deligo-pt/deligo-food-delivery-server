@@ -4,7 +4,6 @@
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import {
   TDeliveryPartner,
   TDeliveryPartnerImageDocuments,
@@ -17,12 +16,13 @@ import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.in
 import { AuthUser } from '../AuthUser/authUser.model';
 import mongoose from 'mongoose';
 import { flattenObject } from '../../utils/flattenObject';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerCustomId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const centralAuthUser = await AuthUser.findOne({
     userId: deliveryPartnerCustomId,
@@ -133,7 +133,7 @@ const updateDeliveryPartner = async (
 // update delivery partner live location
 const updateDeliveryPartnerLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   deliveryPartnerCustomId?: string,
 ) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
@@ -213,7 +213,7 @@ const updateDeliveryPartnerLiveLocation = async (
 const deliverPartnerDocImageUpload = async (
   file: string | undefined,
   data: TDeliveryPartnerImageDocuments,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   deliveryPartnerCustomId: string,
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
@@ -304,7 +304,7 @@ const deliverPartnerDocImageUpload = async (
 };
 
 const changeDeliveryPartnerStatus = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   payload: { status: 'IDLE' | 'OFFLINE' },
 ) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
@@ -358,7 +358,7 @@ const changeDeliveryPartnerStatus = async (
 //get all delivery partners
 const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser?.role === 'FLEET_MANAGER') {
     const fleetManagedPartners = await DeliveryPartner.find({
@@ -432,7 +432,7 @@ const getAllDeliveryPartnersFromDB = async (
 // get single delivery partner from db
 const getSingleDeliveryPartnerFromDB = async (
   deliveryPartnerCustomId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (
     currentUser?.role === 'DELIVERY_PARTNER' &&

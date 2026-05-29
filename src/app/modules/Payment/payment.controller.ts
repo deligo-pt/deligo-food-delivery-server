@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { PaymentServices } from './payment.service';
 import sendResponse from '../../utils/sendResponse';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // create redUniq payment intent controller
 const createRedUniqPayment = catchAsync(async (req, res) => {
@@ -25,7 +25,7 @@ const createRedUniqPayment = catchAsync(async (req, res) => {
 const handlePaymentFailure = catchAsync(async (req, res) => {
   const result = await PaymentServices.handlePaymentFailure(
     req.params.checkoutSummaryId,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -38,7 +38,7 @@ const handlePaymentFailure = catchAsync(async (req, res) => {
 // create ingredient redUniq payment intent controller
 const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
   const payload = req.body;
-  const currentUser = req.user as TCurrentUser;
+  const currentUser = req.user as TAuthUser;
 
   const session = await PaymentServices.createIngredientRedUniqPayment(
     payload,

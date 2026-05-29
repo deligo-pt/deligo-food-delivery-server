@@ -9,14 +9,13 @@ import { TDeliveryAddress } from '../../constant/GlobalInterface/address.interfa
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { generateReferralCode } from '../../utils/generateReferralCode';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // update customer service
 const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
-  currentUser: TCurrentUser,
-  profilePhoto?: string,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -25,9 +24,14 @@ const updateCustomer = async (
     );
   }
 
+  console.log(currentUser);
+
+
+  const { profilePhoto } = payload
+
   const customer = await Customer.findOne({ userId: customerId });
   if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  if (customer.requiresOtpVerification)
+  if (currentUser.requiresOtpVerification)
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Please verify your email or phone number first.',
@@ -51,12 +55,7 @@ const updateCustomer = async (
     payload.referralCode = newReferralCode;
   }
 
-  // ----------------------------------------------------------------------
-  // Photo update
-  // ----------------------------------------------------------------------
-  if (payload.profilePhoto) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Photo must be a file upload');
-  }
+
 
   if (profilePhoto) payload.profilePhoto = profilePhoto;
 
@@ -130,7 +129,7 @@ const updateCustomer = async (
 // --------------------------------------------------------------
 const updateCustomerLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   customerId: string,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
@@ -208,7 +207,7 @@ const updateCustomerLiveLocation = async (
 // --------------------------------------------------------------
 const addDeliveryAddress = async (
   deliveryAddress: TDeliveryAddress,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   // --------------------------------------------------
   // Validate payload
@@ -340,7 +339,7 @@ const addDeliveryAddress = async (
 const updateDeliveryAddress = async (
   addressId: string,
   payload: Partial<TDeliveryAddress>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const userId = currentUser.userId;
   const customer = await Customer.findOne({
@@ -405,7 +404,7 @@ const updateDeliveryAddress = async (
 // Active or deactivate delivery address
 const toggleDeliveryAddressStatus = async (
   addressId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const userId = currentUser.userId;
   await Customer.updateOne(
@@ -452,7 +451,7 @@ const toggleDeliveryAddressStatus = async (
 // delete delivery address
 const deleteDeliveryAddress = async (
   addressId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const userId = currentUser.userId;
   const result = await Customer.findOne(
@@ -483,7 +482,7 @@ const deleteDeliveryAddress = async (
 //get all customers
 const getAllCustomersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -522,7 +521,7 @@ const getAllCustomersFromDB = async (
 // get single customer
 const getSingleCustomerFromDB = async (
   customerId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(

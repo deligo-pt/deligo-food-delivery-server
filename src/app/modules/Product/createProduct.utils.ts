@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import customNanoId from '../../utils/customNanoId';
 import { BusinessCategoryName } from '../Category/category.interface';
@@ -10,8 +9,9 @@ import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { Types } from 'mongoose';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
-const validateVendor = (currentUser: TCurrentUser) => {
+const validateVendor = (currentUser: TAuthUser) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -88,7 +88,7 @@ const applyTax = async (payload: TProduct) => {
 
 const prepareBasicFields = (
   payload: TProduct,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   category: any,
 ) => {
   const shortId = customNanoId(6);

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { TProduct } from './product.interface';
 import { Product } from './product.model';
@@ -14,9 +13,10 @@ import { Tax } from '../Tax/tax.model';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Create Product Service
-const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
+const createProduct = async (payload: TProduct, currentUser: TAuthUser) => {
   CreateProductUtils.validateVendor(currentUser);
   CreateProductUtils.validateBasePayload(payload);
 
@@ -55,7 +55,7 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
 const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const { images } = payload;
   const existingProduct = await Product.findOne({
@@ -165,7 +165,7 @@ const updateProduct = async (
 const manageProductVariations = async (
   productId: string,
   payload: { name: string; options: any[] },
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const existingProduct = await Product.findOne({
     productId,
@@ -299,7 +299,7 @@ const renameProductVariation = async (
     oldLabel?: string;
     newLabel?: string;
   },
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const existingProduct = await Product.findOne({
     productId,
@@ -360,7 +360,7 @@ const removeProductVariations = async (
     name: string;
     labelToRemove?: string;
   },
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const existingProduct = await Product.findOne({
     productId,
@@ -456,7 +456,7 @@ const removeProductVariations = async (
 
 // update inventory and pricing service
 const updateInventoryAndPricing = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   productId: string,
   addedQuantity: number = 0,
   reduceQuantity: number = 0,
@@ -565,7 +565,7 @@ const updateInventoryAndPricing = async (
 // Approved Product Service
 const approvedProduct = async (
   productId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   payload: { isApproved: boolean; remarks?: string },
 ) => {
   const existingProduct = await Product.findOne({
@@ -615,7 +615,7 @@ const approvedProduct = async (
 const deleteProductImages = async (
   productId: string,
   images: string[],
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -658,7 +658,7 @@ const deleteProductImages = async (
 // get all products service
 const getAllProducts = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -706,7 +706,7 @@ const getAllProducts = async (
 // get single product service
 const getSingleProduct = async (
   productId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -753,7 +753,7 @@ const getSingleProduct = async (
 // product soft delete service
 const softDeleteProduct = async (
   productId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -793,7 +793,7 @@ const softDeleteProduct = async (
 //  product permanent delete service (admin only)
 const permanentDeleteProduct = async (
   productId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(

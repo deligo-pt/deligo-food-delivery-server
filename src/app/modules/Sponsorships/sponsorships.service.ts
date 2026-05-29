@@ -4,12 +4,12 @@ import { TSponsorship } from './sponsorships.interface';
 import { Sponsorship } from './sponsorships.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Create sponsorship
 const createSponsorship = async (
   payload: TSponsorship,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   bannerImage: string | null,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -92,7 +92,7 @@ const updateSponsorship = async (
 
 // get all sponsorships
 const getAllSponsorships = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   query: Record<string, unknown>,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -122,7 +122,7 @@ const getAllSponsorships = async (
 };
 
 // get single sponsorship
-const getSingleSponsorship = async (currentUser: TCurrentUser, id: string) => {
+const getSingleSponsorship = async (currentUser: TAuthUser, id: string) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -147,7 +147,7 @@ const getSingleSponsorship = async (currentUser: TCurrentUser, id: string) => {
 
 // soft deleted sponsorship
 const softDeletedSponsorship = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   id: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -179,7 +179,7 @@ const softDeletedSponsorship = async (
 
 // permanent delete sponsorship
 const permanentDeleteSponsorship = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   id: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {

@@ -1,15 +1,15 @@
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { IIngredients } from './ingredients.interface';
 import { Ingredient } from './ingredients.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { IngredientsSearchFields } from './ingredients.constant';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 const createIngredient = async (
   payload: IIngredients,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   file: string,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {

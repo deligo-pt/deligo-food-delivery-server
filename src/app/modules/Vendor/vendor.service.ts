@@ -12,12 +12,12 @@ import { Product } from '../Product/product.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
 import {
   USER_ROLE,
   USER_STATUS,
 } from '../../constant/GlobalConstant/user.constant';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 /**
  * Service to update vendor profile information.
@@ -27,7 +27,7 @@ import {
 const vendorUpdate = async (
   id: string,
   payload: Partial<TVendor>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   // 1. Initial check to ensure the vendor exists in the system
   const existingVendor = await Vendor.findOne({ userId: id });
@@ -110,7 +110,7 @@ const vendorUpdate = async (
  */
 const vendorDocImageUpload = async (
   payload: TVendorImageDocuments,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   vendorId: string,
 ) => {
   // 1. Check if the vendor exists in the database
@@ -178,7 +178,7 @@ const vendorDocImageUpload = async (
 // Service to delete a specific document image from a vendor's profile
 const deleteVendorDocument = async (
   payload: { docImageTitle: string; imageUrl: string },
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   vendorId: string,
 ) => {
   const { docImageTitle, imageUrl } = payload;
@@ -230,7 +230,7 @@ const deleteVendorDocument = async (
 // vendor business location update service
 const updateVendorLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   vendorId: string,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
@@ -333,7 +333,7 @@ const toggleVendorStoreOpenClose = async (currentUser: any) => {
 // get all vendors
 const getAllVendors = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
@@ -398,7 +398,7 @@ const getAllVendors = async (
 };
 
 // get single vendor
-const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
+const getSingleVendor = async (vendorId: string, currentUser: TAuthUser) => {
   if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,

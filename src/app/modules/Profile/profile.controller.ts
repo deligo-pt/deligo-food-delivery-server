@@ -4,11 +4,11 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { ProfileServices } from './profile.service';
 import { TImageFile } from '../../interfaces/image.interface';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // get my profile controller
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
-  const result = await ProfileServices.getMyProfile(req.user as TCurrentUser);
+  const result = await ProfileServices.getMyProfile(req.user as TAuthUser);
 
   sendResponse(res, {
     success: true,
@@ -22,7 +22,7 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
 const updateMyProfile = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
   const result = await ProfileServices.updateMyProfile(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     file?.path ?? null,
     req?.body,
   );
@@ -38,7 +38,7 @@ const updateMyProfile = catchAsync(async (req, res) => {
 // send otp controller
 const sendOtp = catchAsync(async (req, res) => {
   const result = await ProfileServices.sendOtp(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.body,
   );
   sendResponse(res, {
@@ -52,7 +52,7 @@ const sendOtp = catchAsync(async (req, res) => {
 // update email or contact number controller
 const updateEmailOrContactNumber = catchAsync(async (req, res) => {
   const result = await ProfileServices.updateEmailOrContactNumber(
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.body.otp,
   );
   sendResponse(res, {

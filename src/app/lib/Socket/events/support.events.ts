@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server, Socket } from 'socket.io';
 import { SupportService } from '../../../modules/Support/support.service';
-import { TCurrentUser } from '../../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../../../modules/AuthUser/authUser.interface';
 
 type SendMessagePayload = {
   ticketId?: string; // Optional: first message won't have a ticketId
@@ -16,7 +16,7 @@ type SendMessagePayload = {
 };
 
 export const registerSupportEvents = (io: Server, socket: Socket) => {
-  const user = socket.data.user as TCurrentUser;
+  const user = socket.data.user as TAuthUser;
   const userId = user.userId; // Custom ID (e.g., C-VXX...)
   const userRole = user.role;
 

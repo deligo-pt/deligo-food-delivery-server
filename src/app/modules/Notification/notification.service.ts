@@ -4,7 +4,6 @@ import {
   ROLE_COLLECTION_MAP,
   TUserRole,
 } from '../../constant/GlobalConstant/user.constant';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
@@ -16,6 +15,7 @@ import {
 } from './notification.interface';
 import { EmailHelper } from '../../utils/emailSender';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -179,7 +179,7 @@ const sendToRole = (
 };
 
 // mark as read (one)
-const markAsRead = async (id: string, currentUser: TCurrentUser) => {
+const markAsRead = async (id: string, currentUser: TAuthUser) => {
   const notification = await Notification.findById(id);
   if (!notification) {
     throw new AppError(httpStatus.NOT_FOUND, 'Notification not found');
@@ -197,7 +197,7 @@ const markAsRead = async (id: string, currentUser: TCurrentUser) => {
 };
 
 // mark as read (all)
-const markAllAsRead = async (currentUser: TCurrentUser) => {
+const markAllAsRead = async (currentUser: TAuthUser) => {
   await Notification.updateMany(
     { receiverId: currentUser.userId },
     { isRead: true },
@@ -206,7 +206,7 @@ const markAllAsRead = async (currentUser: TCurrentUser) => {
 };
 
 const getMyNotifications = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   query: Record<string, unknown>,
 ) => {
   const notifications = new QueryBuilder(
@@ -230,7 +230,7 @@ const getMyNotifications = async (
 
 // Get all notifications
 const getAllNotifications = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   query: Record<string, unknown>,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
@@ -252,7 +252,7 @@ const getAllNotifications = async (
 // soft delete single notification
 const softDeleteSingleNotification = async (
   id: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   // --------------------------------------------------
   // Build query condition
@@ -293,7 +293,7 @@ const softDeleteSingleNotification = async (
 // soft delete multiple notifications
 const softDeleteMultipleNotifications = async (
   notificationIds: string[],
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (!notificationIds.length) {
     throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
@@ -325,7 +325,7 @@ const softDeleteMultipleNotifications = async (
 };
 
 // soft delete all notifications
-const softDeleteAllNotifications = async (currentUser: TCurrentUser) => {
+const softDeleteAllNotifications = async (currentUser: TAuthUser) => {
   // --------------------------------------------------
   // Build query condition
   // --------------------------------------------------
@@ -353,7 +353,7 @@ const softDeleteAllNotifications = async (currentUser: TCurrentUser) => {
 // permanent delete single notification - only for super admin
 const permanentDeleteSingleNotification = async (
   id: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   // --------------------------------------------------
   // Only SUPER_ADMIN allowed
@@ -390,7 +390,7 @@ const permanentDeleteSingleNotification = async (
 // permanent delete multiple notifications - only for super admin
 const permanentDeleteMultipleNotifications = async (
   notificationIds: string[],
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
@@ -424,7 +424,7 @@ const permanentDeleteMultipleNotifications = async (
 };
 
 // permanent delete all notifications - only for super admin
-const permanentDeleteAllNotifications = async (currentUser: TCurrentUser) => {
+const permanentDeleteAllNotifications = async (currentUser: TAuthUser) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,

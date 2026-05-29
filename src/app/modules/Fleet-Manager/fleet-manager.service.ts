@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { FleetManagerSearchableFields } from './fleet-manager.constant';
 import {
@@ -10,12 +9,13 @@ import {
 } from './fleet-manager.interface';
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
   fleetManagerCustomId: string,
   payload: Partial<TFleetManager>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   // ---------------------------------------------------------
   // Find Fleet Manager
@@ -102,7 +102,7 @@ const fleetManagerUpdate = async (
 // fleet manager doc image upload service
 const fleetManagerDocImageUpload = async (
   payload: TFleetManagerImageDocuments,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   fleetManagerCustomId: string,
 ) => {
   const { docImageTitle, docImageUrls } = payload;
@@ -166,7 +166,7 @@ const fleetManagerDocImageUpload = async (
 // Service to delete a specific document image from a fleet manager's profile
 const deleteFleetManagerDocument = async (
   payload: { docImageTitle: string; imageUrl: string },
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   fleetManagerCustomId: string,
 ) => {
   const { docImageTitle, imageUrl } = payload;
@@ -236,7 +236,7 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 // get single fleet manager
 const getSingleFleetManagerFromDB = async (
   fleetManagerCustomId: string,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   const userId = currentUser?.userId;
   if (

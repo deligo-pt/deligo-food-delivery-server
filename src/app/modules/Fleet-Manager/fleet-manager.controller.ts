@@ -1,12 +1,12 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { FleetManagerServices } from './fleet-manager.service';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Fleet Manager Update Controller
 const fleetManagerUpdate = catchAsync(async (req, res) => {
-  const currentUser = req.user as TCurrentUser;
+  const currentUser = req.user as TAuthUser;
   const result = await FleetManagerServices.fleetManagerUpdate(
     req.params.fleetManagerId,
     req.body,
@@ -24,7 +24,7 @@ const fleetManagerUpdate = catchAsync(async (req, res) => {
 const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.fleetManagerDocImageUpload(
     req.body,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.params.fleetManagerId,
   );
 
@@ -40,7 +40,7 @@ const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
 const deleteFleetManagerDocument = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.deleteFleetManagerDocument(
     req.body,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     req.params.fleetManagerId,
   );
 
@@ -71,7 +71,7 @@ const getAllFleetManagers = catchAsync(async (req, res) => {
 const getSingleFleetManager = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.getSingleFleetManagerFromDB(
     req.params.fleetManagerId,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
 
   sendResponse(res, {

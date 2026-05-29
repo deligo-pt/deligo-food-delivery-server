@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server, Socket } from 'socket.io';
 import { DeliveryPartnerServices } from '../../../modules/Delivery-Partner/delivery-partner.service';
-import { TCurrentUser } from '../../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../../../modules/AuthUser/authUser.interface';
 
 type LiveLocationPayload = {
   orderId: string;
@@ -15,7 +15,7 @@ export const registerDriverLiveLocationEvents = (
   io: Server,
   socket: Socket,
 ) => {
-  const user = socket.data.user as TCurrentUser;
+  const user = socket.data.user as TAuthUser;
   const userId = user?.userId;
   const userRole = user?.role;
 

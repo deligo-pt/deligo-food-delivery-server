@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import config from '../../config';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../../modules/AuthUser/authUser.interface';
 
 export const socketAuthMiddleware = (
   socket: Socket,
@@ -22,7 +22,7 @@ export const socketAuthMiddleware = (
     const decoded = jwt.verify(
       token,
       config.jwt.jwt_access_secret as string,
-    ) as TCurrentUser;
+    ) as TAuthUser;
 
     socket.data.user = decoded;
     next();

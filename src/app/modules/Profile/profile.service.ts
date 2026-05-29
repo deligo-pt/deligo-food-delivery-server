@@ -5,7 +5,6 @@ import {
   ROLE_COLLECTION_MAP,
   USER_STATUS,
 } from '../../constant/GlobalConstant/user.constant';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TUserProfileUpdate } from './profile.interface';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
@@ -15,9 +14,10 @@ import generateOtp from '../../utils/generateOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import mongoose from 'mongoose';
 import { generateReferralCode } from '../../utils/generateReferralCode';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // get my profile service
-const getMyProfile = async (currentUser: TCurrentUser) => {
+const getMyProfile = async (currentUser: TAuthUser) => {
   // -----------------------------
   // Status Check
   // -----------------------------
@@ -32,7 +32,7 @@ const getMyProfile = async (currentUser: TCurrentUser) => {
 
 // update my profile service
 const updateMyProfile = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   profilePhoto: string | null,
   payload: Partial<TUserProfileUpdate>,
 ) => {
@@ -125,7 +125,7 @@ const updateMyProfile = async (
 
 // send otp service
 const sendOtp = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   payload: { contactNumber?: string; email?: string },
 ) => {
   // --------------------------------------------------
@@ -233,7 +233,7 @@ const sendOtp = async (
 
 // update email or contact number service
 const updateEmailOrContactNumber = async (
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
   otp: string,
 ) => {
   if (!currentUser.pendingEmail && !currentUser.pendingContactNumber) {

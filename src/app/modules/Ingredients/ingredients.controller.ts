@@ -1,16 +1,16 @@
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { IngredientsServices } from './ingredients.service';
 import { TImageFile } from '../../interfaces/image.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 const createIngredient = catchAsync(async (req, res) => {
   const file = req.file as TImageFile;
 
   const result = await IngredientsServices.createIngredient(
     req.body,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
     file?.path,
   );
 

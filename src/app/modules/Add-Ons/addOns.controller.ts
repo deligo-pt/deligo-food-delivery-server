@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AddOnsServices } from './addOns.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // create addon group controller
 const createAddonGroup = catchAsync(async (req, res) => {
   const result = await AddOnsServices.createAddonGroup(
     req.body,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -24,7 +24,7 @@ const updateAddonGroup = catchAsync(async (req, res) => {
   const result = await AddOnsServices.updateAddonGroup(
     addonGroupId,
     req.body,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -40,7 +40,7 @@ const addOptionToGroup = catchAsync(async (req, res) => {
   const result = await AddOnsServices.addOptionToAddonGroup(
     addonGroupId,
     req.body,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -57,7 +57,7 @@ const toggleOptionStatus = catchAsync(async (req, res) => {
   const result = await AddOnsServices.toggleOptionStatus(
     addonGroupId,
     optionId as string,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -74,7 +74,7 @@ const deleteOptionFromGroup = catchAsync(async (req, res) => {
   const result = await AddOnsServices.deleteOptionFromAddonGroup(
     addonGroupId,
     optionId,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -88,7 +88,7 @@ const deleteOptionFromGroup = catchAsync(async (req, res) => {
 const getAllAddonGroups = catchAsync(async (req, res) => {
   const result = await AddOnsServices.getAllAddonGroups(
     req.query,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -104,7 +104,7 @@ const getSingleAddonGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
   const result = await AddOnsServices.getSingleAddonGroup(
     addonGroupId,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -119,7 +119,7 @@ const softDeleteAddonGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
   const result = await AddOnsServices.softDeleteAddonGroup(
     addonGroupId,
-    req.user as TCurrentUser,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

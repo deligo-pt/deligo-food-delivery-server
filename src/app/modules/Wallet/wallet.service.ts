@@ -5,12 +5,12 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // get all wallets
 const getAllWallets = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const partners = await DeliveryPartner.find({
@@ -39,7 +39,7 @@ const getAllWallets = async (
 };
 
 // get single wallet
-const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
+const getSingleWallet = async (walletId: string, currentUser: TAuthUser) => {
   const wallet = await Wallet.findOne({ walletId }).populate(
     'userObjectId',
     'name email userId',
@@ -67,7 +67,7 @@ const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
 };
 
 // get my wallet
-const getMyWallet = async (currentUser: TCurrentUser) => {
+const getMyWallet = async (currentUser: TAuthUser) => {
   const userObjectId = new mongoose.Types.ObjectId(currentUser._id);
 
   let wallet;

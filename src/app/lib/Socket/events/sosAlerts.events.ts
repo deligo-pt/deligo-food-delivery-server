@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server, Socket } from 'socket.io';
 import { SosModel } from '../../../modules/Sos/sos.model';
-import { TCurrentUser } from '../../../constant/GlobalInterface/user.interface';
+import { TAuthUser } from '../../../modules/AuthUser/authUser.interface';
 
 const sosLastDbUpdateMap = new Map<string, number>();
 
 export const registerSosSocketEvents = (io: Server, socket: Socket) => {
-  const user = socket.data.user as TCurrentUser;
+  const user = socket.data.user as TAuthUser;
   const userId = user?.userId;
   const userRole = user?.role;
 
