@@ -120,6 +120,17 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
   },
 );
 
+authUserSchema.pre("save", function (next) {
+  const user = this
+
+  if (user.isNew && user.onModel === 'Customer') {
+    user.status = 'APPROVED';
+  }
+
+  next();
+
+})
+
 authUserSchema.plugin(authLookupPlugin);
 authUserSchema.plugin(passwordPlugin);
 
