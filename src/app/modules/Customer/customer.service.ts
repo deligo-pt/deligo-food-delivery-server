@@ -217,7 +217,7 @@ const updateCustomerLiveLocation = async (
 // --------------------------------------------------------------
 const addDeliveryAddress = async (
   deliveryAddress: TDeliveryAddress,
-  currentUser: TAuthUser,
+  currentUser: any,
 ) => {
   // --------------------------------------------------
   // Validate payload
@@ -240,7 +240,20 @@ const addDeliveryAddress = async (
     );
   }
   const userId = currentUser.userId;
-  if (currentUser.deliveryAddresses!.length >= 5) {
+
+  await currentUser.populate('userObjectId');
+
+  const customer = currentUser.userObjectId;
+
+  if (!customer) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Customer not found');
+  }
+
+  const currentAddresses: any[] = customer.deliveryAddresses
+    ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
+    : [];
+
+  if (currentAddresses.length >= 5) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You have reached the maximum number of delivery addresses',
@@ -255,38 +268,31 @@ const addDeliveryAddress = async (
     if (a == null || b == null) return false;
     return Math.abs(a - b) <= tolerance;
   };
-  const isDuplicate = currentUser.deliveryAddresses?.some(
-    (addr: TDeliveryAddress) => {
-      const textMatch =
-        normalize(addr.street) === normalize(deliveryAddress.street) &&
-        normalize(addr.city) === normalize(deliveryAddress.city) &&
-        normalize(addr.country) === normalize(deliveryAddress.country) &&
-        normalize(addr.postalCode) === normalize(deliveryAddress.postalCode);
 
-      const geoMatch =
-        isClose(addr.latitude, deliveryAddress.latitude) &&
-        isClose(addr.longitude, deliveryAddress.longitude);
+  const isDuplicate = currentAddresses.some((addr: any) => {
+    const textMatch =
+      normalize(addr.street) === normalize(deliveryAddress.street) &&
+      normalize(addr.city) === normalize(deliveryAddress.city) &&
+      normalize(addr.country) === normalize(deliveryAddress.country) &&
+      normalize(addr.postalCode) === normalize(deliveryAddress.postalCode);
 
-      return textMatch || geoMatch;
-    },
-  );
+    const geoMatch =
+      isClose(addr.latitude, deliveryAddress.latitude) &&
+      isClose(addr.longitude, deliveryAddress.longitude);
+
+    return textMatch || geoMatch;
+  });
 
   if (isDuplicate) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'This delivery address already exists',
+      'This delivery address already exists in your address book',
     );
   }
-
-  const hasAnyAddress = (currentUser.deliveryAddresses?.length ?? 0) > 0;
-
-  // --------------------------------------------------
-  // Deactivate previous addresses
-  // --------------------------------------------------
-  await Customer.updateOne(
-    { userId },
-    { $set: { 'deliveryAddresses.$[].isActive': false } },
-  );
+  const updatedAddresses = currentAddresses.map((addr: any) => ({
+    ...addr,
+    isActive: false,
+  }));
 
   // --------------------------------------------------
   // Create new active address
@@ -307,37 +313,30 @@ const addDeliveryAddress = async (
     notes: deliveryAddress.notes?.trim(),
 
     isActive: true,
-    addressType: hasAnyAddress
-      ? (deliveryAddress.addressType ?? 'HOME')
-      : 'OTHER',
+    addressType: deliveryAddress.addressType ?? 'HOME',
   };
 
-  // --------------------------------------------------
-  // Push address
-  // --------------------------------------------------
-  await Customer.updateOne(
-    { userId },
-    { $push: { deliveryAddresses: newDeliveryAddress } },
-  );
+  updatedAddresses.push(newDeliveryAddress);
 
-  const { longitude, latitude, geoAccuracy = 0 } = newDeliveryAddress;
+  const updateData: Record<string, any> = {
+    deliveryAddresses: updatedAddresses,
+    address: { ...newDeliveryAddress },
+  };
 
-  // Auto-update location if coords provided
-  if (longitude != null && latitude != null) {
-    const sessionLocation = {
+  if (deliveryAddress.longitude != null && deliveryAddress.latitude != null) {
+    updateData.currentSessionLocation = {
       type: 'Point',
-      coordinates: [longitude, latitude],
-      geoAccuracy,
+      coordinates: [deliveryAddress.longitude, deliveryAddress.latitude],
+      geoAccuracy: deliveryAddress.geoAccuracy ?? 0,
       lastLocationUpdate: new Date(),
     };
-
-    await Customer.updateOne(
-      { userId },
-      { $set: { currentSessionLocation: sessionLocation } },
-    );
-
-    currentUser.currentSessionLocation = sessionLocation as any;
   }
+
+  await Customer.findOneAndUpdate(
+    { userId: currentUser.userId },
+    { $set: updateData },
+    { runValidators: true },
+  );
 
   return {
     message: 'Delivery address added successfully',
