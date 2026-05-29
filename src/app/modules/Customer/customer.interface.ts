@@ -9,7 +9,6 @@ export type TCustomer = {
   // ------------------------------------------------------
   _id?: mongoose.Types.ObjectId;
   userId: string;
-  status: keyof typeof USER_STATUS;
 
   // --------------------------------------------------------
   // Pending temporary Email and contact number

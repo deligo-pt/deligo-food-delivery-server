@@ -10,12 +10,13 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { generateReferralCode } from '../../utils/generateReferralCode';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { flattenObject } from '../../utils/flattenObject';
 
 // update customer service
 const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
-  currentUser: TAuthUser,
+  currentUser: any,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -23,19 +24,18 @@ const updateCustomer = async (
       `You cannot update profile. Status: ${currentUser.status}`,
     );
   }
-
-  console.log(currentUser);
-
-
-  const { profilePhoto } = payload
-
-  const customer = await Customer.findOne({ userId: customerId });
-  if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
   if (currentUser.requiresOtpVerification)
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Please verify your email or phone number first.',
     );
+
+  await currentUser.populate('userObjectId');
+
+  const customer = currentUser.userObjectId as any;
+  if (!customer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
+  }
 
   if (
     currentUser.role === 'CUSTOMER' &&
@@ -47,22 +47,17 @@ const updateCustomer = async (
   // -----------------------------
   // Referral Code Generation (New Logic)
   // -----------------------------
-  if (!currentUser.referralCode) {
+  if (!customer.referralCode) {
     const firstName =
-      payload.name?.firstName || currentUser.name.firstName || 'USER';
+      payload.name?.firstName || customer?.name?.firstName || 'CUSTOMER';
     const newReferralCode = await generateReferralCode(firstName);
 
     payload.referralCode = newReferralCode;
   }
 
-
-
-  if (profilePhoto) payload.profilePhoto = profilePhoto;
-
   // ----------------------------------------------------------------------
   // User sends a single address
   // ----------------------------------------------------------------------
-  let updatedDeliveryAddresses = customer.deliveryAddresses;
 
   if (payload.address) {
     const { longitude, latitude, geoAccuracy = 0 } = payload.address;
@@ -86,39 +81,54 @@ const updateCustomer = async (
       };
     }
 
-    const newAddress = {
-      ...payload.address,
-      isActive: true,
-    };
+    const currentAddresses = customer.deliveryAddresses
+      ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
+      : [];
 
-    // Check if this address already exists
-    const exists = customer?.deliveryAddresses?.some(
-      (addr) =>
-        addr.longitude === newAddress.longitude &&
-        addr.latitude === newAddress.latitude,
+    const existingAddressIndex = currentAddresses.findIndex(
+      (addr: any) =>
+        Number(addr.longitude).toFixed(5) === Number(longitude).toFixed(5) &&
+        Number(addr.latitude).toFixed(5) === Number(latitude).toFixed(5),
     );
 
-    if (!exists) {
-      // Deactivate all previous addresses
-      updatedDeliveryAddresses = customer?.deliveryAddresses?.map((addr) => ({
+    if (existingAddressIndex !== -1) {
+      payload.deliveryAddresses = currentAddresses.map(
+        (addr: any, index: number) => {
+          const isTarget = index === existingAddressIndex;
+          return {
+            ...(isTarget ? { ...addr, ...payload.address } : addr),
+            isActive: isTarget,
+            addressType: isTarget ? 'PRIMARY' : 'SECONDARY',
+          };
+        },
+      );
+    } else {
+      const deactivatedAddresses = currentAddresses.map((addr: any) => ({
         ...addr,
         isActive: false,
+        addressType: 'SECONDARY',
       }));
 
-      // Add new active address
-      updatedDeliveryAddresses?.push({ ...newAddress, addressType: 'PRIMARY' });
-    }
+      deactivatedAddresses.push({
+        ...payload.address,
+        isActive: true,
+        addressType: 'PRIMARY',
+      });
 
-    payload.deliveryAddresses = updatedDeliveryAddresses;
+      payload.deliveryAddresses = deactivatedAddresses;
+    }
   }
 
+  const finalUpdatePayload = flattenObject(payload);
   // ----------------------------------------------------------------------
   // Final Update
   // ----------------------------------------------------------------------
   const updated = await Customer.findOneAndUpdate(
     { userId: customerId },
-    { $set: payload },
-    { new: true },
+    { $set: finalUpdatePayload },
+    { new: true, runValidators: true },
+  ).select(
+    'name address deliveryAddresses NIF userId profilePhoto currentSessionLocation',
   );
 
   return updated;

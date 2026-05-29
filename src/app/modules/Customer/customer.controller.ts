@@ -6,11 +6,11 @@ import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Customer Update Controller
 const updateCustomer = catchAsync(async (req, res) => {
-  const user = req.user as TAuthUser;
+
   const result = await CustomerServices.updateCustomer(
     req.body,
     req.params.customerId,
-    user,
+    req.user as TAuthUser,
   );
   sendResponse(res, {
     success: true,

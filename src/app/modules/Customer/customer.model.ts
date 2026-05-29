@@ -12,12 +12,6 @@ const customerSchema = new Schema<TCustomer>(
     // ----------------------------------------------------------------
     userId: { type: String, required: true, unique: true },
 
-    status: {
-      type: String,
-      enum: Object.keys(USER_STATUS),
-      default: USER_STATUS.APPROVED,
-    },
-
     // --------------------------------------------------------
     // Pending temporary Email and contact number
     // --------------------------------------------------------
