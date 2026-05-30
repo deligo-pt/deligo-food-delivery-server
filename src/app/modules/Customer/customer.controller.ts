@@ -6,7 +6,6 @@ import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Customer Update Controller
 const updateCustomer = catchAsync(async (req, res) => {
-
   const result = await CustomerServices.updateCustomer(
     req.body,
     req.params.customerId,
@@ -67,7 +66,7 @@ const updateDeliveryAddress = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result.message,
-    data: result,
+    data: result?.updatedAddress,
   });
 });
 
