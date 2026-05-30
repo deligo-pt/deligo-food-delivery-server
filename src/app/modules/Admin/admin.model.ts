@@ -3,9 +3,9 @@ import { model, Schema } from 'mongoose';
 import { TAdmin } from './admin.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
-import { IAuthLookupModel } from '../../interfaces/user.interface';
+import { IAuthUserModel } from '../../interfaces/user.interface';
 
-const adminSchema = new Schema<TAdmin, IAuthLookupModel<TAdmin>>(
+const adminSchema = new Schema<TAdmin, IAuthUserModel>(
   {
     // --------------------------------------------------------
     // Core Identifiers
@@ -69,27 +69,6 @@ const adminSchema = new Schema<TAdmin, IAuthLookupModel<TAdmin>>(
       idProofFront: { type: String, default: '' },
       idProofBack: { type: String, default: '' },
     },
-
-    // --------------------------------------------------------
-    // Admin Workflow & Audit
-    // --------------------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-
-    submittedForApprovalAt: {
-      type: Date,
-      default: null,
-    },
-    approvedOrRejectedOrBlockedAt: {
-      type: Date,
-      default: null,
-    },
-
-    remarks: {
-      type: String,
-      default: '',
-    },
   },
   {
     timestamps: true,
@@ -97,10 +76,7 @@ const adminSchema = new Schema<TAdmin, IAuthLookupModel<TAdmin>>(
   },
 );
 
-export const Admin = model<TAdmin, IAuthLookupModel<TAdmin>>(
-  'Admin',
-  adminSchema,
-);
+export const Admin = model<TAdmin, IAuthUserModel>('Admin', adminSchema);
 
 export type TAdminImageDocuments = {
   docImageTitle: 'idProofFront' | 'idProofBack';

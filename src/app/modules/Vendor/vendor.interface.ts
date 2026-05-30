@@ -19,7 +19,6 @@ export type TVendor = {
   userId: string;
   registeredBy?: mongoose.Types.ObjectId;
 
-  status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
 
   // --------------------------------------------------------
@@ -123,18 +122,6 @@ export type TVendor = {
     average: number;
     totalReviews: number;
   };
-
-  // --------------------------------------------------------
-  // Admin Workflow / Audit
-  // --------------------------------------------------------
-  approvedBy?: mongoose.Types.ObjectId;
-  rejectedBy?: mongoose.Types.ObjectId;
-  blockedBy?: mongoose.Types.ObjectId;
-
-  submittedForApprovalAt?: Date;
-  approvedOrRejectedOrBlockedAt?: Date;
-
-  remarks?: string;
 
   // --------------------------------------------------------
   // Timestamps

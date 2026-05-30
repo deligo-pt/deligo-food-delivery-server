@@ -20,12 +20,6 @@ const fleetManagerSchema = new Schema<TFleetManager>(
       ref: 'AuthUser',
     },
 
-    status: {
-      type: String,
-      enum: Object.keys(USER_STATUS),
-      default: USER_STATUS.PENDING,
-    },
-
     isUpdateLocked: { type: Boolean, default: false },
 
     // --------------------------------------------------------
@@ -109,18 +103,6 @@ const fleetManagerSchema = new Schema<TFleetManager>(
       activeVehicles: { type: Number, default: 0 },
       totalDeliveries: { type: Number, default: 0 },
     },
-
-    // ------------------------------------------
-    // Admin Workflow / Audit
-    // ------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-
-    submittedForApprovalAt: { type: Date, default: null },
-    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
-
-    remarks: { type: String, default: '' },
 
     rating: {
       average: { type: Number, default: 0 },

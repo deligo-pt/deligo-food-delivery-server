@@ -26,11 +26,6 @@ const updateCustomer = async (
       `You cannot update profile. Status: ${currentUser.status}`,
     );
   }
-  if (currentUser.requiresOtpVerification)
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please verify your email or phone number first.',
-    );
 
   await currentUser.populate('userObjectId');
 

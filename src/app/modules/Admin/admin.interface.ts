@@ -53,18 +53,6 @@ export type TAdmin = {
   };
 
   // ------------------------------------------------------------------
-  // Admin Workflow & Audit Logs
-  // ------------------------------------------------------------------
-  approvedBy?: mongoose.Types.ObjectId;
-  rejectedBy?: mongoose.Types.ObjectId;
-  blockedBy?: mongoose.Types.ObjectId;
-
-  submittedForApprovalAt?: Date;
-  approvedOrRejectedOrBlockedAt?: Date;
-
-  remarks?: string;
-
-  // ------------------------------------------------------------------
   // Timestamps
   // ------------------------------------------------------------------
   createdAt?: Date;

@@ -340,7 +340,10 @@ const loginUser = async (
   payload: TLoginUser & { deviceDetails: TLoginDevice; forceLogin?: boolean },
 ) => {
   // checking if the user is exist
-  const user = await AuthUser.isUserExistsByEmail(payload?.email);
+  const user = await AuthUser.findOne({
+    email: payload?.email,
+    isDeleted: false,
+  });
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -693,11 +696,7 @@ const updateFcmToken = async (
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const modelName =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
-  const model = mongoose.model(modelName) as any;
-
-  const updatedUser = await model.findOneAndUpdate(
+  const updatedUser = await AuthUser.findOneAndUpdate(
     { _id: currentUser._id, 'loginDevices.deviceId': deviceId },
     {
       $set: {
@@ -722,36 +721,76 @@ const updateFcmToken = async (
 };
 
 // Logout User
-const logoutUser = async (email: string, deviceId: string) => {
-  const result = await findUserByEmail({ email, isDeleted: false });
-  const { user, model } = result || {};
+const logoutUser = async (currentUser: TAuthUser, deviceId: string) => {
+  if (!deviceId?.trim()) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Device ID is required for logout',
+    );
+  }
 
-  if (!user || !model) {
+  const updatePipeline: any[] = [
+    {
+      $set: {
+        loginDevices: {
+          $map: {
+            input: '$loginDevices',
+            as: 'device',
+            in: {
+              $cond: {
+                if: { $eq: ['$$device.deviceId', deviceId] },
+                then: {
+                  $mergeObjects: [
+                    '$$device',
+                    { isLoggedIn: false, lastLogout: new Date() },
+                  ],
+                },
+                else: '$$device',
+              },
+            },
+          },
+        },
+        requiresOtpVerification:
+          currentUser.role === 'CUSTOMER'
+            ? {
+                $cond: {
+                  if: { $in: [deviceId, '$loginDevices.deviceId'] },
+                  then: true,
+                  else: '$requiresOtpVerification',
+                },
+              }
+            : '$requiresOtpVerification',
+      },
+    },
+  ];
+
+  const updatedUser = await AuthUser.findOneAndUpdate(
+    { _id: currentUser._id },
+    updatePipeline,
+    { new: true },
+  );
+
+  if (!updatedUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const updateQuery: any = {
-    $set: {
-      'loginDevices.$[elem].isLoggedIn': false,
-    },
-  };
+  const targetDevice = updatedUser.loginDevices?.find(
+    (d: any) => d.deviceId === deviceId,
+  );
 
-  if (user.role === 'CUSTOMER') {
-    updateQuery.$set.isEmailVerified = false;
+  if (!targetDevice) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Device not registered for this user. No changes applied.',
+    );
   }
 
-  const options = {
-    new: true,
-    arrayFilters: [{ 'elem.deviceId': deviceId }],
-  };
-
-  await model.findOneAndUpdate({ _id: user._id }, updateQuery, options);
-
   return {
+    success: true,
     message:
-      user.role === 'CUSTOMER'
+      currentUser.role === 'CUSTOMER'
         ? 'Customer logged out and email verification reset'
-        : `${user?.role} logged out successfully!`,
+        : `${currentUser?.role} logged out successfully!`,
   };
 };
 // Change Password
@@ -759,17 +798,6 @@ const changePassword = async (
   currentUser: TAuthUser,
   payload: { oldPassword: string; newPassword: string },
 ) => {
-  // checking if the user is exist
-
-  const modelName =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
-
-  const model = mongoose.model(modelName) as any;
-
-  if (!currentUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-  }
-
   if (payload.oldPassword === payload.newPassword) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -795,9 +823,9 @@ const changePassword = async (
     throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
   }
 
-  const isPasswordMatched = await model.isPasswordMatched(
+  const isPasswordMatched = await AuthUser.isPasswordMatched(
     payload.oldPassword,
-    currentUser?.password,
+    currentUser.password as string,
   );
 
   //checking if the password is correct
@@ -811,7 +839,7 @@ const changePassword = async (
     Number(config.bcrypt_salt_rounds),
   );
 
-  await model.updateOne(
+  await AuthUser.updateOne(
     {
       userId: currentUser.userId,
       role: currentUser.role,
@@ -829,7 +857,12 @@ const changePassword = async (
 
 // Forgot Password
 const forgotPassword = async (email: string) => {
-  const { user } = await findUserByEmail({ email });
+  const user = await AuthUser.findOne({ email, isDeleted: false }).populate(
+    'userObjectId',
+    'name email userId',
+  );
+
+  const populatedUser = user?.userObjectId as any;
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
@@ -867,7 +900,7 @@ const forgotPassword = async (email: string) => {
   const emailHtml = await EmailHelper.createEmailContent(
     {
       resetPasswordLink: resetURL,
-      userName: user?.name?.firstName || 'User',
+      userName: populatedUser?.name?.firstName || 'User',
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
     },
@@ -897,68 +930,66 @@ const resetPassword = async (
   token: string,
   newPassword: string,
 ) => {
-  const { user, model } = await findUserByEmail({ email });
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-  }
-
-  if (user?.email !== email) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Email doesn't match");
-  }
-
-  if (user?.role === 'CUSTOMER') {
+  if (!email?.trim() || !token?.trim() || !newPassword?.trim()) {
     throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Customer no need to reset password',
+      httpStatus.BAD_REQUEST,
+      'Email, token and password are required',
     );
   }
 
-  // checking if the user is blocked
-  const userStatus = user?.status;
-
-  if (userStatus === USER_STATUS.BLOCKED) {
-    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
-  }
-
-  // hashed incoming token
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-  //  valid user
-  const validUser = await model.findOne({
-    email: user.email,
-    role: user.role,
+  const user = await AuthUser.findOne({
+    email: email.trim().toLowerCase(),
     passwordResetToken: hashedToken,
-    passwordResetTokenExpiresAt: { $gt: Date.now() },
+    passwordResetTokenExpiresAt: { $gt: new Date() },
+    isDeleted: false,
   });
 
-  if (!validUser) {
+  if (!user) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Reset token is invalid or has been expired',
     );
   }
 
-  const newHashedPassword = await bcryptjs.hash(
-    newPassword,
-    Number(config.bcrypt_salt_rounds),
-  );
+  if (user.role === 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Customers do not need to reset passwords via this method',
+    );
+  }
 
-  await model.findOneAndUpdate(
-    {
-      email: user.email,
-      role: user.role,
-    },
-    {
-      password: newHashedPassword,
-      passwordChangedAt: new Date(),
-      passwordResetToken: null,
-      passwordResetTokenExpiresAt: null,
-    },
-  );
+  if (
+    user.status === USER_STATUS.BLOCKED ||
+    user.status === USER_STATUS.REJECTED
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `This user account is currently ${user.status.toLowerCase()} and cannot be modified.`,
+    );
+  }
+
+  if (user.loginDevices && user.loginDevices.length > 0) {
+    user.loginDevices = user.loginDevices.map((device: any) => ({
+      ...device,
+      isLoggedIn: false,
+    }));
+  }
+  console.log(newPassword);
+
+  user.password = newPassword;
+  user.passwordChangedAt = new Date();
+
+  user.passwordResetToken = undefined;
+  user.passwordResetTokenExpiresAt = undefined;
+
+  await user.save();
 
   return {
-    message: 'Password reset successfully',
+    success: true,
+    message:
+      'Password reset successfully! All other active sessions have been securely terminated.',
   };
 };
 
@@ -1071,7 +1102,7 @@ const submitForApproval = async (userId: string, currentUser: TAuthUser) => {
     if (authUser?.role === 'DELIVERY_PARTNER') {
       if (
         currentUser?.role === 'FLEET_MANAGER' &&
-        submittedProfile?.registeredBy?.id.toString() !==
+        submittedProfile?.registeredBy?.toString() !==
           currentUser._id.toString()
       ) {
         throw new AppError(
@@ -1096,10 +1127,9 @@ const submitForApproval = async (userId: string, currentUser: TAuthUser) => {
 
   try {
     authUser.status = 'SUBMITTED';
+    authUser.submittedForApprovalAt = submissionTime;
     await authUser.save({ session });
 
-    submittedProfile.status = 'SUBMITTED';
-    submittedProfile.submittedForApprovalAt = submissionTime;
     submittedProfile.isUpdateLocked = true;
     await submittedProfile.save({ session });
 
@@ -1114,49 +1144,61 @@ const submitForApproval = async (userId: string, currentUser: TAuthUser) => {
     );
   }
 
-  // Prepare & send email to admin for user approval
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      userName: submittedProfile.name?.firstName || 'User',
-      userId: submittedProfile.userId,
-      currentYear: new Date().getFullYear(),
-      userRole: authUser.role,
-      date: new Date().toDateString(),
-    },
-    'user-approval-submission-notification',
-  );
-
-  try {
-    await EmailHelper.sendEmail(
-      authUser.email,
-      emailHtml,
-      `New ${authUser?.role} Submission for Approval`,
-    );
-  } catch (err: any) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-  }
-
   const userName =
     `${submittedProfile.name?.firstName || ''} ${submittedProfile.name?.lastName || ''}`.trim() ||
     'A User';
+
   const formattedTime = submissionTime.toLocaleString('en-US', {
     hour: 'numeric',
     minute: 'numeric',
     hour12: true,
     day: 'numeric',
     month: 'short',
+    year: 'numeric',
   });
 
-  // send push notification to all admin
-  NotificationService.sendToRole(
-    'Admin',
-    ['ADMIN', 'SUPER_ADMIN'],
-    `New ${authUser?.role} Submission for Approval`,
-    `${userName} (${authUser?.role}) has submitted for approval at ${formattedTime}.`,
-    { userObjectId: authUser?._id.toString(), role: authUser?.role },
-    'default',
-    'ACCOUNT',
-  );
+  (async () => {
+    try {
+      const emailHtml = await EmailHelper.createEmailContent(
+        {
+          userName: submittedProfile.name?.firstName || 'User',
+          userId: submittedProfile.userId,
+          currentYear: submissionTime.getFullYear(),
+          userRole: authUser.role,
+          date: submissionTime.toDateString(),
+        },
+        'user-approval-submission-notification',
+      );
+
+      await EmailHelper.sendEmail(
+        authUser.email,
+        emailHtml,
+        `New ${authUser?.role} Submission for Approval`,
+      );
+    } catch (err: any) {
+      console.error(
+        'Safe Background Guard -> Email Delivery Failed:',
+        err.message,
+      );
+    }
+
+    try {
+      await NotificationService.sendToRole(
+        'Admin',
+        ['ADMIN', 'SUPER_ADMIN'],
+        `New ${authUser?.role} Submission for Approval`,
+        `${userName} (${authUser?.role}) has submitted for approval at ${formattedTime}.`,
+        { userObjectId: authUser?._id.toString(), role: authUser?.role },
+        'default',
+        'ACCOUNT',
+      );
+    } catch (err: any) {
+      console.error(
+        'Safe Background Guard -> Admin Push Notification Failed:',
+        err.message,
+      );
+    }
+  })();
 
   return {
     message: `${authUser?.role} submitted for approval successfully`,
@@ -1169,9 +1211,6 @@ const approvedOrRejectedUser = async (
   payload: TApprovedRejectsPayload,
   currentUser: TAuthUser,
 ) => {
-  // --------------------------------------------------------------
-  // Authorization & Validation
-  // --------------------------------------------------------------
   if (userId === currentUser.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -1186,8 +1225,8 @@ const approvedOrRejectedUser = async (
 
   if (!adminUser || !['ADMIN', 'SUPER_ADMIN'].includes(adminUser.role)) {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Admin not found or unauthorized',
+      httpStatus.FORBIDDEN,
+      'Admin not found or unauthorized for this action',
     );
   }
 
@@ -1197,35 +1236,28 @@ const approvedOrRejectedUser = async (
   });
 
   if (!authUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
   }
 
   const role = authUser.role as TUserRole;
+  const targetAuthStatus = payload.status;
 
-  if (authUser.status === payload.status) {
-    //
+  if (authUser.status === targetAuthStatus) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `User is already ${payload.status.toLowerCase()}`,
+      `User is already ${targetAuthStatus.toLowerCase()}`,
     );
   }
 
-  // --------------------------------------------------------------
-  // Status Transition Rules
-  // --------------------------------------------------------------
   if (
-    (payload.status === 'REJECTED' || payload.status === 'BLOCKED') &&
-    !payload.remarks
+    (targetAuthStatus === 'REJECTED' || targetAuthStatus === 'BLOCKED') &&
+    !payload.remarks?.trim()
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Remarks are required for ${payload.status.toLowerCase()}`,
+      `Remarks are required for ${targetAuthStatus.toLowerCase()}`,
     );
   }
-
-  // --------------------------------------------------------------
-  // Apply Status Changes
-  // --------------------------------------------------------------
 
   const modelName = ROLE_COLLECTION_MAP[role];
   if (!modelName) {
@@ -1239,40 +1271,45 @@ const approvedOrRejectedUser = async (
     throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
   }
 
-  submittedProfile.status = payload.status;
-  submittedProfile.approvedOrRejectedOrBlockedAt = new Date();
-
-  const targetAuthStatus = payload.status;
-
   const finalRemarks =
-    payload.remarks ||
-    (payload.status === 'APPROVED'
+    payload.remarks?.trim() ||
+    (targetAuthStatus === 'APPROVED'
       ? 'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.'
       : '');
 
-  submittedProfile.remarks = finalRemarks;
+  const actionTimestamp = new Date();
+
+  authUser.status = targetAuthStatus;
+  authUser.remarks = finalRemarks;
+  authUser.approvedOrRejectedOrBlockedAt = actionTimestamp;
 
   switch (targetAuthStatus) {
     case 'APPROVED':
-      submittedProfile.approvedBy = authUser.userObjectId;
+      authUser.approvedBy = adminUser._id;
+      authUser.rejectedBy = undefined;
+      authUser.blockedBy = undefined;
       break;
 
     case 'REJECTED':
-      submittedProfile.rejectedBy = authUser?.userObjectId;
+      authUser.rejectedBy = adminUser._id;
+      authUser.approvedBy = undefined;
+      authUser.blockedBy = undefined;
+
       submittedProfile.isUpdateLocked = false;
       break;
 
     case 'BLOCKED':
-      submittedProfile.blockedBy = authUser.userObjectId;
+      authUser.blockedBy = adminUser._id;
+      authUser.approvedBy = undefined;
+      authUser.rejectedBy = undefined;
       break;
   }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    authUser.status = targetAuthStatus;
     await authUser.save({ session });
-
     await submittedProfile.save({ session });
 
     await session.commitTransaction();
@@ -1282,69 +1319,79 @@ const approvedOrRejectedUser = async (
     session.endSession();
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update user approval status',
+      'Failed to update user approval status due to transaction error',
     );
   }
-  // --------------------------------------------------------------
-  // Push Notification (Non-blocking)
-  // --------------------------------------------------------------
+
   const notificationTitleMap: Record<string, string> = {
     APPROVED: 'Your account has been approved',
     REJECTED: 'Your account has been rejected',
     BLOCKED: 'Your account has been blocked',
   };
 
-  NotificationService.sendToUser(
-    authUser.userId,
-    notificationTitleMap[payload.status],
-    finalRemarks,
-    {
-      userObjectId: authUser.userObjectId.toString(),
-      role: role,
-    },
-    'default',
-    'ACCOUNT',
-  );
-
-  // --------------------------------------------------------------
-  // Email Notification (Non-blocking)
-  // --------------------------------------------------------------
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      userName: submittedProfile.name?.firstName || 'User',
-      userRole: role,
-      currentYear: new Date().getFullYear(),
-      remarks: finalRemarks,
-      date: new Date().toDateString(),
-      status: payload.status,
-    },
-    'user-approval-notification',
-  );
-
-  const emailSubject = `Your ${
-    authUser.role
-  } Application has been ${payload.status.toLowerCase()}`;
-
-  if (
-    [
-      'ADMIN',
-      'SUPER_ADMIN',
-      'FLEET_MANAGER',
-      'VENDOR',
-      'DELIVERY_PARTNER',
-      'SUB_VENDOR',
-    ].includes(role) ||
-    (role === 'CUSTOMER' && authUser.email)
-  ) {
+  (async () => {
     try {
-      await EmailHelper.sendEmail(authUser.email, emailHtml, emailSubject);
+      NotificationService.sendToUser(
+        authUser.userId,
+        notificationTitleMap[targetAuthStatus],
+        finalRemarks,
+        {
+          userObjectId: authUser.userObjectId.toString(),
+          role: role,
+        },
+        'default',
+        'ACCOUNT',
+      );
     } catch (err: any) {
-      console.error('Email sending failed:', err);
+      console.error(
+        'Background Guard -> Push Notification Failed:',
+        err.message,
+      );
     }
-  }
+
+    if (
+      [
+        'ADMIN',
+        'SUPER_ADMIN',
+        'FLEET_MANAGER',
+        'VENDOR',
+        'DELIVERY_PARTNER',
+        'SUB_VENDOR',
+      ].includes(role) ||
+      (role === 'CUSTOMER' && authUser.email)
+    ) {
+      try {
+        const emailHtml = await EmailHelper.createEmailContent(
+          {
+            userName: submittedProfile.name?.firstName || 'User',
+            userRole: role,
+            currentYear: actionTimestamp.getFullYear(),
+            remarks: finalRemarks,
+            date: actionTimestamp.toDateString(),
+            status: targetAuthStatus,
+          },
+          'user-approval-notification',
+        );
+
+        const emailSubject = `DeliGo - Your ${role} Application has been ${targetAuthStatus.toLowerCase()}`;
+
+        await EmailHelper.sendEmail(
+          authUser.email || submittedProfile.email,
+          emailHtml,
+          emailSubject,
+        );
+      } catch (err: any) {
+        console.error(
+          'Background Guard -> Email Delivery Failed:',
+          err.message,
+        );
+      }
+    }
+  })();
 
   return {
-    message: `${role} ${targetAuthStatus.toLowerCase()} successfully`,
+    success: true,
+    message: `${role} account has been ${targetAuthStatus.toLowerCase()} successfully`,
   };
 };
 
@@ -1659,10 +1706,7 @@ const softDeleteUser = async (userId: string, currentUser: TAuthUser) => {
 };
 
 // permanent delete user service
-const permanentDeleteUser = async (
-  userId: string,
-  currentUser: TAuthUser,
-) => {
+const permanentDeleteUser = async (userId: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,

@@ -48,6 +48,16 @@ export type TAuthUser = {
   passwordChangedAt?: Date | null; // Tracks password updates to invalidate older active JWT sessions
   twoFactorEnabled?: boolean; // Flag indicating if two-factor authentication is active
 
+  // --------------------------------------------------------
+  // Admin Workflow / Audit
+  // --------------------------------------------------------
+  approvedBy?: mongoose.Types.ObjectId;
+  rejectedBy?: mongoose.Types.ObjectId;
+  blockedBy?: mongoose.Types.ObjectId;
+  submittedForApprovalAt?: Date;
+  approvedOrRejectedOrBlockedAt?: Date;
+  remarks?: string;
+
   // ------------------------------------------------------------------
   // 6. Timestamps
   // ------------------------------------------------------------------

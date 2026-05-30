@@ -10,7 +10,6 @@ export type TFleetManager = {
   userId: string;
   registeredBy?: mongoose.Types.ObjectId;
 
-  status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
 
   // --------------------------------------------------------
@@ -92,18 +91,6 @@ export type TFleetManager = {
     activeVehicles?: number;
     totalDeliveries?: number;
   };
-
-  // ---------------------------------------------
-  // Admin Workflow / Audit
-  // ---------------------------------------------
-  approvedBy?: mongoose.Types.ObjectId;
-  rejectedBy?: mongoose.Types.ObjectId;
-  blockedBy?: mongoose.Types.ObjectId;
-
-  submittedForApprovalAt?: Date;
-  approvedOrRejectedOrBlockedAt?: Date;
-
-  remarks?: string;
 
   rating?: {
     average: number;

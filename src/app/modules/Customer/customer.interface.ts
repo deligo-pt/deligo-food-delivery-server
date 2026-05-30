@@ -74,15 +74,6 @@ export type TCustomer = {
   referredBy?: mongoose.Types.ObjectId;
 
   // ------------------------------------------------------
-  // Admin Workflow / Audit
-  // ------------------------------------------------------
-  approvedBy?: mongoose.Types.ObjectId;
-  rejectedBy?: mongoose.Types.ObjectId;
-  blockedBy?: mongoose.Types.ObjectId;
-  approvedOrRejectedOrBlockedAt?: Date;
-  remarks?: string;
-
-  // ------------------------------------------------------
   // Timestamps
   // ------------------------------------------------------
   createdAt?: Date;

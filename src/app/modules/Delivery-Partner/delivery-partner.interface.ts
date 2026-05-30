@@ -11,7 +11,6 @@ export type TDeliveryPartner = {
   _id?: mongoose.Types.ObjectId;
   userId: string;
   registeredBy?: mongoose.Types.ObjectId;
-  status: keyof typeof USER_STATUS;
   isUpdateLocked: boolean;
 
   // --------------------------------------------------------
@@ -146,16 +145,6 @@ export type TDeliveryPartner = {
     activity?: string;
     insurancePolicy?: string;
   };
-
-  // -------------------------------------------------
-  // 11) Admin Workflow (Approval System)
-  // -------------------------------------------------
-  approvedBy?: mongoose.Types.ObjectId;
-  rejectedBy?: mongoose.Types.ObjectId;
-  blockedBy?: mongoose.Types.ObjectId;
-  submittedForApprovalAt?: Date;
-  approvedOrRejectedOrBlockedAt?: Date;
-  remarks?: string;
 
   rating?: {
     average: number;

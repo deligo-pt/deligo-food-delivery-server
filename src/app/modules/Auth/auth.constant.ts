@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { IAuthLookupModel } from '../../interfaces/user.interface';
 import { Admin } from '../Admin/admin.model';
 import { Customer } from '../Customer/customer.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
@@ -13,7 +12,7 @@ export const ALL_USER_MODELS = [
   FleetManager,
   DeliveryPartner,
   Customer,
-] as IAuthLookupModel<any>[];
+];
 
 export const USER_MODEL_MAP = {
   '/create-vendor': { Model: Vendor, idField: 'userId' },

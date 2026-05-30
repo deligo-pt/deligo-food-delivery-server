@@ -73,14 +73,6 @@ const customerSchema = new Schema<TCustomer>(
     // ----------------------------------------------------------------
     referralCode: { type: String, default: '' },
     referredBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    // ----------------------------------------------------------------
-    // Admin Workflow / Audit
-    // ----------------------------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
-    remarks: { type: String, default: '' },
   },
   {
     timestamps: true,

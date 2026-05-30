@@ -15,11 +15,6 @@ import { AuthUser } from '../modules/AuthUser/authUser.model';
 
 /**
  * Authentication & Authorization Middleware
- * 1. Validates the JWT token from Headers or Cookies.
- * 2. Checks user status (Blocked/Deleted).
- * 3. Validates password change history to invalidate old tokens.
- * 4. Checks if the specific device session is still active.
- * 5. Verifies if the user has the required roles for the route.
  */
 const auth = (...requiredRoles: TUserRole[]) => {
   return (requiredPermission?: string) => {
@@ -27,7 +22,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
       async (req: Request, res: Response, next: NextFunction) => {
         let token: string | undefined;
 
-        // 1. Extract token from Authorization Header (supports both 'Bearer <token>' and raw token)
+        // 1. Extract token from Authorization Header
         const authHeader = req.headers.authorization;
         if (authHeader) {
           if (authHeader.startsWith('Bearer ')) {
@@ -37,7 +32,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
           }
         }
 
-        // 2. Fallback: Extract token from Cookies if not found in headers
+        // 2. Fallback: Extract token from Cookies
         const authCookies = req.cookies?.accessToken;
         if (!token && authCookies) {
           token = authCookies;
@@ -72,6 +67,13 @@ const auth = (...requiredRoles: TUserRole[]) => {
           );
         }
 
+        if (user.role === 'CUSTOMER' && user.requiresOtpVerification) {
+          throw new AppError(
+            httpStatus.UNAUTHORIZED,
+            'Please verify your email or phone number first.',
+          );
+        }
+
         const status = user?.status;
 
         // 6. Security Check: Prevent access if the user is blocked
@@ -82,7 +84,22 @@ const auth = (...requiredRoles: TUserRole[]) => {
           );
         }
 
-        // 7. Token Expiry Check: If password was changed after token issuance, invalidate the token
+        //7. Session Validation (Fixed TypeScript Error & Removed Duplication 🚀)
+        const currentDeviceSession = user.loginDevices?.find(
+          (device: any) => device.deviceId === deviceId,
+        );
+
+        if (
+          !currentDeviceSession ||
+          currentDeviceSession.isLoggedIn === false
+        ) {
+          throw new AppError(
+            httpStatus.UNAUTHORIZED,
+            'You have been logged out from this device. Please log in again.',
+          );
+        }
+
+        // 8. Token Expiry Check: If password was changed after token issuance
         if (user.passwordChangedAt) {
           const passwordChangedTime = Math.floor(
             new Date(user.passwordChangedAt).getTime() / 1000,
@@ -95,19 +112,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
           }
         }
 
-        // 8. Session Validation: Check if the current deviceId exists in active loginDevices
-        const isSessionActive = user.loginDevices?.some(
-          (device: { deviceId: string }) => device.deviceId === deviceId,
-        );
-
-        if (!isSessionActive) {
-          throw new AppError(
-            httpStatus.UNAUTHORIZED,
-            'This session is no longer active. Please log in again.',
-          );
-        }
-
-        // 9. Role-Based Access Control: Check if the user has the required role to access the route
+        // 9. Role-Based Access Control
         if (requiredRoles.length && !requiredRoles.includes(role)) {
           throw new AppError(
             httpStatus.FORBIDDEN,

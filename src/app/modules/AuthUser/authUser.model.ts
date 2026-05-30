@@ -3,9 +3,12 @@ import { TAuthUser } from './authUser.interface';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { authLookupPlugin } from '../../plugins/authLookupPlugin';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
-import { IAuthUserModel } from '../../interfaces/user.interface';
+import {
+  IAuthUserMethods,
+  IAuthUserModel,
+} from '../../interfaces/user.interface';
 
-const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
+const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
   {
     // 1. Core Identifiers & Relations Mapping
     userAuthId: {
@@ -113,6 +116,16 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
       type: Boolean,
       default: false,
     },
+
+    // -------------------------------------------------------
+    // Admin Workflow / Audit
+    // -------------------------------------------------------
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+    submittedForApprovalAt: { type: Date, default: null },
+    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
+    remarks: { type: String, default: '' },
   },
   {
     timestamps: true,
@@ -120,16 +133,15 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel>(
   },
 );
 
-authUserSchema.pre("save", function (next) {
-  const user = this
+authUserSchema.pre('save', function (next) {
+  const user = this;
 
   if (user.isNew && user.onModel === 'Customer') {
     user.status = 'APPROVED';
   }
 
   next();
-
-})
+});
 
 authUserSchema.plugin(authLookupPlugin);
 authUserSchema.plugin(passwordPlugin);

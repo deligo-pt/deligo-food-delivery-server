@@ -2,20 +2,11 @@
 import { Model } from 'mongoose';
 import { TAuthUser } from '../modules/AuthUser/authUser.interface';
 
-export interface IAuthLookupModel<T> extends Model<T> {
-  isUserExistsByEmail(
-    email: string,
-    isDeleted?: boolean,
-    fields?: string,
-  ): Promise<T | null>;
-  isUserExistsByUserId(userId: string, isDeleted?: boolean): Promise<T | null>;
-  isUserExistsByContactNumber?(
-    contactNumber: string,
-    isDeleted?: boolean,
-  ): Promise<T | null>;
+export interface IAuthUserMethods {
+  createPasswordResetToken(): Promise<string>;
 }
 
-export interface IAuthUserModel extends Model<TAuthUser> {
+export interface IAuthUserModel extends Model<TAuthUser, {}, IAuthUserMethods> {
   isUserExistsByEmail(
     email: string,
     isDeleted?: boolean,

@@ -18,11 +18,6 @@ const vendorSchema = new Schema<TVendor>(
       type: Schema.Types.ObjectId,
       ref: 'AuthUser',
     },
-    status: {
-      type: String,
-      enum: Object.keys(USER_STATUS),
-      default: USER_STATUS.PENDING,
-    },
     isUpdateLocked: { type: Boolean, default: false },
 
     // --------------------------------------------------------
@@ -124,16 +119,6 @@ const vendorSchema = new Schema<TVendor>(
       average: { type: Number, default: 0 },
       totalReviews: { type: Number, default: 0 },
     },
-
-    // -------------------------------------------------------
-    // Admin Workflow / Audit
-    // -------------------------------------------------------
-    approvedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    rejectedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    blockedBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
-    submittedForApprovalAt: { type: Date, default: null },
-    approvedOrRejectedOrBlockedAt: { type: Date, default: null },
-    remarks: { type: String, default: '' },
   },
   {
     timestamps: true,
