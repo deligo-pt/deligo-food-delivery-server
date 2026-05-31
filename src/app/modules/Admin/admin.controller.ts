@@ -39,7 +39,10 @@ const adminDocImageUpload = catchAsync(async (req, res) => {
 
 // Get all Admin Controller
 const getAllAdmins = catchAsync(async (req, res) => {
-  const result = await AdminServices.getAllAdmins(req.query);
+  const result = await AdminServices.getAllAdmins(
+    req.query,
+    req.user as TAuthUser,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

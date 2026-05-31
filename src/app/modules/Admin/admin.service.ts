@@ -6,6 +6,9 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
+import { getPopulateOptions } from '../../utils/getPopulateOptions';
+import { USER_ROLE } from '../../constant/GlobalConstant/user.constant';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
@@ -137,20 +140,89 @@ const adminDocImageUpload = async (
 };
 
 // get all admin service
-const getAllAdmins = async (query: Record<string, unknown>) => {
-  const admins = new QueryBuilder(Admin.find(), query)
-    .filter()
-    .sort()
+const getAllAdmins = async (
+  query: Record<string, unknown>,
+  currentUser: TAuthUser,
+) => {
+  if (currentUser?.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view admins. Your account is ${currentUser?.status}`,
+    );
+  }
+
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+
+  const queryFilter: any = {
+    role: { $in: [USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN] },
+  };
+
+  if (!isAdmin) {
+    queryFilter.isDeleted = false;
+  }
+
+  const adminQueryBase = AuthUser.find(queryFilter);
+  const adminsQueryBuilder = new QueryBuilder(adminQueryBase, query)
     .fields()
     .paginate()
+    .sort()
+    .filter()
     .search(AdminSearchableFields);
 
-  const meta = await admins.countTotal();
-  const data = await admins.modelQuery;
+  const populateOptions = getPopulateOptions(currentUser.role, {
+    userObjectId: true,
+  });
+
+  populateOptions.forEach((option) => {
+    adminsQueryBuilder.modelQuery =
+      adminsQueryBuilder.modelQuery.populate(option);
+  });
+
+  adminsQueryBuilder.modelQuery = adminsQueryBuilder.modelQuery.populate([
+    { path: 'approvedBy', select: 'name userId role' },
+    { path: 'rejectedBy', select: 'name userId role' },
+    { path: 'blockedBy', select: 'name userId role' },
+  ]);
+
+  const meta = await adminsQueryBuilder.countTotal();
+  const rawData = await adminsQueryBuilder.modelQuery;
+
+  const formattedData = rawData
+    .map((authDoc: any) => {
+      const auth = authDoc.toObject ? authDoc.toObject() : authDoc;
+      const adminProfile = auth.userObjectId as TAdmin;
+
+      if (!adminProfile) return null;
+
+      const profile = (adminProfile as any).toObject
+        ? (adminProfile as any).toObject()
+        : adminProfile;
+
+      return {
+        _id: profile._id,
+        authUserId: auth._id,
+        userId: auth.userId,
+        email: auth.email || '',
+        role: auth.role || 'ADMIN',
+        status: auth.status || 'PENDING',
+        isDeleted: auth.isDeleted || false,
+        isEmailVerified: auth.isEmailVerified || false,
+        contactNumber: auth.contactNumber || '',
+        loginDevices: auth.loginDevices || [],
+
+        approvedBy: auth.approvedBy || null,
+        rejectedBy: auth.rejectedBy || null,
+        blockedBy: auth.blockedBy || null,
+        remarks: auth.remarks || '',
+
+        ...profile,
+      };
+    })
+    .filter((item) => item !== null);
 
   return {
     meta,
-    data,
+    data: formattedData,
   };
 };
 
@@ -159,26 +231,60 @@ const getSingleAdmin = async (
   adminCustomId: string,
   currentUser: TAuthUser,
 ) => {
-  // ---------------------------------------------------------
-  // Authorization Logic
-  // ---------------------------------------------------------
   if (currentUser.role === 'ADMIN' && currentUser.userId !== adminCustomId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this admin.',
+      'You are not authorized to access this admin profile.',
     );
   }
 
-  // ---------------------------------------------------------
-  // Fetch the TARGET admin by passed adminId
-  // ---------------------------------------------------------
-  const existingAdmin = await Admin.findOne({ userId: adminCustomId });
+  const authDoc = await AuthUser.findOne({
+    userId: adminCustomId,
+    role: { $in: ['ADMIN', 'SUPER_ADMIN'] },
+  }).populate([
+    { path: 'userObjectId' },
+    { path: 'approvedBy', select: 'name userId role' },
+    { path: 'rejectedBy', select: 'name userId role' },
+    { path: 'blockedBy', select: 'name userId role' },
+  ]);
 
-  if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
+  if (!authDoc) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Admin account not found!');
   }
 
-  return existingAdmin;
+  const auth = authDoc.toObject ? authDoc.toObject() : authDoc;
+  const adminProfile = auth.userObjectId as any;
+
+  if (!adminProfile || adminProfile.isDeleted) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Admin profile metadata not found or has been soft-deleted!',
+    );
+  }
+
+  const profile = (adminProfile as any).toObject
+    ? (adminProfile as any).toObject()
+    : adminProfile;
+
+  return {
+    _id: profile._id,
+    authUserId: auth._id,
+    userId: auth.userId,
+    email: auth.email || '',
+    role: auth.role || 'ADMIN',
+    status: auth.status || 'PENDING',
+    isDeleted: auth.isDeleted || false,
+    isEmailVerified: auth.isEmailVerified || false,
+    contactNumber: auth.contactNumber || '',
+    loginDevices: auth.loginDevices || [],
+
+    approvedBy: auth.approvedBy || null,
+    rejectedBy: auth.rejectedBy || null,
+    blockedBy: auth.blockedBy || null,
+    remarks: auth.remarks || '',
+
+    ...profile,
+  };
 };
 
 export const AdminServices = {
