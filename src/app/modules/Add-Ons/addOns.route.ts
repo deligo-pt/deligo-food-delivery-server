@@ -26,6 +26,7 @@ router.patch(
 router.patch(
   '/:addonGroupId/add-option',
   auth('VENDOR', 'SUB_VENDOR')(),
+  validateRequest(AddOnsValidation.addOptionToGroupValidationSchema),
   AddOnsControllers.addOptionToGroup,
 );
 
@@ -33,6 +34,7 @@ router.patch(
 router.patch(
   '/:addonGroupId/toggle-option-status',
   auth('VENDOR', 'SUB_VENDOR')(),
+  validateRequest(AddOnsValidation.toggleOptionStatusValidationSchema),
   AddOnsControllers.toggleOptionStatus,
 );
 
@@ -40,6 +42,7 @@ router.patch(
 router.delete(
   '/:addonGroupId/delete-option',
   auth('VENDOR', 'SUB_VENDOR')(),
+  validateRequest(AddOnsValidation.deleteOptionValidationSchema),
   AddOnsControllers.deleteOptionFromGroup,
 );
 

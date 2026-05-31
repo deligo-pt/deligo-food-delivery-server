@@ -74,6 +74,7 @@ const createAddonGroup = async (
 
   const result = await AddonGroup.findById(createdRecord._id).populate(
     'options.tax',
+    'taxRate',
   );
 
   return result;
@@ -91,17 +92,33 @@ const updateAddonGroup = async (
       'Your vendor account is not approved yet!',
     );
   }
-  const isGroupExists = await AddonGroup.findOne({
-    _id: { $ne: id },
-    vendorId: currentUser._id,
-    title: { $regex: new RegExp(`^${payload.title}$`, 'i') },
-    isDeleted: false,
-  });
 
-  if (isGroupExists) {
+  if (payload.title) {
+    const isGroupExists = await AddonGroup.findOne({
+      _id: { $ne: id },
+      vendorId: currentUser._id,
+      title: { $regex: new RegExp(`^${payload.title}$`, 'i') },
+      isDeleted: false,
+    });
+
+    if (isGroupExists) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'An addon group with this title already exists!',
+      );
+    }
+  }
+
+  const currentGroup = await AddonGroup.findOne({
+    _id: id,
+    vendorId: currentUser._id,
+    isDeleted: false,
+  }).lean();
+
+  if (!currentGroup) {
     throw new AppError(
-      httpStatus.CONFLICT,
-      'An addon group with this title already exists!',
+      httpStatus.NOT_FOUND,
+      'Addon group not found or you do not have permission to edit it',
     );
   }
 
@@ -123,20 +140,27 @@ const updateAddonGroup = async (
         );
       }
     }
-  }
 
-  payload.options = payload?.options?.map((opt) => {
-    if (!opt.sku) {
-      const cleanTitle = (payload.title || 'ADD').substring(0, 3).toUpperCase();
-      const cleanName = opt.name.substring(0, 3).toUpperCase();
-      const randomStr = Math.random()
-        .toString(36)
-        .substring(2, 5)
-        .toUpperCase();
-      opt.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
-    }
-    return opt;
-  });
+    const updatedOptions = (currentGroup.options as any[]).map(
+      (existingOpt) => {
+        const incomingUpdate = payload?.options?.find(
+          (incomingOpt: any) =>
+            incomingOpt.sku && incomingOpt.sku === existingOpt.sku,
+        );
+
+        if (incomingUpdate) {
+          return {
+            ...existingOpt,
+            ...incomingUpdate,
+          };
+        }
+
+        return existingOpt;
+      },
+    );
+
+    payload.options = updatedOptions as any;
+  }
 
   const { options, ...remainingData } = payload;
   const modifiedUpdatedData: Record<string, unknown> = { ...remainingData };
@@ -156,14 +180,7 @@ const updateAddonGroup = async (
       new: true,
       runValidators: true,
     },
-  ).populate('options.tax');
-
-  if (!result) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Addon group not found or you do not have permission to edit it',
-    );
-  }
+  ).populate('options.tax', 'taxRate');
 
   return result;
 };
@@ -226,7 +243,7 @@ const addOptionToAddonGroup = async (
       $push: { options: { ...newOption, isActive: true } },
     },
     { new: true, runValidators: true },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxRate');
 
   return result;
 };
@@ -234,7 +251,7 @@ const addOptionToAddonGroup = async (
 // toggle option status (active/inactive)
 const toggleOptionStatus = async (
   groupId: string,
-  optionId: string,
+  optionSku: string,
   currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -244,39 +261,49 @@ const toggleOptionStatus = async (
     );
   }
 
-  const group = await AddonGroup.findOne({
-    _id: groupId,
-    vendorId: currentUser._id,
-    'options._id': optionId,
-    isDeleted: false,
-  });
-
-  if (!group) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Addon Group or Option not found');
-  }
-
-  const currentOption = group.options.find(
-    (opt: any) => opt._id.toString() === optionId,
-  );
-
-  if (!currentOption)
-    throw new AppError(httpStatus.NOT_FOUND, 'Option not found');
-
-  const newStatus = !currentOption.isActive;
-
   const result = await AddonGroup.findOneAndUpdate(
     {
       _id: groupId,
-      'options._id': optionId,
+      vendorId: currentUser._id,
+      'options.sku': optionSku,
+      isDeleted: false,
     },
-    {
-      $set: { 'options.$.isActive': newStatus },
-    },
+    [
+      {
+        $set: {
+          options: {
+            $map: {
+              input: '$options',
+              as: 'opt',
+              in: {
+                $cond: [
+                  { $eq: ['$$opt.sku', optionSku] },
+                  {
+                    $mergeObjects: [
+                      '$$opt',
+                      { isActive: { $not: '$$opt.isActive' } },
+                    ],
+                  },
+                  '$$opt',
+                ],
+              },
+            },
+          },
+        },
+      },
+    ],
     {
       new: true,
       runValidators: true,
     },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxRate');
+
+  if (!result) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Addon Group or Option SKU not found',
+    );
+  }
 
   return result;
 };
@@ -284,7 +311,7 @@ const toggleOptionStatus = async (
 // delete option from addon group service
 const deleteOptionFromAddonGroup = async (
   groupId: string,
-  optionId: string,
+  optionSku: string,
   currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -299,18 +326,20 @@ const deleteOptionFromAddonGroup = async (
       _id: groupId,
       vendorId: currentUser._id,
       isDeleted: false,
-      'options._id': optionId,
+      'options.sku': optionSku,
     },
     {
-      $pull: { options: { _id: optionId } },
+      $pull: { options: { sku: optionSku } },
     },
-    { new: true },
-  ).populate('options.tax');
+    {
+      new: true,
+    },
+  ).populate('options.tax', 'taxRate');
 
   if (!result) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Addon group not found or the option does not exist in this group',
+      'Addon group not found or the option SKU does not exist in this group',
     );
   }
 
@@ -326,10 +355,13 @@ const getAllAddonGroups = async (
     query.vendorId = currentUser._id;
   }
 
-  query.isDeleted = false;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  if (!isAdmin) {
+    query.isDeleted = false;
+  }
 
   const addOns = new QueryBuilder(
-    AddonGroup.find().populate('options.tax'),
+    AddonGroup.find().populate('options.tax', 'taxRate'),
     query,
   )
     .fields()
@@ -351,14 +383,19 @@ const getAllAddonGroups = async (
 
 // get single addon group service
 const getSingleAddonGroup = async (id: string, currentUser: TAuthUser) => {
-  const queryObj: any = { _id: id, isDeleted: false };
+  const queryObj: any = { _id: id };
 
   if (currentUser.role === 'VENDOR') {
     queryObj.vendorId = currentUser._id;
   }
 
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  if (!isAdmin) {
+    queryObj.isDeleted = false;
+  }
+
   const result = await AddonGroup.findOne(queryObj)
-    .populate('options.tax')
+    .populate('options.tax', 'taxRate')
     .lean();
 
   if (!result) {

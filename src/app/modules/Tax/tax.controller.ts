@@ -33,7 +33,8 @@ const getAllTaxes = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Taxes retrieved successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

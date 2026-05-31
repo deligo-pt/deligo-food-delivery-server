@@ -1708,6 +1708,7 @@ const softDeleteUser = async (userId: string, currentUser: TAuthUser) => {
   const nonAdminRoles = [
     'CUSTOMER',
     'VENDOR',
+    'SUB_VENDOR',
     'DELIVERY_PARTNER',
     'FLEET_MANAGER',
   ];

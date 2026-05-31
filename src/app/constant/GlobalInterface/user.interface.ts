@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import { TUserRole, USER_STATUS } from '../GlobalConstant/user.constant';
 import { TDeliveryAddress } from './address.interface';
 
-
 export type TLoginDevice = {
   deviceId: string;
   deviceType: string;
@@ -13,4 +12,5 @@ export type TLoginDevice = {
   isVerified: boolean;
   isLoggedIn?: boolean;
   lastLogin?: Date | null;
+  lastLogout?: Date | null;
 };
