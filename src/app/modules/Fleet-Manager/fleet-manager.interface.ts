@@ -97,6 +97,8 @@ export type TFleetManager = {
     totalReviews: number;
   };
 
+  isDeleted?: boolean;
+
   // ---------------------------------------------
   // Timestamps
   // ---------------------------------------------

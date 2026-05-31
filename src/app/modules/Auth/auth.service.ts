@@ -1003,22 +1003,25 @@ const refreshToken = async (token: string) => {
 
   const { iat, userId, deviceId } = decoded;
 
-  const result = await findUserById({ userId });
-
-  const user = result?.user;
-  const model = result?.model;
+  const user = await AuthUser.findOne({
+    userId,
+    isDeleted: false,
+  }).populate('userObjectId', 'userId name');
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
   }
 
-  const isDeviceValid = user.loginDevices?.some(
-    (d: TLoginDevice) => d.deviceId === deviceId,
+  const loggedInUser = user?.userObjectId as any;
+
+  const targetDeviceSession = user.loginDevices?.find(
+    (d: any) => d.deviceId === deviceId,
   );
-  if (!isDeviceValid) {
+
+  if (!targetDeviceSession || targetDeviceSession.isLoggedIn === false) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
-      'Session expired or device removed. Please login again.',
+      'Your session has expired or you have logged out from this device. Please log in again.',
     );
   }
 
@@ -1031,7 +1034,7 @@ const refreshToken = async (token: string) => {
 
   if (
     user.passwordChangedAt &&
-    model.isJWTIssuedBeforePasswordChanged(
+    AuthUser.isJWTIssuedBeforePasswordChanged(
       user.passwordChangedAt,
       iat as number,
     )
@@ -1042,8 +1045,8 @@ const refreshToken = async (token: string) => {
   const jwtPayload = {
     userId: user?.userId,
     name: {
-      firstName: user?.name?.firstName,
-      lastName: user?.name?.lastName,
+      firstName: loggedInUser?.name?.firstName,
+      lastName: loggedInUser?.name?.lastName,
     },
     email: user?.email,
     contactNumber: user?.contactNumber,
@@ -1574,78 +1577,110 @@ const verifyOtp = async (
 
 // Resend OTP
 const resendOtp = async (email?: string, contactNumber?: string) => {
-  if (!email && !contactNumber) {
+  if (!email?.trim() && !contactNumber?.trim()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Email or contact number is required to resend OTP',
     );
   }
-  let user;
+
+  let successMessage = 'OTP resent successfully.';
+
   if (contactNumber) {
-    user = await Customer.findOne({ contactNumber, isDeleted: false });
+    const user = await AuthUser.findOne({
+      role: 'CUSTOMER',
+      contactNumber: contactNumber.trim(),
+      isDeleted: false,
+    });
+
     if (!user) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'User not found. Please register.',
+        'User not found with this contact number. Please register first.',
       );
     }
+
     const id = user.mobileOtpId;
     if (!id) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No OTP found to resend. Please request a new OTP.',
+        'No active OTP session found to resend. Please request a new login.',
       );
     }
+
     await resendMobileOtp(id as string);
+
     user.requiresOtpVerification = true;
     await user.save();
+
+    successMessage =
+      'OTP resent successfully to your mobile number. Please check your SMS.';
   }
+
   if (email) {
-    const result = await findUserByEmail({ email });
-    user = result?.user;
+    const user = await AuthUser.findOne({
+      email: email.trim().toLowerCase(),
+      isDeleted: false,
+    }).populate('userObjectId', 'userId name');
+
     if (!user) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'User not found. Please register.',
+        'User not found with this email address. Please register first.',
       );
     }
 
-    if (user?.isEmailVerified) {
+    if (user.isEmailVerified) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'User is already verified. Please login.',
+        'Your email is already verified. Please proceed to login.',
       );
     }
-    const { otp } = generateOtp();
 
-    const redisOtpKey = `otp:${email}`;
+    const { otp } = generateOtp();
+    const redisOtpKey = `otp:${email.trim().toLowerCase()}`;
     await RedisService.set(redisOtpKey, otp, 300); // 5-minute TTL
 
-    // Prepare email template content
-    const emailHtml = await EmailHelper.createEmailContent(
-      {
-        otp,
-        userEmail: user?.email,
-        currentYear: new Date().getFullYear(),
-        date: new Date().toDateString(),
-        user: user?.name?.firstName || user?.role.toLocaleLowerCase(),
-      },
-      'verify-email',
-    );
+    user.requiresOtpVerification = true;
+    await user.save();
 
-    // Send verification email
-    try {
-      await EmailHelper.sendEmail(
-        email,
-        emailHtml,
-        'Verify your email for DeliGo',
-      );
-    } catch (err: any) {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-    }
+    const loggedInUser = user.userObjectId as any;
+    const userName = loggedInUser?.name?.firstName || 'Customer';
+    const actionDate = new Date();
+
+    (async () => {
+      try {
+        const emailHtml = await EmailHelper.createEmailContent(
+          {
+            otp,
+            userEmail: user.email,
+            currentYear: actionDate.getFullYear(),
+            date: actionDate.toDateString(),
+            user: userName,
+          },
+          'verify-email',
+        );
+
+        await EmailHelper.sendEmail(
+          user.email,
+          emailHtml,
+          'Verify your email for DeliGo',
+        );
+      } catch (err: any) {
+        console.error(
+          'Safe Background Guard -> Resend OTP Email Failed:',
+          err.message,
+        );
+      }
+    })();
+
+    successMessage =
+      'OTP resent successfully. Please check your email inbox or spam folder.';
   }
+
   return {
-    message: 'OTP resent successfully. Please check your email.',
+    success: true,
+    message: successMessage,
   };
 };
 
@@ -1658,50 +1693,93 @@ const softDeleteUser = async (userId: string, currentUser: TAuthUser) => {
     );
   }
 
-  const { user: existingUser } = await findUserById({
-    userId,
-  });
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+  const targetAuthUser = await AuthUser.findOne({ userId, isDeleted: false });
+  if (!targetAuthUser) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'User not found or already deleted!',
+    );
   }
 
-  if (
-    (currentUser?.role === 'DELIVERY_PARTNER',
-    currentUser?.role === 'CUSTOMER',
-    currentUser?.role === 'VENDOR',
-    currentUser?.role === 'FLEET_MANAGER')
-  ) {
-    if (currentUser?.userId !== existingUser?.userId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to delete this user!',
-      );
-    }
-  }
-
-  if (
-    currentUser?.role === 'FLEET_MANAGER' &&
-    existingUser?.role === 'DELIVERY_PARTNER'
-  ) {
-    if (
-      currentUser?._id.toString() !== existingUser?.registeredBy.id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to delete this user!',
-      );
-    }
-  }
-
-  if (existingUser.role === USER_ROLE.SUPER_ADMIN) {
+  if (targetAuthUser.role === USER_ROLE.SUPER_ADMIN) {
     throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
   }
 
-  existingUser.isDeleted = true;
-  await existingUser.save();
+  const nonAdminRoles = [
+    'CUSTOMER',
+    'VENDOR',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+  ];
+
+  if (nonAdminRoles.includes(currentUser.role)) {
+    if (currentUser.userId !== targetAuthUser.userId) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to delete this user account!',
+      );
+    }
+  }
+
+  if (
+    currentUser.role === 'FLEET_MANAGER' &&
+    targetAuthUser.role === 'DELIVERY_PARTNER'
+  ) {
+    const modelName = ROLE_COLLECTION_MAP[targetAuthUser.role];
+    if (modelName) {
+      const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+      const targetProfile = await TargetModel.findById(
+        targetAuthUser.userObjectId,
+      );
+
+      if (
+        targetProfile?.registeredBy?.toString() !==
+          currentUser._id.toString() &&
+        currentUser.userId !== targetAuthUser.userId
+      ) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You can only delete delivery partners registered under your fleet management!',
+        );
+      }
+    }
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    targetAuthUser.isDeleted = true;
+    targetAuthUser.loginDevices = [];
+    await targetAuthUser.save({ session });
+
+    const modelName =
+      ROLE_COLLECTION_MAP[
+        targetAuthUser.role as keyof typeof ROLE_COLLECTION_MAP
+      ];
+    if (modelName) {
+      const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+      await TargetModel.findByIdAndUpdate(
+        targetAuthUser.userObjectId,
+        { $set: { isDeleted: true } },
+        { session },
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to execute soft delete due to transaction rollback',
+    );
+  }
 
   return {
-    message: `${existingUser?.role} deleted successfully`,
+    success: true,
+    message: `${targetAuthUser.role} account and profile deleted successfully`,
   };
 };
 
@@ -1710,35 +1788,60 @@ const permanentDeleteUser = async (userId: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a user. Your account is ${currentUser.status}`,
+      `You are not approved to perform permanent deletion. Your account is ${currentUser.status}`,
     );
   }
 
-  const { user: existingUser, model } = await findUserById({
-    userId,
-    isDeleted: true,
-  });
-  if (!existingUser) {
+  const targetAuthUser = await AuthUser.findOne({ userId });
+  if (!targetAuthUser) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'User already permanently deleted!',
+      'User account not found or already permanently deleted!',
     );
   }
 
-  if (!existingUser.isDeleted) {
+  if (!targetAuthUser.isDeleted) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'User should be soft deleted first!',
+      'User must be soft-deleted first before performing permanent deletion!',
     );
   }
 
-  if (existingUser.role === USER_ROLE.SUPER_ADMIN) {
+  if (targetAuthUser.role === USER_ROLE.SUPER_ADMIN) {
     throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
   }
-  await model?.deleteOne({ userId: existingUser.userId });
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const modelName =
+      ROLE_COLLECTION_MAP[
+        targetAuthUser.role as keyof typeof ROLE_COLLECTION_MAP
+      ];
+    if (modelName) {
+      const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+      await TargetModel.findByIdAndDelete(targetAuthUser.userObjectId).session(
+        session,
+      );
+    }
+
+    await AuthUser.deleteOne({ _id: targetAuthUser._id }).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to execute permanent deletion due to transaction rollback',
+    );
+  }
 
   return {
-    message: `${existingUser?.role} permanently deleted successfully`,
+    success: true,
+    message: `${targetAuthUser.role} account and profile permanently purged from DeliGo systems.`,
   };
 };
 

@@ -151,6 +151,8 @@ export type TDeliveryPartner = {
     totalReviews: number;
   };
 
+  isDeleted: boolean;
+
   // -------------------------------------------------
   // Timestamps
   // -------------------------------------------------

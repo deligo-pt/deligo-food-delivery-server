@@ -73,6 +73,8 @@ const customerSchema = new Schema<TCustomer>(
     // ----------------------------------------------------------------
     referralCode: { type: String, default: '' },
     referredBy: { type: Schema.Types.ObjectId, ref: 'AuthUser' },
+
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

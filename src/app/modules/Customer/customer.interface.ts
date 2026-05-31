@@ -73,6 +73,8 @@ export type TCustomer = {
   referralCode?: string;
   referredBy?: mongoose.Types.ObjectId;
 
+  isDeleted: boolean;
+
   // ------------------------------------------------------
   // Timestamps
   // ------------------------------------------------------

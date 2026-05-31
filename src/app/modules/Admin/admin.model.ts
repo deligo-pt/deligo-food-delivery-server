@@ -3,9 +3,8 @@ import { model, Schema } from 'mongoose';
 import { TAdmin } from './admin.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
-import { IAuthUserModel } from '../../interfaces/user.interface';
 
-const adminSchema = new Schema<TAdmin, IAuthUserModel>(
+const adminSchema = new Schema<TAdmin>(
   {
     // --------------------------------------------------------
     // Core Identifiers
@@ -69,6 +68,8 @@ const adminSchema = new Schema<TAdmin, IAuthUserModel>(
       idProofFront: { type: String, default: '' },
       idProofBack: { type: String, default: '' },
     },
+
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,
@@ -76,7 +77,7 @@ const adminSchema = new Schema<TAdmin, IAuthUserModel>(
   },
 );
 
-export const Admin = model<TAdmin, IAuthUserModel>('Admin', adminSchema);
+export const Admin = model<TAdmin>('Admin', adminSchema);
 
 export type TAdminImageDocuments = {
   docImageTitle: 'idProofFront' | 'idProofBack';

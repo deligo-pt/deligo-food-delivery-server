@@ -108,6 +108,8 @@ const fleetManagerSchema = new Schema<TFleetManager>(
       average: { type: Number, default: 0 },
       totalReviews: { type: Number, default: 0 },
     },
+
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,
