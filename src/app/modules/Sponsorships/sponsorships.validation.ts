@@ -26,6 +26,13 @@ const createSponsorshipValidationSchema = z.object({
         invalid_type_error: 'Invalid end date format',
       }),
 
+      url: z
+        .string({
+          required_error: 'URL is required',
+        })
+        .trim()
+        .url('Please provide a valid URL'),
+
       isActive: z.boolean().default(true).optional(),
     })
     .strict()
@@ -43,6 +50,7 @@ const updateSponsorshipValidationSchema = z.object({
       sponsorType: z.enum(['Ads', 'Offer', 'Other']).optional(),
       startDate: z.coerce.date().optional(),
       endDate: z.coerce.date().optional(),
+      url: z.string().trim().url().optional(),
       isActive: z.boolean().optional(),
     })
     .strict()
