@@ -28,6 +28,9 @@ const sponsorshipSchema = new Schema<TSponsorship>(
       type: String,
       required: [true, 'Banner image is required'],
     },
+    url: {
+      type: String,
+    },
     isActive: {
       type: Boolean,
       default: true,
