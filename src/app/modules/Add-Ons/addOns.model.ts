@@ -18,7 +18,7 @@ const addonOptionSchema = new Schema(
 
 const addonGroupSchema = new Schema<TAddonGroup>(
   {
-    vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor', required: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: 'AuthUser', required: true },
     title: { type: String, required: true },
     minSelectable: { type: Number, default: 0 },
     maxSelectable: { type: Number, default: 1 },

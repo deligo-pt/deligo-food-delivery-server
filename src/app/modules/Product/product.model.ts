@@ -21,7 +21,7 @@ const variationSchema = new Schema({
 const productSchema = new Schema<TProduct>(
   {
     productId: { type: String, required: true, unique: true },
-    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'AuthUser' },
     sku: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     slug: { type: String, required: true },

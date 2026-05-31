@@ -17,6 +17,8 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { Offer } from '../Offer/offer.model';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
+import { USER_ROLE } from '../../constant/GlobalConstant/user.constant';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
@@ -638,9 +640,7 @@ const getPartnerPerformanceAnalytics = async (
 };
 
 // Delivery Partner earning analytics service
-const getDeliveryPartnerEarningAnalytics = async (
-  currentUser: TAuthUser,
-) => {
+const getDeliveryPartnerEarningAnalytics = async (currentUser: TAuthUser) => {
   const riderObjectId = new Types.ObjectId(currentUser._id);
 
   const today = new Date();
@@ -1049,22 +1049,47 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
   const limitNumber = Number(limit);
   const skip = (pageNumber - 1) * limitNumber;
 
-  const pipeline: any[] = [{ $match: { isDeleted: false } }];
+  const pipeline: any[] = [
+    { $match: { role: USER_ROLE.CUSTOMER, isDeleted: false } },
+  ];
+
+  if (status && status !== 'All') {
+    pipeline.push({ $match: { status } });
+  }
+
+  pipeline.push(
+    {
+      $lookup: {
+        from: 'customers',
+        localField: 'userObjectId',
+        foreignField: '_id',
+        as: 'profileData',
+      },
+    },
+    {
+      $unwind: {
+        path: '$profileData',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  );
 
   if (searchTerm) {
     pipeline.push({
       $match: {
         $or: [
-          { 'name.firstName': { $regex: searchTerm, $options: 'i' } },
-          { 'name.lastName': { $regex: searchTerm, $options: 'i' } },
           { email: { $regex: searchTerm, $options: 'i' } },
+          { userId: { $regex: searchTerm, $options: 'i' } },
+          { contactNumber: { $regex: searchTerm, $options: 'i' } },
+          {
+            'profileData.name.firstName': { $regex: searchTerm, $options: 'i' },
+          },
+          {
+            'profileData.name.lastName': { $regex: searchTerm, $options: 'i' },
+          },
         ],
       },
     });
-  }
-
-  if (status && status !== 'All') {
-    pipeline.push({ $match: { status } });
   }
 
   pipeline.push(
@@ -1079,12 +1104,20 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
     {
       $project: {
         customer: {
-          name: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
-          email: '$email',
-          profilePhoto: '$profilePhoto',
+          name: {
+            $concat: [
+              { $ifNull: ['$profileData.name.firstName', ''] },
+              ' ',
+              { $ifNull: ['$profileData.name.lastName', ''] },
+            ],
+          },
+          email: { $ifNull: ['$email', ''] },
+          profilePhoto: { $ifNull: ['$profileData.profilePhoto', ''] },
         },
         totalOrders: { $size: '$orderHistory' },
-        totalSpent: { $sum: '$orderHistory.payoutSummary.grandTotal' },
+        totalSpent: {
+          $round: [{ $sum: '$orderHistory.payoutSummary.grandTotal' }, 2],
+        },
         lastOrdered: { $max: '$orderHistory.createdAt' },
         joinedAt: '$createdAt',
         status: '$status',
@@ -1100,7 +1133,7 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
 
   pipeline.push({ $sort: sortCondition });
 
-  const finalResult = await Customer.aggregate([
+  const finalResult = await AuthUser.aggregate([
     ...pipeline,
     {
       $facet: {
@@ -1137,6 +1170,21 @@ const getVendorPerformanceAnalytics = async (
 
   const results = await Vendor.aggregate([
     { $match: { isDeleted: false } },
+
+    {
+      $lookup: {
+        from: 'authusers',
+        localField: '_id',
+        foreignField: 'userObjectId',
+        as: 'authData',
+      },
+    },
+    {
+      $unwind: {
+        path: '$authData',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
 
     {
       $lookup: {
@@ -1189,8 +1237,6 @@ const getVendorPerformanceAnalytics = async (
               _id: 1,
               profilePhoto: 1,
               userId: 1,
-              email: 1,
-              status: 1,
               name: 1,
               businessDetails: 1,
               businessLocation: 1,
@@ -1198,6 +1244,9 @@ const getVendorPerformanceAnalytics = async (
               totalOrders: '$totalOrdersCount',
               totalRevenue: 1,
               totalItems: 1,
+
+              email: { $ifNull: ['$authData.email', ''] },
+              status: { $ifNull: ['$authData.status', 'PENDING'] },
             },
           },
         ],
@@ -1355,14 +1404,19 @@ const getSingleVendorPerformanceDetails = async (
     );
   }
 
-  const vendor = await Vendor.findOne({
+  const authVendor = await AuthUser.findOne({
     userId: vendorUserCustomId,
     isDeleted: false,
-  });
+  }).populate('userObjectId');
 
-  if (!vendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  if (!authVendor || !authVendor.userObjectId) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Vendor account or profile metadata not found!',
+    );
   }
+
+  const vendor = authVendor?.userObjectId as any;
 
   const vendorObjectId = vendor._id;
   const sixMonthsAgo = new Date();
@@ -1463,11 +1517,12 @@ const getSingleVendorPerformanceDetails = async (
 
   return {
     vendorPerformance: {
-      _id: vendor._id,
-      profilePhoto: vendor.profilePhoto,
+      _id: authVendor._id,
+      authUserId: authVendor._id,
       userId: vendor.userId,
-      email: vendor.email,
-      status: vendor.status,
+      email: authVendor.email,
+      status: authVendor.status,
+      profilePhoto: vendor.profilePhoto,
       name: vendor.name,
       businessDetails: vendor.businessDetails,
       businessLocation: vendor.businessLocation,
@@ -1499,7 +1554,10 @@ const getOfferAnalyticsForAdmin = async (currentUser: TAuthUser) => {
     orderStatus: { $ne: 'CANCELLED' },
   };
 
-  if (currentUser?.role === 'VENDOR' && currentUser?._id) {
+  if (
+    (currentUser?.role === 'VENDOR' || currentUser?.role === 'SUB_VENDOR') &&
+    currentUser?._id
+  ) {
     const vId = new mongoose.Types.ObjectId(currentUser._id);
     offerFilter.vendorId = vId;
     orderFilter.vendorId = vId;
@@ -1627,167 +1685,6 @@ const getOfferAnalyticsForAdmin = async (currentUser: TAuthUser) => {
   };
 };
 
-// get tax report analytics for vendor
-const getTaxReportAnalyticsForVendor = async (currentUser: TAuthUser) => {
-  const now = new Date();
-  const start = new Date();
-  start.setMonth(now.getMonth() - 5);
-  start.setDate(1);
-  start.setHours(0, 0, 0, 0);
-
-  const vId = new mongoose.Types.ObjectId(currentUser._id);
-
-  const [result] = await Order.aggregate<any>([
-    {
-      $match: {
-        vendorId: vId,
-        orderStatus: 'DELIVERED',
-        createdAt: { $gte: start, $lte: now },
-      },
-    },
-    {
-      $facet: {
-        stats: [
-          {
-            $group: {
-              _id: null,
-              totalSales: { $sum: '$payoutSummary.vendor.vendorNetPayout' },
-              totalTax: { $sum: '$payoutSummary.vendor.payableTax' },
-              netRevenue: { $sum: '$payoutSummary.vendor.earningsWithoutTax' },
-            },
-          },
-        ],
-
-        taxContribution: [
-          { $unwind: '$items' },
-          {
-            $group: {
-              _id: null,
-              productTax: { $sum: '$items.productPricing.taxAmount' },
-              addonTax: {
-                $sum: {
-                  $reduce: {
-                    input: '$items.addons',
-                    initialValue: 0,
-                    in: { $add: ['$$value', '$$this.taxAmount'] },
-                  },
-                },
-              },
-            },
-          },
-        ],
-
-        taxByCategory: [
-          { $unwind: '$items' },
-          {
-            $project: {
-              allTaxes: {
-                $concatArrays: [
-                  [
-                    {
-                      rate: '$items.productPricing.taxRate',
-                      amount: '$items.productPricing.taxAmount',
-                    },
-                  ],
-                  {
-                    $map: {
-                      input: '$items.addons',
-                      as: 'addon',
-                      in: {
-                        rate: '$$addon.taxRate',
-                        amount: '$$addon.taxAmount',
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-          },
-          { $unwind: '$allTaxes' },
-          {
-            $group: {
-              _id: '$allTaxes.rate',
-              totalValue: { $sum: '$allTaxes.amount' },
-            },
-          },
-          { $sort: { _id: 1 } },
-        ],
-
-        revenueTrend: [
-          {
-            $group: {
-              _id: { $dateToString: { format: '%b', date: '$createdAt' } },
-              revenue: { $sum: '$payoutSummary.vendor.earningsWithoutTax' },
-              tax: { $sum: '$payoutSummary.vendor.payableTax' },
-              sortDate: { $first: '$createdAt' },
-            },
-          },
-          { $sort: { sortDate: 1 } },
-        ],
-
-        addonTaxBreakdown: [
-          { $unwind: '$items' },
-          { $unwind: '$items.addons' },
-          {
-            $group: {
-              _id: '$items.addons.name',
-              tax: { $sum: '$items.addons.taxAmount' },
-            },
-          },
-          { $sort: { tax: -1 } },
-          { $limit: 10 },
-        ],
-      },
-    },
-  ]);
-
-  const stats = result?.stats[0] || {
-    totalSales: 0,
-    totalTax: 0,
-    netRevenue: 0,
-  };
-  const contributionRaw = result?.taxContribution[0] || {
-    productTax: 0,
-    addonTax: 0,
-  };
-
-  const totalCalculatedTax =
-    contributionRaw.productTax + contributionRaw.addonTax || 1;
-
-  const taxContribution = [
-    {
-      name: 'Product',
-      value: roundTo2((contributionRaw.productTax / totalCalculatedTax) * 100),
-    },
-    {
-      name: 'Addon',
-      value: roundTo2((contributionRaw.addonTax / totalCalculatedTax) * 100),
-    },
-  ];
-
-  return {
-    stats: {
-      totalSales: roundTo2(stats.totalSales),
-      totalTax: roundTo2(stats.totalTax),
-      netRevenue: roundTo2(stats.netRevenue),
-    },
-    taxContribution,
-    taxByCategory: (result?.taxByCategory || []).map((t: any) => ({
-      name: `${t._id}%`,
-      value: roundTo2(t.totalValue),
-    })),
-    revenueData: (result?.revenueTrend || []).map((r: any) => ({
-      name: r._id,
-      revenue: roundTo2(r.revenue),
-      tax: roundTo2(r.tax),
-    })),
-    addonTax: (result?.addonTaxBreakdown || []).map((a: any) => ({
-      name: a._id,
-      tax: roundTo2(a.tax),
-    })),
-  };
-};
-
 export const AnalyticsSecondServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -1800,5 +1697,4 @@ export const AnalyticsSecondServices = {
   getVendorPerformanceAnalytics,
   getSingleVendorPerformanceDetails,
   getOfferAnalyticsForAdmin,
-  getTaxReportAnalyticsForVendor,
 };

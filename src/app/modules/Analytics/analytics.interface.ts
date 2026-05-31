@@ -1,3 +1,4 @@
+import { TAuthUser } from '../AuthUser/authUser.interface';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { TFleetManager } from '../Fleet-Manager/fleet-manager.interface';
 
@@ -137,18 +138,12 @@ export type TVendorSalesReport = {
 // for fleet manager performance analysis
 export type TFleetManagerPerformance = Pick<
   TFleetManager,
-  | '_id'
-  | 'profilePhoto'
-  | 'userId'
-  | 'email'
-  | 'status'
-  | 'name'
-  | 'address'
-  | 'operationalData'
-> & {
-  totalDeliveries: number;
-  totalEarnings: number;
-};
+  '_id' | 'profilePhoto' | 'userId' | 'name' | 'address' | 'operationalData'
+> &
+  Pick<TAuthUser, 'status' | 'email'> & {
+    totalDeliveries: number;
+    totalEarnings: number;
+  };
 export type TFleetPerformanceStat = {
   mostOrders: {
     fleetName: string;

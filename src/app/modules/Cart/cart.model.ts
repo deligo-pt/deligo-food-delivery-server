@@ -20,7 +20,7 @@ const cartAddonSchema = new Schema(
 const cartItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
-    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
+    vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'AuthUser' },
     name: { type: String, required: true }, // Snapshot of product name
     image: { type: String }, // Snapshot of product image
     hasVariations: { type: Boolean, default: false },
@@ -63,7 +63,7 @@ const cartSchema = new Schema<TCart>(
     customerId: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: 'Customer',
+      ref: 'AuthUser',
     },
     items: { type: [cartItemSchema], required: true, default: [] },
 
