@@ -4,6 +4,7 @@ export type TSponsorship = {
   startDate: Date;
   endDate: Date;
   bannerImage: string;
+  url: string;
   isActive: boolean;
   isDeleted: boolean;
   createdAt: Date;
