@@ -6,6 +6,7 @@ dotenv.config({ path: path.join((process.cwd(), '.env')) });
 export default {
   NODE_ENV: process.env.NODE_ENV,
   port: process.env.PORT,
+  puppeteer_executable_path: process.env.PUPPETEER_EXECUTABLE_PATH,
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY,
     openAiApiKey: process.env.OPENAI_API_KEY,
@@ -13,12 +14,6 @@ export default {
   signature: {
     company_signature_1_url: process.env.COMPANY_SIGNATURE_1_URL,
     company_signature_2_url: process.env.COMPANY_SIGNATURE_2_URL,
-  },
-  agent: {
-    email: process.env.AGENT_EMAIL,
-    password: process.env.AGENT_PASSWORD,
-    profile_photo: process.env.AGENT_PROFILE_PHOTO,
-    contact_number: process.env.AGENT_CONTACT_NUMBER,
   },
   frontend_urls: {
     frontend_url_vendor: process.env.FRONTEND_URL_VENDOR,

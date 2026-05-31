@@ -6,7 +6,7 @@ import { FleetManagerValidation } from './fleet-manager.validation';
 
 const router = Router();
 
-// Agent update Route
+// Fleet Manager update Route
 router.patch(
   '/:fleetManagerId',
   auth('FLEET_MANAGER', 'SUPER_ADMIN', 'ADMIN')(),

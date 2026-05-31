@@ -10,7 +10,8 @@
     "build": "tsc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "postinstall": "puppeteer browsers install chrome"
   },
   "dependencies": {
     "@google/genai": "^2.0.1",

@@ -62,6 +62,7 @@ class AgreementPdfService {
 
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath: config.puppeteer_executable_path || undefined,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
@@ -69,7 +70,7 @@ class AgreementPdfService {
       const page = await browser.newPage();
 
       await page.setContent(html, {
-        waitUntil: 'networkidle0',
+        waitUntil: 'domcontentloaded',
       });
 
       await page.pdf({

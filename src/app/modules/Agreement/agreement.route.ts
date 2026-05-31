@@ -3,46 +3,47 @@ import { AgreementController } from './agreement.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { AgreementValidation } from './agreement.validation';
 import auth from '../../middlewares/auth';
+import { SYSTEM_PERMISSIONS } from '../Permission/permission.constant';
 
 const router = express.Router();
 
 router.post(
   '/initiate',
-  auth('AGENT')(),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(AgreementValidation.initiateAgreementValidationSchema),
   AgreementController.initiateAgreement,
 );
 
 router.post(
   '/verify-otp',
-  auth('AGENT')(),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(AgreementValidation.verifyAgreementOtpValidationSchema),
   AgreementController.verifyAgreementOtp,
 );
 
 router.post(
   '/resend-otp',
-  auth('AGENT')(),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(AgreementValidation.resendAgreementOtpValidationSchema),
   AgreementController.resendAgreementOtp,
 );
 
 router.post(
   '/sign/:agreementId',
-  auth('AGENT')(),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   validateRequest(AgreementValidation.signAgreementValidationSchema),
   AgreementController.signAgreement,
 );
 
 router.get(
   '/:agreementId',
-  auth('AGENT', 'ADMIN', 'SUPER_ADMIN')(),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   AgreementController.getAgreementById,
 );
 
 router.get(
   '/',
-  auth('AGENT', 'ADMIN', 'SUPER_ADMIN')(),
+  auth('ADMIN', 'SUPER_ADMIN')(),
   AgreementController.getAllAgreements,
 );
 
