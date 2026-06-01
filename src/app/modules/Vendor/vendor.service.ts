@@ -629,17 +629,20 @@ const getAllVendorsForCustomer = async (
 
 // get single vendor for customer
 const getSingleVendorForCustomer = async (vendorId: string) => {
+  const isObjectId = mongoose.Types.ObjectId.isValid(vendorId);
+  const queryCondition = isObjectId ? { _id: vendorId } : { userId: vendorId };
+
   const vendorAuth = await AuthUser.findOne({
-    userId: vendorId,
-    role: USER_ROLE.VENDOR,
-    status: USER_STATUS.APPROVED,
+    ...queryCondition,
+    role: 'VENDOR',
+    status: 'APPROVED',
     isDeleted: false,
-  })
-    .populate({
-      path: 'userObjectId',
-      select: 'name userId businessDetails businessLocation documents rating', // কাস্টমারের জন্য প্রয়োজনীয় ফিল্ডস
-    })
-    .lean();
+  }).populate({
+    path: 'userObjectId',
+    model: 'Vendor',
+    select:
+      'name userId businessDetails businessLocation documents rating currentSessionLocation',
+  });
 
   if (!vendorAuth || !vendorAuth.userObjectId) {
     throw new AppError(
@@ -655,7 +658,7 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
     userId: vendorAuth.userId,
     name: vendorProfile.name,
     email: vendorAuth.email || '',
-    contactNumber: vendorAuth.contactNumber || '',
+    contactNumber: (vendorAuth as any).contactNumber || '',
     businessDetails: {
       businessName: vendorProfile.businessDetails?.businessName,
       businessType: vendorProfile.businessDetails?.businessType,
@@ -667,7 +670,7 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
     businessLocation: vendorProfile.businessLocation,
     storePhoto: vendorProfile.documents?.storePhoto || [],
     rating: vendorProfile.rating,
-    currentSessionLocation: vendorProfile.currentSessionLocation,
+    currentSessionLocation: vendorProfile.currentSessionLocation || null,
   };
 
   return formattedVendor;
