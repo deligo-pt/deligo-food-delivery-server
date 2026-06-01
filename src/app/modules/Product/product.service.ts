@@ -432,29 +432,25 @@ const updateInventoryAndPricing = async (
   newPrice?: number,
   variationSku?: string,
 ) => {
-  const product = await Product.findOne({ productId }).populate(
-    'vendorId',
-    'businessDetails.businessType',
-  );
+  const product = await Product.findOne({ productId });
 
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  const vendor = product.vendorId as any;
-  const isRestaurant =
-    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
-
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
-    if (
-      currentUser._id.toString() !== (product.vendorId as any)._id.toString()
-    ) {
+    if (currentUser._id.toString() !== product.vendorId.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You are not authorized to update this product',
       );
     }
   }
+
+  const vendorProfile = await Vendor.findById(currentUser.userObjectId).lean();
+  const isRestaurant =
+    vendorProfile?.businessDetails?.businessType ===
+    BusinessCategoryName.RESTAURANT;
 
   const netQuantityChange = addedQuantity - reduceQuantity;
 
@@ -476,7 +472,7 @@ const updateInventoryAndPricing = async (
             ) {
               throw new AppError(
                 httpStatus.BAD_REQUEST,
-                `Insufficient stock. Available: ${opt.stockQuantity}`,
+                `Insufficient stock for this variant. Available: ${opt.stockQuantity}`,
               );
             }
             opt.stockQuantity = (opt.stockQuantity || 0) + netQuantityChange;
@@ -495,25 +491,31 @@ const updateInventoryAndPricing = async (
     if (!variationFound)
       throw new AppError(httpStatus.NOT_FOUND, 'Variation SKU not found');
 
-    if (!isRestaurant && product.stock) {
+    if (!isRestaurant) {
+      if (!product.stock) {
+        product.stock = { quantity: 0, hasVariations: true } as any;
+      }
       let totalStock = 0;
       product.variations.forEach((v) =>
         v.options.forEach((opt) => (totalStock += opt.stockQuantity || 0)),
       );
-      product.stock.quantity = totalStock;
-      product.stock.totalAddedQuantity =
-        (product.stock.totalAddedQuantity || 0) + netQuantityChange;
+      product.stock!.quantity = totalStock;
+      product.stock!.totalAddedQuantity =
+        (product.stock!.totalAddedQuantity || 0) + netQuantityChange;
     }
 
     if (newPrice !== undefined) product.pricing.price = minPrice;
   } else {
-    if (!isRestaurant && product.stock) {
-      if (reduceQuantity > 0 && reduceQuantity > product.stock.quantity) {
+    if (!isRestaurant) {
+      if (!product.stock) {
+        product.stock = { quantity: 0, hasVariations: false } as any;
+      }
+      if (reduceQuantity > 0 && reduceQuantity > product.stock!.quantity) {
         throw new AppError(httpStatus.BAD_REQUEST, `Insufficient stock.`);
       }
-      product.stock.quantity += netQuantityChange;
-      product.stock.totalAddedQuantity =
-        (product.stock.totalAddedQuantity || 0) + netQuantityChange;
+      product.stock!.quantity += netQuantityChange;
+      product.stock!.totalAddedQuantity =
+        (product.stock!.totalAddedQuantity || 0) + netQuantityChange;
     }
 
     if (newPrice !== undefined) product.pricing.price = newPrice;
@@ -522,9 +524,14 @@ const updateInventoryAndPricing = async (
   if (isRestaurant) {
     product.stock = undefined;
   } else if (product.stock) {
-    const finalQty = product.stock.quantity;
-    product.stock.availabilityStatus =
+    const finalQty = product.stock!.quantity;
+    product.stock!.availabilityStatus =
       finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  }
+
+  product.markModified('variations');
+  if (product.stock) {
+    product.markModified('stock');
   }
 
   await product.save();
