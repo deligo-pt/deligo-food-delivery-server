@@ -18,6 +18,7 @@ import {
   USER_STATUS,
 } from '../../constant/GlobalConstant/user.constant';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { Customer } from '../Customer/customer.model';
 
 /**
  * Service to update vendor profile information.
@@ -457,10 +458,13 @@ const getSingleVendor = async (vendorId: string, currentUser: TAuthUser) => {
 // get all vendors for customer
 const getAllVendorsForCustomer = async (
   query: Record<string, unknown>,
-  currentUser: any,
+  currentUser: TAuthUser,
 ) => {
-  await currentUser.populate('userObjectId');
-  const customerProfile = currentUser.userObjectId;
+  const customerProfile = await Customer.findOne({
+    userId: currentUser.userId,
+  })
+    .lean()
+    .select('currentSessionLocation');
   if (!customerProfile) {
     throw new AppError(
       httpStatus.NOT_FOUND,

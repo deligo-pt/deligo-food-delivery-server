@@ -27,9 +27,9 @@ const updateCustomer = async (
     );
   }
 
-  await currentUser.populate('userObjectId');
-
-  const customer = currentUser.userObjectId as any;
+  const customer = await Customer.findOne({ userId: customerId })
+    .lean()
+    .select('userId deliveryAddresses referralCode');
   if (!customer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
   }
@@ -220,7 +220,7 @@ const updateCustomerLiveLocation = async (
 // --------------------------------------------------------------
 const addDeliveryAddress = async (
   deliveryAddress: TDeliveryAddress,
-  currentUser: any,
+  currentUser: TAuthUser,
 ) => {
   // --------------------------------------------------
   // Validate payload
@@ -243,9 +243,9 @@ const addDeliveryAddress = async (
     );
   }
 
-  await currentUser.populate('userObjectId');
-
-  const customer = currentUser.userObjectId;
+  const customer = await Customer.findById(currentUser.userObjectId)
+    .lean()
+    .select('deliveryAddresses');
 
   if (!customer) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Customer not found');
@@ -350,10 +350,11 @@ const addDeliveryAddress = async (
 const updateDeliveryAddress = async (
   addressId: string,
   payload: Partial<TDeliveryAddress>,
-  currentUser: any,
+  currentUser: TAuthUser,
 ) => {
-  await currentUser.populate('userObjectId');
-  const customer = currentUser.userObjectId;
+  const customer = await Customer.findById(currentUser.userObjectId)
+    .lean()
+    .select('deliveryAddresses');
 
   if (!customer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
@@ -436,7 +437,7 @@ const updateDeliveryAddress = async (
 // Active or deactivate delivery address
 const toggleDeliveryAddressStatus = async (
   addressId: string,
-  currentUser: any,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser?.role !== 'CUSTOMER') {
     throw new AppError(
@@ -445,8 +446,9 @@ const toggleDeliveryAddressStatus = async (
     );
   }
 
-  await currentUser.populate('userObjectId');
-  const customer = currentUser.userObjectId;
+  const customer = await Customer.findById(currentUser.userObjectId)
+    .lean()
+    .select('deliveryAddresses');
 
   if (!customer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
@@ -502,9 +504,13 @@ const toggleDeliveryAddressStatus = async (
 };
 
 // delete delivery address
-const deleteDeliveryAddress = async (addressId: string, currentUser: any) => {
-  await currentUser.populate('userObjectId');
-  const customer = currentUser.userObjectId;
+const deleteDeliveryAddress = async (
+  addressId: string,
+  currentUser: TAuthUser,
+) => {
+  const customer = await Customer.findById(currentUser.userObjectId)
+    .lean()
+    .select('deliveryAddresses');
 
   if (!customer) {
     throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
@@ -552,7 +558,7 @@ const deleteDeliveryAddress = async (addressId: string, currentUser: any) => {
 //get all customers
 const getAllCustomersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: any,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -612,7 +618,7 @@ const getAllCustomersFromDB = async (
 // get single customer
 const getSingleCustomerFromDB = async (
   customerId: string,
-  currentUser: any,
+  currentUser: TAuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -635,8 +641,7 @@ const getSingleCustomerFromDB = async (
       );
     }
 
-    await currentUser.populate('userObjectId');
-    customerData = currentUser.userObjectId;
+    customerData = await Customer.findOne({ userId: customerId }).lean();
   } else {
     let query = Customer.findOne({ userId: customerId });
 

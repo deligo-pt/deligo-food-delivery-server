@@ -15,6 +15,7 @@ import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
 import { TAuthUser } from '../AuthUser/authUser.interface';
 import { UpdateProductUtils } from './updateProduct.utils';
+import { Vendor } from '../Vendor/vendor.model';
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: any) => {
@@ -97,23 +98,25 @@ const updateProduct = async (
 const manageProductVariations = async (
   productId: string,
   payload: { name: string; options: any[] },
-  currentUser: TAuthUser,
+  currentUser: any,
 ) => {
   const existingProduct = await Product.findOne({
     productId,
     ...((currentUser.role === 'VENDOR' ||
       currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
-  }).populate('vendorId', 'businessDetails.businessType');
+  });
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
+  const vendorProfile = await Vendor.findById(currentUser.userObjectId).lean();
+
   if (currentUser?.status !== 'APPROVED')
     throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
 
-  const vendor = existingProduct.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
+    vendorProfile?.businessDetails?.businessType ===
+    BusinessCategoryName.RESTAURANT;
 
   const { name, options } = payload;
   const normalizedName = name.trim();
