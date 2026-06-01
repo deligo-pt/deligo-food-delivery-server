@@ -16,6 +16,7 @@ import customNanoId from '../../utils/customNanoId';
 import { TAuthUser } from '../AuthUser/authUser.interface';
 import { UpdateProductUtils } from './updateProduct.utils';
 import { Vendor } from '../Vendor/vendor.model';
+import { Order } from '../Order/order.model';
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: any) => {
@@ -782,29 +783,55 @@ const softDeleteProduct = async (productId: string, currentUser: TAuthUser) => {
     );
   }
 
-  const product = await Product.findOne({ productId });
-  if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
-    if (currentUser._id.toString() !== product?.vendorId.toString()) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'You are not authorized to delete this product',
-      );
-    }
-  }
-
-  if (product?.isDeleted) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Product is already deleted');
-  }
+  const product = await Product.findOne({ productId }).select(
+    'name vendorId isDeleted',
+  );
 
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  // --------------------------------------------------------------------------
-  // TODO: check if product in order or not. if in order, throw error will be added
-  // --------------------------------------------------------------------------
+  if (product.isDeleted) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Product is already deleted');
+  }
+
+  if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
+    if (currentUser._id.toString() !== product.vendorId.toString()) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to delete this product',
+      );
+    }
+  }
+
+  const isProductInActiveOrder = await Order.findOne({
+    'items.productId': product._id,
+    orderStatus: {
+      $in: [
+        'PENDING',
+        'ACCEPTED',
+        'AWAITING_PARTNER',
+        'DISPATCHING',
+        'ASSIGNED',
+        'REASSIGNMENT_NEEDED',
+        'PREPARING',
+        'READY_FOR_PICKUP',
+        'PICKED_UP',
+        'ON_THE_WAY',
+      ],
+    },
+  }).lean();
+
+  if (isProductInActiveOrder) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This product cannot be deleted because it is currently included in an active or ongoing order.',
+    );
+  }
+
   product.isDeleted = true;
   await product.save();
+
   return {
     message: `${product.name} has been deleted successfully`,
   };
@@ -822,21 +849,34 @@ const permanentDeleteProduct = async (
     );
   }
 
-  const product = await Product.findOne({ productId });
+  const product = await Product.findOne({ productId }).select(
+    'name vendorId isDeleted',
+  );
 
-  if (product?.isDeleted === false) {
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
+  if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
+    if (currentUser._id.toString() !== product.vendorId.toString()) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to permanently delete this product',
+      );
+    }
+  }
+
+  if (product.isDeleted === false) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Product must be soft deleted before permanent deletion',
     );
   }
 
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  }
-  await product.deleteOne();
+  await Product.deleteOne({ _id: product._id });
+
   return {
-    message: `${product.name} has been permanently deleted successfully`,
+    message: `${product.name} has been permanently deleted successfully from the system`,
   };
 };
 
