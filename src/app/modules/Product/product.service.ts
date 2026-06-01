@@ -644,7 +644,7 @@ const getAllProducts = async (
   }
   const role = currentUser.role;
 
-  if (role === 'VENDOR') {
+  if (role === 'VENDOR' || role === 'SUB_VENDOR') {
     query.vendorId = currentUser._id;
     query.isDeleted = false;
   }
@@ -661,18 +661,40 @@ const getAllProducts = async (
     .filter()
     .search(ProductSearchableFields);
 
-  const populateOptions = getPopulateOptions(role, {
-    vendor:
-      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
-    productCategory: 'name',
-  });
+  products.modelQuery = products.modelQuery
+    .populate({
+      path: 'vendorId',
+      select: 'userId email role status userObjectId',
+      options: {
+        transform: (doc: any) => {
+          if (!doc) return null;
 
-  populateOptions.forEach((option) => {
-    products.modelQuery = products.modelQuery.populate(option);
-  });
+          const profile = doc.userObjectId;
+
+          return {
+            _id: doc._id,
+            userId: doc.userId,
+            businessDetails: profile?.businessDetails || null,
+            businessLocation: profile?.businessLocation || null,
+            documents: profile?.documents || null,
+            rating: profile?.rating || { average: 0, totalReviews: 0 },
+          };
+        },
+      },
+      populate: {
+        path: 'userObjectId',
+        model: 'Vendor',
+        select: 'businessDetails businessLocation documents rating',
+      },
+    })
+    .populate({
+      path: 'category',
+      select: 'name',
+    });
 
   const meta = await products.countTotal();
   const data = await products.modelQuery;
+
   return {
     meta,
     data,
@@ -689,6 +711,7 @@ const getSingleProduct = async (productId: string, currentUser: TAuthUser) => {
   }
 
   let query;
+
   if (
     currentUser.role === 'CUSTOMER' ||
     currentUser.role === 'DELIVERY_PARTNER' ||
@@ -699,7 +722,10 @@ const getSingleProduct = async (productId: string, currentUser: TAuthUser) => {
       isApproved: true,
       isDeleted: false,
     });
-  } else if (currentUser.role === 'VENDOR') {
+  } else if (
+    currentUser.role === 'VENDOR' ||
+    currentUser.role === 'SUB_VENDOR'
+  ) {
     query = Product.findOne({
       productId,
       vendorId: currentUser._id,
@@ -707,22 +733,46 @@ const getSingleProduct = async (productId: string, currentUser: TAuthUser) => {
   } else {
     query = Product.findOne({ productId });
   }
-  const populateOptions = getPopulateOptions(currentUser.role, {
-    vendor:
-      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
-    productCategory: 'name',
-  });
 
-  populateOptions.forEach((option) => {
-    query.populate(option);
-  });
+  query = query
+    .populate({
+      path: 'vendorId',
+      select: 'userId email role status userObjectId',
+      options: {
+        transform: (doc: any) => {
+          if (!doc) return null;
+
+          const profile = doc.userObjectId;
+
+          return {
+            _id: doc._id,
+            userId: doc.userId,
+            businessDetails: profile?.businessDetails || null,
+            businessLocation: profile?.businessLocation || null,
+            documents: profile?.documents || null,
+            rating: profile?.rating || { average: 0, totalReviews: 0 },
+          };
+        },
+      },
+      populate: {
+        path: 'userObjectId',
+        model: 'Vendor',
+        select: 'businessDetails businessLocation documents rating',
+      },
+    })
+    .populate({
+      path: 'category',
+      select: 'name',
+    });
+
   const product = await query;
+
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
+
   return product;
 };
-
 // product soft delete service
 const softDeleteProduct = async (productId: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
