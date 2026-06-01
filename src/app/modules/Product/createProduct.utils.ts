@@ -133,7 +133,6 @@ const handleVariations = (
           sku:
             option.sku ||
             `VAR-${productNamePart}-${cleanForSKU(option.label)}-${customNanoId(3).toUpperCase()}`,
-          // isOutOfStock: option.isOutOfStock ?? false,
         };
       }
 

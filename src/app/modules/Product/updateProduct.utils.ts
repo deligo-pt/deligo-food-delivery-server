@@ -3,10 +3,13 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { Tax } from '../Tax/tax.model';
 import { BusinessCategoryName } from '../Category/category.interface';
-import { generateSlug } from './product.utils';
+import { cleanForSKU, generateSlug } from './product.utils';
 import { TProduct } from './product.interface';
 import { Product } from './product.model';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
+import { Vendor } from '../Vendor/vendor.model';
+import customNanoId from '../../utils/customNanoId';
 
 const getAndValidateProduct = async (
   productId: string,
@@ -15,17 +18,35 @@ const getAndValidateProduct = async (
   const product = await Product.findOne({
     productId,
     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
-  }).populate('vendorId', 'businessDetails.businessType');
+  });
 
   if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
+
+  if (currentUser?.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Action forbidden. Your account is not approved.',
+    );
+  }
 
   return product;
 };
 
-const prepareUpdateData = async (payload: Partial<TProduct>) => {
+const getVendorBusinessType = async (vendorAuthId: any) => {
+  const authUser = await AuthUser.findById(vendorAuthId).lean();
+  if (!authUser || !authUser.userObjectId) return null;
+
+  const vendorProfile = await Vendor.findById(authUser.userObjectId).lean();
+  return vendorProfile?.businessDetails?.businessType || null;
+};
+
+const prepareUpdateData = async (
+  payload: Partial<TProduct>,
+  vendorBusinessType: string | null,
+  currentProductName: string,
+) => {
   const modifiedData: Record<string, any> = {};
+  const isRestaurant = vendorBusinessType === BusinessCategoryName.RESTAURANT;
 
   if (payload.name) {
     modifiedData.name = payload.name;
@@ -45,13 +66,47 @@ const prepareUpdateData = async (payload: Partial<TProduct>) => {
 
     if (taxId) {
       const tax = await Tax.findById(taxId);
-      if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
+      if (!tax)
+        throw new AppError(httpStatus.NOT_FOUND, 'Tax template not found');
       modifiedData['pricing.taxId'] = taxId;
       modifiedData['pricing.taxRate'] = tax.taxRate;
     }
   }
 
-  if (payload.stock?.unit) modifiedData['stock.unit'] = payload.stock.unit;
+  if (payload.stock && !isRestaurant) {
+    if (payload.stock.unit) modifiedData['stock.unit'] = payload.stock.unit;
+    if (payload.stock.quantity !== undefined) {
+      modifiedData['stock.quantity'] = payload.stock.quantity;
+      modifiedData['stock.totalAddedQuantity'] = payload.stock.quantity;
+    }
+  }
+
+  if (payload.variations?.length) {
+    const targetName = payload.name || currentProductName;
+    const productNamePart = cleanForSKU(targetName);
+
+    modifiedData.variations = payload.variations.map((variation: any) => ({
+      ...variation,
+      options: variation.options.map((option: any) => {
+        if (isRestaurant) {
+          return {
+            label: option.label,
+            price: option.price,
+            sku:
+              option.sku ||
+              `VAR-${productNamePart}-${cleanForSKU(option.label)}-${customNanoId(3).toUpperCase()}`,
+            isOutOfStock: option.isOutOfStock ?? false,
+          };
+        }
+        return {
+          ...option,
+          sku:
+            option.sku ||
+            `VAR-${productNamePart}-${cleanForSKU(option.label)}-${customNanoId(3).toUpperCase()}`,
+        };
+      }),
+    }));
+  }
 
   if (payload.meta) {
     Object.keys(payload.meta).forEach((key) => {
@@ -62,10 +117,10 @@ const prepareUpdateData = async (payload: Partial<TProduct>) => {
   return modifiedData;
 };
 
-const syncStockStatus = async (updatedProduct: any, existingProduct: any) => {
-  const vendorBusinessType = (existingProduct?.vendorId as any)?.businessDetails
-    ?.businessType;
-
+const syncStockStatus = async (
+  updatedProduct: any,
+  vendorBusinessType: string | null,
+) => {
   if (
     updatedProduct &&
     vendorBusinessType !== BusinessCategoryName.RESTAURANT &&
@@ -75,12 +130,19 @@ const syncStockStatus = async (updatedProduct: any, existingProduct: any) => {
     updatedProduct.stock.availabilityStatus =
       finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
 
-    await updatedProduct.save();
+    await Product.updateOne(
+      { _id: updatedProduct._id },
+      {
+        $set: {
+          'stock.availabilityStatus': updatedProduct.stock.availabilityStatus,
+        },
+      },
+    );
   }
 };
-
 export const UpdateProductUtils = {
   getAndValidateProduct,
+  getVendorBusinessType,
   prepareUpdateData,
   syncStockStatus,
 };
