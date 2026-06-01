@@ -112,6 +112,8 @@ const handleVariations = (
 ) => {
   if (!payload.variations?.length) return;
 
+  const isRestaurant = vendorCategory?.name === BusinessCategoryName.RESTAURANT;
+
   let totalStock = 0;
   let minPrice = Infinity;
 
@@ -124,14 +126,23 @@ const handleVariations = (
       if (price < minPrice) minPrice = price;
       totalStock += stock;
 
+      if (isRestaurant) {
+        return {
+          label: option.label,
+          price,
+          sku:
+            option.sku ||
+            `VAR-${productNamePart}-${cleanForSKU(option.label)}-${customNanoId(3).toUpperCase()}`,
+          // isOutOfStock: option.isOutOfStock ?? false,
+        };
+      }
+
       return {
         ...option,
         price,
         sku:
           option.sku ||
-          `VAR-${productNamePart}-${cleanForSKU(option.label)}-${customNanoId(
-            3,
-          )}`,
+          `VAR-${productNamePart}-${cleanForSKU(option.label)}-${customNanoId(3).toUpperCase()}`,
         stockQuantity: stock,
         totalAddedQuantity: stock,
         isOutOfStock: stock <= 0,
@@ -141,10 +152,7 @@ const handleVariations = (
 
   payload.pricing.price = minPrice === Infinity ? 0 : minPrice;
 
-  if (
-    vendorCategory?.name !== BusinessCategoryName.RESTAURANT &&
-    payload.stock
-  ) {
+  if (!isRestaurant && payload.stock) {
     payload.stock.quantity = totalStock;
     payload.stock.totalAddedQuantity = totalStock;
     payload.stock.hasVariations = true;

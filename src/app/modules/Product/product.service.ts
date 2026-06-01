@@ -16,13 +16,17 @@ import customNanoId from '../../utils/customNanoId';
 import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Create Product Service
-const createProduct = async (payload: TProduct, currentUser: TAuthUser) => {
+const createProduct = async (payload: TProduct, currentUser: any) => {
+  await currentUser.populate('userObjectId', 'businessDetails');
+
+  const vendorProfile = currentUser.userObjectId as any;
+
   CreateProductUtils.validateVendor(currentUser);
   CreateProductUtils.validateBasePayload(payload);
 
   const [vendorCategoryExist, category] = await Promise.all([
     BusinessCategory.findOne({
-      name: currentUser?.businessDetails?.businessType,
+      name: vendorProfile?.businessDetails?.businessType,
     }),
     ProductCategory.findById(payload.category),
   ]);
@@ -704,10 +708,7 @@ const getAllProducts = async (
 };
 
 // get single product service
-const getSingleProduct = async (
-  productId: string,
-  currentUser: TAuthUser,
-) => {
+const getSingleProduct = async (productId: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -751,10 +752,7 @@ const getSingleProduct = async (
 };
 
 // product soft delete service
-const softDeleteProduct = async (
-  productId: string,
-  currentUser: TAuthUser,
-) => {
+const softDeleteProduct = async (productId: string, currentUser: TAuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
