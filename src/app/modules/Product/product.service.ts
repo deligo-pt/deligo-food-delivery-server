@@ -277,12 +277,26 @@ const renameProductVariation = async (
     if (optionIndex === -1)
       throw new AppError(
         httpStatus.NOT_FOUND,
-        `Option '${oldLabel}' not found`,
+        `Option '${oldLabel}' not found inside variation group '${oldName}'`,
       );
 
     existingProduct.variations[variationIndex].options[optionIndex].label =
       newLabel.trim();
+
+    const currentOptionSku =
+      existingProduct.variations[variationIndex].options[optionIndex].sku || '';
+    const skuParts = currentOptionSku.split('-');
+
+    if (skuParts.length >= 4) {
+      const shortId = skuParts[skuParts.length - 1];
+      const productNamePart = cleanForSKU(existingProduct.name);
+
+      existingProduct.variations[variationIndex].options[optionIndex].sku =
+        `VAR-${productNamePart}-${cleanForSKU(newLabel.trim())}-${shortId.toUpperCase()}`;
+    }
   }
+
+  existingProduct.markModified('variations');
 
   await existingProduct.save();
   return existingProduct;
@@ -300,14 +314,24 @@ const removeProductVariations = async (
   const existingProduct = await Product.findOne({
     productId,
     ...((currentUser.role === 'VENDOR' ||
-      currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
+      currentUser.role === 'SUB_VENDOR') && {
+      vendorId: currentUser._id,
+    }),
   });
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
-  if (currentUser?.status !== 'APPROVED')
+  if (currentUser?.status !== 'APPROVED') {
     throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+  }
+
+  const vendorProfile = await Vendor.findById(currentUser.userObjectId)
+    .lean()
+    .select('businessDetails');
+  const isRestaurant =
+    vendorProfile?.businessDetails?.businessType ===
+    BusinessCategoryName.RESTAURANT;
 
   const { name, labelToRemove } = payload;
   const normalizedName = name.trim();
@@ -358,31 +382,41 @@ const removeProductVariations = async (
     if (v.options && Array.isArray(v.options)) {
       v.options.forEach((o: any) => {
         const optionPrice = typeof o.price === 'number' ? o.price : 0;
-        const optionQty =
-          typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
-        const optionAddedQty =
-          typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
-
-        totalQty += optionQty;
-        totalAddedAcrossVariations += optionAddedQty;
 
         if (optionPrice > 0 && optionPrice < minPrice) {
           minPrice = optionPrice;
+        }
+
+        if (!isRestaurant) {
+          totalQty += typeof o.stockQuantity === 'number' ? o.stockQuantity : 0;
+          totalAddedAcrossVariations +=
+            typeof o.totalAddedQuantity === 'number' ? o.totalAddedQuantity : 0;
         }
       });
     }
   });
 
-  if (existingProduct.stock && existingProduct.stock.quantity) {
-    existingProduct.stock.quantity = totalQty;
-    existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
-    existingProduct.stock.hasVariations = existingProduct.variations.length > 0;
-    existingProduct.stock.availabilityStatus =
-      totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
-
-    if (minPrice !== Infinity) {
-      existingProduct.pricing.price = minPrice;
+  if (!isRestaurant) {
+    if (!existingProduct.stock) {
+      existingProduct.stock = { quantity: 0, hasVariations: false } as any;
     }
+    existingProduct.stock!.quantity = totalQty;
+    existingProduct.stock!.totalAddedQuantity = totalAddedAcrossVariations;
+    existingProduct.stock!.hasVariations =
+      existingProduct.variations.length > 0;
+    existingProduct.stock!.availabilityStatus =
+      totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  } else {
+    existingProduct.stock = undefined;
+  }
+
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
+  }
+
+  existingProduct.markModified('variations');
+  if (!isRestaurant) {
+    existingProduct.markModified('stock');
   }
 
   await existingProduct.save();
