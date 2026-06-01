@@ -10,12 +10,10 @@ import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // Add cart Service
-const addToCart = async (
-  payload: TCartItemInput,
-  currentUser: TAuthUser,
-) => {
+const addToCart = async (payload: any, currentUser: TAuthUser) => {
   if (currentUser.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -30,7 +28,7 @@ const addToCart = async (
   }
 
   const customerId = currentUser._id;
-  const inputItem = payload.items[0];
+  const inputItem = payload.items?.[0];
   if (!inputItem)
     throw new AppError(httpStatus.BAD_REQUEST, 'No items provided');
 
@@ -46,10 +44,18 @@ const addToCart = async (
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
-  const existingVendor = await Vendor.findOne({
+  const vendorAuth = await AuthUser.findOne({
     _id: existingProduct.vendorId,
+    role: 'VENDOR',
     isDeleted: false,
-  });
+  }).lean();
+
+  if (!vendorAuth) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor account not found');
+  }
+
+  const existingVendor = await Vendor.findById(vendorAuth.userObjectId).lean();
+
   if (
     !existingVendor ||
     existingVendor?.businessDetails?.isStoreOpen === false
@@ -68,22 +74,37 @@ const addToCart = async (
   let availableStock = existingProduct?.stock?.quantity ?? 0;
   let finalVariationSku = variationSku || null;
 
-  if (existingProduct.stock && existingProduct.stock.hasVariations) {
-    if (!variationSku)
-      throw new AppError(httpStatus.BAD_REQUEST, 'Please select a variation.');
+  const hasVariations =
+    existingProduct?.stock?.hasVariations === true ||
+    (existingProduct?.variations && existingProduct.variations.length > 0);
+
+  if (hasVariations) {
+    if (!variationSku) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This product has multiple variations. Please select a variation to proceed.',
+      );
+    }
 
     const targetOption = existingProduct.variations
       ?.flatMap((v: any) => v.options)
       .find((opt: any) => opt.sku === variationSku);
 
-    if (!targetOption)
+    if (!targetOption) {
       throw new AppError(httpStatus.NOT_FOUND, 'Invalid variation SKU');
+    }
 
     selectedPrice = targetOption.price;
     selectedVariantLabel = targetOption.label;
     availableStock = targetOption.stockQuantity ?? 0;
     finalVariationSku = targetOption.sku;
   } else {
+    if (variationSku) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This product does not support variations. Please clear selection.',
+      );
+    }
     finalVariationSku = null;
   }
 
@@ -104,7 +125,7 @@ const addToCart = async (
       ? `${existingProduct.name} - ${selectedVariantLabel}`
       : existingProduct.name,
     image: existingProduct?.images[0] || '',
-    hasVariations: existingProduct?.stock?.hasVariations,
+    hasVariations: hasVariations,
     variationSku: finalVariationSku,
     isActive: true,
     addons: [],
