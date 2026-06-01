@@ -880,7 +880,17 @@ const permanentDeleteProduct = async (
   };
 };
 
-const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
+const getOutOfStockAlerts = async (
+  query: Record<string, unknown>,
+  currentUser: TAuthUser,
+) => {
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to view stock alerts.`,
+    );
+  }
+
   const {
     page = 1,
     limit = 10,
@@ -896,7 +906,6 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
       { 'stock.quantity': { $lt: 10 } },
       { 'variations.options.stockQuantity': { $lt: 10 } },
       { 'stock.availabilityStatus': 'Out of Stock' },
-      { 'variations.options.isOutOfStock': true },
     ],
   };
 
@@ -915,12 +924,34 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
     .select(
       'name sku stock variations vendorId category images createdAt updatedAt',
     )
-    .populate('vendorId', 'userId businessDetails')
-    .populate('category')
+    .populate({
+      path: 'vendorId',
+      select: 'userId email role status userObjectId',
+      options: {
+        transform: (doc: any) => {
+          if (!doc) return null;
+
+          const profile = doc.userObjectId;
+
+          return {
+            _id: doc._id,
+            userId: doc.userId,
+            businessDetails: profile?.businessDetails || null,
+          };
+        },
+      },
+      populate: {
+        path: 'userObjectId',
+        model: 'Vendor',
+        select: 'businessDetails',
+      },
+    })
+    .populate({
+      path: 'category',
+    })
     .sort(sortBy as string)
     .skip(skip)
-    .limit(Number(limit))
-    .lean();
+    .limit(Number(limit));
 
   const total = await Product.countDocuments(lowStockConditions);
   const totalPage = Math.ceil(total / Number(limit));
