@@ -19,6 +19,7 @@ import {
 } from '../../constant/GlobalConstant/user.constant';
 import { TAuthUser } from '../AuthUser/authUser.interface';
 import { Customer } from '../Customer/customer.model';
+import mongoose from 'mongoose';
 
 /**
  * Service to update vendor profile information.
@@ -465,13 +466,14 @@ const getAllVendorsForCustomer = async (
   })
     .lean()
     .select('currentSessionLocation');
+
   if (!customerProfile) {
     throw new AppError(
       httpStatus.NOT_FOUND,
       'Customer profile data not found!',
     );
   }
-  // 1. Get Customer Coordinates from currentSessionLocation
+
   const coordinates = customerProfile?.currentSessionLocation?.coordinates;
 
   if (!coordinates || coordinates.length < 2) {
@@ -483,33 +485,43 @@ const getAllVendorsForCustomer = async (
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
   const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
-
   const [lng, lat] = coordinates;
 
   const activeAuthVendors = await AuthUser.find({
-    role: USER_ROLE.VENDOR,
-    status: USER_STATUS.APPROVED,
+    role: 'VENDOR',
+    status: 'APPROVED',
     isDeleted: false,
   })
-    .select('userObjectId')
+    .select('_id userObjectId')
     .lean();
 
-  const approvedVendorProfileIds = activeAuthVendors.map(
-    (auth) => auth.userObjectId,
-  );
-
-  if (approvedVendorProfileIds.length === 0) {
+  if (activeAuthVendors.length === 0) {
     return { meta: { total: 0, page: 1, limit: 10, totalPage: 0 }, data: [] };
   }
 
-  const activeProductVendorIds = await Product.distinct('vendorId', {
-    isDeleted: false,
-    vendorId: { $in: approvedVendorProfileIds },
+  const authIdToProfileIdMap = new Map();
+  const profileIdToAuthIdMap = new Map();
+  const approvedCentralAuthIds: mongoose.Types.ObjectId[] = [];
+  const approvedProfileIds: mongoose.Types.ObjectId[] = [];
+
+  activeAuthVendors.forEach((auth) => {
+    authIdToProfileIdMap.set(auth._id.toString(), auth.userObjectId.toString());
+    profileIdToAuthIdMap.set(auth.userObjectId.toString(), auth._id.toString());
+    approvedCentralAuthIds.push(auth._id as any);
+    approvedProfileIds.push(auth.userObjectId as any);
   });
 
-  // 2. Filter vendors
+  const activeProductCentralVendorIds = await Product.distinct('vendorId', {
+    isDeleted: false,
+    vendorId: { $in: approvedCentralAuthIds },
+  });
+
+  const activeProductProfileIds = activeProductCentralVendorIds
+    .map((authId) => authIdToProfileIdMap.get(authId.toString()))
+    .filter(Boolean);
+
   const filter: any = {
-    _id: { $in: activeProductVendorIds },
+    _id: { $in: activeProductProfileIds },
     currentSessionLocation: {
       $geoWithin: {
         $centerSphere: [[lng, lat], radiusInRadians],
@@ -517,15 +529,18 @@ const getAllVendorsForCustomer = async (
     },
   };
 
-  // 3. Category Filter Logic
   if (query.productCategory) {
-    const matchingVendorIds = await Product.distinct('vendorId', {
+    const matchingCentralVendorIds = await Product.distinct('vendorId', {
       category: query.productCategory,
       isDeleted: false,
-      vendorId: { $in: activeProductVendorIds },
+      vendorId: { $in: approvedCentralAuthIds },
     });
 
-    if (matchingVendorIds.length === 0) {
+    const matchingProfileIds = matchingCentralVendorIds
+      .map((authId) => authIdToProfileIdMap.get(authId.toString()))
+      .filter(Boolean);
+
+    if (matchingProfileIds.length === 0) {
       return {
         meta: {
           total: 0,
@@ -536,12 +551,11 @@ const getAllVendorsForCustomer = async (
         data: [],
       };
     }
-    filter._id = { $in: matchingVendorIds };
+    filter._id = { $in: matchingProfileIds };
     delete query.productCategory;
   }
 
   const vendorsQuery = Vendor.find(filter);
-  // 4. QueryBuilder Execution
   const vendors = new QueryBuilder(vendorsQuery, query)
     .filter()
     .sort()
@@ -549,19 +563,20 @@ const getAllVendorsForCustomer = async (
     .fields()
     .search(['businessDetails.businessName']);
 
-  // 5. Select parent paths to avoid 'Path Collision'
   vendors.modelQuery = vendors.modelQuery.select(
-    'name userId  businessDetails businessLocation documents rating currentSessionLocation',
+    'name userId businessDetails businessLocation documents rating currentSessionLocation',
   );
 
   const meta = await vendors.countTotal();
   const rawVendors = await vendors.modelQuery;
 
-  // 6. Map to the exact structure required by your Frontend
+  const currentVendorProfileIds = rawVendors.map((v) => v._id.toString());
+  const currentCentralAuthIds = currentVendorProfileIds
+    .map((profId) => profileIdToAuthIdMap.get(profId))
+    .filter(Boolean);
 
-  const currentVendorIds = rawVendors.map((v) => v._id);
   const allProductsForTheseVendors = await Product.find({
-    vendorId: { $in: currentVendorIds },
+    vendorId: { $in: currentCentralAuthIds },
     isDeleted: false,
   })
     .populate({
@@ -571,8 +586,10 @@ const getAllVendorsForCustomer = async (
     .lean();
 
   const data = rawVendors.map((vendor: any) => {
+    const vendorCentralAuthId = profileIdToAuthIdMap.get(vendor._id.toString());
+
     const vendorProducts = allProductsForTheseVendors.filter(
-      (p: any) => String(p.vendorId) === String(vendor._id),
+      (p: any) => String(p.vendorId) === String(vendorCentralAuthId),
     );
 
     const categoryMap = new Map();
