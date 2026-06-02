@@ -618,12 +618,10 @@ const deleteCartItem = async (
     const isTargetedForDeletion = itemsToDelete.some((target) => {
       const isSameProduct = target.productId === cartItem.productId.toString();
 
-      const effectiveSku = cartItem.hasVariations
-        ? target.variationSku || null
-        : null;
+      const inputSku = target.variationSku || null;
       const dbSku = cartItem.variationSku || null;
 
-      return isSameProduct && dbSku === effectiveSku;
+      return isSameProduct && dbSku === inputSku;
     });
 
     return !isTargetedForDeletion;
