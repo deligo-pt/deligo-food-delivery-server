@@ -65,10 +65,17 @@ const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
   let availableStock = existingProduct?.stock?.quantity ?? 0;
   let finalVariationSku = variationSku || null;
 
-  if (existingProduct.stock && existingProduct.stock.hasVariations) {
-    if (!variationSku)
-      throw new AppError(httpStatus.BAD_REQUEST, 'Please select a variation.');
+  const hasVariations =
+    existingProduct?.stock?.hasVariations === true ||
+    (existingProduct?.variations && existingProduct.variations.length > 0);
 
+  if (hasVariations) {
+    if (!variationSku) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This product has multiple variations. Please select a variation to proceed.',
+      );
+    }
     const targetOption = existingProduct.variations
       ?.flatMap((v: any) => v.options)
       .find((opt: any) => opt.sku === variationSku);
