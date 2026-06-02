@@ -18,6 +18,7 @@ router.post(
 router.patch(
   '/activate-item/:productId',
   auth('CUSTOMER')(),
+  validateRequest(CartValidation.activateItemValidationSchema),
   CartControllers.activateItem,
 );
 

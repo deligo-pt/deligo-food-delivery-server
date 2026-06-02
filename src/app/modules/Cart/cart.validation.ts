@@ -9,18 +9,18 @@ const addToCartValidationSchema = z.object({
           .object({
             productId: z.string({ required_error: 'Product ID is required' }),
             quantity: z.number().min(1, 'Quantity must be at least 1'),
-            variationSku: z.string().optional(),
-            addons: z
-              .array(
-                z.object({
-                  addOnId: z.string(),
-                  quantity: z.number().min(1),
-                }),
-              )
-              .optional(),
+            variationSku: z.string().optional().nullable(),
           })
           .strict(),
       ),
+    })
+    .strict(),
+});
+
+const activateItemValidationSchema = z.object({
+  body: z
+    .object({
+      variationSku: z.string().optional().nullable(),
     })
     .strict(),
 });
@@ -29,11 +29,16 @@ const addToCartValidationSchema = z.object({
 const updateCartItemQuantityValidationSchema = z.object({
   body: z
     .object({
-      productId: z.string({ required_error: 'Product ID is required' }),
-      variationSku: z.string().optional(),
-      quantity: z.number().min(1, 'Quantity must be at least 1').optional(),
+      productId: z.string({
+        required_error: 'Product Id is required',
+      }),
+      variationSku: z.string().optional().nullable(),
+
+      quantity: z.number().min(1, 'Quantity must be at least 1').default(1),
+
       action: z.enum(['increment', 'decrement'], {
-        required_error: 'Action is required',
+        required_error:
+          'Action is required and must be either increment or decrement',
       }),
     })
     .strict(),
@@ -74,6 +79,7 @@ const deleteCartItemValidationSchema = z.object({
 
 export const CartValidation = {
   addToCartValidationSchema,
+  activateItemValidationSchema,
   updateCartItemQuantityValidationSchema,
   updateAddonQuantityValidationSchema,
   deleteCartItemValidationSchema,
