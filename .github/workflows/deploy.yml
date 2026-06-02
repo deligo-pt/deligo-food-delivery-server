@@ -1,8 +1,8 @@
-name:  Deploy DeliGo Food Server
+name:  Deploy DeliGo Food Server (Test Environment)
 
 on:
   push:
-    branches: [main]
+    branches: [test-server]
 
 jobs:
   # ---------- CI STEP ----------
@@ -41,7 +41,7 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
             cd /deligoFoodPT/www/deligo-food-server
-            git pull origin main
+            git pull origin test-server
             npm install
             npm run build
 
