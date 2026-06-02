@@ -542,6 +542,23 @@ const getAllVendorsForCustomer = async (
     },
   };
 
+  if (query.restaurantCuisineType) {
+    if (
+      typeof query.restaurantCuisineType === 'string' &&
+      query.restaurantCuisineType.includes(',')
+    ) {
+      const cuisineArray = query.restaurantCuisineType
+        .split(',')
+        .map((item) => item.trim());
+      filter['businessDetails.restaurantCuisineType'] = { $in: cuisineArray };
+    } else {
+      filter['businessDetails.restaurantCuisineType'] =
+        query.restaurantCuisineType;
+    }
+
+    delete query.restaurantCuisineType;
+  }
+
   if (query.productCategory) {
     const matchingCentralVendorIds = await Product.distinct('vendorId', {
       category: query.productCategory,
