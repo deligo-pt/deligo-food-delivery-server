@@ -225,10 +225,10 @@ const activateItem = async (
 
   const itemToActivate = cart.items.find((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
+    const currentItemSku = i.variationSku || null;
+    const inputSku = variationSku || null;
 
-    if (isSameProduct && !i.hasVariations) return true;
-
-    return isSameProduct && (i.variationSku || null) === (variationSku || null);
+    return isSameProduct && currentItemSku === inputSku;
   });
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
@@ -252,11 +252,7 @@ const activateItem = async (
   }
 
   // Activate this item
-  if (itemToActivate?.isActive === false) {
-    itemToActivate.isActive = true;
-  } else {
-    itemToActivate.isActive = false;
-  }
+  itemToActivate.isActive = !itemToActivate.isActive;
 
   // re-calculate active total
   await recalculateCartTotals(cart);
@@ -294,9 +290,11 @@ const updateCartItemQuantity = async (
 
   const itemIndex = cart.items.findIndex((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
-    const effectiveSku = i.hasVariations ? variationSku || null : null;
-    return isSameProduct && (i.variationSku || null) === effectiveSku;
+    const currentItemSku = i.variationSku || null;
+    const inputSku = variationSku || null;
+    return isSameProduct && currentItemSku === inputSku;
   });
+
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
@@ -322,7 +320,11 @@ const updateCartItemQuantity = async (
   const shouldCheckStock = !isRestaurant;
 
   let availableStock = product?.stock?.quantity ?? 0;
-  if (product.stock?.hasVariations && targetItem.variationSku) {
+  const hasVariations =
+    product?.stock?.hasVariations === true ||
+    (product?.variations && product.variations.length > 0);
+
+  if (hasVariations && targetItem.variationSku) {
     const option = (product?.variations ?? [])
       .flatMap((v: any) => v.options)
       .find((opt: any) => opt.sku === targetItem.variationSku);
@@ -425,8 +427,9 @@ const updateAddonQuantity = async (
 
   const itemIndex = cart.items.findIndex((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
-    const effectiveSku = i.hasVariations ? variationSku || null : null;
-    return isSameProduct && (i.variationSku || null) === effectiveSku;
+    const currentItemSku = i.variationSku || null;
+    const inputSku = variationSku || null;
+    return isSameProduct && currentItemSku === inputSku;
   });
 
   if (itemIndex === -1)
@@ -592,12 +595,10 @@ const deleteCartItem = async (
     const isTargetedForDeletion = itemsToDelete.some((target) => {
       const isSameProduct = target.productId === cartItem.productId.toString();
 
-      const effectiveSku = cartItem.hasVariations
-        ? target.variationSku || null
-        : null;
+      const inputSku = target.variationSku || null;
       const dbSku = cartItem.variationSku || null;
 
-      return isSameProduct && dbSku === effectiveSku;
+      return isSameProduct && dbSku === inputSku;
     });
 
     return !isTargetedForDeletion;
