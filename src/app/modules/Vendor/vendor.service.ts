@@ -13,6 +13,7 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { BusinessCategoryName } from '../Category/category.interface';
 
 /**
  * Service to update vendor profile information.
@@ -53,14 +54,26 @@ const vendorUpdate = async (
     );
   }
 
+  const businessType = payload.businessDetails?.businessType;
+
   // 5. Business Validation: Verify that the provided business type exists in the database
-  if (payload.businessDetails?.businessType) {
+  if (businessType) {
     const exists = await BusinessCategory.findOne({
-      name: payload.businessDetails.businessType,
+      name: businessType,
     });
 
     if (!exists) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid business type.');
+    }
+
+    if (
+      businessType === BusinessCategoryName.RESTAURANT &&
+      !payload.businessDetails?.restaurantCuisineType
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Please select a cuisine type.',
+      );
     }
   }
 
