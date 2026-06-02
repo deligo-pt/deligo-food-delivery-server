@@ -242,47 +242,39 @@ const activateItem = async (
 
   const itemToActivate = cart.items.find((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
+    const currentItemSku = i.variationSku || null;
+    const inputSku = variationSku || null;
 
-    if (isSameProduct && !i.hasVariations) return true;
-
-    return isSameProduct && (i.variationSku || null) === (variationSku || null);
+    return isSameProduct && currentItemSku === inputSku;
   });
+
   if (!itemToActivate) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
 
   const selectedVendorId = itemToActivate.vendorId.toString();
 
-  // Get existing active items
   const activeItems = cart.items.filter((i) => i.isActive === true);
 
-  //  If already active items exist → vendor must match
   if (activeItems.length > 0) {
-    const activeVendorId = activeItems[0].vendorId;
+    const activeVendorId = activeItems[0].vendorId.toString();
 
-    if (activeVendorId.toString() !== selectedVendorId) {
+    if (!itemToActivate.isActive && activeVendorId !== selectedVendorId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'You can only select items from the same vendor',
+        'You can only select items from the same vendor. Please unselect other vendor items first.',
       );
     }
   }
 
-  // Activate this item
-  if (itemToActivate?.isActive === false) {
-    itemToActivate.isActive = true;
-  } else {
-    itemToActivate.isActive = false;
-  }
+  itemToActivate.isActive = !itemToActivate.isActive;
 
-  // re-calculate active total
   await recalculateCartTotals(cart);
 
   cart.markModified('items');
   await cart.save();
-  const freshCart = await Cart.findOne({ customerId });
 
-  return freshCart;
+  return cart;
 };
 
 // update cart item quantity
