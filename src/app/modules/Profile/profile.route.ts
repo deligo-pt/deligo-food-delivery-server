@@ -22,23 +22,6 @@ router.get(
   ProfileController.getMyProfile,
 );
 
-// update my profile route
-router.patch(
-  '/',
-  auth(
-    'ADMIN',
-    'CUSTOMER',
-    'DELIVERY_PARTNER',
-    'FLEET_MANAGER',
-    'VENDOR',
-    'SUPER_ADMIN',
-  )(),
-  multerUpload.single('file'),
-  parseBody,
-  validateRequest(ProfileValidation.userProfileUpdateValidationSchema),
-  ProfileController.updateMyProfile,
-);
-
 // send otp route
 router.patch(
   '/send-otp',

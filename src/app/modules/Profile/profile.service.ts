@@ -30,99 +30,6 @@ const getMyProfile = async (currentUser: TAuthUser) => {
   return currentUser;
 };
 
-// update my profile service
-const updateMyProfile = async (
-  currentUser: TAuthUser,
-  profilePhoto: string | null,
-  payload: Partial<TUserProfileUpdate>,
-) => {
-  const modelName =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
-  const model = mongoose.model(modelName) as any;
-
-  if (!currentUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found.');
-  }
-
-  // -----------------------------
-  // Account Status Check
-  // -----------------------------
-  if (currentUser.status !== USER_STATUS.APPROVED) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`,
-    );
-  }
-
-  // -----------------------------
-  // Referral Code Generation (New Logic)
-  // -----------------------------
-  if (!currentUser.referralCode) {
-    const firstName =
-      payload.name?.firstName || currentUser.name.firstName || 'USER';
-    const newReferralCode = await generateReferralCode(firstName);
-
-    payload.referralCode = newReferralCode;
-  }
-
-  // -----------------------------
-  // Payload Validation
-  // -----------------------------
-  if (payload.profilePhoto) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Profile photo must be uploaded as a file, not in text.',
-    );
-  }
-
-  if (currentUser.role === 'CUSTOMER' && payload.contactNumber) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Customers cannot update contact number. Please contact support.',
-    );
-  }
-
-  if (payload.NIF && currentUser.role !== 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Only customers can update NIF. Please contact support.',
-    );
-  }
-
-  // -----------------------------
-  // Profile Photo Upload Handle
-  // -----------------------------
-  if (profilePhoto) {
-    // Delete old photo (non-blocking but logged)
-    if (currentUser.profilePhoto) {
-      const oldPhoto = currentUser.profilePhoto;
-      deleteSingleImageFromCloudinary(oldPhoto).catch((err) => {
-        console.error(err);
-      });
-    }
-
-    payload.profilePhoto = profilePhoto;
-  }
-
-  // -----------------------------
-  // Update User Document
-  // -----------------------------
-  const updatedUser = await model.findOneAndUpdate(
-    { userId: currentUser.userId },
-    { $set: payload },
-    { new: true },
-  );
-
-  if (!updatedUser) {
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update profile.',
-    );
-  }
-
-  return updatedUser;
-};
-
 // send otp service
 const sendOtp = async (
   currentUser: TAuthUser,
@@ -283,7 +190,6 @@ const updateEmailOrContactNumber = async (
 
 export const ProfileServices = {
   getMyProfile,
-  updateMyProfile,
   sendOtp,
   updateEmailOrContactNumber,
 };

@@ -10,13 +10,22 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { Customer } from '../Customer/customer.model';
 
 // Checkout Service
-const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
+const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
+  const customerProfile = await Customer.findById(
+    currentUser.userObjectId,
+  ).lean();
+
+  if (!customerProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
+  }
+
   const requiredFields = [
-    { field: currentUser.name?.firstName, label: 'First Name' },
+    { field: customerProfile.name?.firstName, label: 'First Name' },
     { field: currentUser.contactNumber, label: 'Contact Number' },
-    { field: currentUser.address?.city, label: 'City' },
+    { field: customerProfile.address?.city, label: 'City' },
   ];
 
   for (const item of requiredFields) {
@@ -60,7 +69,7 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
 
   // const shouldCheckStock = !isRestaurant;
 
-  const activeAddress = currentUser?.deliveryAddresses?.find(
+  const activeAddress = customerProfile?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
   );
   if (!activeAddress) {
@@ -81,8 +90,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
   const distanceData = await calculateGoggleRoadDistance(
     longitude,
     latitude,
-    activeAddress.longitude,
-    activeAddress.latitude,
+    activeAddress.longitude || 0,
+    activeAddress.latitude || 0,
   );
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
@@ -141,9 +150,8 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
       const addonLineNet = roundTo2(aPrice * aQty);
 
       const addonGrossRaw = addonLineNet * (1 + aTaxRate / 100);
-      cumulativeRawGrandTotal += addonGrossRaw; // Raw value যোগ হচ্ছে
+      cumulativeRawGrandTotal += addonGrossRaw;
       return {
-        optionId: a.optionId,
         name: a.name,
         sku: a.sku,
         originalPrice: a.originalPrice,
