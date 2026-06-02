@@ -50,12 +50,13 @@ const updateAddonQuantityValidationSchema = z.object({
       productId: z.string({
         required_error: 'Product ID is required',
       }),
-      variationSku: z.string().optional(),
-      optionId: z.string({
-        required_error: 'Add-on option ID is required',
+      variationSku: z.string().optional().nullable(),
+      optionSku: z.string({
+        required_error: 'Add-on option SKU is required',
       }),
       action: z.enum(['increment', 'decrement'], {
-        required_error: 'Action is required',
+        required_error:
+          'Action is required and must be either increment or decrement',
       }),
     })
     .strict(),

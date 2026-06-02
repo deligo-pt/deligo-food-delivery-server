@@ -429,7 +429,7 @@ const updateAddonQuantity = async (
   payload: {
     productId: string;
     variationSku?: string;
-    optionId: string;
+    optionSku: string;
     action: 'increment' | 'decrement';
   },
 ) => {
@@ -440,7 +440,8 @@ const updateAddonQuantity = async (
     );
   }
 
-  const { productId, variationSku, optionId, action } = payload;
+  const { productId, variationSku, optionSku, action } = payload;
+
   const cart = await Cart.findOne({
     customerId: currentUser._id,
     isDeleted: false,
@@ -449,8 +450,9 @@ const updateAddonQuantity = async (
 
   const itemIndex = cart.items.findIndex((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
-    const effectiveSku = i.hasVariations ? variationSku || null : null;
-    return isSameProduct && (i.variationSku || null) === effectiveSku;
+    const currentItemSku = i.variationSku || null;
+    const inputSku = variationSku || null;
+    return isSameProduct && currentItemSku === inputSku;
   });
 
   if (itemIndex === -1)
@@ -458,7 +460,7 @@ const updateAddonQuantity = async (
 
   const targetItem = cart.items[itemIndex] as any;
   if (!targetItem.addons) {
-    targetItem.addons = [] as any[];
+    targetItem.addons = [];
   }
 
   const product = await Product.findById(productId)
@@ -473,17 +475,13 @@ const updateAddonQuantity = async (
   if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
   let addonData: any = null;
-
   let parentGroup: any = null;
 
   ((product.addonGroups as any[]) || []).forEach((group) => {
     if (group.isActive && !group.isDeleted) {
-      const option = group.options.find(
-        (opt: any) => opt._id.toString() === optionId,
-      );
+      const option = group.options.find((opt: any) => opt.sku === optionSku);
       if (option && option.isActive) {
         addonData = {
-          optionId: option._id.toString(),
           name: option.name,
           sku: option.sku,
           unitPrice: option.price,
@@ -497,27 +495,25 @@ const updateAddonQuantity = async (
   if (!addonData)
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Addon is inactive or unavailable',
+      'Addon SKU is inactive, invalid, or unavailable for this product',
     );
 
   const selectedAddon = addonData as {
-    optionId: string;
     name: string;
-    sku?: string;
-    price: number;
+    sku: string;
+    unitPrice: number;
     taxRate: number;
   };
 
   const existingAddonIndex = targetItem.addons.findIndex(
-    (a: any) => a.optionId?.toString() === selectedAddon.optionId.toString(),
+    (a: any) => a.sku === selectedAddon.sku,
   );
 
   if (action === 'increment') {
-    const groupOptionIds = parentGroup.options.map((o: any) =>
-      o._id.toString(),
-    );
+    const groupOptionSkus = parentGroup.options.map((o: any) => o.sku);
+
     const currentGroupSelectionCount = targetItem.addons
-      .filter((a: any) => groupOptionIds.includes(a.optionId.toString()))
+      .filter((a: any) => groupOptionSkus.includes(a.sku))
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
 
     if (currentGroupSelectionCount >= parentGroup.maxSelectable) {
@@ -526,17 +522,22 @@ const updateAddonQuantity = async (
         `Maximum selection limit of ${parentGroup.maxSelectable} reached for ${parentGroup.title}`,
       );
     }
+
     if (existingAddonIndex > -1) {
       targetItem.addons[existingAddonIndex].quantity += 1;
     } else {
       const taxAmount = roundTo2(
-        addonData.unitPrice * (addonData.taxRate / 100),
+        selectedAddon.unitPrice * (selectedAddon.taxRate / 100),
       );
+
       targetItem.addons.push({
-        ...addonData,
-        originalPrice: addonData.unitPrice,
+        name: selectedAddon.name,
+        sku: selectedAddon.sku,
+        unitPrice: selectedAddon.unitPrice,
+        taxRate: selectedAddon.taxRate,
+        originalPrice: selectedAddon.unitPrice,
         quantity: 1,
-        lineTotal: addonData.unitPrice,
+        lineTotal: selectedAddon.unitPrice,
         taxAmount: taxAmount,
       });
     }
@@ -583,6 +584,7 @@ const updateAddonQuantity = async (
     targetItem.itemSummary.totalBeforeTax +
       targetItem.itemSummary.totalTaxAmount,
   );
+
   await recalculateCartTotals(cart);
   cart.markModified('items');
   await cart.save();

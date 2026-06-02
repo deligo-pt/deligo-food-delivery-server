@@ -3,7 +3,6 @@ import { TCart } from './cart.interface';
 
 const cartAddonSchema = new Schema(
   {
-    optionId: { type: String, required: true },
     name: { type: String, required: true },
     sku: { type: String, required: true },
     originalPrice: { type: Number, required: true },
