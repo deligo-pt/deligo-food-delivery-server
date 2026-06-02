@@ -6,6 +6,7 @@ import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
+import { CuisineType } from './vendor.constant';
 
 const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
   {
@@ -106,6 +107,10 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     businessDetails: {
       businessName: { type: String, default: '' },
       businessType: { type: String, default: '' },
+      restaurantCuisineType: {
+        type: String,
+        enum: Object.values(CuisineType),
+      },
       businessLicenseNumber: { type: String, default: '' },
       NIF: { type: String, default: '' },
       totalBranches: { type: Number, default: 1 },
