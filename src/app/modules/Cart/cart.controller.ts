@@ -6,10 +6,7 @@ import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {
-  const result = await CartServices.addToCart(
-    req.body,
-    req.user as TAuthUser,
-  );
+  const result = await CartServices.addToCart(req.body, req.user as TAuthUser);
 
   sendResponse(res, {
     success: true,
@@ -101,7 +98,8 @@ const getAllCart = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Cart retrieved successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
