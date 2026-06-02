@@ -3,6 +3,7 @@ import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
+import { CuisineType } from './vendor.constant';
 
 const vendorSchema = new Schema<TVendor>(
   {
@@ -46,6 +47,10 @@ const vendorSchema = new Schema<TVendor>(
     businessDetails: {
       businessName: { type: String, default: '' },
       businessType: { type: String, default: '' },
+      restaurantCuisineType: {
+        type: String,
+        enum: Object.values(CuisineType),
+      }, // NEW: Cuisine type for restaurant vendors
       businessLicenseNumber: { type: String, default: '' },
       NIF: { type: String, default: '' },
       totalBranches: { type: Number, default: 1 },
