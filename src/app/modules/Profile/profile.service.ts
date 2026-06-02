@@ -219,7 +219,9 @@ const updateEmailOrContactNumber = async (
       );
     }
 
-    const { otp: savedOtp, pendingEmail } = JSON.parse(cachedData as string);
+    console.log({ cachedData });
+
+    const { otp: savedOtp, pendingEmail } = cachedData as any;
 
     if (savedOtp !== otp) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP code.');
@@ -248,10 +250,9 @@ const updateEmailOrContactNumber = async (
       );
     }
 
-    const { mobileOtpId, pendingContactNumber } = JSON.parse(
-      cachedData as string,
-    );
+    console.log({ cachedData });
 
+    const { mobileOtpId, pendingContactNumber } = cachedData as any;
     const isGatewayOtpValid = await verifyMobileOtp(mobileOtpId, otp);
     if (!isGatewayOtpValid) {
       throw new AppError(
