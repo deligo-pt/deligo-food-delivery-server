@@ -34,7 +34,7 @@ router.patch(
     'SUB_VENDOR',
     'SUPER_ADMIN',
   )(),
-  validateRequest(ProfileValidation.updateContactNumberValidationSchema),
+  validateRequest(ProfileValidation.sendOtpValidationSchema),
   ProfileController.sendOtp,
 );
 
@@ -50,6 +50,7 @@ router.patch(
     'SUB_VENDOR',
     'SUPER_ADMIN',
   )(),
+  validateRequest(ProfileValidation.updateEmailOrContactNumberValidationSchema),
   ProfileController.updateEmailOrContactNumber,
 );
 

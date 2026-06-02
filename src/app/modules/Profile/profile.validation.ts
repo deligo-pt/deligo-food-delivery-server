@@ -1,55 +1,54 @@
 import { z } from 'zod';
-import { addressValidationSchema } from '../Admin/admin.validation';
 
-// ---------------------------------------------
-// User Profile Update Validation
-// ---------------------------------------------
-const userProfileUpdateValidationSchema = z.object({
+const sendOtpValidationSchema = z.object({
   body: z
     .object({
-      name: z
-        .object({
-          firstName: z.string({
-            required_error: 'First name is required',
-          }),
-          lastName: z.string({
-            required_error: 'Last name is required',
-          }),
-        })
-        .strict()
-        .optional(),
-
       contactNumber: z
         .string({
-          required_error: 'Contact number is required',
+          invalid_type_error: 'Contact number must be a string.',
+        })
+        .trim()
+        .regex(/^(\+88)?01[3-9]\d{8}$/, {
+          message: 'Invalid Bangladeshi mobile number format.',
         })
         .optional(),
-      NIF: z.string().optional().nullable(),
 
-      profilePhoto: z.string().nullable().optional(),
-
-      address: addressValidationSchema.optional(),
+      email: z
+        .string({
+          invalid_type_error: 'Email must be a string.',
+        })
+        .trim()
+        .email({ message: 'Invalid email address format.' })
+        .optional(),
     })
-    .strict(),
+    .strict()
+    .refine((data) => data.contactNumber || data.email, {
+      message: 'Either contact number or email must be provided.',
+      path: ['contactNumber'],
+    }),
 });
 
-// ---------------------------------------------
-// Update Contact Number Validation
-// ---------------------------------------------
-const updateContactNumberValidationSchema = z.object({
+const updateEmailOrContactNumberValidationSchema = z.object({
   body: z
     .object({
-      contactNumber: z
+      otp: z
         .string({
-          required_error: 'Contact number is required',
+          required_error: 'OTP is required.',
+          invalid_type_error: 'OTP must be a string.',
         })
-        .optional(),
-      email: z.string({ required_error: 'Email is required' }).optional(),
+        .trim()
+        .min(4, { message: 'OTP must be at least 4 digits.' })
+        .max(6, { message: 'OTP cannot be more than 6 digits.' }),
+
+      type: z.enum(['email', 'mobile'], {
+        required_error: 'Type is required.',
+        invalid_type_error: 'Type must be either "email" or "mobile".',
+      }),
     })
     .strict(),
 });
 
 export const ProfileValidation = {
-  userProfileUpdateValidationSchema,
-  updateContactNumberValidationSchema,
+  sendOtpValidationSchema,
+  updateEmailOrContactNumberValidationSchema,
 };

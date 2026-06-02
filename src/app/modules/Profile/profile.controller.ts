@@ -33,7 +33,7 @@ const sendOtp = catchAsync(async (req, res) => {
 const updateEmailOrContactNumber = catchAsync(async (req, res) => {
   const result = await ProfileServices.updateEmailOrContactNumber(
     req.user as TAuthUser,
-    req.body.otp,
+    req.body,
   );
   sendResponse(res, {
     success: true,

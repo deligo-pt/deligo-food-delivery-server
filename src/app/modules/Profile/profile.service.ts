@@ -198,51 +198,78 @@ const sendOtp = async (
 // update email or contact number service
 const updateEmailOrContactNumber = async (
   currentUser: TAuthUser,
-  otp: string,
+  payload: {
+    otp: string;
+    type: 'email' | 'mobile';
+  },
 ) => {
-  if (!currentUser.pendingEmail && !currentUser.pendingContactNumber) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'No pending change found.');
-  }
+  const { otp, type } = payload;
 
-  if (!otp) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'OTP is required.');
-  }
+  const currentAuthUserId = currentUser._id.toString();
 
-  if (currentUser.pendingEmail) {
-    // verify otp
-    if (currentUser.otp !== otp) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
+  if (type === 'email') {
+    const redisEmailKey = `otp:profile-update-email:${currentAuthUserId}`;
+    const globalEmailLockKey = `lock:email`;
+
+    const cachedData = await RedisService.get(redisEmailKey);
+    if (!cachedData) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'OTP has expired or is invalid. Please request a new one.',
+      );
     }
-    if (currentUser.isOtpExpired && currentUser.isOtpExpired < new Date()) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'OTP has expired');
+
+    const { otp: savedOtp, pendingEmail } = JSON.parse(cachedData as string);
+
+    if (savedOtp !== otp) {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP code.');
     }
 
-    currentUser.otp = undefined;
-    currentUser.isOtpExpired = undefined;
-    currentUser.email = currentUser.pendingEmail;
-    currentUser.pendingEmail = '';
+    await AuthUser.findByIdAndUpdate(currentAuthUserId, {
+      email: pendingEmail,
+    });
+
+    await RedisService.del(redisEmailKey);
+    await RedisService.del(`${globalEmailLockKey}:${pendingEmail}`);
+
+    return {
+      message: 'Email updated successfully.',
+    };
   }
 
-  if (currentUser.pendingContactNumber) {
-    const res = await verifyMobileOtp(
-      currentUser.mobileOtpId as string,
-      otp as string,
+  if (type === 'mobile') {
+    const redisMobileKey = `otp:profile-update-mobile:${currentAuthUserId}`;
+
+    const cachedData = await RedisService.get(redisMobileKey);
+    if (!cachedData) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'OTP has expired or is invalid. Please request a new one.',
+      );
+    }
+
+    const { mobileOtpId, pendingContactNumber } = JSON.parse(
+      cachedData as string,
     );
-    if (!res?.data?.verified) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+
+    const isGatewayOtpValid = await verifyMobileOtp(mobileOtpId, otp);
+    if (!isGatewayOtpValid) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'Invalid or expired OTP code.',
+      );
     }
-    currentUser.mobileOtpId = undefined;
-    currentUser.contactNumber = currentUser.pendingContactNumber;
-    currentUser.pendingContactNumber = '';
+
+    await AuthUser.findByIdAndUpdate(currentAuthUserId, {
+      contactNumber: pendingContactNumber,
+    });
+
+    await RedisService.del(redisMobileKey);
+
+    return {
+      message: 'Contact number updated successfully.',
+    };
   }
-
-  await (currentUser as any).save();
-
-  return {
-    message: `${
-      currentUser.pendingEmail ? 'Email' : 'Contact number'
-    } updated successfully.`,
-  };
 };
 
 export const ProfileServices = {
