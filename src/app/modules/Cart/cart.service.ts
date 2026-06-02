@@ -296,6 +296,7 @@ const updateCartItemQuantity = async (
 
   const { productId, variationSku, quantity, action } = payload;
   const customerId = currentUser._id;
+
   const cart = await Cart.findOne({ customerId, isDeleted: false });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
@@ -303,9 +304,11 @@ const updateCartItemQuantity = async (
 
   const itemIndex = cart.items.findIndex((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
-    const effectiveSku = i.hasVariations ? variationSku || null : null;
-    return isSameProduct && (i.variationSku || null) === effectiveSku;
+    const currentItemSku = i.variationSku || null;
+    const inputSku = variationSku || null;
+    return isSameProduct && currentItemSku === inputSku;
   });
+
   if (itemIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
@@ -317,21 +320,33 @@ const updateCartItemQuantity = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  const vendor = await Vendor.findOne({
+  const vendorAuth = await AuthUser.findOne({
     _id: product.vendorId,
+    role: 'VENDOR',
     isDeleted: false,
-  }).lean();
+  })
+    .lean()
+    .populate('userObjectId', 'businessDetails');
 
+  if (!vendorAuth) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor account not found');
+  }
+
+  const vendor = vendorAuth.userObjectId as any;
   if (!vendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor profile not found');
   }
 
   const isRestaurant = vendor?.businessDetails?.businessType === 'RESTAURANT';
-
   const shouldCheckStock = !isRestaurant;
 
   let availableStock = product?.stock?.quantity ?? 0;
-  if (product.stock?.hasVariations && targetItem.variationSku) {
+
+  const hasVariations =
+    product?.stock?.hasVariations === true ||
+    (product?.variations && product.variations.length > 0);
+
+  if (hasVariations && targetItem.variationSku) {
     const option = (product?.variations ?? [])
       .flatMap((v: any) => v.options)
       .find((opt: any) => opt.sku === targetItem.variationSku);
@@ -400,7 +415,7 @@ const updateCartItemQuantity = async (
     targetItem.itemSummary.totalBeforeTax +
       targetItem.itemSummary.totalTaxAmount,
   );
-  // re-calculate active total
+
   await recalculateCartTotals(cart);
 
   cart.markModified('items');
