@@ -12,12 +12,6 @@ const customerSchema = new Schema<TCustomer>(
     // ----------------------------------------------------------------
     userId: { type: String, required: true, unique: true },
 
-    // --------------------------------------------------------
-    // Pending temporary Email and contact number
-    // --------------------------------------------------------
-    pendingEmail: { type: String },
-    pendingContactNumber: { type: String },
-
     // ----------------------------------------------------------------
     // Personal Details
     // ----------------------------------------------------------------

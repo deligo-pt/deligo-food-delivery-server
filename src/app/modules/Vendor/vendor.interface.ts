@@ -22,12 +22,6 @@ export type TVendor = {
   isUpdateLocked: boolean;
 
   // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
-  // --------------------------------------------------------
   // Personal Information
   // --------------------------------------------------------
   name?: {

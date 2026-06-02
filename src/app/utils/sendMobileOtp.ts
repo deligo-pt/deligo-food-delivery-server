@@ -35,13 +35,11 @@ export const sendMobileOtp = async (phone: string, country?: string) => {
     const response = await axios.post(apiUrl, payload);
     return response.data;
   } catch (error) {
-    console.error(error);
+    console.error(error?.response?.data?.error);
     if (axios.isAxiosError(error)) {
-      throw new Error(
-        error.response?.data?.message || 'Bulkgate OTP send failed',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, error.response?.data?.error);
     } else {
-      throw new Error('Bulkgate OTP send failed');
+      throw new AppError(httpStatus.BAD_REQUEST, 'Bulkgate OTP send failed');
     }
   }
 };

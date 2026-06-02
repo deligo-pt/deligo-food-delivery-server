@@ -29,12 +29,6 @@ const adminSchema = new Schema<TAdmin>(
     },
 
     // --------------------------------------------------------
-    // Pending temporary Email and contact number
-    // --------------------------------------------------------
-    pendingEmail: { type: String },
-    pendingContactNumber: { type: String },
-
-    // --------------------------------------------------------
     // Personal Details
     // --------------------------------------------------------
     name: {

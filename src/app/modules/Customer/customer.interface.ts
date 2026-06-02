@@ -10,12 +10,6 @@ export type TCustomer = {
   _id?: mongoose.Types.ObjectId;
   userId: string;
 
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
   // ------------------------------------------------------
   // Personal Information
   // ------------------------------------------------------

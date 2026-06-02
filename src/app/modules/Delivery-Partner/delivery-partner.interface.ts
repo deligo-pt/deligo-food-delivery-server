@@ -13,12 +13,6 @@ export type TDeliveryPartner = {
   registeredBy?: mongoose.Types.ObjectId;
   isUpdateLocked: boolean;
 
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
   // -------------------------------------------------
   // 1) Personal Information
   // -------------------------------------------------

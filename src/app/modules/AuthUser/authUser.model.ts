@@ -54,6 +54,12 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
       trim: true,
     },
 
+    // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
     // 2. Live Status & Access Control (RBAC)
     status: {
       type: String,

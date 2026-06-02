@@ -19,6 +19,12 @@ export type TAuthUser = {
   contactNumber: string; // Unique mobile number used as the login identifier
   role: TUserRole; // System role (e.g., 'SUPER_ADMIN', 'VENDOR', 'CUSTOMER', etc.)
 
+  // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
+
   // ------------------------------------------------------------------
   // 2. Live Status & Access Control (RBAC)
   // ------------------------------------------------------------------

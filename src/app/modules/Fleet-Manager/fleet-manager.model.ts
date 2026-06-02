@@ -22,12 +22,6 @@ const fleetManagerSchema = new Schema<TFleetManager>(
 
     isUpdateLocked: { type: Boolean, default: false },
 
-    // --------------------------------------------------------
-    // Pending temporary Email and contact number
-    // --------------------------------------------------------
-    pendingEmail: { type: String },
-    pendingContactNumber: { type: String },
-
     // ------------------------------------------
     // Personal Details
     // ------------------------------------------

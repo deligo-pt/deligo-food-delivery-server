@@ -18,12 +18,6 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
 
     isUpdateLocked: { type: Boolean, default: false },
 
-    // --------------------------------------------------------
-    // Pending temporary Email and contact number
-    // --------------------------------------------------------
-    pendingEmail: { type: String },
-    pendingContactNumber: { type: String },
-
     //-------------------------------------------------
     // Personal Information
     //-------------------------------------------------

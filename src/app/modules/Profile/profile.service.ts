@@ -15,6 +15,8 @@ import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import mongoose from 'mongoose';
 import { generateReferralCode } from '../../utils/generateReferralCode';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
+import { RedisService } from '../../config/redis';
 
 // get my profile service
 const getMyProfile = async (currentUser: TAuthUser) => {
@@ -52,9 +54,6 @@ const sendOtp = async (
   currentUser: TAuthUser,
   payload: { contactNumber?: string; email?: string },
 ) => {
-  // --------------------------------------------------
-  // Validate input
-  // --------------------------------------------------
   if (!payload?.contactNumber && !payload?.email) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -62,68 +61,105 @@ const sendOtp = async (
     );
   }
 
-  // --------------------------------------------------
-  // Prevent duplicate mobile number
-  // --------------------------------------------------
-  if (payload.contactNumber) {
-    for (const Model of ALL_USER_MODELS) {
-      const exists = await Model.exists({
-        contactNumber: payload.contactNumber,
-      });
+  const currentAuthUserId = currentUser._id.toString();
+  const OTP_TTL_SECONDS = 300;
 
-      if (exists) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'This mobile number is already registered.',
-        );
-      }
+  if (payload.contactNumber) {
+    const exists = await AuthUser.findOne({
+      contactNumber: payload.contactNumber,
+      _id: { $ne: currentUser._id },
+    });
+
+    if (exists) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This mobile number is already registered with another account.',
+      );
     }
   }
 
-  // --------------------------------------------------
-  // Prevent duplicate email
-  // --------------------------------------------------
   if (payload.email) {
-    for (const Model of ALL_USER_MODELS) {
-      const exists = await Model.exists({ email: payload.email });
+    const exists = await AuthUser.findOne({
+      email: payload.email,
+      _id: { $ne: currentUser._id },
+    });
 
-      if (exists) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'This email is already registered.',
-        );
-      }
+    if (exists) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This email is already registered with another account.',
+      );
     }
   }
 
-  // --------------------------------------------------
-  // Mobile OTP flow
-  // --------------------------------------------------
   if (payload.contactNumber) {
+    const globalMobileLockKey = `lock:mobile:${payload.contactNumber}`;
+
+    const isLockedBySomeone = await RedisService.get(globalMobileLockKey);
+
+    if (isLockedBySomeone && isLockedBySomeone !== currentAuthUserId) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This mobile number is currently undergoing verification by another user. Please try again after 5 minutes.',
+      );
+    }
+
     const response = await sendMobileOtp(payload.contactNumber);
     const mobileOtpId = response?.data?.id;
 
-    currentUser.mobileOtpId = mobileOtpId;
-    currentUser.pendingContactNumber = payload.contactNumber;
+    if (!mobileOtpId) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Failed to receive OTP reference from gateway',
+      );
+    }
 
-    await (currentUser as any).save();
+    await RedisService.set(
+      globalMobileLockKey,
+      currentAuthUserId,
+      OTP_TTL_SECONDS,
+    );
+
+    const redisMobileKey = `otp:profile-update-mobile:${currentAuthUserId}`;
+    const redisMobileData = JSON.stringify({
+      mobileOtpId,
+      pendingContactNumber: payload.contactNumber,
+    });
+
+    await RedisService.set(redisMobileKey, redisMobileData, OTP_TTL_SECONDS);
 
     return {
-      message: 'OTP sent to your mobile number. Please verify to update.',
+      message:
+        'OTP sent to your mobile number. Please verify within 5 minutes to update.',
     };
   }
 
-  // --------------------------------------------------
-  // Email OTP flow
-  // --------------------------------------------------
   if (payload.email) {
-    const { otp, otpExpires } = generateOtp();
+    const globalEmailLockKey = `lock:email:${payload.email}`;
 
-    currentUser.otp = otp;
-    currentUser.isOtpExpired = otpExpires;
-    currentUser.pendingEmail = payload.email;
+    const isEmailLocked = await RedisService.get(globalEmailLockKey);
 
-    await (currentUser as any).save();
+    if (isEmailLocked && isEmailLocked !== currentAuthUserId) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This email address is currently undergoing verification by another user. Please try again after 5 minutes.',
+      );
+    }
+    const { otp } = generateOtp();
+
+    const redisEmailKey = `otp:profile-update-email:${currentAuthUserId}`;
+    const redisEmailData = JSON.stringify({
+      otp,
+      pendingEmail: payload.email,
+    });
+
+    await RedisService.set(redisEmailKey, redisEmailData, OTP_TTL_SECONDS);
+
+    const userModel = mongoose.model(currentUser.onModel);
+    const userProfile = await userModel
+      .findById(currentUser.userObjectId)
+      .lean();
+    const customerFirstName = (userProfile as any)?.name?.firstName || 'User';
 
     const emailHtml = await EmailHelper.createEmailContent(
       {
@@ -131,7 +167,7 @@ const sendOtp = async (
         userEmail: payload.email,
         currentYear: new Date().getFullYear(),
         date: new Date().toDateString(),
-        user: currentUser?.name?.firstName || 'Customer',
+        user: customerFirstName,
       },
       'verify-email',
     );
@@ -143,6 +179,7 @@ const sendOtp = async (
         'Verify your email for DeliGo',
       );
     } catch (error: any) {
+      await RedisService.del(redisEmailKey);
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
         'Failed to send verification email',
@@ -150,7 +187,8 @@ const sendOtp = async (
     }
 
     return {
-      message: 'OTP sent to your email. Please verify to update.',
+      message:
+        'OTP sent to your email. Please verify within 5 minutes to update.',
     };
   }
 };

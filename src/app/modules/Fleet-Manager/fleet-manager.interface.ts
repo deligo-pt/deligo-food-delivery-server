@@ -12,12 +12,6 @@ export type TFleetManager = {
 
   isUpdateLocked: boolean;
 
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
   // ---------------------------------------------
   // Personal Information
   // ---------------------------------------------
