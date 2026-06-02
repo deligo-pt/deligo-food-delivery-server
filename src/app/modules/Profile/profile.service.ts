@@ -18,6 +18,7 @@ import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // get my profile service
 const getMyProfile = async (currentUser: TAuthUser) => {
+  const userModel = mongoose.model(currentUser.onModel);
   // -----------------------------
   // Status Check
   // -----------------------------
@@ -27,7 +28,23 @@ const getMyProfile = async (currentUser: TAuthUser) => {
       `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`,
     );
   }
-  return currentUser;
+
+  const userProfile = await userModel.findById(currentUser.userObjectId).lean();
+  if (!userProfile) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Profile details not found in the system',
+    );
+  }
+
+  return {
+    ...userProfile,
+    role: currentUser.role,
+    status: currentUser.status,
+    email: currentUser.email,
+    contactNumber: currentUser.contactNumber,
+    authUserId: currentUser._id,
+  };
 };
 
 // send otp service
