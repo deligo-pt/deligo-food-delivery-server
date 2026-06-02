@@ -145,6 +145,7 @@ const sendOtp = async (
         'This email address is currently undergoing verification by another user. Please try again after 5 minutes.',
       );
     }
+
     const { otp } = generateOtp();
 
     const redisEmailKey = `otp:profile-update-email:${currentAuthUserId}`;
@@ -153,6 +154,11 @@ const sendOtp = async (
       pendingEmail: payload.email,
     });
 
+    await RedisService.set(
+      globalEmailLockKey,
+      currentAuthUserId,
+      OTP_TTL_SECONDS,
+    );
     await RedisService.set(redisEmailKey, redisEmailData, OTP_TTL_SECONDS);
 
     const userModel = mongoose.model(currentUser.onModel);
@@ -172,19 +178,15 @@ const sendOtp = async (
       'verify-email',
     );
 
-    try {
-      await EmailHelper.sendEmail(
-        payload.email,
-        emailHtml,
-        'Verify your email for DeliGo',
-      );
-    } catch (error: any) {
+    EmailHelper.sendEmail(
+      payload.email,
+      emailHtml,
+      'Verify your email for DeliGo',
+    ).catch(async (err) => {
+      console.error('Email sending failed:', err);
       await RedisService.del(redisEmailKey);
-      throw new AppError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Failed to send verification email',
-      );
-    }
+      await RedisService.del(globalEmailLockKey);
+    });
 
     return {
       message:
