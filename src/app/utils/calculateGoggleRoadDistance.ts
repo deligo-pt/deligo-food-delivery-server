@@ -4,7 +4,7 @@ import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
 import { roundTo2 } from './mathProvider';
 
-export const calculateGoggleRoadDistance = async (
+export const calculateGoogleRoadDistance = async (
   lng1: number,
   lat1: number,
   lng2: number,
@@ -13,6 +13,8 @@ export const calculateGoggleRoadDistance = async (
   if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) {
     return { km: 0, meters: 0, durationMinutes: 0, text: 'N/A' };
   }
+
+  console.log({ lng1, lat1, lng2, lat2 });
 
   const apiKey = config.google_maps_api_key;
 

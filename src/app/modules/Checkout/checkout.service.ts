@@ -8,7 +8,7 @@ import { Product } from '../Product/product.model';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
-import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
+import { calculateGoogleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { TAuthUser } from '../AuthUser/authUser.interface';
 import { Customer } from '../Customer/customer.model';
 import { AuthUser } from '../AuthUser/authUser.model';
@@ -97,7 +97,7 @@ const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
 
   const { latitude, longitude } = vendorLocation;
 
-  const distanceData = await calculateGoggleRoadDistance(
+  const distanceData = await calculateGoogleRoadDistance(
     longitude,
     latitude,
     activeAddress.longitude || 0,
@@ -126,6 +126,8 @@ const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
 
   let cumulativeRawGrandTotal = 0;
   cumulativeRawGrandTotal += deliveryGrossRaw;
+
+  let totalTaxSum = 0;
 
   const orderItems = selectedItems.map((item: any) => {
     const product = products.find(
@@ -194,6 +196,7 @@ const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
 
     const itemTotalBeforeTax = roundTo2(productLineNet + totalAddonsLineTotal);
     const itemTotalTax = roundTo2(productTaxAmount + totalAddonsTax);
+    totalTaxSum += itemTotalTax;
 
     const commAmt = roundTo2(
       itemTotalBeforeTax * (PLATFORM_COMMISSION_RATE / 100),
@@ -253,19 +256,26 @@ const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
     (sum, i) => sum + i.productPricing.originalPrice * i.itemSummary.quantity,
     0,
   );
-  const finalGrandTotal = roundTo2(cumulativeRawGrandTotal);
 
   const totalProductDiscount = orderItems.reduce(
     (sum, i) => sum + i.itemSummary.totalProductDiscount,
     0,
   );
+
   const taxableAmount = orderItems.reduce(
     (sum, i) => sum + i.itemSummary.totalBeforeTax,
     0,
   );
+
   const totalTaxAmount = roundTo2(
-    finalGrandTotal - (taxableAmount + totalDeliveryCharge),
+    orderItems.reduce((sum, i) => sum + i.itemSummary.totalTaxAmount, 0),
   );
+
+  const itemsGrandTotalSum = orderItems.reduce(
+    (sum, i) => sum + i.itemSummary.grandTotal,
+    0,
+  );
+  const finalGrandTotal = roundTo2(itemsGrandTotalSum + totalDeliveryCharge);
 
   const totalCommAmt = orderItems.reduce(
     (sum, i) => sum + i.commission.deliGoCommissionAmount,
@@ -305,7 +315,7 @@ const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
       totalProductDiscount: roundTo2(totalProductDiscount),
       totalOfferDiscount: 0,
       taxableAmount: roundTo2(taxableAmount),
-      totalTaxAmount: roundTo2(totalTaxAmount),
+      totalTaxAmount,
     },
 
     delivery: {
