@@ -85,138 +85,148 @@ const addToCart = async (payload: any, currentUser: TAuthUser) => {
       );
     }
 
-    const targetOption = existingProduct.variations
-      ?.flatMap((v: any) => v.options)
-      .find((opt: any) => opt.sku === variationSku);
-
-    if (!targetOption) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Invalid variation SKU');
-    }
-
-    selectedPrice = targetOption.price;
-    selectedVariantLabel = targetOption.label;
-    availableStock = targetOption.stockQuantity ?? 0;
-    finalVariationSku = targetOption.sku;
-  } else {
-    if (variationSku) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'This product does not support variations. Please clear selection.',
-      );
-    }
-    finalVariationSku = null;
-  }
-
-  if (!isRestaurant && quantity > availableStock)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient stock');
-
-  const { discount = 0, taxRate = 0 } = existingProduct.pricing;
-  const unitDiscountAmount = roundTo2((selectedPrice * discount) / 100);
-  const priceAfterDiscount = roundTo2(selectedPrice - unitDiscountAmount);
-
-  const productLineTotal = roundTo2(priceAfterDiscount * quantity);
-  const productTaxAmount = roundTo2((productLineTotal * taxRate) / 100);
-
-  const newItem: any = {
-    productId: existingProduct._id,
-    vendorId: existingProduct.vendorId,
-    name: selectedVariantLabel
-      ? `${existingProduct.name} - ${selectedVariantLabel}`
-      : existingProduct.name,
-    image: existingProduct?.images[0] || '',
-    hasVariations: hasVariations,
-    variationSku: finalVariationSku,
-    isActive: true,
-    addons: [],
-    productPricing: {
-      originalPrice: roundTo2(selectedPrice),
-      productDiscountAmount: unitDiscountAmount,
-      priceAfterProductDiscount: priceAfterDiscount,
-      promoDiscountAmount: 0,
-      unitPrice: priceAfterDiscount,
-      lineTotal: productLineTotal,
-      taxRate,
-      taxAmount: productTaxAmount,
-    },
-    itemSummary: {
-      quantity,
-      totalBeforeTax: productLineTotal,
-      totalTaxAmount: productTaxAmount,
-      totalPromoDiscount: 0,
-      totalProductDiscount: roundTo2(unitDiscountAmount * quantity),
-      grandTotal: roundTo2(productLineTotal + productTaxAmount),
-    },
-  };
-
-  let cart = await Cart.findOne({ customerId, isDeleted: false });
-
-  if (!cart) {
-    cart = new Cart({ customerId, items: [newItem] });
-  } else {
-    const itemIndex = cart.items.findIndex(
-      (i: any) =>
-        i.productId.toString() === productId.toString() &&
-        (i.variationSku || null) === (finalVariationSku || null),
-    );
-
-    if (itemIndex > -1) {
-      const currentItem = cart.items[itemIndex];
-      const finalQuantity = currentItem.itemSummary.quantity + quantity;
-
-      if (!isRestaurant && finalQuantity > availableStock) {
+    if (hasVariations) {
+      if (!variationSku) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          `Insufficient stock. You already have ${currentItem.itemSummary.quantity} in cart.`,
+          'This product has multiple variations. Please select a variation to proceed.',
         );
       }
+      const targetOption = existingProduct.variations
+        ?.flatMap((v: any) => v.options)
+        .find((opt: any) => opt.sku === variationSku);
 
-      const newProductLineTotal = roundTo2(priceAfterDiscount * finalQuantity);
-      const newProductTax = roundTo2(newProductLineTotal * (taxRate / 100));
-
-      const existingAddonsNet =
-        currentItem.addons?.reduce(
-          (sum: number, a: any) => sum + (a.lineTotal || 0),
-          0,
-        ) || 0;
-      const existingAddonsTax =
-        currentItem.addons?.reduce(
-          (sum: number, a: any) => sum + (a.taxAmount || 0),
-          0,
-        ) || 0;
-
-      currentItem.itemSummary.quantity = finalQuantity;
-      currentItem.productPricing.lineTotal = newProductLineTotal;
-      currentItem.productPricing.taxAmount = newProductTax;
-      currentItem.itemSummary.totalProductDiscount = roundTo2(
-        unitDiscountAmount * finalQuantity,
-      );
-
-      currentItem.itemSummary.totalBeforeTax = roundTo2(
-        newProductLineTotal + existingAddonsNet,
-      );
-      currentItem.itemSummary.totalTaxAmount = roundTo2(
-        newProductTax + existingAddonsTax,
-      );
-      currentItem.itemSummary.grandTotal = roundTo2(
-        currentItem.itemSummary.totalBeforeTax +
-          currentItem.itemSummary.totalTaxAmount,
-      );
-    } else {
-      const activeItem = cart.items.find((i: any) => i.isActive === true);
-      if (
-        activeItem &&
-        activeItem.vendorId.toString() !== existingProduct.vendorId.toString()
-      ) {
-        newItem.isActive = false;
+      if (!targetOption) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Invalid variation SKU');
       }
-      cart.items.push(newItem);
-    }
-  }
 
-  await recalculateCartTotals(cart);
-  cart.markModified('items');
-  await cart.save();
-  return cart;
+      selectedPrice = targetOption.price;
+      selectedVariantLabel = targetOption.label;
+      availableStock = targetOption.stockQuantity ?? 0;
+      finalVariationSku = targetOption.sku;
+    } else {
+      if (variationSku) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'This product does not support variations. Please clear selection.',
+        );
+      }
+      finalVariationSku = null;
+    }
+
+    if (!isRestaurant && quantity > availableStock)
+      throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient stock');
+
+    const { discount = 0, taxRate = 0 } = existingProduct.pricing;
+    const unitDiscountAmount = roundTo2((selectedPrice * discount) / 100);
+    const priceAfterDiscount = roundTo2(selectedPrice - unitDiscountAmount);
+
+    const productLineTotal = roundTo2(priceAfterDiscount * quantity);
+    const productTaxAmount = roundTo2((productLineTotal * taxRate) / 100);
+
+    const newItem: any = {
+      productId: existingProduct._id,
+      vendorId: existingProduct.vendorId,
+      name: selectedVariantLabel
+        ? `${existingProduct.name} - ${selectedVariantLabel}`
+        : existingProduct.name,
+      image: existingProduct?.images[0] || '',
+      hasVariations: hasVariations,
+      variationSku: finalVariationSku,
+      isActive: true,
+      addons: [],
+      productPricing: {
+        originalPrice: roundTo2(selectedPrice),
+        productDiscountAmount: unitDiscountAmount,
+        priceAfterProductDiscount: priceAfterDiscount,
+        promoDiscountAmount: 0,
+        unitPrice: priceAfterDiscount,
+        lineTotal: productLineTotal,
+        taxRate,
+        taxAmount: productTaxAmount,
+      },
+      itemSummary: {
+        quantity,
+        totalBeforeTax: productLineTotal,
+        totalTaxAmount: productTaxAmount,
+        totalPromoDiscount: 0,
+        totalProductDiscount: roundTo2(unitDiscountAmount * quantity),
+        grandTotal: roundTo2(productLineTotal + productTaxAmount),
+      },
+    };
+
+    let cart = await Cart.findOne({ customerId, isDeleted: false });
+
+    if (!cart) {
+      cart = new Cart({ customerId, items: [newItem] });
+    } else {
+      const itemIndex = cart.items.findIndex(
+        (i: any) =>
+          i.productId.toString() === productId.toString() &&
+          (i.variationSku || null) === (finalVariationSku || null),
+      );
+
+      if (itemIndex > -1) {
+        const currentItem = cart.items[itemIndex];
+        const finalQuantity = currentItem.itemSummary.quantity + quantity;
+
+        if (!isRestaurant && finalQuantity > availableStock) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Insufficient stock. You already have ${currentItem.itemSummary.quantity} in cart.`,
+          );
+        }
+
+        const newProductLineTotal = roundTo2(
+          priceAfterDiscount * finalQuantity,
+        );
+        const newProductTax = roundTo2(newProductLineTotal * (taxRate / 100));
+
+        const existingAddonsNet =
+          currentItem.addons?.reduce(
+            (sum: number, a: any) => sum + (a.lineTotal || 0),
+            0,
+          ) || 0;
+        const existingAddonsTax =
+          currentItem.addons?.reduce(
+            (sum: number, a: any) => sum + (a.taxAmount || 0),
+            0,
+          ) || 0;
+
+        currentItem.itemSummary.quantity = finalQuantity;
+        currentItem.productPricing.lineTotal = newProductLineTotal;
+        currentItem.productPricing.taxAmount = newProductTax;
+        currentItem.itemSummary.totalProductDiscount = roundTo2(
+          unitDiscountAmount * finalQuantity,
+        );
+
+        currentItem.itemSummary.totalBeforeTax = roundTo2(
+          newProductLineTotal + existingAddonsNet,
+        );
+        currentItem.itemSummary.totalTaxAmount = roundTo2(
+          newProductTax + existingAddonsTax,
+        );
+        currentItem.itemSummary.grandTotal = roundTo2(
+          currentItem.itemSummary.totalBeforeTax +
+            currentItem.itemSummary.totalTaxAmount,
+        );
+      } else {
+        const activeItem = cart.items.find((i: any) => i.isActive === true);
+        if (
+          activeItem &&
+          activeItem.vendorId.toString() !== existingProduct.vendorId.toString()
+        ) {
+          newItem.isActive = false;
+        }
+        cart.items.push(newItem);
+      }
+    }
+
+    await recalculateCartTotals(cart);
+    cart.markModified('items');
+    await cart.save();
+    return cart;
+  }
 };
 
 // active item Service
