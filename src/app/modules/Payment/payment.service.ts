@@ -145,23 +145,45 @@ const handlePaymentFailure = async (
   checkoutSummaryId: string,
   currentUser: TAuthUser,
 ) => {
-  const summary = await CheckoutSummary.findById(checkoutSummaryId);
+  const customerId = currentUser._id.toString();
 
-  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'Summary not found');
+  const summary = await CheckoutSummary.findOneAndUpdate(
+    {
+      _id: checkoutSummaryId,
+      customerId: customerId,
+      isConvertedToOrder: false,
+    },
+    {
+      $set: { paymentStatus: 'FAILED' },
+    },
+    { new: true },
+  );
 
-  if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to view',
-    );
+  if (!summary) {
+    const existingSummary =
+      await CheckoutSummary.findById(checkoutSummaryId).lean();
+    if (!existingSummary) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
+    }
+    if (existingSummary.customerId.toString() !== customerId) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'You are not authorized to perform this action',
+      );
+    }
+    if (existingSummary.isConvertedToOrder) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Cannot reset payment status. Checkout already converted to an order.',
+      );
+    }
   }
 
-  if (!summary.isConvertedToOrder) {
-    summary.paymentStatus = 'FAILED';
-    await summary.save();
-  }
-
-  return { message: 'Payment status reset successfully' };
+  return {
+    success: true,
+    message:
+      'Payment status reset to failed successfully. User can re-attempt payment.',
+  };
 };
 
 // create ingredients payment service
