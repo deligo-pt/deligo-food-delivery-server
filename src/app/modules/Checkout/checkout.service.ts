@@ -11,6 +11,7 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { TAuthUser } from '../AuthUser/authUser.interface';
 import { Customer } from '../Customer/customer.model';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // Checkout Service
 const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
@@ -58,8 +59,17 @@ const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Products not found');
 
   const vendorId = products[0].vendorId;
-  const existingVendor = await Vendor.findById(vendorId);
-  if (!existingVendor || !existingVendor.businessDetails?.isStoreOpen) {
+  const existingAuthVendor = await AuthUser.findById(vendorId)
+    .populate('userObjectId', 'businessDetails businessLocation')
+    .lean();
+
+  if (!existingAuthVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+  }
+
+  const existingVendor = existingAuthVendor?.userObjectId as any;
+
+  if (!existingVendor.businessDetails?.isStoreOpen) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor is closed');
   }
 
