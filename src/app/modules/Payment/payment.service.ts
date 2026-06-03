@@ -9,49 +9,64 @@ import mongoose from 'mongoose';
 import { Vendor } from '../Vendor/vendor.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
 import { IngredientOrder } from '../Ingredient-Order/ing-order.model';
-import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Admin } from '../Admin/admin.model';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { calculateGoogleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 
 // create redUniq payment intent service
 const createRedUniqPayment = async (
   checkoutSummaryId: string,
   paymentMethod: TPaymentMethod,
 ) => {
-  const summary = await CheckoutSummary.findById(checkoutSummaryId);
-  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'Summary not found');
-
-  if (summary.isConvertedToOrder) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order',
-    );
-  }
-
-  if (summary.paymentStatus === 'PROCESSING') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Payment already in process for this checkout.',
-    );
-  }
-
-  if (summary.paymentStatus === 'PAID') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Payment already completed for this checkout',
-    );
-  }
-
-  if (!config.redUniq.api_url) {
+  if (!config.redUniq?.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'RedUniq API URL is not configured',
+      'RedUniq API URL is not configured in environment settings',
     );
   }
 
-  const solutionIds = {
+  const summary = await CheckoutSummary.findOneAndUpdate(
+    {
+      _id: checkoutSummaryId,
+      isConvertedToOrder: false,
+      paymentStatus: { $nin: ['PROCESSING', 'PAID'] },
+    },
+    {
+      $set: { paymentStatus: 'PROCESSING', paymentMethod: paymentMethod },
+    },
+    { new: true },
+  );
+
+  if (!summary) {
+    const existingSummary =
+      await CheckoutSummary.findById(checkoutSummaryId).lean();
+    if (!existingSummary)
+      throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
+    if (existingSummary.isConvertedToOrder)
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Checkout already converted to order',
+      );
+    if (existingSummary.paymentStatus === 'PROCESSING')
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Payment already in process for this checkout. Please wait.',
+      );
+    if (existingSummary.paymentStatus === 'PAID')
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Payment already completed for this checkout',
+      );
+
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Unable to initiate payment session',
+    );
+  }
+
+  const solutionIds: Record<string, string | null> = {
     CARD: '117',
     MB_WAY: '110',
     APPLE_PAY: '115',
@@ -84,26 +99,45 @@ const createRedUniqPayment = async (
     languageCode: 'pt',
   };
 
-  const response = await axios.post(config.redUniq.api_url, payload);
-  const { result, token, redirectUrl } = response.data;
+  try {
+    const response = await axios.post(config.redUniq.api_url, payload, {
+      timeout: 15000,
+    });
 
-  if (response.data.token) {
-    summary.paymentMethod = paymentMethod;
-    summary.paymentStatus = 'PROCESSING';
-    await summary.save();
-  }
+    const responseData = response.data || {};
+    const { result, token, redirectUrl } = responseData;
 
-  if (result.code !== '00000000' && result.code !== '17000000000') {
+    const successCodes = ['00000000', '17000000000'];
+    if (!result || !successCodes.includes(result.code)) {
+      await CheckoutSummary.findByIdAndUpdate(checkoutSummaryId, {
+        $set: { paymentStatus: 'PENDING' },
+      });
+
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `RedUniq Gate rejection: ${result?.message || 'Payment initiation failed'}`,
+      );
+    }
+
+    return {
+      redirectUrl,
+      paymentToken: token,
+    };
+  } catch (error: any) {
+    await CheckoutSummary.findByIdAndUpdate(checkoutSummaryId, {
+      $set: { paymentStatus: 'PENDING' },
+    });
+
+    console.error(
+      '[Payment Gateway Error] RedUniq initialization failed:',
+      error.message,
+    );
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Payment initiation failed',
+      error.response?.data?.result?.message ||
+        'Payment provider gateway connection timeout/failed',
     );
   }
-
-  return {
-    redirectUrl,
-    paymentToken: token,
-  };
 };
 
 // handle payment failure
@@ -161,7 +195,7 @@ const createIngredientRedUniqPayment = async (
     ];
 
     // 3. Calculate Distance and Delivery Charges
-    const distanceData = await calculateGoggleRoadDistance(
+    const distanceData = await calculateGoogleRoadDistance(
       adminInfo?.address?.longitude as number,
       adminInfo?.address?.latitude as number,
       vendorCoords[0],
