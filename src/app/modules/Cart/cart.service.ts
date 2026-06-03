@@ -85,13 +85,6 @@ const addToCart = async (payload: any, currentUser: TAuthUser) => {
       );
     }
 
-  if (hasVariations) {
-    if (!variationSku) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'This product has multiple variations. Please select a variation to proceed.',
-      );
-    }
     const targetOption = existingProduct.variations
       ?.flatMap((v: any) => v.options)
       .find((opt: any) => opt.sku === variationSku);
