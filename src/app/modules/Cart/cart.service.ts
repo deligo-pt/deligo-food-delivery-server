@@ -2,7 +2,6 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { Product } from '../Product/product.model';
-import { TCartItemInput } from './cart.interface';
 import { Cart } from './cart.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { recalculateCartTotals } from './cart.constant';
