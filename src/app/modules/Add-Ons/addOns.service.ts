@@ -364,11 +364,11 @@ const getAllAddonGroups = async (
     AddonGroup.find().populate('options.tax', 'taxRate'),
     query,
   )
-    .fields()
-    .paginate()
-    .sort()
+    .search(['title'])
     .filter()
-    .search(['title']);
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     addOns.countTotal(),

@@ -107,11 +107,11 @@ const getAllSponsorships = async (
     query.isActive = true;
   }
   const sponsorships = new QueryBuilder(Sponsorship.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['sponsorName', 'sponsorType'])
     .filter()
-    .search(['sponsorName', 'sponsorType']);
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     sponsorships.countTotal(),
@@ -146,10 +146,7 @@ const getSingleSponsorship = async (currentUser: TAuthUser, id: string) => {
 };
 
 // soft deleted sponsorship
-const softDeletedSponsorship = async (
-  currentUser: TAuthUser,
-  id: string,
-) => {
+const softDeletedSponsorship = async (currentUser: TAuthUser, id: string) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,

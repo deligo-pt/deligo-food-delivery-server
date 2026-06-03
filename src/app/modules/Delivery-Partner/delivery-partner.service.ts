@@ -20,7 +20,7 @@ import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
-  payload: Partial<TDeliveryPartner>,
+  payload: Partial<TDeliveryPartner & TAuthUser>,
   deliveryPartnerCustomId: string,
   currentUser: TAuthUser,
 ) => {
@@ -381,11 +381,11 @@ const getAllDeliveryPartnersFromDB = async (
     AuthUser.find(authBaseQuery),
     query,
   )
-    .fields()
-    .paginate()
-    .sort()
+    .search(DeliveryPartnerSearchableFields)
     .filter()
-    .search(DeliveryPartnerSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
 
   deliveryPartnersQuery.modelQuery = deliveryPartnersQuery.modelQuery.populate({
     path: 'userObjectId',

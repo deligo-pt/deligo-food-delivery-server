@@ -30,6 +30,11 @@ const confirmIngredientOrder = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Ingredient order not found');
   }
 
+  const vendorProfile = await Vendor.findById(currentUser.userObjectId);
+  if (!vendorProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor profile not found');
+  }
+
   // 2. Security Check: Ensure the person completing is the one who initiated
   if (existingOrder.vendor.toString() !== currentUser._id.toString()) {
     throw new AppError(
@@ -135,7 +140,7 @@ const confirmIngredientOrder = async (
     // 4. Post-confirmation logic (Notifications)
     const adminNotification = {
       title: 'New Ingredient Purchase',
-      body: `Vendor ${currentUser.name.firstName} purchased ${existingOrder.orderDetails.totalQuantity}x ${ingredientData?.name}. Order ID: ${uniqueOrderId}`,
+      body: `Vendor ${vendorProfile?.name?.firstName} purchased ${existingOrder.orderDetails.totalQuantity}x ${ingredientData?.name}. Order ID: ${uniqueOrderId}`,
       data: {
         orderId: existingOrder._id.toString(),
         type: 'INGREDIENT_ORDER',
@@ -144,7 +149,6 @@ const confirmIngredientOrder = async (
 
     // Assuming you have a method to find Admins or send to all Admins
     NotificationService.sendToRole(
-      'Admin',
       ['ADMIN', 'SUPER_ADMIN'],
       adminNotification.title,
       adminNotification.body,

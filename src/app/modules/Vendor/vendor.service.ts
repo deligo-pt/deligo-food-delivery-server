@@ -365,11 +365,11 @@ const getAllVendors = async (
   }
   const vendorQueryBase = AuthUser.find(queryFilter);
   const vendors = new QueryBuilder(vendorQueryBase, query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(VendorSearchableFields)
     .filter()
-    .search(VendorSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     userObjectId: true,

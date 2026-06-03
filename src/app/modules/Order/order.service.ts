@@ -197,6 +197,13 @@ const updateOrderStatusByVendor = async (
     );
   }
 
+  const vendorProfile = await Vendor.findById(currentUser.userObjectId).lean();
+
+  if (!vendorProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor profile not found');
+  }
+  const vendorBusinessLocation = vendorProfile.businessLocation as any;
+
   // --------------------------------------------------------
   // Allowed vendor actions
   // --------------------------------------------------------
@@ -340,15 +347,15 @@ const updateOrderStatusByVendor = async (
     if (action.type === 'ACCEPTED') {
       if (!order.pickupAddress) {
         order.pickupAddress = {
-          street: currentUser?.businessLocation?.street || '',
-          city: currentUser?.businessLocation?.city || '',
-          state: currentUser?.businessLocation?.state || '',
-          country: currentUser?.businessLocation?.country || '',
-          postalCode: currentUser?.businessLocation?.postalCode || '',
-          longitude: currentUser?.businessLocation?.longitude || 0,
-          latitude: currentUser?.businessLocation?.latitude || 0,
-          geoAccuracy: currentUser?.businessLocation?.geoAccuracy,
-          detailedAddress: currentUser?.businessLocation?.detailedAddress || '',
+          street: vendorBusinessLocation?.street || '',
+          city: vendorBusinessLocation?.city || '',
+          state: vendorBusinessLocation?.state || '',
+          country: vendorBusinessLocation?.country || '',
+          postalCode: vendorBusinessLocation?.postalCode || '',
+          longitude: vendorBusinessLocation?.longitude || 0,
+          latitude: vendorBusinessLocation?.latitude || 0,
+          geoAccuracy: vendorBusinessLocation?.geoAccuracy,
+          detailedAddress: vendorBusinessLocation?.detailedAddress || '',
         };
       }
 
@@ -380,7 +387,7 @@ const updateOrderStatusByVendor = async (
 
       const notificationPayload = {
         title: 'Order Accepted',
-        body: `Your order has been accepted by ${currentUser.businessDetails?.businessName}.Please wait for your order to be picked up.`,
+        body: `Your order has been accepted by ${vendorProfile.businessDetails?.businessName}.Please wait for your order to be picked up.`,
         data: { orderId: order.orderId },
       };
       NotificationService.sendToUser(
@@ -399,7 +406,7 @@ const updateOrderStatusByVendor = async (
       NotificationService.sendToUser(
         customerId!,
         'Order is being prepared',
-        `Your order is now being prepared by ${currentUser.businessDetails?.businessName}.`,
+        `Your order is now being prepared by ${vendorProfile.businessDetails?.businessName}.`,
         { orderId: order.orderId.toString(), status: ORDER_STATUS.PREPARING },
         'default',
         'ORDER',
@@ -413,7 +420,7 @@ const updateOrderStatusByVendor = async (
       NotificationService.sendToUser(
         customerId!,
         'Order is ready for pickup',
-        `Your order is now ready for pickup by ${currentUser.businessDetails?.businessName}.`,
+        `Your order is now ready for pickup by ${vendorProfile.businessDetails?.businessName}.`,
         {
           orderId: order.orderId,
           status: ORDER_STATUS.READY_FOR_PICKUP,
@@ -532,10 +539,15 @@ const broadcastOrderToPartners = async (
     );
   }
 
+  const vendorProfile = await Vendor.findById(currentUser.userObjectId).lean();
+  if (!vendorProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found.');
+  }
+
   // Vendor location check
-  const loc = currentUser.currentSessionLocation?.coordinates;
-  const longitude = loc?.[0];
-  const latitude = loc?.[1];
+  const loc = vendorProfile.businessLocation;
+  const longitude = loc?.longitude;
+  const latitude = loc?.latitude;
   if (!loc || typeof longitude !== 'number' || typeof latitude !== 'number') {
     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not set.');
   }
@@ -645,7 +657,7 @@ const broadcastOrderToPartners = async (
   const orderDataForPopup = {
     orderId: order.orderId,
     deliveryAddress: order.deliveryAddress,
-    vendorName: currentUser?.businessDetails?.businessName,
+    vendorName: vendorProfile?.businessDetails?.businessName,
     timer: timerSeconds,
     expiresAt: expirationTime,
     riderEarning: order.payoutSummary.rider,
@@ -700,6 +712,13 @@ const partnerAcceptsDispatchedOrder = async (
       currentUser.role !== 'DELIVERY_PARTNER'
     ) {
       throw new AppError(httpStatus.FORBIDDEN, 'Partner not approved.');
+    }
+
+    const partnerProfile = await DeliveryPartner.findById(
+      currentUser.userObjectId,
+    ).lean();
+    if (!partnerProfile) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Delivery partner not found.');
     }
 
     const order = await Order.findOne({ orderId })
@@ -767,7 +786,7 @@ const partnerAcceptsDispatchedOrder = async (
       return { data: null, message: 'Order rejected.' };
     }
 
-    if (currentUser.operationalData?.currentOrderId) {
+    if (partnerProfile.operationalData?.currentOrderId) {
       throw new AppError(
         httpStatus.FORBIDDEN,
         'You already have an active order.',
@@ -822,7 +841,7 @@ const partnerAcceptsDispatchedOrder = async (
     if (vendorUserId) {
       io.to(`user_${vendorUserId}`).emit('ORDER_ACCEPTED_BY_PARTNER', {
         orderId,
-        partnerName: `${currentUser.name.firstName} ${currentUser.name.lastName}`,
+        partnerName: `${partnerProfile?.name?.firstName} ${partnerProfile?.name?.lastName}`,
       });
     }
 
@@ -1036,11 +1055,11 @@ const getAllOrders = async (
   // Build Query with QueryBuilder
   // -----------------------------
   const builder = new QueryBuilder(Order.find(), query)
+    .search(OrderSearchableFields)
     .filter()
     .sort()
-    .fields()
     .paginate()
-    .search(OrderSearchableFields);
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
@@ -1152,11 +1171,20 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: TAuthUser) => {
       'Only delivery partners can access their current order.',
     );
   }
-  if (currentUser.operationalData?.currentOrderId === null) {
+
+  const partnerProfile = await DeliveryPartner.findById(
+    currentUser.userObjectId,
+  ).lean();
+
+  if (!partnerProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery partner not found.');
+  }
+
+  if (partnerProfile.operationalData?.currentOrderId === null) {
     throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
   }
   const order = await Order.findOne({
-    _id: currentUser.operationalData?.currentOrderId,
+    _id: partnerProfile.operationalData?.currentOrderId,
     deliveryPartnerId: currentUser._id,
     isDeleted: false,
   })

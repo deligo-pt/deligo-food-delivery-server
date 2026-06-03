@@ -656,11 +656,11 @@ const getAllProducts = async (
   }
 
   const products = new QueryBuilder(Product.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(ProductSearchableFields)
     .filter()
-    .search(ProductSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
 
   products.modelQuery = products.modelQuery
     .populate({

@@ -163,11 +163,11 @@ const getAllAdmins = async (
 
   const adminQueryBase = AuthUser.find(queryFilter);
   const adminsQueryBuilder = new QueryBuilder(adminQueryBase, query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(AdminSearchableFields)
     .filter()
-    .search(AdminSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     userObjectId: true,

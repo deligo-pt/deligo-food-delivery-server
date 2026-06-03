@@ -5,6 +5,7 @@ import { TBusinessCategory, TProductCategory } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import mongoose from 'mongoose';
 
 //  Create Business Category
 const createBusinessCategory = async (
@@ -77,11 +78,11 @@ const getAllBusinessCategories = async (
     ((query.isActive = true), (query.isDeleted = false));
   }
   const businessCategories = new QueryBuilder(BusinessCategory.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['name', 'slug'])
     .filter()
-    .search(['name', 'slug']);
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     businessCategories.countTotal(),
@@ -253,8 +254,21 @@ const getAllProductCategories = async (
 
   // Additional filter for vendors: restrict to their business category
   if (isVendor) {
+    const vendorModel = mongoose.model(currentUser.onModel);
+    const vendorProfile = await vendorModel
+      .findById(currentUser.userObjectId)
+      .lean();
+
+    const businessType = (vendorProfile as any)?.businessDetails?.businessType;
+
+    if (!businessType) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Vendor business type registration details not found.',
+      );
+    }
     const businessCategory = await BusinessCategory.findOne({
-      name: currentUser?.businessDetails?.businessType,
+      name: businessType,
     })
       .select('_id')
       .lean();
@@ -266,11 +280,11 @@ const getAllProductCategories = async (
 
   // Build and execute the query
   const productCategories = new QueryBuilder(ProductCategory.find(), query)
-    .fields()
-    .paginate()
-    .sort()
     .filter()
-    .search(['name', 'slug']);
+    .search(['name', 'slug'])
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     productCategories.countTotal(),
@@ -281,10 +295,7 @@ const getAllProductCategories = async (
 };
 
 // get single product category
-const getSingleProductCategory = async (
-  id: string,
-  currentUser: TAuthUser,
-) => {
+const getSingleProductCategory = async (id: string, currentUser: TAuthUser) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
@@ -301,8 +312,21 @@ const getSingleProductCategory = async (
 
   // Vendors can only access categories from their business type
   if (isVendor) {
+    const vendorModel = mongoose.model(currentUser.onModel);
+    const vendorProfile = await vendorModel
+      .findById(currentUser.userObjectId)
+      .lean();
+
+    const businessType = (vendorProfile as any)?.businessDetails?.businessType;
+
+    if (!businessType) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Vendor business type registration details not found.',
+      );
+    }
     const userBusinessCategory = await BusinessCategory.findOne({
-      name: currentUser?.businessDetails?.businessType,
+      name: businessType,
     })
       .select('_id')
       .lean();

@@ -2,6 +2,7 @@
 import { Server, Socket } from 'socket.io';
 import { SupportService } from '../../../modules/Support/support.service';
 import { TAuthUser } from '../../../modules/AuthUser/authUser.interface';
+import mongoose from 'mongoose';
 
 type SendMessagePayload = {
   ticketId?: string; // Optional: first message won't have a ticketId
@@ -15,10 +16,29 @@ type SendMessagePayload = {
   attachments?: string[];
 };
 
-export const registerSupportEvents = (io: Server, socket: Socket) => {
+export const registerSupportEvents = async (io: Server, socket: Socket) => {
   const user = socket.data.user as TAuthUser;
   const userId = user.userId; // Custom ID (e.g., C-VXX...)
   const userRole = user.role;
+
+  let displayName = 'User';
+  try {
+    if (user.onModel && user.userObjectId) {
+      const userModel = mongoose.model(user.onModel);
+      const userProfile = await userModel.findById(user.userObjectId).lean();
+
+      if ((userProfile as any)?.name) {
+        const nameObj = (userProfile as any).name;
+        displayName =
+          typeof nameObj === 'string'
+            ? nameObj
+            : `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim() ||
+              'User';
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch user profile name for socket:', err);
+  }
 
   // Admin joining a common room to receive notifications for all tickets
   if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
@@ -43,7 +63,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
       if (!ticketId) return;
       socket.to(ticketId).emit('user-typing', {
         userId,
-        name: user.name || 'User',
+        name: displayName,
         isTyping,
       });
     },
@@ -76,7 +96,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
       if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
         io.to('admin-notifications-room').emit('incoming-notification', {
           ticketId,
-          senderName: user.name || 'User',
+          senderName: displayName,
           messagePreview: message.slice(0, 50),
           time: new Date(),
         });

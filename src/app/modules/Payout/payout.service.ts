@@ -14,10 +14,148 @@ import { Admin } from '../Admin/admin.model';
 import { GlobalSettings } from '../GlobalSetting/globalSetting.model';
 import { roundTo2 } from '../../utils/mathProvider';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // initiate payout service
+// const initiateSettlement = async (
+//   targetUserId: string,
+//   currentUser: TAuthUser,
+// ) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   const { _id: senderId, role: senderRole } = currentUser;
+//   const senderModel =
+//     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+
+//   const user = await AuthUser.findOne({ userId: targetUserId });
+
+//   if (!user) {
+//     throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
+//   }
+
+//   const userObjectId = user?._id;
+//   const targetUserModel =
+//     ROLE_COLLECTION_MAP[user?.role as keyof typeof ROLE_COLLECTION_MAP];
+
+//   try {
+//     if (senderRole === 'FLEET_MANAGER') {
+//       if (user?.role !== 'DELIVERY_PARTNER') {
+//         throw new AppError(
+//           httpStatus.FORBIDDEN,
+//           'Fleet Managers can only settle with Delivery Partners.',
+//         );
+//       }
+//       const isHisRider =
+//         user.registeredBy &&
+//         user.registeredBy.id.toString() === senderId.toString();
+
+//       if (!isHisRider) {
+//         throw new AppError(
+//           httpStatus.FORBIDDEN,
+//           'You can only initiate settlement for your own delivery partners.',
+//         );
+//       }
+//     }
+
+//     const hasCompleteBankDetails =
+//       user?.bankDetails?.bankName &&
+//       user?.bankDetails?.accountHolderName &&
+//       user?.bankDetails?.iban &&
+//       user?.bankDetails?.swiftCode;
+
+//     if (!hasCompleteBankDetails) {
+//       const alertPayload = {
+//         title: 'Bank Details Incomplete',
+//         body: `Settlement could not be initiated because your bank details are missing. Please update them.`,
+//       };
+
+//       NotificationService.sendToUser(
+//         user.userId,
+//         alertPayload.title,
+//         alertPayload.body,
+//         {},
+//         'default',
+//         'PAYOUT_ALERT',
+//       );
+
+//       throw new AppError(
+//         httpStatus.BAD_REQUEST,
+//         'Cannot initiate settlement. Delivery partner has incomplete bank details.',
+//       );
+//     }
+
+//     const wallet = await Wallet.findOne({
+//       userObjectId: userObjectId,
+//       userModel: targetUserModel,
+//     }).session(session);
+
+//     if (!wallet || wallet.totalUnpaidEarnings <= 0) {
+//       throw new AppError(
+//         httpStatus.BAD_REQUEST,
+//         'No unpaid earnings to settle.',
+//       );
+//     }
+
+//     const snapshotAmount = wallet.totalUnpaidEarnings;
+//     const uniquePayoutId = customNanoId(8);
+
+//     const [payout] = await Payout.create(
+//       [
+//         {
+//           payoutId: `PAY-${uniquePayoutId}`,
+//           userObjectId,
+//           userModel: targetUserModel,
+//           senderId: senderId,
+//           senderModel: senderModel,
+//           amount: snapshotAmount,
+//           status: 'PENDING',
+//           paymentMethod: 'BANK_TRANSFER',
+//           bankDetails: {
+//             bankName: user.bankDetails.bankName,
+//             accountHolderName: user.bankDetails.accountHolderName,
+//             iban: user.bankDetails.iban,
+//             swiftCode: user.bankDetails.swiftCode,
+//           },
+//         },
+//       ],
+//       { session },
+//     );
+
+//     await session.commitTransaction();
+
+//     if (payout) {
+//       const NotificationPayload = {
+//         title: 'Payout initiated',
+//         body: 'Payout initiated successfully',
+//         data: {
+//           amount: String(payout.amount),
+//           status: String(payout.status),
+//           paymentMethod: String(payout.paymentMethod),
+//         },
+//       };
+
+//       NotificationService.sendToUser(
+//         user.userId,
+//         NotificationPayload.title,
+//         NotificationPayload.body,
+//         NotificationPayload.data,
+//         'default',
+//         'PAYOUT',
+//       );
+//     }
+
+//     return payout;
+//   } catch (error) {
+//     await session.abortTransaction();
+//     throw error;
+//   } finally {
+//     session.endSession();
+//   }
+// };
+
 const initiateSettlement = async (
-  targetUserId: string,
+  targetUserId: string, // Custom user ID (e.g., DP-1022)
   currentUser: TAuthUser,
 ) => {
   const session = await mongoose.startSession();
@@ -27,26 +165,45 @@ const initiateSettlement = async (
   const senderModel =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
 
-  const { user } = await findUserById({ userId: targetUserId });
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
-  }
-  const userObjectId = user?._id;
-  const targetUserModel =
-    ROLE_COLLECTION_MAP[user?.role as keyof typeof ROLE_COLLECTION_MAP];
-
   try {
+    const targetAuthUser = await AuthUser.findOne({
+      userId: targetUserId,
+    }).session(session);
+    if (!targetAuthUser) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
+    }
+
+    const targetUserModel =
+      ROLE_COLLECTION_MAP[
+        targetAuthUser.role as keyof typeof ROLE_COLLECTION_MAP
+      ];
+
+    const dynamicModel = mongoose.model(targetAuthUser.onModel);
+    const targetProfile = await dynamicModel
+      .findById(targetAuthUser.userObjectId)
+      .session(session)
+      .lean();
+
+    if (!targetProfile) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Target user profile registration not found',
+      );
+    }
+
     if (senderRole === 'FLEET_MANAGER') {
-      if (user?.role !== 'DELIVERY_PARTNER') {
+      if (targetAuthUser.role !== 'DELIVERY_PARTNER') {
         throw new AppError(
           httpStatus.FORBIDDEN,
           'Fleet Managers can only settle with Delivery Partners.',
         );
       }
+
+      const registeredByData = (targetProfile as any)?.registeredBy;
       const isHisRider =
-        user.registeredBy &&
-        user.registeredBy.id.toString() === senderId.toString();
+        registeredByData &&
+        registeredByData.id?.toString() ===
+          currentUser.userObjectId?.toString();
 
       if (!isHisRider) {
         throw new AppError(
@@ -56,11 +213,12 @@ const initiateSettlement = async (
       }
     }
 
+    const bankDetails = (targetProfile as any)?.bankDetails;
     const hasCompleteBankDetails =
-      user?.bankDetails?.bankName &&
-      user?.bankDetails?.accountHolderName &&
-      user?.bankDetails?.iban &&
-      user?.bankDetails?.swiftCode;
+      bankDetails?.bankName &&
+      bankDetails?.accountHolderName &&
+      bankDetails?.iban &&
+      bankDetails?.swiftCode;
 
     if (!hasCompleteBankDetails) {
       const alertPayload = {
@@ -69,7 +227,7 @@ const initiateSettlement = async (
       };
 
       NotificationService.sendToUser(
-        user.userId,
+        targetAuthUser.userId,
         alertPayload.title,
         alertPayload.body,
         {},
@@ -79,12 +237,12 @@ const initiateSettlement = async (
 
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Cannot initiate settlement. Delivery partner has incomplete bank details.',
+        'Cannot initiate settlement. Target user has incomplete bank details.',
       );
     }
 
     const wallet = await Wallet.findOne({
-      userObjectId: userObjectId,
+      userObjectId: targetAuthUser.userObjectId,
       userModel: targetUserModel,
     }).session(session);
 
@@ -98,22 +256,32 @@ const initiateSettlement = async (
     const snapshotAmount = wallet.totalUnpaidEarnings;
     const uniquePayoutId = customNanoId(8);
 
+    await Wallet.updateOne(
+      { _id: wallet._id },
+      {
+        $inc: {
+          totalUnpaidEarnings: -snapshotAmount,
+        },
+      },
+      { session },
+    );
+
     const [payout] = await Payout.create(
       [
         {
           payoutId: `PAY-${uniquePayoutId}`,
-          userObjectId,
+          userObjectId: targetAuthUser.userObjectId,
           userModel: targetUserModel,
-          senderId: senderId,
+          senderId: currentUser.userObjectId,
           senderModel: senderModel,
           amount: snapshotAmount,
           status: 'PENDING',
           paymentMethod: 'BANK_TRANSFER',
           bankDetails: {
-            bankName: user.bankDetails.bankName,
-            accountHolderName: user.bankDetails.accountHolderName,
-            iban: user.bankDetails.iban,
-            swiftCode: user.bankDetails.swiftCode,
+            bankName: bankDetails.bankName,
+            accountHolderName: bankDetails.accountHolderName,
+            iban: bankDetails.iban,
+            swiftCode: bankDetails.swiftCode,
           },
         },
       ],
@@ -125,7 +293,7 @@ const initiateSettlement = async (
     if (payout) {
       const NotificationPayload = {
         title: 'Payout initiated',
-        body: 'Payout initiated successfully',
+        body: `A payout of ${snapshotAmount} BDT has been initiated successfully.`,
         data: {
           amount: String(payout.amount),
           status: String(payout.status),
@@ -134,7 +302,7 @@ const initiateSettlement = async (
       };
 
       NotificationService.sendToUser(
-        user.userId,
+        targetAuthUser.userId,
         NotificationPayload.title,
         NotificationPayload.body,
         NotificationPayload.data,

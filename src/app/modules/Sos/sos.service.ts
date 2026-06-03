@@ -11,26 +11,69 @@ import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { TAuthUser } from '../AuthUser/authUser.interface';
 
 // trigger SOS service
-const triggerSos = async (
-  payload: Partial<TSos>,
-  currentUser: TAuthUser,
-) => {
-  const userModelType =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
-  const sosLocation = currentUser.currentSessionLocation?.coordinates;
-  if (!sosLocation) {
+// const triggerSos = async (
+//   payload: Partial<TSos>,
+//   currentUser: TAuthUser,
+// ) => {
+//   const userModelType =
+//     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+//   const sosLocation = currentUser.currentSessionLocation?.coordinates;
+//   if (!sosLocation) {
+//     throw new AppError(
+//       httpStatus.BAD_REQUEST,
+//       'Could not determine your current location. Please enable GPS.',
+//     );
+//   }
+//   const sosData = {
+//     ...payload,
+//     userObjectId: {
+//       id: currentUser._id,
+//       model: userModelType,
+//       role: currentUser.role,
+//     },
+//     role: currentUser.role,
+//     status: 'ACTIVE',
+//     location: {
+//       type: 'Point',
+//       coordinates: sosLocation,
+//     },
+//   };
+//   const result = await SosModel.create(sosData);
+
+//   if (!result) {
+//     throw new Error('Failed to trigger SOS');
+//   }
+
+//   getIO().to('SOS_ALERTS_POOL').emit('new-sos-alert', {
+//     message: 'Emergency SOS Triggered!',
+//     data: result,
+//   });
+
+//   return result;
+// };
+
+const triggerSos = async (payload: Partial<any>, currentUser: TAuthUser) => {
+  const userModel = mongoose.model(currentUser.onModel);
+  const userProfile = await userModel
+    .findById(currentUser.userObjectId)
+    .select('currentLocation location coordinates')
+    .lean();
+
+  const sosLocation =
+    (userProfile as any)?.location?.coordinates ||
+    (userProfile as any)?.currentLocation?.coordinates;
+
+  if (!sosLocation || !Array.isArray(sosLocation) || sosLocation.length !== 2) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Could not determine your current location. Please enable GPS.',
+      'Could not determine your current live location. Please enable location services/GPS.',
     );
   }
+
   const sosData = {
     ...payload,
-    userObjectId: {
-      id: currentUser._id,
-      model: userModelType,
-      role: currentUser.role,
-    },
+    userObjectId: currentUser.userObjectId,
+    onModel: currentUser.onModel,
     role: currentUser.role,
     status: 'ACTIVE',
     location: {
@@ -38,14 +81,18 @@ const triggerSos = async (
       coordinates: sosLocation,
     },
   };
+
   const result = await SosModel.create(sosData);
 
   if (!result) {
-    throw new Error('Failed to trigger SOS');
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to trigger SOS alert',
+    );
   }
 
   getIO().to('SOS_ALERTS_POOL').emit('new-sos-alert', {
-    message: 'Emergency SOS Triggered!',
+    message: 'EMERGENCY SOS TRIGGERED!',
     data: result,
   });
 
@@ -105,26 +152,64 @@ const updateSosStatus = async (
 };
 
 // get nearby sos alerts
+// const getNearbySosAlerts = async (currentUser: TAuthUser) => {
+//   const radiusInMeters = 5000; // 5km
+//   const sosLocation = currentUser.currentSessionLocation?.coordinates;
+//   if (!sosLocation) {
+//     throw new AppError(
+//       httpStatus.BAD_REQUEST,
+//       'Could not determine your current location. Please enable GPS.',
+//     );
+//   }
+//   const [longitude, latitude] = sosLocation;
+
+//   const result = await SosModel.find({
+//     location: {
+//       $near: {
+//         $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+//         $maxDistance: radiusInMeters,
+//       },
+//     },
+//     status: 'ACTIVE',
+//   });
+//   return result;
+// };
+
 const getNearbySosAlerts = async (currentUser: TAuthUser) => {
-  const radiusInMeters = 5000; // 5km
-  const sosLocation = currentUser.currentSessionLocation?.coordinates;
-  if (!sosLocation) {
+  const radiusInMeters = 5000;
+
+  const userModel = mongoose.model(currentUser.onModel);
+  const userProfile = await userModel
+    .findById(currentUser.userObjectId)
+    .select('currentLocation location coordinates')
+    .lean();
+
+  const sosLocation =
+    (userProfile as any)?.location?.coordinates ||
+    (userProfile as any)?.currentLocation?.coordinates;
+
+  if (!sosLocation || !Array.isArray(sosLocation) || sosLocation.length !== 2) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Could not determine your current location. Please enable GPS.',
+      'Could not determine your current location. Please ensure your device GPS is enabled.',
     );
   }
+
   const [longitude, latitude] = sosLocation;
 
   const result = await SosModel.find({
     location: {
       $near: {
-        $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+        $geometry: {
+          type: 'Point',
+          coordinates: [Number(longitude), Number(latitude)],
+        },
         $maxDistance: radiusInMeters,
       },
     },
     status: 'ACTIVE',
-  });
+  }).lean();
+
   return result;
 };
 

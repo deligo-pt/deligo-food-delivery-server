@@ -25,11 +25,11 @@ const getAllWallets = async (
     Wallet.find().populate('userObjectId', 'userId name email'),
     query,
   )
-    .fields()
-    .paginate()
     .search([])
     .filter()
-    .sort();
+    .sort()
+    .paginate()
+    .fields();
   const data = await wallets.modelQuery;
   const meta = await wallets.countTotal();
   return {

@@ -16,6 +16,7 @@ import {
 import { EmailHelper } from '../../utils/emailSender';
 import { AuthUser } from '../AuthUser/authUser.model';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import mongoose from 'mongoose';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -121,7 +122,6 @@ const sendToUser = (
 
 // Send to role(s)
 const sendToRole = (
-  modelName: string,
   roles: TUserRole[],
   title: string,
   message: string,
@@ -131,10 +131,7 @@ const sendToRole = (
 ) => {
   setImmediate(async () => {
     try {
-      const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
-      if (!Model) return;
-
-      const users = await Model.find({
+      const users = await AuthUser.find({
         isDeleted: false,
         role: { $in: roles },
         loginDevices: {
@@ -143,7 +140,11 @@ const sendToRole = (
             fcmToken: { $exists: true, $ne: '' },
           },
         },
-      });
+      }).lean();
+
+      if (!users || users.length === 0) return;
+
+      const allFcmTokens: string[] = [];
 
       for (const user of users) {
         const deviceTokens =
@@ -152,24 +153,28 @@ const sendToRole = (
               (device: any) => device.isLoggedIn === true && device.fcmToken,
             )
             .map((device: any) => device.fcmToken) || [];
-        const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
 
-        if (uniqueTokens.length > 0) {
-          await sendPushSafely(uniqueTokens, {
-            title,
-            body: message,
-            data,
-            channelId: channelId || 'default',
-          });
-        }
+        allFcmTokens.push(...deviceTokens);
 
-        await logNotification({
+        logNotification({
           receiverId: user.userId,
           receiverRole: user.role,
           title,
           message,
           data,
           type,
+        }).catch((err) =>
+          console.error('Log single notification failed:', err),
+        );
+      }
+      const uniqueTokens = [...new Set(allFcmTokens)];
+
+      if (uniqueTokens.length > 0) {
+        await sendPushSafely(uniqueTokens, {
+          title,
+          body: message,
+          data,
+          channelId: channelId || 'default',
         });
       }
     } catch (err) {
@@ -215,11 +220,11 @@ const getMyNotifications = async (
     }),
     query,
   )
+    .search(['title', 'message', 'receiverRole'])
     .filter()
-    .fields()
-    .paginate()
     .sort()
-    .search(['title', 'message', 'receiverRole']);
+    .paginate()
+    .fields();
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
   return {
@@ -238,11 +243,11 @@ const getAllNotifications = async (
   }
 
   const notifications = new QueryBuilder(Notification.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['title', 'message', 'receiverRole'])
     .filter()
-    .search(['title', 'message', 'receiverRole']);
+    .sort()
+    .paginate()
+    .fields();
 
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
@@ -448,6 +453,115 @@ const permanentDeleteAllNotifications = async (currentUser: TAuthUser) => {
   };
 };
 
+// const sendBroadcastNotification = async (
+//   payload: TBroadcastNotificationPayload,
+// ) => {
+//   const {
+//     communicationType,
+//     targetAudience,
+//     customUserIds,
+//     title,
+//     body,
+//     imageUrl,
+//     data,
+//     type = 'PROMOTIONAL',
+//   } = payload;
+
+//   for (const role of targetAudience) {
+//     const modelName =
+//       ROLE_COLLECTION_MAP[role as keyof typeof ROLE_COLLECTION_MAP];
+//     const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
+//     if (!Model) continue;
+
+//     const query: any = {
+//       isDeleted: false,
+//       role: role.toLocaleUpperCase() as TUserRole,
+//     };
+
+//     if (customUserIds && customUserIds.length > 0) {
+//       query.userId = { $in: customUserIds };
+//     }
+
+//     if (communicationType !== 'EMAIL') {
+//       query.loginDevices = {
+//         $elemMatch: {
+//           fcmToken: { $exists: true, $ne: '' },
+//         },
+//       };
+//     }
+
+//     const userCursor = Model.find(query).cursor();
+
+//     setImmediate(async () => {
+//       try {
+//         for (
+//           let user = await userCursor.next();
+//           user != null;
+//           user = await userCursor.next()
+//         ) {
+//           const userName = user.name?.firstName || 'User';
+//           const personalizedBody = body.replace(/{name}/g, userName);
+
+//           if (communicationType === 'PUSH' || communicationType === 'BOTH') {
+//             const allStoredTokens =
+//               user.loginDevices
+//                 ?.filter((d: any) => d.fcmToken)
+//                 .map((d: any) => d.fcmToken) || [];
+
+//             const uniqueTokens = [...new Set(allStoredTokens as string[])];
+
+//             if (uniqueTokens.length > 0) {
+//               await sendPushSafely(uniqueTokens, {
+//                 title,
+//                 body: personalizedBody,
+//                 imageUrl,
+//                 data: { ...data, type },
+//                 channelId: 'default',
+//               });
+//             }
+//           }
+
+//           if (
+//             (communicationType === 'EMAIL' || communicationType === 'BOTH') &&
+//             user.email
+//           ) {
+//             const emailData = {
+//               title,
+//               personalizedBody,
+//               imageUrl,
+//               currentYear: new Date().getFullYear(),
+//               data: data || {},
+//             };
+//             EmailHelper.createEmailContent(emailData, 'broadcast-email')
+//               .then((htmlContent) => {
+//                 return EmailHelper.sendEmail(user.email, htmlContent, title);
+//               })
+//               .catch((err) => {
+//                 console.error(
+//                   `Email delivery failed for ${user.email}:`,
+//                   err.message,
+//                 );
+//               });
+//           }
+
+//           await logNotification({
+//             receiverId: user.userId,
+//             receiverRole: user.role,
+//             title,
+//             message: personalizedBody,
+//             data,
+//             type,
+//           });
+//         }
+//       } catch (error) {
+//         console.error(`Broadcast failed for role ${role}:`, error);
+//       }
+//     });
+//   }
+
+//   return { success: true, message: 'Broadcast processing started' };
+// };
+
 const sendBroadcastNotification = async (
   payload: TBroadcastNotificationPayload,
 ) => {
@@ -462,101 +576,151 @@ const sendBroadcastNotification = async (
     type = 'PROMOTIONAL',
   } = payload;
 
-  for (const role of targetAudience) {
-    const modelName =
-      ROLE_COLLECTION_MAP[role as keyof typeof ROLE_COLLECTION_MAP];
-    const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
-    if (!Model) continue;
+  setImmediate(async () => {
+    try {
+      const audienceArray = Array.isArray(targetAudience)
+        ? targetAudience
+        : [targetAudience];
 
-    const query: any = {
-      isDeleted: false,
-      role: role.toLocaleUpperCase() as TUserRole,
-    };
+      const rolesUpper = audienceArray.map((r) => r.toUpperCase() as TUserRole);
 
-    if (customUserIds && customUserIds.length > 0) {
-      query.userId = { $in: customUserIds };
-    }
-
-    if (communicationType !== 'EMAIL') {
-      query.loginDevices = {
-        $elemMatch: {
-          fcmToken: { $exists: true, $ne: '' },
-        },
+      const matchStage: any = {
+        isDeleted: false,
+        role: { $in: rolesUpper },
       };
-    }
 
-    const userCursor = Model.find(query).cursor();
+      if (customUserIds && customUserIds.length > 0) {
+        matchStage.userId = { $in: customUserIds };
+      }
 
-    setImmediate(async () => {
-      try {
-        for (
-          let user = await userCursor.next();
-          user != null;
-          user = await userCursor.next()
-        ) {
-          const userName = user.name?.firstName || 'User';
-          const personalizedBody = body.replace(/{name}/g, userName);
+      if (communicationType !== 'EMAIL') {
+        matchStage.loginDevices = {
+          $elemMatch: {
+            fcmToken: { $exists: true, $ne: '' },
+          },
+        };
+      }
 
-          if (communicationType === 'PUSH' || communicationType === 'BOTH') {
-            const allStoredTokens =
-              user.loginDevices
-                ?.filter((d: any) => d.fcmToken)
-                .map((d: any) => d.fcmToken) || [];
+      const pipeline: any[] = [
+        { $match: matchStage },
+        {
+          $lookup: {
+            from: 'dummy_collection_for_lookup',
+            let: {
+              targetId: '$userObjectId',
+              targetModel: '$onModel',
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$_id', '$$targetId'] },
+                },
+              },
+            ],
+            as: 'userProfileRaw',
+          },
+        },
+      ];
 
-            const uniqueTokens = [...new Set(allStoredTokens as string[])];
+      const userCursor = AuthUser.aggregate(pipeline).cursor();
 
-            if (uniqueTokens.length > 0) {
-              await sendPushSafely(uniqueTokens, {
-                title,
-                body: personalizedBody,
-                imageUrl,
-                data: { ...data, type },
-                channelId: 'default',
-              });
+      const batchFcmTokens: string[] = [];
+      const notificationLogs: any[] = [];
+
+      for (
+        let user = await userCursor.next();
+        user != null;
+        user = await userCursor.next()
+      ) {
+        let userName = 'User';
+        try {
+          if (user.onModel && user.userObjectId) {
+            const dynamicModel = mongoose.model(user.onModel);
+            const rawProfile = await dynamicModel
+              .findById(user.userObjectId)
+              .select('name')
+              .lean();
+
+            if ((rawProfile as any)?.name) {
+              const nameObj = (rawProfile as any).name;
+              userName =
+                typeof nameObj === 'string'
+                  ? nameObj
+                  : `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim() ||
+                    'User';
             }
           }
+        } catch (nameErr) {}
 
-          if (
-            (communicationType === 'EMAIL' || communicationType === 'BOTH') &&
-            user.email
-          ) {
-            const emailData = {
-              title,
-              personalizedBody,
-              imageUrl,
-              currentYear: new Date().getFullYear(),
-              data: data || {},
-            };
-            EmailHelper.createEmailContent(emailData, 'broadcast-email')
-              .then((htmlContent) => {
-                return EmailHelper.sendEmail(user.email, htmlContent, title);
-              })
-              .catch((err) => {
-                console.error(
-                  `Email delivery failed for ${user.email}:`,
-                  err.message,
-                );
-              });
-          }
+        const personalizedBody = body.replace(/{name}/g, userName);
 
-          await logNotification({
-            receiverId: user.userId,
-            receiverRole: user.role,
-            title,
-            message: personalizedBody,
-            data,
-            type,
-          });
+        if (communicationType === 'PUSH' || communicationType === 'BOTH') {
+          const tokens =
+            user.loginDevices
+              ?.filter((d: any) => d.isLoggedIn === true && d.fcmToken)
+              .map((d: any) => d.fcmToken) || [];
+
+          batchFcmTokens.push(...tokens);
         }
-      } catch (error) {
-        console.error(`Broadcast failed for role ${role}:`, error);
+
+        if (
+          (communicationType === 'EMAIL' || communicationType === 'BOTH') &&
+          user.email
+        ) {
+          const emailData = {
+            title,
+            personalizedBody,
+            imageUrl,
+            currentYear: new Date().getFullYear(),
+            data: data || {},
+          };
+
+          EmailHelper.createEmailContent(emailData, 'broadcast-email')
+            .then((htmlContent) =>
+              EmailHelper.sendEmail(user.email, htmlContent, title),
+            )
+            .catch((err) =>
+              console.error(
+                `Broadcast Email failed for ${user.email}:`,
+                err.message,
+              ),
+            );
+        }
+
+        notificationLogs.push({
+          receiverId: user.userId,
+          receiverRole: user.role,
+          title,
+          message: personalizedBody,
+          data,
+          type,
+        });
       }
-    });
-  }
 
-  return { success: true, message: 'Broadcast processing started' };
+      const uniqueTokens = [...new Set(batchFcmTokens)];
+      if (uniqueTokens.length > 0) {
+        await sendPushSafely(uniqueTokens, {
+          title,
+          body: body,
+          imageUrl,
+          data: { ...data, type },
+          channelId: 'order_notification',
+        });
+      }
+
+      if (notificationLogs.length > 0) {
+        await Notification.insertMany(notificationLogs);
+      }
+    } catch (error) {
+      console.error('Dynamic Multirole Broadcast Engine failed:', error);
+    }
+  });
+
+  return {
+    success: true,
+    message: 'Broadcast processing initiated successfully',
+  };
 };
-
 export const NotificationService = {
   sendToUser,
   sendToRole,

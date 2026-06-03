@@ -1187,7 +1187,6 @@ const submitForApproval = async (userId: string, currentUser: TAuthUser) => {
 
     try {
       await NotificationService.sendToRole(
-        'Admin',
         ['ADMIN', 'SUPER_ADMIN'],
         `New ${authUser?.role} Submission for Approval`,
         `${userName} (${authUser?.role}) has submitted for approval at ${formattedTime}.`,

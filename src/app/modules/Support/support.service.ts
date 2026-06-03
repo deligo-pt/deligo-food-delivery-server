@@ -10,6 +10,7 @@ import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant
 import { Order } from '../Order/order.model';
 import { findUserById } from '../../utils/findUserByEmailOrId';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 /**
  * Checks for an existing active ticket.
@@ -66,9 +67,12 @@ const getOrCreateActiveTicket = async (
 };
 
 const createMessage = async (payload: any, currentUser: TAuthUser) => {
-  const { user: loggedInUser } = await findUserById({
+  const loggedInUser = await AuthUser.findOne({
     userId: currentUser.userId,
   });
+  if (!loggedInUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
   const isAgent =
     currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
@@ -241,7 +245,7 @@ const markReadByAdminOrUser = async (
 };
 
 const closeTicket = async (ticketId: string, currentUser: TAuthUser) => {
-  const loggedInUser = await findUserById({
+  const loggedInUser = await AuthUser.findOne({
     userId: currentUser.userId,
   });
   const ticket = await SupportTicket.findOne({

@@ -35,6 +35,7 @@ import {
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -1634,8 +1635,8 @@ const getVendorCustomerReport = async (
     .search(['name.firstName', 'name.lastName', 'contactNumber'])
     .filter()
     .sort()
-    .fields()
-    .paginate();
+    .paginate()
+    .fields();
 
   const meta = await builder.countTotal();
   const customers = await builder.modelQuery;
@@ -2553,16 +2554,25 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
 ): Promise<TPartnerPerformanceDetailsData> => {
   const now = new Date();
 
-  // Find partner
-  const partner = await DeliveryPartner.findOne({
+  const authPartner = await AuthUser.findOne({
     userId: partnerCustomUserId,
   })
+    .lean()
+    .select('email status userObjectId _id');
+  if (!authPartner) {
+    throw new Error('Delivery partner not found');
+  }
+
+  // Find partner
+  const partnerProfile = await DeliveryPartner.findById(
+    authPartner.userObjectId,
+  )
     .select(
       '_id profilePhoto userId email status name address operationalData rating',
     )
     .lean();
 
-  if (!partner) {
+  if (!partnerProfile) {
     throw new Error('Delivery partner not found');
   }
 
@@ -2570,7 +2580,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   const [stats] = await Order.aggregate([
     {
       $match: {
-        deliveryPartnerId: partner._id,
+        deliveryPartnerId: partnerProfile._id,
         orderStatus: 'DELIVERED',
         isDeleted: false,
       },
@@ -2587,10 +2597,12 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   ]);
 
   const partnerPerformance: TDeliveryPartnerPerformance = {
-    ...partner,
+    ...partnerProfile,
+    email: authPartner.email,
+    status: authPartner.status,
     totalDeliveries: stats?.totalDeliveries || 0,
     totalEarnings: roundTo2(stats?.totalEarnings || 0),
-    rating: partner?.rating?.average || 0,
+    rating: partnerProfile?.rating?.average || 0,
   };
 
   // Last 6 Months Performance
@@ -2602,7 +2614,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   const monthlyRaw = await Order.aggregate([
     {
       $match: {
-        deliveryPartnerId: partner._id,
+        deliveryPartnerId: partnerProfile._id,
         orderStatus: 'DELIVERED',
         isDeleted: false,
         createdAt: { $gte: sixMonthsAgo },

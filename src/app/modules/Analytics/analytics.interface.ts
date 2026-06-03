@@ -189,19 +189,13 @@ export type TFleetPerformanceData = {
 // for delivery partner performance analytics
 export type TDeliveryPartnerPerformance = Pick<
   TDeliveryPartner,
-  | '_id'
-  | 'profilePhoto'
-  | 'userId'
-  | 'email'
-  | 'status'
-  | 'name'
-  | 'address'
-  | 'operationalData'
-> & {
-  totalDeliveries: number;
-  rating: number;
-  totalEarnings: number;
-};
+  '_id' | 'profilePhoto' | 'userId' | 'name' | 'address' | 'operationalData'
+> &
+  Pick<TAuthUser, 'status' | 'email'> & {
+    totalDeliveries: number;
+    rating: number;
+    totalEarnings: number;
+  };
 
 export type TPartnerPerformanceStat = {
   mostOrders: {
