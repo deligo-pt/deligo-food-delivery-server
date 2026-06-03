@@ -332,13 +332,6 @@ const addDeliveryAddress = async (
       geoAccuracy: deliveryAddress.geoAccuracy ?? 0,
       lastLocationUpdate: new Date(),
     };
-
-    await Customer.updateOne(
-      { userId },
-      { $set: { currentSessionLocation: sessionLocation } },
-    );
-
-    currentUser.currentSessionLocation = sessionLocation as any;
   }
 
   await Customer.findOneAndUpdate(
