@@ -109,6 +109,7 @@ const registerUser = async <
         {
           ...profilePayload,
           [idField]: userId,
+          role: payload.role,
         },
       ],
       { session },
@@ -278,6 +279,7 @@ const onboardUser = async <
           registeredBy: currentUser._id,
           isEmailVerified: false,
           status: 'PENDING',
+          role: payload.role,
         },
       ],
       { session },

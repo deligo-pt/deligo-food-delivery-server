@@ -10,6 +10,7 @@ export type TDeliveryPartner = {
   // -------------------------------------------------
   _id?: mongoose.Types.ObjectId;
   userId: string;
+  role: 'DELIVERY_PARTNER';
   registeredBy?: mongoose.Types.ObjectId;
   isUpdateLocked: boolean;
 

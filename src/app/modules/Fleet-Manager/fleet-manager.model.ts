@@ -14,6 +14,11 @@ const fleetManagerSchema = new Schema<TFleetManager>(
       required: true,
       unique: true,
     },
+    role: {
+      type: String,
+      enum: ['FLEET_MANAGER'],
+      default: 'FLEET_MANAGER',
+    },
 
     registeredBy: {
       type: Schema.Types.ObjectId,

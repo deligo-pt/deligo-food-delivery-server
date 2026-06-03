@@ -9,6 +9,7 @@ export type TCustomer = {
   // ------------------------------------------------------
   _id?: mongoose.Types.ObjectId;
   userId: string;
+  role: 'CUSTOMER';
 
   // ------------------------------------------------------
   // Personal Information

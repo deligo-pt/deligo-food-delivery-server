@@ -11,6 +11,11 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
     // Core Identifiers
     //-------------------------------------------------
     userId: { type: String, required: true, unique: true },
+    role: {
+      type: String,
+      enum: ['DELIVERY_PARTNER'],
+      default: 'DELIVERY_PARTNER',
+    },
     registeredBy: {
       type: Schema.Types.ObjectId,
       ref: 'AuthUser',

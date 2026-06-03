@@ -15,6 +15,10 @@ const vendorSchema = new Schema<TVendor>(
       required: true,
       unique: true,
     },
+    role: {
+      type: String,
+      enum: ['VENDOR', 'SUB_VENDOR'],
+    },
     registeredBy: {
       type: Schema.Types.ObjectId,
       ref: 'AuthUser',

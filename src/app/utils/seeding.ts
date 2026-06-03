@@ -35,6 +35,7 @@ export const seed = async () => {
             name: 'Super Admin',
             profilePhoto: config.super_admin.super_admin_profile_photo,
             status: USER_STATUS.APPROVED,
+            role: USER_ROLE.SUPER_ADMIN,
           },
         ],
         { session },

@@ -18,10 +18,9 @@ const adminSchema = new Schema<TAdmin>(
       type: Schema.Types.ObjectId,
       ref: 'AuthUser',
     },
-    status: {
+    role: {
       type: String,
-      enum: Object.keys(USER_STATUS),
-      default: USER_STATUS.PENDING,
+      enum: ['SUPER_ADMIN', 'ADMIN'],
     },
     isUpdateLocked: {
       type: Boolean,

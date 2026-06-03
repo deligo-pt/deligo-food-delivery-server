@@ -9,7 +9,7 @@ export type TAdmin = {
   _id: mongoose.Types.ObjectId;
   userId: string;
   registeredBy?: mongoose.Types.ObjectId;
-  status: keyof typeof USER_STATUS;
+  role: 'SUPER_ADMIN' | 'ADMIN';
   isUpdateLocked: boolean;
 
   // ------------------------------------------------------------------

@@ -196,7 +196,9 @@ const createIngredientRedUniqPayment = async (
   try {
     session.startTransaction();
 
-    const vendorInfo = await Vendor.findById(currentUser._id).session(session);
+    const vendorInfo = await Vendor.findById(currentUser.userObjectId)
+      .select('businessLocation')
+      .session(session);
     const ingredient = await Ingredient.findById(
       payload.orderDetails?.ingredient,
     ).session(session);
@@ -211,17 +213,14 @@ const createIngredientRedUniqPayment = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
     }
 
-    const vendorCoords = vendorInfo.currentSessionLocation?.coordinates as [
-      number,
-      number,
-    ];
+    const vendorCoords = vendorInfo.businessLocation;
 
     // 3. Calculate Distance and Delivery Charges
     const distanceData = await calculateGoogleRoadDistance(
       adminInfo?.address?.longitude as number,
       adminInfo?.address?.latitude as number,
-      vendorCoords[0],
-      vendorCoords[1],
+      vendorCoords?.longitude as number,
+      vendorCoords?.latitude as number,
     );
 
     const globalSettings = await GlobalSettingsService.getGlobalSettings();
@@ -244,7 +243,7 @@ const createIngredientRedUniqPayment = async (
     );
 
     const paymentMethod = payload.paymentMethod as TPaymentMethod;
-    const solutionIds = {
+    const solutionIds: Record<string, string | null> = {
       CARD: '117',
       MB_WAY: '110',
       APPLE_PAY: '115',
@@ -304,8 +303,9 @@ const createIngredientRedUniqPayment = async (
       orderPayload,
     );
     const { result, token, redirectUrl } = response.data;
+    const successCodes = ['00000000', '17000000000'];
 
-    if (result.code === '00000000') {
+    if (result && successCodes.includes(result.code)) {
       newOrder.transactionId = token;
       await newOrder.save({ session });
 

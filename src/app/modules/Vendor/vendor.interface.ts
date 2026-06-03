@@ -18,6 +18,7 @@ export type TVendor = {
   // --------------------------------------------------------
   _id?: string;
   userId: string;
+  role: 'VENDOR' | 'SUB_VENDOR';
   registeredBy?: mongoose.Types.ObjectId;
 
   isUpdateLocked: boolean;

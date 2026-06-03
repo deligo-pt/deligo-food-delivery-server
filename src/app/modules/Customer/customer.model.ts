@@ -11,7 +11,7 @@ const customerSchema = new Schema<TCustomer>(
     // Core Identifiers
     // ----------------------------------------------------------------
     userId: { type: String, required: true, unique: true },
-
+    role: { type: String, enum: ['CUSTOMER'], default: 'CUSTOMER' },
     // ----------------------------------------------------------------
     // Personal Details
     // ----------------------------------------------------------------

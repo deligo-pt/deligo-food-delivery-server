@@ -8,6 +8,7 @@ export type TFleetManager = {
   // ---------------------------------------------
   _id?: mongoose.Types.ObjectId;
   userId: string;
+  role: 'FLEET_MANAGER';
   registeredBy?: mongoose.Types.ObjectId;
 
   isUpdateLocked: boolean;
