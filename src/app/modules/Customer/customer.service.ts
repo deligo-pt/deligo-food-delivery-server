@@ -334,10 +334,10 @@ const addDeliveryAddress = async (
     };
   }
 
-  await Customer.findOneAndUpdate(
-    { userId: currentUser.userId },
+  await Customer.findByIdAndUpdate(
+    currentUser.userObjectId,
     { $set: updateData },
-    { runValidators: true },
+    { runValidators: true, new: true },
   );
 
   return {
