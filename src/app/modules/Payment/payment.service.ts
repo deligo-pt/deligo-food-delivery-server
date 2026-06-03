@@ -195,6 +195,7 @@ const createIngredientRedUniqPayment = async (
 
   try {
     session.startTransaction();
+    // 1. Validate Vendor, Ingredient, and Admin Info
 
     const vendorInfo = await Vendor.findById(currentUser.userObjectId)
       .select('businessLocation')
