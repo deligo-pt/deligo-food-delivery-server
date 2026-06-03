@@ -43,7 +43,21 @@ const createOrderAfterRedUniqPayment = async (
   if (!summary)
     throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
 
-  if (!process.env.REDUNIQ_API_URL) {
+  if (summary.customerId.toString() !== currentUser._id.toString()) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'You are not authorized to process this order',
+    );
+  }
+
+  if (summary.isConvertedToOrder) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This checkout summary has already been converted to an order',
+    );
+  }
+
+  if (!config.redUniq?.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
       'REDUNIQ API URL is not configured',
@@ -63,19 +77,6 @@ const createOrderAfterRedUniqPayment = async (
     verifyPayload,
   );
   const paymentData = verifyRes.data;
-
-  if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to view',
-    );
-  }
-  if (summary.isConvertedToOrder) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order',
-    );
-  }
 
   const existingVendor = await Vendor.findById(summary.vendorId);
   if (!existingVendor) {
