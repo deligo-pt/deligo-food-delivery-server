@@ -269,7 +269,7 @@ const getSingleSosAlert = async (id: string, currentUser: TAuthUser) => {
 
     if (
       !partner ||
-      partner?.registeredBy?.id.toString() !== currentUser._id.toString()
+      partner?.registeredBy?.toString() !== currentUser._id.toString()
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,

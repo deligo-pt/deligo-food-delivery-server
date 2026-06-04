@@ -93,7 +93,7 @@ export const processNewOrderPostProcess = async (job: Job) => {
 
 //       const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
 //       const fleetManagerId = isManagedByFleet
-//         ? partner?.registeredBy?.id
+//         ? partner?.registeredBy
 //         : null;
 
 //       const riderEarningAmount = isManagedByFleet

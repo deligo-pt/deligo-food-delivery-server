@@ -69,7 +69,7 @@ const updateDeliveryPartner = async (
 
   if (
     currentUser.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner.registeredBy?.id.toString() !==
+    existingDeliveryPartner.registeredBy?.toString() !==
       currentUser?._id.toString()
   ) {
     throw new AppError(
@@ -226,7 +226,7 @@ const deliverPartnerDocImageUpload = async (
   if (currentUser?.role === 'FLEET_MANAGER') {
     if (
       currentUser?._id.toString() !==
-      existingDeliveryPartner?.registeredBy?.id.toString()
+      existingDeliveryPartner?.registeredBy?.toString()
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -473,7 +473,7 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (
     currentUser?.role === 'FLEET_MANAGER' &&
-    profileData?.registeredBy?.id.toString() !== currentUser?._id.toString()
+    profileData?.registeredBy?.toString() !== currentUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
