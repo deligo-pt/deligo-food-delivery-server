@@ -45,7 +45,7 @@ const updatePermissionValidationSchema = z.object({
 const assignPermissionsValidationSchema = z.object({
   body: z
     .object({
-      permissionsId: z
+      permissionIds: z
         .array(
           z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
             message: 'Invalid MongoDB ObjectId format for permission',

@@ -161,7 +161,7 @@ const validateIdsAndGetActionCodes = async (
 
 const assignPermissionsToAdmin = async (
   targetAdminCustomId: string,
-  payload: { permissions: string[] },
+  payload: { permissionIds: string[] },
 ) => {
   const targetAdmin = await Admin.findOne({
     userId: targetAdminCustomId,
@@ -171,7 +171,7 @@ const assignPermissionsToAdmin = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Target Admin account not found!');
   }
 
-  const actionCodes = await validateIdsAndGetActionCodes(payload.permissions);
+  const actionCodes = await validateIdsAndGetActionCodes(payload.permissionIds);
 
   const result = await Admin.findOneAndUpdate(
     { userId: targetAdminCustomId },
@@ -188,7 +188,7 @@ const assignPermissionsToAdmin = async (
 
 const revokePermissionsFromAdmin = async (
   targetAdminCustomId: string,
-  payload: { permissions: string[] },
+  payload: { permissionIds: string[] },
 ) => {
   const targetAdmin = await Admin.findOne({
     userId: targetAdminCustomId,
@@ -198,7 +198,7 @@ const revokePermissionsFromAdmin = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Target Admin account not found!');
   }
 
-  const actionCodes = await validateIdsAndGetActionCodes(payload.permissions);
+  const actionCodes = await validateIdsAndGetActionCodes(payload.permissionIds);
 
   const result = await Admin.findOneAndUpdate(
     { userId: targetAdminCustomId },
