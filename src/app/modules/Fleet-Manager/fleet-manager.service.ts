@@ -10,6 +10,7 @@ import {
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -218,54 +219,145 @@ const deleteFleetManagerDocument = async (
 };
 // get all fleet managers
 const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
-  const fleetManagers = new QueryBuilder(FleetManager.find(), query)
-    .search(FleetManagerSearchableFields)
+  const authBaseQuery: Record<string, any> = {
+    role: 'FLEET_MANAGER',
+    isDeleted: false,
+  };
+
+  const fleetManagersQuery = new QueryBuilder(
+    AuthUser.find(authBaseQuery).lean(),
+    query,
+  )
+    .search(['email', 'userId'])
     .filter()
     .sort()
     .paginate()
     .fields();
-  const meta = await fleetManagers.countTotal();
 
-  const data = await fleetManagers.modelQuery;
+  fleetManagersQuery.modelQuery = fleetManagersQuery.modelQuery.populate([
+    {
+      path: 'userObjectId',
+      populate: [
+        {
+          path: 'registeredBy',
+          select: 'name userId role',
+        },
+      ],
+    },
+    { path: 'approvedBy', select: 'name userId role' },
+    { path: 'rejectedBy', select: 'name userId role' },
+    { path: 'blockedBy', select: 'name userId role' },
+  ]);
+
+  const meta = await fleetManagersQuery.countTotal();
+  const rawAuthUsers = await fleetManagersQuery.modelQuery;
+
+  const mergedData = rawAuthUsers.map((authUserObj: any) => {
+    const profileData = authUserObj.userObjectId;
+
+    if (!profileData) {
+      return authUserObj;
+    }
+
+    const {
+      password,
+      passwordResetToken,
+      passwordResetTokenExpiresAt,
+      passwordChangedAt,
+      userObjectId,
+      _id: authUserId,
+      ...cleanAuthData
+    } = authUserObj;
+
+    const { _id: profileId, ...cleanProfileData } = profileData;
+
+    return {
+      _id: authUserId,
+      profileId: profileId,
+      ...cleanAuthData,
+      ...cleanProfileData,
+    };
+  });
+
   return {
     meta,
-    data,
+    data: mergedData,
   };
 };
 
-// get single fleet manager
+// get single fleet manager from db
 const getSingleFleetManagerFromDB = async (
   fleetManagerCustomId: string,
   currentUser: TAuthUser,
 ) => {
-  const userId = currentUser?.userId;
   if (
     currentUser?.role === 'FLEET_MANAGER' &&
-    userId !== fleetManagerCustomId
+    currentUser?.userId !== fleetManagerCustomId
   ) {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You are not authorize to access this fleet manager!',
+      httpStatus.FORBIDDEN,
+      'You are not authorized to access this fleet manager profile!',
     );
   }
-  let existingFleetManager;
 
-  if (currentUser?.role === 'FLEET_MANAGER') {
-    existingFleetManager = await FleetManager.findOne({
-      userId,
-      isDeleted: false,
-    });
-  } else {
-    existingFleetManager = await FleetManager.findOne({
-      userId: fleetManagerCustomId,
-    });
+  const authBaseQuery: Record<string, any> = {
+    userId: fleetManagerCustomId,
+    role: 'FLEET_MANAGER',
+  };
+
+  if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
+    authBaseQuery.isDeleted = false;
   }
 
-  if (!existingFleetManager) {
+  const authUserData = await AuthUser.findOne(authBaseQuery)
+    .populate([
+      {
+        path: 'userObjectId',
+        populate: [
+          {
+            path: 'registeredBy',
+            select: 'name userId role',
+          },
+        ],
+      },
+      { path: 'approvedBy', select: 'name userId role' },
+      { path: 'rejectedBy', select: 'name userId role' },
+      { path: 'blockedBy', select: 'name userId role' },
+    ])
+    .lean();
+
+  if (!authUserData) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
   }
 
-  return existingFleetManager;
+  const profileData = authUserData.userObjectId as any;
+  if (!profileData) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Fleet Manager Profile details missing!',
+    );
+  }
+
+  const {
+    password,
+    passwordResetToken,
+    passwordResetTokenExpiresAt,
+    passwordChangedAt,
+    userObjectId,
+    _id: authUserId,
+    ...cleanAuthData
+  } = authUserData;
+
+  const { _id: profileId, ...cleanProfileData } = profileData;
+
+  const combinedFlatResponse = {
+    _id: authUserId,
+    profileId: profileId,
+    ...cleanAuthData,
+    ...cleanProfileData,
+  };
+
+  return combinedFlatResponse;
 };
 
 export const FleetManagerServices = {
