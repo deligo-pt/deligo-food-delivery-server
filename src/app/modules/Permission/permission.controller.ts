@@ -5,7 +5,7 @@ import { PermissionServices } from './permission.service';
 import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 const createPermission = catchAsync(async (req, res) => {
-  const result = await PermissionServices.createPermissionIntoDB(
+  const result = await PermissionServices.createPermission(
     req.body,
     req.user as AuthUser,
   );
@@ -18,8 +18,24 @@ const createPermission = catchAsync(async (req, res) => {
   });
 });
 
+const updatePermission = catchAsync(async (req, res) => {
+  const { permissionId } = req.params;
+  const result = await PermissionServices.updatePermission(
+    permissionId,
+    req.body,
+    req.user as AuthUser,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Permission updated successfully',
+    data: result,
+  });
+});
+
 const getAllPermissions = catchAsync(async (req, res) => {
-  const result = await PermissionServices.getAllPermissionsFromDB(req.query);
+  const result = await PermissionServices.getAllPermissions(req.query);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -31,8 +47,8 @@ const getAllPermissions = catchAsync(async (req, res) => {
 });
 
 const getSinglePermission = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const result = await PermissionServices.getSinglePermissionFromDB(id);
+  const { permissionId } = req.params;
+  const result = await PermissionServices.getSinglePermission(permissionId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -42,21 +58,9 @@ const getSinglePermission = catchAsync(async (req, res) => {
   });
 });
 
-const updatePermission = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const result = await PermissionServices.updatePermissionInDB(id, req.body);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Permission updated successfully',
-    data: result,
-  });
-});
-
 const deletePermission = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  await PermissionServices.deletePermissionFromDB(id);
+  const { permissionId } = req.params;
+  await PermissionServices.deletePermission(permissionId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -66,10 +70,42 @@ const deletePermission = catchAsync(async (req, res) => {
   });
 });
 
+const assignPermissionsToAdmin = catchAsync(async (req, res) => {
+  const { adminId } = req.params;
+  const result = await PermissionServices.assignPermissionsToAdmin(
+    adminId,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'New permissions assigned to admin successfully',
+    data: result,
+  });
+});
+
+const revokePermissionsFromAdmin = catchAsync(async (req, res) => {
+  const { adminId } = req.params;
+  const result = await PermissionServices.revokePermissionsFromAdmin(
+    adminId,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Specified permissions revoked from admin successfully',
+    data: result,
+  });
+});
+
 export const PermissionControllers = {
   createPermission,
   getAllPermissions,
   getSinglePermission,
   updatePermission,
   deletePermission,
+  assignPermissionsToAdmin,
+  revokePermissionsFromAdmin,
 };

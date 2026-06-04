@@ -11,7 +11,11 @@ import {
   USER_STATUS,
 } from '../constant/GlobalConstant/user.constant';
 import { findUserById } from '../utils/findUserByEmailOrId';
-import { TPermission } from '../modules/Permission/permission.interface';
+import { TPermissionAction } from '../modules/Permission/permission.constant';
+
+function auth(...roles: TUserRole[]): any;
+
+function auth(...args: [...TUserRole[], TPermissionAction[]]): any;
 
 /**
  * Authentication & Authorization Middleware
@@ -22,14 +26,14 @@ import { TPermission } from '../modules/Permission/permission.interface';
  * 5. Verifies if the user has the required roles for the route.
  * 6. Enforces strict action permissions specifically for the ADMIN role.
  */
-const auth = (...args: any[]) => {
+function auth(...args: any[]) {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     let requiredRoles: TUserRole[] = [];
-    let requiredPermissions: TPermission[] = [];
+    let requiredPermissions: TPermissionAction[] = [];
 
     const lastArg = args[args.length - 1];
     if (Array.isArray(lastArg)) {
-      requiredPermissions = lastArg as TPermission[];
+      requiredPermissions = lastArg as TPermissionAction[];
       requiredRoles = args.slice(0, args.length - 1) as TUserRole[];
     } else {
       requiredRoles = args as TUserRole[];
@@ -131,7 +135,7 @@ const auth = (...args: any[]) => {
     }
 
     if (role === 'ADMIN' && requiredPermissions.length > 0) {
-      const adminPermissions: TPermission[] =
+      const adminPermissions: TPermissionAction[] =
         user.permissions || tokenPermissions || [];
 
       const hasEveryRequiredPermission = requiredPermissions.every(
@@ -150,6 +154,6 @@ const auth = (...args: any[]) => {
     req.user = user;
     next();
   });
-};
+}
 
 export default auth;
