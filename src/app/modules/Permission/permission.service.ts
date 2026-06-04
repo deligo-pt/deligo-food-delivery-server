@@ -84,12 +84,12 @@ const updatePermission = async (
   return result;
 };
 
-const getAllPermissionsFromDB = async (query: Record<string, unknown>) => {
+const getAllPermissions = async (query: Record<string, unknown>) => {
   const permissionQuery = new QueryBuilder(
     Permission.find({ isDeleted: { $ne: true } }),
     query,
   )
-    .search(['name', 'action', 'module'])
+    .search(['name', 'action', 'module', 'displayName', 'description'])
     .filter()
     .sort()
     .paginate()
@@ -104,7 +104,7 @@ const getAllPermissionsFromDB = async (query: Record<string, unknown>) => {
   };
 };
 
-const getSinglePermissionFromDB = async (permissionId: string) => {
+const getSinglePermission = async (permissionId: string) => {
   const result = await Permission.findById(permissionId);
   if (!result || result.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
@@ -112,8 +112,8 @@ const getSinglePermissionFromDB = async (permissionId: string) => {
   return result;
 };
 
-const deletePermissionFromDB = async (id: string) => {
-  const permission = await Permission.findById(id);
+const deletePermission = async (permissionId: string) => {
+  const permission = await Permission.findById(permissionId);
 
   if (!permission || permission.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
@@ -127,7 +127,7 @@ const deletePermissionFromDB = async (id: string) => {
   }
 
   const result = await Permission.findByIdAndUpdate(
-    id,
+    permissionId,
     { isDeleted: true },
     { new: true },
   );
@@ -177,8 +177,8 @@ const assignPermissionsToAdminInDB = async (
 export const PermissionServices = {
   createPermission,
   updatePermission,
-  getAllPermissionsFromDB,
-  getSinglePermissionFromDB,
-  deletePermissionFromDB,
+  getAllPermissions,
+  getSinglePermission,
+  deletePermission,
   assignPermissionsToAdminInDB,
 };
