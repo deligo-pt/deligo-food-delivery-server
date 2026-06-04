@@ -362,7 +362,7 @@ const getAllDeliveryPartnersFromDB = async (
 ) => {
   if (currentUser?.role === 'FLEET_MANAGER') {
     const fleetManagedPartners = await DeliveryPartner.find({
-      'registeredBy.id': currentUser?._id.toString(),
+      registeredBy: currentUser?._id.toString(),
     }).select('_id');
 
     const partnerObjectIds = fleetManagedPartners.map((partner) => partner._id);
@@ -387,14 +387,23 @@ const getAllDeliveryPartnersFromDB = async (
     .paginate()
     .fields();
 
-  deliveryPartnersQuery.modelQuery = deliveryPartnersQuery.modelQuery.populate({
-    path: 'userObjectId',
-    populate: [
-      { path: 'approvedBy', select: 'name userId role' },
-      { path: 'rejectedBy', select: 'name userId role' },
-      { path: 'blockedBy', select: 'name userId role' },
-    ],
-  });
+  deliveryPartnersQuery.modelQuery = deliveryPartnersQuery.modelQuery.populate([
+    {
+      path: 'userObjectId',
+    },
+    {
+      path: 'approvedBy',
+      select: 'name userId role',
+    },
+    {
+      path: 'rejectedBy',
+      select: 'name userId role',
+    },
+    {
+      path: 'blockedBy',
+      select: 'name userId role',
+    },
+  ]);
 
   const meta = await deliveryPartnersQuery.countTotal();
 
