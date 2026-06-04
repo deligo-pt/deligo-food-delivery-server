@@ -950,7 +950,7 @@ const updateOrderStatusByDeliveryPartner = async (
   const updatedOrder = await Order.findOneAndUpdate(
     {
       orderId,
-      deliveryPartnerId: currentUser._id.toString(),
+      deliveryPartnerId: currentUser._id,
       orderStatus: requiredCurrentStatus,
       isDeleted: false,
     },
@@ -999,9 +999,7 @@ const updateOrderStatusByDeliveryPartner = async (
 
   // Update partner record
   if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
-    const partner = await DeliveryPartner.findById(
-      updatedOrder?.deliveryPartnerId,
-    );
+    const partner = await AuthUser.findById(updatedOrder?.deliveryPartnerId);
     if (!partner) {
       throw new AppError(
         httpStatus.NOT_FOUND,
