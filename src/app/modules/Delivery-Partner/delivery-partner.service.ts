@@ -360,25 +360,30 @@ const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
   currentUser: TAuthUser,
 ) => {
-  if (currentUser?.role === 'FLEET_MANAGER') {
-    const fleetManagedPartners = await DeliveryPartner.find({
-      registeredBy: currentUser?._id.toString(),
-    }).select('_id');
-
-    const partnerObjectIds = fleetManagedPartners.map((partner) => partner._id);
-
-    query['userObjectId'] = { $in: partnerObjectIds };
-  }
-
-  query['role'] = 'DELIVERY_PARTNER';
-  const authBaseQuery: Record<string, any> = {};
+  const authBaseQuery: Record<string, any> = { role: 'DELIVERY_PARTNER' };
 
   if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
     authBaseQuery.isDeleted = false;
   }
 
+  if (currentUser?.role === 'FLEET_MANAGER') {
+    const fleetManagedPartners = await DeliveryPartner.find({
+      registeredBy: currentUser?._id,
+    })
+      .select('_id')
+      .lean();
+
+    const partnerObjectIds = fleetManagedPartners.map((partner) => partner._id);
+
+    if (partnerObjectIds.length === 0) {
+      return { meta: { page: 1, limit: 10, total: 0, totalPage: 0 }, data: [] };
+    }
+
+    authBaseQuery['userObjectId'] = { $in: partnerObjectIds };
+  }
+
   const deliveryPartnersQuery = new QueryBuilder(
-    AuthUser.find(authBaseQuery),
+    AuthUser.find(authBaseQuery).lean(),
     query,
   )
     .search(DeliveryPartnerSearchableFields)
@@ -390,28 +395,21 @@ const getAllDeliveryPartnersFromDB = async (
   deliveryPartnersQuery.modelQuery = deliveryPartnersQuery.modelQuery.populate([
     {
       path: 'userObjectId',
+      populate: {
+        path: 'registeredBy',
+        select: 'name userId role',
+      },
     },
-    {
-      path: 'approvedBy',
-      select: 'name userId role',
-    },
-    {
-      path: 'rejectedBy',
-      select: 'name userId role',
-    },
-    {
-      path: 'blockedBy',
-      select: 'name userId role',
-    },
+    { path: 'approvedBy', select: 'name userId role' },
+    { path: 'rejectedBy', select: 'name userId role' },
+    { path: 'blockedBy', select: 'name userId role' },
   ]);
 
   const meta = await deliveryPartnersQuery.countTotal();
-
   const rawAuthUsers = await deliveryPartnersQuery.modelQuery;
 
-  const mergedData = rawAuthUsers.map((authUserDoc) => {
-    const authUserObj = authUserDoc.toObject();
-    const profileData = authUserObj.userObjectId as unknown as TDeliveryPartner;
+  const mergedData = rawAuthUsers.map((authUserObj: any) => {
+    const profileData = authUserObj.userObjectId;
 
     if (!profileData) {
       return authUserObj;
@@ -423,12 +421,17 @@ const getAllDeliveryPartnersFromDB = async (
       passwordResetTokenExpiresAt,
       passwordChangedAt,
       userObjectId,
+      _id: authUserId,
       ...cleanAuthData
     } = authUserObj;
 
+    const { _id: profileId, ...cleanProfileData } = profileData;
+
     return {
+      _id: authUserId,
+      profileId: profileId,
       ...cleanAuthData,
-      ...profileData,
+      ...cleanProfileData,
     };
   });
 
@@ -449,30 +452,50 @@ const getSingleDeliveryPartnerFromDB = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this delivery partner',
+      'You are not authorized to access this delivery partner profile',
     );
   }
 
-  let authUserData;
+  const authBaseQuery: Record<string, any> = {
+    userId: deliveryPartnerCustomId,
+    role: 'DELIVERY_PARTNER',
+  };
 
   if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
-    authUserData = await AuthUser.findOne({
-      userId: deliveryPartnerCustomId,
-      isDeleted: false,
-    }).populate('userObjectId');
-  } else {
-    authUserData = await AuthUser.findOne({
-      userId: deliveryPartnerCustomId,
-    }).populate('userObjectId');
+    authBaseQuery.isDeleted = false;
   }
+
+  const authUserData = await AuthUser.findOne(authBaseQuery)
+    .populate([
+      {
+        path: 'userObjectId',
+        populate: [
+          {
+            path: 'registeredBy',
+            select: 'name userId role',
+          },
+        ],
+      },
+      {
+        path: 'approvedBy',
+        select: 'name userId role',
+      },
+      {
+        path: 'rejectedBy',
+        select: 'name userId role',
+      },
+      {
+        path: 'blockedBy',
+        select: 'name userId role',
+      },
+    ])
+    .lean();
 
   if (!authUserData) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
   }
 
-  const authUserObj = authUserData.toObject();
-  const profileData = authUserObj.userObjectId as unknown as TDeliveryPartner;
-
+  const profileData = authUserData.userObjectId as any;
   if (!profileData) {
     throw new AppError(
       httpStatus.NOT_FOUND,
@@ -486,7 +509,7 @@ const getSingleDeliveryPartnerFromDB = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this delivery partner',
+      'You do not have permission to access this delivery partner profile',
     );
   }
 
@@ -496,12 +519,17 @@ const getSingleDeliveryPartnerFromDB = async (
     passwordResetTokenExpiresAt,
     passwordChangedAt,
     userObjectId,
+    _id: authUserId,
     ...cleanAuthData
-  } = authUserObj;
+  } = authUserData;
+
+  const { _id: profileId, ...cleanProfileData } = profileData;
 
   const combinedFlatResponse = {
+    _id: authUserId,
+    profileId: profileId,
     ...cleanAuthData,
-    ...profileData,
+    ...cleanProfileData,
   };
 
   return combinedFlatResponse;
