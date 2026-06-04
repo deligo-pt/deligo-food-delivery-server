@@ -552,6 +552,7 @@ const broadcastOrderToPartners = async (
 
   // Vendor location check
   const loc = vendorProfile.businessLocation;
+
   const longitude = loc?.longitude;
   const latitude = loc?.latitude;
   if (!loc || typeof longitude !== 'number' || typeof latitude !== 'number') {
@@ -563,7 +564,7 @@ const broadcastOrderToPartners = async (
   // Fetch order AND ensure this vendor owns it
   const order = await Order.findOne({
     orderId,
-    vendorId: currentUser._id.toString(),
+    vendorId: currentUser._id,
     isDeleted: false,
   }).populate(
     'customerId',
@@ -602,7 +603,6 @@ const broadcastOrderToPartners = async (
           distanceField: 'distance',
           query: {
             isDeleted: false,
-            status: 'APPROVED',
             'operationalData.currentStatus': 'IDLE',
             $expr: {
               $lt: [
@@ -616,6 +616,23 @@ const broadcastOrderToPartners = async (
         },
       },
       { $limit: 10 },
+
+      {
+        $lookup: {
+          from: 'authusers',
+          localField: 'userId',
+          foreignField: 'userId',
+          as: 'authAccount',
+        },
+      },
+      { $unwind: { path: '$authAccount', preserveNullAndEmptyArrays: false } },
+
+      {
+        $match: {
+          'authAccount.status': 'APPROVED',
+          'authAccount.isDeleted': false,
+        },
+      },
     ]);
 
     if (partners.length > 0) {
@@ -649,7 +666,7 @@ const broadcastOrderToPartners = async (
 
   // Safe atomic update using $addToSet and status update
   await Order.updateOne(
-    { orderId, vendorId: currentUser._id.toString(), isDeleted: false },
+    { orderId, vendorId: currentUser._id, isDeleted: false },
     {
       $set: {
         orderStatus: ORDER_STATUS.DISPATCHING,
