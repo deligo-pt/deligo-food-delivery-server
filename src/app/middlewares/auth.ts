@@ -54,6 +54,8 @@ const auth = (...requiredRoles: TUserRole[]) => {
 
         const { role, iat, userId, deviceId } = decoded;
 
+        console.log(decoded);
+
         // 5. Fetch user and model information from the database
         const user = await AuthUser.findOne({ userId }).populate('permissions');
         if (!user) {

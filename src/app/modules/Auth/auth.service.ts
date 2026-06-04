@@ -1105,21 +1105,29 @@ const submitForApproval = async (userId: string, currentUser: TAuthUser) => {
 
   if (!isAdmin) {
     if (authUser?.role === 'DELIVERY_PARTNER') {
-      if (
-        currentUser?.role === 'FLEET_MANAGER' &&
-        submittedProfile?.registeredBy?.toString() !==
-          currentUser._id.toString()
-      ) {
+      const isFleetManager = currentUser.role === 'FLEET_MANAGER';
+      const isOwner =
+        submittedProfile.registeredBy?.toString() ===
+        currentUser._id.toString();
+
+      if (isFleetManager && !isOwner) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'You do not have permission to submit approval request for this user',
+          'You do not have permission to submit approval requests for this delivery partner.',
+        );
+      }
+
+      if (!isFleetManager && authUser.userId !== currentUser.userId) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You can only submit approval requests for your own profile.',
         );
       }
     } else {
       if (authUser.userId !== currentUser.userId) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'You do not have permission to submit approval request for this user',
+          'You do not have permission to initiate this approval request.',
         );
       }
     }
@@ -1131,21 +1139,32 @@ const submitForApproval = async (userId: string, currentUser: TAuthUser) => {
   session.startTransaction();
 
   try {
-    authUser.status = 'SUBMITTED';
-    authUser.submittedForApprovalAt = submissionTime;
-    await authUser.save({ session });
+    await AuthUser.findOneAndUpdate(
+      { _id: authUser._id },
+      {
+        $set: {
+          status: 'SUBMITTED',
+          submittedForApprovalAt: submissionTime,
+        },
+      },
+      { session, new: true },
+    );
 
-    submittedProfile.isUpdateLocked = true;
-    await submittedProfile.save({ session });
+    await TargetModel.findByIdAndUpdate(
+      authUser.userObjectId,
+      { $set: { isUpdateLocked: true } },
+      { session, new: true },
+    );
 
     await session.commitTransaction();
     session.endSession();
   } catch (error: any) {
     await session.abortTransaction();
     session.endSession();
+    console.error('[Approval Submission Transaction Failed]:', error.message);
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to submit approval request',
+      'Failed to lock profile and submit approval request. Please try again.',
     );
   }
 
