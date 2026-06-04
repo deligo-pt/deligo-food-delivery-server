@@ -1,19 +1,46 @@
-import { model, Schema } from 'mongoose';
+import { Schema, model } from 'mongoose';
 import { TPermission } from './permission.interface';
-import { PERMISSION_SUBJECTS, PermissionActions } from './permission.constant';
 
 const permissionSchema = new Schema<TPermission>(
   {
-    name: { type: String, required: true, unique: true, trim: true },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     action: {
       type: String,
-      enum: PermissionActions,
       required: true,
+      unique: true,
+      trim: true,
+      uppercase: true,
     },
-    subject: { type: String, enum: PERMISSION_SUBJECTS, required: true },
-    description: { type: String },
+    module: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+    isSystemDefined: {
+      type: Boolean,
+      default: false,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'AuthUser',
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    versionKey: false,
+  },
 );
 
 export const Permission = model<TPermission>('Permission', permissionSchema);
