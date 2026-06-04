@@ -169,6 +169,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
       idProofBack: { type: [String], default: [] },
       storePhoto: { type: [String], default: [] },
       menuUpload: { type: [String], default: [] },
+      agoserisHaccpCertificate: { type: [String], default: [] },
     },
 
     // -------------------------------------------------------
