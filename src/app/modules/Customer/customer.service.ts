@@ -563,7 +563,7 @@ const getAllCustomersFromDB = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view customers. Your account is ${currentUser.status}`,
+      `You are not approved to view customers. Your account status is ${currentUser.status}`,
     );
   }
 
@@ -574,7 +574,17 @@ const getAllCustomersFromDB = async (
     );
   }
 
-  const customersQuery = new QueryBuilder(Customer.find().lean(), query)
+  const isAdminOrStaff = ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(
+    currentUser.role,
+  );
+  const queryFilter: any = { role: 'CUSTOMER' };
+
+  if (!isAdminOrStaff) {
+    queryFilter.isDeleted = false;
+  }
+
+  const customerQueryBase = AuthUser.find(queryFilter).lean();
+  const customersQuery = new QueryBuilder(customerQueryBase, query)
     .search(CustomerSearchableFields)
     .filter()
     .sort()
@@ -583,35 +593,45 @@ const getAllCustomersFromDB = async (
 
   customersQuery.modelQuery = customersQuery.modelQuery.populate([
     {
-      path: 'approvedBy rejectedBy blockedBy',
-      select: 'name userId role',
+      path: 'userObjectId',
     },
+    { path: 'approvedBy', select: 'name userId role' },
+    { path: 'rejectedBy', select: 'name userId role' },
+    { path: 'blockedBy', select: 'name userId role' },
   ]);
 
   const meta = await customersQuery.countTotal();
-  const rawCustomersData = await customersQuery.modelQuery;
+  const rawAuthUsers = await customersQuery.modelQuery;
 
-  const userIds = rawCustomersData.map((customer: any) => customer.userId);
-  const authUsersList = await AuthUser.find({ userId: { $in: userIds } })
-    .select(
-      'role status isOtpVerified isDeleted requiresOtpVerification contactNumber twoFactorEnabled loginDevices paymentMethods',
-    )
-    .lean();
+  const mergedData = rawAuthUsers
+    .map((authObj: any) => {
+      const customerProfile = authObj.userObjectId;
+      if (!customerProfile) return null;
 
-  const authMap = new Map(authUsersList.map((user) => [user.userId, user]));
+      const {
+        password,
+        passwordResetToken,
+        passwordResetTokenExpiresAt,
+        passwordChangedAt,
+        userObjectId,
+        _id: authUserId,
+        ...cleanAuthData
+      } = authObj;
 
-  const fullCustomersList = rawCustomersData.map((customerDoc: any) => {
-    const authInfo = authMap.get(customerDoc.userId);
+      const { _id: profileId, ...cleanProfileData } = customerProfile;
 
-    return {
-      ...customerDoc,
-      ...(authInfo || {}),
-    };
-  });
+      return {
+        _id: authUserId,
+        profileId: profileId,
+        ...cleanAuthData,
+        ...cleanProfileData,
+      };
+    })
+    .filter((item) => item !== null);
 
   return {
     meta,
-    data: fullCustomersList,
+    data: mergedData,
   };
 };
 
@@ -627,55 +647,68 @@ const getSingleCustomerFromDB = async (
     );
   }
 
-  let customerData: any = null;
-
   const isAdminOrStaff = ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(
     currentUser.role,
   );
+  if (!isAdminOrStaff && String(customerId) !== String(currentUser.userId)) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Unauthorized access. You can only view your own profile.',
+    );
+  }
+
+  const findCondition: any = {
+    userId: customerId,
+    role: 'CUSTOMER',
+  };
 
   if (!isAdminOrStaff) {
-    if (String(customerId) !== String(currentUser.userId)) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'Unauthorized access. You can only view your own profile.',
-      );
-    }
-
-    customerData = await Customer.findOne({ userId: customerId }).lean();
-  } else {
-    let query = Customer.findOne({ userId: customerId });
-
-    const populateOptions = getPopulateOptions(currentUser.role, {
-      approvedBy: 'name userId role',
-      rejectedBy: 'name userId role',
-      blockedBy: 'name userId role',
-    });
-
-    populateOptions.forEach((option) => {
-      query = query.populate(option);
-    });
-
-    customerData = await query;
+    findCondition.isDeleted = false;
   }
 
-  if (!customerData) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found!');
-  }
-
-  const customer = customerData.toObject
-    ? customerData.toObject()
-    : JSON.parse(JSON.stringify(customerData));
-
-  const authInfo = await AuthUser.findOne({ userId: customer.userId })
-    .select(
-      'role status isOtpVerified isDeleted requiresOtpVerification contactNumber twoFactorEnabled loginDevices paymentMethods',
-    )
+  const authDoc: any = await AuthUser.findOne(findCondition)
+    .populate([
+      {
+        path: 'userObjectId',
+      },
+      { path: 'approvedBy', select: 'name userId role' },
+      { path: 'rejectedBy', select: 'name userId role' },
+      { path: 'blockedBy', select: 'name userId role' },
+    ])
     .lean();
 
-  return {
-    ...customer,
-    ...(authInfo || {}),
+  if (!authDoc) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer account not found!');
+  }
+
+  const customerProfile = authDoc.userObjectId;
+  if (!customerProfile) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Customer profile details missing!',
+    );
+  }
+
+  const {
+    password,
+    passwordResetToken,
+    passwordResetTokenExpiresAt,
+    passwordChangedAt,
+    userObjectId,
+    _id: authUserId,
+    ...cleanAuthData
+  } = authDoc;
+
+  const { _id: profileId, ...cleanProfileData } = customerProfile;
+
+  const formattedCustomer = {
+    _id: authUserId,
+    profileId: profileId,
+    ...cleanAuthData,
+    ...cleanProfileData,
   };
+
+  return formattedCustomer;
 };
 
 export const CustomerServices = {
