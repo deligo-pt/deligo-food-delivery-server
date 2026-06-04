@@ -70,10 +70,42 @@ const deletePermission = catchAsync(async (req, res) => {
   });
 });
 
+const assignPermissionsToAdmin = catchAsync(async (req, res) => {
+  const { adminId } = req.params;
+  const result = await PermissionServices.assignPermissionsToAdmin(
+    adminId,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'New permissions assigned to admin successfully',
+    data: result,
+  });
+});
+
+const revokePermissionsFromAdmin = catchAsync(async (req, res) => {
+  const { adminId } = req.params;
+  const result = await PermissionServices.revokePermissionsFromAdmin(
+    adminId,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Specified permissions revoked from admin successfully',
+    data: result,
+  });
+});
+
 export const PermissionControllers = {
   createPermission,
   getAllPermissions,
   getSinglePermission,
   updatePermission,
   deletePermission,
+  assignPermissionsToAdmin,
+  revokePermissionsFromAdmin,
 };

@@ -134,7 +134,32 @@ const deletePermission = async (permissionId: string) => {
   return result;
 };
 
-const assignPermissionsToAdminInDB = async (
+const validateIdsAndGetActionCodes = async (
+  permissionIds: string[],
+): Promise<string[]> => {
+  if (!permissionIds || permissionIds.length === 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Permission IDs array cannot be empty!',
+    );
+  }
+
+  const foundPermissions = await Permission.find({
+    _id: { $in: permissionIds },
+    isDeleted: { $ne: true },
+  }).select('action');
+
+  if (foundPermissions.length !== permissionIds.length) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Security Alert: One or more provided Permission IDs are invalid or inactive!',
+    );
+  }
+
+  return foundPermissions.map((p) => p.action);
+};
+
+const assignPermissionsToAdmin = async (
   targetAdminCustomId: string,
   payload: { permissions: string[] },
 ) => {
@@ -142,30 +167,44 @@ const assignPermissionsToAdminInDB = async (
     userId: targetAdminCustomId,
     isDeleted: false,
   });
-
   if (!targetAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin account not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'Target Admin account not found!');
   }
 
-  if (payload.permissions.length > 0) {
-    const validPermissionsCount = await Permission.countDocuments({
-      action: { $in: payload.permissions },
-      isDeleted: { $ne: true },
-    });
-
-    if (validPermissionsCount !== payload.permissions.length) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'One or more permission action codes are invalid or do not exist in the system!',
-      );
-    }
-  }
+  const actionCodes = await validateIdsAndGetActionCodes(payload.permissions);
 
   const result = await Admin.findOneAndUpdate(
     { userId: targetAdminCustomId },
     {
-      $set: {
-        permissions: payload.permissions,
+      $addToSet: {
+        permissions: { $each: actionCodes },
+      },
+    },
+    { new: true, runValidators: true },
+  ).select('-password');
+
+  return result;
+};
+
+const revokePermissionsFromAdmin = async (
+  targetAdminCustomId: string,
+  payload: { permissions: string[] },
+) => {
+  const targetAdmin = await Admin.findOne({
+    userId: targetAdminCustomId,
+    isDeleted: false,
+  });
+  if (!targetAdmin) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Target Admin account not found!');
+  }
+
+  const actionCodes = await validateIdsAndGetActionCodes(payload.permissions);
+
+  const result = await Admin.findOneAndUpdate(
+    { userId: targetAdminCustomId },
+    {
+      $pull: {
+        permissions: { $in: actionCodes },
       },
     },
     { new: true, runValidators: true },
@@ -180,5 +219,6 @@ export const PermissionServices = {
   getAllPermissions,
   getSinglePermission,
   deletePermission,
-  assignPermissionsToAdminInDB,
+  assignPermissionsToAdmin,
+  revokePermissionsFromAdmin,
 };

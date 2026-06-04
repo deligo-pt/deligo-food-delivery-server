@@ -43,17 +43,24 @@ const updatePermissionValidationSchema = z.object({
 });
 
 const assignPermissionsValidationSchema = z.object({
-  body: z.object({
-    permissions: z.array(
-      z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
-        message: 'Invalid Permission ID format provided',
-      }),
-      {
-        required_error:
-          'Permissions array containing MongoDB ObjectIds is required',
-      },
-    ),
-  }),
+  body: z
+    .object({
+      permissionsId: z
+        .array(
+          z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
+            message: 'Invalid MongoDB ObjectId format for permission',
+          }),
+          {
+            required_error:
+              'Permissions array containing MongoDB ObjectIds is required',
+          },
+        )
+        .min(
+          1,
+          'Permissions array cannot be empty. Pass an empty array if revoking all.',
+        ),
+    })
+    .strict(),
 });
 
 export const PermissionValidations = {

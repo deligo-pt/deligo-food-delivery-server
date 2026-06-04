@@ -38,4 +38,18 @@ router.delete(
   PermissionControllers.deletePermission,
 );
 
+router.patch(
+  '/assign-permissions/:adminId',
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
+  validateRequest(PermissionValidations.assignPermissionsValidationSchema),
+  PermissionControllers.assignPermissionsToAdmin,
+);
+
+router.patch(
+  '/revoke-permissions/:adminId',
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
+  validateRequest(PermissionValidations.assignPermissionsValidationSchema),
+  PermissionControllers.revokePermissionsFromAdmin,
+);
+
 export const PermissionRoutes = router;
