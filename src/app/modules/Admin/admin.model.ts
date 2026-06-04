@@ -124,11 +124,13 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     // --------------------------------------------------------
     // Permissions
     // --------------------------------------------------------
-    permissions: {
-      type: [String],
-      default: [],
-    },
-
+    permissions: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Permission',
+        default: [],
+      },
+    ],
     // --------------------------------------------------------
     // Admin Workflow & Audit
     // --------------------------------------------------------
