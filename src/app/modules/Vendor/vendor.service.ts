@@ -353,17 +353,18 @@ const getAllVendors = async (
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view vendors. Your account is ${currentUser?.status}`,
+      `You are not approved to view vendors. Your account status is ${currentUser?.status}`,
     );
   }
-  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
-  const queryFilter: any = { role: USER_ROLE.VENDOR };
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  const queryFilter: any = { role: 'VENDOR' };
 
   if (!isAdmin) {
     queryFilter.isDeleted = false;
   }
-  const vendorQueryBase = AuthUser.find(queryFilter);
+
+  const vendorQueryBase = AuthUser.find(queryFilter).lean();
   const vendors = new QueryBuilder(vendorQueryBase, query)
     .search(VendorSearchableFields)
     .filter()
@@ -371,37 +372,46 @@ const getAllVendors = async (
     .paginate()
     .fields();
 
-  const populateOptions = getPopulateOptions(currentUser.role, {
-    userObjectId: true,
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
-  });
-
-  populateOptions.forEach((option) => {
-    vendors.modelQuery = vendors.modelQuery.populate(option);
-  });
+  vendors.modelQuery = vendors.modelQuery.populate([
+    {
+      path: 'userObjectId',
+      populate: [
+        {
+          path: 'registeredBy',
+          select: 'name userId role',
+        },
+      ],
+    },
+    { path: 'approvedBy', select: 'name userId role' },
+    { path: 'rejectedBy', select: 'name userId role' },
+    { path: 'blockedBy', select: 'name userId role' },
+  ]);
 
   const meta = await vendors.countTotal();
   const rawData = await vendors.modelQuery;
-  const formattedData = rawData
-    .map((authDoc: any) => {
-      const vendorProfile = authDoc.userObjectId;
 
+  const formattedData = rawData
+    .map((authObj: any) => {
+      const vendorProfile = authObj.userObjectId;
       if (!vendorProfile) return null;
 
-      return {
-        _id: vendorProfile._id,
-        authUserId: authDoc._id,
-        userId: authDoc.userId,
-        email: authDoc.email,
-        role: authDoc.role,
-        status: authDoc.status,
-        isDeleted: authDoc.isDeleted,
-        isEmailVerified: authDoc.isEmailVerified,
-        loginDevices: authDoc.loginDevices,
+      const {
+        password,
+        passwordResetToken,
+        passwordResetTokenExpiresAt,
+        passwordChangedAt,
+        userObjectId,
+        _id: authUserId,
+        ...cleanAuthData
+      } = authObj;
 
-        ...vendorProfile.toObject(),
+      const { _id: profileId, ...cleanProfileData } = vendorProfile;
+
+      return {
+        _id: authUserId,
+        profileId: profileId,
+        ...cleanAuthData,
+        ...cleanProfileData,
       };
     })
     .filter((item) => item !== null);
@@ -416,54 +426,67 @@ const getAllVendors = async (
 const getSingleVendor = async (vendorId: string, currentUser: TAuthUser) => {
   if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You are not authorize to access this vendor!',
+      httpStatus.FORBIDDEN,
+      'You are not authorized to access this vendor profile!',
     );
   }
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
-
   const findCondition: any = {
     userId: vendorId,
-    role: USER_ROLE.VENDOR,
+    role: 'VENDOR',
   };
 
   if (!isAdmin) {
     findCondition.isDeleted = false;
   }
 
-  const vendorAuthQuery = AuthUser.findOne(findCondition);
+  const authDoc: any = await AuthUser.findOne(findCondition)
+    .populate([
+      {
+        path: 'userObjectId',
+        populate: [
+          {
+            path: 'registeredBy',
+            select: 'name userId role',
+          },
+        ],
+      },
+      { path: 'approvedBy', select: 'name userId role' },
+      { path: 'rejectedBy', select: 'name userId role' },
+      { path: 'blockedBy', select: 'name userId role' },
+    ])
+    .lean();
 
-  const populateOptions = getPopulateOptions(currentUser.role, {
-    userObjectId: true,
-    approvedBy: 'name userId role',
-    rejectedBy: 'name userId role',
-    blockedBy: 'name userId role',
-  });
-
-  populateOptions.forEach((option) => {
-    vendorAuthQuery.populate(option);
-  });
-
-  const authDoc: any = await vendorAuthQuery;
-  if (!authDoc || !authDoc.userObjectId) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor profile not found!');
+  if (!authDoc) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Vendor account not found!');
   }
 
   const vendorProfile = authDoc.userObjectId;
+  if (!vendorProfile) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Vendor business profile details missing!',
+    );
+  }
+
+  const {
+    password,
+    passwordResetToken,
+    passwordResetTokenExpiresAt,
+    passwordChangedAt,
+    userObjectId,
+    _id: authUserId,
+    ...cleanAuthData
+  } = authDoc;
+
+  const { _id: profileId, ...cleanProfileData } = vendorProfile;
 
   const formattedVendor = {
-    _id: vendorProfile._id,
-    authUserId: authDoc._id,
-    userId: authDoc.userId,
-    email: authDoc.email,
-    role: authDoc.role,
-    status: authDoc.status,
-    isDeleted: authDoc.isDeleted,
-    isEmailVerified: authDoc.isEmailVerified,
-    loginDevices: authDoc.loginDevices,
-
-    ...vendorProfile.toObject(),
+    _id: authUserId,
+    profileId: profileId,
+    ...cleanAuthData,
+    ...cleanProfileData,
   };
 
   return formattedVendor;
