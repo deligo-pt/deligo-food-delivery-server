@@ -276,6 +276,9 @@ const checkout = async (currentUser: TAuthUser, payload: TCheckoutPayload) => {
     0,
   );
   const finalGrandTotal = roundTo2(itemsGrandTotalSum + totalDeliveryCharge);
+  // const finalGrandTotal = roundTo2(
+  //   taxableAmount + deliveryChargeBase + roundTo2(totalTaxAmount + deliveryVat),
+  // );
 
   const totalCommAmt = orderItems.reduce(
     (sum, i) => sum + i.commission.deliGoCommissionAmount,

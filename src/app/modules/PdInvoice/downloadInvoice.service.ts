@@ -33,6 +33,8 @@ const downloadOrderInvoicePdf = async (orderId: string) => {
       },
     );
 
+    console.log(response);
+
     if (response.data && response.data.pdf_base64) {
       return response.data.pdf_base64;
     }

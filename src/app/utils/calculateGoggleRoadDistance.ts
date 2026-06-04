@@ -10,13 +10,26 @@ export const calculateGoogleRoadDistance = async (
   lng2: number,
   lat2: number,
 ) => {
-  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) {
+  if (
+    lat1 === undefined ||
+    lat1 === null ||
+    lng1 === undefined ||
+    lng1 === null ||
+    lat2 === undefined ||
+    lat2 === null ||
+    lng2 === undefined ||
+    lng2 === null
+  ) {
     return { km: 0, meters: 0, durationMinutes: 0, text: 'N/A' };
   }
 
-  console.log({ lng1, lat1, lng2, lat2 });
-
   const apiKey = config.google_maps_api_key;
+  if (!apiKey) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Google Maps API key is missing in config',
+    );
+  }
 
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${lat1},${lng1}&destinations=${lat2},${lng2}&key=${apiKey}`;
 
@@ -26,14 +39,27 @@ export const calculateGoogleRoadDistance = async (
     if (data.status !== 'OK') {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        `Google API Error: ${data.status}`,
+        `Google API Top-Level Error: ${data.status}`,
       );
     }
 
-    const element = data.rows[0].elements[0];
+    const element = data.rows?.[0]?.elements?.[0];
+
+    if (!element) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Invalid response structure from Google API',
+      );
+    }
 
     if (element.status !== 'OK') {
-      throw new Error(`Route Error: ${element.status}`);
+      console.warn(`Google Route Status: ${element.status}`);
+      return {
+        km: 0,
+        meters: 0,
+        durationMinutes: 0,
+        text: `Route: ${element.status}`,
+      };
     }
 
     const distanceMeters = element.distance.value;
@@ -47,6 +73,11 @@ export const calculateGoogleRoadDistance = async (
     };
   } catch (error) {
     console.error('Distance calculation error:', error);
+
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     return { km: 0, meters: 0, durationMinutes: 0, text: 'Error' };
   }
 };

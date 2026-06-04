@@ -27,6 +27,7 @@ import { Transaction } from '../Transaction/transaction.model';
 import customNanoId from '../../utils/customNanoId';
 import { orderQueue } from '../../BullMQ/Queue/order.queue';
 import { TAuthUser } from '../AuthUser/authUser.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -78,7 +79,7 @@ const createOrderAfterRedUniqPayment = async (
   );
   const paymentData = verifyRes.data;
 
-  const existingVendor = await Vendor.findById(summary.vendorId);
+  const existingVendor = await AuthUser.findById(summary.vendorId);
   if (!existingVendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
   }
@@ -226,6 +227,8 @@ const updateOrderStatusByVendor = async (
   const session = await mongoose.startSession();
   session.startTransaction();
 
+  let pendingNotification: (() => void) | null = null;
+
   try {
     // ---------------------------------------------------------
     // Find the order for this vendor
@@ -239,16 +242,22 @@ const updateOrderStatusByVendor = async (
       },
       null,
       { session },
-    ).populate('vendorId', '_id businessDetails');
+    );
 
     if (!order) {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
     }
 
-    const vendor = order.vendorId as any;
+    if (currentUser._id.toString() !== order.vendorId.toString()) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not authorized to accept or reject orders.',
+      );
+    }
 
     const isRestaurant =
-      vendor?.businessDetails?.businessType?.toUpperCase() === 'RESTAURANT';
+      vendorProfile?.businessDetails?.businessType?.toUpperCase() ===
+      'RESTAURANT';
 
     const shouldCheckStock = !isRestaurant;
     // ---------------------------------------------------------
@@ -274,13 +283,13 @@ const updateOrderStatusByVendor = async (
     // ---------------------------------------------------------
     // Find related users
     // ---------------------------------------------------------
-    const customer = await Customer.findById(order.customerId, null, {
+    const customer = await AuthUser.findById(order.customerId, null, {
       session,
     });
     const customerId = customer?.userId;
 
     const deliveryPartner = order.deliveryPartnerId
-      ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
+      ? await AuthUser.findById(order.deliveryPartnerId, null, {
           session,
         })
       : null;
@@ -293,6 +302,13 @@ const updateOrderStatusByVendor = async (
       throw new AppError(
         httpStatus.BAD_REQUEST,
         `Order must be PENDING to be accepted. Current status is ${order.orderStatus}.`,
+      );
+    }
+
+    if (action.type === 'REJECTED' && order.orderStatus !== 'PENDING') {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `You cannot REJECT this order because it is already ${order.orderStatus.toLowerCase()}. If you must cancel, please use the CANCELED action with a proper reason.`,
       );
     }
 
@@ -326,19 +342,12 @@ const updateOrderStatusByVendor = async (
     // Prevent vendor from accepting/rejecting an order that is already assigned, picked up, on the way, or delivered
     // ---------------------------------------------------------
     if (
-      (action.type === 'REJECTED' || action.type === 'CANCELED') &&
+      action.type === 'CANCELED' &&
       BLOCKED_FOR_ORDER_CANCEL.some((status) => order.orderStatus === status)
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'Order cannot be canceled or rejected at this stage',
-      );
-    }
-
-    if (currentUser._id.toString() !== vendor._id.toString()) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You are not authorized to accept or reject orders.',
       );
     }
 
@@ -386,51 +395,48 @@ const updateOrderStatusByVendor = async (
         }
       }
 
-      const notificationPayload = {
-        title: 'Order Accepted',
-        body: `Your order has been accepted by ${vendorProfile.businessDetails?.businessName}.Please wait for your order to be picked up.`,
-        data: { orderId: order.orderId },
+      pendingNotification = () => {
+        NotificationService.sendToUser(
+          customerId!,
+          'Order Accepted',
+          `Your order has been accepted by ${vendorProfile.businessDetails?.businessName}. Please wait for your order to be picked up.`,
+          { orderId: order.orderId },
+          'default',
+          'ORDER',
+        );
       };
-      NotificationService.sendToUser(
-        customerId!,
-        notificationPayload.title,
-        notificationPayload.body,
-        notificationPayload.data,
-        'default',
-        'ORDER',
-      );
     }
     // ---------------------------------------------------------
     // PREPARING logic
     // ---------------------------------------------------------
-    if (action.type === ORDER_STATUS.PREPARING) {
-      NotificationService.sendToUser(
-        customerId!,
-        'Order is being prepared',
-        `Your order is now being prepared by ${vendorProfile.businessDetails?.businessName}.`,
-        { orderId: order.orderId.toString(), status: ORDER_STATUS.PREPARING },
-        'default',
-        'ORDER',
-      );
+    if (action.type === 'PREPARING') {
+      pendingNotification = () => {
+        NotificationService.sendToUser(
+          customerId!,
+          'Order is being prepared',
+          `Your order is now being prepared by ${vendorProfile.businessDetails?.businessName}.`,
+          { orderId: order.orderId.toString(), status: 'PREPARING' },
+          'default',
+          'ORDER',
+        );
+      };
     }
 
     // ---------------------------------------------------------
     // Ready for pickup logic
     // ---------------------------------------------------------
-    if (action.type === ORDER_STATUS.READY_FOR_PICKUP) {
-      NotificationService.sendToUser(
-        customerId!,
-        'Order is ready for pickup',
-        `Your order is now ready for pickup by ${vendorProfile.businessDetails?.businessName}.`,
-        {
-          orderId: order.orderId,
-          status: ORDER_STATUS.READY_FOR_PICKUP,
-        },
-        'default',
-        'ORDER',
-      );
+    if (action.type === 'READY_FOR_PICKUP') {
+      pendingNotification = () => {
+        NotificationService.sendToUser(
+          customerId!,
+          'Order is ready for pickup',
+          `Your order is now ready for pickup by ${vendorProfile.businessDetails?.businessName}.`,
+          { orderId: order.orderId, status: 'READY_FOR_PICKUP' },
+          'default',
+          'ORDER',
+        );
+      };
     }
-
     // ---------------------------------------------------------
     // If Canceled → add cancel reason and add product to stock
     // ---------------------------------------------------------
@@ -445,7 +451,7 @@ const updateOrderStatusByVendor = async (
       // --------------------------------------------------------
       // Add product to stock
       // --------------------------------------------------------
-      if (shouldCheckStock) {
+      if (shouldCheckStock && order.orderStatus !== 'PENDING') {
         const stockOperations = order.items.map((item) => ({
           updateOne: {
             filter: { _id: new mongoose.Types.ObjectId(item.productId) },
@@ -456,29 +462,27 @@ const updateOrderStatusByVendor = async (
         }));
         await Product.bulkWrite(stockOperations, { session });
       }
-      const notificationPayload = {
-        title: 'Order Canceled',
-        body: `Your order has been canceled for ${action.reason}`,
-        data: { orderId: order.orderId },
-      };
-      if (order.deliveryPartnerId) {
+      pendingNotification = () => {
         NotificationService.sendToUser(
-          deliveryPartnerId!,
-          notificationPayload.title,
-          notificationPayload.body,
-          notificationPayload.data,
+          customerId!,
+          'Order Canceled',
+          `Your order has been canceled for ${action.reason}`,
+          { orderId: order.orderId },
           'default',
           'ORDER',
         );
-      }
-      NotificationService.sendToUser(
-        customerId!,
-        notificationPayload.title,
-        notificationPayload.body,
-        notificationPayload.data,
-        'default',
-        'ORDER',
-      );
+
+        if (order.deliveryPartnerId) {
+          NotificationService.sendToUser(
+            deliveryPartnerId!,
+            'Order Canceled',
+            `The order assigned to you has been canceled by the vendor.`,
+            { orderId: order.orderId },
+            'default',
+            'ORDER',
+          );
+        }
+      };
     }
 
     // ---------------------------------------------------------
@@ -493,19 +497,16 @@ const updateOrderStatusByVendor = async (
       }
       order.rejectReason = action.reason;
 
-      const notificationPayload = {
-        title: 'Order Rejected',
-        body: `Your order has been rejected for ${action.reason}`,
-        data: { orderId: order.orderId },
+      pendingNotification = () => {
+        NotificationService.sendToUser(
+          customerId!,
+          'Order Rejected',
+          `Your order has been rejected for ${action.reason}`,
+          { orderId: order.orderId },
+          'default',
+          'ORDER',
+        );
       };
-      NotificationService.sendToUser(
-        customerId!,
-        notificationPayload.title,
-        notificationPayload.body,
-        notificationPayload.data,
-        'default',
-        'ORDER',
-      );
     }
 
     // ---------------------------------------------------------
@@ -520,6 +521,10 @@ const updateOrderStatusByVendor = async (
 
     await session.commitTransaction();
     session.endSession();
+
+    if (pendingNotification) {
+      pendingNotification();
+    }
     return order;
   } catch (error) {
     await session.abortTransaction();
