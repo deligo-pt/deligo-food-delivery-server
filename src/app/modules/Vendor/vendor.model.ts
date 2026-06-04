@@ -113,6 +113,7 @@ const vendorSchema = new Schema<TVendor>(
       idProofBack: { type: [String], default: [] },
       storePhoto: { type: [String], default: [] },
       menuUpload: { type: [String], default: [] },
+      agoserisHaccpCertificate: { type: [String], default: [] }, // NEW: For food safety certification
     },
 
     // -------------------------------------------------------

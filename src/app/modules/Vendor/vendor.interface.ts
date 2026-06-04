@@ -110,6 +110,7 @@ export type TVendor = {
     idProofBack?: string[];
     storePhoto?: string[];
     menuUpload?: string[];
+    agoserisHaccpCertificate?: string[]; // NEW: For food safety certification
   };
 
   // --------------------------------------------------------
@@ -136,6 +137,7 @@ export type TVendorImageDocuments = {
     | 'idProofFront'
     | 'idProofBack'
     | 'storePhoto'
-    | 'menuUpload';
+    | 'menuUpload'
+    | 'agoserisHaccpCertificate';
   docImageUrls: string[];
 };
