@@ -18,6 +18,22 @@ const createPermission = catchAsync(async (req, res) => {
   });
 });
 
+const updatePermission = catchAsync(async (req, res) => {
+  const { permissionId } = req.params;
+  const result = await PermissionServices.updatePermission(
+    permissionId,
+    req.body,
+    req.user as AuthUser,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Permission updated successfully',
+    data: result,
+  });
+});
+
 const getAllPermissions = catchAsync(async (req, res) => {
   const result = await PermissionServices.getAllPermissionsFromDB(req.query);
 
@@ -31,8 +47,9 @@ const getAllPermissions = catchAsync(async (req, res) => {
 });
 
 const getSinglePermission = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const result = await PermissionServices.getSinglePermissionFromDB(id);
+  const { permissionId } = req.params;
+  const result =
+    await PermissionServices.getSinglePermissionFromDB(permissionId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -42,21 +59,9 @@ const getSinglePermission = catchAsync(async (req, res) => {
   });
 });
 
-const updatePermission = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const result = await PermissionServices.updatePermissionInDB(id, req.body);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Permission updated successfully',
-    data: result,
-  });
-});
-
 const deletePermission = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  await PermissionServices.deletePermissionFromDB(id);
+  const { permissionId } = req.params;
+  await PermissionServices.deletePermissionFromDB(permissionId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

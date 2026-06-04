@@ -37,6 +37,53 @@ const createPermission = async (
   return result;
 };
 
+const updatePermission = async (
+  permissionId: string,
+  payload: Partial<TPermission>,
+  currentUser: AuthUser,
+) => {
+  const permission = await Permission.findById(permissionId);
+  if (!permission || permission.isDeleted) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Target system permission not found!',
+    );
+  }
+
+  if (
+    permission.isSystemDefined &&
+    payload.action &&
+    payload.action !== permission.action
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Security Alert: Core system defined permission action codes cannot be altered!',
+    );
+  }
+
+  if (payload.action && payload.action !== permission.action) {
+    const isActionTaken = await Permission.findOne({
+      action: payload.action,
+      isDeleted: { $ne: true },
+    });
+    if (isActionTaken) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `Conflict: Permission action code '${payload.action}' is already registered in another module!`,
+      );
+    }
+  }
+
+  payload.updatedBy = currentUser._id;
+
+  const result = await Permission.findByIdAndUpdate(permissionId, payload, {
+    new: true,
+    runValidators: true,
+  });
+
+  return result;
+};
+
 const getAllPermissionsFromDB = async (query: Record<string, unknown>) => {
   const permissionQuery = new QueryBuilder(
     Permission.find({ isDeleted: { $ne: true } }),
@@ -57,49 +104,11 @@ const getAllPermissionsFromDB = async (query: Record<string, unknown>) => {
   };
 };
 
-const getSinglePermissionFromDB = async (id: string) => {
-  const result = await Permission.findById(id);
+const getSinglePermissionFromDB = async (permissionId: string) => {
+  const result = await Permission.findById(permissionId);
   if (!result || result.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
   }
-  return result;
-};
-
-const updatePermissionInDB = async (
-  id: string,
-  payload: Partial<TPermission>,
-) => {
-  const permission = await Permission.findById(id);
-
-  if (!permission || permission.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
-  }
-
-  if (
-    permission.isSystemDefined &&
-    payload.action &&
-    payload.action !== permission.action
-  ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'System defined core action codes cannot be modified.',
-    );
-  }
-
-  if (payload.action && payload.action !== permission.action) {
-    const isActionExist = await Permission.findOne({ action: payload.action });
-    if (isActionExist) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        'This permission action code is already taken!',
-      );
-    }
-  }
-
-  const result = await Permission.findByIdAndUpdate(id, payload, {
-    new: true,
-    runValidators: true,
-  });
   return result;
 };
 
@@ -167,9 +176,9 @@ const assignPermissionsToAdminInDB = async (
 
 export const PermissionServices = {
   createPermission,
+  updatePermission,
   getAllPermissionsFromDB,
   getSinglePermissionFromDB,
-  updatePermissionInDB,
   deletePermissionFromDB,
   assignPermissionsToAdminInDB,
 };

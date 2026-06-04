@@ -19,13 +19,27 @@ const createPermissionValidationSchema = z.object({
 });
 
 const updatePermissionValidationSchema = z.object({
-  body: z.object({
-    name: z.string().trim().optional(),
-    action: z.string().trim().toUpperCase().optional(),
-    module: z.string().trim().optional(),
-    description: z.string().trim().optional(),
-    isSystemDefined: z.boolean().optional(),
-  }),
+  body: z
+    .object({
+      name: z
+        .string()
+        .trim()
+        .min(3, 'Permission name must be at least 3 characters long')
+        .optional(),
+
+      action: permissionActionZodSchema.optional(),
+
+      module: z.string().trim().optional(),
+      displayName: z.string().trim().optional(),
+      description: z
+        .string()
+        .trim()
+        .max(500, 'Description cannot exceed 500 characters')
+        .optional(),
+      isSystemDefined: z.boolean().optional(),
+      isActive: z.boolean().optional(),
+    })
+    .strict(),
 });
 
 const assignPermissionsValidationSchema = z.object({

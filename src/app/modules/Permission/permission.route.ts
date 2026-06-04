@@ -13,6 +13,13 @@ router.post(
   PermissionControllers.createPermission,
 );
 
+router.patch(
+  '/:permissionId',
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
+  validateRequest(PermissionValidations.updatePermissionValidationSchema),
+  PermissionControllers.updatePermission,
+);
+
 router.get(
   '/',
   auth('SUPER_ADMIN', 'ADMIN'),
@@ -20,20 +27,13 @@ router.get(
 );
 
 router.get(
-  '/:id',
+  '/:permissionId',
   auth('SUPER_ADMIN', 'ADMIN'),
   PermissionControllers.getSinglePermission,
 );
 
-router.patch(
-  '/:id',
-  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
-  validateRequest(PermissionValidations.updatePermissionValidationSchema),
-  PermissionControllers.updatePermission,
-);
-
 router.delete(
-  '/:id',
+  '/:permissionId',
   auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
   PermissionControllers.deletePermission,
 );
