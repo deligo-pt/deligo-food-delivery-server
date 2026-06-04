@@ -739,13 +739,15 @@ const partnerAcceptsDispatchedOrder = async (
 
     const partnerProfile = await DeliveryPartner.findById(
       currentUser.userObjectId,
-    ).lean();
+    )
+      .lean()
+      .select('name operationalData currentSessionLocation');
     if (!partnerProfile) {
       throw new AppError(httpStatus.NOT_FOUND, 'Delivery partner not found.');
     }
 
     const order = await Order.findOne({ orderId })
-      .populate('vendorId')
+      .populate('vendorId', 'userId')
       .session(session);
     if (!order) throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
 
@@ -794,7 +796,7 @@ const partnerAcceptsDispatchedOrder = async (
       );
 
       await DeliveryPartner.updateOne(
-        { userId: currentUser.userId },
+        { _id: partnerProfile._id },
         {
           $inc: { 'operationalData.totalRejectedOrders': 1 },
           $set: { 'operationalData.lastActivityAt': new Date() },
@@ -844,7 +846,7 @@ const partnerAcceptsDispatchedOrder = async (
     }
 
     await DeliveryPartner.updateOne(
-      { _id: currentUser._id },
+      { _id: partnerProfile._id },
       {
         $set: {
           'operationalData.currentOrderId': claimedOrder._id,
