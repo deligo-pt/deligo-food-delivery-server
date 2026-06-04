@@ -137,6 +137,7 @@ export type TVendor = {
     idProofBack?: string[];
     storePhoto?: string[];
     menuUpload?: string[];
+    agoserisHaccpCertificate?: string[];
   };
 
   // --------------------------------------------------------
@@ -179,6 +180,7 @@ export type TVendorImageDocuments = {
     | 'idProofFront'
     | 'idProofBack'
     | 'storePhoto'
-    | 'menuUpload';
+    | 'menuUpload'
+    | 'agoserisHaccpCertificate';
   docImageUrls: string[];
 };
