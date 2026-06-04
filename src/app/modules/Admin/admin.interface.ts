@@ -78,7 +78,7 @@ export type TAdmin = {
   // ------------------------------------------------------------------
   // Permissions & Role Controls
   // ------------------------------------------------------------------
-  permissions: mongoose.Types.ObjectId[];
+  permissions: string[];
   // Example: ['MANAGE_USERS', 'APPROVE_VENDORS']
 
   // ------------------------------------------------------------------
