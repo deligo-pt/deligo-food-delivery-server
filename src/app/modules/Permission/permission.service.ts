@@ -4,18 +4,30 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TPermission } from './permission.interface';
 import { Permission } from './permission.model';
 import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { Admin } from '../Admin/admin.model';
 
-const createPermissionIntoDB = async (
+const createPermission = async (
   payload: TPermission,
   currentUser: AuthUser,
 ) => {
   const isPermissionExist = await Permission.findOne({
     action: payload.action,
   });
-  if (isPermissionExist) {
+
+  const checkDuplicate = await Permission.findOne({
+    action: payload.action,
+  });
+
+  if (checkDuplicate) {
+    if (checkDuplicate.isDeleted) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'This permission action code was previously deleted. Please restore it instead of creating a duplicate.',
+      );
+    }
     throw new AppError(
       httpStatus.CONFLICT,
-      'This permission action code already exists!',
+      'This permission action code already exists and is active!',
     );
   }
 
@@ -113,10 +125,51 @@ const deletePermissionFromDB = async (id: string) => {
   return result;
 };
 
+const assignPermissionsToAdminInDB = async (
+  targetAdminCustomId: string,
+  payload: { permissions: string[] },
+) => {
+  const targetAdmin = await Admin.findOne({
+    userId: targetAdminCustomId,
+    isDeleted: false,
+  });
+
+  if (!targetAdmin) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Admin account not found!');
+  }
+
+  if (payload.permissions.length > 0) {
+    const validPermissionsCount = await Permission.countDocuments({
+      action: { $in: payload.permissions },
+      isDeleted: { $ne: true },
+    });
+
+    if (validPermissionsCount !== payload.permissions.length) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'One or more permission action codes are invalid or do not exist in the system!',
+      );
+    }
+  }
+
+  const result = await Admin.findOneAndUpdate(
+    { userId: targetAdminCustomId },
+    {
+      $set: {
+        permissions: payload.permissions,
+      },
+    },
+    { new: true, runValidators: true },
+  ).select('-password');
+
+  return result;
+};
+
 export const PermissionServices = {
-  createPermissionIntoDB,
+  createPermission,
   getAllPermissionsFromDB,
   getSinglePermissionFromDB,
   updatePermissionInDB,
   deletePermissionFromDB,
+  assignPermissionsToAdminInDB,
 };

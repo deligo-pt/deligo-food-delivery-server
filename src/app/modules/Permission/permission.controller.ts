@@ -5,7 +5,7 @@ import { PermissionServices } from './permission.service';
 import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 const createPermission = catchAsync(async (req, res) => {
-  const result = await PermissionServices.createPermissionIntoDB(
+  const result = await PermissionServices.createPermission(
     req.body,
     req.user as AuthUser,
   );

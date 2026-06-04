@@ -7,7 +7,7 @@ import { PermissionValidations } from './permission.validation';
 const router = express.Router();
 
 router.post(
-  '/',
+  '/create',
   auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
   validateRequest(PermissionValidations.createPermissionValidationSchema),
   PermissionControllers.createPermission,
