@@ -7,10 +7,17 @@ import { PermissionValidations } from './permission.validation';
 const router = express.Router();
 
 router.post(
-  '/',
+  '/create',
   auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
   validateRequest(PermissionValidations.createPermissionValidationSchema),
   PermissionControllers.createPermission,
+);
+
+router.patch(
+  '/:permissionId',
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
+  validateRequest(PermissionValidations.updatePermissionValidationSchema),
+  PermissionControllers.updatePermission,
 );
 
 router.get(
@@ -20,22 +27,29 @@ router.get(
 );
 
 router.get(
-  '/:id',
+  '/:permissionId',
   auth('SUPER_ADMIN', 'ADMIN'),
   PermissionControllers.getSinglePermission,
 );
 
-router.patch(
-  '/:id',
-  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
-  validateRequest(PermissionValidations.updatePermissionValidationSchema),
-  PermissionControllers.updatePermission,
-);
-
 router.delete(
-  '/:id',
+  '/:permissionId',
   auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
   PermissionControllers.deletePermission,
+);
+
+router.patch(
+  '/assign-permissions/:adminId',
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
+  validateRequest(PermissionValidations.assignPermissionsValidationSchema),
+  PermissionControllers.assignPermissionsToAdmin,
+);
+
+router.patch(
+  '/revoke-permissions/:adminId',
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
+  validateRequest(PermissionValidations.assignPermissionsValidationSchema),
+  PermissionControllers.revokePermissionsFromAdmin,
 );
 
 export const PermissionRoutes = router;

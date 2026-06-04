@@ -1,14 +1,5 @@
-import { Types } from 'mongoose';
-
-export type TPermissionAction =
-  | 'CAN_VIEW_DASHBOARD'
-  | 'CAN_MANAGE_ADMINS'
-  | 'CAN_MANAGE_VENDORS'
-  | 'CAN_MANAGE_PARTNERS'
-  | 'CAN_MANAGE_CUSTOMERS'
-  | 'CAN_UPDATE_ORDER'
-  | 'CAN_DELETE_ADDON'
-  | string;
+import { Model, Types } from 'mongoose';
+import { TPermissionAction } from './permission.constant';
 
 export interface TPermission {
   _id?: Types.ObjectId;
@@ -17,6 +8,13 @@ export interface TPermission {
   module: string;
   description?: string;
   isSystemDefined?: boolean;
+
+  displayName?: string;
+  isActive?: boolean;
+
   createdBy?: Types.ObjectId;
+  updatedBy?: Types.ObjectId;
   isDeleted?: boolean;
 }
+
+export type PermissionModel = Model<TPermission, Record<string, never>>;
