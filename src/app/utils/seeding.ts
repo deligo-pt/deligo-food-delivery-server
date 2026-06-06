@@ -1,49 +1,78 @@
 /* eslint-disable no-console */
 import config from '../config';
 
-import { v4 as uuidv4 } from 'uuid';
 import { Admin } from '../modules/Admin/admin.model';
 import {
   USER_ROLE,
   USER_STATUS,
 } from '../constant/GlobalConstant/user.constant';
 import { GlobalSettings } from '../modules/GlobalSetting/globalSetting.model';
+import customNanoId from './customNanoId';
+import { AuthUser } from '../modules/AuthUser/authUser.model';
+import mongoose from 'mongoose';
 
 export const seed = async () => {
-  try {
-    // at first check if the super admin exist or not
-    const superAdmin = await Admin.findOne({
-      role: USER_ROLE.SUPER_ADMIN,
-      email: config.super_admin.super_admin_email,
-      status: USER_STATUS.APPROVED,
-    });
-    if (!superAdmin) {
-      const id = `SA-${uuidv4().split('-')[0]}`;
+  const session = await mongoose.startSession();
 
-      await Admin.create({
-        userId: id,
-        name: 'Super Admin',
-        role: USER_ROLE.SUPER_ADMIN,
-        email: config.super_admin.super_admin_email,
-        password: config.super_admin.super_admin_password,
-        profilePhoto: config.super_admin.super_admin_profile_photo,
-        contactNumber: config.super_admin.super_admin_contact_number,
-        status: USER_STATUS.APPROVED,
-        isEmailVerified: true,
-      });
+  try {
+    session.startTransaction();
+
+    const superAdminExists = await Admin.findOne({
+      role: USER_ROLE.SUPER_ADMIN,
+    }).session(session);
+
+    if (!superAdminExists) {
+      console.log('Seeding Super Admin...');
+      const customUserId = `SA-${customNanoId(8)}`;
+
+      await Admin.create(
+        [
+          {
+            userId: customUserId,
+            name: 'Super Admin',
+            role: USER_ROLE.SUPER_ADMIN,
+            email: config.super_admin.super_admin_email,
+            password: config.super_admin.super_admin_password, // নিশ্চিত করুন মডেলে এটি হ্যাশ হচ্ছে
+            profilePhoto: config.super_admin.super_admin_profile_photo,
+            contactNumber: config.super_admin.super_admin_contact_number,
+            status: USER_STATUS.APPROVED,
+            isEmailVerified: true,
+          },
+        ],
+        { session },
+      );
+
+      await AuthUser.create(
+        [
+          {
+            userId: customUserId,
+            email: config.super_admin.super_admin_email,
+            contactNumber: config.super_admin.super_admin_contact_number,
+            role: USER_ROLE.SUPER_ADMIN,
+          },
+        ],
+        { session },
+      );
+
+      console.log('Super Admin seeded successfully.');
     }
 
     // --------------------------------------------------
     // Seed Global Settings
     // --------------------------------------------------
-    const existingSettings = await GlobalSettings.findOne();
+    const existingSettings = await GlobalSettings.findOne().session(session);
 
     if (!existingSettings) {
-      console.log('Seeding global settings');
-
-      await GlobalSettings.create({});
+      console.log('Seeding global settings...');
+      await GlobalSettings.create([{}], { session });
+      console.log('Global settings seeded successfully.');
     }
+
+    await session.commitTransaction();
   } catch (error) {
-    console.error('Error in seeding', error);
+    await session.abortTransaction();
+    console.error('Error in seeding process:', error);
+  } finally {
+    await session.endSession();
   }
 };

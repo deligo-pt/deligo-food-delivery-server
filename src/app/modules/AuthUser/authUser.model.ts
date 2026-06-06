@@ -30,13 +30,6 @@ const authUserSchema = new Schema<TAuthUser>(
       trim: true,
     },
 
-    // 2. Live Status & Access Control (RBAC)
-    status: {
-      type: String,
-      required: [true, 'Status is required'],
-      default: 'PENDING',
-      trim: true,
-    },
     isDeleted: {
       type: Boolean,
       default: false,
