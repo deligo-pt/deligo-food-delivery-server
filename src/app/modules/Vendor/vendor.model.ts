@@ -162,6 +162,7 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     // Documents * verification
     // -------------------------------------------------------
     documents: {
+      myPhoto: { type: [String], default: [] },
       businessLicenseDoc: { type: [String], default: [] },
       taxDoc: { type: [String], default: [] },
       idProofFront: { type: [String], default: [] },

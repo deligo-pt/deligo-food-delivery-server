@@ -59,6 +59,7 @@ export type TAdmin = {
   // Documents & Verification
   // ---------------------------------------------
   documents?: {
+    myPhoto?: string;
     idProofFront?: string;
     idProofBack?: string;
   };

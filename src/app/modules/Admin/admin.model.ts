@@ -103,6 +103,7 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     // Documents & Verification
     // ---------------------------------------------
     documents: {
+      myPhoto: { type: String, default: '' },
       idProofFront: { type: String, default: '' },
       idProofBack: { type: String, default: '' },
     },
