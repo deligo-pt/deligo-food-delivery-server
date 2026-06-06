@@ -32,30 +32,7 @@ export const seed = async () => {
         isEmailVerified: true,
       });
     }
-    const agent = await Admin.findOne({
-      role: USER_ROLE.AGENT,
-      email: config.agent.email,
-      status: USER_STATUS.APPROVED,
-    });
 
-    if (!agent) {
-      await Admin.deleteMany({
-        role: USER_ROLE.AGENT,
-      });
-      const id = `AG-${uuidv4().split('-')[0]}`;
-
-      await Admin.create({
-        userId: id,
-        name: 'Agent',
-        role: USER_ROLE.AGENT,
-        email: config.agent.email,
-        password: config.agent.password,
-        profilePhoto: config.agent.profile_photo,
-        contactNumber: config.agent.contact_number,
-        status: USER_STATUS.APPROVED,
-        isEmailVerified: true,
-      });
-    }
     // --------------------------------------------------
     // Seed Global Settings
     // --------------------------------------------------

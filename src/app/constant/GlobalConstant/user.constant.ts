@@ -9,7 +9,6 @@ export const USER_ROLE = {
   VENDOR: 'VENDOR',
   SUB_VENDOR: 'SUB_VENDOR',
   DELIVERY_PARTNER: 'DELIVERY_PARTNER',
-  AGENT: 'AGENT',
 } as const;
 
 export type TUserRole = keyof typeof USER_ROLE;
@@ -22,7 +21,6 @@ export const ROLE_COLLECTION_MAP: Record<keyof typeof USER_ROLE, string> = {
   VENDOR: 'Vendor',
   SUB_VENDOR: 'Vendor',
   DELIVERY_PARTNER: 'DeliveryPartner',
-  AGENT: 'Agent',
 } as const;
 
 // User Status constant
@@ -51,7 +49,6 @@ export const ROLE_DEVICE_LIMITS: Record<string, number> = {
   FLEET_MANAGER: 3,
   VENDOR: 3,
   SUB_VENDOR: 3,
-  AGENT: 30,
 };
 
 export const ROLE_PREFIX_MAP: Record<string, TUserRole> = {
@@ -62,5 +59,4 @@ export const ROLE_PREFIX_MAP: Record<string, TUserRole> = {
   C: 'CUSTOMER',
   D: 'DELIVERY_PARTNER',
   FM: 'FLEET_MANAGER',
-  AG: 'AGENT',
 };
