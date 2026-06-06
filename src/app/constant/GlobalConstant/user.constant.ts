@@ -32,6 +32,8 @@ export const USER_STATUS = {
   BLOCKED: 'BLOCKED',
 } as const;
 
+export type TUserStatus = keyof typeof USER_STATUS;
+
 export const UrlPath = {
   CUSTOMER: '/register/create-customer',
   FLEET_MANAGER: '/register/create-fleet-manager',
