@@ -68,4 +68,5 @@ export type TLoginDevice = {
   isVerified: boolean;
   isLoggedIn?: boolean;
   lastLogin?: Date | null;
+  lastLogout?: Date | null;
 };

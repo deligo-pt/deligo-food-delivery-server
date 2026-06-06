@@ -23,6 +23,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 const createReferralEntry = async (
   newUser: { _id: Types.ObjectId | string; role: string },
   referralCode: string,
+  session: ClientSession | null = null,
 ) => {
   if (!referralCode) return null;
 
@@ -38,7 +39,10 @@ const createReferralEntry = async (
   const target = roleMap[newUser.role];
   if (!target) throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role');
 
-  const referrer = await target.model.findOne({ referralCode }).lean();
+  const referrer = await target.model
+    .findOne({ referralCode })
+    .session(session)
+    .lean();
 
   const modelName = target.name;
 
@@ -62,9 +66,9 @@ const createReferralEntry = async (
       isRewardDistributed: false,
     };
 
-    const result = await Referral.create(referralData);
+    const result = await Referral.create([referralData], { session });
 
-    const settings = await GlobalSettings.findOne().lean();
+    const settings = await GlobalSettings.findOne().session(session).lean();
     const riderWelcomeBonus = settings?.rewards?.newRiderWelcomeBonus || 0;
 
     if (newUser.role === USER_ROLE.DELIVERY_PARTNER) {
@@ -76,10 +80,10 @@ const createReferralEntry = async (
             totalEarned: riderWelcomeBonus,
           },
         },
-        { upsert: true },
+        { upsert: true, session },
       );
     }
-    return result;
+    return result[0];
   }
 
   return null;

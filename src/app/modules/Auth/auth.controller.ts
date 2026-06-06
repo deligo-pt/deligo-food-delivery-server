@@ -93,7 +93,7 @@ const updateFcmToken = catchAsync(async (req, res) => {
 const logoutUser = catchAsync(async (req, res) => {
   res.clearCookie('refreshToken');
   const result = await AuthServices.logoutUser(
-    req.user.email,
+    req.user as TCurrentUser,
     req.body.deviceId,
   );
 

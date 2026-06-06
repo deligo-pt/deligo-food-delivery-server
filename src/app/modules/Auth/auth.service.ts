@@ -39,6 +39,7 @@ import {
   TLoginDevice,
 } from '../../constant/GlobalInterface/user.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { IUserModel } from '../../interfaces/user.interface';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
@@ -482,9 +483,6 @@ const loginUser = async (
 const loginCustomer = async (payload: TLoginCustomer) => {
   const { email, contactNumber, referralCode } = payload;
 
-  // -----------------------------------------------------
-  // Validate input
-  // -----------------------------------------------------
   if (!email && !contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -492,14 +490,18 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     );
   }
 
-  // Helper with internal error handling
-  const handleReferral = async (user: any, code?: string) => {
-    if (!code) return;
-    const res = await ReferralServices.createReferralEntry(user, code);
+  const handleReferral = async (
+    user: any,
+    code: string,
+    session: mongoose.ClientSession,
+  ) => {
+    const res = await ReferralServices.createReferralEntry(user, code, session);
     if (res?.referrerId) {
-      await Customer.findByIdAndUpdate(user._id, {
-        referredBy: res.referrerId,
-      });
+      await Customer.findByIdAndUpdate(
+        user._id,
+        { referredBy: res.referrerId },
+        { session },
+      );
     }
   };
 
@@ -508,7 +510,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     value: string,
   ) => {
     const foundAuthUser = await AuthUser.findOne({ [field]: value });
-
     if (foundAuthUser && foundAuthUser.role !== USER_ROLE.CUSTOMER) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -519,133 +520,173 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     }
   };
 
-  // -----------------------------------------------------
-  // Email Login Logic
-  // -----------------------------------------------------
-  if (email) {
-    await verifyNoRoleConflict('email', email);
+  const session = await mongoose.startSession();
 
-    // Fetch existing customer by email
-    const existingCustomer = await Customer.findOne({
-      email,
-    }).lean();
+  try {
+    session.startTransaction();
 
-    // Prevent returning users from using referral codes
-    if (existingCustomer?.referredBy && referralCode) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'You have already been referred by someone. Please login using your email/contact number to use the referral code.',
+    if (email) {
+      await verifyNoRoleConflict('email', email);
+
+      const existingCustomer = await Customer.findOne({ email }).session(
+        session,
       );
-    }
 
-    // Generate OTP
-    const { otp } = generateOtp();
-    const redisOtpKey = `otp:${payload.email}`;
-    await RedisService.set(redisOtpKey, otp, 300); // Store OTP in Redis with 5 minutes expiration
-
-    if (!existingCustomer) {
-      const userId = generateUserId('/create-customer');
-
-      const newUser = await Customer.create({
-        userId,
-        email,
-        requiresOtpVerification: true,
-      });
-
-      await AuthUser.create({
-        userId,
-        role: USER_ROLE.CUSTOMER,
-        email,
-      });
-
-      await handleReferral(newUser, referralCode);
-    } else {
-      if (!existingCustomer.referredBy && referralCode) {
-        await handleReferral(existingCustomer, referralCode);
+      if (existingCustomer?.referredBy && referralCode) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'You have already been referred and cannot apply another referral code.',
+        );
       }
-      await Customer.updateOne(
-        { _id: existingCustomer._id },
-        { requiresOtpVerification: true, isOtpVerified: false },
-      );
-    }
 
-    const emailHtml = await EmailHelper.createEmailContent(
-      {
-        otp,
-        userEmail: payload.email,
-        currentYear: new Date().getFullYear(),
-        date: new Date().toDateString(),
-        user: existingCustomer?.name?.firstName || 'Customer',
-      },
-      'verify-email',
-    );
-    EmailHelper.sendEmail(
-      payload.email,
-      emailHtml,
-      'Verify your email for DeliGo',
-    ).catch((err) => console.error('Email send failed:', err));
+      const { otp } = generateOtp();
+      const redisOtpKey = `otp:${email}`;
+      await RedisService.set(redisOtpKey, otp, 300);
 
-    return { message: 'OTP sent to your email. Please verify to login.' };
-  }
+      if (!existingCustomer) {
+        const userId = generateUserId('/create-customer');
 
-  // -----------------------------------------------------
-  // Mobile Login Logic
-  // -----------------------------------------------------
-  if (contactNumber) {
-    await verifyNoRoleConflict('contactNumber', contactNumber);
-    // Fetch existing customer by mobile number
-    const existingUser = await Customer.findOne({
-      contactNumber,
-    }).lean();
+        const newUsers = await Customer.create(
+          [
+            {
+              userId,
+              email,
+              requiresOtpVerification: true,
+            },
+          ],
+          { session },
+        );
+        const newUser = newUsers[0];
 
-    if (existingUser?.referredBy && referralCode) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'You have already been referred by someone. Please login using your email/contact number to use the referral code.',
-      );
-    }
+        await AuthUser.create(
+          [
+            {
+              userId,
+              role: USER_ROLE.CUSTOMER,
+              email,
+            },
+          ],
+          { session },
+        );
 
-    const isTestNumber =
-      contactNumber ===
-      (config.customer.test_customer_contact_number as string);
+        if (referralCode) {
+          await handleReferral(newUser, referralCode, session);
+        }
+      } else {
+        if (!existingCustomer.referredBy && referralCode) {
+          await handleReferral(existingCustomer, referralCode, session);
+        }
 
-    // Send mobile OTP
-    const res = await sendMobileOtp(contactNumber);
-    const mobileOtpId = isTestNumber ? 'test-otp-id' : res.data.id;
-
-    if (existingUser) {
-      if (!existingUser.referredBy && referralCode) {
-        await handleReferral(existingUser, referralCode);
+        await Customer.updateOne(
+          { _id: existingCustomer._id },
+          { requiresOtpVerification: true, isOtpVerified: false },
+          { session },
+        );
       }
-      await Customer.updateOne(
-        { _id: existingUser._id },
+
+      const emailHtml = await EmailHelper.createEmailContent(
         {
-          mobileOtpId,
-          isOtpVerified: false,
-          requiresOtpVerification: true,
+          otp,
+          userEmail: email,
+          currentYear: new Date().getFullYear(),
+          date: new Date().toDateString(),
+          user: existingCustomer?.name?.firstName || 'Customer',
         },
+        'verify-email',
       );
-    } else {
-      const userId = generateUserId('/create-customer');
-      const newUser = await Customer.create({
-        userId,
-        contactNumber,
-        mobileOtpId,
-        requiresOtpVerification: true,
-      });
 
-      await AuthUser.create({
-        userId,
-        role: USER_ROLE.CUSTOMER,
-        contactNumber,
-      });
+      await session.commitTransaction();
+      session.endSession();
 
-      await handleReferral(newUser, referralCode);
+      EmailHelper.sendEmail(
+        email,
+        emailHtml,
+        'Verify your email for DeliGo',
+      ).catch((err) => console.error('Email send failed:', err));
+
+      return { message: 'OTP sent to your email. Please verify to login.' };
     }
 
-    return {
-      message: 'OTP sent to your mobile number. Please verify to login.',
-    };
+    if (contactNumber) {
+      await verifyNoRoleConflict('contactNumber', contactNumber);
+
+      const existingUser = await Customer.findOne({ contactNumber }).session(
+        session,
+      );
+
+      if (existingUser?.referredBy && referralCode) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'You have already been referred and cannot apply another referral code.',
+        );
+      }
+
+      const isTestNumber =
+        contactNumber ===
+        (config.customer.test_customer_contact_number as string);
+
+      const res = await sendMobileOtp(contactNumber);
+      const mobileOtpId = isTestNumber ? 'test-otp-id' : res.data.id;
+
+      if (existingUser) {
+        if (!existingUser.referredBy && referralCode) {
+          await handleReferral(existingUser, referralCode, session);
+        }
+        await Customer.updateOne(
+          { _id: existingUser._id },
+          {
+            mobileOtpId,
+            isOtpVerified: false,
+            requiresOtpVerification: true,
+          },
+          { session },
+        );
+      } else {
+        const userId = generateUserId('/create-customer');
+
+        const newUsers = await Customer.create(
+          [
+            {
+              userId,
+              contactNumber,
+              mobileOtpId,
+              requiresOtpVerification: true,
+            },
+          ],
+          { session },
+        );
+        const newUser = newUsers[0];
+
+        await AuthUser.create(
+          [
+            {
+              userId,
+              role: USER_ROLE.CUSTOMER,
+              contactNumber,
+            },
+          ],
+          { session },
+        );
+
+        if (referralCode) {
+          await handleReferral(newUser, referralCode, session);
+        }
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return {
+        message: 'OTP sent to your mobile number. Please verify to login.',
+      };
+    }
+  } catch (err) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    console.error('Login Customer Transaction Error:', err);
+    throw err;
   }
 };
 
@@ -695,38 +736,83 @@ const updateFcmToken = async (
 };
 
 // Logout User
-const logoutUser = async (email: string, deviceId: string) => {
-  const result = await findUserByEmail({ email, isDeleted: false });
-  const { user, model } = result || {};
+const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
+  const modelName = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
+  const model = mongoose.model(modelName) as IUserModel<any>;
 
-  if (!user || !model) {
+  if (!model) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      `Unauthorized role: ${modelName}`,
+    );
+  }
+  const updatePipeline: any[] = [
+    {
+      $set: {
+        loginDevices: {
+          $map: {
+            input: '$loginDevices',
+            as: 'device',
+            in: {
+              $cond: {
+                if: { $eq: ['$$device.deviceId', deviceId] },
+                then: {
+                  $mergeObjects: [
+                    '$$device',
+                    { isLoggedIn: false, lastLogout: new Date() },
+                  ],
+                },
+                else: '$$device',
+              },
+            },
+          },
+        },
+        requiresOtpVerification:
+          currentUser.role === 'CUSTOMER'
+            ? {
+                $cond: {
+                  if: { $in: [deviceId, '$loginDevices.deviceId'] },
+                  then: true,
+                  else: '$requiresOtpVerification',
+                },
+              }
+            : '$requiresOtpVerification',
+      },
+    },
+  ];
+
+  const updatedUser = await model.findOneAndUpdate(
+    { _id: currentUser._id },
+    updatePipeline,
+    {
+      new: true,
+    },
+  );
+
+  if (!updatedUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const updateQuery: any = {
-    $set: {
-      'loginDevices.$[elem].isLoggedIn': false,
-    },
-  };
+  const targetDevice = updatedUser.loginDevices?.find(
+    (d: any) => d.deviceId === deviceId,
+  );
 
-  if (user.role === 'CUSTOMER') {
-    updateQuery.$set.isEmailVerified = false;
+  if (!targetDevice) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Device not registered for this user. No changes applied.',
+    );
   }
 
-  const options = {
-    new: true,
-    arrayFilters: [{ 'elem.deviceId': deviceId }],
-  };
-
-  await model.findOneAndUpdate({ _id: user._id }, updateQuery, options);
-
   return {
+    success: true,
     message:
-      user.role === 'CUSTOMER'
+      currentUser.role === 'CUSTOMER'
         ? 'Customer logged out and email verification reset'
-        : `${user?.role} logged out successfully!`,
+        : `${currentUser?.role} logged out successfully!`,
   };
 };
+
 // Change Password
 const changePassword = async (
   currentUser: TCurrentUser,
