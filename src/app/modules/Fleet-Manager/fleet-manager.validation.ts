@@ -74,7 +74,14 @@ const fleetManagerDocImageValidationSchema = z.object({
   body: z
     .object({
       docImageTitle: z.enum(
-        ['myPhoto', 'idProofFront', 'idProofBack', 'businessLicense'],
+        [
+          'myPhoto',
+          'idProofFront',
+          'idProofBack',
+          'businessLicense',
+          'proofOfAddress',
+          'activityDocument',
+        ],
         {
           required_error: 'Document title is required',
         },
@@ -97,7 +104,14 @@ const fleetManagerDocImageDeleteValidationSchema = z.object({
   body: z
     .object({
       docImageTitle: z.enum(
-        ['myPhoto', 'idProofFront', 'idProofBack', 'businessLicense'],
+        [
+          'myPhoto',
+          'idProofFront',
+          'idProofBack',
+          'businessLicense',
+          'proofOfAddress',
+          'activityDocument',
+        ],
         {
           required_error: 'Document image title is required',
         },

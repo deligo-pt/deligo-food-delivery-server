@@ -108,7 +108,7 @@ const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
       ? `${existingProduct.name} - ${selectedVariantLabel}`
       : existingProduct.name,
     image: existingProduct?.images[0] || '',
-    hasVariations: existingProduct?.stock?.hasVariations,
+    hasVariations: hasVariations,
     variationSku: finalVariationSku,
     isActive: true,
     addons: [],

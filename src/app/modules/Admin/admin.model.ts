@@ -128,7 +128,6 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
       type: [String],
       default: [],
     },
-
     // --------------------------------------------------------
     // Admin Workflow & Audit
     // --------------------------------------------------------

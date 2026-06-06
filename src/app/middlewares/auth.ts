@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextFunction, Request, Response } from 'express';
 import httpStatus from 'http-status';
 import { JwtPayload } from 'jsonwebtoken';
@@ -10,6 +11,11 @@ import {
   USER_STATUS,
 } from '../constant/GlobalConstant/user.constant';
 import { findUserById } from '../utils/findUserByEmailOrId';
+import { TPermissionAction } from '../modules/Permission/permission.constant';
+
+function auth(...roles: TUserRole[]): any;
+
+function auth(...args: [...TUserRole[], TPermissionAction[]]): any;
 
 /**
  * Authentication & Authorization Middleware
@@ -18,12 +24,24 @@ import { findUserById } from '../utils/findUserByEmailOrId';
  * 3. Validates password change history to invalidate old tokens.
  * 4. Checks if the specific device session is still active.
  * 5. Verifies if the user has the required roles for the route.
+ * 6. Enforces strict action permissions specifically for the ADMIN role.
  */
-const auth = (...requiredRoles: TUserRole[]) => {
+function auth(...args: any[]) {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    let requiredRoles: TUserRole[] = [];
+    let requiredPermissions: TPermissionAction[] = [];
+
+    const lastArg = args[args.length - 1];
+    if (Array.isArray(lastArg)) {
+      requiredPermissions = lastArg as TPermissionAction[];
+      requiredRoles = args.slice(0, args.length - 1) as TUserRole[];
+    } else {
+      requiredRoles = args as TUserRole[];
+    }
+
     let token: string | undefined;
 
-    // 1. Extract token from Authorization Header (supports both 'Bearer <token>' and raw token)
+    // 1. Extract token from Authorization Header
     const authHeader = req.headers.authorization;
     if (authHeader) {
       if (authHeader.startsWith('Bearer ')) {
@@ -53,12 +71,19 @@ const auth = (...requiredRoles: TUserRole[]) => {
       config.jwt.jwt_access_secret as string,
     ) as JwtPayload;
 
-    const { role, iat, userId, deviceId } = decoded;
+    const {
+      role,
+      iat,
+      userId,
+      deviceId,
+      permissions: tokenPermissions,
+    } = decoded;
 
     // 5. Fetch user and model information from the database
     const result = await findUserById({ userId, isDeleted: false });
     const foundModel = result?.model;
     const user = result?.user;
+
     const status = user?.status;
 
     // 6. Security Check: Prevent access if the user is blocked
@@ -95,18 +120,40 @@ const auth = (...requiredRoles: TUserRole[]) => {
       );
     }
 
+    const isSuperAdmin = role === 'SUPER_ADMIN';
+
     // 9. Role-Based Access Control: Check if the user has the required role to access the route
-    if (requiredRoles && !requiredRoles.includes(role)) {
+    if (
+      !isSuperAdmin &&
+      requiredRoles.length > 0 &&
+      !requiredRoles.includes(role)
+    ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'Access denied. You do not have the necessary permissions.',
+        'Access denied. You do not have the necessary role permission.',
       );
     }
 
-    // 10. Grant Access: Attach user info to req object and proceed to next middleware/controller
+    if (role === 'ADMIN' && requiredPermissions.length > 0) {
+      const adminPermissions: TPermissionAction[] =
+        user.permissions || tokenPermissions || [];
+
+      const hasEveryRequiredPermission = requiredPermissions.every(
+        (permission) => adminPermissions.includes(permission),
+      );
+
+      if (!hasEveryRequiredPermission) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'Access denied. Your Admin account lacks the specific permission required for this action.',
+        );
+      }
+    }
+
+    // 11. Grant Access: Attach user info to req object and proceed to next middleware/controller
     req.user = user;
     next();
   });
-};
+}
 
 export default auth;
