@@ -19,6 +19,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       type: String,
       enum: ['CUSTOMER'],
       required: true,
+      default: 'CUSTOMER',
     },
 
     email: {

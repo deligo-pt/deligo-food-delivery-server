@@ -503,31 +503,35 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     }
   };
 
+  const verifyNoRoleConflict = async (
+    field: 'email' | 'contactNumber',
+    value: string,
+  ) => {
+    const foundAuthUser = await AuthUser.findOne({ [field]: value });
+
+    if (foundAuthUser && foundAuthUser.role !== USER_ROLE.CUSTOMER) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `This ${
+          field === 'email' ? 'email' : 'contact number'
+        } is already registered as (${foundAuthUser.role}).`,
+      );
+    }
+  };
+
   // -----------------------------------------------------
   // Email Login Logic
   // -----------------------------------------------------
   if (email) {
-    // Check if email exists in other user models
-    const checkModels = ALL_USER_MODELS.map((M: any) =>
-      M.isUserExistsByEmail(email).catch(() => null),
-    );
-    const checkUser = await Promise.all(checkModels);
-    const foundUser = checkUser.find((u) => u);
-
-    if (foundUser && foundUser.role !== 'CUSTOMER') {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'This email is already registered as a different role',
-      );
-    }
+    await verifyNoRoleConflict('email', email);
 
     // Fetch existing customer by email
-    const existingUser = await Customer.findOne({
+    const existingCustomer = await Customer.findOne({
       email,
     }).lean();
 
     // Prevent returning users from using referral codes
-    if (existingUser?.referredBy && referralCode) {
+    if (existingCustomer?.referredBy && referralCode) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'You have already been referred by someone. Please login using your email/contact number to use the referral code.',
@@ -539,22 +543,28 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     const redisOtpKey = `otp:${payload.email}`;
     await RedisService.set(redisOtpKey, otp, 300); // Store OTP in Redis with 5 minutes expiration
 
-    if (!existingUser) {
+    if (!existingCustomer) {
       const userId = generateUserId('/create-customer');
 
       const newUser = await Customer.create({
         userId,
-        role: 'CUSTOMER',
         email,
         requiresOtpVerification: true,
       });
+
+      await AuthUser.create({
+        userId,
+        role: USER_ROLE.CUSTOMER,
+        email,
+      });
+
       await handleReferral(newUser, referralCode);
     } else {
-      if (!existingUser.referredBy && referralCode) {
-        await handleReferral(existingUser, referralCode);
+      if (!existingCustomer.referredBy && referralCode) {
+        await handleReferral(existingCustomer, referralCode);
       }
       await Customer.updateOne(
-        { _id: existingUser._id },
+        { _id: existingCustomer._id },
         { requiresOtpVerification: true, isOtpVerified: false },
       );
     }
@@ -565,7 +575,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         userEmail: payload.email,
         currentYear: new Date().getFullYear(),
         date: new Date().toDateString(),
-        user: existingUser?.name?.firstName || 'Customer',
+        user: existingCustomer?.name?.firstName || 'Customer',
       },
       'verify-email',
     );
@@ -582,6 +592,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   // Mobile Login Logic
   // -----------------------------------------------------
   if (contactNumber) {
+    await verifyNoRoleConflict('contactNumber', contactNumber);
     // Fetch existing customer by mobile number
     const existingUser = await Customer.findOne({
       contactNumber,
@@ -618,10 +629,15 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       const userId = generateUserId('/create-customer');
       const newUser = await Customer.create({
         userId,
-        role: 'CUSTOMER',
         contactNumber,
         mobileOtpId,
         requiresOtpVerification: true,
+      });
+
+      await AuthUser.create({
+        userId,
+        role: USER_ROLE.CUSTOMER,
+        contactNumber,
       });
 
       await handleReferral(newUser, referralCode);
