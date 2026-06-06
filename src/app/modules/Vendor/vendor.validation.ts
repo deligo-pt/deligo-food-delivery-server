@@ -68,6 +68,7 @@ const vendorDocImageValidationSchema = z.object({
     .object({
       docImageTitle: z.enum(
         [
+          'myPhoto',
           'businessLicenseDoc',
           'taxDoc',
           'idProofFront',
@@ -97,6 +98,7 @@ const vendorDocImageDeleteValidationSchema = z.object({
     .object({
       docImageTitle: z.enum(
         [
+          'myPhoto',
           'businessLicenseDoc',
           'taxDoc',
           'idProofFront',

@@ -131,6 +131,7 @@ export type TVendor = {
   // Documents & Verification
   // --------------------------------------------------------
   documents?: {
+    myPhoto?: string[];
     businessLicenseDoc?: string[];
     taxDoc?: string[];
     idProofFront?: string[];
@@ -175,6 +176,7 @@ export type TVendor = {
 
 export type TVendorImageDocuments = {
   docImageTitle:
+    | 'myPhoto'
     | 'businessLicenseDoc'
     | 'taxDoc'
     | 'idProofFront'
