@@ -67,8 +67,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     // ------------------------------------------
     // OTP & Password Reset
     // ------------------------------------------
-    otp: { type: String, default: '' },
-    isOtpExpired: { type: Date, default: null },
 
     passwordResetToken: { type: String, default: '' },
     passwordResetTokenExpiresAt: { type: Date, default: null },

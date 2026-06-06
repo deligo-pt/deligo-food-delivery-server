@@ -66,8 +66,6 @@ const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
     // --------------------------------------------------------
     // OTP & Password Reset
     // --------------------------------------------------------
-    otp: { type: String },
-    isOtpExpired: { type: Date },
 
     passwordResetToken: { type: String, default: null },
     passwordResetTokenExpiresAt: { type: Date, default: null },

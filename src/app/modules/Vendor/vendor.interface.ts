@@ -40,10 +40,8 @@ export type TVendor = {
   pendingContactNumber?: string;
 
   // --------------------------------------------------------
-  // OTP & Password Reset
+  //  Password Reset
   // --------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
 
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;

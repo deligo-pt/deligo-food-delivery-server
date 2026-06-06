@@ -24,12 +24,6 @@ export type TAdmin = {
   pendingEmail?: string;
   pendingContactNumber?: string;
 
-  // ------------------------------------------------------
-  // OTP & Password Reset
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-
   passwordResetToken?: string;
   passwordResetTokenExpiresAt?: Date;
   passwordChangedAt?: Date;

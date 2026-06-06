@@ -78,8 +78,7 @@ const deliveryPartnerSchema = new Schema<
     //-------------------------------------------------
     // OTP & Password Reset
     //-------------------------------------------------
-    otp: { type: String },
-    isOtpExpired: { type: Date },
+
     passwordResetToken: { type: String },
     passwordResetTokenExpiresAt: { type: Date },
     passwordChangedAt: { type: Date },

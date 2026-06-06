@@ -51,8 +51,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     // ----------------------------------------------------------------
     // OTP
     // ----------------------------------------------------------------
-    otp: { type: String },
-    isOtpExpired: { type: Date },
+
     requiresOtpVerification: { type: Boolean, default: true },
     mobileOtpId: { type: String, default: '' },
 

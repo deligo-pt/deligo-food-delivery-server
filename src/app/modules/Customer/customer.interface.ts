@@ -26,8 +26,7 @@ export type TCustomer = {
   // ------------------------------------------------------
   // OTP
   // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
+
   requiresOtpVerification?: boolean;
   mobileOtpId?: string;
 

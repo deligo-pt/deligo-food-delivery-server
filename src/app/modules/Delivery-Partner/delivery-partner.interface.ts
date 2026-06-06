@@ -33,8 +33,7 @@ export type TDeliveryPartner = {
   // ------------------------------------------------------
   // OTP & Password Reset
   // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
+
   requiresOtpVerification?: boolean;
 
   passwordResetToken?: string;

@@ -72,10 +72,9 @@ const vendorSchema = new Schema<TVendor, IUserModel<TVendor>>(
     pendingContactNumber: { type: String },
 
     // -------------------------------------------------------
-    // OTP & Password Reset (UNCHANGED)
+    //  Password Reset (UNCHANGED)
     // -------------------------------------------------------
-    otp: { type: String, default: '' },
-    isOtpExpired: { type: Date, default: null },
+
     passwordResetToken: { type: String, default: '' },
     passwordResetTokenExpiresAt: { type: Date, default: null },
     passwordChangedAt: { type: Date, default: null },
