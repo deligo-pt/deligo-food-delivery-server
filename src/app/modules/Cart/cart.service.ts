@@ -657,11 +657,11 @@ const getAllCart = async (
   }
 
   const cart = new QueryBuilder(Cart.find(), query)
-    .fields()
+    .search([])
     .filter()
-    .paginate()
     .sort()
-    .search([]);
+    .paginate()
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     customer: 'name',

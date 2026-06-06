@@ -152,11 +152,11 @@ const getAllRatings = async (
     Rating.find().populate('productId', 'name image'),
     query,
   )
+    .search(['review', 'ratingType'])
     .filter()
     .sort()
     .paginate()
-    .fields()
-    .search(['review', 'ratingType']);
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     reviewerId: 'name userId role',

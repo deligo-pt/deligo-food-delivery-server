@@ -1634,8 +1634,8 @@ const getVendorCustomerReport = async (
     .search(['name.firstName', 'name.lastName', 'contactNumber'])
     .filter()
     .sort()
-    .fields()
-    .paginate();
+    .paginate()
+    .fields();
 
   const meta = await builder.countTotal();
   const customers = await builder.modelQuery;

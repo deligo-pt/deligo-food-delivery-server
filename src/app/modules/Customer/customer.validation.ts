@@ -16,7 +16,6 @@ const updateCustomerDataValidationSchema = z.object({
         .strict()
         .optional(),
 
-      contactNumber: z.string().optional(),
       profilePhoto: z.string().optional(),
 
       // Main Customer Address

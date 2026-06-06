@@ -141,11 +141,11 @@ const getAllSosAlerts = async (
     filterConditions = { 'userId.id': { $in: partnerIds } };
   }
   const sosQuery = new QueryBuilder(SosModel.find(filterConditions), query)
+    .search(['status', 'role', 'issueTags'])
     .filter()
     .sort()
     .paginate()
-    .fields()
-    .search(['status', 'role', 'issueTags']);
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     id: 'name userId',
@@ -203,11 +203,11 @@ const getUserSosHistory = async (
     SosModel.find({ 'userId.id': userId }),
     query,
   )
+    .search(['status', 'role', 'issueTags'])
     .filter()
     .sort()
     .paginate()
-    .fields()
-    .search(['status', 'role', 'issueTags']);
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     id: 'name',

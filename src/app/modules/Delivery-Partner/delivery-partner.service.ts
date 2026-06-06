@@ -283,11 +283,11 @@ const getAllDeliveryPartnersFromDB = async (
   }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(DeliveryPartnerSearchableFields)
     .filter()
-    .search(DeliveryPartnerSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',

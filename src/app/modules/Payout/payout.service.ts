@@ -316,11 +316,11 @@ const getAllPayouts = async (
       .populate('senderId', 'name role'),
     filter,
   )
+    .search([])
     .filter()
     .sort()
     .paginate()
-    .fields()
-    .search([]);
+    .fields();
 
   const rawResult = await payoutQuery.modelQuery;
   const meta = await payoutQuery.countTotal();

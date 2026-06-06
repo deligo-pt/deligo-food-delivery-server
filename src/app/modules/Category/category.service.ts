@@ -77,11 +77,11 @@ const getAllBusinessCategories = async (
     ((query.isActive = true), (query.isDeleted = false));
   }
   const businessCategories = new QueryBuilder(BusinessCategory.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['name', 'slug'])
     .filter()
-    .search(['name', 'slug']);
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     businessCategories.countTotal(),
@@ -263,11 +263,11 @@ const getAllProductCategories = async (
 
   // Build and execute the query
   const productCategories = new QueryBuilder(ProductCategory.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['name', 'slug'])
     .filter()
-    .search(['name', 'slug']);
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     productCategories.countTotal(),

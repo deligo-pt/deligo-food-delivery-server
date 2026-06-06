@@ -400,11 +400,11 @@ const getAllAgreements = async (
   }
 
   const agreements = new QueryBuilder(Agreement.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['email', 'establishmentName'])
     .filter()
-    .search(['email', 'establishmentName']);
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     agreements.countTotal(),

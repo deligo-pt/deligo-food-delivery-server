@@ -530,11 +530,11 @@ const getAllOffers = async (
     delete query.isExpired;
   }
   const offers = new QueryBuilder(Offer.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['title', 'code'])
     .filter()
-    .search(['title', 'code']);
+    .sort()
+    .paginate()
+    .fields();
   const meta = await offers.countTotal();
   const data = await offers.modelQuery;
   return {
@@ -700,4 +700,3 @@ export const OfferServices = {
   softDeleteOffer,
   permanentDeleteOffer,
 };
-

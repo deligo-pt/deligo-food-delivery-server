@@ -217,11 +217,11 @@ const getMyNotifications = async (
     }),
     query,
   )
+    .search(['title', 'message', 'receiverRole'])
     .filter()
-    .fields()
-    .paginate()
     .sort()
-    .search(['title', 'message', 'receiverRole']);
+    .paginate()
+    .fields();
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
   return {
@@ -240,11 +240,11 @@ const getAllNotifications = async (
   }
 
   const notifications = new QueryBuilder(Notification.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['title', 'message', 'receiverRole'])
     .filter()
-    .search(['title', 'message', 'receiverRole']);
+    .sort()
+    .paginate()
+    .fields();
 
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;

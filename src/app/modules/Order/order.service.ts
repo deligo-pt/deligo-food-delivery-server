@@ -1036,11 +1036,11 @@ const getAllOrders = async (
   // Build Query with QueryBuilder
   // -----------------------------
   const builder = new QueryBuilder(Order.find(), query)
+    .search(OrderSearchableFields)
     .filter()
     .sort()
-    .fields()
     .paginate()
-    .search(OrderSearchableFields);
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:

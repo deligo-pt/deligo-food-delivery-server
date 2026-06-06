@@ -346,11 +346,11 @@ const getAllVendors = async (
     );
   }
   const vendors = new QueryBuilder(Vendor.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(VendorSearchableFields)
     .filter()
-    .search(VendorSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',

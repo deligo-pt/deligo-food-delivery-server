@@ -231,11 +231,11 @@ const deleteFleetManagerDocument = async (
 // get all fleet managers
 const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
   const fleetManagers = new QueryBuilder(FleetManager.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(FleetManagerSearchableFields)
     .filter()
-    .search(FleetManagerSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
   const meta = await fleetManagers.countTotal();
 
   const data = await fleetManagers.modelQuery;

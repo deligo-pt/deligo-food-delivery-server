@@ -146,12 +146,11 @@ const adminDocImageUpload = async (
 // get all admin service
 const getAllAdmins = async (query: Record<string, unknown>) => {
   const admins = new QueryBuilder(Admin.find(), query)
+    .search(AdminSearchableFields)
     .filter()
     .sort()
-    .fields()
     .paginate()
-    .search(AdminSearchableFields);
-
+    .fields();
   const meta = await admins.countTotal();
   const data = await admins.modelQuery;
 
