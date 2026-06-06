@@ -13,7 +13,7 @@ export const USER_ROLE = {
 
 export type TUserRole = keyof typeof USER_ROLE;
 
-export const ROLE_COLLECTION_MAP: Record<keyof typeof USER_ROLE, string> = {
+export const ROLE_COLLECTION_MAP: Record<TUserRole, string> = {
   SUPER_ADMIN: 'Admin',
   ADMIN: 'Admin',
   CUSTOMER: 'Customer',

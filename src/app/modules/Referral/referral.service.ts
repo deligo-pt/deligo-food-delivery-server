@@ -2,6 +2,7 @@
 import mongoose, { ClientSession, Types } from 'mongoose';
 import {
   ROLE_COLLECTION_MAP,
+  TUserRole,
   USER_ROLE,
 } from '../../constant/GlobalConstant/user.constant';
 import { Customer } from '../Customer/customer.model';
@@ -202,8 +203,7 @@ const distributeReferralBonus = async (
 };
 
 const getReferralStats = async (currentUser: TCurrentUser) => {
-  const userModel =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const userModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
   const [referrals, settings, userBalance, userData] = await Promise.all([
     Referral.find({ referrerId: currentUser._id })
       .populate('referredId', 'name profilePhoto email')

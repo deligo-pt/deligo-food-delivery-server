@@ -3,6 +3,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import {
   ROLE_COLLECTION_MAP,
+  TUserRole,
   USER_STATUS,
 } from '../../constant/GlobalConstant/user.constant';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
@@ -38,8 +39,7 @@ const updateMyProfile = async (
   profilePhoto: string | null,
   payload: Partial<TUserProfileUpdate>,
 ) => {
-  const modelName =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const modelName = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
   const model = mongoose.model(modelName) as any;
 
   if (!currentUser) {

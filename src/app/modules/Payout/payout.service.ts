@@ -3,7 +3,10 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import mongoose from 'mongoose';
 import { Payout } from './payout.model';
-import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
+import {
+  ROLE_COLLECTION_MAP,
+  TUserRole,
+} from '../../constant/GlobalConstant/user.constant';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { findUserById } from '../../utils/findUserByEmailOrId';
 import { QueryBuilder } from '../../builder/QueryBuilder';
@@ -24,8 +27,7 @@ const initiateSettlement = async (
   session.startTransaction();
 
   const { _id: senderId, role: senderRole } = currentUser;
-  const senderModel =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const senderModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
 
   const { user } = await findUserById({ userId: targetUserId });
 
@@ -33,8 +35,7 @@ const initiateSettlement = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
   }
   const userId = user?._id;
-  const targetUserModel =
-    ROLE_COLLECTION_MAP[user?.role as keyof typeof ROLE_COLLECTION_MAP];
+  const targetUserModel = ROLE_COLLECTION_MAP[user?.role as TUserRole];
 
   try {
     if (senderRole === 'FLEET_MANAGER') {
@@ -166,8 +167,7 @@ const finalizeSettlement = async (
   session.startTransaction();
 
   const processedBy = new mongoose.Types.ObjectId(currentUser._id);
-  const processorModel =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const processorModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
 
   try {
     const payout = await Payout.findOne({ payoutId })

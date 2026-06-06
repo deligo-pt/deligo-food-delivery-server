@@ -9,7 +9,10 @@ import {
   calcAndUpdateProduct,
   calcAndUpdateVendorAllProductStats,
 } from './rating.constant';
-import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
+import {
+  ROLE_COLLECTION_MAP,
+  TUserRole,
+} from '../../constant/GlobalConstant/user.constant';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Order } from '../Order/order.model';
@@ -40,8 +43,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
     }
 
-    const reviewerModel =
-      ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+    const reviewerModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
     payload.reviewerId = currentUser._id;
     payload.reviewerModel = reviewerModel as TRefModel;
 

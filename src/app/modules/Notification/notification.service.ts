@@ -465,8 +465,7 @@ const sendBroadcastNotification = async (
   } = payload;
 
   for (const role of targetAudience) {
-    const modelName =
-      ROLE_COLLECTION_MAP[role as keyof typeof ROLE_COLLECTION_MAP];
+    const modelName = ROLE_COLLECTION_MAP[role as TUserRole];
     const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
     if (!Model) continue;
 

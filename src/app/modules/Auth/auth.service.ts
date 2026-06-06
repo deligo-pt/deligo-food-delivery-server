@@ -83,8 +83,7 @@ const registerUser = async <
           'User already deleted. Please contact support for use this email.',
         );
       }
-      const prevModelData =
-        ROLE_COLLECTION_MAP[existingUser.role as keyof typeof USER_ROLE];
+      const prevModelData = ROLE_COLLECTION_MAP[existingUser.role as TUserRole];
       if (prevModelData) {
         const prevModel = mongoose.model(prevModelData);
         const prevUser = await prevModel
@@ -257,8 +256,7 @@ const onboardUser = async <
           'User already deleted. Please contact support for use this email.',
         );
       }
-      const prevModelData =
-        ROLE_COLLECTION_MAP[existingUser.role as keyof typeof USER_ROLE];
+      const prevModelData = ROLE_COLLECTION_MAP[existingUser.role as TUserRole];
       if (prevModelData) {
         const prevModel = mongoose.model(prevModelData);
         const prevUser = await prevModel
@@ -409,7 +407,9 @@ const loginUser = async (
     lastLogin: new Date(),
   };
 
-  const existingDeviceIndex = user.loginDevices?.findIndex(
+  const loginDevices = user.loginDevices || [];
+
+  const existingDeviceIndex = loginDevices.findIndex(
     (device: TLoginDevice) => device.deviceId === newDevice.deviceId,
   );
 
@@ -651,8 +651,7 @@ const updateFcmToken = async (
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const modelName =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const modelName = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
   const model = mongoose.model(modelName) as any;
 
   const updatedUser = await model.findOneAndUpdate(
@@ -719,8 +718,7 @@ const changePassword = async (
 ) => {
   // checking if the user is exist
 
-  const modelName =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const modelName = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
 
   const model = mongoose.model(modelName) as any;
 

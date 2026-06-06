@@ -1,6 +1,9 @@
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
+import {
+  ROLE_COLLECTION_MAP,
+  TUserRole,
+} from '../../constant/GlobalConstant/user.constant';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
@@ -15,8 +18,7 @@ const triggerSos = async (
   payload: Partial<TSos>,
   currentUser: TCurrentUser,
 ) => {
-  const userModelType =
-    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const userModelType = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
   const sosLocation = currentUser.currentSessionLocation?.coordinates;
   if (!sosLocation) {
     throw new AppError(
