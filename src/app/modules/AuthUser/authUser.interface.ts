@@ -15,7 +15,6 @@ export type TAuthUser = {
   // ------------------------------------------------------------------
   // 2. Live Status & Access Control (RBAC)
   // ------------------------------------------------------------------
-  status: TUserStatus; // Live status of the user (e.g., 'APPROVED', 'PENDING', etc.)
   isDeleted: boolean; // Soft delete flag for database retention
 
   createdAt?: Date;
