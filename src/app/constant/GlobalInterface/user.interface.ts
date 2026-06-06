@@ -17,10 +17,6 @@ export type AuthUser = {
   mobileOtpId?: string;
   contactNumber: string;
   email: string;
-  pendingContactNumber?: string;
-  otp?: string;
-  isOtpExpired?: Date;
-  pendingEmail?: string;
   currentSessionLocation?: {
     type: 'Point';
     coordinates: [number, number];
