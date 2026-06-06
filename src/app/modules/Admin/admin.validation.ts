@@ -73,7 +73,7 @@ const verifyOtpValidationSchema = z.object({
 const adminDocImageValidationSchema = z.object({
   body: z
     .object({
-      docImageTitle: z.enum(['idProofFront', 'idProofBack'], {
+      docImageTitle: z.enum(['myPhoto', 'idProofFront', 'idProofBack'], {
         required_error: 'Document title is required',
       }),
     })
