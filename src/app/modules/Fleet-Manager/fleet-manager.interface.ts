@@ -99,6 +99,8 @@ export type TFleetManager = {
     idProofFront?: string[];
     idProofBack?: string[];
     businessLicense?: string[];
+    proofOfAddress?: string[];
+    activityDocument?: string[];
   };
 
   // ---------------------------------------------
@@ -141,6 +143,12 @@ export type TFleetManager = {
 };
 
 export type TFleetManagerImageDocuments = {
-  docImageTitle: 'myPhoto' | 'idProofFront' | 'idProofBack' | 'businessLicense';
+  docImageTitle:
+    | 'myPhoto'
+    | 'idProofFront'
+    | 'idProofBack'
+    | 'businessLicense'
+    | 'proofOfAddress'
+    | 'activityDocument';
   docImageUrls: string[];
 };
