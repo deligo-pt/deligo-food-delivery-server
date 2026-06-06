@@ -7,6 +7,7 @@ import { Model } from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import {
   ALL_USER_MODELS,
+  ROLE_ONBOARD_PERMISSIONS,
   TApprovedRejectsPayload,
   USER_MODEL_MAP,
 } from './auth.constant';
@@ -68,9 +69,7 @@ const registerUser = async <
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
-  const existingUser = await AuthUser.findOne({ email: payload.email }).select(
-    'userId email role status _id',
-  );
+  const existingUser = await AuthUser.findOne({ email: payload.email });
 
   const session = await mongoose.startSession();
 
@@ -78,6 +77,12 @@ const registerUser = async <
     session.startTransaction();
 
     if (existingUser) {
+      if (existingUser.isDeleted) {
+        throw new AppError(
+          httpStatus.CONFLICT,
+          'User already deleted. Please contact support for use this email.',
+        );
+      }
       const prevModelData =
         ROLE_COLLECTION_MAP[existingUser.role as keyof typeof USER_ROLE];
       if (prevModelData) {
@@ -115,7 +120,6 @@ const registerUser = async <
           userId: userCustomId,
           email: payload.email,
           role: payload.role,
-          status: 'PENDING',
         },
       ],
       { session },
@@ -201,16 +205,7 @@ const onboardUser = async <
     );
   }
 
-  const rolePermissions: Record<string, TUserRole[]> = {
-    'delivery-partner': ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
-    'sub-vendor': ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
-    'fleet-manager': ['ADMIN', 'SUPER_ADMIN'],
-    vendor: ['ADMIN', 'SUPER_ADMIN'],
-    customer: ['ADMIN', 'SUPER_ADMIN'],
-    admin: ['SUPER_ADMIN'],
-  };
-
-  const allowedRoles = rolePermissions[targetRole.toLowerCase()];
+  const allowedRoles = ROLE_ONBOARD_PERMISSIONS[targetRole.toLowerCase()];
 
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
     throw new AppError(
@@ -219,67 +214,16 @@ const onboardUser = async <
     );
   }
 
-  const { Model, idField } = modelData;
-  const mongooseModel = Model as unknown as Model<T>;
+  const { Model: MongooseModel, idField } = modelData;
+  const targetModel = MongooseModel as unknown as Model<T>;
 
   const userID = generateUserId(mapKey);
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
-  // const checkModels = ALL_USER_MODELS.map((M: any) =>
-  //   M.isUserExistsByEmail(payload.email).catch(() => null),
-  // );
-  // const checkResults = await Promise.all(checkModels);
-
-  const checkUserPromise = Promise.all(
-    ALL_USER_MODELS.map((M: any) =>
-      M.isUserExistsByEmail(
-        payload.email,
-        'email isEmailVerified role isDeleted',
-      ).catch(() => null),
-    ),
-  );
-
-  const emailContentPromise = await EmailHelper.createEmailContent(
-    {
-      otp,
-      userEmail: payload.email,
-      currentYear: new Date().getFullYear(),
-      date: new Date().toDateString(),
-      user: payload.role.toLowerCase(),
-    },
-    'verify-email',
-  );
-
-  const [checkResults, emailHtml] = await Promise.all([
-    checkUserPromise,
-    emailContentPromise,
-  ]);
-
-  const existingUser = checkResults.find((user) => user && user.email);
-
-  if (existingUser) {
-    if (existingUser?.isDeleted) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        'User already deleted. Please contact support for use this email.',
-      );
-    }
-    if (existingUser.isEmailVerified) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        `${existingUser.email} is already registered as ${existingUser.role}.`,
-      );
-    } else {
-      const index = checkResults.findIndex(
-        (u) => u?.email === existingUser.email,
-      );
-      await ALL_USER_MODELS[index].deleteOne({ email: existingUser.email });
-    }
-  }
+  const existingUser = await AuthUser.findOne({ email: payload.email });
 
   let registeredByValue: any;
-
   if (
     ['vendor', 'sub-vendor', 'delivery-partner'].includes(
       targetRole.toLowerCase(),
@@ -299,28 +243,96 @@ const onboardUser = async <
     registeredByValue = currentUser._id;
   }
 
-  let createdUser;
+  const session = await mongoose.startSession();
+
   try {
-    const result = await mongooseModel.create([
-      {
-        ...payload,
-        [idField]: userID,
-        registeredBy: registeredByValue,
-        isEmailVerified: false,
-        status: USER_STATUS.PENDING,
-      },
-    ]);
-    createdUser = result[0];
-    const redisOtpKey = `otp:${payload.email}`;
-    await RedisService.set(redisOtpKey, otp, 300);
+    session.startTransaction();
+
+    if (existingUser) {
+      console.log(existingUser);
+
+      if (existingUser.isDeleted) {
+        throw new AppError(
+          httpStatus.CONFLICT,
+          'User already deleted. Please contact support for use this email.',
+        );
+      }
+      const prevModelData =
+        ROLE_COLLECTION_MAP[existingUser.role as keyof typeof USER_ROLE];
+      if (prevModelData) {
+        const prevModel = mongoose.model(prevModelData);
+        const prevUser = await prevModel
+          .findOne({ userId: existingUser.userId })
+          .session(session);
+
+        if (prevUser && (prevUser as any).isEmailVerified) {
+          throw new AppError(
+            httpStatus.CONFLICT,
+            `${existingUser.email} is already registered as ${existingUser.role}.`,
+          );
+        }
+
+        await prevModel.deleteOne({ userId: existingUser.userId }, { session });
+      }
+      await AuthUser.deleteOne({ _id: existingUser._id }, { session });
+    }
+
+    await targetModel.create(
+      [
+        {
+          ...payload,
+          [idField]: userID,
+          registeredBy: registeredByValue,
+          isEmailVerified: false,
+          status: 'PENDING',
+          role: payload.role,
+        },
+      ],
+      { session },
+    );
+
+    await AuthUser.create(
+      [
+        {
+          userId: userID,
+          email: payload.email,
+          role: payload.role,
+        },
+      ],
+      { session },
+    );
+
+    await session.commitTransaction();
   } catch (err: any) {
-    if (err?.code === 11000)
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.error('Onboarding Transaction Failed:', err);
+
+    if (err?.code === 11000) {
       throw new AppError(
         httpStatus.CONFLICT,
-        'User ID or Email already exists',
+        'User Id or Email already exists',
       );
+    }
     throw err;
+  } finally {
+    await session.endSession();
   }
+
+  const redisOtpKey = `otp:${payload.email}`;
+  await RedisService.set(redisOtpKey, otp, 300);
+
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      otp,
+      userEmail: payload.email,
+      currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
+      user: payload.role.toLowerCase(),
+    },
+    'verify-email',
+  );
 
   EmailHelper.sendEmail(
     payload.email,
@@ -330,7 +342,11 @@ const onboardUser = async <
 
   return {
     message: `${payload.role} onboarded successfully. Verification email sent to ${payload.email}`,
-    data: createdUser,
+    data: {
+      email: payload.email,
+      role: payload.role,
+      status: 'PENDING',
+    },
   };
 };
 

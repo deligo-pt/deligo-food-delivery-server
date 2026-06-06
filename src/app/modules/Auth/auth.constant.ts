@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { TUserRole } from '../../constant/GlobalConstant/user.constant';
 import { IUserModel } from '../../interfaces/user.interface';
 import { Admin } from '../Admin/admin.model';
 import { Customer } from '../Customer/customer.model';
@@ -32,4 +33,13 @@ export type TApprovedRejectsPayload = {
   approvedBy?: string;
   rejectedBy?: string;
   remarks?: string;
+};
+
+export const ROLE_ONBOARD_PERMISSIONS: Record<string, TUserRole[]> = {
+  'delivery-partner': ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
+  'sub-vendor': ['ADMIN', 'SUPER_ADMIN', 'VENDOR'],
+  'fleet-manager': ['ADMIN', 'SUPER_ADMIN'],
+  vendor: ['ADMIN', 'SUPER_ADMIN'],
+  customer: ['ADMIN', 'SUPER_ADMIN'],
+  admin: ['SUPER_ADMIN'],
 };
