@@ -1,12 +1,15 @@
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { SosService } from './sos.service';
 
 // Controller logic snippet
 const triggerSos = catchAsync(async (req, res) => {
-  const result = await SosService.triggerSos(req.body, req.user as AuthUser);
+  const result = await SosService.triggerSos(
+    req.body,
+    req.user as TCurrentUser,
+  );
 
   sendResponse(res, {
     success: true,
@@ -19,7 +22,7 @@ const triggerSos = catchAsync(async (req, res) => {
 // update sos status controller
 const updateSosStatus = catchAsync(async (req, res) => {
   const sosId = req.params.id;
-  const adminId = (req.user as AuthUser)._id.toString();
+  const adminId = (req.user as TCurrentUser)._id.toString();
   const result = await SosService.updateSosStatus(sosId, adminId, req.body);
   sendResponse(res, {
     success: true,
@@ -30,7 +33,7 @@ const updateSosStatus = catchAsync(async (req, res) => {
 });
 
 const getNearbySosAlerts = catchAsync(async (req, res) => {
-  const result = await SosService.getNearbySosAlerts(req.user as AuthUser);
+  const result = await SosService.getNearbySosAlerts(req.user as TCurrentUser);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -43,7 +46,7 @@ const getNearbySosAlerts = catchAsync(async (req, res) => {
 const getAllSosAlerts = catchAsync(async (req, res) => {
   const result = await SosService.getAllSosAlerts(
     req.query,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -58,7 +61,7 @@ const getAllSosAlerts = catchAsync(async (req, res) => {
 const getSingleSosAlert = catchAsync(async (req, res) => {
   const result = await SosService.getSingleSosAlert(
     req.params.id,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -71,7 +74,7 @@ const getSingleSosAlert = catchAsync(async (req, res) => {
 // get sos alerts by user id controller
 const getUserSosHistory = catchAsync(async (req, res) => {
   const result = await SosService.getUserSosHistory(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     req.params.id,
     req.query,
   );
@@ -86,7 +89,7 @@ const getUserSosHistory = catchAsync(async (req, res) => {
 
 // get sos stats controller
 const getSosStats = catchAsync(async (req, res) => {
-  const result = await SosService.getSosStats(req.user as AuthUser);
+  const result = await SosService.getSosStats(req.user as TCurrentUser);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -104,4 +107,3 @@ export const SosController = {
   getUserSosHistory,
   getSosStats,
 };
-

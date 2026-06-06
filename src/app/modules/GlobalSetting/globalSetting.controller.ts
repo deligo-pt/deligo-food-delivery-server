@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { GlobalSettingsService } from './globalSetting.service';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // create global settings controller
 const createGlobalSettings = catchAsync(async (req, res) => {
   const result = await GlobalSettingsService.createGlobalSettings(
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -22,7 +22,7 @@ const createGlobalSettings = catchAsync(async (req, res) => {
 const updateGlobalSettings = catchAsync(async (req, res) => {
   const result = await GlobalSettingsService.updateGlobalSettings(
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -35,7 +35,7 @@ const updateGlobalSettings = catchAsync(async (req, res) => {
 // get global settings for admin controller
 const getGlobalSettingsForAdmin = catchAsync(async (req, res) => {
   const result = await GlobalSettingsService.getGlobalSettingsForAdmin(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -50,4 +50,3 @@ export const GlobalSettingControllers = {
   updateGlobalSettings,
   getGlobalSettingsForAdmin,
 };
-

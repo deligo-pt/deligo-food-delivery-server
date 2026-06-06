@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { RatingServices } from './rating.service';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // create rating controller
 const createRating = catchAsync(async (req, res) => {
   const result = await RatingServices.createRating(
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -22,7 +22,7 @@ const createRating = catchAsync(async (req, res) => {
 const getAllRatings = catchAsync(async (req, res) => {
   const result = await RatingServices.getAllRatings(
     req.query,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -36,7 +36,7 @@ const getAllRatings = catchAsync(async (req, res) => {
 const getSingleRating = catchAsync(async (req, res) => {
   const result = await RatingServices.getSingleRating(
     req.params.ratingId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -47,7 +47,9 @@ const getSingleRating = catchAsync(async (req, res) => {
 });
 
 const getRatingSummary = catchAsync(async (req, res) => {
-  const result = await RatingServices.getRatingSummary(req.user as AuthUser);
+  const result = await RatingServices.getRatingSummary(
+    req.user as TCurrentUser,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -62,4 +64,3 @@ export const RatingControllers = {
   getRatingSummary,
   getSingleRating,
 };
-

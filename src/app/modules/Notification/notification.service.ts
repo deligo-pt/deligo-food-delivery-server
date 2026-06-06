@@ -4,7 +4,7 @@ import {
   ROLE_COLLECTION_MAP,
   TUserRole,
 } from '../../constant/GlobalConstant/user.constant';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { ALL_USER_MODELS } from '../Auth/auth.constant';
@@ -181,7 +181,7 @@ const sendToRole = (
 };
 
 // mark as read (one)
-const markAsRead = async (id: string, currentUser: AuthUser) => {
+const markAsRead = async (id: string, currentUser: TCurrentUser) => {
   const notification = await Notification.findById(id);
   if (!notification) {
     throw new AppError(httpStatus.NOT_FOUND, 'Notification not found');
@@ -199,7 +199,7 @@ const markAsRead = async (id: string, currentUser: AuthUser) => {
 };
 
 // mark as read (all)
-const markAllAsRead = async (currentUser: AuthUser) => {
+const markAllAsRead = async (currentUser: TCurrentUser) => {
   await Notification.updateMany(
     { receiverId: currentUser.userId },
     { isRead: true },
@@ -208,7 +208,7 @@ const markAllAsRead = async (currentUser: AuthUser) => {
 };
 
 const getMyNotifications = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   query: Record<string, unknown>,
 ) => {
   const notifications = new QueryBuilder(
@@ -232,7 +232,7 @@ const getMyNotifications = async (
 
 // Get all notifications
 const getAllNotifications = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   query: Record<string, unknown>,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
@@ -254,7 +254,7 @@ const getAllNotifications = async (
 // soft delete single notification
 const softDeleteSingleNotification = async (
   id: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // --------------------------------------------------
   // Build query condition
@@ -295,7 +295,7 @@ const softDeleteSingleNotification = async (
 // soft delete multiple notifications
 const softDeleteMultipleNotifications = async (
   notificationIds: string[],
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (!notificationIds.length) {
     throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
@@ -327,7 +327,7 @@ const softDeleteMultipleNotifications = async (
 };
 
 // soft delete all notifications
-const softDeleteAllNotifications = async (currentUser: AuthUser) => {
+const softDeleteAllNotifications = async (currentUser: TCurrentUser) => {
   // --------------------------------------------------
   // Build query condition
   // --------------------------------------------------
@@ -355,7 +355,7 @@ const softDeleteAllNotifications = async (currentUser: AuthUser) => {
 // permanent delete single notification - only for super admin
 const permanentDeleteSingleNotification = async (
   id: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // --------------------------------------------------
   // Only SUPER_ADMIN allowed
@@ -392,7 +392,7 @@ const permanentDeleteSingleNotification = async (
 // permanent delete multiple notifications - only for super admin
 const permanentDeleteMultipleNotifications = async (
   notificationIds: string[],
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
@@ -426,7 +426,7 @@ const permanentDeleteMultipleNotifications = async (
 };
 
 // permanent delete all notifications - only for super admin
-const permanentDeleteAllNotifications = async (currentUser: AuthUser) => {
+const permanentDeleteAllNotifications = async (currentUser: TCurrentUser) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,

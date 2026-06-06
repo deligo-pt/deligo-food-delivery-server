@@ -9,7 +9,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
 import { Order } from '../Order/order.model';
 import { findUserById } from '../../utils/findUserByEmailOrId';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 /**
  * Checks for an existing active ticket.
@@ -65,7 +65,7 @@ const getOrCreateActiveTicket = async (
   return ticket;
 };
 
-const createMessage = async (payload: any, currentUser: AuthUser) => {
+const createMessage = async (payload: any, currentUser: TCurrentUser) => {
   const { user: loggedInUser } = await findUserById({
     userId: currentUser.userId,
   });
@@ -174,7 +174,7 @@ const createMessage = async (payload: any, currentUser: AuthUser) => {
 
 const getAllTickets = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const isAgent =
     currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
@@ -215,7 +215,7 @@ const getMessagesByTicketId = async (
 
 const markReadByAdminOrUser = async (
   ticketId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const customUserId = currentUser.userId;
   await SupportMessage.updateMany(
@@ -240,7 +240,7 @@ const markReadByAdminOrUser = async (
   };
 };
 
-const closeTicket = async (ticketId: string, currentUser: AuthUser) => {
+const closeTicket = async (ticketId: string, currentUser: TCurrentUser) => {
   const { user: loggedInUser } = await findUserById({
     userId: currentUser.userId,
   });

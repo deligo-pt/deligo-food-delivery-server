@@ -5,12 +5,12 @@ import { Admin, TAdminImageDocuments } from './admin.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
   adminId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // -----------------------------------------
   // Check if admin exists
@@ -96,7 +96,7 @@ const updateAdmin = async (
 const adminDocImageUpload = async (
   file: string | undefined,
   data: TAdminImageDocuments,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   adminId: string,
 ) => {
   const existingAdmin = await Admin.findOne({ userId: adminId });
@@ -161,7 +161,7 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
 };
 
 // get single admin service
-const getSingleAdmin = async (adminId: string, currentUser: AuthUser) => {
+const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
   // ---------------------------------------------------------
   // Authorization Logic
   // ---------------------------------------------------------

@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TSos } from './sos.interface';
@@ -11,7 +11,10 @@ import { getIO } from '../../lib/Socket';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 
 // trigger SOS service
-const triggerSos = async (payload: Partial<TSos>, currentUser: AuthUser) => {
+const triggerSos = async (
+  payload: Partial<TSos>,
+  currentUser: TCurrentUser,
+) => {
   const userModelType =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
   const sosLocation = currentUser.currentSessionLocation?.coordinates;
@@ -102,7 +105,7 @@ const updateSosStatus = async (
 };
 
 // get nearby sos alerts
-const getNearbySosAlerts = async (currentUser: AuthUser) => {
+const getNearbySosAlerts = async (currentUser: TCurrentUser) => {
   const radiusInMeters = 5000; // 5km
   const sosLocation = currentUser.currentSessionLocation?.coordinates;
   if (!sosLocation) {
@@ -128,7 +131,7 @@ const getNearbySosAlerts = async (currentUser: AuthUser) => {
 // get all sos alerts
 const getAllSosAlerts = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   let filterConditions = {};
   if (currentUser.role === 'FLEET_MANAGER') {
@@ -166,7 +169,7 @@ const getAllSosAlerts = async (
 };
 
 // get single sos alert by id
-const getSingleSosAlert = async (id: string, currentUser: AuthUser) => {
+const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
   const result = await SosModel.findById(id).populate(
     'resolvedBy',
     'name email',
@@ -195,7 +198,7 @@ const getSingleSosAlert = async (id: string, currentUser: AuthUser) => {
 
 // get sos alerts by user id
 const getUserSosHistory = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   userId: string,
   query: Record<string, unknown>,
 ) => {
@@ -228,7 +231,7 @@ const getUserSosHistory = async (
 };
 
 // get sos stats
-const getSosStats = async (currentUser: AuthUser) => {
+const getSosStats = async (currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,

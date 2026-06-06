@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { TProduct } from './product.interface';
 import { Product } from './product.model';
@@ -16,7 +16,7 @@ import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
 
 // Create Product Service
-const createProduct = async (payload: TProduct, currentUser: AuthUser) => {
+const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
   CreateProductUtils.validateVendor(currentUser);
   CreateProductUtils.validateBasePayload(payload);
 
@@ -55,7 +55,7 @@ const createProduct = async (payload: TProduct, currentUser: AuthUser) => {
 const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const { images } = payload;
   const existingProduct = await Product.findOne({
@@ -165,7 +165,7 @@ const updateProduct = async (
 const manageProductVariations = async (
   productId: string,
   payload: { name: string; options: any[] },
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const existingProduct = await Product.findOne({
     productId,
@@ -299,7 +299,7 @@ const renameProductVariation = async (
     oldLabel?: string;
     newLabel?: string;
   },
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const existingProduct = await Product.findOne({
     productId,
@@ -360,7 +360,7 @@ const removeProductVariations = async (
     name: string;
     labelToRemove?: string;
   },
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const existingProduct = await Product.findOne({
     productId,
@@ -456,7 +456,7 @@ const removeProductVariations = async (
 
 // update inventory and pricing service
 const updateInventoryAndPricing = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   productId: string,
   addedQuantity: number = 0,
   reduceQuantity: number = 0,
@@ -565,7 +565,7 @@ const updateInventoryAndPricing = async (
 // Approved Product Service
 const approvedProduct = async (
   productId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   payload: { isApproved: boolean; remarks?: string },
 ) => {
   const existingProduct = await Product.findOne({
@@ -615,7 +615,7 @@ const approvedProduct = async (
 const deleteProductImages = async (
   productId: string,
   images: string[],
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -658,7 +658,7 @@ const deleteProductImages = async (
 // get all products service
 const getAllProducts = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -704,7 +704,10 @@ const getAllProducts = async (
 };
 
 // get single product service
-const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
+const getSingleProduct = async (
+  productId: string,
+  currentUser: TCurrentUser,
+) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -748,7 +751,10 @@ const getSingleProduct = async (productId: string, currentUser: AuthUser) => {
 };
 
 // product soft delete service
-const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
+const softDeleteProduct = async (
+  productId: string,
+  currentUser: TCurrentUser,
+) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -787,7 +793,7 @@ const softDeleteProduct = async (productId: string, currentUser: AuthUser) => {
 //  product permanent delete service (admin only)
 const permanentDeleteProduct = async (
   productId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(

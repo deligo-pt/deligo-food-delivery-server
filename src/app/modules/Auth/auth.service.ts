@@ -34,7 +34,7 @@ import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
 import { ReferralServices } from '../Referral/referral.service';
 import {
-  AuthUser,
+  TCurrentUser,
   TLoginDevice,
 } from '../../constant/GlobalInterface/user.interface';
 
@@ -150,7 +150,7 @@ const onboardUser = async <
 >(
   payload: T,
   targetRole: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const mapKey = `/create-${targetRole}` as keyof typeof USER_TYPE_MAP;
 
@@ -589,7 +589,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
 //update FCM Token
 const updateFcmToken = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   payload: { token: string; deviceId: string },
 ) => {
   const { token, deviceId } = payload;
@@ -668,7 +668,7 @@ const logoutUser = async (email: string, deviceId: string) => {
 };
 // Change Password
 const changePassword = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   payload: { oldPassword: string; newPassword: string },
 ) => {
   // checking if the user is exist
@@ -945,7 +945,7 @@ const refreshToken = async (token: string) => {
 };
 
 // submit approval request service
-const submitForApproval = async (userId: string, currentUser: AuthUser) => {
+const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   const { user: submittedUser } = await findUserById({
     userId,
   });
@@ -1044,7 +1044,7 @@ const submitForApproval = async (userId: string, currentUser: AuthUser) => {
 const approvedOrRejectedUser = async (
   userId: string,
   payload: TApprovedRejectsPayload,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // --------------------------------------------------------------
   // Authorization & Validation
@@ -1424,7 +1424,7 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
 };
 
 // soft delete user service
-const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
+const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -1480,7 +1480,10 @@ const softDeleteUser = async (userId: string, currentUser: AuthUser) => {
 };
 
 // permanent delete user service
-const permanentDeleteUser = async (userId: string, currentUser: AuthUser) => {
+const permanentDeleteUser = async (
+  userId: string,
+  currentUser: TCurrentUser,
+) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,

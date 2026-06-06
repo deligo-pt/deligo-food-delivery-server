@@ -2,11 +2,11 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { DeliveryPartnerServices } from './delivery-partner.service';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // Delivery Partner Update Controller
 const updateDeliveryPartner = catchAsync(async (req, res) => {
-  const currentUser = req.user as AuthUser;
+  const currentUser = req.user as TCurrentUser;
   const result = await DeliveryPartnerServices.updateDeliveryPartner(
     req.body,
     req.params.deliveryPartnerId,
@@ -25,7 +25,7 @@ const updateDeliveryPartnerLiveLocation = catchAsync(async (req, res) => {
   const result =
     await DeliveryPartnerServices.updateDeliveryPartnerLiveLocation(
       req.body,
-      req.user as AuthUser,
+      req.user as TCurrentUser,
       req.params.deliveryPartnerId,
     );
   sendResponse(res, {
@@ -39,7 +39,7 @@ const updateDeliveryPartnerLiveLocation = catchAsync(async (req, res) => {
 // change delivery partner status
 const changeDeliveryPartnerStatus = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.changeDeliveryPartnerStatus(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     req.body,
   );
   sendResponse(res, {
@@ -56,7 +56,7 @@ const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.deliverPartnerDocImageUpload(
     file?.path,
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     req.params.deliveryPartnerId,
   );
   sendResponse(res, {
@@ -71,7 +71,7 @@ const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
 const getAllDeliveryPartners = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.getAllDeliveryPartnersFromDB(
     req.query,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -87,7 +87,7 @@ const getAllDeliveryPartners = catchAsync(async (req, res) => {
 const getSingleDeliveryPartner = catchAsync(async (req, res) => {
   const result = await DeliveryPartnerServices.getSingleDeliveryPartnerFromDB(
     req.params.deliveryPartnerId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {

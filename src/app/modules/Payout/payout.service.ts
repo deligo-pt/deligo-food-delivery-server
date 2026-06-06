@@ -4,7 +4,7 @@ import httpStatus from 'http-status';
 import mongoose from 'mongoose';
 import { Payout } from './payout.model';
 import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { findUserById } from '../../utils/findUserByEmailOrId';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Wallet } from '../Wallet/wallet.model';
@@ -18,7 +18,7 @@ import { roundTo2 } from '../../utils/mathProvider';
 // initiate payout service
 const initiateSettlement = async (
   targetUserId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -160,7 +160,7 @@ const finalizeSettlement = async (
     remarks?: string;
   },
   payoutProof: string | null,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -275,7 +275,7 @@ const finalizeSettlement = async (
 // get all payouts
 const getAllPayouts = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const { role, _id: currentUserId } = currentUser;
   const { startDate, endDate, ...remainingQuery } = query;
@@ -368,7 +368,7 @@ const getAllPayouts = async (
 };
 
 // get single payout service
-const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
+const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   const { role, _id: currentUserId } = currentUser;
 
   const payout = await Payout.findOne({ payoutId })
