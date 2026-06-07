@@ -39,13 +39,13 @@ import {
   TLoginDevice,
 } from '../../constant/GlobalInterface/user.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
-import { IUserModel } from '../../interfaces/user.interface';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async <
   T extends {
     email: string;
     role: TUserRole;
+    password: string;
     isEmailVerified?: boolean;
   },
 >(
@@ -53,85 +53,97 @@ const registerUser = async <
   url: string,
 ) => {
   const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
-
   const userTypeData = USER_TYPE_MAP[userType];
-
   const modelData = USER_MODEL_MAP[userType];
-
   if (!userTypeData || !modelData) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
 
-  const { Model: MongooseModel, idField } = modelData;
-  const targetModel = MongooseModel as unknown as Model<T>;
+  const { Model: TargetModel, idField } = modelData;
+  const mongooseModel = TargetModel as unknown as Model<T>;
 
   // Generate userId & OTP
-  const userCustomId = generateUserId(userType);
+  const userId = generateUserId(userType);
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
-  const existingUser = await AuthUser.findOne({ email: payload.email });
-
-  const session = await mongoose.startSession();
-
-  try {
-    session.startTransaction();
-
-    if (existingUser) {
-      if (existingUser.isDeleted) {
-        throw new AppError(
-          httpStatus.CONFLICT,
-          'User already deleted. Please contact support for use this email.',
-        );
-      }
-      const prevModelData = ROLE_COLLECTION_MAP[existingUser.role as TUserRole];
-      if (prevModelData) {
-        const prevModel = mongoose.model(prevModelData);
-        const prevUser = await prevModel
-          .findOne({ userId: existingUser.userId })
-          .session(session);
-
-        if (prevUser && (prevUser as any).isEmailVerified) {
-          throw new AppError(
-            httpStatus.CONFLICT,
-            `${existingUser.email} is already registered as ${existingUser.role}.`,
-          );
-        }
-
-        await prevModel.deleteOne({ userId: existingUser.userId }, { session });
-      }
-      await AuthUser.deleteOne({ _id: existingUser._id }, { session });
+  const existingUser = await AuthUser.findOne({ email: payload.email }).select(
+    'email role status userObjectId _id',
+  );
+  if (existingUser) {
+    if (existingUser.isEmailVerified) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${existingUser.email} is already registered as ${existingUser.role}.`,
+      );
+    }
+    const prevModelData =
+      ROLE_COLLECTION_MAP[existingUser.role as keyof typeof USER_ROLE];
+    if (prevModelData) {
+      const prevModel = mongoose.model(prevModelData);
+      await prevModel.deleteOne({ _id: existingUser.profileId });
     }
 
-    await targetModel.create(
+    await AuthUser.deleteOne({ _id: existingUser._id });
+  }
+
+  const emailHtml = await EmailHelper.createEmailContent(
+    {
+      otp,
+      userEmail: payload.email,
+      currentYear: new Date().getFullYear(),
+      date: new Date().toDateString(),
+      user: payload?.role.toLocaleLowerCase(),
+    },
+    'verify-email',
+  );
+
+  const rawPassword = payload.password;
+  const { password: _, ...profilePayload } = payload;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  let createdUser: any = null;
+  try {
+    const result = await mongooseModel.create(
       [
         {
-          ...payload,
-          [idField]: userCustomId,
+          ...profilePayload,
+          [idField]: userId,
           role: payload.role,
         },
       ],
       { session },
     );
+    createdUser = result[0];
 
     await AuthUser.create(
       [
         {
-          userId: userCustomId,
+          userId,
+          profileId: createdUser._id,
+          profileModel: TargetModel.modelName,
           email: payload.email,
+          password: rawPassword,
           role: payload.role,
+          status: 'PENDING',
+          isDeleted: false,
         },
       ],
       { session },
     );
 
-    await session.commitTransaction();
-  } catch (err: any) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-    }
+    const redisOtpKey = `otp:${payload.email}`;
+    await RedisService.set(redisOtpKey, otp, 300);
 
-    console.error('Registration Transaction Failed:', err);
+    await session.commitTransaction();
+    session.endSession();
+  } catch (err: any) {
+    await session.abortTransaction();
+    session.endSession();
+
+    console.log(err);
 
     if (err?.code === 11000) {
       throw new AppError(
@@ -140,23 +152,7 @@ const registerUser = async <
       );
     }
     throw err;
-  } finally {
-    await session.endSession();
   }
-
-  const redisOtpKey = `otp:${payload.email}`;
-  await RedisService.set(redisOtpKey, otp, 300);
-
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      otp,
-      userEmail: payload.email,
-      currentYear: new Date().getFullYear(),
-      date: new Date().toDateString(),
-      user: payload.role.toLowerCase(),
-    },
-    'verify-email',
-  );
 
   EmailHelper.sendEmail(
     payload.email,
