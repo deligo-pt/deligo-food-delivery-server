@@ -102,7 +102,7 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
 authUserSchema.pre('save', function (next) {
   const user = this;
 
-  if (user.isNew && user.onModel === 'Customer') {
+  if (user.isNew && user.profileModel === 'Customer') {
     user.status = 'APPROVED';
   }
 

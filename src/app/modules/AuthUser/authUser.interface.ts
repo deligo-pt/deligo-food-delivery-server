@@ -9,6 +9,8 @@ import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 export type TAuthUser = {
   _id: mongoose.Types.ObjectId;
   userId: string; // Generated readable custom ID (e.g., 'VND-1002', 'FM-MLSE40CI')
+  profileId: mongoose.Types.ObjectId; // Reference to the specific profile document's MongoDB _id
+  profileModel: TUserModel;
   email: string; // Unique primary email used as the login identifier
   contactNumber: string; // Unique mobile number used as the login identifier
   role: TUserRole; // System role (e.g., 'SUPER_ADMIN', 'VENDOR', 'CUSTOMER', etc.)
