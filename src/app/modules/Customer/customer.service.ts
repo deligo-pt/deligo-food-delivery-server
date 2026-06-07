@@ -2,7 +2,7 @@
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TCustomer } from './customer.interface';
 import { Customer } from './customer.model';
 import { CustomerSearchableFields } from './customer.constant';
@@ -10,13 +10,14 @@ import { TDeliveryAddress } from '../../constant/GlobalInterface/address.interfa
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { generateReferralCode } from '../../utils/generateReferralCode';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
+import { flattenObject } from '../../utils/flattenObject';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // update customer service
 const updateCustomer = async (
   payload: Partial<TCustomer>,
   customerId: string,
-  currentUser: AuthUser,
-  profilePhoto?: string,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -25,10 +26,18 @@ const updateCustomer = async (
     );
   }
 
-  const customer = await Customer.isUserExistsByUserId(customerId, false);
+  const customer = await AuthUser.findOne({
+    userId: customerId,
+    isDeleted: false,
+  }).populate('profileId');
   if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  if (!customer.isOtpVerified)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
+  if (customer.requiresOtpVerification)
+    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your OTP first.');
+
+  const customerProfile = customer.profileId as any;
+  if (!customerProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
+  }
 
   if (
     currentUser.role === 'CUSTOMER' &&
@@ -40,27 +49,17 @@ const updateCustomer = async (
   // -----------------------------
   // Referral Code Generation (New Logic)
   // -----------------------------
-  if (!currentUser.referralCode) {
+  if (!customerProfile.referralCode) {
     const firstName =
-      payload.name?.firstName || currentUser.name.firstName || 'USER';
+      payload.name?.firstName || customerProfile.name.firstName || 'USER';
     const newReferralCode = await generateReferralCode(firstName);
 
     payload.referralCode = newReferralCode;
   }
 
   // ----------------------------------------------------------------------
-  // Photo update
-  // ----------------------------------------------------------------------
-  if (payload.profilePhoto) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Photo must be a file upload');
-  }
-
-  if (profilePhoto) payload.profilePhoto = profilePhoto;
-
-  // ----------------------------------------------------------------------
   // User sends a single address
   // ----------------------------------------------------------------------
-  let updatedDeliveryAddresses = customer.deliveryAddresses;
 
   if (payload.address) {
     const { longitude, latitude, geoAccuracy = 0 } = payload.address;
@@ -84,39 +83,61 @@ const updateCustomer = async (
       };
     }
 
-    const newAddress = {
-      ...payload.address,
-      isActive: true,
-    };
-
-    // Check if this address already exists
-    const exists = customer?.deliveryAddresses?.some(
-      (addr) =>
-        addr.longitude === newAddress.longitude &&
-        addr.latitude === newAddress.latitude,
-    );
-
-    if (!exists) {
-      // Deactivate all previous addresses
-      updatedDeliveryAddresses = customer?.deliveryAddresses?.map((addr) => ({
-        ...addr,
-        isActive: false,
-      }));
-
-      // Add new active address
-      updatedDeliveryAddresses?.push({ ...newAddress, addressType: 'PRIMARY' });
+    const currentAddresses = customerProfile.deliveryAddresses
+      ? JSON.parse(JSON.stringify(customerProfile.deliveryAddresses))
+      : [];
+    if (currentAddresses.length >= 5) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'You have reached the maximum number of delivery addresses. Please delete an address to update this one.',
+      );
     }
 
-    payload.deliveryAddresses = updatedDeliveryAddresses;
+    const existingAddressIndex = currentAddresses.findIndex(
+      (addr: any) =>
+        Number(addr.longitude).toFixed(5) === Number(longitude).toFixed(5) &&
+        Number(addr.latitude).toFixed(5) === Number(latitude).toFixed(5),
+    );
+
+    if (existingAddressIndex !== -1) {
+      payload.deliveryAddresses = currentAddresses.map(
+        (addr: any, index: number) => {
+          const isTarget = index === existingAddressIndex;
+          return {
+            ...(isTarget ? { ...addr, ...payload.address } : addr),
+            isActive: isTarget,
+            addressType: isTarget ? 'PRIMARY' : 'SECONDARY',
+          };
+        },
+      );
+    } else {
+      const deactivatedAddresses = currentAddresses.map((addr: any) => ({
+        ...addr,
+        isActive: false,
+        addressType: 'SECONDARY',
+      }));
+
+      deactivatedAddresses.push({
+        ...payload.address,
+        isActive: true,
+        addressType: 'PRIMARY',
+      });
+
+      payload.deliveryAddresses = deactivatedAddresses;
+    }
   }
+
+  const finalUpdatePayload = flattenObject(payload);
 
   // ----------------------------------------------------------------------
   // Final Update
   // ----------------------------------------------------------------------
   const updated = await Customer.findOneAndUpdate(
     { userId: customerId },
-    { $set: payload },
-    { new: true },
+    { $set: finalUpdatePayload },
+    { new: true, runValidators: true },
+  ).select(
+    'name address deliveryAddresses NIF userId profilePhoto currentSessionLocation',
   );
 
   return updated;
@@ -127,7 +148,7 @@ const updateCustomer = async (
 // --------------------------------------------------------------
 const updateCustomerLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   customerId: string,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
@@ -205,7 +226,7 @@ const updateCustomerLiveLocation = async (
 // --------------------------------------------------------------
 const addDeliveryAddress = async (
   deliveryAddress: TDeliveryAddress,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // --------------------------------------------------
   // Validate payload
@@ -227,8 +248,11 @@ const addDeliveryAddress = async (
       'Only customers can add delivery addresses',
     );
   }
-  const userId = currentUser.userId;
-  if (currentUser.deliveryAddresses!.length >= 5) {
+  const currentAddresses: any[] = currentUser.deliveryAddresses
+    ? JSON.parse(JSON.stringify(currentUser.deliveryAddresses))
+    : [];
+
+  if (currentAddresses.length >= 5) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You have reached the maximum number of delivery addresses',
@@ -266,16 +290,10 @@ const addDeliveryAddress = async (
     );
   }
 
-  const hasAnyAddress = (currentUser.deliveryAddresses?.length ?? 0) > 0;
-
-  // --------------------------------------------------
-  // Deactivate previous addresses
-  // --------------------------------------------------
-  await Customer.updateOne(
-    { userId },
-    { $set: { 'deliveryAddresses.$[].isActive': false } },
-  );
-
+  const updatedAddresses = currentAddresses.map((addr: any) => ({
+    ...addr,
+    isActive: false,
+  }));
   // --------------------------------------------------
   // Create new active address
   // --------------------------------------------------
@@ -295,38 +313,30 @@ const addDeliveryAddress = async (
     notes: deliveryAddress.notes?.trim(),
 
     isActive: true,
-    addressType: hasAnyAddress
-      ? (deliveryAddress.addressType ?? 'HOME')
-      : 'OTHER',
+    addressType: deliveryAddress.addressType ?? 'HOME',
   };
 
-  // --------------------------------------------------
-  // Push address
-  // --------------------------------------------------
-  await Customer.updateOne(
-    { userId },
-    { $push: { deliveryAddresses: newDeliveryAddress } },
-  );
+  updatedAddresses.push(newDeliveryAddress);
 
-  const { longitude, latitude, geoAccuracy = 0 } = newDeliveryAddress;
+  const updateData: Record<string, any> = {
+    deliveryAddresses: updatedAddresses,
+    address: { ...newDeliveryAddress },
+  };
 
-  // Auto-update location if coords provided
-  if (longitude != null && latitude != null) {
-    const sessionLocation = {
+  if (deliveryAddress.longitude != null && deliveryAddress.latitude != null) {
+    updateData.currentSessionLocation = {
       type: 'Point',
-      coordinates: [longitude, latitude],
-      geoAccuracy,
+      coordinates: [deliveryAddress.longitude, deliveryAddress.latitude],
+      geoAccuracy: deliveryAddress.geoAccuracy ?? 0,
       lastLocationUpdate: new Date(),
     };
-
-    await Customer.updateOne(
-      { userId },
-      { $set: { currentSessionLocation: sessionLocation } },
-    );
-
-    currentUser.currentSessionLocation = sessionLocation as any;
   }
 
+  await Customer.findByIdAndUpdate(
+    currentUser._id,
+    { $set: updateData },
+    { runValidators: true, new: true },
+  );
   return {
     message: 'Delivery address added successfully',
     activeAddress: newDeliveryAddress,
@@ -337,12 +347,12 @@ const addDeliveryAddress = async (
 const updateDeliveryAddress = async (
   addressId: string,
   payload: Partial<TDeliveryAddress>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const userId = currentUser.userId;
   const customer = await Customer.findOne({
     userId,
-    'deliveryAddresses._id': addressId,
+    isDeleted: false,
   });
 
   if (!customer) {
@@ -352,135 +362,191 @@ const updateDeliveryAddress = async (
     );
   }
 
-  const existingAddress = customer.deliveryAddresses?.find(
-    (addr) => addr._id?.toString() === addressId,
+  const currentAddresses: any[] = customer.deliveryAddresses
+    ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
+    : [];
+
+  const targetAddressIndex = currentAddresses.findIndex(
+    (addr: any) => addr._id?.toString() === addressId,
   );
 
-  if (!existingAddress) {
+  if (targetAddressIndex === -1) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery address not found');
   }
 
-  const updateFields: any = {};
-  const fieldsToUpdate = [
-    'street',
-    'city',
-    'state',
-    'country',
-    'postalCode',
-    'latitude',
-    'longitude',
-    'geoAccuracy',
-    'detailedAddress',
-    'zoneId',
-    'notes',
-    'addressType',
-  ];
+  const targetAddress = currentAddresses[targetAddressIndex];
 
-  fieldsToUpdate.forEach((field) => {
-    if (payload[field as keyof TDeliveryAddress] !== undefined) {
-      const val = payload[field as keyof TDeliveryAddress];
-      updateFields[`deliveryAddresses.$.${field}`] =
-        typeof val === 'string' ? val.trim() : val;
+  const newLng =
+    payload.longitude !== undefined
+      ? payload.longitude
+      : targetAddress.longitude;
+  const newLat =
+    payload.latitude !== undefined ? payload.latitude : targetAddress.latitude;
+
+  if (payload.longitude !== undefined || payload.latitude !== undefined) {
+    const isDuplicate = currentAddresses.some(
+      (addr: any, index: number) =>
+        index !== targetAddressIndex &&
+        Number(addr.longitude).toFixed(5) === Number(newLng).toFixed(5) &&
+        Number(addr.latitude).toFixed(5) === Number(newLat).toFixed(5),
+    );
+
+    if (isDuplicate) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'Another delivery address already exists with these GPS coordinates',
+      );
     }
-  });
-  const updateResult = await Customer.updateOne(
-    { userId, 'deliveryAddresses._id': addressId },
-    { $set: updateFields },
-    { runValidators: true },
-  );
-
-  if (updateResult.matchedCount === 0) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'Update failed');
   }
+
+  const updatedTargetAddress = {
+    ...targetAddress,
+    ...payload,
+    street:
+      typeof payload.street === 'string'
+        ? payload.street.trim()
+        : targetAddress.street,
+    city:
+      typeof payload.city === 'string'
+        ? payload.city.trim()
+        : targetAddress.city,
+    country:
+      typeof payload.country === 'string'
+        ? payload.country.trim()
+        : targetAddress.country,
+  };
+
+  currentAddresses[targetAddressIndex] = updatedTargetAddress;
+
+  const updateData: Record<string, any> = {
+    deliveryAddresses: currentAddresses,
+  };
+
+  const updatedCustomer = await Customer.findOneAndUpdate(
+    { userId: currentUser.userId },
+    { $set: updateData },
+    { new: true, runValidators: true },
+  );
 
   return {
     message: 'Delivery address updated successfully',
-    updatedAddress: { ...existingAddress, ...payload },
+    updatedAddress: updatedCustomer?.deliveryAddresses?.find(
+      (addr: any) => addr._id?.toString() === addressId,
+    ),
   };
 };
 
 // Active or deactivate delivery address
 const toggleDeliveryAddressStatus = async (
   addressId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
-  const userId = currentUser.userId;
-  await Customer.updateOne(
-    { userId },
-    { $set: { 'deliveryAddresses.$[].isActive': false } },
-  );
+  const customer = await Customer.findById(currentUser._id).lean();
 
-  const updatedCustomer = await Customer.findOneAndUpdate(
-    { userId, 'deliveryAddresses._id': addressId },
-    { $set: { 'deliveryAddresses.$.isActive': true } },
-    { new: true },
-  );
-
-  if (!updatedCustomer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer or address not found');
+  if (!customer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
   }
-  const activeAddress = updatedCustomer.deliveryAddresses?.find(
-    (addr) => addr._id?.toString() === addressId,
+  const currentAddresses: any[] = customer.deliveryAddresses
+    ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
+    : [];
+
+  const targetAddressExists = currentAddresses.some(
+    (addr: any) => addr._id?.toString() === addressId,
   );
-  if (
-    activeAddress &&
-    activeAddress.longitude != null &&
-    activeAddress.latitude != null
-  ) {
-    const sessionLocation = {
-      type: 'Point',
-      coordinates: [activeAddress.longitude, activeAddress.latitude],
-      geoAccuracy: activeAddress.geoAccuracy ?? 0,
-      lastLocationUpdate: new Date(),
+
+  if (!targetAddressExists) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Delivery address not found');
+  }
+
+  let selectedActiveAddress: any = null;
+
+  const updatedAddresses = currentAddresses.map((addr: any) => {
+    const isTarget = addr._id?.toString() === addressId;
+
+    if (isTarget) {
+      selectedActiveAddress = {
+        ...addr,
+        isActive: true,
+      };
+      return selectedActiveAddress;
+    }
+
+    return {
+      ...addr,
+      isActive: false,
     };
+  });
 
-    await Customer.updateOne(
-      { userId },
-      { $set: { currentSessionLocation: sessionLocation } },
-    );
+  const updateData: Record<string, any> = {
+    deliveryAddresses: updatedAddresses,
+    address: selectedActiveAddress,
+  };
 
-    currentUser.currentSessionLocation = sessionLocation as any;
-  }
+  await Customer.findOneAndUpdate(
+    { userId: currentUser.userId },
+    { $set: updateData },
+    { new: true, runValidators: true },
+  );
+
   return {
-    message: 'Delivery address status updated successfully',
+    success: true,
+    message: 'Delivery address changed successfully',
+    activeAddress: selectedActiveAddress,
   };
 };
 
 // delete delivery address
 const deleteDeliveryAddress = async (
   addressId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
-  const userId = currentUser.userId;
-  const result = await Customer.findOne(
-    { userId },
-    { deliveryAddresses: { $elemMatch: { _id: addressId } } },
+  const customer = await Customer.findById(currentUser._id).lean();
+
+  if (!customer) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
+  }
+  const currentAddresses: any[] = customer.deliveryAddresses
+    ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
+    : [];
+
+  const targetAddress = currentAddresses.find(
+    (addr: any) => addr._id?.toString() === addressId,
   );
 
-  if (result?.deliveryAddresses?.length === 0) {
+  if (!targetAddress) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery address not found');
   }
-  if (
-    result &&
-    result?.deliveryAddresses &&
-    result?.deliveryAddresses[0].addressType === 'PRIMARY'
-  ) {
+
+  if (targetAddress.isActive) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Primary address cannot be deleted',
+      'Your currently active delivery address cannot be deleted. Please switch to another address first.',
     );
   }
-  await Customer.updateOne(
-    { userId },
-    { $pull: { deliveryAddresses: { _id: addressId } } },
+
+  if (targetAddress.addressType === 'PRIMARY') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Your PRIMARY address is locked and cannot be deleted.',
+    );
+  }
+
+  const remainingAddresses = currentAddresses.filter(
+    (addr: any) => addr._id?.toString() !== addressId,
   );
+
+  await Customer.findOneAndUpdate(
+    { userId: currentUser.userId },
+    { $set: { deliveryAddresses: remainingAddresses } },
+    { runValidators: true },
+  );
+
   return null;
 };
-
 //get all customers
 const getAllCustomersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -490,11 +556,11 @@ const getAllCustomersFromDB = async (
   }
 
   const customers = new QueryBuilder(Customer.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(CustomerSearchableFields)
     .filter()
-    .search(CustomerSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',
@@ -519,7 +585,7 @@ const getAllCustomersFromDB = async (
 // get single customer
 const getSingleCustomerFromDB = async (
   customerId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(

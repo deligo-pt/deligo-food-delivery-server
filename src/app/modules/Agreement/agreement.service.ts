@@ -14,11 +14,11 @@ import { RedisService } from '../../config/redis';
 import { uploadLocalFileToCloudinary } from '../../utils/uploadToCloudinary';
 import { sendAgreementSignedEmail } from '../../helpers/sendAgreementSignedEmail';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 const initiateAgreement = async (
   payload: TInitiateAgreementPayload,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const normalizedEmail = payload.email.toLowerCase();
 
@@ -116,7 +116,7 @@ const initiateAgreement = async (
 // Verify Agreement OTP
 const verifyAgreementOtp = async (
   payload: { email: string; otp: string },
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const { email, otp } = payload;
   const normalizedEmail = email.toLowerCase();
@@ -207,7 +207,7 @@ const verifyAgreementOtp = async (
 };
 
 // Resend Agreement OTP
-const resendAgreementOtp = async (email: string, currentUser: AuthUser) => {
+const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
   // 1. Validate input
   if (!email) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Agreement Email is required');
@@ -276,7 +276,7 @@ const resendAgreementOtp = async (email: string, currentUser: AuthUser) => {
 const signAgreement = async (
   agreementId: string,
   signatureImage: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
   const agreement = await Agreement.findById(agreementId);
@@ -366,7 +366,10 @@ const signAgreement = async (
   };
 };
 
-const getAgreementById = async (agreementId: string, currentUser: AuthUser) => {
+const getAgreementById = async (
+  agreementId: string,
+  currentUser: TCurrentUser,
+) => {
   const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
   const agreement = await Agreement.findById(agreementId);
 
@@ -392,7 +395,7 @@ const getAgreementById = async (agreementId: string, currentUser: AuthUser) => {
 
 const getAllAgreements = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   if (!isAdmin) {
@@ -400,11 +403,11 @@ const getAllAgreements = async (
   }
 
   const agreements = new QueryBuilder(Agreement.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['email', 'establishmentName'])
     .filter()
-    .search(['email', 'establishmentName']);
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     agreements.countTotal(),

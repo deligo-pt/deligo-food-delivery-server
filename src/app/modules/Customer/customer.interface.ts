@@ -14,22 +14,7 @@ export type TCustomer = {
   email?: string;
 
   status: keyof typeof USER_STATUS;
-  isOtpVerified: boolean;
   isDeleted: boolean;
-
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
-  // ------------------------------------------------------
-  // OTP
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-  requiresOtpVerification?: boolean;
-  mobileOtpId?: string;
 
   // ------------------------------------------------------
   // Personal Information
@@ -83,12 +68,6 @@ export type TCustomer = {
     addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
     notes?: string; // Specific delivery instructions
   }>;
-
-  // ------------------------------------------------------
-  // Security & Access
-  // ------------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
 
   // ------------------------------------------------------
   // Referral

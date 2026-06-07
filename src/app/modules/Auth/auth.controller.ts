@@ -3,7 +3,7 @@ import sendResponse from '../../utils/sendResponse';
 import { AuthServices } from './auth.service';
 import { catchAsync } from '../../utils/catchAsync';
 import config from '../../config';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 //register User Controller [Vendor, Fleet Manager, Admin]
 const registerUser = catchAsync(async (req, res) => {
@@ -24,7 +24,7 @@ const onboardUser = catchAsync(async (req, res) => {
   const result = await AuthServices.onboardUser(
     req.body,
     targetRole,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -77,7 +77,7 @@ const loginCustomer = catchAsync(async (req, res) => {
 // Update FCM Token Controller
 const updateFcmToken = catchAsync(async (req, res) => {
   const result = await AuthServices.updateFcmToken(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     req.body,
   );
 
@@ -93,7 +93,7 @@ const updateFcmToken = catchAsync(async (req, res) => {
 const logoutUser = catchAsync(async (req, res) => {
   res.clearCookie('refreshToken');
   const result = await AuthServices.logoutUser(
-    req.user.email,
+    req.user as TCurrentUser,
     req.body.deviceId,
   );
 
@@ -110,7 +110,7 @@ const changePassword = catchAsync(async (req, res) => {
   const { ...passwordData } = req.body;
 
   const result = await AuthServices.changePassword(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     passwordData,
   );
   sendResponse(res, {
@@ -162,7 +162,7 @@ const refreshToken = catchAsync(async (req, res) => {
 const submitForApproval = catchAsync(async (req, res) => {
   const result = await AuthServices.submitForApproval(
     req.params.userId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -175,7 +175,7 @@ const submitForApproval = catchAsync(async (req, res) => {
 
 // Active or Block User Controller
 const approvedOrRejectedUser = catchAsync(async (req, res) => {
-  const currentUser = req.user as AuthUser;
+  const currentUser = req.user as TCurrentUser;
   const result = await AuthServices.approvedOrRejectedUser(
     req.params.userId,
     req.body,
@@ -232,7 +232,7 @@ const resendOtp = catchAsync(async (req, res) => {
 const softDeleteUser = catchAsync(async (req, res) => {
   const result = await AuthServices.softDeleteUser(
     req.params.userId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -247,7 +247,7 @@ const softDeleteUser = catchAsync(async (req, res) => {
 const permanentDeleteUser = catchAsync(async (req, res) => {
   const result = await AuthServices.permanentDeleteUser(
     req.params.userId,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {

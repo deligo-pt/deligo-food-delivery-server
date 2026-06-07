@@ -4,12 +4,12 @@ import { TSponsorship } from './sponsorships.interface';
 import { Sponsorship } from './sponsorships.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // Create sponsorship
 const createSponsorship = async (
   payload: TSponsorship,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   bannerImage: string | null,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -92,7 +92,7 @@ const updateSponsorship = async (
 
 // get all sponsorships
 const getAllSponsorships = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   query: Record<string, unknown>,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -107,11 +107,11 @@ const getAllSponsorships = async (
     query.isActive = true;
   }
   const sponsorships = new QueryBuilder(Sponsorship.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(['sponsorName', 'sponsorType'])
     .filter()
-    .search(['sponsorName', 'sponsorType']);
+    .sort()
+    .paginate()
+    .fields();
 
   const [meta, data] = await Promise.all([
     sponsorships.countTotal(),
@@ -122,7 +122,7 @@ const getAllSponsorships = async (
 };
 
 // get single sponsorship
-const getSingleSponsorship = async (currentUser: AuthUser, id: string) => {
+const getSingleSponsorship = async (currentUser: TCurrentUser, id: string) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -146,7 +146,10 @@ const getSingleSponsorship = async (currentUser: AuthUser, id: string) => {
 };
 
 // soft deleted sponsorship
-const softDeletedSponsorship = async (currentUser: AuthUser, id: string) => {
+const softDeletedSponsorship = async (
+  currentUser: TCurrentUser,
+  id: string,
+) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -176,7 +179,7 @@ const softDeletedSponsorship = async (currentUser: AuthUser, id: string) => {
 
 // permanent delete sponsorship
 const permanentDeleteSponsorship = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   id: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {

@@ -2,12 +2,12 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { PermissionServices } from './permission.service';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 const createPermission = catchAsync(async (req, res) => {
   const result = await PermissionServices.createPermission(
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {
@@ -23,7 +23,7 @@ const updatePermission = catchAsync(async (req, res) => {
   const result = await PermissionServices.updatePermission(
     permissionId,
     req.body,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
 
   sendResponse(res, {

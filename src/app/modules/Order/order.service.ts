@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { Order } from './order.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
@@ -35,7 +35,7 @@ const createOrderAfterRedUniqPayment = async (
     paymentToken: string;
     deliveryNotes?: string;
   },
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const { checkoutSummaryId, paymentToken, deliveryNotes } = payload;
 
@@ -179,7 +179,7 @@ const createOrderAfterRedUniqPayment = async (
 
 // update order status by vendor (accept / reject / preparing / cancel)
 const updateOrderStatusByVendor = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   orderId: string,
   action: { type: OrderStatus; reason?: string },
 ) => {
@@ -523,7 +523,7 @@ const updateOrderStatusByVendor = async (
 // broadcast order to delivery partners
 const broadcastOrderToPartners = async (
   orderId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (!currentUser || currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -685,7 +685,7 @@ const broadcastOrderToPartners = async (
 
 // partner accepts or rejects dispatched order
 const partnerAcceptsDispatchedOrder = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   orderId: string,
   payload: {
     action: 'ACCEPT' | 'REJECT';
@@ -862,7 +862,7 @@ const partnerAcceptsDispatchedOrder = async (
 // update order status by delivery partner service
 const updateOrderStatusByDeliveryPartner = async (
   orderId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   payload: {
     orderStatus: OrderStatus;
     deliveryProofImage: string | null;
@@ -982,7 +982,7 @@ const updateOrderStatusByDeliveryPartner = async (
 // get all order service
 const getAllOrders = async (
   incomingQuery: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -1036,11 +1036,11 @@ const getAllOrders = async (
   // Build Query with QueryBuilder
   // -----------------------------
   const builder = new QueryBuilder(Order.find(), query)
+    .search(OrderSearchableFields)
     .filter()
     .sort()
-    .fields()
     .paginate()
-    .search(OrderSearchableFields);
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
@@ -1062,7 +1062,7 @@ const getAllOrders = async (
 };
 
 // get single order for customer service
-const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
+const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -1129,7 +1129,7 @@ const getSingleOrder = async (orderId: string, currentUser: AuthUser) => {
 };
 
 // get delivery partners dispatch order service
-const getDeliveryPartnersDispatchOrder = async (currentUser: AuthUser) => {
+const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
   const orders = await Order.find({
     dispatchPartnerPool: { $in: [currentUser.userId] },
     isDeleted: false,
@@ -1145,7 +1145,7 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: AuthUser) => {
 };
 
 // get delivery partner current order service
-const getDeliveryPartnerCurrentOrder = async (currentUser: AuthUser) => {
+const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
