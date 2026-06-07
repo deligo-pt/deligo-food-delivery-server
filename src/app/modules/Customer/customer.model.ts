@@ -1,14 +1,13 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TCustomer } from './customer.interface';
-import { IUserModel } from '../../interfaces/user.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { AddressType } from './customer.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 
-const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
+const customerSchema = new Schema<TCustomer>(
   {
     // ----------------------------------------------------------------
     // Core Identifiers
@@ -40,21 +39,7 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
       default: USER_STATUS.APPROVED,
     },
 
-    isOtpVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
-
-    // --------------------------------------------------------
-    // Pending temporary Email and contact number
-    // --------------------------------------------------------
-    pendingEmail: { type: String },
-    pendingContactNumber: { type: String },
-
-    // ----------------------------------------------------------------
-    // OTP
-    // ----------------------------------------------------------------
-
-    requiresOtpVerification: { type: Boolean, default: true },
-    mobileOtpId: { type: String, default: '' },
 
     // ----------------------------------------------------------------
     // Personal Details
@@ -110,16 +95,6 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
     ],
 
     // ----------------------------------------------------------------
-    // Security & Access
-    // ----------------------------------------------------------------
-    twoFactorEnabled: { type: Boolean, default: false },
-
-    loginDevices: {
-      type: [loginDeviceSchema],
-      default: [],
-    },
-
-    // ----------------------------------------------------------------
     // Referral & Loyalty
     // ----------------------------------------------------------------
     referralCode: { type: String, default: '' },
@@ -154,9 +129,4 @@ const customerSchema = new Schema<TCustomer, IUserModel<TCustomer>>(
 // GEO INDEX FOR REAL-TIME LOCATION
 customerSchema.index({ currentSessionLocation: '2dsphere' });
 
-customerSchema.plugin(passwordPlugin);
-
-export const Customer = model<TCustomer, IUserModel<TCustomer>>(
-  'Customer',
-  customerSchema,
-);
+export const Customer = model<TCustomer>('Customer', customerSchema);
