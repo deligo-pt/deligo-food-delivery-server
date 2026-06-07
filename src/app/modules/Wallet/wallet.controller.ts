@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { WalletServices } from './wallet.service';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // get all wallets controller
 const getAllWallets = catchAsync(async (req, res) => {
   const result = await WalletServices.getAllWallets(
     req.query,
-    req.user as AuthUser,
+    req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
@@ -22,7 +22,7 @@ const getAllWallets = catchAsync(async (req, res) => {
 // get single wallet controller
 const getSingleWallet = catchAsync(async (req, res) => {
   const walletId = req.params.walletId;
-  const currentUser = req.user as AuthUser;
+  const currentUser = req.user as TCurrentUser;
   const result = await WalletServices.getSingleWallet(walletId, currentUser);
   sendResponse(res, {
     success: true,
@@ -34,7 +34,7 @@ const getSingleWallet = catchAsync(async (req, res) => {
 
 // get my wallet controller
 const getMyWallet = catchAsync(async (req, res) => {
-  const currentUser = req.user as AuthUser;
+  const currentUser = req.user as TCurrentUser;
   const result = await WalletServices.getMyWallet(currentUser);
   sendResponse(res, {
     success: true,

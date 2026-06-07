@@ -38,6 +38,10 @@ export const loginDeviceSchema = new Schema(
       type: Date,
       default: null,
     },
+    lastLogout: {
+      type: Date,
+      default: null,
+    },
   },
   { _id: false },
 );

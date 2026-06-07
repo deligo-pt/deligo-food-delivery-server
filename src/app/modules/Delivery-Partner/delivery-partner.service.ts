@@ -2,7 +2,7 @@
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import {
   TDeliveryPartner,
   TDeliveryPartnerImageDocuments,
@@ -12,22 +12,31 @@ import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
   payload: Partial<TDeliveryPartner>,
   deliveryPartnerId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // ---------------------------------------------------------
   // Check if target delivery partner exists
   // ---------------------------------------------------------
-  const existingDeliveryPartner = await DeliveryPartner.findOne({
+  const existingDeliveryPartner = await AuthUser.findOne({
     userId: deliveryPartnerId,
-  });
+  }).populate('profileId', 'isUpdateLocked registeredBy');
 
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
+  }
+
+  const partnerProfile = existingDeliveryPartner.profileId as any;
+  if (!partnerProfile) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Delivery Partner profile not found!',
+    );
   }
 
   if (!existingDeliveryPartner.isEmailVerified) {
@@ -43,7 +52,7 @@ const updateDeliveryPartner = async (
   if (
     (currentUser.role === 'FLEET_MANAGER' ||
       currentUser.role === 'DELIVERY_PARTNER') &&
-    existingDeliveryPartner.isUpdateLocked
+    partnerProfile.isUpdateLocked
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -68,8 +77,7 @@ const updateDeliveryPartner = async (
   // Admin/SuperAdmin updating a partner they registered
   if (
     currentUser.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner.registeredBy?.id.toString() !==
-      currentUser?._id.toString()
+    partnerProfile.registeredBy?.id.toString() !== currentUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -100,7 +108,7 @@ const updateDeliveryPartner = async (
 // update delivery partner live location
 const updateDeliveryPartnerLiveLocation = async (
   payload: TLiveLocationPayload,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   deliveryPartnerId?: string,
 ) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
@@ -174,7 +182,7 @@ const updateDeliveryPartnerLiveLocation = async (
 };
 
 const changeDeliveryPartnerStatus = async (
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   payload: { status: 'IDLE' | 'OFFLINE' },
 ) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
@@ -227,7 +235,7 @@ const changeDeliveryPartnerStatus = async (
 const deliverPartnerDocImageUpload = async (
   file: string | undefined,
   data: TDeliveryPartnerImageDocuments,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   deliveryPartnerId: string,
 ) => {
   const existingDeliveryPartner = await DeliveryPartner.findOne({
@@ -276,18 +284,18 @@ const deliverPartnerDocImageUpload = async (
 //get all delivery partners
 const getAllDeliveryPartnersFromDB = async (
   query: Record<string, unknown>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (currentUser?.role === 'FLEET_MANAGER') {
     query['registeredBy.id'] = currentUser?._id.toString();
   }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(DeliveryPartnerSearchableFields)
     .filter()
-    .search(DeliveryPartnerSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     approvedBy: 'name userId role',
@@ -311,7 +319,7 @@ const getAllDeliveryPartnersFromDB = async (
 // get single delivery partner from db
 const getSingleDeliveryPartnerFromDB = async (
   deliveryPartnerId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   if (
     currentUser?.role === 'DELIVERY_PARTNER' &&

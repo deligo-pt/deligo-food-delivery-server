@@ -18,28 +18,9 @@ export type TDeliveryPartner = {
   };
   role: 'DELIVERY_PARTNER';
   email: string;
-  password: string;
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
   isDeleted: boolean;
   isUpdateLocked: boolean;
-
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
-  // ------------------------------------------------------
-  // OTP & Password Reset
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-  requiresOtpVerification?: boolean;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
 
   // -------------------------------------------------
   // 1) Personal Information
@@ -168,12 +149,6 @@ export type TDeliveryPartner = {
     activity?: string;
     insurancePolicy?: string;
   };
-
-  // -------------------------------------------------
-  // 10) Security & Access
-  // -------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
 
   // -------------------------------------------------
   // 11) Admin Workflow (Approval System)

@@ -5,12 +5,12 @@ import { Tax } from '../Tax/tax.model';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { generateSlug } from './product.utils';
 import { TProduct } from './product.interface';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { Product } from './product.model';
 
 const getAndValidateProduct = async (
   productId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const product = await Product.findOne({
     productId,
@@ -84,4 +84,3 @@ export const UpdateProductUtils = {
   prepareUpdateData,
   syncStockStatus,
 };
-

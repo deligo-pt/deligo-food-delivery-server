@@ -5,7 +5,7 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Order } from '../Order/order.model';
 import { Points, PointsLog } from './points.model';
 import mongoose, { ClientSession, Types } from 'mongoose';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 
 /**
@@ -338,7 +338,7 @@ const updatePointBalance = async (
 };
 
 // Fetch my points
-const getMyPoints = async (currentUser: AuthUser) => {
+const getMyPoints = async (currentUser: TCurrentUser) => {
   const points = await Points.findOne({
     'userId.id': currentUser._id,
   }).lean();
@@ -380,4 +380,3 @@ export const PointsServices = {
   getMyPoints,
   getAllPoints,
 };
-

@@ -10,29 +10,11 @@ export type TAdmin = {
   _id: string;
   userId: string;
   registeredBy?: mongoose.Types.ObjectId;
-  role: 'ADMIN' | 'SUPER_ADMIN' | 'AGENT';
+  role: 'ADMIN' | 'SUPER_ADMIN';
   email: string;
-  password: string;
   status: keyof typeof USER_STATUS;
-  isEmailVerified: boolean;
   isDeleted: boolean;
   isUpdateLocked: boolean;
-
-  // --------------------------------------------------------
-  // Pending temporary Email and contact number
-  // --------------------------------------------------------
-  pendingEmail?: string;
-  pendingContactNumber?: string;
-
-  // ------------------------------------------------------
-  // OTP & Password Reset
-  // ------------------------------------------------------
-  otp?: string;
-  isOtpExpired?: Date;
-
-  passwordResetToken?: string;
-  passwordResetTokenExpiresAt?: Date;
-  passwordChangedAt?: Date;
 
   // ------------------------------------------------------------------
   // Personal Information
@@ -69,12 +51,6 @@ export type TAdmin = {
     idProofFront?: string;
     idProofBack?: string;
   };
-
-  // ------------------------------------------------------------------
-  // Security & Authentication
-  // ------------------------------------------------------------------
-  twoFactorEnabled?: boolean;
-  loginDevices?: TLoginDevice[];
 
   // ------------------------------------------------------------------
   // Permissions & Role Controls
