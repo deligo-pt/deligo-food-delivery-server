@@ -19,7 +19,7 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
     profileId: {
       type: Schema.Types.ObjectId,
       required: [true, 'User Object ID reference is required'],
-      refPath: 'onModel',
+      refPath: 'profileModel',
     },
     profileModel: {
       type: String,

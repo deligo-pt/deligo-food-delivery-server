@@ -855,8 +855,11 @@ const changePassword = async (
 
 // Forgot Password
 const forgotPassword = async (email: string) => {
-  const user = await AuthUser.findOne({ email, isDeleted: false });
-  const { user: userProfile } = await findUserByEmail({ email });
+  const user = await AuthUser.findOne({ email, isDeleted: false })
+    .populate('profileId', 'name')
+    .select('role status profileId');
+
+  const populatedUser = user?.profileId as any;
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
@@ -894,7 +897,7 @@ const forgotPassword = async (email: string) => {
   const emailHtml = await EmailHelper.createEmailContent(
     {
       resetPasswordLink: resetURL,
-      userName: userProfile?.name?.firstName || 'User',
+      userName: populatedUser?.name?.firstName || 'User',
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
     },
@@ -924,68 +927,58 @@ const resetPassword = async (
   token: string,
   newPassword: string,
 ) => {
-  const { user, model } = await findUserByEmail({ email });
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-  }
-
-  if (user?.email !== email) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Email doesn't match");
-  }
-
-  if (user?.role === 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Customer no need to reset password',
-    );
-  }
-
-  // checking if the user is blocked
-  const userStatus = user?.status;
-
-  if (userStatus === USER_STATUS.BLOCKED) {
-    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
-  }
-
-  // hashed incoming token
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-  //  valid user
-  const validUser = await model.findOne({
-    email: user.email,
-    role: user.role,
+  const user = await AuthUser.findOne({
+    email: email.trim().toLowerCase(),
     passwordResetToken: hashedToken,
-    passwordResetTokenExpiresAt: { $gt: Date.now() },
+    passwordResetTokenExpiresAt: { $gt: new Date() },
+    isDeleted: false,
   });
 
-  if (!validUser) {
+  if (!user) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Reset token is invalid or has been expired',
     );
   }
 
-  const newHashedPassword = await bcryptjs.hash(
-    newPassword,
-    Number(config.bcrypt_salt_rounds),
-  );
+  if (user.role === 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Customers do not need to reset passwords via this method',
+    );
+  }
 
-  await model.findOneAndUpdate(
-    {
-      email: user.email,
-      role: user.role,
-    },
-    {
-      password: newHashedPassword,
-      passwordChangedAt: new Date(),
-      passwordResetToken: null,
-      passwordResetTokenExpiresAt: null,
-    },
-  );
+  if (
+    user.status === USER_STATUS.BLOCKED ||
+    user.status === USER_STATUS.REJECTED
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `This user account is currently ${user.status.toLowerCase()} and cannot be modified.`,
+    );
+  }
+
+  if (user.loginDevices && user.loginDevices.length > 0) {
+    user.loginDevices = user.loginDevices.map((device: any) => ({
+      ...device,
+      isLoggedIn: false,
+    }));
+  }
+
+  user.password = newPassword;
+  user.passwordChangedAt = new Date();
+
+  user.passwordResetToken = undefined;
+  user.passwordResetTokenExpiresAt = undefined;
+
+  await user.save();
 
   return {
-    message: 'Password reset successfully',
+    success: true,
+    message:
+      'Password reset successfully! All other active sessions have been securely terminated.',
   };
 };
 
