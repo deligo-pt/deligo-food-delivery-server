@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
+import {
+  ROLE_COLLECTION_MAP,
+  USER_STATUS,
+} from '../../constant/GlobalConstant/user.constant';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { EmailHelper } from '../../utils/emailSender';
@@ -10,6 +13,7 @@ import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import { RedisService } from '../../config/redis';
 import { findUserById } from '../../utils/findUserByEmailOrId';
 import { AuthUser } from '../AuthUser/authUser.model';
+import mongoose from 'mongoose';
 
 // get my profile service
 const getMyProfile = async (currentUser: TCurrentUser) => {
@@ -55,7 +59,7 @@ const sendOtp = async (
       );
     }
 
-    if (exists?.userId !== currentUserId) {
+    if (exists && exists?.userId !== currentUserId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'This mobile number is already registered with another account.',
@@ -66,7 +70,6 @@ const sendOtp = async (
   if (payload.email) {
     const exists = await AuthUser.findOne({
       email: payload.email,
-      // profileId: { $ne: currentUser._id },
     });
 
     if (exists?.userId === currentUser.userId && exists?.isEmailVerified) {
@@ -76,7 +79,7 @@ const sendOtp = async (
       );
     }
 
-    if (exists?.userId !== currentUserId) {
+    if (exists && exists?.userId !== currentUserId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'This email is already registered with another account.',
@@ -182,108 +185,95 @@ const updateEmailOrContactNumber = async (
   },
 ) => {
   const { otp, type } = payload;
+
+  const modelName =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
+  const Model = mongoose.model(modelName) as any;
+
   const currentUserId = currentUser.userId;
 
-  if (!otp) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'OTP is required.');
-  }
+  if (type === 'email') {
+    const redisEmailKey = `otp:profile-update-email:${currentUserId}`;
+    const globalEmailLockKey = `lock:email`;
 
-  const result = await findUserById({ userId: currentUserId });
-  const targetUser = result?.user;
+    const cachedData = await RedisService.get(redisEmailKey);
+    if (!cachedData) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'OTP has expired or is invalid. Please request a new one.',
+      );
+    }
 
-  if (!targetUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found.');
+    const { otp: savedOtp, pendingEmail } = cachedData as any;
+
+    if (savedOtp !== otp) {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP code.');
+    }
+
+    await AuthUser.findOneAndUpdate(
+      { userId: currentUserId },
+      {
+        email: pendingEmail,
+      },
+    );
+
+    await Model.findOneAndUpdate(
+      { userId: currentUserId },
+      {
+        email: pendingEmail,
+      },
+    );
+
+    await RedisService.del(redisEmailKey);
+    await RedisService.del(`${globalEmailLockKey}:${pendingEmail}`);
+
+    return {
+      message: 'Email updated successfully.',
+    };
   }
 
   if (type === 'mobile') {
     const redisMobileKey = `otp:profile-update-mobile:${currentUserId}`;
+
     const cachedData = await RedisService.get(redisMobileKey);
-
     if (!cachedData) {
       throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'OTP has expired or no pending mobile update request found.',
+        httpStatus.UNAUTHORIZED,
+        'OTP has expired or is invalid. Please request a new one.',
       );
     }
 
-    const parsedData =
-      typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
-    const { mobileOtpId, pendingContactNumber } = parsedData;
+    console.log({ cachedData });
 
-    const res = await verifyMobileOtp(mobileOtpId, otp);
-    if (!res?.data?.verified) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+    const { mobileOtpId, pendingContactNumber } = cachedData as any;
+    const isGatewayOtpValid = await verifyMobileOtp(mobileOtpId, otp);
+    if (!isGatewayOtpValid) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'Invalid or expired OTP code.',
+      );
     }
 
-    for (const Model of ALL_USER_MODELS) {
-      const isDuplicate = await Model.exists({
+    await AuthUser.findOneAndUpdate(
+      { userId: currentUserId },
+      {
         contactNumber: pendingContactNumber,
-      });
-      if (isDuplicate) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'This mobile number is already registered by another account.',
-        );
-      }
-    }
+      },
+    );
 
-    // Update User
-    targetUser.contactNumber = pendingContactNumber;
-    await targetUser.save();
+    await Model.findOneAndUpdate(
+      { userId: currentUserId },
+      {
+        contactNumber: pendingContactNumber,
+      },
+    );
 
-    // Clean up Redis
-    const globalMobileLockKey = `lock:mobile:${pendingContactNumber}`;
     await RedisService.del(redisMobileKey);
-    await RedisService.del(globalMobileLockKey);
 
-    return { message: 'Contact number updated successfully.' };
+    return {
+      message: 'Contact number updated successfully.',
+    };
   }
-
-  if (type === 'email') {
-    const redisEmailKey = `otp:profile-update-email:${currentUserId}`;
-    const cachedData = await RedisService.get(redisEmailKey);
-
-    console.log(cachedData);
-
-    if (!cachedData) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'OTP has expired or no pending email update request found.',
-      );
-    }
-
-    const parsedData =
-      typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
-    const { otp: cachedOtp, pendingEmail } = parsedData;
-
-    if (String(cachedOtp) !== String(otp)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP.');
-    }
-
-    // CRITICAL FIX: Cross-model duplicate check on update
-    for (const Model of ALL_USER_MODELS) {
-      const isDuplicate = await Model.exists({ email: pendingEmail });
-      if (isDuplicate) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'This email is already registered by another account.',
-        );
-      }
-    }
-
-    // Update User
-    targetUser.email = pendingEmail;
-    await targetUser.save();
-
-    // Clean up Redis
-    const globalEmailLockKey = `lock:email:${pendingEmail}`;
-    await RedisService.del(redisEmailKey);
-    await RedisService.del(globalEmailLockKey);
-
-    return { message: 'Email address updated successfully.' };
-  }
-
-  throw new AppError(httpStatus.BAD_REQUEST, 'Invalid update type.');
 };
 
 export const ProfileServices = {
