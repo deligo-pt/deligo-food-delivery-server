@@ -1079,14 +1079,15 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
     );
   }
 
-  const modelName =
-    ROLE_COLLECTION_MAP[authUser.role as keyof typeof USER_ROLE];
+  const modelName = ROLE_COLLECTION_MAP[authUser.role as TUserRole];
   if (!modelName) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping');
   }
 
   const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
   const submittedProfile = await TargetModel.findById(authUser.profileId);
+
+  console.log(submittedProfile);
 
   if (!submittedProfile) {
     throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
@@ -1135,7 +1136,6 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
       {
         $set: {
           status: 'SUBMITTED',
-          submittedForApprovalAt: submissionTime,
         },
       },
       { session, new: true },
@@ -1143,7 +1143,13 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
 
     await TargetModel.findByIdAndUpdate(
       authUser.profileId,
-      { $set: { isUpdateLocked: true } },
+      {
+        $set: {
+          isUpdateLocked: true,
+          status: 'SUBMITTED',
+          submittedForApprovalAt: submissionTime,
+        },
+      },
       { session, new: true },
     );
 
