@@ -1204,12 +1204,12 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
     }
 
     try {
-      await NotificationService.sendToRole(
+      NotificationService.sendToRole(
         'Admin',
         ['ADMIN', 'SUPER_ADMIN'],
         `New ${authUser?.role} Submission for Approval`,
         `${userName} (${authUser?.role}) has submitted for approval at ${formattedTime}.`,
-        { userProfileId: authUser?.profileId.toString(), role: authUser?.role },
+        { userObjectId: authUser?.profileId.toString(), role: authUser?.role },
         'default',
         'ACCOUNT',
       );
@@ -1232,9 +1232,6 @@ const approvedOrRejectedUser = async (
   payload: TApprovedRejectsPayload,
   currentUser: TCurrentUser,
 ) => {
-  // --------------------------------------------------------------
-  // Authorization & Validation
-  // --------------------------------------------------------------
   if (userId === currentUser.userId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -1242,132 +1239,180 @@ const approvedOrRejectedUser = async (
     );
   }
 
-  const admin = await Admin.findOne({
+  const adminUser = await AuthUser.findOne({
     userId: currentUser.userId,
     isDeleted: false,
   });
-  if (!admin) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Admin not found');
-  }
 
-  const { user: submittedUser } = await findUserById({
-    userId,
-  });
-
-  if (!submittedUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  if (submittedUser.status === payload.status) {
-    //
+  if (!adminUser || !['ADMIN', 'SUPER_ADMIN'].includes(adminUser.role)) {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `User is already ${payload.status.toLowerCase()}`,
+      httpStatus.FORBIDDEN,
+      'Admin not found or unauthorized for this action',
     );
   }
 
-  // --------------------------------------------------------------
-  // Status Transition Rules
-  // --------------------------------------------------------------
+  const authUser = await AuthUser.findOne({
+    userId: userId,
+    isDeleted: false,
+  });
+
+  if (!authUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
+  }
+
+  const role = authUser.role as TUserRole;
+  const targetAuthStatus = payload.status;
+
+  if (authUser.status === targetAuthStatus) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `User is already ${targetAuthStatus.toLowerCase()}`,
+    );
+  }
+
   if (
-    (payload.status === 'REJECTED' || payload.status === 'BLOCKED') &&
-    !payload.remarks
+    (targetAuthStatus === 'REJECTED' || targetAuthStatus === 'BLOCKED') &&
+    !payload.remarks?.trim()
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Remarks are required for ${payload.status.toLowerCase()}`,
+      `Remarks are required for ${targetAuthStatus.toLowerCase()}`,
     );
   }
 
-  // --------------------------------------------------------------
-  // Apply Status Changes
-  // --------------------------------------------------------------
-  submittedUser.status = payload.status;
-  submittedUser.approvedOrRejectedOrBlockedAt = new Date();
+  const modelName = ROLE_COLLECTION_MAP[role];
+  if (!modelName) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping');
+  }
 
-  switch (payload.status) {
+  const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+  const submittedProfile = await TargetModel.findById(authUser.profileId);
+
+  if (!submittedProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
+  }
+
+  const finalRemarks =
+    payload.remarks?.trim() ||
+    (targetAuthStatus === 'APPROVED'
+      ? 'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.'
+      : '');
+
+  const actionTimestamp = new Date();
+
+  authUser.status = targetAuthStatus;
+  submittedProfile.remarks = finalRemarks;
+  submittedProfile.approvedOrRejectedOrBlockedAt = actionTimestamp;
+
+  switch (targetAuthStatus) {
     case 'APPROVED':
-      submittedUser.approvedBy = admin._id;
-      submittedUser.remarks =
-        payload.remarks ||
-        'Congratulations! Your account has successfully met all the required criteria, and we’re excited to have you on board.';
+      submittedProfile.approvedBy = adminUser.profileId;
+      submittedProfile.rejectedBy = undefined;
+      submittedProfile.blockedBy = undefined;
       break;
 
     case 'REJECTED':
-      submittedUser.rejectedBy = admin._id;
-      submittedUser.remarks = payload.remarks!;
-      submittedUser.isUpdateLocked = false;
+      submittedProfile.rejectedBy = adminUser.profileId;
+      submittedProfile.approvedBy = undefined;
+      submittedProfile.blockedBy = undefined;
+
+      submittedProfile.isUpdateLocked = false;
       break;
 
     case 'BLOCKED':
-      submittedUser.blockedBy = admin._id;
-      submittedUser.remarks = payload.remarks!;
+      submittedProfile.blockedBy = adminUser.profileId;
+      submittedProfile.approvedBy = undefined;
+      submittedProfile.rejectedBy = undefined;
       break;
   }
 
-  await submittedUser.save();
-  // --------------------------------------------------------------
-  // Push Notification (Non-blocking)
-  // --------------------------------------------------------------
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    await authUser.save({ session });
+    await submittedProfile.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to update user approval status due to transaction error',
+    );
+  }
+
   const notificationTitleMap: Record<string, string> = {
     APPROVED: 'Your account has been approved',
     REJECTED: 'Your account has been rejected',
     BLOCKED: 'Your account has been blocked',
   };
 
-  NotificationService.sendToUser(
-    submittedUser.userId,
-    notificationTitleMap[payload.status],
-    submittedUser.remarks || '',
-    {
-      userId: submittedUser._id.toString(),
-      role: submittedUser.role,
-    },
-    'default',
-    'ACCOUNT',
-  );
-
-  // --------------------------------------------------------------
-  // Email Notification (Non-blocking)
-  // --------------------------------------------------------------
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      userName: submittedUser.name?.firstName || 'User',
-      userRole: submittedUser.role,
-      currentYear: new Date().getFullYear(),
-      remarks: submittedUser.remarks || '',
-      date: new Date().toDateString(),
-      status: payload.status,
-    },
-    'user-approval-notification',
-  );
-
-  const emailSubject = `Your ${
-    submittedUser.role
-  } Application has been ${payload.status.toLowerCase()}`;
-
-  if (
-    [
-      'ADMIN',
-      'SUPER_ADMIN',
-      'FLEET_MANAGER',
-      'VENDOR',
-      'DELIVERY_PARTNER',
-      'SUB_VENDOR',
-    ].includes(submittedUser.role) ||
-    (submittedUser.role === 'CUSTOMER' && submittedUser.email)
-  ) {
+  (async () => {
     try {
-      await EmailHelper.sendEmail(submittedUser.email, emailHtml, emailSubject);
+      NotificationService.sendToUser(
+        authUser.userId,
+        notificationTitleMap[targetAuthStatus],
+        finalRemarks,
+        {
+          userObjectId: authUser.profileId.toString(),
+          role: role,
+        },
+        'default',
+        'ACCOUNT',
+      );
     } catch (err: any) {
-      console.error('Email sending failed:', err);
+      console.error(
+        'Background Guard -> Push Notification Failed:',
+        err.message,
+      );
     }
-  }
+
+    if (
+      [
+        'ADMIN',
+        'SUPER_ADMIN',
+        'FLEET_MANAGER',
+        'VENDOR',
+        'DELIVERY_PARTNER',
+        'SUB_VENDOR',
+      ].includes(role) ||
+      (role === 'CUSTOMER' && authUser.email)
+    ) {
+      try {
+        const emailHtml = await EmailHelper.createEmailContent(
+          {
+            userName: submittedProfile.name?.firstName || 'User',
+            userRole: role,
+            currentYear: actionTimestamp.getFullYear(),
+            remarks: finalRemarks,
+            date: actionTimestamp.toDateString(),
+            status: targetAuthStatus,
+          },
+          'user-approval-notification',
+        );
+
+        const emailSubject = `DeliGo - Your ${role} Application has been ${targetAuthStatus.toLowerCase()}`;
+
+        await EmailHelper.sendEmail(
+          authUser.email || submittedProfile.email,
+          emailHtml,
+          emailSubject,
+        );
+      } catch (err: any) {
+        console.error(
+          'Background Guard -> Email Delivery Failed:',
+          err.message,
+        );
+      }
+    }
+  })();
 
   return {
-    message: `${
-      submittedUser.role
-    } ${payload.status.toLowerCase()} successfully`,
+    success: true,
+    message: `${role} account has been ${targetAuthStatus.toLowerCase()} successfully`,
   };
 };
 
