@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
-import { ALL_USER_MODELS } from '../modules/Auth/auth.constant';
 import {
   ROLE_COLLECTION_MAP,
-  ROLE_PREFIX_MAP,
   TUserRole,
 } from '../constant/GlobalConstant/user.constant';
 import { AuthUser } from '../modules/AuthUser/authUser.model';

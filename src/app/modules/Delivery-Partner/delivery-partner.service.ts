@@ -12,6 +12,7 @@ import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
@@ -22,12 +23,20 @@ const updateDeliveryPartner = async (
   // ---------------------------------------------------------
   // Check if target delivery partner exists
   // ---------------------------------------------------------
-  const existingDeliveryPartner = await DeliveryPartner.findOne({
+  const existingDeliveryPartner = await AuthUser.findOne({
     userId: deliveryPartnerId,
-  });
+  }).populate('profileId', 'isUpdateLocked registeredBy');
 
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
+  }
+
+  const partnerProfile = existingDeliveryPartner.profileId as any;
+  if (!partnerProfile) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Delivery Partner profile not found!',
+    );
   }
 
   if (!existingDeliveryPartner.isEmailVerified) {
@@ -43,7 +52,7 @@ const updateDeliveryPartner = async (
   if (
     (currentUser.role === 'FLEET_MANAGER' ||
       currentUser.role === 'DELIVERY_PARTNER') &&
-    existingDeliveryPartner.isUpdateLocked
+    partnerProfile.isUpdateLocked
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -68,8 +77,7 @@ const updateDeliveryPartner = async (
   // Admin/SuperAdmin updating a partner they registered
   if (
     currentUser.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner.registeredBy?.id.toString() !==
-      currentUser?._id.toString()
+    partnerProfile.registeredBy?.id.toString() !== currentUser?._id.toString()
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,

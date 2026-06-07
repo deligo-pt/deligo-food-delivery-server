@@ -6,7 +6,6 @@ import generateOtp from '../../utils/generateOtp';
 import { Model } from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import {
-  ALL_USER_MODELS,
   ROLE_ONBOARD_PERMISSIONS,
   TApprovedRejectsPayload,
   USER_MODEL_MAP,

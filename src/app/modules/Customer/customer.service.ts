@@ -11,6 +11,7 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { generateReferralCode } from '../../utils/generateReferralCode';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { flattenObject } from '../../utils/flattenObject';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // update customer service
 const updateCustomer = async (
@@ -25,10 +26,18 @@ const updateCustomer = async (
     );
   }
 
-  const customer = await Customer.isUserExistsByUserId(customerId, false);
+  const customer = await AuthUser.findOne({
+    userId: customerId,
+    isDeleted: false,
+  }).populate('profileId');
   if (!customer) throw new AppError(httpStatus.NOT_FOUND, 'Customer not found');
-  if (!customer.isOtpVerified)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email');
+  if (customer.requiresOtpVerification)
+    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your OTP first.');
+
+  const customerProfile = customer.profileId as any;
+  if (!customerProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
+  }
 
   if (
     currentUser.role === 'CUSTOMER' &&
@@ -40,9 +49,9 @@ const updateCustomer = async (
   // -----------------------------
   // Referral Code Generation (New Logic)
   // -----------------------------
-  if (!currentUser.referralCode) {
+  if (!customerProfile.referralCode) {
     const firstName =
-      payload.name?.firstName || currentUser.name.firstName || 'USER';
+      payload.name?.firstName || customerProfile.name.firstName || 'USER';
     const newReferralCode = await generateReferralCode(firstName);
 
     payload.referralCode = newReferralCode;
@@ -74,8 +83,8 @@ const updateCustomer = async (
       };
     }
 
-    const currentAddresses = customer.deliveryAddresses
-      ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
+    const currentAddresses = customerProfile.deliveryAddresses
+      ? JSON.parse(JSON.stringify(customerProfile.deliveryAddresses))
       : [];
     if (currentAddresses.length >= 5) {
       throw new AppError(
