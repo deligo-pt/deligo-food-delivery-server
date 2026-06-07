@@ -1087,8 +1087,6 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
   const submittedProfile = await TargetModel.findById(authUser.profileId);
 
-  console.log(submittedProfile);
-
   if (!submittedProfile) {
     throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
   }
@@ -1209,7 +1207,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
         ['ADMIN', 'SUPER_ADMIN'],
         `New ${authUser?.role} Submission for Approval`,
         `${userName} (${authUser?.role}) has submitted for approval at ${formattedTime}.`,
-        { userObjectId: authUser?.profileId.toString(), role: authUser?.role },
+        { userId: authUser?.profileId.toString(), role: authUser?.role },
         'default',
         'ACCOUNT',
       );
@@ -1301,6 +1299,7 @@ const approvedOrRejectedUser = async (
   const actionTimestamp = new Date();
 
   authUser.status = targetAuthStatus;
+  submittedProfile.status = targetAuthStatus;
   submittedProfile.remarks = finalRemarks;
   submittedProfile.approvedOrRejectedOrBlockedAt = actionTimestamp;
 
@@ -1357,7 +1356,7 @@ const approvedOrRejectedUser = async (
         notificationTitleMap[targetAuthStatus],
         finalRemarks,
         {
-          userObjectId: authUser.profileId.toString(),
+          userId: authUser.profileId.toString(),
           role: role,
         },
         'default',
