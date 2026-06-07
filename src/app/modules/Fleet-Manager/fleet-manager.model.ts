@@ -3,11 +3,10 @@ import { Schema, model } from 'mongoose';
 import { TFleetManager } from './fleet-manager.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
-import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 
-const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
+const fleetManagerSchema = new Schema<TFleetManager>(
   {
     // ------------------------------------------
     // Core Identifiers
@@ -42,35 +41,14 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
       ],
     },
 
-    password: {
-      type: String,
-      required: true,
-      select: false,
-    },
-
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
 
-    isEmailVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     isUpdateLocked: { type: Boolean, default: false },
-
-    // --------------------------------------------------------
-    // Pending temporary Email and contact number
-    // --------------------------------------------------------
-    pendingEmail: { type: String },
-    pendingContactNumber: { type: String },
-
-    // ------------------------------------------
-    // OTP & Password Reset
-    // ------------------------------------------
-
-    passwordResetToken: { type: String, default: '' },
-    passwordResetTokenExpiresAt: { type: Date, default: null },
-    passwordChangedAt: { type: Date, default: null },
 
     // ------------------------------------------
     // Personal Details
@@ -152,16 +130,6 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
     },
 
     // ------------------------------------------
-    // Security & Access
-    // ------------------------------------------
-    twoFactorEnabled: { type: Boolean, default: false },
-
-    loginDevices: {
-      type: [loginDeviceSchema],
-      default: [],
-    },
-
-    // ------------------------------------------
     // Admin Workflow / Audit
     // ------------------------------------------
     approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
@@ -184,9 +152,7 @@ const fleetManagerSchema = new Schema<TFleetManager, IUserModel<TFleetManager>>(
   },
 );
 
-fleetManagerSchema.plugin(passwordPlugin);
-
-export const FleetManager = model<TFleetManager, IUserModel<TFleetManager>>(
+export const FleetManager = model<TFleetManager>(
   'FleetManager',
   fleetManagerSchema,
 );
