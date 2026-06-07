@@ -55,7 +55,7 @@ const adminSchema = new Schema<TAdmin>(
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-    contactNumber: { type: String, default: '' },
+    contactNumber: { type: String, default: '', trim: true },
     profilePhoto: { type: String, default: '' },
 
     address: {
