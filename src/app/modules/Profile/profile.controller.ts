@@ -18,23 +18,6 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// update my profile controller
-const updateMyProfile = catchAsync(async (req, res) => {
-  const file = req.file as TImageFile | undefined;
-  const result = await ProfileServices.updateMyProfile(
-    req.user as TCurrentUser,
-    file?.path ?? null,
-    req?.body,
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Profile updated successfully',
-    data: result,
-  });
-});
-
 // send otp controller
 const sendOtp = catchAsync(async (req, res) => {
   const result = await ProfileServices.sendOtp(
@@ -65,7 +48,6 @@ const updateEmailOrContactNumber = catchAsync(async (req, res) => {
 
 export const ProfileController = {
   getMyProfile,
-  updateMyProfile,
   sendOtp,
   updateEmailOrContactNumber,
 };
