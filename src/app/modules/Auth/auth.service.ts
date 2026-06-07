@@ -545,7 +545,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
             {
               userId,
               email,
-              requiresOtpVerification: true,
             },
           ],
           { session },
@@ -556,8 +555,11 @@ const loginCustomer = async (payload: TLoginCustomer) => {
           [
             {
               userId,
-              role: USER_ROLE.CUSTOMER,
+              profileId: newUser._id,
+              profileModel: 'Customer',
               email,
+              role: USER_ROLE.CUSTOMER,
+              requiresOtpVerification: true,
             },
           ],
           { session },
@@ -571,9 +573,9 @@ const loginCustomer = async (payload: TLoginCustomer) => {
           await handleReferral(existingCustomer, referralCode, session);
         }
 
-        await Customer.updateOne(
-          { _id: existingCustomer._id },
-          { requiresOtpVerification: true, isOtpVerified: false },
+        await AuthUser.updateOne(
+          { profileId: existingCustomer._id },
+          { requiresOtpVerification: true },
           { session },
         );
       }
@@ -626,11 +628,10 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         if (!existingUser.referredBy && referralCode) {
           await handleReferral(existingUser, referralCode, session);
         }
-        await Customer.updateOne(
-          { _id: existingUser._id },
+        await AuthUser.updateOne(
+          { profileId: existingUser._id },
           {
             mobileOtpId,
-            isOtpVerified: false,
             requiresOtpVerification: true,
           },
           { session },
@@ -643,8 +644,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
             {
               userId,
               contactNumber,
-              mobileOtpId,
-              requiresOtpVerification: true,
             },
           ],
           { session },
@@ -655,8 +654,12 @@ const loginCustomer = async (payload: TLoginCustomer) => {
           [
             {
               userId,
-              role: USER_ROLE.CUSTOMER,
+              profileId: newUser._id,
+              profileModel: 'Customer',
               contactNumber,
+              role: USER_ROLE.CUSTOMER,
+              requiresOtpVerification: true,
+              mobileOtpId,
             },
           ],
           { session },
