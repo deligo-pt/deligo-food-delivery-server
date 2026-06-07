@@ -16,6 +16,16 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
       unique: true,
       trim: true,
     },
+    profileId: {
+      type: Schema.Types.ObjectId,
+      required: [true, 'User Object ID reference is required'],
+      refPath: 'onModel',
+    },
+    profileModel: {
+      type: String,
+      required: [true, 'User Object ID reference is required'],
+      enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner', 'Admin'],
+    },
     email: {
       type: String,
       required: false, // Optional because of TCustomer support
