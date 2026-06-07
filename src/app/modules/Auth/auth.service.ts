@@ -803,23 +803,6 @@ const changePassword = async (
   currentUser: TCurrentUser,
   payload: { oldPassword: string; newPassword: string },
 ) => {
-  // checking if the user is exist
-
-  const modelName = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
-
-  const model = mongoose.model(modelName) as any;
-
-  if (!currentUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
-  }
-
-  if (payload.oldPassword === payload.newPassword) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'New password must be different from old password',
-    );
-  }
-
   if (currentUser?.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -838,9 +821,9 @@ const changePassword = async (
     throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
   }
 
-  const isPasswordMatched = await model.isPasswordMatched(
+  const isPasswordMatched = await AuthUser.isPasswordMatched(
     payload.oldPassword,
-    currentUser?.password,
+    currentUser.password as string,
   );
 
   //checking if the password is correct
@@ -854,7 +837,7 @@ const changePassword = async (
     Number(config.bcrypt_salt_rounds),
   );
 
-  await model.updateOne(
+  await AuthUser.updateOne(
     {
       userId: currentUser.userId,
       role: currentUser.role,
