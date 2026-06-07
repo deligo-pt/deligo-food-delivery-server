@@ -5,6 +5,8 @@ import {
   IAuthUserModel,
 } from '../../interfaces/user.interface';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
+import { authLookupPlugin } from '../../plugins/authLookupPlugin';
+import { passwordPlugin } from '../../plugins/passwordPlugin';
 
 const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
   {
