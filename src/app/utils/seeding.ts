@@ -25,17 +25,19 @@ export const seed = async () => {
       console.log('Seeding Super Admin...');
       const customUserId = `SA-${customNanoId(8)}`;
 
-      await Admin.create(
+      const [newAdminProfile] = await Admin.create(
         [
           {
             userId: customUserId,
-            name: 'Super Admin',
-            role: USER_ROLE.SUPER_ADMIN,
+            name: {
+              firstName: 'Super',
+              lastName: 'Admin',
+            },
             email: config.super_admin.super_admin_email,
-            password: config.super_admin.super_admin_password, // নিশ্চিত করুন মডেলে এটি হ্যাশ হচ্ছে
-            profilePhoto: config.super_admin.super_admin_profile_photo,
             contactNumber: config.super_admin.super_admin_contact_number,
+            profilePhoto: config.super_admin.super_admin_profile_photo,
             status: USER_STATUS.APPROVED,
+            role: USER_ROLE.SUPER_ADMIN,
           },
         ],
         { session },
@@ -45,12 +47,16 @@ export const seed = async () => {
         [
           {
             userId: customUserId,
+            profileId: newAdminProfile._id,
+            profileModel: 'Admin',
             email: config.super_admin.super_admin_email,
+            password: config.super_admin.super_admin_password,
             contactNumber: config.super_admin.super_admin_contact_number,
             role: USER_ROLE.SUPER_ADMIN,
             status: USER_STATUS.APPROVED,
             isEmailVerified: true,
             isContactNumberVerified: true,
+            isDeleted: false,
           },
         ],
         { session },
