@@ -68,24 +68,9 @@ const registerUser = async <
   const { otp } = generateOtp();
 
   const existingUser = await AuthUser.findOne({ email: payload.email }).select(
-    'email role status userObjectId _id',
+    'email role status profileId _id isEmailVerified isContactNumberVerified',
   );
-  if (existingUser) {
-    if (existingUser.isEmailVerified) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        `${existingUser.email} is already registered as ${existingUser.role}.`,
-      );
-    }
-    const prevModelData =
-      ROLE_COLLECTION_MAP[existingUser.role as keyof typeof USER_ROLE];
-    if (prevModelData) {
-      const prevModel = mongoose.model(prevModelData);
-      await prevModel.deleteOne({ _id: existingUser.profileId });
-    }
-
-    await AuthUser.deleteOne({ _id: existingUser._id });
-  }
+  console.log(existingUser);
 
   const emailHtml = await EmailHelper.createEmailContent(
     {
@@ -106,6 +91,22 @@ const registerUser = async <
 
   let createdUser: any = null;
   try {
+    if (existingUser) {
+      console.log(existingUser.isEmailVerified);
+      if (existingUser.isEmailVerified) {
+        throw new AppError(
+          httpStatus.CONFLICT,
+          `${existingUser.email} is already registered as ${existingUser.role}.`,
+        );
+      }
+      const prevModelData = ROLE_COLLECTION_MAP[existingUser.role as TUserRole];
+      if (prevModelData) {
+        const prevModel = mongoose.model(prevModelData);
+        await prevModel.deleteOne({ _id: existingUser.profileId }, { session });
+      }
+
+      await AuthUser.deleteOne({ _id: existingUser._id }, { session });
+    }
     const result = await mongooseModel.create(
       [
         {
@@ -865,6 +866,10 @@ const forgotPassword = async (email: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
   }
 
+  if (!user.isEmailVerified) {
+    throw new AppError(httpStatus.FORBIDDEN, 'You need to verify your email');
+  }
+
   if (user?.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -1056,97 +1061,162 @@ const refreshToken = async (token: string) => {
 
 // submit approval request service
 const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
-  const { user: submittedUser } = await findUserById({
-    userId,
-  });
-  if (!submittedUser) {
+  const authUser = await AuthUser.findOne({ userId });
+  if (!authUser || authUser.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (submittedUser?.status === 'SUBMITTED') {
+  if (authUser?.status === 'SUBMITTED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'You have already submitted the approval request. Please wait for admin approval.',
     );
   }
-  if (submittedUser?.status === 'APPROVED') {
+  if (authUser?.status === 'APPROVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Your account is already approved.',
     );
   }
 
-  if (submittedUser?.role === 'DELIVERY_PARTNER') {
-    if (
-      currentUser?.role === 'FLEET_MANAGER' &&
-      submittedUser?.registeredBy?.id.toString() !== currentUser._id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user',
-      );
-    }
-  } else {
-    if (submittedUser.userId !== currentUser.userId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to submit approval request for this user',
-      );
+  const modelName =
+    ROLE_COLLECTION_MAP[authUser.role as keyof typeof USER_ROLE];
+  if (!modelName) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping');
+  }
+
+  const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+  const submittedProfile = await TargetModel.findById(authUser.profileId);
+
+  if (!submittedProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
+  }
+
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+
+  if (!isAdmin) {
+    if (authUser?.role === 'DELIVERY_PARTNER') {
+      const isFleetManager = currentUser.role === 'FLEET_MANAGER';
+      const isOwner =
+        submittedProfile.registeredBy?.id?.toString() ===
+        currentUser._id.toString();
+
+      if (isFleetManager && !isOwner) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You do not have permission to submit approval requests for this delivery partner.',
+        );
+      }
+
+      if (!isFleetManager && authUser.userId !== currentUser.userId) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You can only submit approval requests for your own profile.',
+        );
+      }
+    } else {
+      if (authUser.userId !== currentUser.userId) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You do not have permission to initiate this approval request.',
+        );
+      }
     }
   }
 
   const submissionTime = new Date();
-  submittedUser.status = 'SUBMITTED';
-  submittedUser.submittedForApprovalAt = submissionTime;
-  submittedUser.isUpdateLocked = true;
-  await submittedUser.save();
 
-  // Prepare & send email to admin for user approval
-  const emailHtml = await EmailHelper.createEmailContent(
-    {
-      userName: submittedUser.name?.firstName || 'User',
-      userId: submittedUser.userId,
-      currentYear: new Date().getFullYear(),
-      userRole: submittedUser.role,
-      date: new Date().toDateString(),
-    },
-    'user-approval-submission-notification',
-  );
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
-    await EmailHelper.sendEmail(
-      submittedUser?.email,
-      emailHtml,
-      `New ${submittedUser?.role} Submission for Approval`,
+    await AuthUser.findOneAndUpdate(
+      { _id: authUser._id },
+      {
+        $set: {
+          status: 'SUBMITTED',
+          submittedForApprovalAt: submissionTime,
+        },
+      },
+      { session, new: true },
     );
-  } catch (err: any) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+
+    await TargetModel.findByIdAndUpdate(
+      authUser.profileId,
+      { $set: { isUpdateLocked: true } },
+      { session, new: true },
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('[Approval Submission Transaction Failed]:', error.message);
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to lock profile and submit approval request. Please try again.',
+    );
   }
 
   const userName =
-    `${submittedUser.name?.firstName || ''} ${submittedUser.name?.lastName || ''}`.trim() ||
+    `${submittedProfile.name?.firstName || ''} ${submittedProfile.name?.lastName || ''}`.trim() ||
     'A User';
+
   const formattedTime = submissionTime.toLocaleString('en-US', {
     hour: 'numeric',
     minute: 'numeric',
     hour12: true,
     day: 'numeric',
     month: 'short',
+    year: 'numeric',
   });
 
-  // send push notification to all admin
-  NotificationService.sendToRole(
-    'Admin',
-    ['ADMIN', 'SUPER_ADMIN'],
-    `New ${submittedUser?.role} Submission for Approval`,
-    `${userName} (${submittedUser?.role}) has submitted for approval at ${formattedTime}.`,
-    { userId: submittedUser?._id.toString(), role: submittedUser?.role },
-    'default',
-    'ACCOUNT',
-  );
+  (async () => {
+    try {
+      const emailHtml = await EmailHelper.createEmailContent(
+        {
+          userName: submittedProfile.name?.firstName || 'User',
+          userId: submittedProfile.userId,
+          currentYear: submissionTime.getFullYear(),
+          userRole: authUser.role,
+          date: submissionTime.toDateString(),
+        },
+        'user-approval-submission-notification',
+      );
+
+      await EmailHelper.sendEmail(
+        authUser.email,
+        emailHtml,
+        `New ${authUser?.role} Submission for Approval`,
+      );
+    } catch (err: any) {
+      console.error(
+        'Safe Background Guard -> Email Delivery Failed:',
+        err.message,
+      );
+    }
+
+    try {
+      await NotificationService.sendToRole(
+        'Admin',
+        ['ADMIN', 'SUPER_ADMIN'],
+        `New ${authUser?.role} Submission for Approval`,
+        `${userName} (${authUser?.role}) has submitted for approval at ${formattedTime}.`,
+        { userProfileId: authUser?.profileId.toString(), role: authUser?.role },
+        'default',
+        'ACCOUNT',
+      );
+    } catch (err: any) {
+      console.error(
+        'Safe Background Guard -> Admin Push Notification Failed:',
+        err.message,
+      );
+    }
+  })();
 
   return {
-    message: `${submittedUser?.role} submitted for approval successfully`,
+    message: `${authUser?.role} submitted for approval successfully`,
   };
 };
 
@@ -1311,21 +1381,17 @@ const verifyOtp = async (
   }
 
   let userData: any = undefined;
-  let userModel: any = undefined;
 
   if (email) {
-    const result = await findUserByEmail({ email });
-    userData = result?.user;
-    userModel = result?.model;
+    userData = await AuthUser.isUserExistsByEmail(email);
   } else if (contactNumber) {
-    userData = await Customer.findOne({
+    userData = await AuthUser.findOne({
       contactNumber,
       isDeleted: false,
     }).lean();
-    userModel = Customer;
   }
 
-  if (!userData || !userModel) {
+  if (!userData) {
     throw new AppError(
       httpStatus.NOT_FOUND,
       'User not found. Please register.',
@@ -1335,13 +1401,15 @@ const verifyOtp = async (
   const deviceLimit = ROLE_DEVICE_LIMITS[userData.role] || 3;
   const currentDeviceId = deviceDetails?.deviceId || 'unknown';
 
-  const existingDeviceIndex = userData.loginDevices?.findIndex(
+  const loginDevices = userData.loginDevices || [];
+
+  const existingDeviceIndex = loginDevices?.findIndex(
     (d: TLoginDevice) => d.deviceId === currentDeviceId,
   );
   const isExisting =
     existingDeviceIndex !== undefined && existingDeviceIndex > -1;
 
-  if (!isExisting && (userData.loginDevices?.length || 0) >= deviceLimit) {
+  if (!isExisting && (loginDevices?.length || 0) >= deviceLimit) {
     if (!forceLogin) {
       throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
     }
@@ -1394,18 +1462,22 @@ const verifyOtp = async (
   };
 
   const updateQuery: any = {
-    $set: { isOtpVerified: true, requiresOtpVerification: false },
+    $set: { requiresOtpVerification: false },
   };
 
   const options: any = { new: true };
 
-  if (email) updateQuery.$set.isEmailVerified = true;
+  if (email) {
+    updateQuery.$set.isEmailVerified = true;
+  } else if (contactNumber) {
+    updateQuery.$set.isContactNumberVerified = true;
+  }
 
   if (isExisting) {
     updateQuery.$set['loginDevices.$[elem]'] = newDevice;
     options.arrayFilters = [{ 'elem.deviceId': newDevice.deviceId }];
   } else {
-    if ((userData.loginDevices?.length || 0) >= deviceLimit) {
+    if ((loginDevices?.length || 0) >= deviceLimit) {
       if (!forceLogin)
         throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
 
@@ -1420,18 +1492,25 @@ const verifyOtp = async (
     }
   }
 
-  await userModel.findOneAndUpdate({ _id: userData._id }, updateQuery, options);
+  await AuthUser.findOneAndUpdate({ _id: userData._id }, updateQuery, options);
+
+  const populatedAuthUser = await AuthUser.findById(userData._id).populate(
+    'profileId',
+    'name',
+  );
+
+  const profileDetails = populatedAuthUser?.profileId as any;
 
   const jwtPayload = {
-    userId: userData.userId,
+    userId: userData?.userId,
     name: {
-      firstName: userData.name.firstName || '',
-      lastName: userData.name.lastName || '',
+      firstName: profileDetails?.name?.firstName || '',
+      lastName: profileDetails?.name?.lastName || '',
     },
-    email: userData.email || '',
-    contactNumber: userData.contactNumber || '',
-    role: userData.role,
-    status: userData.status,
+    email: userData?.email || '',
+    contactNumber: userData?.contactNumber || '',
+    role: userData?.role,
+    status: userData?.status,
     deviceId: newDevice.deviceId,
   };
 
