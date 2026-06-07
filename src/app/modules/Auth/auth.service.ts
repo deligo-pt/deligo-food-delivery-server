@@ -1804,35 +1804,56 @@ const permanentDeleteUser = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete a user. Your account is ${currentUser.status}`,
+      `You are not approved to perform permanent deletion. Your account is ${currentUser.status}`,
     );
   }
 
-  const { user: existingUser, model } = await findUserById({
-    userId,
-    isDeleted: true,
-  });
-  if (!existingUser) {
+  const targetAuthUser = await AuthUser.findOne({ userId });
+  if (!targetAuthUser) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'User already permanently deleted!',
+      'User account not found or already permanently deleted!',
     );
   }
-
-  if (!existingUser.isDeleted) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'User should be soft deleted first!',
-    );
-  }
-
-  if (existingUser.role === USER_ROLE.SUPER_ADMIN) {
+  if (targetAuthUser.role === USER_ROLE.SUPER_ADMIN) {
     throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
   }
-  await model?.deleteOne({ userId: existingUser.userId });
+
+  if (!targetAuthUser.isDeleted) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'User must be soft-deleted first before performing permanent deletion!',
+    );
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const modelName = ROLE_COLLECTION_MAP[targetAuthUser.role as TUserRole];
+    if (modelName) {
+      const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+      await TargetModel.findByIdAndDelete(targetAuthUser.profileId).session(
+        session,
+      );
+    }
+
+    await AuthUser.deleteOne({ _id: targetAuthUser._id }).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to execute permanent deletion due to transaction rollback',
+    );
+  }
 
   return {
-    message: `${existingUser?.role} permanently deleted successfully`,
+    success: true,
+    message: `${targetAuthUser.role} account and profile permanently purged from DeliGo systems.`,
   };
 };
 
