@@ -1,5 +1,10 @@
 import { model, Schema } from 'mongoose';
 import { TAuthUser } from './authUser.interface';
+import {
+  IAuthUserMethods,
+  IAuthUserModel,
+} from '../../interfaces/user.interface';
+import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 
 const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
   {
