@@ -5,7 +5,7 @@ import AppError from '../../errors/AppError';
 import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
 import { NotificationService } from '../Notification/notification.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { IngredientOrder } from './ing-order.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
 import { IIngredients } from '../Ingredients/ingredients.interface';
@@ -18,7 +18,7 @@ import customNanoId from '../../utils/customNanoId';
 // confirm ingredient order after reduniq payment success
 const confirmIngredientOrder = async (
   payload: { orderId: string; paymentToken: string },
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const { orderId, paymentToken } = payload;
 
@@ -163,7 +163,7 @@ const confirmIngredientOrder = async (
 // Vendor can view their orders (with filters, pagination) - only paid and confirmed orders
 const getMyIngredientOrders = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const vendorInfo = await Vendor.findById(currentUser._id);
   if (!vendorInfo) {
@@ -272,7 +272,7 @@ const getSingleIngredientOrder = async (orderId: string) => {
 const updateIngredientOrderStatus = async (
   id: string,
   status: 'SHIPPED' | 'DELIVERED',
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const adminId = currentUser._id;
   if (!adminId) {
@@ -319,3 +319,4 @@ export const IngredientOrderService = {
   getSingleIngredientOrder,
   updateIngredientOrderStatus,
 };
+

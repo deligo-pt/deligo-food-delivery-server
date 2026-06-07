@@ -22,6 +22,23 @@ router.get(
   ProfileController.getMyProfile,
 );
 
+// update my profile route
+router.patch(
+  '/',
+  auth(
+    'ADMIN',
+    'CUSTOMER',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+    'VENDOR',
+    'SUPER_ADMIN',
+  ),
+  multerUpload.single('file'),
+  parseBody,
+  validateRequest(ProfileValidation.userProfileUpdateValidationSchema),
+  ProfileController.updateMyProfile,
+);
+
 // send otp route
 router.patch(
   '/send-otp',
@@ -34,7 +51,7 @@ router.patch(
     'SUB_VENDOR',
     'SUPER_ADMIN',
   ),
-  validateRequest(ProfileValidation.sendOtpValidationSchema),
+  validateRequest(ProfileValidation.updateContactNumberValidationSchema),
   ProfileController.sendOtp,
 );
 
@@ -50,7 +67,6 @@ router.patch(
     'SUB_VENDOR',
     'SUPER_ADMIN',
   ),
-  validateRequest(ProfileValidation.updateEmailOrContactNumberValidationSchema),
   ProfileController.updateEmailOrContactNumber,
 );
 

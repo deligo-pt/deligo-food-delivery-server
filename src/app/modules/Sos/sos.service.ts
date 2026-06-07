@@ -1,10 +1,7 @@
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import {
-  ROLE_COLLECTION_MAP,
-  TUserRole,
-} from '../../constant/GlobalConstant/user.constant';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TSos } from './sos.interface';
@@ -14,11 +11,9 @@ import { getIO } from '../../lib/Socket';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 
 // trigger SOS service
-const triggerSos = async (
-  payload: Partial<TSos>,
-  currentUser: TCurrentUser,
-) => {
-  const userModelType = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
+const triggerSos = async (payload: Partial<TSos>, currentUser: AuthUser) => {
+  const userModelType =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
   const sosLocation = currentUser.currentSessionLocation?.coordinates;
   if (!sosLocation) {
     throw new AppError(
@@ -107,7 +102,7 @@ const updateSosStatus = async (
 };
 
 // get nearby sos alerts
-const getNearbySosAlerts = async (currentUser: TCurrentUser) => {
+const getNearbySosAlerts = async (currentUser: AuthUser) => {
   const radiusInMeters = 5000; // 5km
   const sosLocation = currentUser.currentSessionLocation?.coordinates;
   if (!sosLocation) {
@@ -133,7 +128,7 @@ const getNearbySosAlerts = async (currentUser: TCurrentUser) => {
 // get all sos alerts
 const getAllSosAlerts = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   let filterConditions = {};
   if (currentUser.role === 'FLEET_MANAGER') {
@@ -146,11 +141,11 @@ const getAllSosAlerts = async (
     filterConditions = { 'userId.id': { $in: partnerIds } };
   }
   const sosQuery = new QueryBuilder(SosModel.find(filterConditions), query)
-    .search(['status', 'role', 'issueTags'])
     .filter()
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search(['status', 'role', 'issueTags']);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     id: 'name userId',
@@ -171,7 +166,7 @@ const getAllSosAlerts = async (
 };
 
 // get single sos alert by id
-const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
+const getSingleSosAlert = async (id: string, currentUser: AuthUser) => {
   const result = await SosModel.findById(id).populate(
     'resolvedBy',
     'name email',
@@ -200,7 +195,7 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
 
 // get sos alerts by user id
 const getUserSosHistory = async (
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
   userId: string,
   query: Record<string, unknown>,
 ) => {
@@ -208,11 +203,11 @@ const getUserSosHistory = async (
     SosModel.find({ 'userId.id': userId }),
     query,
   )
-    .search(['status', 'role', 'issueTags'])
     .filter()
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search(['status', 'role', 'issueTags']);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     id: 'name',
@@ -233,7 +228,7 @@ const getUserSosHistory = async (
 };
 
 // get sos stats
-const getSosStats = async (currentUser: TCurrentUser) => {
+const getSosStats = async (currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,

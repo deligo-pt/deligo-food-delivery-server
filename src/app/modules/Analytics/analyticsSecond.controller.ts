@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { AnalyticsSecondServices } from './analyticsSecond.service';
 
 // ----------------------------------------------------------------------------------
@@ -22,7 +22,7 @@ const getAdminDashboardAnalytics = catchAsync(async (req, res) => {
 // get vendor dashboard analytics controller
 const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsSecondServices.getVendorDashboardAnalytics(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -35,7 +35,7 @@ const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
 // get fleet dashboard analytics controller
 const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsSecondServices.getFleetDashboardAnalytics(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -48,7 +48,7 @@ const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
 // get partner performance analytics controller
 const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsSecondServices.getPartnerPerformanceAnalytics(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.query,
   );
   sendResponse(res, {
@@ -63,7 +63,7 @@ const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
 const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
   const result =
     await AnalyticsSecondServices.getDeliveryPartnerEarningAnalytics(
-      req.user as TCurrentUser,
+      req.user as AuthUser,
     );
   sendResponse(res, {
     success: true,
@@ -76,7 +76,7 @@ const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
 // get fleet manager earning analytics controller
 const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsSecondServices.getFleetManagerEarningAnalytics(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -89,7 +89,7 @@ const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
 // get vendor earnings analytics controller
 const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsSecondServices.getVendorEarningsAnalytics(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -133,7 +133,7 @@ const getSingleVendorPerformanceDetails = catchAsync(async (req, res) => {
   const result =
     await AnalyticsSecondServices.getSingleVendorPerformanceDetails(
       vendorUserId,
-      req.user as TCurrentUser,
+      req.user as AuthUser,
     );
   sendResponse(res, {
     success: true,
@@ -146,7 +146,7 @@ const getSingleVendorPerformanceDetails = catchAsync(async (req, res) => {
 // get offer analytics for admin
 const getOfferAnalyticsForAdmin = catchAsync(async (req, res) => {
   const result = await AnalyticsSecondServices.getOfferAnalyticsForAdmin(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -158,7 +158,7 @@ const getOfferAnalyticsForAdmin = catchAsync(async (req, res) => {
 
 const getTaxReportAnalyticsForVendor = catchAsync(async (req, res) => {
   const result = await AnalyticsSecondServices.getTaxReportAnalyticsForVendor(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,

@@ -2,12 +2,12 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { NotificationService } from './notification.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Get notifications for current user
 const getMyNotifications = catchAsync(async (req, res) => {
   const result = await NotificationService.getMyNotifications(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.query,
   );
 
@@ -23,7 +23,7 @@ const getMyNotifications = catchAsync(async (req, res) => {
 // Mark as read (one)
 const markAsRead = catchAsync(async (req, res) => {
   const { id } = req.params;
-  await NotificationService.markAsRead(id, req?.user as TCurrentUser);
+  await NotificationService.markAsRead(id, req?.user as AuthUser);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -34,7 +34,7 @@ const markAsRead = catchAsync(async (req, res) => {
 
 // Mark as read (all)
 const markAllAsRead = catchAsync(async (req, res) => {
-  await NotificationService.markAllAsRead(req?.user as TCurrentUser);
+  await NotificationService.markAllAsRead(req?.user as AuthUser);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -46,7 +46,7 @@ const markAllAsRead = catchAsync(async (req, res) => {
 // Admin: Get all notifications
 const getAllNotifications = catchAsync(async (req, res) => {
   const result = await NotificationService.getAllNotifications(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.query,
   );
   sendResponse(res, {
@@ -63,7 +63,7 @@ const softDeleteSingleNotification = catchAsync(async (req, res) => {
   const { id } = req.params;
   const result = await NotificationService.softDeleteSingleNotification(
     id,
-    req?.user as TCurrentUser,
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -78,7 +78,7 @@ const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
   const { notificationIds } = req.body;
   const result = await NotificationService.softDeleteMultipleNotifications(
     notificationIds,
-    req?.user as TCurrentUser,
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -91,7 +91,7 @@ const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
 // soft delete all notifications controller
 const softDeleteAllNotifications = catchAsync(async (req, res) => {
   const result = await NotificationService.softDeleteAllNotifications(
-    req?.user as TCurrentUser,
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -106,7 +106,7 @@ const permanentDeleteSingleNotification = catchAsync(async (req, res) => {
   const { id } = req.params;
   const result = await NotificationService.permanentDeleteSingleNotification(
     id,
-    req?.user as TCurrentUser,
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -121,7 +121,7 @@ const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
   const { notificationIds } = req.body;
   const result = await NotificationService.permanentDeleteMultipleNotifications(
     notificationIds,
-    req?.user as TCurrentUser,
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -134,7 +134,7 @@ const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
 // Permanent Delete All Notification Controller
 const permanentDeleteAllNotifications = catchAsync(async (req, res) => {
   const result = await NotificationService.permanentDeleteAllNotifications(
-    req?.user as TCurrentUser,
+    req?.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -168,3 +168,4 @@ export const NotificationControllers = {
   permanentDeleteAllNotifications,
   sendBroadcastNotification,
 };
+

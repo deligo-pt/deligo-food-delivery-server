@@ -2,11 +2,11 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { VendorServices } from './vendor.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Vendor Update Controller
 const vendorUpdate = catchAsync(async (req, res) => {
-  const currentUser = req.user as TCurrentUser;
+  const currentUser = req.user as AuthUser;
   const payload = req.body;
 
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
@@ -30,7 +30,7 @@ const vendorUpdate = catchAsync(async (req, res) => {
 const vendorDocImageUpload = catchAsync(async (req, res) => {
   const result = await VendorServices.vendorDocImageUpload(
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.params.vendorId,
   );
 
@@ -45,7 +45,7 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
 const deleteVendorDocument = catchAsync(async (req, res) => {
   const result = await VendorServices.deleteVendorDocument(
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.params.vendorId,
   );
 
@@ -61,7 +61,7 @@ const deleteVendorDocument = catchAsync(async (req, res) => {
 const updateVendorLiveLocation = catchAsync(async (req, res) => {
   const result = await VendorServices.updateVendorLiveLocation(
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.params.vendorId,
   );
 
@@ -76,7 +76,7 @@ const updateVendorLiveLocation = catchAsync(async (req, res) => {
 // toggle vendor store open/close controller
 const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
   const result = await VendorServices.toggleVendorStoreOpenClose(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -91,7 +91,7 @@ const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
 const getAllVendors = catchAsync(async (req, res) => {
   const result = await VendorServices.getAllVendors(
     req.query,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -107,7 +107,7 @@ const getAllVendors = catchAsync(async (req, res) => {
 const getSingleVendor = catchAsync(async (req, res) => {
   const result = await VendorServices.getSingleVendor(
     req.params.vendorId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -122,7 +122,7 @@ const getSingleVendor = catchAsync(async (req, res) => {
 const getAllVendorsForCustomer = catchAsync(async (req, res) => {
   const result = await VendorServices.getAllVendorsForCustomer(
     req.query,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {

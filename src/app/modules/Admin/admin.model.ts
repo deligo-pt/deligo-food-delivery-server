@@ -2,12 +2,13 @@
 
 import { model, Schema } from 'mongoose';
 import { TAdmin } from './admin.interface';
+import { IUserModel } from '../../interfaces/user.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 
-const adminSchema = new Schema<TAdmin>(
+const adminSchema = new Schema<TAdmin, IUserModel<TAdmin>>(
   {
     // --------------------------------------------------------
     // Core Identifiers
@@ -24,7 +25,7 @@ const adminSchema = new Schema<TAdmin>(
     },
     role: {
       type: String,
-      enum: ['ADMIN', 'SUPER_ADMIN'],
+      enum: ['ADMIN', 'SUPER_ADMIN', 'AGENT'],
       required: true,
     },
     email: {
@@ -34,10 +35,18 @@ const adminSchema = new Schema<TAdmin>(
       lowercase: true,
       trim: true,
     },
+    password: {
+      type: String,
+      required: true,
+    },
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
     },
     isDeleted: {
       type: Boolean,
@@ -49,13 +58,29 @@ const adminSchema = new Schema<TAdmin>(
     },
 
     // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
+    // --------------------------------------------------------
+    // OTP & Password Reset
+    // --------------------------------------------------------
+    otp: { type: String },
+    isOtpExpired: { type: Date },
+
+    passwordResetToken: { type: String, default: null },
+    passwordResetTokenExpiresAt: { type: Date, default: null },
+    passwordChangedAt: { type: Date, default: null },
+
+    // --------------------------------------------------------
     // Personal Details
     // --------------------------------------------------------
     name: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
     },
-    contactNumber: { type: String, default: '', trim: true },
+    contactNumber: { type: String, default: '' },
     profilePhoto: { type: String, default: '' },
 
     address: {
@@ -83,6 +108,18 @@ const adminSchema = new Schema<TAdmin>(
       myPhoto: { type: String, default: '' },
       idProofFront: { type: String, default: '' },
       idProofBack: { type: String, default: '' },
+    },
+
+    // --------------------------------------------------------
+    // Security & Access
+    // --------------------------------------------------------
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    loginDevices: {
+      type: [loginDeviceSchema],
+      default: [],
     },
 
     // --------------------------------------------------------
@@ -120,8 +157,9 @@ const adminSchema = new Schema<TAdmin>(
 );
 
 // password hashing plugin
+adminSchema.plugin(passwordPlugin);
 
-export const Admin = model<TAdmin>('Admin', adminSchema);
+export const Admin = model<TAdmin, IUserModel<TAdmin>>('Admin', adminSchema);
 
 export type TAdminImageDocuments = {
   docImageTitle: 'idProofFront' | 'idProofBack';

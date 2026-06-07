@@ -12,10 +12,28 @@ export type TFleetManager = {
   registeredBy?: mongoose.Types.ObjectId;
   role: 'FLEET_MANAGER';
   email: string;
+  password: string;
 
   status: keyof typeof USER_STATUS;
+  isEmailVerified: boolean;
   isDeleted: boolean;
   isUpdateLocked: boolean;
+
+  // --------------------------------------------------------
+  // Pending temporary Email and contact number
+  // --------------------------------------------------------
+  pendingEmail?: string;
+  pendingContactNumber?: string;
+
+  // ---------------------------------------------
+  // OTP & Password Reset
+  // ---------------------------------------------
+  otp?: string;
+  isOtpExpired?: Date;
+
+  passwordResetToken?: string;
+  passwordResetTokenExpiresAt?: Date;
+  passwordChangedAt?: Date;
 
   // ---------------------------------------------
   // Personal Information
@@ -93,6 +111,12 @@ export type TFleetManager = {
     activeVehicles?: number;
     totalDeliveries?: number;
   };
+
+  // ---------------------------------------------
+  // Security & Access
+  // ---------------------------------------------
+  twoFactorEnabled?: boolean;
+  loginDevices?: TLoginDevice[];
 
   // ---------------------------------------------
   // Admin Workflow / Audit

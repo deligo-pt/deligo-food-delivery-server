@@ -2,14 +2,14 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderAfterRedUniqPayment(
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -23,7 +23,7 @@ const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
 const getAllOrders = catchAsync(async (req, res) => {
   const result = await OrderServices.getAllOrders(
     req.query,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -39,7 +39,7 @@ const getAllOrders = catchAsync(async (req, res) => {
 const getSingleOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getSingleOrder(
     req.params.orderId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -53,7 +53,7 @@ const getSingleOrder = catchAsync(async (req, res) => {
 // update order status by vendor controller (accept/reject/preparing/cancel)
 const updateOrderStatusByVendor = catchAsync(async (req, res) => {
   const result = await OrderServices.updateOrderStatusByVendor(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.params.orderId,
     req.body,
   );
@@ -70,7 +70,7 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
 const broadcastOrderToPartners = catchAsync(async (req, res) => {
   const result = await OrderServices.broadcastOrderToPartners(
     req.params.orderId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -83,7 +83,7 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
 // assign delivery partner to order controller
 const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.partnerAcceptsDispatchedOrder(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.params.orderId,
     req.body,
   );
@@ -100,7 +100,7 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
 const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
   const result = await OrderServices.updateOrderStatusByDeliveryPartner(
     req.params.orderId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.body,
   );
   sendResponse(res, {
@@ -131,7 +131,7 @@ const downloadInvoicePdfFromPd = catchAsync(async (req, res) => {
 // get delivery partner dispatch order
 const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getDeliveryPartnersDispatchOrder(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -144,7 +144,7 @@ const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
 // get delivery partner current order
 const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getDeliveryPartnerCurrentOrder(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,

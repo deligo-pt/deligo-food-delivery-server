@@ -110,11 +110,11 @@ const updateTax = async (taxId: string, payload: Partial<TTax>) => {
 // Get all taxes service
 const getAllTaxes = async (query: Record<string, unknown>) => {
   const taxes = new QueryBuilder(Tax.find(), query)
-    .search(['taxName'])
-    .filter()
-    .sort()
+    .fields()
     .paginate()
-    .fields();
+    .sort()
+    .filter()
+    .search(['taxName']);
   const meta = await taxes.countTotal();
   const data = await taxes.modelQuery;
   return { meta, data };

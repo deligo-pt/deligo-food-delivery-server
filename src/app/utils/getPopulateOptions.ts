@@ -7,7 +7,8 @@ type UserRole =
   | 'DELIVERY_PARTNER'
   | 'ADMIN'
   | 'SUPER_ADMIN'
-  | 'FLEET_MANAGER';
+  | 'FLEET_MANAGER'
+  | 'AGENT';
 
 type PopulateInput = {
   customer?: string;

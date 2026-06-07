@@ -10,7 +10,6 @@ export const CustomerSearchableFields = [
 
 export const AddressType = {
   PRIMARY: 'PRIMARY',
-  SECONDARY: 'SECONDARY',
   HOME: 'HOME',
   OFFICE: 'OFFICE',
   OTHER: 'OTHER',

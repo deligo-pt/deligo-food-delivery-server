@@ -34,7 +34,7 @@ import {
 } from './analytics.utils';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -43,7 +43,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 const timezone = 'Europe/Lisbon';
 
 // get vendor sales analytics
-const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
+const getVendorSalesAnalytics = async (currentUser: AuthUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
   const sevenDaysAgo = new Date();
@@ -156,7 +156,7 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
 };
 
 // get customer insights controller
-const getCustomerInsights = async (currentUser: TCurrentUser) => {
+const getCustomerInsights = async (currentUser: AuthUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
   const now = new Date();
@@ -384,7 +384,7 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
 };
 
 // get order trend insights
-const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
+const getOrderTrendInsights = async (currentUser: AuthUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
   const now = new Date();
@@ -558,7 +558,7 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
 };
 
 // get top performing items analytics
-const getTopSellingItemsAnalytics = async (currentUser: TCurrentUser) => {
+const getTopSellingItemsAnalytics = async (currentUser: AuthUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
   const now = new Date();
@@ -1352,7 +1352,7 @@ const getAdminDeliveryPartnerReportAnalytics = async (
 
 // vendor sales report analytics
 const getVendorSalesReportAnalytics = async (
-  user: TCurrentUser,
+  user: AuthUser,
 ): Promise<TVendorSalesReport> => {
   const vendorId = user._id;
 
@@ -1459,7 +1459,7 @@ const getVendorSalesReportAnalytics = async (
 
 // get vendor customer report
 const getVendorCustomerReport = async (
-  user: TCurrentUser,
+  user: AuthUser,
   query: Record<string, unknown>,
 ) => {
   const vendorId = new mongoose.Types.ObjectId(user._id);
@@ -1634,8 +1634,8 @@ const getVendorCustomerReport = async (
     .search(['name.firstName', 'name.lastName', 'contactNumber'])
     .filter()
     .sort()
-    .paginate()
-    .fields();
+    .fields()
+    .paginate();
 
   const meta = await builder.countTotal();
   const customers = await builder.modelQuery;
@@ -1696,7 +1696,7 @@ const getVendorCustomerReport = async (
 
 // get vendor tax report
 const getVendorTaxReport = async (
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ): Promise<TTaxReport> => {
   const vendorId = new mongoose.Types.ObjectId(currentUser._id);
   const now = new Date();

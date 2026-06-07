@@ -1,15 +1,18 @@
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { CustomerServices } from './customer.service';
 
 // Customer Update Controller
 const updateCustomer = catchAsync(async (req, res) => {
+  const user = req.user as AuthUser;
+  const profilePhoto = req.file?.path;
   const result = await CustomerServices.updateCustomer(
     req.body,
     req.params.customerId,
-    req.user as TCurrentUser,
+    user,
+    profilePhoto,
   );
   sendResponse(res, {
     success: true,
@@ -23,7 +26,7 @@ const updateCustomer = catchAsync(async (req, res) => {
 const updateCustomerLiveLocation = catchAsync(async (req, res) => {
   const result = await CustomerServices.updateCustomerLiveLocation(
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.params.customerId,
   );
 
@@ -40,7 +43,7 @@ const addDeliveryAddress = catchAsync(async (req, res) => {
   const { deliveryAddress } = req.body;
   const result = await CustomerServices.addDeliveryAddress(
     deliveryAddress,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -54,7 +57,7 @@ const addDeliveryAddress = catchAsync(async (req, res) => {
 const updateDeliveryAddress = catchAsync(async (req, res) => {
   const { addressId } = req.params;
   const payload = req.body.deliveryAddress;
-  const user = req.user as TCurrentUser;
+  const user = req.user as AuthUser;
 
   const result = await CustomerServices.updateDeliveryAddress(
     addressId,
@@ -74,7 +77,7 @@ const updateDeliveryAddress = catchAsync(async (req, res) => {
 const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
   const result = await CustomerServices.toggleDeliveryAddressStatus(
     req.params.addressId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -88,7 +91,7 @@ const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
 const deleteDeliveryAddress = catchAsync(async (req, res) => {
   const result = await CustomerServices.deleteDeliveryAddress(
     req.params.addressId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -102,7 +105,7 @@ const deleteDeliveryAddress = catchAsync(async (req, res) => {
 const getAllCustomers = catchAsync(async (req, res) => {
   const result = await CustomerServices.getAllCustomersFromDB(
     req.query,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -118,7 +121,7 @@ const getAllCustomers = catchAsync(async (req, res) => {
 const getSingleCustomer = catchAsync(async (req, res) => {
   const customer = await CustomerServices.getSingleCustomerFromDB(
     req.params.customerId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {

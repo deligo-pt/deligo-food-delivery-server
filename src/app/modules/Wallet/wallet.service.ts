@@ -5,12 +5,12 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // get all wallets
 const getAllWallets = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const partners = await DeliveryPartner.find({
@@ -25,11 +25,11 @@ const getAllWallets = async (
     Wallet.find().populate('userId', 'userId name email'),
     query,
   )
+    .fields()
+    .paginate()
     .search([])
     .filter()
-    .sort()
-    .paginate()
-    .fields();
+    .sort();
   const data = await wallets.modelQuery;
   const meta = await wallets.countTotal();
   return {
@@ -39,7 +39,7 @@ const getAllWallets = async (
 };
 
 // get single wallet
-const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
+const getSingleWallet = async (walletId: string, currentUser: AuthUser) => {
   const wallet = await Wallet.findOne({ walletId }).populate(
     'userId',
     'name email userId',
@@ -67,7 +67,7 @@ const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
 };
 
 // get my wallet
-const getMyWallet = async (currentUser: TCurrentUser) => {
+const getMyWallet = async (currentUser: AuthUser) => {
   const userId = new mongoose.Types.ObjectId(currentUser._id);
   const adminUserId = new mongoose.Types.ObjectId('694a088c43ee1acbe0e9c87d');
 

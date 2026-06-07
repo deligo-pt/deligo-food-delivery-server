@@ -1,5 +1,5 @@
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { IngredientsServices } from './ingredients.service';
@@ -10,7 +10,7 @@ const createIngredient = catchAsync(async (req, res) => {
 
   const result = await IngredientsServices.createIngredient(
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     file?.path,
   );
 
@@ -70,3 +70,4 @@ export const IngredientsController = {
   getIngredientDetails,
   getAllIngredients,
 };
+

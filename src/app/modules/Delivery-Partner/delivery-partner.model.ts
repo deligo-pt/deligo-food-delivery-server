@@ -1,13 +1,17 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TDeliveryPartner } from './delivery-partner.interface';
+import { IUserModel } from '../../interfaces/user.interface';
 import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { currentStatusOptions } from './delivery-partner.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 
-const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
+const deliveryPartnerSchema = new Schema<
+  TDeliveryPartner,
+  IUserModel<TDeliveryPartner>
+>(
   {
     //-------------------------------------------------
     // Core Identifiers
@@ -49,14 +53,36 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
       ],
     },
 
+    password: {
+      type: String,
+      required: true,
+      select: false,
+    },
+
     status: {
       type: String,
       enum: Object.keys(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
 
+    isEmailVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     isUpdateLocked: { type: Boolean, default: false },
+
+    // --------------------------------------------------------
+    // Pending temporary Email and contact number
+    // --------------------------------------------------------
+    pendingEmail: { type: String },
+    pendingContactNumber: { type: String },
+
+    //-------------------------------------------------
+    // OTP & Password Reset
+    //-------------------------------------------------
+    otp: { type: String },
+    isOtpExpired: { type: Date },
+    passwordResetToken: { type: String },
+    passwordResetTokenExpiresAt: { type: Date },
+    passwordChangedAt: { type: Date },
 
     //-------------------------------------------------
     // Personal Information
@@ -213,6 +239,16 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
     },
 
     //-------------------------------------------------
+    // Security & Access
+    //-------------------------------------------------
+    twoFactorEnabled: { type: Boolean, default: false },
+
+    loginDevices: {
+      type: [loginDeviceSchema],
+      default: [],
+    },
+
+    //-------------------------------------------------
     // Admin Workflow / Audit
     //-------------------------------------------------
     approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
@@ -240,8 +276,9 @@ deliveryPartnerSchema.index({
   currentSessionLocation: '2dsphere',
 });
 deliveryPartnerSchema.index({ 'registeredBy.id': 1 });
+deliveryPartnerSchema.plugin(passwordPlugin);
 
-export const DeliveryPartner = model<TDeliveryPartner>(
-  'DeliveryPartner',
-  deliveryPartnerSchema,
-);
+export const DeliveryPartner = model<
+  TDeliveryPartner,
+  IUserModel<TDeliveryPartner>
+>('DeliveryPartner', deliveryPartnerSchema);

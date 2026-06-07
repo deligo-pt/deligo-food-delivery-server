@@ -2,12 +2,12 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { CheckoutServices } from './checkout.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // checkout Controller
 const checkout = catchAsync(async (req, res) => {
   const result = await CheckoutServices.checkout(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.body,
   );
 
@@ -24,7 +24,7 @@ const getCheckoutSummary = catchAsync(async (req, res) => {
   const { checkoutSummaryId } = req.params;
   const result = await CheckoutServices.getCheckoutSummary(
     checkoutSummaryId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,

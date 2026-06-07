@@ -9,13 +9,10 @@ import { recalculateCartTotals } from './cart.constant';
 import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Add cart Service
-const addToCart = async (
-  payload: TCartItemInput,
-  currentUser: TCurrentUser,
-) => {
+const addToCart = async (payload: TCartItemInput, currentUser: AuthUser) => {
   if (currentUser.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -208,7 +205,7 @@ const addToCart = async (
 
 // active item Service
 const activateItem = async (
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
   productId: string,
   variationSku?: string,
 ) => {
@@ -269,7 +266,7 @@ const activateItem = async (
 
 // update cart item quantity
 const updateCartItemQuantity = async (
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
   payload: {
     productId: string;
     variationSku?: string;
@@ -406,7 +403,7 @@ const updateCartItemQuantity = async (
 
 // update add on quantity Service
 const updateAddonQuantity = async (
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
   payload: {
     productId: string;
     variationSku?: string;
@@ -574,7 +571,7 @@ const updateAddonQuantity = async (
 
 // delete cart item
 const deleteCartItem = async (
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
   itemsToDelete: { productId: string; variationSku?: string }[],
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -623,7 +620,7 @@ const deleteCartItem = async (
 };
 
 // clear cart Service
-const clearCart = async (currentUser: TCurrentUser) => {
+const clearCart = async (currentUser: AuthUser) => {
   const cart = await Cart.findOne({
     customerId: currentUser._id,
     isDeleted: false,
@@ -649,7 +646,7 @@ const clearCart = async (currentUser: TCurrentUser) => {
 
 // get all cart service
 const getAllCart = async (
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
   query: Record<string, unknown>,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -660,11 +657,11 @@ const getAllCart = async (
   }
 
   const cart = new QueryBuilder(Cart.find(), query)
-    .search([])
+    .fields()
     .filter()
-    .sort()
     .paginate()
-    .fields();
+    .sort()
+    .search([]);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     customer: 'name',
@@ -680,7 +677,7 @@ const getAllCart = async (
 };
 
 // view cart Service
-const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
+const viewCart = async (currentUser: AuthUser, cartCustomerId?: string) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,

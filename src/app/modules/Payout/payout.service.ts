@@ -3,11 +3,8 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import mongoose from 'mongoose';
 import { Payout } from './payout.model';
-import {
-  ROLE_COLLECTION_MAP,
-  TUserRole,
-} from '../../constant/GlobalConstant/user.constant';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { findUserById } from '../../utils/findUserByEmailOrId';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Wallet } from '../Wallet/wallet.model';
@@ -21,13 +18,14 @@ import { roundTo2 } from '../../utils/mathProvider';
 // initiate payout service
 const initiateSettlement = async (
   targetUserId: string,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   const { _id: senderId, role: senderRole } = currentUser;
-  const senderModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
+  const senderModel =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
 
   const { user } = await findUserById({ userId: targetUserId });
 
@@ -35,7 +33,8 @@ const initiateSettlement = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
   }
   const userId = user?._id;
-  const targetUserModel = ROLE_COLLECTION_MAP[user?.role as TUserRole];
+  const targetUserModel =
+    ROLE_COLLECTION_MAP[user?.role as keyof typeof ROLE_COLLECTION_MAP];
 
   try {
     if (senderRole === 'FLEET_MANAGER') {
@@ -161,13 +160,14 @@ const finalizeSettlement = async (
     remarks?: string;
   },
   payoutProof: string | null,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   const processedBy = new mongoose.Types.ObjectId(currentUser._id);
-  const processorModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
+  const processorModel =
+    ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
 
   try {
     const payout = await Payout.findOne({ payoutId })
@@ -275,7 +275,7 @@ const finalizeSettlement = async (
 // get all payouts
 const getAllPayouts = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const { role, _id: currentUserId } = currentUser;
   const { startDate, endDate, ...remainingQuery } = query;
@@ -316,11 +316,11 @@ const getAllPayouts = async (
       .populate('senderId', 'name role'),
     filter,
   )
-    .search([])
     .filter()
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search([]);
 
   const rawResult = await payoutQuery.modelQuery;
   const meta = await payoutQuery.countTotal();
@@ -368,7 +368,7 @@ const getAllPayouts = async (
 };
 
 // get single payout service
-const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
+const getSinglePayout = async (payoutId: string, currentUser: AuthUser) => {
   const { role, _id: currentUserId } = currentUser;
 
   const payout = await Payout.findOne({ payoutId })

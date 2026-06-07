@@ -13,6 +13,8 @@ const router = Router();
 router.patch(
   '/:customerId',
   auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
+  multerUpload.single('file'),
+  parseBody,
   validateRequest(CustomerValidation.updateCustomerDataValidationSchema),
   CustomerControllers.updateCustomer,
 );
