@@ -174,6 +174,7 @@ const onboardUser = async <
   T extends {
     email: string;
     role: TUserRole;
+    password: string;
     isEmailVerified?: boolean;
     registeredBy?: any;
   },
@@ -210,10 +211,10 @@ const onboardUser = async <
     );
   }
 
-  const { Model: MongooseModel, idField } = modelData;
-  const targetModel = MongooseModel as unknown as Model<T>;
+  const { Model: TargetModel, idField } = modelData;
+  const mongooseModel = TargetModel as unknown as Model<T>;
 
-  const userID = generateUserId(mapKey);
+  const userId = generateUserId(mapKey);
   payload.role = userTypeData.role;
   const { otp } = generateOtp();
 
@@ -241,57 +242,53 @@ const onboardUser = async <
 
   const session = await mongoose.startSession();
 
+  let createdUser;
   try {
     session.startTransaction();
 
     if (existingUser) {
-      console.log(existingUser);
-
-      if (existingUser.isDeleted) {
+      if (existingUser.isEmailVerified) {
         throw new AppError(
           httpStatus.CONFLICT,
-          'User already deleted. Please contact support for use this email.',
+          `${existingUser.email} is already registered as ${existingUser.role}.`,
         );
       }
       const prevModelData = ROLE_COLLECTION_MAP[existingUser.role as TUserRole];
       if (prevModelData) {
         const prevModel = mongoose.model(prevModelData);
-        const prevUser = await prevModel
-          .findOne({ userId: existingUser.userId })
-          .session(session);
-
-        if (prevUser && (prevUser as any).isEmailVerified) {
-          throw new AppError(
-            httpStatus.CONFLICT,
-            `${existingUser.email} is already registered as ${existingUser.role}.`,
-          );
-        }
-
         await prevModel.deleteOne({ userId: existingUser.userId }, { session });
       }
       await AuthUser.deleteOne({ _id: existingUser._id }, { session });
     }
 
-    await targetModel.create(
+    const rawPassword = payload.password;
+    const { password: _, ...profilePayload } = payload;
+
+    const result = await mongooseModel.create(
       [
         {
-          ...payload,
-          [idField]: userID,
-          registeredBy: registeredByValue,
-          isEmailVerified: false,
+          ...profilePayload,
+          [idField]: userId,
+          registeredBy: currentUser._id,
           status: 'PENDING',
           role: payload.role,
         },
       ],
       { session },
     );
+    createdUser = result[0];
 
     await AuthUser.create(
       [
         {
-          userId: userID,
+          userId,
+          profileId: createdUser._id,
+          profileModel: TargetModel.modelName,
           email: payload.email,
+          password: rawPassword,
           role: payload.role,
+          status: 'PENDING',
+          isDeleted: false,
         },
       ],
       { session },
@@ -350,8 +347,9 @@ const loginUser = async (
   payload: TLoginUser & { deviceDetails: TLoginDevice; forceLogin?: boolean },
 ) => {
   // checking if the user is exist
-  const { user, model } = await findUserByEmail({
+  const user = await AuthUser.findOne({
     email: payload?.email,
+    isDeleted: false,
   });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -371,17 +369,14 @@ const loginUser = async (
     );
   }
 
-  if (!payload.password || !model) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Password or Model information missing',
-    );
+  if (!payload.password) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Password  information missing');
   }
 
   //checking if the password is correct
-  const isPasswordMatched = await model.isPasswordMatched(
+  const isPasswordMatched = await AuthUser.isPasswordMatched(
     payload.password,
-    user.password,
+    user.password as string,
   );
 
   if (!isPasswordMatched) {
@@ -441,13 +436,16 @@ const loginUser = async (
     }
   }
 
-  await model.findOneAndUpdate({ _id: user._id }, updateQuery, options);
+  await AuthUser.findOneAndUpdate({ _id: user._id }, updateQuery, options);
+
+  const { user: userProfile } = await findUserById({ userId: user?.userId });
+
   //create token and sent to the  client
   const jwtPayload = {
     userId: user?.userId,
     name: {
-      firstName: user?.name?.firstName,
-      lastName: user?.name?.lastName,
+      firstName: userProfile?.name?.firstName,
+      lastName: userProfile?.name?.lastName,
     },
     email: user?.email,
     contactNumber: user?.contactNumber,

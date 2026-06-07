@@ -146,7 +146,7 @@ function auth(...args: any[]) {
 
     // 5. Fetch user and model information from the database
     const userModel = mongoose.model(authUser.profileModel);
-    const user = userModel.findOne({ userId, isDeleted: false }) as any;
+    const user = (await userModel.findOne({ userId, isDeleted: false })) as any;
 
     const isSuperAdmin = role === 'SUPER_ADMIN';
 
