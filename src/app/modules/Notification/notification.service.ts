@@ -7,7 +7,6 @@ import {
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { sendPushNotification } from '../../utils/sendPushNotification';
-import { ALL_USER_MODELS } from '../Auth/auth.constant';
 import { Notification } from './notification.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { findUserById } from '../../utils/findUserByEmailOrId';
@@ -16,6 +15,7 @@ import {
   TNotificationType,
 } from './notification.interface';
 import { EmailHelper } from '../../utils/emailSender';
+import mongoose from 'mongoose';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -133,7 +133,7 @@ const sendToRole = (
 ) => {
   setImmediate(async () => {
     try {
-      const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
+      const Model = mongoose.model(modelName) as any;
       if (!Model) return;
 
       const users = await Model.find({
@@ -466,7 +466,7 @@ const sendBroadcastNotification = async (
 
   for (const role of targetAudience) {
     const modelName = ROLE_COLLECTION_MAP[role as TUserRole];
-    const Model = ALL_USER_MODELS.find((m: any) => m.modelName === modelName);
+    const Model = mongoose.model(modelName) as any;
     if (!Model) continue;
 
     const query: any = {
