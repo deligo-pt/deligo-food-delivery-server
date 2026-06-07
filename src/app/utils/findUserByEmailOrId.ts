@@ -7,12 +7,6 @@ import {
   ROLE_PREFIX_MAP,
   TUserRole,
 } from '../constant/GlobalConstant/user.constant';
-import { IUserModel } from '../interfaces/user.interface';
-import { Admin } from '../modules/Admin/admin.model';
-import { Customer } from '../modules/Customer/customer.model';
-import { FleetManager } from '../modules/Fleet-Manager/fleet-manager.model';
-import { Vendor } from '../modules/Vendor/vendor.model';
-import { DeliveryPartner } from '../modules/Delivery-Partner/delivery-partner.model';
 import { AuthUser } from '../modules/AuthUser/authUser.model';
 import mongoose from 'mongoose';
 
@@ -37,13 +31,16 @@ export const findUserById = async ({
 
   if (role) {
     const modelName = ROLE_COLLECTION_MAP[role as TUserRole];
-    const Model = mongoose.model(modelName) as IUserModel<any>;
+    const Model = mongoose.model(modelName);
 
     if (!Model) {
       throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
     }
 
-    const foundUser = await Model.isUserExistsByUserId(userId, isDeleted);
+    const foundUser = await Model.findOne({
+      userId,
+      isDeleted,
+    });
     if (foundUser) {
       return { user: foundUser, model: Model };
     }
@@ -74,13 +71,16 @@ export const findUserByEmail = async ({
 
   if (role) {
     const modelName = ROLE_COLLECTION_MAP[role as TUserRole];
-    const Model = mongoose.model(modelName) as IUserModel<any>;
+    const Model = mongoose.model(modelName);
 
     if (!Model) {
       throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
     }
 
-    const foundUser = await Model.isUserExistsByEmail(email, isDeleted);
+    const foundUser = await Model.findOne({
+      email,
+      isDeleted,
+    });
     if (foundUser) {
       return { user: foundUser, model: Model };
     }
