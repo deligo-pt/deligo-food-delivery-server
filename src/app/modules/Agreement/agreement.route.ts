@@ -8,41 +8,41 @@ const router = express.Router();
 
 router.post(
   '/initiate',
-  auth('AGENT'),
+  auth('ADMIN', 'SUPER_ADMIN', ['CAN_MANAGE_AGREEMENTS']),
   validateRequest(AgreementValidation.initiateAgreementValidationSchema),
   AgreementController.initiateAgreement,
 );
 
 router.post(
   '/verify-otp',
-  auth('AGENT'),
+  auth('ADMIN', 'SUPER_ADMIN', ['CAN_MANAGE_AGREEMENTS']),
   validateRequest(AgreementValidation.verifyAgreementOtpValidationSchema),
   AgreementController.verifyAgreementOtp,
 );
 
 router.post(
   '/resend-otp',
-  auth('AGENT'),
+  auth('ADMIN', 'SUPER_ADMIN', ['CAN_MANAGE_AGREEMENTS']),
   validateRequest(AgreementValidation.resendAgreementOtpValidationSchema),
   AgreementController.resendAgreementOtp,
 );
 
 router.post(
   '/sign/:agreementId',
-  auth('AGENT'),
+  auth('ADMIN', 'SUPER_ADMIN', ['CAN_MANAGE_AGREEMENTS']),
   validateRequest(AgreementValidation.signAgreementValidationSchema),
   AgreementController.signAgreement,
 );
 
 router.get(
   '/:agreementId',
-  auth('AGENT', 'ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', ['CAN_MANAGE_AGREEMENTS']),
   AgreementController.getAgreementById,
 );
 
 router.get(
   '/',
-  auth('AGENT', 'ADMIN', 'SUPER_ADMIN'),
+  auth('ADMIN', 'SUPER_ADMIN', ['CAN_MANAGE_AGREEMENTS']),
   AgreementController.getAllAgreements,
 );
 

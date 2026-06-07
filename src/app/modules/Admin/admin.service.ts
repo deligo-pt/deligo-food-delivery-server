@@ -5,21 +5,27 @@ import { Admin, TAdminImageDocuments } from './admin.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
   adminId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // -----------------------------------------
   // Check if admin exists
   // -----------------------------------------
-  const existingAdmin = await Admin.findOne({ userId: adminId });
+  const existingAdmin = await AuthUser.findOne({ userId: adminId }).populate(
+    'profileId',
+    'isUpdateLocked',
+  );
 
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
   }
+
+  const adminProfile = existingAdmin?.profileId as any;
 
   // -----------------------------------------
   // Email verification check
@@ -31,7 +37,7 @@ const updateAdmin = async (
   // -----------------------------------------
   // Update lock check
   // -----------------------------------------
-  if (existingAdmin.isUpdateLocked) {
+  if (adminProfile.isUpdateLocked) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Admin update is locked. Please contact support.',
@@ -96,7 +102,7 @@ const updateAdmin = async (
 const adminDocImageUpload = async (
   file: string | undefined,
   data: TAdminImageDocuments,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   adminId: string,
 ) => {
   const existingAdmin = await Admin.findOne({ userId: adminId });
@@ -146,12 +152,11 @@ const adminDocImageUpload = async (
 // get all admin service
 const getAllAdmins = async (query: Record<string, unknown>) => {
   const admins = new QueryBuilder(Admin.find(), query)
+    .search(AdminSearchableFields)
     .filter()
     .sort()
-    .fields()
     .paginate()
-    .search(AdminSearchableFields);
-
+    .fields();
   const meta = await admins.countTotal();
   const data = await admins.modelQuery;
 
@@ -162,7 +167,7 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
 };
 
 // get single admin service
-const getSingleAdmin = async (adminId: string, currentUser: AuthUser) => {
+const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
   // ---------------------------------------------------------
   // Authorization Logic
   // ---------------------------------------------------------

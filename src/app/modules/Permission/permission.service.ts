@@ -3,12 +3,12 @@ import AppError from '../../errors/AppError';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TPermission } from './permission.interface';
 import { Permission } from './permission.model';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { Admin } from '../Admin/admin.model';
 
 const createPermission = async (
   payload: TPermission,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const isPermissionExist = await Permission.findOne({
     action: payload.action,
@@ -40,7 +40,7 @@ const createPermission = async (
 const updatePermission = async (
   permissionId: string,
   payload: Partial<TPermission>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const permission = await Permission.findById(permissionId);
   if (!permission || permission.isDeleted) {

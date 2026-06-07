@@ -2,12 +2,12 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { TransactionServices } from './transaction.service';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 // get all transactions
 const getMyTransactions = catchAsync(async (req, res) => {
   const result = await TransactionServices.getMyTransactions(
-    req.user as AuthUser,
+    req.user as TCurrentUser,
     req.query,
   );
 

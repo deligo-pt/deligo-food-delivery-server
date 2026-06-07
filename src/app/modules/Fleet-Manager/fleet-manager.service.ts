@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
-import { AuthUser } from '../../constant/GlobalInterface/user.interface';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { FleetManagerSearchableFields } from './fleet-manager.constant';
 import {
@@ -10,23 +10,32 @@ import {
 } from './fleet-manager.interface';
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
   fleetManagerId: string,
   payload: Partial<TFleetManager>,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   // ---------------------------------------------------------
   // Find Fleet Manager
   // ---------------------------------------------------------
-  const existingFleetManager = await FleetManager.findOne({
+  const existingFleetManager = await AuthUser.findOne({
     userId: fleetManagerId,
     isDeleted: false,
-  });
+  }).populate('profileId', 'isUpdateLocked registeredBy');
 
   if (!existingFleetManager) {
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found.');
+  }
+
+  const fleetProfile = existingFleetManager.profileId as any;
+  if (!fleetProfile) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Fleet Manager profile not found.',
+    );
   }
 
   // ---------------------------------------------------------
@@ -81,10 +90,7 @@ const fleetManagerUpdate = async (
   // ---------------------------------------------------------
   // Check if update is locked
   // ---------------------------------------------------------
-  if (
-    currentUser.role === 'FLEET_MANAGER' &&
-    existingFleetManager.isUpdateLocked
-  ) {
+  if (currentUser.role === 'FLEET_MANAGER' && fleetProfile.isUpdateLocked) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Fleet Manager update is locked. Please contact support.',
@@ -113,7 +119,7 @@ const fleetManagerUpdate = async (
 // fleet manager doc image upload service
 const fleetManagerDocImageUpload = async (
   payload: TFleetManagerImageDocuments,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   fleetManagerId: string,
 ) => {
   const { docImageTitle, docImageUrls } = payload;
@@ -178,7 +184,7 @@ const fleetManagerDocImageUpload = async (
 // Service to delete a specific document image from a fleet manager's profile
 const deleteFleetManagerDocument = async (
   payload: { docImageTitle: string; imageUrl: string },
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
   fleetManagerId: string,
 ) => {
   const { docImageTitle, imageUrl } = payload;
@@ -231,11 +237,11 @@ const deleteFleetManagerDocument = async (
 // get all fleet managers
 const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
   const fleetManagers = new QueryBuilder(FleetManager.find(), query)
-    .fields()
-    .paginate()
-    .sort()
+    .search(FleetManagerSearchableFields)
     .filter()
-    .search(FleetManagerSearchableFields);
+    .sort()
+    .paginate()
+    .fields();
   const meta = await fleetManagers.countTotal();
 
   const data = await fleetManagers.modelQuery;
@@ -248,7 +254,7 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 // get single fleet manager
 const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
-  currentUser: AuthUser,
+  currentUser: TCurrentUser,
 ) => {
   const userId = currentUser?.userId;
   if (currentUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
