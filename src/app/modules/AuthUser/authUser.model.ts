@@ -1,7 +1,7 @@
 import { model, Schema } from 'mongoose';
 import { TAuthUser } from './authUser.interface';
 
-const authUserSchema = new Schema<TAuthUser>(
+const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
   {
     userId: {
       type: String,
@@ -30,7 +30,58 @@ const authUserSchema = new Schema<TAuthUser>(
       trim: true,
     },
 
+    // 2. Live Status & Access Control (RBAC)
+    status: {
+      type: String,
+      required: [true, 'Status is required'],
+      default: 'PENDING',
+      trim: true,
+    },
     isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    // 3. Real-Time Device Management & Session Tracking
+    loginDevices: { type: [loginDeviceSchema], default: [] },
+
+    // 4. OTP & Email Verification Flow
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isContactNumberVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    requiresOtpVerification: {
+      type: Boolean,
+      default: false,
+    },
+    mobileOtpId: {
+      type: String,
+      default: null,
+    },
+
+    // 5. Password Credentials & Security Audit Logs
+    password: {
+      type: String,
+      required: false, // Kept optional as some users might use social/OTP login
+    },
+    passwordResetToken: {
+      type: String,
+      default: null,
+    },
+    passwordResetTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+    twoFactorEnabled: {
       type: Boolean,
       default: false,
     },
@@ -41,4 +92,20 @@ const authUserSchema = new Schema<TAuthUser>(
   },
 );
 
-export const AuthUser = model<TAuthUser>('AuthUser', authUserSchema);
+authUserSchema.pre('save', function (next) {
+  const user = this;
+
+  if (user.isNew && user.onModel === 'Customer') {
+    user.status = 'APPROVED';
+  }
+
+  next();
+});
+
+authUserSchema.plugin(authLookupPlugin);
+authUserSchema.plugin(passwordPlugin);
+
+export const AuthUser = model<TAuthUser, IAuthUserModel>(
+  'AuthUser',
+  authUserSchema,
+);
