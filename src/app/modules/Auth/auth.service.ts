@@ -1586,79 +1586,110 @@ const verifyOtp = async (
 
 // Resend OTP
 const resendOtp = async (email?: string, contactNumber?: string) => {
-  if (!email && !contactNumber) {
+  if (!email?.trim() && !contactNumber?.trim()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Email or contact number is required to resend OTP',
     );
   }
-  let user;
+
+  let successMessage = 'OTP resent successfully.';
+
   if (contactNumber) {
-    user = await Customer.findOne({ contactNumber, isDeleted: false });
+    const user = await AuthUser.findOne({
+      role: 'CUSTOMER',
+      contactNumber: contactNumber.trim(),
+      isDeleted: false,
+    });
+
     if (!user) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'User not found. Please register.',
+        'User not found with this contact number. Please register first.',
       );
     }
+
     const id = user.mobileOtpId;
     if (!id) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No OTP found to resend. Please request a new OTP.',
+        'No active OTP session found to resend. Please request a new login.',
       );
     }
+
     await resendMobileOtp(id as string);
-    user.isOtpVerified = false;
+
     user.requiresOtpVerification = true;
     await user.save();
+
+    successMessage =
+      'OTP resent successfully to your mobile number. Please check your SMS.';
   }
+
   if (email) {
-    const result = await findUserByEmail({ email });
-    user = result?.user;
+    const user = await AuthUser.findOne({
+      email: email.trim().toLowerCase(),
+      isDeleted: false,
+    }).populate('profileId', 'userId name');
+
     if (!user) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'User not found. Please register.',
+        'User not found with this email address. Please register first.',
       );
     }
 
-    if (user?.isEmailVerified) {
+    if (user.isEmailVerified) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'User is already verified. Please login.',
+        'Your email is already verified. Please proceed to login.',
       );
     }
-    const { otp } = generateOtp();
 
-    const redisOtpKey = `otp:${email}`;
+    const { otp } = generateOtp();
+    const redisOtpKey = `otp:${email.trim().toLowerCase()}`;
     await RedisService.set(redisOtpKey, otp, 300); // 5-minute TTL
 
-    // Prepare email template content
-    const emailHtml = await EmailHelper.createEmailContent(
-      {
-        otp,
-        userEmail: user?.email,
-        currentYear: new Date().getFullYear(),
-        date: new Date().toDateString(),
-        user: user?.name?.firstName || user?.role.toLocaleLowerCase(),
-      },
-      'verify-email',
-    );
+    user.requiresOtpVerification = true;
+    await user.save();
 
-    // Send verification email
-    try {
-      await EmailHelper.sendEmail(
-        email,
-        emailHtml,
-        'Verify your email for DeliGo',
-      );
-    } catch (err: any) {
-      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
-    }
+    const loggedInUser = user.profileId as any;
+    const userName = loggedInUser?.name?.firstName || 'Customer';
+    const actionDate = new Date();
+
+    (async () => {
+      try {
+        const emailHtml = await EmailHelper.createEmailContent(
+          {
+            otp,
+            userEmail: user.email,
+            currentYear: actionDate.getFullYear(),
+            date: actionDate.toDateString(),
+            user: userName,
+          },
+          'verify-email',
+        );
+
+        await EmailHelper.sendEmail(
+          user.email,
+          emailHtml,
+          'Verify your email for DeliGo',
+        );
+      } catch (err: any) {
+        console.error(
+          'Safe Background Guard -> Resend OTP Email Failed:',
+          err.message,
+        );
+      }
+    })();
+
+    successMessage =
+      'OTP resent successfully. Please check your email inbox or spam folder.';
   }
+
   return {
-    message: 'OTP resent successfully. Please check your email.',
+    success: true,
+    message: successMessage,
   };
 };
 
