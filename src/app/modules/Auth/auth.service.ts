@@ -855,7 +855,8 @@ const changePassword = async (
 
 // Forgot Password
 const forgotPassword = async (email: string) => {
-  const { user } = await findUserByEmail({ email });
+  const user = await AuthUser.findOne({ email, isDeleted: false });
+  const { user: userProfile } = await findUserByEmail({ email });
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
@@ -893,7 +894,7 @@ const forgotPassword = async (email: string) => {
   const emailHtml = await EmailHelper.createEmailContent(
     {
       resetPasswordLink: resetURL,
-      userName: user?.name?.firstName || 'User',
+      userName: userProfile?.name?.firstName || 'User',
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
     },
