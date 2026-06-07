@@ -269,7 +269,7 @@ const onboardUser = async <
         {
           ...profilePayload,
           [idField]: userId,
-          registeredBy: currentUser._id,
+          registeredBy: registeredByValue,
           status: 'PENDING',
           role: payload.role,
         },
@@ -705,11 +705,8 @@ const updateFcmToken = async (
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const modelName = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
-  const model = mongoose.model(modelName) as any;
-
-  const updatedUser = await model.findOneAndUpdate(
-    { _id: currentUser._id, 'loginDevices.deviceId': deviceId },
+  const updatedUser = await AuthUser.findOneAndUpdate(
+    { profileId: currentUser._id, 'loginDevices.deviceId': deviceId },
     {
       $set: {
         'loginDevices.$.fcmToken': token,
