@@ -992,22 +992,24 @@ const refreshToken = async (token: string) => {
 
   const { iat, userId, deviceId } = decoded;
 
-  const result = await findUserById({ userId });
-
-  const user = result?.user;
-  const model = result?.model;
+  const user = await AuthUser.findOne({
+    userId,
+    isDeleted: false,
+  }).populate('profileId', 'userId name');
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
   }
+  const userProfile = user?.profileId as any;
 
-  const isDeviceValid = user.loginDevices?.some(
-    (d: TLoginDevice) => d.deviceId === deviceId,
+  const targetDeviceSession = user.loginDevices?.find(
+    (d: any) => d.deviceId === deviceId,
   );
-  if (!isDeviceValid) {
+
+  if (!targetDeviceSession || targetDeviceSession.isLoggedIn === false) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
-      'Session expired or device removed. Please login again.',
+      'Your session has expired or you have logged out from this device. Please log in again.',
     );
   }
 
@@ -1020,7 +1022,7 @@ const refreshToken = async (token: string) => {
 
   if (
     user.passwordChangedAt &&
-    model.isJWTIssuedBeforePasswordChanged(
+    AuthUser.isJWTIssuedBeforePasswordChanged(
       user.passwordChangedAt,
       iat as number,
     )
@@ -1031,8 +1033,8 @@ const refreshToken = async (token: string) => {
   const jwtPayload = {
     userId: user?.userId,
     name: {
-      firstName: user?.name?.firstName,
-      lastName: user?.name?.lastName,
+      firstName: userProfile?.name?.firstName,
+      lastName: userProfile?.name?.lastName,
     },
     email: user?.email,
     contactNumber: user?.contactNumber,
