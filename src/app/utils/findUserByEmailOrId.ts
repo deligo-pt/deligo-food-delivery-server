@@ -1,12 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
+import { ALL_USER_MODELS } from '../modules/Auth/auth.constant';
 import {
-  ROLE_COLLECTION_MAP,
+  ROLE_PREFIX_MAP,
   TUserRole,
 } from '../constant/GlobalConstant/user.constant';
-import { AuthUser } from '../modules/AuthUser/authUser.model';
-import mongoose from 'mongoose';
+import { IUserModel } from '../interfaces/user.interface';
+import { Admin } from '../modules/Admin/admin.model';
+import { Customer } from '../modules/Customer/customer.model';
+import { FleetManager } from '../modules/Fleet-Manager/fleet-manager.model';
+import { Vendor } from '../modules/Vendor/vendor.model';
+import { DeliveryPartner } from '../modules/Delivery-Partner/delivery-partner.model';
 
 export const findUserById = async ({
   userId,
@@ -16,29 +21,29 @@ export const findUserById = async ({
   isDeleted?: boolean;
 }) => {
   if (!userId) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'User id must be provided');
+    throw new AppError(httpStatus.BAD_REQUEST, 'User ID must be provided');
   }
-
-  const existingUser = await AuthUser.findOne({ userId });
-
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  const role = existingUser?.role;
+  const prefix = userId.split('-')[0].toUpperCase();
+  const role = ROLE_PREFIX_MAP[prefix];
+  const ROLE_MODEL_MAP: Record<TUserRole, IUserModel<any>> = {
+    SUPER_ADMIN: Admin,
+    ADMIN: Admin,
+    CUSTOMER: Customer,
+    FLEET_MANAGER: FleetManager,
+    VENDOR: Vendor,
+    SUB_VENDOR: Vendor,
+    DELIVERY_PARTNER: DeliveryPartner,
+    AGENT: Admin,
+  };
 
   if (role) {
-    const modelName = ROLE_COLLECTION_MAP[role as TUserRole];
-    const Model = mongoose.model(modelName);
+    const Model = ROLE_MODEL_MAP[role as TUserRole] as IUserModel<any>;
 
     if (!Model) {
       throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
     }
 
-    const foundUser = await Model.findOne({
-      userId,
-      isDeleted,
-    });
+    const foundUser = await Model.isUserExistsByUserId(userId, isDeleted);
     if (foundUser) {
       return { user: foundUser, model: Model };
     }
@@ -48,7 +53,6 @@ export const findUserById = async ({
     `No user found with ID "${userId}".`,
   );
 };
-
 export const findUserByEmail = async ({
   email,
   isDeleted = false,
@@ -59,26 +63,8 @@ export const findUserByEmail = async ({
   if (!email) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Email must be provided');
   }
-  const existingUser = await AuthUser.findOne({ email });
-
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  const role = existingUser?.role;
-
-  if (role) {
-    const modelName = ROLE_COLLECTION_MAP[role as TUserRole];
-    const Model = mongoose.model(modelName);
-
-    if (!Model) {
-      throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
-    }
-
-    const foundUser = await Model.findOne({
-      email,
-      isDeleted,
-    });
+  for (const Model of ALL_USER_MODELS) {
+    const foundUser = await Model.isUserExistsByEmail(email, isDeleted);
     if (foundUser) {
       return { user: foundUser, model: Model };
     }

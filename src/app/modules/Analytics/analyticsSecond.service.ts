@@ -16,7 +16,7 @@ import { Wallet } from '../Wallet/wallet.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { Offer } from '../Offer/offer.model';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
@@ -176,7 +176,7 @@ const getAdminDashboardAnalytics = async () => {
 };
 
 // get vendor dashboard analytics
-const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
+const getVendorDashboardAnalytics = async (currentUser: AuthUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
   // --------------------------------------------------
@@ -372,7 +372,7 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
 };
 
 // get fleet dashboard analytics
-const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
+const getFleetDashboardAnalytics = async (currentUser: AuthUser) => {
   const managerId = new Types.ObjectId(currentUser._id);
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -490,7 +490,7 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
 
 // get partner performance analytics
 const getPartnerPerformanceAnalytics = async (
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
   query: Record<string, unknown>,
 ) => {
   const managerId = new Types.ObjectId(currentUser._id);
@@ -638,9 +638,7 @@ const getPartnerPerformanceAnalytics = async (
 };
 
 // Delivery Partner earning analytics service
-const getDeliveryPartnerEarningAnalytics = async (
-  currentUser: TCurrentUser,
-) => {
+const getDeliveryPartnerEarningAnalytics = async (currentUser: AuthUser) => {
   const riderObjectId = new Types.ObjectId(currentUser._id);
 
   const today = new Date();
@@ -711,7 +709,7 @@ const getDeliveryPartnerEarningAnalytics = async (
 };
 
 // Fleet manager earning analytics service
-const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
+const getFleetManagerEarningAnalytics = async (currentUser: AuthUser) => {
   const fleetObjectId = new Types.ObjectId(currentUser._id);
   const now = new Date();
 
@@ -830,7 +828,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
 };
 
 // get vendor earnings analytics service
-const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
+const getVendorEarningsAnalytics = async (currentUser: AuthUser) => {
   const vendorObjectId = new mongoose.Types.ObjectId(currentUser._id);
   const now = new Date();
 
@@ -1346,7 +1344,7 @@ const getVendorPerformanceAnalytics = async (
 // get single vendor performance details
 const getSingleVendorPerformanceDetails = async (
   vendorUserId: string,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
@@ -1482,7 +1480,7 @@ const getSingleVendorPerformanceDetails = async (
 };
 
 // get offer analytics for admin
-const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
+const getOfferAnalyticsForAdmin = async (currentUser: AuthUser) => {
   const now = new Date();
 
   const last7DaysDate = new Date();
@@ -1628,7 +1626,7 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
 };
 
 // get tax report analytics for vendor
-const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
+const getTaxReportAnalyticsForVendor = async (currentUser: AuthUser) => {
   const now = new Date();
   const start = new Date();
   start.setMonth(now.getMonth() - 5);

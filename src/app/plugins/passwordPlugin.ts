@@ -5,7 +5,7 @@ import bcryptjs from 'bcryptjs';
 import config from '../config';
 import crypto from 'crypto';
 
-export const passwordPlugin = <T extends Record<string, any>>(
+export const passwordPlugin = <T extends { email?: string }>(
   schema: Schema<T>,
 ): void => {
   // Pre-save Hook: Hash password before saving
@@ -20,19 +20,48 @@ export const passwordPlugin = <T extends Record<string, any>>(
     next();
   });
 
-  // Response Security (FIXED): Use transformation instead of modifying doc memory directly
-  schema.set('toJSON', {
-    transform: function (doc, ret) {
-      delete ret.password;
-      return ret;
-    },
+  // Post-save Hook: Remove password before sending response
+  schema.post('save', function (doc: any, next) {
+    if (doc.password) {
+      doc.password = '';
+    }
+    next();
   });
-  schema.set('toObject', {
-    transform: function (doc, ret) {
-      delete ret.password;
-      return ret;
-    },
-  });
+
+  // Static: Check if user exists by email
+  schema.statics.isUserExistsByEmail = async function (
+    email: string,
+    isDeleted?: boolean,
+    fields?: string,
+  ) {
+    const query: any = { email };
+    if (typeof isDeleted === 'boolean') {
+      query.isDeleted = isDeleted;
+    }
+
+    // let dbQuery = this.findOne(query).lean(); /--> before
+    let dbQuery = this.findOne(query);
+
+    if (fields) {
+      dbQuery = dbQuery.select(fields);
+    } else {
+      dbQuery = dbQuery.select('+password');
+    }
+
+    return await dbQuery;
+  };
+
+  // Static: Check if user exists by userId
+  schema.statics.isUserExistsByUserId = async function (
+    userId: string,
+    isDeleted?: boolean,
+  ) {
+    const query: any = { userId };
+    if (typeof isDeleted === 'boolean') {
+      query.isDeleted = isDeleted;
+    }
+    return await this.findOne(query).select('+password');
+  };
 
   // Static: Compare password
   schema.statics.isPasswordMatched = async function (

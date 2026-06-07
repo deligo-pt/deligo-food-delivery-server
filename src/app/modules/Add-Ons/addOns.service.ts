@@ -5,12 +5,12 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Tax } from '../Tax/tax.model';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // create addon group service
 const createAddonGroup = async (
   payload: TAddonGroup,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -83,7 +83,7 @@ const createAddonGroup = async (
 const updateAddonGroup = async (
   id: string,
   payload: Partial<TAddonGroup>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -172,7 +172,7 @@ const updateAddonGroup = async (
 const addOptionToAddonGroup = async (
   groupId: string,
   newOption: { name: string; price: number; tax: string; sku?: string },
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -235,7 +235,7 @@ const addOptionToAddonGroup = async (
 const toggleOptionStatus = async (
   groupId: string,
   optionId: string,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -285,7 +285,7 @@ const toggleOptionStatus = async (
 const deleteOptionFromAddonGroup = async (
   groupId: string,
   optionId: string,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -320,7 +320,7 @@ const deleteOptionFromAddonGroup = async (
 // get all addon groups service
 const getAllAddonGroups = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role === 'VENDOR') {
     query.vendorId = currentUser._id;
@@ -332,11 +332,11 @@ const getAllAddonGroups = async (
     AddonGroup.find().populate('options.tax'),
     query,
   )
-    .search(['title'])
-    .filter()
-    .sort()
+    .fields()
     .paginate()
-    .fields();
+    .sort()
+    .filter()
+    .search(['title']);
 
   const [meta, data] = await Promise.all([
     addOns.countTotal(),
@@ -350,7 +350,7 @@ const getAllAddonGroups = async (
 };
 
 // get single addon group service
-const getSingleAddonGroup = async (id: string, currentUser: TCurrentUser) => {
+const getSingleAddonGroup = async (id: string, currentUser: AuthUser) => {
   const queryObj: any = { _id: id, isDeleted: false };
 
   if (currentUser.role === 'VENDOR') {
@@ -369,7 +369,7 @@ const getSingleAddonGroup = async (id: string, currentUser: TCurrentUser) => {
 };
 
 // soft delete addon group
-const softDeleteAddonGroup = async (id: string, currentUser: TCurrentUser) => {
+const softDeleteAddonGroup = async (id: string, currentUser: AuthUser) => {
   const query: Record<string, any> = { _id: id, isDeleted: false };
 
   if (currentUser.role === 'VENDOR') {

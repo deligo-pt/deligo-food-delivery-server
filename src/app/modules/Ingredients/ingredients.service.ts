@@ -1,5 +1,5 @@
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { IIngredients } from './ingredients.interface';
 import { Ingredient } from './ingredients.model';
@@ -9,7 +9,7 @@ import { IngredientsSearchFields } from './ingredients.constant';
 
 const createIngredient = async (
   payload: IIngredients,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
   file: string,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
@@ -98,3 +98,4 @@ export const IngredientsServices = {
   getIngredientDetails,
   getAllIngredients,
 };
+

@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { OfferServices } from './offer.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // create offer controller
 const createOffer = catchAsync(async (req, res) => {
   const result = await OfferServices.createOffer(
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -24,7 +24,7 @@ const updateOffer = catchAsync(async (req, res) => {
   const result = await OfferServices.updateOffer(
     offerId,
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -39,7 +39,7 @@ const toggleOfferStatus = catchAsync(async (req, res) => {
   const { offerId } = req.params;
   const result = await OfferServices.toggleOfferStatus(
     offerId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -55,7 +55,7 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
   const result = await OfferServices.validateAndApplyOffer(
     checkoutId,
     offerIdentifier,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -72,7 +72,7 @@ const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
   const { checkoutId } = req.params;
   const result = await OfferServices.getAvailableOffersForCheckout(
     checkoutId as string,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -85,7 +85,7 @@ const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
 // get all offers controller
 const getAllOffers = catchAsync(async (req, res) => {
   const result = await OfferServices.getAllOffers(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.query,
   );
   sendResponse(res, {
@@ -102,7 +102,7 @@ const getSingleOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
   const result = await OfferServices.getSingleOffer(
     offerId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -117,7 +117,7 @@ const softDeleteOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
   const result = await OfferServices.softDeleteOffer(
     offerId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -132,7 +132,7 @@ const permanentDeleteOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
   const result = await OfferServices.permanentDeleteOffer(
     offerId,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -153,3 +153,4 @@ export const OfferControllers = {
   softDeleteOffer,
   permanentDeleteOffer,
 };
+

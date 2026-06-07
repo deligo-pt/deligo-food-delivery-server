@@ -1,5 +1,5 @@
 import httpStatus from 'http-status';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { IngredientOrderService } from './ing-order.service';
@@ -7,7 +7,7 @@ import { IngredientOrderService } from './ing-order.service';
 const confirmIngredientOrder = catchAsync(async (req, res) => {
   const result = await IngredientOrderService.confirmIngredientOrder(
     req.body,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -21,7 +21,7 @@ const confirmIngredientOrder = catchAsync(async (req, res) => {
 const getMyIngredientOrders = catchAsync(async (req, res) => {
   const result = await IngredientOrderService.getMyIngredientOrders(
     req.query,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -62,7 +62,7 @@ const getSingleIngredientOrder = catchAsync(async (req, res) => {
 const updateIngredientOrderStatus = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  const currentUser = req.user as TCurrentUser;
+  const currentUser = req.user as AuthUser;
 
   const result = await IngredientOrderService.updateIngredientOrderStatus(
     id,
@@ -85,3 +85,4 @@ export const IngredientOrderController = {
   getSingleIngredientOrder,
   updateIngredientOrderStatus,
 };
+

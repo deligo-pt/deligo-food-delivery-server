@@ -9,11 +9,8 @@ import {
   calcAndUpdateProduct,
   calcAndUpdateVendorAllProductStats,
 } from './rating.constant';
-import {
-  ROLE_COLLECTION_MAP,
-  TUserRole,
-} from '../../constant/GlobalConstant/user.constant';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Order } from '../Order/order.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
@@ -21,7 +18,7 @@ import { Product } from '../Product/product.model';
 import mongoose from 'mongoose';
 
 // create rating
-const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
+const createRating = async (payload: TRating, currentUser: AuthUser) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
@@ -43,7 +40,8 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
     }
 
-    const reviewerModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
+    const reviewerModel =
+      ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
     payload.reviewerId = currentUser._id;
     payload.reviewerModel = reviewerModel as TRefModel;
 
@@ -127,7 +125,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
 
 const getAllRatings = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const myDeliveryPartners = await DeliveryPartner.find({
@@ -154,11 +152,11 @@ const getAllRatings = async (
     Rating.find().populate('productId', 'name image'),
     query,
   )
-    .search(['review', 'ratingType'])
     .filter()
     .sort()
     .paginate()
-    .fields();
+    .fields()
+    .search(['review', 'ratingType']);
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     reviewerId: 'name userId role',
@@ -177,7 +175,7 @@ const getAllRatings = async (
 };
 
 // get single rating
-const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
+const getSingleRating = async (ratingId: string, currentUser: AuthUser) => {
   const rating = await Rating.findById(ratingId)
     .populate('reviewerId', 'name image role userId')
     .populate('targetId', 'name image role userId')
@@ -232,7 +230,7 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
   return rating;
 };
 
-const getRatingSummary = async (currentUser: TCurrentUser) => {
+const getRatingSummary = async (currentUser: AuthUser) => {
   const myProducts = await Product.find({
     vendorId: currentUser._id,
     isDeleted: false,

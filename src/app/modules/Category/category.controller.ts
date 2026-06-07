@@ -3,7 +3,7 @@ import { CategoryService } from './category.service';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { TImageFile } from '../../interfaces/image.interface';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {
@@ -40,7 +40,7 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
 const getAllBusinessCategories = catchAsync(async (req, res) => {
   const result = await CategoryService.getAllBusinessCategories(
     req.query,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -54,7 +54,7 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
 const getSingleBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.getSingleBusinessCategory(
     req.params.id,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -125,7 +125,7 @@ const updateProductCategory = catchAsync(async (req, res) => {
 const getAllProductCategories = catchAsync(async (req, res) => {
   const result = await CategoryService.getAllProductCategories(
     req.query,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -139,7 +139,7 @@ const getAllProductCategories = catchAsync(async (req, res) => {
 const getSingleProductCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.getSingleProductCategory(
     req.params.id,
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

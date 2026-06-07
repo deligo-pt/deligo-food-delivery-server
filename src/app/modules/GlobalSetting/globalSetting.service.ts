@@ -1,6 +1,6 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 import { TGlobalSettings } from './globalSetting.interface';
 import { GlobalSettings } from './globalSetting.model';
 import { ClientSession } from 'mongoose';
@@ -9,7 +9,7 @@ import { flattenObject } from '../../utils/flattenObject';
 // create global settings service
 const createGlobalSettings = async (
   payload: Partial<TGlobalSettings>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -84,7 +84,7 @@ const createGlobalSettings = async (
 // update global settings service
 const updateGlobalSettings = async (
   payload: Partial<TGlobalSettings>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
     throw new AppError(
@@ -205,7 +205,7 @@ const updateGlobalSettings = async (
   return updatedSettings;
 };
 
-const getGlobalSettingsForAdmin = async (currentUser: TCurrentUser) => {
+const getGlobalSettingsForAdmin = async (currentUser: AuthUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -259,3 +259,4 @@ export const GlobalSettingsService = {
   getGlobalSettingsForAdmin,
   getGlobalSettings,
 };
+

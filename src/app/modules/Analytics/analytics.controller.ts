@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AnalyticsServices } from './analytics.service';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Morshed) -----------------------
@@ -10,7 +10,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 // get vendor sales analytics controller
 const getVendorSalesAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorSalesAnalytics(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -23,7 +23,7 @@ const getVendorSalesAnalytics = catchAsync(async (req, res) => {
 // get customer insights controller
 const getCustomerInsights = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getCustomerInsights(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -36,7 +36,7 @@ const getCustomerInsights = catchAsync(async (req, res) => {
 // get order trend insights controller
 const getOrderTrendInsights = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getOrderTrendInsights(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -49,7 +49,7 @@ const getOrderTrendInsights = catchAsync(async (req, res) => {
 // get top selling items analytics controller
 const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getTopSellingItemsAnalytics(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
   sendResponse(res, {
     success: true,
@@ -158,7 +158,7 @@ const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
 // get admin delivery partner report analytics controller
 const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorSalesReportAnalytics(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {
@@ -172,7 +172,7 @@ const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
 // get admin delivery partner report analytics controller
 const getVendorCustomerReport = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorCustomerReport(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
     req.query,
   );
 
@@ -187,7 +187,7 @@ const getVendorCustomerReport = catchAsync(async (req, res) => {
 // get admin delivery partner report analytics controller
 const getVendorTaxReport = catchAsync(async (req, res) => {
   const result = await AnalyticsServices.getVendorTaxReport(
-    req.user as TCurrentUser,
+    req.user as AuthUser,
   );
 
   sendResponse(res, {

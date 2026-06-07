@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { TUserRole, USER_STATUS } from '../GlobalConstant/user.constant';
 import { TDeliveryAddress } from './address.interface';
 
-export type TCurrentUser = {
+export type AuthUser = {
   _id: mongoose.Types.ObjectId;
   userId: string;
   moloniCustomerId?: number;
@@ -17,6 +17,10 @@ export type TCurrentUser = {
   mobileOtpId?: string;
   contactNumber: string;
   email: string;
+  pendingContactNumber?: string;
+  otp?: string;
+  isOtpExpired?: Date;
+  pendingEmail?: string;
   currentSessionLocation?: {
     type: 'Point';
     coordinates: [number, number];
@@ -68,5 +72,4 @@ export type TLoginDevice = {
   isVerified: boolean;
   isLoggedIn?: boolean;
   lastLogin?: Date | null;
-  lastLogout?: Date | null;
 };

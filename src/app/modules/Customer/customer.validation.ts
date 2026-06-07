@@ -16,11 +16,23 @@ const updateCustomerDataValidationSchema = z.object({
         .strict()
         .optional(),
 
-      profilePhoto: z.string().url().optional(),
-      NIF: z.string().optional(),
+      contactNumber: z.string().optional(),
+      profilePhoto: z.string().optional(),
 
       // Main Customer Address
       address: addressValidationSchema.optional(),
+
+      // Delivery Addresses (multiple saved addresses)
+      deliveryAddresses: z
+        .array(
+          addressValidationSchema
+            .extend({
+              isActive: z.boolean().optional(),
+              addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
+            })
+            .strict(),
+        )
+        .optional(),
     })
     .strict(),
 });

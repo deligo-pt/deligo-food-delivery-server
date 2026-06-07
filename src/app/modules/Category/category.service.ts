@@ -4,7 +4,7 @@ import { BusinessCategory, ProductCategory } from './category.model';
 import { TBusinessCategory, TProductCategory } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 //  Create Business Category
 const createBusinessCategory = async (
@@ -69,7 +69,7 @@ const updateBusinessCategory = async (
 //  Get All Business Categories
 const getAllBusinessCategories = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -77,11 +77,11 @@ const getAllBusinessCategories = async (
     ((query.isActive = true), (query.isDeleted = false));
   }
   const businessCategories = new QueryBuilder(BusinessCategory.find(), query)
-    .search(['name', 'slug'])
-    .filter()
-    .sort()
+    .fields()
     .paginate()
-    .fields();
+    .sort()
+    .filter()
+    .search(['name', 'slug']);
 
   const [meta, data] = await Promise.all([
     businessCategories.countTotal(),
@@ -91,10 +91,7 @@ const getAllBusinessCategories = async (
 };
 
 //  Get Single Business Category
-const getSingleBusinessCategory = async (
-  id: string,
-  currentUser: TCurrentUser,
-) => {
+const getSingleBusinessCategory = async (id: string, currentUser: AuthUser) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
 
@@ -239,7 +236,7 @@ const updateProductCategory = async (
 //  Get All Product Categories (with Business ref)
 const getAllProductCategories = async (
   query: Record<string, unknown>,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -266,11 +263,11 @@ const getAllProductCategories = async (
 
   // Build and execute the query
   const productCategories = new QueryBuilder(ProductCategory.find(), query)
-    .search(['name', 'slug'])
-    .filter()
-    .sort()
+    .fields()
     .paginate()
-    .fields();
+    .sort()
+    .filter()
+    .search(['name', 'slug']);
 
   const [meta, data] = await Promise.all([
     productCategories.countTotal(),
@@ -281,10 +278,7 @@ const getAllProductCategories = async (
 };
 
 // get single product category
-const getSingleProductCategory = async (
-  id: string,
-  currentUser: TCurrentUser,
-) => {
+const getSingleProductCategory = async (id: string, currentUser: AuthUser) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');

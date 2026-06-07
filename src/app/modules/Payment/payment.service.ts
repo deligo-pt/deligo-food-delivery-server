@@ -13,7 +13,7 @@ import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDist
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Admin } from '../Admin/admin.model';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
-import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../../constant/GlobalInterface/user.interface';
 
 // create redUniq payment intent service
 const createRedUniqPayment = async (
@@ -109,7 +109,7 @@ const createRedUniqPayment = async (
 // handle payment failure
 const handlePaymentFailure = async (
   checkoutSummaryId: string,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
@@ -133,7 +133,7 @@ const handlePaymentFailure = async (
 // create ingredients payment service
 const createIngredientRedUniqPayment = async (
   payload: IIngredientOrder,
-  currentUser: TCurrentUser,
+  currentUser: AuthUser,
 ) => {
   const session = await mongoose.startSession();
 
