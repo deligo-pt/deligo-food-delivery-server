@@ -185,94 +185,111 @@ const updateEmailOrContactNumber = async (
   },
 ) => {
   const { otp, type } = payload;
+  const currentUserId = currentUser.userId;
 
   const modelName =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
-  const Model = mongoose.model(modelName) as any;
-
-  const currentUserId = currentUser.userId;
-
-  if (type === 'email') {
-    const redisEmailKey = `otp:profile-update-email:${currentUserId}`;
-    const globalEmailLockKey = `lock:email`;
-
-    const cachedData = await RedisService.get(redisEmailKey);
-    if (!cachedData) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        'OTP has expired or is invalid. Please request a new one.',
-      );
-    }
-
-    const { otp: savedOtp, pendingEmail } = cachedData as any;
-
-    if (savedOtp !== otp) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP code.');
-    }
-
-    await AuthUser.findOneAndUpdate(
-      { userId: currentUserId },
-      {
-        email: pendingEmail,
-      },
-    );
-
-    await Model.findOneAndUpdate(
-      { userId: currentUserId },
-      {
-        email: pendingEmail,
-      },
-    );
-
-    await RedisService.del(redisEmailKey);
-    await RedisService.del(`${globalEmailLockKey}:${pendingEmail}`);
-
-    return {
-      message: 'Email updated successfully.',
-    };
+  if (!modelName) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping.');
   }
+  const Model = mongoose.model(modelName);
 
-  if (type === 'mobile') {
-    const redisMobileKey = `otp:profile-update-mobile:${currentUserId}`;
+  const session = await mongoose.startSession();
 
-    const cachedData = await RedisService.get(redisMobileKey);
-    if (!cachedData) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        'OTP has expired or is invalid. Please request a new one.',
+  try {
+    session.startTransaction();
+
+    if (type === 'email') {
+      const redisEmailKey = `otp:profile-update-email:${currentUserId}`;
+      const globalEmailLockKey = `lock:email`;
+
+      const cachedRawData = await RedisService.get(redisEmailKey);
+      if (!cachedRawData) {
+        throw new AppError(
+          httpStatus.UNAUTHORIZED,
+          'OTP has expired or is invalid. Please request a new one.',
+        );
+      }
+
+      const cachedData =
+        typeof cachedRawData === 'string'
+          ? JSON.parse(cachedRawData)
+          : cachedRawData;
+      const { otp: savedOtp, pendingEmail } = cachedData;
+
+      if (savedOtp !== otp) {
+        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP code.');
+      }
+
+      await AuthUser.findOneAndUpdate(
+        { userId: currentUserId },
+        { email: pendingEmail },
+        { session },
       );
+
+      await Model.findOneAndUpdate(
+        { userId: currentUserId },
+        { email: pendingEmail },
+        { session },
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+
+      await RedisService.del(redisEmailKey);
+      await RedisService.del(`${globalEmailLockKey}:${pendingEmail}`);
+
+      return { message: 'Email updated successfully.' };
     }
 
-    console.log({ cachedData });
+    if (type === 'mobile') {
+      const redisMobileKey = `otp:profile-update-mobile:${currentUserId}`;
 
-    const { mobileOtpId, pendingContactNumber } = cachedData as any;
-    const isGatewayOtpValid = await verifyMobileOtp(mobileOtpId, otp);
-    if (!isGatewayOtpValid) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        'Invalid or expired OTP code.',
+      const cachedRawData = await RedisService.get(redisMobileKey);
+      if (!cachedRawData) {
+        throw new AppError(
+          httpStatus.UNAUTHORIZED,
+          'OTP has expired or is invalid. Please request a new one.',
+        );
+      }
+
+      const cachedData =
+        typeof cachedRawData === 'string'
+          ? JSON.parse(cachedRawData)
+          : cachedRawData;
+      const { mobileOtpId, pendingContactNumber } = cachedData;
+
+      const isGatewayOtpValid = await verifyMobileOtp(mobileOtpId, otp);
+      if (!isGatewayOtpValid) {
+        throw new AppError(
+          httpStatus.UNAUTHORIZED,
+          'Invalid or expired OTP code.',
+        );
+      }
+
+      await AuthUser.findOneAndUpdate(
+        { userId: currentUserId },
+        { contactNumber: pendingContactNumber },
+        { session },
       );
+
+      await Model.findOneAndUpdate(
+        { userId: currentUserId },
+        { contactNumber: pendingContactNumber },
+        { session },
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+
+      await RedisService.del(redisMobileKey);
+
+      return { message: 'Contact number updated successfully.' };
     }
-
-    await AuthUser.findOneAndUpdate(
-      { userId: currentUserId },
-      {
-        contactNumber: pendingContactNumber,
-      },
-    );
-
-    await Model.findOneAndUpdate(
-      { userId: currentUserId },
-      {
-        contactNumber: pendingContactNumber,
-      },
-    );
-
-    await RedisService.del(redisMobileKey);
-
-    return {
-      message: 'Contact number updated successfully.',
-    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
 };
 
