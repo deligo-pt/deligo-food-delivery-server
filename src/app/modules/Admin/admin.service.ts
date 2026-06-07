@@ -6,6 +6,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { AuthUser } from '../AuthUser/authUser.model';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
@@ -15,11 +16,16 @@ const updateAdmin = async (
   // -----------------------------------------
   // Check if admin exists
   // -----------------------------------------
-  const existingAdmin = await Admin.findOne({ userId: adminId });
+  const existingAdmin = await AuthUser.findOne({ userId: adminId }).populate(
+    'profileId',
+    'isUpdateLocked',
+  );
 
   if (!existingAdmin) {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
   }
+
+  const adminProfile = existingAdmin?.profileId as any;
 
   // -----------------------------------------
   // Email verification check
@@ -31,7 +37,7 @@ const updateAdmin = async (
   // -----------------------------------------
   // Update lock check
   // -----------------------------------------
-  if (existingAdmin.isUpdateLocked) {
+  if (adminProfile.isUpdateLocked) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Admin update is locked. Please contact support.',
