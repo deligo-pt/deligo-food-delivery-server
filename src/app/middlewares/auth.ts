@@ -12,6 +12,8 @@ import {
 } from '../constant/GlobalConstant/user.constant';
 import { findUserById } from '../utils/findUserByEmailOrId';
 import { TPermissionAction } from '../modules/Permission/permission.constant';
+import { AuthUser } from '../modules/AuthUser/authUser.model';
+import mongoose from 'mongoose';
 
 function auth(...roles: TUserRole[]): any;
 
@@ -79,12 +81,27 @@ function auth(...args: any[]) {
       permissions: tokenPermissions,
     } = decoded;
 
-    // 5. Fetch user and model information from the database
-    const result = await findUserById({ userId, isDeleted: false });
-    const foundModel = result?.model;
-    const user = result?.user;
+    const authUser = await AuthUser.findOne({ userId });
 
-    const status = user?.status;
+    if (!authUser) {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'User not found');
+    }
+
+    if (authUser.isDeleted) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'Your account is deleted. Please contact support.',
+      );
+    }
+
+    if (authUser.role === 'CUSTOMER' && authUser.requiresOtpVerification) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'Please verify your email or phone number first.',
+      );
+    }
+
+    const status = authUser?.status;
 
     // 6. Security Check: Prevent access if the user is blocked
     if (status === USER_STATUS.BLOCKED) {
@@ -94,31 +111,42 @@ function auth(...args: any[]) {
       );
     }
 
-    // 7. Token Expiry Check: If password was changed after token issuance, invalidate the token
-    if (
-      user.passwordChangedAt &&
-      foundModel?.isJWTIssuedBeforePasswordChanged(
-        user.passwordChangedAt,
-        iat as number,
-      )
-    ) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        'Your password was recently changed. Please log in again.',
-      );
-    }
-
-    // 8. Session Validation: Check if the current deviceId exists in active loginDevices
-    const isSessionActive = user.loginDevices?.some(
-      (device: { deviceId: string }) => device.deviceId === deviceId,
+    //7. Session Validation (Fixed TypeScript Error & Removed Duplication 🚀)
+    const currentDeviceSession = authUser.loginDevices?.find(
+      (device: any) => device.deviceId === deviceId,
     );
 
-    if (!isSessionActive) {
+    if (!currentDeviceSession || currentDeviceSession.isLoggedIn === false) {
       throw new AppError(
         httpStatus.UNAUTHORIZED,
-        'This session is no longer active. Please log in again.',
+        'You have been logged out from this device. Please log in again.',
       );
     }
+
+    // 8. Token Expiry Check: If password was changed after token issuance
+    if (authUser.passwordChangedAt) {
+      const passwordChangedTime = Math.floor(
+        new Date(authUser.passwordChangedAt).getTime() / 1000,
+      );
+      if (passwordChangedTime > (iat as number)) {
+        throw new AppError(
+          httpStatus.UNAUTHORIZED,
+          'Your password was recently changed. Please log in again.',
+        );
+      }
+    }
+
+    // 9. Role-Based Access Control
+    if (requiredRoles.length && !requiredRoles.includes(role)) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'Access denied. You do not have the necessary permissions.',
+      );
+    }
+
+    // 5. Fetch user and model information from the database
+    const userModel = mongoose.model(authUser.profileModel);
+    const user = userModel.findOne({ userId, isDeleted: false }) as any;
 
     const isSuperAdmin = role === 'SUPER_ADMIN';
 
