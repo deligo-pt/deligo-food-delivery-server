@@ -731,15 +731,6 @@ const updateFcmToken = async (
 
 // Logout User
 const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
-  const modelName = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
-  const model = mongoose.model(modelName) as IUserModel<any>;
-
-  if (!model) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      `Unauthorized role: ${modelName}`,
-    );
-  }
   const updatePipeline: any[] = [
     {
       $set: {
@@ -775,8 +766,8 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
     },
   ];
 
-  const updatedUser = await model.findOneAndUpdate(
-    { _id: currentUser._id },
+  const updatedUser = await AuthUser.findOneAndUpdate(
+    { profileId: currentUser._id },
     updatePipeline,
     {
       new: true,
