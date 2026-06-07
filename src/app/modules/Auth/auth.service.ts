@@ -350,10 +350,16 @@ const loginUser = async (
   // checking if the user is exist
   const user = await AuthUser.findOne({
     email: payload?.email,
-    isDeleted: false,
   });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  if (user?.isDeleted) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Your account is deleted. Please contact support.',
+    );
   }
 
   // checking if the user is blocked
@@ -1702,50 +1708,91 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
     );
   }
 
-  const { user: existingUser } = await findUserById({
-    userId,
-  });
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+  const targetAuthUser = await AuthUser.findOne({ userId, isDeleted: false });
+  if (!targetAuthUser) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'User not found or already deleted!',
+    );
   }
 
-  if (
-    (currentUser?.role === 'DELIVERY_PARTNER',
-    currentUser?.role === 'CUSTOMER',
-    currentUser?.role === 'VENDOR',
-    currentUser?.role === 'FLEET_MANAGER')
-  ) {
-    if (currentUser?.userId !== existingUser?.userId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to delete this user!',
-      );
-    }
-  }
-
-  if (
-    currentUser?.role === 'FLEET_MANAGER' &&
-    existingUser?.role === 'DELIVERY_PARTNER'
-  ) {
-    if (
-      currentUser?._id.toString() !== existingUser?.registeredBy.id.toString()
-    ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to delete this user!',
-      );
-    }
-  }
-
-  if (existingUser.role === USER_ROLE.SUPER_ADMIN) {
+  if (targetAuthUser.role === USER_ROLE.SUPER_ADMIN) {
     throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
   }
 
-  existingUser.isDeleted = true;
-  await existingUser.save();
+  const nonAdminRoles = [
+    'CUSTOMER',
+    'VENDOR',
+    'SUB_VENDOR',
+    'DELIVERY_PARTNER',
+    'FLEET_MANAGER',
+  ];
+
+  if (nonAdminRoles.includes(currentUser.role)) {
+    if (currentUser.userId !== targetAuthUser.userId) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You do not have permission to delete this user account!',
+      );
+    }
+  }
+
+  if (
+    currentUser.role === 'FLEET_MANAGER' &&
+    targetAuthUser.role === 'DELIVERY_PARTNER'
+  ) {
+    const modelName = ROLE_COLLECTION_MAP[targetAuthUser.role];
+    if (modelName) {
+      const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+      const targetProfile = await TargetModel.findById(
+        targetAuthUser.profileId,
+      );
+
+      if (
+        targetProfile?.registeredBy?.id?.toString() !==
+          currentUser._id.toString() &&
+        currentUser.userId !== targetAuthUser.userId
+      ) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You can only delete delivery partners registered under your fleet management!',
+        );
+      }
+    }
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    targetAuthUser.isDeleted = true;
+    targetAuthUser.loginDevices = [];
+    await targetAuthUser.save({ session });
+
+    const modelName = ROLE_COLLECTION_MAP[targetAuthUser.role as TUserRole];
+    if (modelName) {
+      const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
+      await TargetModel.findByIdAndUpdate(
+        targetAuthUser.profileId,
+        { $set: { isDeleted: true } },
+        { session },
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to execute soft delete due to transaction rollback',
+    );
+  }
 
   return {
-    message: `${existingUser?.role} deleted successfully`,
+    success: true,
+    message: `${targetAuthUser.role} account and profile deleted successfully`,
   };
 };
 
