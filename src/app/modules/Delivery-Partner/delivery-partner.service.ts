@@ -272,6 +272,9 @@ const deliverPartnerDocImageUpload = async (
       ...existingDeliveryPartner.documents,
       [data.docImageTitle]: file,
     };
+    if (data.docImageTitle === 'myPhoto') {
+      existingDeliveryPartner.profilePhoto = file;
+    }
     await existingDeliveryPartner.save();
   }
 
