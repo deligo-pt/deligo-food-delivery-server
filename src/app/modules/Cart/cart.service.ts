@@ -91,6 +91,12 @@ const addToCart = async (
     availableStock = targetOption.stockQuantity ?? 0;
     finalVariationSku = targetOption.sku;
   } else {
+    if (variationSku) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'This product does not support variations. Please clear selection.',
+      );
+    }
     finalVariationSku = null;
   }
 
