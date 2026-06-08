@@ -232,6 +232,9 @@ const deleteVendorDocument = async (
   } as any;
 
   existingVendor.markModified('documents');
+  if (docImageTitle === 'myPhoto' && existingVendor.profilePhoto === imageUrl) {
+    existingVendor.profilePhoto = '';
+  }
   await existingVendor.save();
 
   return {
