@@ -124,5 +124,5 @@ const adminSchema = new Schema<TAdmin>(
 export const Admin = model<TAdmin>('Admin', adminSchema);
 
 export type TAdminImageDocuments = {
-  docImageTitle: 'idProofFront' | 'idProofBack';
+  docImageTitle: 'myPhoto' | 'idProofFront' | 'idProofBack';
 };
