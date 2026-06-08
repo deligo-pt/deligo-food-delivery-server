@@ -140,6 +140,9 @@ const adminDocImageUpload = async (
       ...existingAdmin.documents,
       [data.docImageTitle]: file,
     };
+    if (data.docImageTitle === 'myPhoto') {
+      existingAdmin.profilePhoto = file;
+    }
     await existingAdmin.save();
   }
 

@@ -175,6 +175,7 @@ export type TDeliveryPartner = {
 // Document Upload Types (unchanged)
 export type TDeliveryPartnerImageDocuments = {
   docImageTitle:
+    | 'myPhoto'
     | 'idProofFront'
     | 'idProofBack'
     | 'drivingLicenseFront'

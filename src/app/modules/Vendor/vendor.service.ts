@@ -175,6 +175,10 @@ const vendorDocImageUpload = async (
 
     // Explicitly tell Mongoose that the nested 'documents' object has changed
     existingVendor.markModified('documents');
+
+    if (docImageTitle === 'myPhoto') {
+      existingVendor.profilePhoto = uniqueImages[0];
+    }
     await existingVendor.save();
   }
 
@@ -228,6 +232,9 @@ const deleteVendorDocument = async (
   } as any;
 
   existingVendor.markModified('documents');
+  if (docImageTitle === 'myPhoto' && existingVendor.profilePhoto === imageUrl) {
+    existingVendor.profilePhoto = '';
+  }
   await existingVendor.save();
 
   return {

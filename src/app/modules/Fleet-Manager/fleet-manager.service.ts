@@ -172,6 +172,9 @@ const fleetManagerDocImageUpload = async (
       [docImageTitle]: uniqueImages,
     } as any;
     await existingFleetManager.markModified('documents');
+    if (docImageTitle === 'myPhoto') {
+      existingFleetManager.profilePhoto = uniqueImages[0];
+    }
     await existingFleetManager.save();
   }
 
@@ -227,6 +230,12 @@ const deleteFleetManagerDocument = async (
   } as any;
 
   existingFleetManager.markModified('documents');
+  if (
+    docImageTitle === 'myPhoto' &&
+    existingFleetManager.profilePhoto === imageUrl
+  ) {
+    existingFleetManager.profilePhoto = '';
+  }
   await existingFleetManager.save();
 
   return {

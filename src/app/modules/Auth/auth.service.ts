@@ -69,7 +69,6 @@ const registerUser = async <
   const existingUser = await AuthUser.findOne({ email: payload.email }).select(
     'email role status profileId _id isEmailVerified isContactNumberVerified',
   );
-  console.log(existingUser);
 
   const emailHtml = await EmailHelper.createEmailContent(
     {
