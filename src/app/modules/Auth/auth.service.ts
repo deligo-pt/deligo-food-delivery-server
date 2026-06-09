@@ -165,6 +165,7 @@ const registerUser = async <
       email: payload.email,
       role: payload.role,
       status: 'PENDING',
+userId
     },
   };
 };
@@ -337,6 +338,7 @@ const onboardUser = async <
       email: payload.email,
       role: payload.role,
       status: 'PENDING',
+userId 
     },
   };
 };
