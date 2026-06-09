@@ -110,7 +110,6 @@ const createRedUniqPayment = async (
       paymentToken: token,
     };
   } catch (error: any) {
-    console.log(error.response);
     if (axios.isAxiosError(error) && error.response) {
       const errorMessage =
         typeof error.response.data === 'string'

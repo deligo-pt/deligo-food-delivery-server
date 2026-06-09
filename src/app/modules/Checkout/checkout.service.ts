@@ -70,6 +70,18 @@ const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
     );
   }
 
+  if (
+    !activeAddress.latitude ||
+    !activeAddress.longitude ||
+    !activeAddress.city ||
+    !activeAddress.street
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Your active delivery address info is incomplete. Please re-save your address.',
+    );
+  }
+
   const vendorLocation = existingVendor.businessLocation;
 
   if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
