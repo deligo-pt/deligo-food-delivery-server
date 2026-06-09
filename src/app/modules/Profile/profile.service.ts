@@ -223,7 +223,7 @@ const updateEmailOrContactNumber = async (
 
       await AuthUser.findOneAndUpdate(
         { userId: currentUserId },
-        { email: pendingEmail },
+        { email: pendingEmail, isEmailVerified: true },
         { session },
       );
 

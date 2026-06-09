@@ -84,26 +84,51 @@ const createRedUniqPayment = async (
     languageCode: 'pt',
   };
 
-  const response = await axios.post(config.redUniq.api_url, payload);
-  const { result, token, redirectUrl } = response.data;
+  try {
+    const response = await axios.post(config.redUniq.api_url, payload);
 
-  if (response.data.token) {
-    summary.paymentMethod = paymentMethod;
-    summary.paymentStatus = 'PROCESSING';
-    await summary.save();
-  }
+    const { result = {}, token, redirectUrl } = response.data || {};
 
-  if (result.code !== '00000000' && result.code !== '17000000000') {
+    if (
+      !result?.code ||
+      (result.code !== '00000000' && result.code !== '17000000000')
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        result?.message || 'Payment initiation failed by gateway',
+      );
+    }
+
+    if (token) {
+      summary.paymentMethod = paymentMethod;
+      summary.paymentStatus = 'PROCESSING';
+      await summary.save();
+    }
+
+    return {
+      redirectUrl,
+      paymentToken: token,
+    };
+  } catch (error: any) {
+    console.log(error.response);
+    if (axios.isAxiosError(error) && error.response) {
+      const errorMessage =
+        typeof error.response.data === 'string'
+          ? 'Payment Gateway is temporarily unavailable (502 Bad Gateway)'
+          : error.response.data?.message || 'Gateway Error';
+
+      throw new AppError(error.response.status, errorMessage);
+    }
+
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Payment initiation failed',
+      error.message || 'Something went wrong during payment processing',
     );
   }
-
-  return {
-    redirectUrl,
-    paymentToken: token,
-  };
 };
 
 // handle payment failure
