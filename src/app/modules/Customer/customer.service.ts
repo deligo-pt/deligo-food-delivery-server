@@ -22,7 +22,7 @@ const updateCustomer = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `Action denied. Your account status is currently ${currentUser.status.toLowerCase()}.`,
+      `Access denied. Your account is currently ${currentUser.status.toLowerCase()}. Please complete any pending requirements or contact support for assistance.`,
     );
   }
 
@@ -32,13 +32,16 @@ const updateCustomer = async (
   }).populate('profileId');
 
   if (!customer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer account not found.');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Account not found. Please ensure you are logged in with the correct credentials.',
+    );
   }
 
   if (customer.requiresOtpVerification) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Identity verification pending. Please verify your OTP first.',
+      'Verification required. Please complete the identity verification process by entering your OTP to continue.',
     );
   }
 
@@ -47,7 +50,7 @@ const updateCustomer = async (
   if (!customerProfile) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Customer profile details not found.',
+      'Profile details not found. Please complete your profile setup to proceed.',
     );
   }
 
@@ -57,7 +60,7 @@ const updateCustomer = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Access denied. You are not authorized to update this profile.',
+      "You don't have permission to update this profile. If you believe this is a mistake, please reach out to our support team.",
     );
   }
 
@@ -99,14 +102,14 @@ const updateCustomer = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Incomplete address details. Street, city, state, country, postal code, and map location are all required.',
+        'Please provide all address details, including street, city, state, country, postal code, and map location, to ensure accurate delivery.',
       );
     }
 
     if (geoAccuracy !== undefined && geoAccuracy > 100) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Invalid location data. Geo accuracy score must be under 100.',
+        "We're having trouble getting an accurate location. Please ensure your GPS is enabled and try again.",
       );
     }
 
@@ -128,7 +131,7 @@ const updateCustomer = async (
     if (currentAddresses.length >= 5) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Address limit reached. You can save up to 5 delivery addresses. Please delete an old address first.',
+        "You've reached the limit of 5 saved addresses. To add a new one, please remove an existing address from your profile.",
       );
     }
 
@@ -193,14 +196,14 @@ const updateCustomerLiveLocation = async (
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update live location. Your account status is: ${currentUser?.status}`,
+      `Location updates are currently unavailable for your account status (${currentUser?.status.toLowerCase()}). Please contact support for more information.`,
     );
   }
 
   if (currentUser?.userId !== customerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to update live location!',
+      "You're not authorized to update the location for this account.",
     );
   }
 
@@ -217,7 +220,7 @@ const updateCustomerLiveLocation = async (
   if (geoAccuracy !== undefined && geoAccuracy > 100) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Geo accuracy should be less than 100',
+      "Low location accuracy detected. Please ensure your device's location services are working correctly and try again.",
     );
   }
 
@@ -249,7 +252,7 @@ const updateCustomerLiveLocation = async (
   if (!updatedCustomer) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Customer not found or update failed.',
+      'We encountered an issue while updating your location. Please try again in a moment.',
     );
   }
 
@@ -281,14 +284,14 @@ const addDeliveryAddress = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Incomplete address details. Street, city, state, country, postal code, and map coordinates are all required.',
+      'Please fill in all address fields, including street, city, state, country, postal code, and map location, so we can deliver to you accurately.',
     );
   }
 
   if (currentUser?.role !== 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Access denied. Only customers are authorized to add delivery addresses.',
+      'Only customer accounts can add delivery addresses.',
     );
   }
 
@@ -296,7 +299,10 @@ const addDeliveryAddress = async (
     userId: currentUser.userId,
   });
   if (!customerProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found.');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "We couldn't find your profile. Please ensure your account is fully set up.",
+    );
   }
 
   const currentAddresses: any[] = customerProfile.deliveryAddresses
@@ -306,7 +312,7 @@ const addDeliveryAddress = async (
   if (currentAddresses.length >= 5) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Address limit reached. You can save up to 5 delivery addresses. Please delete an old address first.',
+      "You've reached the maximum limit of 5 saved addresses. Please remove an old address before adding a new one.",
     );
   }
 
@@ -337,7 +343,7 @@ const addDeliveryAddress = async (
   if (isDuplicate) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'This address has already been saved in your delivery addresses.',
+      'This address is already in your saved list. No need to add it again!',
     );
   }
 
@@ -409,7 +415,7 @@ const updateDeliveryAddress = async (
   if (!customer) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Address not found or unauthorized',
+      "We couldn't find this address, or you may not have permission to update it.",
     );
   }
 
@@ -422,7 +428,10 @@ const updateDeliveryAddress = async (
   );
 
   if (targetAddressIndex === -1) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Delivery address not found');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'The requested delivery address could not be found.',
+    );
   }
 
   const targetAddress = currentAddresses[targetAddressIndex];
@@ -445,7 +454,7 @@ const updateDeliveryAddress = async (
     if (isDuplicate) {
       throw new AppError(
         httpStatus.CONFLICT,
-        'Another delivery address already exists with these GPS coordinates',
+        'An address with these coordinates is already saved in your list.',
       );
     }
   }
@@ -495,7 +504,10 @@ const toggleDeliveryAddressStatus = async (
   const customer = await Customer.findById(currentUser._id).lean();
 
   if (!customer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Profile not found. Please try logging in again.',
+    );
   }
   const currentAddresses: any[] = customer.deliveryAddresses
     ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
@@ -506,7 +518,10 @@ const toggleDeliveryAddressStatus = async (
   );
 
   if (!targetAddressExists) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Delivery address not found');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "We couldn't find the delivery address you're trying to activate.",
+    );
   }
 
   let selectedActiveAddress: any = null;
@@ -554,7 +569,10 @@ const deleteDeliveryAddress = async (
   const customer = await Customer.findById(currentUser._id).lean();
 
   if (!customer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Profile not found. Please try again.',
+    );
   }
   const currentAddresses: any[] = customer.deliveryAddresses
     ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
@@ -565,20 +583,23 @@ const deleteDeliveryAddress = async (
   );
 
   if (!targetAddress) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Delivery address not found');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "The address you're trying to delete doesn't exist.",
+    );
   }
 
   if (targetAddress.isActive) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Your currently active delivery address cannot be deleted. Please switch to another address first.',
+      'You cannot delete your active delivery address. Please set another address as active before deleting this one.',
     );
   }
 
   if (targetAddress.addressType === 'PRIMARY') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Your PRIMARY address is locked and cannot be deleted.',
+      'Your primary address is required and cannot be deleted. Please update it if your details have changed.',
     );
   }
 
@@ -602,7 +623,7 @@ const getAllCustomersFromDB = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view customers. Your account is ${currentUser.status}`,
+      `Access denied. Your account status (${currentUser.status.toLowerCase()}) does not allow you to view customer lists.`,
     );
   }
 
@@ -641,7 +662,7 @@ const getSingleCustomerFromDB = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view a customer. Your account is ${currentUser.status}`,
+      `Access denied. Your account status (${currentUser.status.toLowerCase()}) does not allow you to view this information.`,
     );
   }
 
@@ -657,7 +678,7 @@ const getSingleCustomerFromDB = async (
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to view this customer',
+        "You don't have permission to view this customer's details.",
       );
     }
   } else {
@@ -677,7 +698,10 @@ const getSingleCustomerFromDB = async (
   });
   const data = await query;
   if (!data) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer not found!');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'The requested customer profile could not be found.',
+    );
   }
 
   return data;
