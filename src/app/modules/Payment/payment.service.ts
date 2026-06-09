@@ -112,7 +112,7 @@ const createRedUniqPayment = async (
   } catch (error: any) {
     if (axios.isAxiosError(error) && error.response) {
       const errorMessage =
-        typeof error.response.data === 'string'
+        error.response.status === 502
           ? 'Payment Gateway is temporarily unavailable (502 Bad Gateway)'
           : error.response.data?.message || 'Gateway Error';
 
