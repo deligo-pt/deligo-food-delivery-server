@@ -862,7 +862,9 @@ const changePassword = async (
 const forgotPassword = async (email: string) => {
   const user = await AuthUser.findOne({ email, isDeleted: false })
     .populate('profileId', 'name')
-    .select('role status profileId');
+    .select('role status profileId isEmailVerified');
+
+  console.log(user);
 
   const populatedUser = user?.profileId as any;
 
