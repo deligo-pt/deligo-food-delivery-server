@@ -17,17 +17,11 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
       id: {
         type: Schema.Types.ObjectId,
         refPath: 'registeredBy.model',
-        default: null,
+        required: false,
       },
       model: {
         type: String,
         enum: ['Admin', 'FleetManager'],
-        default: null,
-      },
-      role: {
-        type: String,
-        enum: ['ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'],
-        default: null,
       },
     },
 

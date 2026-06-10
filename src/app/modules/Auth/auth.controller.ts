@@ -7,8 +7,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 //register User Controller [Vendor, Fleet Manager, Admin]
 const registerUser = catchAsync(async (req, res) => {
-  const url = req.originalUrl;
-  const result = await AuthServices.registerUser(req.body, url);
+  const result = await AuthServices.registerUser(req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -20,10 +19,8 @@ const registerUser = catchAsync(async (req, res) => {
 
 // register User Controller [Vendor, Fleet Manager, Admin, Sub Vendor, Delivery Partner]
 const onboardUser = catchAsync(async (req, res) => {
-  const { targetRole } = req.params;
   const result = await AuthServices.onboardUser(
     req.body,
-    targetRole,
     req.user as TCurrentUser,
   );
 
@@ -32,6 +29,37 @@ const onboardUser = catchAsync(async (req, res) => {
     success: true,
     message: result?.message,
     data: result?.data,
+  });
+});
+
+// Verify OTP Controller
+const verifyOtp = catchAsync(async (req, res) => {
+  const result = await AuthServices.verifyOtp(req.body);
+
+  const { accessToken, refreshToken, message } = result;
+
+  res.cookie('refreshToken', refreshToken, {
+    secure: config.NODE_ENV === 'production',
+    httpOnly: true,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: message,
+    data: { accessToken, refreshToken },
+  });
+});
+
+// Resend OTP Controller
+const resendOtp = catchAsync(async (req, res) => {
+  const result = await AuthServices.resendOtp(req.body);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
   });
 });
 
@@ -123,8 +151,7 @@ const changePassword = catchAsync(async (req, res) => {
 
 // Forgot Password
 const forgotPassword = catchAsync(async (req, res) => {
-  const { email } = req.body;
-  const result = await AuthServices.forgotPassword(email);
+  const result = await AuthServices.forgotPassword(req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -189,45 +216,6 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
   });
 });
 
-// Verify OTP Controller
-const verifyOtp = catchAsync(async (req, res) => {
-  const { email, contactNumber, otp, deviceDetails, forceLogin } = req.body;
-  const result = await AuthServices.verifyOtp(
-    email,
-    contactNumber,
-    otp,
-    deviceDetails,
-    forceLogin,
-  );
-
-  const { accessToken, refreshToken, message } = result;
-
-  res.cookie('refreshToken', refreshToken, {
-    secure: config.NODE_ENV === 'production',
-    httpOnly: true,
-  });
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: message,
-    data: { accessToken, refreshToken },
-  });
-});
-
-// Resend OTP Controller
-const resendOtp = catchAsync(async (req, res) => {
-  const { email, contactNumber } = req.body;
-  const result = await AuthServices.resendOtp(email, contactNumber);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
-  });
-});
-
 // soft delete user controller
 const softDeleteUser = catchAsync(async (req, res) => {
   const result = await AuthServices.softDeleteUser(
@@ -261,6 +249,8 @@ const permanentDeleteUser = catchAsync(async (req, res) => {
 export const AuthControllers = {
   registerUser,
   onboardUser,
+  verifyOtp,
+  resendOtp,
   loginUser,
   loginCustomer,
   updateFcmToken,
@@ -269,8 +259,6 @@ export const AuthControllers = {
   forgotPassword,
   resetPassword,
   refreshToken,
-  resendOtp,
-  verifyOtp,
   approvedOrRejectedUser,
   submitForApproval,
   softDeleteUser,
