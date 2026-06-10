@@ -1255,15 +1255,26 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
 };
 
 // reset Password
-const resetPassword = async (
-  email: string,
-  token: string,
-  newPassword: string,
-) => {
+const resetPassword = async (payload: {
+  email: string;
+  role: TUserRole;
+  token: string;
+  newPassword: string;
+}) => {
+  const { email, role, token, newPassword } = payload;
+  const formattedEmail = email.trim().toLowerCase();
+
+  if (role === 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Customers login via OTP/Contact, password reset is not required.',
+    );
+  }
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
   const user = await AuthUser.findOne({
-    email: email.trim().toLowerCase(),
+    email: formattedEmail,
+    role,
     passwordResetToken: hashedToken,
     passwordResetTokenExpiresAt: { $gt: new Date() },
     isDeleted: false,
@@ -1272,14 +1283,7 @@ const resetPassword = async (
   if (!user) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Reset token is invalid or has been expired',
-    );
-  }
-
-  if (user.role === 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Customers do not need to reset passwords via this method',
+      'User not found or Reset token is invalid or has been expired',
     );
   }
 

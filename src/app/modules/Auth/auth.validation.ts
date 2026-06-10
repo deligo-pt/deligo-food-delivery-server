@@ -146,6 +146,10 @@ const resetPasswordValidationSchema = z.object({
       email: z.string({
         required_error: 'Email is required',
       }),
+      role: z.nativeEnum(USER_ROLE, {
+        required_error: 'Role is required',
+        invalid_type_error: 'Invalid user role provided',
+      }),
       token: z.string({
         required_error: 'Token is required',
       }),
