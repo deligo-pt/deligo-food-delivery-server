@@ -79,8 +79,8 @@ const createRedUniqPayment = async (
       amount: Math.round(summary.payoutSummary.grandTotal * 100),
       date: new Date().toISOString().slice(0, 19).replace('T', ' '),
     },
-    returnUrlOk: `${config.frontend_urls.frontend_payment_url}/payment-success?summaryId=${checkoutSummaryId}`,
-    returnUrlError: `${config.frontend_urls.frontend_payment_url}/payment-failed?summaryId=${checkoutSummaryId}`,
+    returnUrlOk: `${config.frontend_urls.payment}/payment-success?summaryId=${checkoutSummaryId}`,
+    returnUrlError: `${config.frontend_urls.payment}/payment-failed?summaryId=${checkoutSummaryId}`,
     languageCode: 'pt',
   };
 
@@ -263,8 +263,8 @@ const createIngredientRedUniqPayment = async (
         amount: Math.round(grandTotal * 100),
         date: new Date().toISOString().slice(0, 19).replace('T', ' '),
       },
-      returnUrlOk: `${config.frontend_urls.frontend_url_test}/vendor/ingredients/orders/payment-success?orderId=${newOrder._id}`,
-      returnUrlError: `${config.frontend_urls.frontend_url_test}/vendor/ingredients/orders/payment-failed?orderId=${newOrder._id}`,
+      returnUrlOk: `${config.frontend_urls.test}/vendor/ingredients/orders/payment-success?orderId=${newOrder._id}`,
+      returnUrlError: `${config.frontend_urls.test}/vendor/ingredients/orders/payment-failed?orderId=${newOrder._id}`,
     };
 
     const response = await axios.post(

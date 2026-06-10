@@ -1175,8 +1175,14 @@ const changePassword = async (
 };
 
 // Forgot Password
-const forgotPassword = async (email: string) => {
-  const user = await AuthUser.findOne({ email, isDeleted: false })
+const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
+  const { email, role } = payload;
+  const formattedEmail = email.trim().toLowerCase();
+  const user = await AuthUser.findOne({
+    email: formattedEmail,
+    role,
+    isDeleted: false,
+  })
     .populate('profileId', 'name')
     .select('role status profileId isEmailVerified');
 
@@ -1190,10 +1196,10 @@ const forgotPassword = async (email: string) => {
     throw new AppError(httpStatus.FORBIDDEN, 'You need to verify your email');
   }
 
-  if (user?.role === 'CUSTOMER') {
+  if (user.role === 'CUSTOMER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Customer no need to reset password',
+      'Customers login via OTP/Contact, password reset is not required.',
     );
   }
 
@@ -1209,11 +1215,13 @@ const forgotPassword = async (email: string) => {
   let resetURL;
 
   if (user?.role === 'ADMIN') {
-    resetURL = `${config.frontend_urls.frontend_url_admin}/reset-password?token=${token}`;
-  } else if (user?.role === 'VENDOR') {
-    resetURL = `${config.frontend_urls.frontend_url_vendor}/reset-password?token=${token}`;
+    resetURL = `${config.frontend_urls.admin}/reset-password?token=${token}`;
+  } else if (user?.role === 'VENDOR' || user?.role === 'SUB_VENDOR') {
+    resetURL = `${config.frontend_urls.vendor}/reset-password?token=${token}`;
   } else if (user?.role === 'FLEET_MANAGER') {
-    resetURL = `${config.frontend_urls.frontend_url_fleet_manager}/reset-password?token=${token}`;
+    resetURL = `${config.frontend_urls.fleet_manager}/reset-password?token=${token}`;
+  } else if (user?.role === 'DELIVERY_PARTNER') {
+    resetURL = `${config.frontend_urls.delivery_partner}/reset-password?token=${token}`;
   }
 
   await user.save({ validateBeforeSave: false });
@@ -1232,7 +1240,7 @@ const forgotPassword = async (email: string) => {
   // send email
   try {
     await EmailHelper.sendEmail(
-      email,
+      formattedEmail,
       emailHtml,
       'Reset your password for DeliGo',
     );
