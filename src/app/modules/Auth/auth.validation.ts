@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
+import {
+  USER_ROLE,
+  USER_STATUS,
+} from '../../constant/GlobalConstant/user.constant';
 // Register
 const registerValidationSchema = z.object({
   body: z
@@ -11,6 +14,17 @@ const registerValidationSchema = z.object({
         .email({
           message: 'Invalid email',
         }),
+      role: z.enum(['VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER'], {
+        errorMap: (issue, ctx) => {
+          if (issue.code === z.ZodIssueCode.invalid_enum_value) {
+            return {
+              message:
+                'Invalid registration role. Only VENDOR, DELIVERY_PARTNER, or FLEET_MANAGER are allowed.',
+            };
+          }
+          return { message: ctx.defaultError };
+        },
+      }),
       password: z.string({
         required_error: 'Password is required',
       }),
@@ -151,6 +165,10 @@ const verifyOtpValidationSchema = z.object({
           required_error: 'Mobile number is required',
         })
         .optional(),
+      role: z.nativeEnum(USER_ROLE, {
+        required_error: 'Role is required',
+        invalid_type_error: 'Invalid user role provided',
+      }),
       otp: z.string({
         required_error: 'OTP is required',
       }),
@@ -181,6 +199,10 @@ const verifyOtpValidationSchema = z.object({
 const resendOtpValidationSchema = z.object({
   body: z
     .object({
+      role: z.nativeEnum(USER_ROLE, {
+        required_error: 'Role is required',
+        invalid_type_error: 'Invalid user role provided',
+      }),
       email: z.string().optional(),
       contactNumber: z.string().optional(),
     })

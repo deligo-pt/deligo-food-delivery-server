@@ -7,8 +7,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 //register User Controller [Vendor, Fleet Manager, Admin]
 const registerUser = catchAsync(async (req, res) => {
-  const url = req.originalUrl;
-  const result = await AuthServices.registerUser(req.body, url);
+  const result = await AuthServices.registerUser(req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -191,14 +190,7 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
 
 // Verify OTP Controller
 const verifyOtp = catchAsync(async (req, res) => {
-  const { email, contactNumber, otp, deviceDetails, forceLogin } = req.body;
-  const result = await AuthServices.verifyOtp(
-    email,
-    contactNumber,
-    otp,
-    deviceDetails,
-    forceLogin,
-  );
+  const result = await AuthServices.verifyOtp(req.body);
 
   const { accessToken, refreshToken, message } = result;
 
@@ -217,8 +209,7 @@ const verifyOtp = catchAsync(async (req, res) => {
 
 // Resend OTP Controller
 const resendOtp = catchAsync(async (req, res) => {
-  const { email, contactNumber } = req.body;
-  const result = await AuthServices.resendOtp(email, contactNumber);
+  const result = await AuthServices.resendOtp(req.body);
 
   sendResponse(res, {
     success: true,

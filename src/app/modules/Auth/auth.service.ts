@@ -19,7 +19,7 @@ import {
 } from '../../constant/GlobalConstant/user.constant';
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
-import { TLoginCustomer, TLoginUser } from './auth.interface';
+import { TLoginCustomer, TLoginUser, TRegisterUser } from './auth.interface';
 import { findUserByEmail, findUserById } from '../../utils/findUserByEmailOrId';
 import { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -40,49 +40,35 @@ import {
 import { AuthUser } from '../AuthUser/authUser.model';
 
 // Register User [Vendor, Fleet Manager, Admin]
-const registerUser = async <
-  T extends {
-    email: string;
-    role: TUserRole;
-    password: string;
-    isEmailVerified?: boolean;
-  },
->(
-  payload: T,
-  url: string,
-) => {
-  const userType = url.split('/register')[1] as keyof typeof USER_TYPE_MAP;
-  const userTypeData = USER_TYPE_MAP[userType];
-  const modelData = USER_MODEL_MAP[userType];
-  if (!userTypeData || !modelData) {
+const registerUser = async (payload: TRegisterUser) => {
+  const { email, role, password } = payload;
+  const modelData = ROLE_COLLECTION_MAP[role as TUserRole];
+  if (!modelData) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
 
-  const { Model: TargetModel, idField } = modelData;
-  const mongooseModel = TargetModel as unknown as Model<T>;
+  const mongooseModel = mongoose.model(modelData);
 
   // Generate userId & OTP
-  const userId = generateUserId(userType);
-  payload.role = userTypeData.role;
+  const userId = generateUserId(role as TUserRole);
   const { otp } = generateOtp();
 
-  const existingUser = await AuthUser.findOne({ email: payload.email }).select(
+  const existingUser = await AuthUser.findOne({
+    email,
+  }).select(
     'email role status profileId _id isEmailVerified isContactNumberVerified',
   );
 
   const emailHtml = await EmailHelper.createEmailContent(
     {
       otp,
-      userEmail: payload.email,
+      userEmail: email,
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
-      user: payload?.role.toLocaleLowerCase(),
+      user: role.toLocaleLowerCase(),
     },
     'verify-email',
   );
-
-  const rawPassword = payload.password;
-  const { password: _, ...profilePayload } = payload;
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -90,13 +76,13 @@ const registerUser = async <
   let createdUser: any = null;
   try {
     if (existingUser) {
-      console.log(existingUser.isEmailVerified);
       if (existingUser.isEmailVerified) {
         throw new AppError(
           httpStatus.CONFLICT,
           `${existingUser.email} is already registered as ${existingUser.role}.`,
         );
       }
+
       const prevModelData = ROLE_COLLECTION_MAP[existingUser.role as TUserRole];
       if (prevModelData) {
         const prevModel = mongoose.model(prevModelData);
@@ -108,8 +94,8 @@ const registerUser = async <
     const result = await mongooseModel.create(
       [
         {
-          ...profilePayload,
-          [idField]: userId,
+          email,
+          userId,
           role: payload.role,
         },
       ],
@@ -122,10 +108,10 @@ const registerUser = async <
         {
           userId,
           profileId: createdUser._id,
-          profileModel: TargetModel.modelName,
-          email: payload.email,
-          password: rawPassword,
-          role: payload.role,
+          profileModel: modelData,
+          email: email,
+          password,
+          role: role,
           status: 'PENDING',
           isDeleted: false,
         },
@@ -133,7 +119,7 @@ const registerUser = async <
       { session },
     );
 
-    const redisOtpKey = `otp:${payload.email}`;
+    const redisOtpKey = `otp:${role.toLowerCase()}:${payload.email}`;
     await RedisService.set(redisOtpKey, otp, 300);
 
     await session.commitTransaction();
@@ -141,13 +127,11 @@ const registerUser = async <
   } catch (err: any) {
     await session.abortTransaction();
     session.endSession();
-
     console.log(err);
-
     if (err?.code === 11000) {
       throw new AppError(
         httpStatus.CONFLICT,
-        'The email already exists. Please use another email.',
+        'The email already exists for this role. Please use another email.',
       );
     }
     throw err;
@@ -162,10 +146,10 @@ const registerUser = async <
   return {
     message: `${payload.role} registered successfully. Check your email for OTP.`,
     data: {
+      userId,
       email: payload.email,
       role: payload.role,
       status: 'PENDING',
-userId
     },
   };
 };
@@ -338,7 +322,7 @@ const onboardUser = async <
       email: payload.email,
       role: payload.role,
       status: 'PENDING',
-userId 
+      userId,
     },
   };
 };
@@ -1424,13 +1408,16 @@ const approvedOrRejectedUser = async (
 };
 
 // Verify OTP
-const verifyOtp = async (
-  email?: string,
-  contactNumber?: string,
-  otp?: string,
-  deviceDetails?: TLoginDevice,
-  forceLogin?: boolean,
-) => {
+const verifyOtp = async (payload: {
+  role: TUserRole;
+  email?: string;
+  contactNumber?: string;
+  otp?: string;
+  deviceDetails?: TLoginDevice;
+  forceLogin?: boolean;
+}) => {
+  const { role, email, contactNumber, otp, deviceDetails, forceLogin } =
+    payload;
   if (!email && !contactNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -1438,13 +1425,20 @@ const verifyOtp = async (
     );
   }
 
+  console.log(role);
+
   let userData: any = undefined;
 
   if (email) {
-    userData = await AuthUser.isUserExistsByEmail(email);
+    userData = await AuthUser.findOne({
+      email,
+      role,
+      isDeleted: false,
+    });
   } else if (contactNumber) {
     userData = await AuthUser.findOne({
       contactNumber,
+      role,
       isDeleted: false,
     }).lean();
   }
@@ -1474,7 +1468,7 @@ const verifyOtp = async (
   }
 
   if (email) {
-    const redisOtpKey = `otp:${email}`;
+    const redisOtpKey = `otp:${role.toLowerCase()}:${email}`;
     const storedOtp = await RedisService.get(redisOtpKey);
 
     if (email === config.customer.test_customer_email) {
@@ -1593,7 +1587,12 @@ const verifyOtp = async (
 };
 
 // Resend OTP
-const resendOtp = async (email?: string, contactNumber?: string) => {
+const resendOtp = async (payload: {
+  role: TUserRole;
+  email?: string;
+  contactNumber?: string;
+}) => {
+  const { role, email, contactNumber } = payload;
   if (!email?.trim() && !contactNumber?.trim()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -1635,7 +1634,9 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
   }
 
   if (email) {
+    const formattedEmail = email.trim().toLowerCase();
     const user = await AuthUser.findOne({
+      role: role,
       email: email.trim().toLowerCase(),
       isDeleted: false,
     }).populate('profileId', 'userId name');
@@ -1655,7 +1656,7 @@ const resendOtp = async (email?: string, contactNumber?: string) => {
     }
 
     const { otp } = generateOtp();
-    const redisOtpKey = `otp:${email.trim().toLowerCase()}`;
+    const redisOtpKey = `otp:${role.toLowerCase()}:${formattedEmail}`;
     await RedisService.set(redisOtpKey, otp, 300); // 5-minute TTL
 
     user.requiresOtpVerification = true;

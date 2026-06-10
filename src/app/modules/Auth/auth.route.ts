@@ -11,12 +11,7 @@ import { Router } from 'express';
 const router = Router();
 // Register User Route [Vendor, Fleet Manager, Admin,Delivery Partner]
 router.post(
-  [
-    UrlPath.VENDOR,
-    UrlPath.FLEET_MANAGER,
-    UrlPath.ADMIN,
-    UrlPath.DELIVERY_PARTNER,
-  ],
+  '/register',
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),
   AuthControllers.registerUser,
