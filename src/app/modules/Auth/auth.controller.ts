@@ -19,10 +19,8 @@ const registerUser = catchAsync(async (req, res) => {
 
 // register User Controller [Vendor, Fleet Manager, Admin, Sub Vendor, Delivery Partner]
 const onboardUser = catchAsync(async (req, res) => {
-  const { targetRole } = req.params;
   const result = await AuthServices.onboardUser(
     req.body,
-    targetRole,
     req.user as TCurrentUser,
   );
 

@@ -31,6 +31,33 @@ const registerValidationSchema = z.object({
     })
     .strict(),
 });
+const registerOnboardingValidationSchema = z.object({
+  body: z
+    .object({
+      email: z
+        .string({
+          required_error: 'Email is required',
+        })
+        .email({
+          message: 'Invalid email',
+        }),
+      role: z.enum(['VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN'], {
+        errorMap: (issue, ctx) => {
+          if (issue.code === z.ZodIssueCode.invalid_enum_value) {
+            return {
+              message:
+                'Invalid registration role. Only ADMIN, VENDOR, DELIVERY_PARTNER, or FLEET_MANAGER are allowed.',
+            };
+          }
+          return { message: ctx.defaultError };
+        },
+      }),
+      password: z.string({
+        required_error: 'Password is required',
+      }),
+    })
+    .strict(),
+});
 // Login
 const loginValidationSchema = z.object({
   body: z
@@ -215,6 +242,7 @@ const resendOtpValidationSchema = z.object({
 
 export const AuthValidation = {
   registerValidationSchema,
+  registerOnboardingValidationSchema,
   loginValidationSchema,
   loginCustomerValidationSchema,
   logoutValidationSchema,

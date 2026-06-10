@@ -154,25 +154,14 @@ const registerUser = async (payload: TRegisterUser) => {
   };
 };
 
-const onboardUser = async <
-  T extends {
-    email: string;
-    role: TUserRole;
-    password: string;
-    isEmailVerified?: boolean;
-    registeredBy?: any;
-  },
->(
-  payload: T,
-  targetRole: string,
+const onboardUser = async (
+  payload: TRegisterUser,
   currentUser: TCurrentUser,
 ) => {
-  const mapKey = `/create-${targetRole}` as keyof typeof USER_TYPE_MAP;
+  const { email, role, password } = payload;
+  const modelData = ROLE_COLLECTION_MAP[role as TUserRole];
 
-  const userTypeData = USER_TYPE_MAP[mapKey];
-  const modelData = USER_MODEL_MAP[mapKey];
-
-  if (!userTypeData || !modelData) {
+  if (!modelData) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Invalid onboarding target role',
@@ -186,29 +175,25 @@ const onboardUser = async <
     );
   }
 
-  const allowedRoles = ROLE_ONBOARD_PERMISSIONS[targetRole.toLowerCase()];
+  const allowedRoles = ROLE_ONBOARD_PERMISSIONS[role.toLowerCase()];
 
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You do not have permission to onboard a ${targetRole.replace('-', ' ')}`,
+      `You do not have permission to onboard a ${role.replace('-', ' ')}`,
     );
   }
 
-  const { Model: TargetModel, idField } = modelData;
-  const mongooseModel = TargetModel as unknown as Model<T>;
+  const mongooseModel = mongoose.model(modelData);
 
-  const userId = generateUserId(mapKey);
-  payload.role = userTypeData.role;
+  const userId = generateUserId(role as TUserRole);
   const { otp } = generateOtp();
 
-  const existingUser = await AuthUser.findOne({ email: payload.email });
+  const existingUser = await AuthUser.findOne({ email });
 
   let registeredByValue: any;
   if (
-    ['vendor', 'sub-vendor', 'delivery-partner'].includes(
-      targetRole.toLowerCase(),
-    )
+    ['vendor', 'sub-vendor', 'delivery-partner'].includes(role.toLowerCase())
   ) {
     registeredByValue = {
       id: currentUser._id,
@@ -245,17 +230,14 @@ const onboardUser = async <
       await AuthUser.deleteOne({ _id: existingUser._id }, { session });
     }
 
-    const rawPassword = payload.password;
-    const { password: _, ...profilePayload } = payload;
-
     const result = await mongooseModel.create(
       [
         {
-          ...profilePayload,
-          [idField]: userId,
+          email,
+          userId,
           registeredBy: registeredByValue,
           status: 'PENDING',
-          role: payload.role,
+          role: role,
         },
       ],
       { session },
@@ -267,10 +249,10 @@ const onboardUser = async <
         {
           userId,
           profileId: createdUser._id,
-          profileModel: TargetModel.modelName,
-          email: payload.email,
-          password: rawPassword,
-          role: payload.role,
+          profileModel: modelData,
+          email,
+          password,
+          role: role,
           status: 'PENDING',
           isDeleted: false,
         },
@@ -296,31 +278,29 @@ const onboardUser = async <
     await session.endSession();
   }
 
-  const redisOtpKey = `otp:${payload.email}`;
+  const redisOtpKey = `otp:${role.toLowerCase()}:${email}`;
   await RedisService.set(redisOtpKey, otp, 300);
 
   const emailHtml = await EmailHelper.createEmailContent(
     {
       otp,
-      userEmail: payload.email,
+      userEmail: email,
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
-      user: payload.role.toLowerCase(),
+      user: role.toLowerCase(),
     },
     'verify-email',
   );
 
-  EmailHelper.sendEmail(
-    payload.email,
-    emailHtml,
-    'Verify your email for DeliGo',
-  ).catch((err) => console.error('Email sending failed:', err));
+  EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo').catch(
+    (err) => console.error('Email sending failed:', err),
+  );
 
   return {
-    message: `${payload.role} onboarded successfully. Verification email sent to ${payload.email}`,
+    message: `${role} onboarded successfully. Verification email sent to ${email}`,
     data: {
-      email: payload.email,
-      role: payload.role,
+      email,
+      role: role,
       status: 'PENDING',
       userId,
     },

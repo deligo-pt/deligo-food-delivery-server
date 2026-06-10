@@ -18,9 +18,9 @@ router.post(
 );
 // Register User Route (Registered by Fleet Manager[Delivery Partner], Admin, Super Admin,Vendor[Sub Vendor])
 router.post(
-  '/register/onboard/:targetRole',
+  '/register/onboard',
   auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN', 'VENDOR'),
-  validateRequest(AuthValidation.registerValidationSchema),
+  validateRequest(AuthValidation.registerOnboardingValidationSchema),
   rateLimiter('auth'),
   AuthControllers.onboardUser,
 );
