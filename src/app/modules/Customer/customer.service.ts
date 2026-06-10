@@ -34,7 +34,7 @@ const updateCustomer = async (
   if (!customer) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Account not found. Please ensure you are logged in with the correct credentials.',
+      'Account not found. Please ensure that you have the correct user Id.',
     );
   }
 

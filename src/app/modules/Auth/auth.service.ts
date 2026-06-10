@@ -763,32 +763,17 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     }
   };
 
-  const verifyNoRoleConflict = async (
-    field: 'email' | 'contactNumber',
-    value: string,
-  ) => {
-    const foundAuthUser = await AuthUser.findOne({ [field]: value });
-    if (foundAuthUser && foundAuthUser.role !== USER_ROLE.CUSTOMER) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `This ${
-          field === 'email' ? 'email' : 'contact number'
-        } is already registered as (${foundAuthUser.role}).`,
-      );
-    }
-  };
-
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
     if (email) {
-      await verifyNoRoleConflict('email', email);
+      const formattedEmail = email.trim().toLowerCase();
 
-      const existingCustomer = await Customer.findOne({ email }).session(
-        session,
-      );
+      const existingCustomer = await Customer.findOne({
+        email: formattedEmail,
+      }).session(session);
 
       if (existingCustomer?.referredBy && referralCode) {
         throw new AppError(
@@ -798,17 +783,17 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       }
 
       const { otp } = generateOtp();
-      const redisOtpKey = `otp:${email}`;
+      const redisOtpKey = `otp:${USER_ROLE.CUSTOMER.toLowerCase()}:${formattedEmail}`;
       await RedisService.set(redisOtpKey, otp, 300);
 
       if (!existingCustomer) {
-        const userId = generateUserId('/create-customer');
+        const userId = generateUserId('CUSTOMER');
 
         const newUsers = await Customer.create(
           [
             {
               userId,
-              email,
+              email: formattedEmail,
             },
           ],
           { session },
@@ -821,7 +806,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
               userId,
               profileId: newUser._id,
               profileModel: 'Customer',
-              email,
+              email: formattedEmail,
               role: USER_ROLE.CUSTOMER,
               requiresOtpVerification: true,
             },
@@ -838,7 +823,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         }
 
         await AuthUser.updateOne(
-          { profileId: existingCustomer._id },
+          { profileId: existingCustomer._id, role: USER_ROLE.CUSTOMER },
           { requiresOtpVerification: true },
           { session },
         );
@@ -847,7 +832,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       const emailHtml = await EmailHelper.createEmailContent(
         {
           otp,
-          userEmail: email,
+          userEmail: formattedEmail,
           currentYear: new Date().getFullYear(),
           date: new Date().toDateString(),
           user: existingCustomer?.name?.firstName || 'Customer',
@@ -859,7 +844,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       session.endSession();
 
       EmailHelper.sendEmail(
-        email,
+        formattedEmail,
         emailHtml,
         'Verify your email for DeliGo',
       ).catch((err) => console.error('Email send failed:', err));
@@ -868,11 +853,10 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     }
 
     if (contactNumber) {
-      await verifyNoRoleConflict('contactNumber', contactNumber);
-
-      const existingUser = await Customer.findOne({ contactNumber }).session(
-        session,
-      );
+      const formattedContact = contactNumber.trim();
+      const existingUser = await Customer.findOne({
+        contactNumber: formattedContact,
+      }).session(session);
 
       if (existingUser?.referredBy && referralCode) {
         throw new AppError(
@@ -882,10 +866,10 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       }
 
       const isTestNumber =
-        contactNumber ===
+        formattedContact ===
         (config.customer.test_customer_contact_number as string);
 
-      const res = await sendMobileOtp(contactNumber);
+      const res = await sendMobileOtp(formattedContact);
       const mobileOtpId = isTestNumber ? 'test-otp-id' : res.data.id;
 
       if (existingUser) {
@@ -893,7 +877,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
           await handleReferral(existingUser, referralCode, session);
         }
         await AuthUser.updateOne(
-          { profileId: existingUser._id },
+          { profileId: existingUser._id, role: USER_ROLE.CUSTOMER },
           {
             mobileOtpId,
             requiresOtpVerification: true,
@@ -901,13 +885,13 @@ const loginCustomer = async (payload: TLoginCustomer) => {
           { session },
         );
       } else {
-        const userId = generateUserId('/create-customer');
+        const userId = generateUserId('CUSTOMER');
 
         const newUsers = await Customer.create(
           [
             {
               userId,
-              contactNumber,
+              contactNumber: formattedContact,
             },
           ],
           { session },
@@ -920,7 +904,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
               userId,
               profileId: newUser._id,
               profileModel: 'Customer',
-              contactNumber,
+              contactNumber: formattedContact,
               role: USER_ROLE.CUSTOMER,
               requiresOtpVerification: true,
               mobileOtpId,
