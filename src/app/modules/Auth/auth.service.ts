@@ -873,8 +873,6 @@ const forgotPassword = async (email: string) => {
     .populate('profileId', 'name')
     .select('role status profileId isEmailVerified');
 
-  console.log(user);
-
   const populatedUser = user?.profileId as any;
 
   if (!user) {
