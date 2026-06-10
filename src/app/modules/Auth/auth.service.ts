@@ -821,6 +821,15 @@ const changePassword = async (
 
   const userStatus = currentUser?.status;
 
+  const userExists = await AuthUser.findOne({
+    userId: currentUser.userId,
+    role: currentUser.role,
+  }).select('+password');
+
+  if (!userExists) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
   if (
     userStatus === USER_STATUS.REJECTED ||
     userStatus === USER_STATUS.BLOCKED
@@ -830,7 +839,7 @@ const changePassword = async (
 
   const isPasswordMatched = await AuthUser.isPasswordMatched(
     payload.oldPassword,
-    currentUser.password as string,
+    userExists.password as string,
   );
 
   //checking if the password is correct
@@ -865,8 +874,6 @@ const forgotPassword = async (email: string) => {
   const user = await AuthUser.findOne({ email, isDeleted: false })
     .populate('profileId', 'name')
     .select('role status profileId isEmailVerified');
-
-  console.log(user);
 
   const populatedUser = user?.profileId as any;
 
