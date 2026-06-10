@@ -41,9 +41,6 @@ const sendOtpValidationSchema = z.object({
           invalid_type_error: 'Contact number must be a string.',
         })
         .trim()
-        .regex(/^(\+88)?01[3-9]\d{8}$/, {
-          message: 'Invalid Bangladeshi mobile number format.',
-        })
         .optional(),
 
       email: z
