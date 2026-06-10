@@ -177,7 +177,6 @@ const registerUser = async (payload: TRegisterUser) => {
       email: formattedEmail,
       role: currentRegisteringRole,
       status: 'PENDING',
-userId
     },
   };
 };
