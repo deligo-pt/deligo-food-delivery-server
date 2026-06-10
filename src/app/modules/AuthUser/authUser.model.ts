@@ -29,16 +29,12 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
     email: {
       type: String,
       required: false, // Optional because of TCustomer support
-      unique: true,
-      sparse: true, // CRITICAL: Allows multiple documents to have 'null/undefined' email without unique conflict
       lowercase: true,
       trim: true,
     },
     contactNumber: {
       type: String,
       required: false,
-      unique: true,
-      sparse: true, // CRITICAL: Allows documents without phone numbers without unique conflict
       trim: true,
     },
     role: {
@@ -106,6 +102,22 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
   {
     timestamps: true,
     versionKey: false,
+  },
+);
+
+authUserSchema.index(
+  { email: 1, role: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { email: { $type: 'string' } },
+  },
+);
+
+authUserSchema.index(
+  { contactNumber: 1, role: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { contactNumber: { $type: 'string' } },
   },
 );
 

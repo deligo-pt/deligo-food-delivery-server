@@ -11,33 +11,33 @@ import { Router } from 'express';
 const router = Router();
 // Register User Route [Vendor, Fleet Manager, Admin,Delivery Partner]
 router.post(
-  [
-    UrlPath.VENDOR,
-    UrlPath.FLEET_MANAGER,
-    UrlPath.ADMIN,
-    UrlPath.DELIVERY_PARTNER,
-  ],
+  '/register',
   validateRequest(AuthValidation.registerValidationSchema),
   rateLimiter('auth'),
   AuthControllers.registerUser,
 );
 // Register User Route (Registered by Fleet Manager[Delivery Partner], Admin, Super Admin,Vendor[Sub Vendor])
 router.post(
-  '/register/onboard/:targetRole',
+  '/register/onboard',
   auth('ADMIN', 'FLEET_MANAGER', 'SUPER_ADMIN', 'VENDOR'),
-  validateRequest(AuthValidation.registerValidationSchema),
+  validateRequest(AuthValidation.registerOnboardingValidationSchema),
   rateLimiter('auth'),
   AuthControllers.onboardUser,
 );
 
-// Register Sub Vendor Route
-// router.post(
-//   [UrlPath.SUB_VENDOR],
-//   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
-//   validateRequest(AuthValidation.registerValidationSchema),
-//   rateLimiter('auth'),
-//   AuthControllers.registerUser,
-// );
+// Verify OTP Route
+router.post(
+  '/verify-otp',
+  validateRequest(AuthValidation.verifyOtpValidationSchema),
+  AuthControllers.verifyOtp,
+);
+
+// Resend OTP Route
+router.post(
+  '/resend-otp',
+  validateRequest(AuthValidation.resendOtpValidationSchema),
+  AuthControllers.resendOtp,
+);
 
 // Login User Route
 router.post(
@@ -140,20 +140,6 @@ router.patch(
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.approvedOrRejectedUserValidationSchema),
   AuthControllers.approvedOrRejectedUser,
-);
-
-// Verify OTP Route
-router.post(
-  '/verify-otp',
-  validateRequest(AuthValidation.verifyOtpValidationSchema),
-  AuthControllers.verifyOtp,
-);
-
-// Resend OTP Route
-router.post(
-  '/resend-otp',
-  validateRequest(AuthValidation.resendOtpValidationSchema),
-  AuthControllers.resendOtp,
 );
 
 // soft Delete User Route

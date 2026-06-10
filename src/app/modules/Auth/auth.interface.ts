@@ -8,3 +8,9 @@ export type TLoginCustomer = {
   contactNumber?: string;
   referralCode?: string;
 };
+
+export type TRegisterUser = {
+  email: string;
+  role: string;
+  password: string;
+};

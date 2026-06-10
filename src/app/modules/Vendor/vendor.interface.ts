@@ -22,7 +22,6 @@ export type TVendor = {
   registeredBy?: {
     id: mongoose.Types.ObjectId;
     model: TRegisteredByModel;
-    role: 'ADMIN' | 'SUPER_ADMIN' | 'VENDOR';
   };
   role: 'VENDOR' | 'SUB_VENDOR';
   email: string;
