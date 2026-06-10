@@ -40,9 +40,11 @@ import {
 import { AuthUser } from '../AuthUser/authUser.model';
 
 // Register User [Vendor, Fleet Manager, Admin]
+
 const registerUser = async (payload: TRegisterUser) => {
   const { email, role, password } = payload;
-  const modelData = ROLE_COLLECTION_MAP[role as TUserRole];
+  const currentRegisteringRole = role as TUserRole;
+  const modelData = ROLE_COLLECTION_MAP[currentRegisteringRole];
   if (!modelData) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
   }
@@ -50,22 +52,46 @@ const registerUser = async (payload: TRegisterUser) => {
   const mongooseModel = mongoose.model(modelData);
 
   // Generate userId & OTP
-  const userId = generateUserId(role as TUserRole);
+  const userId = generateUserId(currentRegisteringRole);
   const { otp } = generateOtp();
 
-  const existingUser = await AuthUser.findOne({
-    email,
-  }).select(
-    'email role status profileId _id isEmailVerified isContactNumberVerified',
-  );
+  const formattedEmail = email.trim().toLowerCase();
+
+  const existingUsersAnywhere = await AuthUser.find({
+    email: formattedEmail,
+  }).select('email role status profileId _id isEmailVerified');
+
+  if (existingUsersAnywhere.length > 0) {
+    const verifiedMainUser = existingUsersAnywhere.find(
+      (u) => u.role !== 'CUSTOMER' && u.isEmailVerified === true,
+    );
+
+    if (verifiedMainUser) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        `This email is already registered as an active ${verifiedMainUser.role}. You cannot register as a ${currentRegisteringRole}.`,
+      );
+    }
+
+    const sameRoleVerifiedUser = existingUsersAnywhere.find(
+      (u) => u.role === currentRegisteringRole && u.isEmailVerified === true,
+    );
+
+    if (sameRoleVerifiedUser) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${formattedEmail} is already registered and verified as ${currentRegisteringRole}.`,
+      );
+    }
+  }
 
   const emailHtml = await EmailHelper.createEmailContent(
     {
       otp,
-      userEmail: email,
+      userEmail: formattedEmail,
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
-      user: role.toLocaleLowerCase(),
+      user: currentRegisteringRole.toLowerCase(),
     },
     'verify-email',
   );
@@ -75,28 +101,29 @@ const registerUser = async (payload: TRegisterUser) => {
 
   let createdUser: any = null;
   try {
-    if (existingUser) {
-      if (existingUser.isEmailVerified) {
-        throw new AppError(
-          httpStatus.CONFLICT,
-          `${existingUser.email} is already registered as ${existingUser.role}.`,
-        );
-      }
+    const unverifiedMainUser = existingUsersAnywhere.find(
+      (u) => u.role !== 'CUSTOMER' && u.isEmailVerified === false,
+    );
 
-      const prevModelData = ROLE_COLLECTION_MAP[existingUser.role as TUserRole];
+    if (unverifiedMainUser) {
+      const prevModelData =
+        ROLE_COLLECTION_MAP[unverifiedMainUser.role as TUserRole];
       if (prevModelData) {
         const prevModel = mongoose.model(prevModelData);
-        await prevModel.deleteOne({ _id: existingUser.profileId }, { session });
+        await prevModel.deleteOne(
+          { _id: unverifiedMainUser.profileId },
+          { session },
+        );
       }
-
-      await AuthUser.deleteOne({ _id: existingUser._id }, { session });
+      await AuthUser.deleteOne({ _id: unverifiedMainUser._id }, { session });
     }
+
     const result = await mongooseModel.create(
       [
         {
-          email,
+          email: formattedEmail,
           userId,
-          role: payload.role,
+          role: currentRegisteringRole,
         },
       ],
       { session },
@@ -109,9 +136,9 @@ const registerUser = async (payload: TRegisterUser) => {
           userId,
           profileId: createdUser._id,
           profileModel: modelData,
-          email: email,
+          email: formattedEmail,
           password,
-          role: role,
+          role: currentRegisteringRole,
           status: 'PENDING',
           isDeleted: false,
         },
@@ -119,7 +146,7 @@ const registerUser = async (payload: TRegisterUser) => {
       { session },
     );
 
-    const redisOtpKey = `otp:${role.toLowerCase()}:${payload.email}`;
+    const redisOtpKey = `otp:${currentRegisteringRole.toLowerCase()}:${formattedEmail}`;
     await RedisService.set(redisOtpKey, otp, 300);
 
     await session.commitTransaction();
@@ -127,7 +154,7 @@ const registerUser = async (payload: TRegisterUser) => {
   } catch (err: any) {
     await session.abortTransaction();
     session.endSession();
-    console.log(err);
+    console.error('Registration Transaction Failed:', err);
     if (err?.code === 11000) {
       throw new AppError(
         httpStatus.CONFLICT,
@@ -138,17 +165,17 @@ const registerUser = async (payload: TRegisterUser) => {
   }
 
   EmailHelper.sendEmail(
-    payload.email,
+    formattedEmail,
     emailHtml,
     'Verify your email for DeliGo',
   ).catch((err) => console.error('Email sending failed:', err));
 
   return {
-    message: `${payload.role} registered successfully. Check your email for OTP.`,
+    message: `${currentRegisteringRole} registered successfully. Check your email for OTP.`,
     data: {
       userId,
-      email: payload.email,
-      role: payload.role,
+      email: formattedEmail,
+      role: currentRegisteringRole,
       status: 'PENDING',
     },
   };
