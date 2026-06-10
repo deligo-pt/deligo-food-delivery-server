@@ -32,6 +32,37 @@ const onboardUser = catchAsync(async (req, res) => {
   });
 });
 
+// Verify OTP Controller
+const verifyOtp = catchAsync(async (req, res) => {
+  const result = await AuthServices.verifyOtp(req.body);
+
+  const { accessToken, refreshToken, message } = result;
+
+  res.cookie('refreshToken', refreshToken, {
+    secure: config.NODE_ENV === 'production',
+    httpOnly: true,
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: message,
+    data: { accessToken, refreshToken },
+  });
+});
+
+// Resend OTP Controller
+const resendOtp = catchAsync(async (req, res) => {
+  const result = await AuthServices.resendOtp(req.body);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result?.message,
+    data: null,
+  });
+});
+
 // Login User Controller
 const loginUser = catchAsync(async (req, res) => {
   const result = await AuthServices.loginUser({
@@ -186,37 +217,6 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
   });
 });
 
-// Verify OTP Controller
-const verifyOtp = catchAsync(async (req, res) => {
-  const result = await AuthServices.verifyOtp(req.body);
-
-  const { accessToken, refreshToken, message } = result;
-
-  res.cookie('refreshToken', refreshToken, {
-    secure: config.NODE_ENV === 'production',
-    httpOnly: true,
-  });
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: message,
-    data: { accessToken, refreshToken },
-  });
-});
-
-// Resend OTP Controller
-const resendOtp = catchAsync(async (req, res) => {
-  const result = await AuthServices.resendOtp(req.body);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
-  });
-});
-
 // soft delete user controller
 const softDeleteUser = catchAsync(async (req, res) => {
   const result = await AuthServices.softDeleteUser(
@@ -250,6 +250,8 @@ const permanentDeleteUser = catchAsync(async (req, res) => {
 export const AuthControllers = {
   registerUser,
   onboardUser,
+  verifyOtp,
+  resendOtp,
   loginUser,
   loginCustomer,
   updateFcmToken,
@@ -258,8 +260,6 @@ export const AuthControllers = {
   forgotPassword,
   resetPassword,
   refreshToken,
-  resendOtp,
-  verifyOtp,
   approvedOrRejectedUser,
   submitForApproval,
   softDeleteUser,

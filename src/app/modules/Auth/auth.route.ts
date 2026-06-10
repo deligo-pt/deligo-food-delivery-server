@@ -25,14 +25,19 @@ router.post(
   AuthControllers.onboardUser,
 );
 
-// Register Sub Vendor Route
-// router.post(
-//   [UrlPath.SUB_VENDOR],
-//   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR'),
-//   validateRequest(AuthValidation.registerValidationSchema),
-//   rateLimiter('auth'),
-//   AuthControllers.registerUser,
-// );
+// Verify OTP Route
+router.post(
+  '/verify-otp',
+  validateRequest(AuthValidation.verifyOtpValidationSchema),
+  AuthControllers.verifyOtp,
+);
+
+// Resend OTP Route
+router.post(
+  '/resend-otp',
+  validateRequest(AuthValidation.resendOtpValidationSchema),
+  AuthControllers.resendOtp,
+);
 
 // Login User Route
 router.post(
@@ -135,20 +140,6 @@ router.patch(
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(AuthValidation.approvedOrRejectedUserValidationSchema),
   AuthControllers.approvedOrRejectedUser,
-);
-
-// Verify OTP Route
-router.post(
-  '/verify-otp',
-  validateRequest(AuthValidation.verifyOtpValidationSchema),
-  AuthControllers.verifyOtp,
-);
-
-// Resend OTP Route
-router.post(
-  '/resend-otp',
-  validateRequest(AuthValidation.resendOtpValidationSchema),
-  AuthControllers.resendOtp,
 );
 
 // soft Delete User Route
