@@ -1177,6 +1177,13 @@ const changePassword = async (
 // Forgot Password
 const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
   const { email, role } = payload;
+
+  if (role === 'CUSTOMER') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Customers login via OTP/Contact, password reset is not required.',
+    );
+  }
   const formattedEmail = email.trim().toLowerCase();
   const user = await AuthUser.findOne({
     email: formattedEmail,
@@ -1194,13 +1201,6 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
 
   if (!user.isEmailVerified) {
     throw new AppError(httpStatus.FORBIDDEN, 'You need to verify your email');
-  }
-
-  if (user.role === 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Customers login via OTP/Contact, password reset is not required.',
-    );
   }
 
   // checking if the user is blocked
