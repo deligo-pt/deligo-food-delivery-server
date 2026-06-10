@@ -15,12 +15,12 @@ export default {
     company_signature_2_url: process.env.COMPANY_SIGNATURE_2_URL,
   },
   frontend_urls: {
-    frontend_url_vendor: process.env.FRONTEND_URL_VENDOR,
-    frontend_url_admin: process.env.FRONTEND_URL_ADMIN,
-    frontend_url_admin_admin: process.env.FRONTEND_URL_ADMIN_WITH_DOMAIN,
-    frontend_url_fleet_manager: process.env.FRONTEND_URL_FLEET_MANAGER,
-    frontend_payment_url: process.env.FRONTEND_PAYMENT_URL,
-    frontend_url_test: process.env.FRONTEND_URL_TEST,
+    vendor: process.env.FRONTEND_URL_VENDOR,
+    admin: process.env.FRONTEND_URL_ADMIN,
+    fleet_manager: process.env.FRONTEND_URL_FLEET_MANAGER,
+    delivery_partner: process.env.FRONTEND_URL_DELIVERY_PARTNER,
+    payment: process.env.FRONTEND_PAYMENT_URL,
+    test: process.env.FRONTEND_URL_TEST,
   },
   bulkgate: {
     bulkgate_send_api_url: process.env.BULKGATE_SEND_API_URL,
