@@ -19,8 +19,8 @@ const adminSchema = new Schema<TAdmin>(
     },
     registeredBy: {
       type: Schema.Types.ObjectId,
-      default: null,
       ref: 'Admin',
+      required: false,
     },
     role: {
       type: String,

@@ -14,7 +14,6 @@ export type TDeliveryPartner = {
   registeredBy?: {
     id: mongoose.Types.ObjectId;
     model: TRegisteredByModel;
-    role: 'ADMIN' | 'SUPER_ADMIN' | 'FLEET_MANAGER';
   };
   role: 'DELIVERY_PARTNER';
   email: string;

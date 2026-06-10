@@ -186,7 +186,8 @@ const onboardUser = async (
   currentUser: TCurrentUser,
 ) => {
   const { email, role, password } = payload;
-  const modelData = ROLE_COLLECTION_MAP[role as TUserRole];
+  const currentOnboardingRole = role as TUserRole;
+  const modelData = ROLE_COLLECTION_MAP[currentOnboardingRole];
 
   if (!modelData) {
     throw new AppError(
@@ -202,25 +203,56 @@ const onboardUser = async (
     );
   }
 
-  const allowedRoles = ROLE_ONBOARD_PERMISSIONS[role.toLowerCase()];
+  const allowedRoles =
+    ROLE_ONBOARD_PERMISSIONS[currentOnboardingRole.toLowerCase()];
 
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You do not have permission to onboard a ${role.replace('-', ' ')}`,
+      `You do not have permission to onboard a ${currentOnboardingRole.replace('-', ' ')}`,
     );
   }
 
   const mongooseModel = mongoose.model(modelData);
 
-  const userId = generateUserId(role as TUserRole);
+  const userId = generateUserId(currentOnboardingRole);
   const { otp } = generateOtp();
 
-  const existingUser = await AuthUser.findOne({ email });
+  const formattedEmail = email.trim().toLowerCase();
+
+  const existingUsersAnywhere = await AuthUser.find({
+    email: formattedEmail,
+  }).select('email role status profileId _id isEmailVerified userId');
+
+  if (existingUsersAnywhere.length > 0) {
+    const verifiedMainUser = existingUsersAnywhere.find(
+      (u) => u.role !== 'CUSTOMER' && u.isEmailVerified === true,
+    );
+
+    if (verifiedMainUser) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        `This email is already registered as an active ${verifiedMainUser.role}. You cannot onboard them as a ${currentOnboardingRole}.`,
+      );
+    }
+
+    const sameRoleVerifiedUser = existingUsersAnywhere.find(
+      (u) => u.role === currentOnboardingRole && u.isEmailVerified === true,
+    );
+
+    if (sameRoleVerifiedUser) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        `${formattedEmail} is already registered and verified as ${currentOnboardingRole}.`,
+      );
+    }
+  }
 
   let registeredByValue: any;
   if (
-    ['vendor', 'sub-vendor', 'delivery-partner'].includes(role.toLowerCase())
+    ['vendor', 'sub-vendor', 'delivery-partner'].includes(
+      currentOnboardingRole.toLowerCase(),
+    )
   ) {
     registeredByValue = {
       id: currentUser._id,
@@ -230,41 +262,44 @@ const onboardUser = async (
           : currentUser.role === 'VENDOR'
             ? 'Vendor'
             : 'Admin',
-      role: currentUser.role,
     };
   } else {
     registeredByValue = currentUser._id;
   }
 
   const session = await mongoose.startSession();
-
   let createdUser;
+
   try {
     session.startTransaction();
 
-    if (existingUser) {
-      if (existingUser.isEmailVerified) {
-        throw new AppError(
-          httpStatus.CONFLICT,
-          `${existingUser.email} is already registered as ${existingUser.role}.`,
-        );
-      }
-      const prevModelData = ROLE_COLLECTION_MAP[existingUser.role as TUserRole];
+    const unverifiedMainUser = existingUsersAnywhere.find(
+      (u) => u.role !== 'CUSTOMER' && u.isEmailVerified === false,
+    );
+
+    if (unverifiedMainUser) {
+      const prevModelData =
+        ROLE_COLLECTION_MAP[unverifiedMainUser.role as TUserRole];
       if (prevModelData) {
         const prevModel = mongoose.model(prevModelData);
-        await prevModel.deleteOne({ userId: existingUser.userId }, { session });
+        await prevModel.deleteOne(
+          { _id: unverifiedMainUser.profileId },
+          { session },
+        );
       }
-      await AuthUser.deleteOne({ _id: existingUser._id }, { session });
+      await AuthUser.deleteOne({ _id: unverifiedMainUser._id }, { session });
     }
+
+    await mongooseModel.deleteOne({ email: formattedEmail }, { session });
 
     const result = await mongooseModel.create(
       [
         {
-          email,
+          email: formattedEmail,
           userId,
           registeredBy: registeredByValue,
           status: 'PENDING',
-          role: role,
+          role: currentOnboardingRole,
         },
       ],
       { session },
@@ -277,9 +312,9 @@ const onboardUser = async (
           userId,
           profileId: createdUser._id,
           profileModel: modelData,
-          email,
+          email: formattedEmail,
           password,
-          role: role,
+          role: currentOnboardingRole,
           status: 'PENDING',
           isDeleted: false,
         },
@@ -297,7 +332,7 @@ const onboardUser = async (
     if (err?.code === 11000) {
       throw new AppError(
         httpStatus.CONFLICT,
-        'User Id or Email already exists',
+        'The email or user ID already exists for this role. Please use another email.',
       );
     }
     throw err;
@@ -305,29 +340,31 @@ const onboardUser = async (
     await session.endSession();
   }
 
-  const redisOtpKey = `otp:${role.toLowerCase()}:${email}`;
+  const redisOtpKey = `otp:${currentOnboardingRole.toLowerCase()}:${formattedEmail}`;
   await RedisService.set(redisOtpKey, otp, 300);
 
   const emailHtml = await EmailHelper.createEmailContent(
     {
       otp,
-      userEmail: email,
+      userEmail: formattedEmail,
       currentYear: new Date().getFullYear(),
       date: new Date().toDateString(),
-      user: role.toLowerCase(),
+      user: currentOnboardingRole.toLowerCase(),
     },
     'verify-email',
   );
 
-  EmailHelper.sendEmail(email, emailHtml, 'Verify your email for DeliGo').catch(
-    (err) => console.error('Email sending failed:', err),
-  );
+  EmailHelper.sendEmail(
+    formattedEmail,
+    emailHtml,
+    'Verify your email for DeliGo',
+  ).catch((err) => console.error('Email sending failed:', err));
 
   return {
-    message: `${role} onboarded successfully. Verification email sent to ${email}`,
+    message: `${currentOnboardingRole} onboarded successfully. Verification email sent to ${formattedEmail}`,
     data: {
-      email,
-      role: role,
+      email: formattedEmail,
+      role: currentOnboardingRole,
       status: 'PENDING',
       userId,
     },
