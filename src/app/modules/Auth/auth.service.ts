@@ -1043,49 +1043,45 @@ const updateFcmToken = async (
 
 // Logout User
 const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
-  const updatePipeline: any[] = [
+  const user = await AuthUser.findOne({
+    userId: currentUser.userId,
+  });
+
+  const currentDeviceSession = user?.loginDevices.find(
+    (device) => device.deviceId === deviceId,
+  );
+
+  if (!currentDeviceSession) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'This device is not registered for this user. Please log in again.',
+    );
+  }
+
+  await AuthUser.findOneAndUpdate(
+    {
+      userId: currentUser.userId,
+      'loginDevices.deviceId': deviceId,
+    },
     {
       $set: {
-        loginDevices: {
-          $map: {
-            input: '$loginDevices',
-            as: 'device',
-            in: {
-              $cond: {
-                if: { $eq: ['$$device.deviceId', deviceId] },
-                then: {
-                  $mergeObjects: [
-                    '$$device',
-                    { isLoggedIn: false, lastLogout: new Date() },
-                  ],
-                },
-                else: '$$device',
-              },
-            },
-          },
-        },
+        'loginDevices.$.isLoggedIn': false,
+        'loginDevices.$.lastLogout': new Date(),
       },
     },
-  ];
-
-  const updatedUser = await AuthUser.findOneAndUpdate(
-    { userId: currentUser.userId },
-    updatePipeline,
     {
       new: true,
     },
   );
 
-  if (!updatedUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
+  const userRole = currentUser?.role || 'User';
 
   return {
     success: true,
     message:
-      currentUser.role === 'CUSTOMER'
+      userRole === 'CUSTOMER'
         ? 'Customer logged out and email verification reset'
-        : `${currentUser?.role} logged out successfully!`,
+        : `${userRole} logged out successfully!`,
   };
 };
 
