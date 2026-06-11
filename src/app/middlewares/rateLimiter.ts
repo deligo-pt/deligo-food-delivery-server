@@ -16,6 +16,24 @@ const getIP = (req: Request): string => {
   return String(ip);
 };
 
+const createLimiterHandler = (messagePrefix: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const rateLimitInfo = (req as any).rateLimit;
+    const resetTime = rateLimitInfo?.resetTime;
+
+    const secondsLeft = resetTime
+      ? Math.ceil((resetTime.getTime() - Date.now()) / 1000)
+      : 60;
+
+    next(
+      new AppError(
+        httpStatus.TOO_MANY_REQUESTS,
+        `${messagePrefix} Please try again after ${secondsLeft} seconds.`,
+      ),
+    );
+  };
+};
+
 const globalLimit = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 100,
@@ -31,6 +49,7 @@ const globalLimit = rateLimit({
       (await redis.call(args[0], ...args.slice(1))) as any,
     prefix: 'rl:global:',
   }),
+  handler: createLimiterHandler('Too many requests from this IP.'),
 });
 
 const authLimit = rateLimit({
@@ -48,16 +67,7 @@ const authLimit = rateLimit({
       (await redis.call(args[0], ...args.slice(1))) as any,
     prefix: 'rl:auth:',
   }),
-  handler: (req: Request, res: Response, next: NextFunction) => {
-    const resetTime = (req as any).rateLimit.resetTime;
-    const secondsLeft = Math.ceil((resetTime.getTime() - Date.now()) / 1000);
-    next(
-      new AppError(
-        httpStatus.TOO_MANY_REQUESTS,
-        `Too many auth attempts. Please try again after ${secondsLeft} seconds.`,
-      ),
-    );
-  },
+  handler: createLimiterHandler('Too many auth attempts.'),
 });
 
 export const rateLimiter = (type: 'global' | 'auth' = 'global') => {
