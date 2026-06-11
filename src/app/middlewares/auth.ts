@@ -81,7 +81,11 @@ function auth(...args: any[]) {
       permissions: tokenPermissions,
     } = decoded;
 
-    const authUser = await AuthUser.findOne({ userId });
+    // 5. Check if the user exists
+    const authUser = await AuthUser.findOne({
+      userId,
+      role,
+    });
 
     if (!authUser) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'User not found');
@@ -91,13 +95,6 @@ function auth(...args: any[]) {
       throw new AppError(
         httpStatus.UNAUTHORIZED,
         'Your account is deleted. Please contact support.',
-      );
-    }
-
-    if (authUser.role === 'CUSTOMER' && authUser.requiresOtpVerification) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        'Please verify your email or phone number first.',
       );
     }
 
