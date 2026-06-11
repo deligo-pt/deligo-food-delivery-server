@@ -250,9 +250,7 @@ const onboardUser = async (
 
   let registeredByValue: any;
   if (
-    ['vendor', 'sub-vendor', 'delivery-partner'].includes(
-      currentOnboardingRole.toLowerCase(),
-    )
+    ['VENDOR', 'SUB_VENDOR', 'DELIVERY_PARTNER'].includes(currentOnboardingRole)
   ) {
     registeredByValue = {
       id: currentUser._id,
