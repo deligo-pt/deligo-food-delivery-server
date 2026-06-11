@@ -1043,7 +1043,6 @@ const updateFcmToken = async (
 
 // Logout User
 const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
-  console.log(currentUser);
   const updatePipeline: any[] = [
     {
       $set: {
@@ -1070,7 +1069,7 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
   ];
 
   const updatedUser = await AuthUser.findOneAndUpdate(
-    { profileId: currentUser._id },
+    { userId: currentUser.userId },
     updatePipeline,
     {
       new: true,
@@ -1079,17 +1078,6 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
 
   if (!updatedUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  const targetDevice = updatedUser.loginDevices?.find(
-    (d: any) => d.deviceId === deviceId,
-  );
-
-  if (!targetDevice) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Device not registered for this user. No changes applied.',
-    );
   }
 
   return {
