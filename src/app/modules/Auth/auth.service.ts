@@ -363,10 +363,10 @@ const onboardUser = async (
   return {
     message: `${currentOnboardingRole} onboarded successfully. Verification email sent to ${formattedEmail}`,
     data: {
+      userId,
       email: formattedEmail,
       role: currentOnboardingRole,
       status: 'PENDING',
-      userId,
     },
   };
 };
