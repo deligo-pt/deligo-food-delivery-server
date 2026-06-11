@@ -250,9 +250,7 @@ const onboardUser = async (
 
   let registeredByValue: any;
   if (
-    ['vendor', 'sub-vendor', 'delivery-partner'].includes(
-      currentOnboardingRole.toLowerCase(),
-    )
+    ['VENDOR', 'SUB_VENDOR', 'DELIVERY_PARTNER'].includes(currentOnboardingRole)
   ) {
     registeredByValue = {
       id: currentUser._id,
@@ -363,10 +361,10 @@ const onboardUser = async (
   return {
     message: `${currentOnboardingRole} onboarded successfully. Verification email sent to ${formattedEmail}`,
     data: {
+      userId,
       email: formattedEmail,
       role: currentOnboardingRole,
       status: 'PENDING',
-      userId,
     },
   };
 };
