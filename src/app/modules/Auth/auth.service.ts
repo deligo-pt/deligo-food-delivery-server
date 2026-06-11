@@ -1043,6 +1043,7 @@ const updateFcmToken = async (
 
 // Logout User
 const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
+  console.log(currentUser);
   const updatePipeline: any[] = [
     {
       $set: {
@@ -1064,16 +1065,6 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
             },
           },
         },
-        requiresOtpVerification:
-          currentUser.role === 'CUSTOMER'
-            ? {
-                $cond: {
-                  if: { $in: [deviceId, '$loginDevices.deviceId'] },
-                  then: true,
-                  else: '$requiresOtpVerification',
-                },
-              }
-            : '$requiresOtpVerification',
       },
     },
   ];
