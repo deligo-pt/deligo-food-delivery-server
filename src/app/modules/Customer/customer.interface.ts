@@ -1,8 +1,23 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 import { AddressType } from './customer.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
+
+export type TCustomerLiveLocationPayload = {
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  longitude?: number;
+  latitude?: number;
+  geoAccuracy?: number;
+  detailedAddress?: string;
+  addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
+  notes?: string; // Specific delivery instructions
+  isActive: boolean;
+  isMocked?: boolean;
+};
 
 export type TCustomer = {
   // ------------------------------------------------------

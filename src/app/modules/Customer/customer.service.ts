@@ -3,7 +3,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { TCustomer } from './customer.interface';
+import { TCustomer, TCustomerLiveLocationPayload } from './customer.interface';
 import { Customer } from './customer.model';
 import { CustomerSearchableFields } from './customer.constant';
 import { TDeliveryAddress } from '../../constant/GlobalInterface/address.interface';
@@ -75,100 +75,6 @@ const updateCustomer = async (
     payload.referralCode = newReferralCode;
   }
 
-  // ----------------------------------------------------------------------
-  // User sends a single address
-  // ----------------------------------------------------------------------
-
-  if (payload.address) {
-    const {
-      longitude,
-      latitude,
-      geoAccuracy = 0,
-      street,
-      city,
-      state,
-      country,
-      postalCode,
-    } = payload.address;
-
-    if (
-      !longitude ||
-      !latitude ||
-      !street ||
-      !state ||
-      !city ||
-      !country ||
-      !postalCode
-    ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Please provide all address details, including street, city, state, country, postal code, and map location, to ensure accurate delivery.',
-      );
-    }
-
-    if (geoAccuracy !== undefined && geoAccuracy > 100) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        "We're having trouble getting an accurate location. Please ensure your GPS is enabled and try again.",
-      );
-    }
-
-    const hasLng = typeof longitude === 'number';
-    const hasLat = typeof latitude === 'number';
-
-    if (hasLng && hasLat) {
-      payload.currentSessionLocation = {
-        type: 'Point',
-        coordinates: [longitude, latitude],
-        geoAccuracy: geoAccuracy,
-        lastLocationUpdate: new Date(),
-      };
-    }
-
-    const currentAddresses = customerProfile.deliveryAddresses
-      ? JSON.parse(JSON.stringify(customerProfile.deliveryAddresses))
-      : [];
-    if (currentAddresses.length >= 5) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        "You've reached the limit of 5 saved addresses. To add a new one, please remove an existing address from your profile.",
-      );
-    }
-
-    const existingAddressIndex = currentAddresses.findIndex(
-      (addr: any) =>
-        Number(addr.longitude).toFixed(5) === Number(longitude).toFixed(5) &&
-        Number(addr.latitude).toFixed(5) === Number(latitude).toFixed(5),
-    );
-
-    if (existingAddressIndex !== -1) {
-      payload.deliveryAddresses = currentAddresses.map(
-        (addr: any, index: number) => {
-          const isTarget = index === existingAddressIndex;
-          return {
-            ...(isTarget ? { ...addr, ...payload.address } : addr),
-            isActive: isTarget,
-            addressType: isTarget ? 'PRIMARY' : 'SECONDARY',
-          };
-        },
-      );
-    } else {
-      const deactivatedAddresses = currentAddresses.map((addr: any) => ({
-        ...addr,
-        isActive: false,
-        addressType: 'SECONDARY',
-      }));
-
-      deactivatedAddresses.push({
-        ...payload.address,
-        isActive: true,
-        addressType: 'PRIMARY',
-      });
-
-      payload.deliveryAddresses = deactivatedAddresses;
-    }
-  }
-
   const finalUpdatePayload = flattenObject(payload);
 
   // ----------------------------------------------------------------------
@@ -189,7 +95,7 @@ const updateCustomer = async (
 // Customer live location update service will be added here
 // --------------------------------------------------------------
 const updateCustomerLiveLocation = async (
-  payload: TLiveLocationPayload,
+  payload: TCustomerLiveLocationPayload,
   currentUser: TCurrentUser,
   customerId: string,
 ) => {
@@ -207,15 +113,7 @@ const updateCustomerLiveLocation = async (
     );
   }
 
-  const {
-    latitude,
-    longitude,
-    geoAccuracy,
-    heading,
-    speed,
-    isMocked,
-    timestamp,
-  } = payload;
+  const { latitude, longitude, geoAccuracy, isMocked } = payload;
 
   if (geoAccuracy !== undefined && geoAccuracy > 100) {
     throw new AppError(
@@ -224,42 +122,96 @@ const updateCustomerLiveLocation = async (
     );
   }
 
-  const updateData: Record<string, any> = {
-    'currentSessionLocation.type': 'Point',
-    'currentSessionLocation.coordinates': [longitude, latitude],
-    'currentSessionLocation.lastLocationUpdate': timestamp
-      ? new Date(timestamp)
-      : new Date(),
+  const currentSessionLocation: Record<string, any> = {
+    type: 'Point',
+    coordinates: [longitude, latitude],
+    lastLocationUpdate: new Date(),
   };
 
-  if (geoAccuracy !== undefined)
-    updateData['currentSessionLocation.geoAccuracy'] = geoAccuracy;
-  if (heading !== undefined)
-    updateData['currentSessionLocation.heading'] = heading;
-  if (speed !== undefined) updateData['currentSessionLocation.speed'] = speed;
-  if (isMocked !== undefined)
-    updateData['currentSessionLocation.isMocked'] = isMocked;
+  if (isMocked !== undefined) {
+    currentSessionLocation.isMocked = isMocked;
+  }
+
+  let updateData: Record<string, any> = {
+    currentSessionLocation,
+  };
+
+  const customerExists = await Customer.findOne({ userId: currentUser.userId });
+  if (!customerExists) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found.');
+  }
+
+  const hasPrimaryAddress = customerExists.deliveryAddresses?.some(
+    (addr: any) => addr.addressType === 'PRIMARY',
+  );
+
+  let updateQuery: Record<string, any> = {};
+
+  const { geoAccuracy: _, isMocked: ___, ...cleanAddressPayload } = payload;
+
+  if (hasPrimaryAddress) {
+    const addressDataWithCoords = {
+      ...cleanAddressPayload,
+      longitude,
+      latitude,
+      addressType: 'PRIMARY',
+      isActive: true,
+    };
+
+    const flattenedAddressFields = flattenObject(
+      addressDataWithCoords,
+      'deliveryAddresses.$[elem]',
+    );
+
+    updateQuery['$set'] = {
+      ...updateData,
+      ...flattenedAddressFields,
+    };
+  } else {
+    updateQuery['$set'] = updateData;
+    updateQuery['$push'] = {
+      deliveryAddresses: {
+        street: cleanAddressPayload.street || '',
+        city: cleanAddressPayload.city || '',
+        state: cleanAddressPayload.state || '',
+        postalCode: cleanAddressPayload.postalCode || '',
+        country: cleanAddressPayload.country || '',
+        detailedAddress: cleanAddressPayload.detailedAddress || '',
+        notes: cleanAddressPayload.notes || '',
+        longitude,
+        latitude,
+        addressType: 'PRIMARY',
+        isActive: true,
+      },
+    };
+  }
 
   const updatedCustomer = await Customer.findOneAndUpdate(
     { userId: currentUser.userId },
-    { $set: updateData },
+    updateQuery,
     {
       new: true,
       runValidators: true,
+      arrayFilters: hasPrimaryAddress
+        ? [{ 'elem.addressType': 'PRIMARY' }]
+        : undefined,
     },
   );
 
   if (!updatedCustomer) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'We encountered an issue while updating your location. Please try again in a moment.',
+      'We encountered an issue while updating your location. Please try again.',
     );
   }
 
   return {
     success: true,
-    message: 'Live location updated successfully',
-    data: updatedCustomer.currentSessionLocation,
+    message: 'Live location and PRIMARY delivery address updated successfully',
+    data: {
+      currentSessionLocation: updatedCustomer.currentSessionLocation,
+      deliveryAddresses: updatedCustomer.deliveryAddresses,
+    },
   };
 };
 
@@ -435,6 +387,27 @@ const updateDeliveryAddress = async (
   }
 
   const targetAddress = currentAddresses[targetAddressIndex];
+
+  if (
+    targetAddress.addressType === 'PRIMARY' &&
+    payload.addressType &&
+    payload.addressType !== 'PRIMARY'
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'The type of a PRIMARY address cannot be modified.',
+    );
+  }
+
+  if (
+    targetAddress.addressType !== 'PRIMARY' &&
+    payload.addressType === 'PRIMARY'
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You cannot manually set an address type to PRIMARY.',
+    );
+  }
 
   const newLng =
     payload.longitude !== undefined
