@@ -387,6 +387,12 @@ const updateDeliveryAddress = async (
   }
 
   const targetAddress = currentAddresses[targetAddressIndex];
+  if (targetAddress.addressType === 'PRIMARY') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'The PRIMARY address is managed automatically via live location and cannot be updated manually.',
+    );
+  }
 
   const newLng =
     payload.longitude !== undefined
