@@ -43,7 +43,7 @@ const triggerSos = async (
   const result = await SosModel.create(sosData);
 
   if (!result) {
-    throw new Error('Failed to trigger SOS');
+    throw new AppError(httpStatus.BAD_REQUEST, 'Failed to trigger SOS');
   }
 
   getIO().to('SOS_ALERTS_POOL').emit('new-sos-alert', {
