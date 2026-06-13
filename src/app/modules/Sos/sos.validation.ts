@@ -5,19 +5,17 @@ const createSosValidationSchema = z.object({
   body: z
     .object({
       orderId: z.string().optional(),
-      userNote: z.string().max(200).optional(),
-      issueTags: z
-        .array(
-          z.enum([
-            'Accident',
-            'Medical Emergency',
-            'Fire',
-            'Crime',
-            'Natural Disaster',
-            'Other',
-          ]),
-        )
-        .optional(),
+      userNote: z.string().max(200),
+      issueTags: z.array(
+        z.enum([
+          'Accident',
+          'Medical Emergency',
+          'Fire',
+          'Crime',
+          'Natural Disaster',
+          'Other',
+        ]),
+      ),
       deviceSnapshot: z
         .object({
           batteryLevel: z.number().optional(),
