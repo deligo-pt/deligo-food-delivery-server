@@ -148,6 +148,18 @@ const getSingleVendorForCustomer = catchAsync(async (req, res) => {
   });
 });
 
+const getAllVendorsForCustomerPublic = catchAsync(async (req, res) => {
+  const result = await VendorServices.getAllVendorsForCustomerPublic(req.query);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Vendors Retrieved Successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
@@ -158,4 +170,5 @@ export const VendorControllers = {
   getSingleVendor,
   getAllVendorsForCustomer,
   getSingleVendorForCustomer,
+  getAllVendorsForCustomerPublic,
 };

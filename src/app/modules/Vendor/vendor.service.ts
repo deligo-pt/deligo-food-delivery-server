@@ -609,6 +609,164 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
   return existingVendor;
 };
 
+const getAllVendorsForCustomerPublic = async (
+  query: Record<string, unknown>,
+) => {
+  const reqLatitude = query.latitude;
+  const reqLongitude = query.longitude;
+
+  delete query.latitude;
+  delete query.longitude;
+
+  let lng: number | undefined;
+  let lat: number | undefined;
+
+  if (reqLatitude && reqLongitude) {
+    lng = Number(reqLongitude);
+    lat = Number(reqLatitude);
+  }
+
+  if (lng == null || lat == null || isNaN(lng) || isNaN(lat)) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Location coordinates (latitude and longitude) are strictly required to find nearby restaurants.',
+    );
+  }
+
+  const globalSettings = await GlobalSettingsService.getGlobalSettings();
+  const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
+
+  const activeProductVendorIds = await Product.distinct('vendorId', {
+    isDeleted: false,
+  });
+
+  const filter: any = {
+    _id: { $in: activeProductVendorIds },
+    status: 'APPROVED',
+    isDeleted: false,
+    currentSessionLocation: {
+      $geoWithin: {
+        $centerSphere: [[lng, lat], radiusInRadians],
+      },
+    },
+  };
+
+  if (query.restaurantCuisineType) {
+    if (
+      typeof query.restaurantCuisineType === 'string' &&
+      query.restaurantCuisineType.includes(',')
+    ) {
+      const cuisineArray = query.restaurantCuisineType
+        .split(',')
+        .map((item) => item.trim());
+      filter['businessDetails.restaurantCuisineType'] = { $in: cuisineArray };
+    } else {
+      filter['businessDetails.restaurantCuisineType'] =
+        query.restaurantCuisineType;
+    }
+    delete query.restaurantCuisineType;
+  }
+
+  if (query.productCategory) {
+    const matchingVendorIds = await Product.distinct('vendorId', {
+      category: query.productCategory,
+      isDeleted: false,
+      vendorId: { $in: activeProductVendorIds },
+    });
+
+    if (matchingVendorIds.length === 0) {
+      return {
+        meta: {
+          total: 0,
+          page: 1,
+          limit: Number(query.limit) || 10,
+          totalPage: 0,
+        },
+        data: [],
+      };
+    }
+    filter._id = {
+      $in: matchingVendorIds.filter((id) =>
+        activeProductVendorIds.map(String).includes(String(id)),
+      ),
+    };
+    delete query.productCategory;
+  }
+
+  // ৫. QueryBuilder Execution
+  const vendors = new QueryBuilder(Vendor.find(filter), query)
+    .search(['businessDetails.businessName'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  vendors.modelQuery = vendors.modelQuery.select(
+    'name userId businessDetails businessLocation documents rating currentSessionLocation',
+  );
+
+  const meta = await vendors.countTotal();
+  const rawData = await vendors.modelQuery;
+
+  const vendorIds = rawData.map((v: any) => v._id);
+
+  const allActiveProducts = await Product.find({
+    vendorId: { $in: vendorIds },
+    isDeleted: false,
+  })
+    .select('vendorId category')
+    .lean();
+
+  const allCategoryIds = [
+    ...new Set(allActiveProducts.map((p) => p.category?.toString())),
+  ].filter(Boolean);
+
+  const allCategories = await ProductCategory.find({
+    _id: { $in: allCategoryIds },
+  })
+    .select('name icon')
+    .lean();
+
+  const data = rawData.map((vendor: any) => {
+    const thisVendorProducts = allActiveProducts.filter(
+      (p) => p.vendorId?.toString() === vendor._id.toString(),
+    );
+
+    const thisVendorCategoryIds = [
+      ...new Set(thisVendorProducts.map((p) => p.category?.toString())),
+    ];
+
+    const populatedCategories = allCategories.filter((cat) =>
+      thisVendorCategoryIds.includes(cat._id.toString()),
+    );
+
+    return {
+      id: vendor._id,
+      userId: vendor.userId,
+      name: vendor.name,
+      businessDetails: {
+        businessName: vendor.businessDetails?.businessName,
+        businessType: vendor.businessDetails?.businessType,
+        restaurantCuisineType: vendor.businessDetails?.restaurantCuisineType,
+        openingHours: vendor.businessDetails?.openingHours,
+        closingHours: vendor.businessDetails?.closingHours,
+        closingDays: vendor.businessDetails?.closingDays,
+        isStoreOpen: vendor.businessDetails?.isStoreOpen,
+      },
+      businessLocation: vendor.businessLocation,
+      storePhoto: vendor.documents?.storePhoto || '',
+      rating: vendor.rating,
+      currentSessionLocation: vendor.currentSessionLocation,
+      availableCategories: populatedCategories,
+    };
+  });
+
+  return {
+    meta,
+    data,
+  };
+};
+
 export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
@@ -619,4 +777,5 @@ export const VendorServices = {
   getSingleVendor,
   getAllVendorsForCustomer,
   getSingleVendorForCustomer,
+  getAllVendorsForCustomerPublic,
 };
