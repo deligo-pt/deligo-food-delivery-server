@@ -14,6 +14,7 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { BusinessCategoryName } from '../Category/category.interface';
+import { Customer } from '../Customer/customer.model';
 
 /**
  * Service to update vendor profile information.
@@ -422,26 +423,52 @@ const getAllVendorsForCustomer = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
 ) => {
-  // 1. Get Customer Coordinates from currentSessionLocation
-  const coordinates = currentUser?.currentSessionLocation?.coordinates;
+  const customerProfile = await Customer.findOne({
+    userId: currentUser.userId,
+    isDeleted: false,
+  }).lean();
 
-  if (!coordinates || coordinates.length < 2) {
+  if (!customerProfile) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Customer profile not found. Please set up your profile first.',
+    );
+  }
+
+  let lng: number | undefined;
+  let lat: number | undefined;
+  const activeAddress = customerProfile.deliveryAddresses?.find(
+    (addr: any) => addr.isActive === true,
+  );
+
+  if (
+    activeAddress &&
+    activeAddress.longitude != null &&
+    activeAddress.latitude != null
+  ) {
+    lng = activeAddress.longitude;
+    lat = activeAddress.latitude;
+  } else if (
+    customerProfile.currentSessionLocation?.coordinates &&
+    customerProfile.currentSessionLocation.coordinates.length >= 2
+  ) {
+    [lng, lat] = customerProfile.currentSessionLocation.coordinates;
+  }
+
+  if (lng == null || lat == null) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Location required. Please enable GPS to find nearby restaurants.',
+      'Location required. Please select a delivery address or enable GPS to find nearby restaurants.',
     );
   }
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
-
-  const [lng, lat] = coordinates;
   const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
 
   const activeProductVendorIds = await Product.distinct('vendorId', {
     isDeleted: false,
   });
 
-  // 2. Filter vendors
   const filter: any = {
     _id: { $in: activeProductVendorIds },
     status: 'APPROVED',
@@ -466,11 +493,9 @@ const getAllVendorsForCustomer = async (
       filter['businessDetails.restaurantCuisineType'] =
         query.restaurantCuisineType;
     }
-
     delete query.restaurantCuisineType;
   }
 
-  // 3. Category Filter Logic
   if (query.productCategory) {
     const matchingVendorIds = await Product.distinct('vendorId', {
       category: query.productCategory,
@@ -489,7 +514,11 @@ const getAllVendorsForCustomer = async (
         data: [],
       };
     }
-    filter._id = { $in: matchingVendorIds };
+    filter._id = {
+      $in: matchingVendorIds.filter((id) =>
+        activeProductVendorIds.map(String).includes(String(id)),
+      ),
+    };
     delete query.productCategory;
   }
 
@@ -501,51 +530,65 @@ const getAllVendorsForCustomer = async (
     .paginate()
     .fields();
 
-  // 5. Select parent paths to avoid 'Path Collision'
   vendors.modelQuery = vendors.modelQuery.select(
-    'name userId  businessDetails businessLocation documents rating currentSessionLocation',
+    'name userId businessDetails businessLocation documents rating currentSessionLocation',
   );
 
   const meta = await vendors.countTotal();
   const rawData = await vendors.modelQuery;
 
-  // 6. Map to the exact structure required by your Frontend
+  const vendorIds = rawData.map((v: any) => v._id);
 
-  const data = await Promise.all(
-    rawData.map(async (vendor: any) => {
-      // Find unique categories for this specific vendor from Product model
-      const vendorCategories = await Product.distinct('category', {
-        vendorId: vendor._id,
-        isDeleted: false,
-      });
+  const allActiveProducts = await Product.find({
+    vendorId: { $in: vendorIds },
+    isDeleted: false,
+  })
+    .select('vendorId category')
+    .lean();
 
-      // Populate category details (optional: if you need name/icon)
-      const populatedCategories = await ProductCategory.find({
-        _id: { $in: vendorCategories },
-      }).select('name icon'); // Assuming you have name and icon in ProductCategory
+  const allCategoryIds = [
+    ...new Set(allActiveProducts.map((p) => p.category?.toString())),
+  ].filter(Boolean);
 
-      return {
-        id: vendor._id,
-        userId: vendor.userId,
-        name: vendor.name,
-        businessDetails: {
-          businessName: vendor.businessDetails?.businessName,
-          businessType: vendor.businessDetails?.businessType,
-          restaurantCuisineType: vendor.businessDetails?.restaurantCuisineType,
-          openingHours: vendor.businessDetails?.openingHours,
-          closingHours: vendor.businessDetails?.closingHours,
-          closingDays: vendor.businessDetails?.closingDays,
-          isStoreOpen: vendor.businessDetails?.isStoreOpen,
-        },
-        businessLocation: vendor.businessLocation,
-        storePhoto: vendor.documents?.storePhoto || '',
-        rating: vendor.rating,
-        currentSessionLocation: vendor.currentSessionLocation,
-        // Adding the categories here
-        availableCategories: populatedCategories,
-      };
-    }),
-  );
+  const allCategories = await ProductCategory.find({
+    _id: { $in: allCategoryIds },
+  })
+    .select('name icon')
+    .lean();
+
+  const data = rawData.map((vendor: any) => {
+    const thisVendorProducts = allActiveProducts.filter(
+      (p) => p.vendorId?.toString() === vendor._id.toString(),
+    );
+
+    const thisVendorCategoryIds = [
+      ...new Set(thisVendorProducts.map((p) => p.category?.toString())),
+    ];
+
+    const populatedCategories = allCategories.filter((cat) =>
+      thisVendorCategoryIds.includes(cat._id.toString()),
+    );
+
+    return {
+      id: vendor._id,
+      userId: vendor.userId,
+      name: vendor.name,
+      businessDetails: {
+        businessName: vendor.businessDetails?.businessName,
+        businessType: vendor.businessDetails?.businessType,
+        restaurantCuisineType: vendor.businessDetails?.restaurantCuisineType,
+        openingHours: vendor.businessDetails?.openingHours,
+        closingHours: vendor.businessDetails?.closingHours,
+        closingDays: vendor.businessDetails?.closingDays,
+        isStoreOpen: vendor.businessDetails?.isStoreOpen,
+      },
+      businessLocation: vendor.businessLocation,
+      storePhoto: vendor.documents?.storePhoto || '',
+      rating: vendor.rating,
+      currentSessionLocation: vendor.currentSessionLocation,
+      availableCategories: populatedCategories,
+    };
+  });
 
   return {
     meta,
