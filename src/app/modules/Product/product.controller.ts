@@ -154,6 +154,17 @@ const getAllProducts = catchAsync(async (req, res) => {
     data: result?.data,
   });
 });
+const getAllProductsPublic = catchAsync(async (req, res) => {
+  const result = await ProductServices.getAllProductsPublic(req.query);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Products retrieved successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
 
 // get single product controller
 const getSingleProduct = catchAsync(async (req, res) => {
@@ -162,6 +173,16 @@ const getSingleProduct = catchAsync(async (req, res) => {
     productId,
     req.user as TCurrentUser,
   );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product retrieved successfully',
+    data: result,
+  });
+});
+const getSingleProductPublic = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.getSingleProductPublic(productId);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -221,7 +242,9 @@ export const ProductControllers = {
   approvedProduct,
   deleteProductImages,
   getAllProducts,
+  getAllProductsPublic,
   getSingleProduct,
+  getSingleProductPublic,
   softDeleteProduct,
   permanentDeleteProduct,
   getOutOfStockAlerts,

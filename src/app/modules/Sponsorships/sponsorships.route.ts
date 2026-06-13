@@ -34,6 +34,7 @@ router.get(
   auth('ADMIN', 'SUPER_ADMIN', 'CUSTOMER'),
   SponsorshipControllers.getAllSponsorships,
 );
+router.get('/open', SponsorshipControllers.getAllSponsorshipsPublic);
 
 // get single sponsorship route
 router.get(

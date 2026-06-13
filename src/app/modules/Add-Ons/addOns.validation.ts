@@ -26,11 +26,11 @@ const createAddonGroupValidationSchema = z.object({
     })
     .strict()
     .refine((data) => (data.minSelectable ?? 0) <= data.maxSelectable, {
-      message: 'minSelectable cannot be greater than maxSelectable',
+      message: 'Min selectable cannot be greater than max selectable',
       path: ['minSelectable'],
     })
     .refine((data) => data.maxSelectable <= data.options.length, {
-      message: 'maxSelectable cannot exceed the number of available options',
+      message: 'Max selectable cannot exceed the number of available options',
       path: ['maxSelectable'],
     }),
 });
@@ -57,7 +57,7 @@ const updateAddonGroupValidationSchema = z.object({
         return true;
       },
       {
-        message: 'minSelectable cannot be greater than maxSelectable',
+        message: 'Min selectable cannot be greater than max selectable',
         path: ['minSelectable'],
       },
     )
@@ -69,7 +69,7 @@ const updateAddonGroupValidationSchema = z.object({
         return true;
       },
       {
-        message: 'maxSelectable cannot exceed the number of available options',
+        message: 'Max selectable cannot exceed the number of available options',
         path: ['maxSelectable'],
       },
     ),

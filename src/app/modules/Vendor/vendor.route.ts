@@ -69,5 +69,9 @@ router.get(
 );
 
 router.get('/nearby/open', VendorControllers.getAllVendorsForCustomerPublic);
+router.get(
+  '/nearby/open/:vendorId',
+  VendorControllers.getSingleVendorForCustomer,
+);
 
 export const VendorRoutes = router;
