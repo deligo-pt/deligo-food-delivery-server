@@ -12,6 +12,7 @@ import { TErrorSources } from '../interfaces/error.interface';
 import { TImageFiles } from '../interfaces/image.interface';
 import { deleteImageFromCloudinary } from '../utils/deleteImage';
 import multer from 'multer';
+import { ErrorLog } from '../modules/ErrorLog/errorLog.schema';
 
 const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
   let statusCode = 500;
@@ -87,6 +88,29 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
         message: err?.message,
       },
     ];
+  }
+
+  if (statusCode >= 500) {
+    try {
+      const sanitizedBody = req.body ? { ...req.body } : {};
+      if (sanitizedBody.password) sanitizedBody.password = '********';
+      if (sanitizedBody.oldPassword) sanitizedBody.oldPassword = '********';
+
+      await ErrorLog.create({
+        message: message || err?.message || 'Unknown Server Error',
+        stack: err?.stack || null,
+        statusCode,
+        userId: (req as any).user?.userId || null,
+        requestDetails: {
+          method: req.method,
+          url: req.originalUrl,
+          ip: req.ip || req.headers['x-forwarded-for'] || '',
+          body: Object.keys(sanitizedBody).length ? sanitizedBody : null,
+        },
+      });
+    } catch (dbLoggingError) {
+      console.error('Database Error Logging Failed:', dbLoggingError);
+    }
   }
 
   //ultimate return
