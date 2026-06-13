@@ -387,10 +387,25 @@ const updateDeliveryAddress = async (
   }
 
   const targetAddress = currentAddresses[targetAddressIndex];
-  if (targetAddress.addressType === 'PRIMARY') {
+
+  if (
+    targetAddress.addressType === 'PRIMARY' &&
+    payload.addressType &&
+    payload.addressType !== 'PRIMARY'
+  ) {
     throw new AppError(
-      httpStatus.FORBIDDEN,
-      'The PRIMARY address is managed automatically via live location and cannot be updated manually.',
+      httpStatus.BAD_REQUEST,
+      'The type of a PRIMARY address cannot be modified.',
+    );
+  }
+
+  if (
+    targetAddress.addressType !== 'PRIMARY' &&
+    payload.addressType === 'PRIMARY'
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You cannot manually set an address type to PRIMARY.',
     );
   }
 
