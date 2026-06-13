@@ -15,11 +15,11 @@ import multer from 'multer';
 
 const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
   let statusCode = 500;
-  let message = 'Something went wrong!';
+  let message = 'Something went wrong on the server!';
   let errorSources: TErrorSources = [
     {
       path: '',
-      message: 'Something went wrong',
+      message: 'Something went wrong on the server!',
     },
   ];
 
