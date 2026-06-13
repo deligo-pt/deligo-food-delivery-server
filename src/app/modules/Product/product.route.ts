@@ -107,6 +107,7 @@ router.get(
   ),
   ProductControllers.getSingleProduct,
 );
+router.get('/public/:productId', ProductControllers.getSingleProductPublic);
 
 // Soft delete product
 router.delete(

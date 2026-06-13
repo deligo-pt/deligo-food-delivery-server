@@ -180,6 +180,16 @@ const getSingleProduct = catchAsync(async (req, res) => {
     data: result,
   });
 });
+const getSingleProductPublic = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const result = await ProductServices.getSingleProductPublic(productId);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Product retrieved successfully',
+    data: result,
+  });
+});
 
 // soft delete product controller
 const softDeleteProduct = catchAsync(async (req, res) => {
@@ -234,6 +244,7 @@ export const ProductControllers = {
   getAllProducts,
   getAllProductsPublic,
   getSingleProduct,
+  getSingleProductPublic,
   softDeleteProduct,
   permanentDeleteProduct,
   getOutOfStockAlerts,

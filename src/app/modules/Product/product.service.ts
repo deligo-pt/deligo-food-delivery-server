@@ -780,6 +780,33 @@ const getSingleProduct = async (
   }
   return product;
 };
+const getSingleProductPublic = async (productId: string) => {
+  const role = 'CUSTOMER';
+
+  const productQuery = Product.findOne({
+    productId,
+    isApproved: true,
+    isDeleted: false,
+  });
+
+  const populateOptions = getPopulateOptions(role, {
+    vendor:
+      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
+    productCategory: 'name',
+  });
+
+  populateOptions.forEach((option) => {
+    productQuery.populate(option);
+  });
+
+  const product = await productQuery;
+
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
+  return product;
+};
 
 // product soft delete service
 const softDeleteProduct = async (
@@ -918,6 +945,7 @@ export const ProductServices = {
   getAllProducts,
   getAllProductsPublic,
   getSingleProduct,
+  getSingleProductPublic,
   softDeleteProduct,
   permanentDeleteProduct,
   getOutOfStockAlerts,
