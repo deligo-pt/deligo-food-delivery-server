@@ -12,18 +12,10 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 
 // Checkout Service
-const checkout = async (currentUser: any, payload: TCheckoutPayload) => {
-  const requiredFields = [
-    { field: currentUser.name?.firstName, label: 'First Name' },
-    { field: currentUser.contactNumber, label: 'Contact Number' },
-    { field: currentUser.address?.city, label: 'City' },
-  ];
-
-  for (const item of requiredFields) {
-    if (!item.field)
-      throw new AppError(httpStatus.BAD_REQUEST, `${item.label} is required.`);
-  }
-
+const checkout = async (
+  currentUser: TCurrentUser,
+  payload: TCheckoutPayload,
+) => {
   const customerId = currentUser._id.toString();
   let selectedItems = [];
 
