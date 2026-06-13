@@ -91,6 +91,8 @@ router.get(
   ProductControllers.getAllProducts,
 );
 
+router.get('/open', ProductControllers.getAllProductsPublic);
+
 // Get single product
 router.get(
   '/:productId',
@@ -105,6 +107,7 @@ router.get(
   ),
   ProductControllers.getSingleProduct,
 );
+router.get('/open/:productId', ProductControllers.getSingleProductPublic);
 
 // Soft delete product
 router.delete(

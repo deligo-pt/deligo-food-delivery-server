@@ -702,6 +702,37 @@ const getAllProducts = async (
     data,
   };
 };
+const getAllProductsPublic = async (query: Record<string, unknown>) => {
+  const role = 'CUSTOMER';
+
+  query.isApproved = true;
+  query.isDeleted = false;
+
+  const products = new QueryBuilder(Product.find(), query)
+    .search(ProductSearchableFields)
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const populateOptions = getPopulateOptions(role, {
+    vendor:
+      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
+    productCategory: 'name',
+  });
+
+  populateOptions.forEach((option) => {
+    products.modelQuery = products.modelQuery.populate(option);
+  });
+
+  const meta = await products.countTotal();
+  const data = await products.modelQuery;
+
+  return {
+    meta,
+    data,
+  };
+};
 
 // get single product service
 const getSingleProduct = async (
@@ -747,6 +778,33 @@ const getSingleProduct = async (
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
+  return product;
+};
+const getSingleProductPublic = async (productId: string) => {
+  const role = 'CUSTOMER';
+
+  const productQuery = Product.findOne({
+    productId,
+    isApproved: true,
+    isDeleted: false,
+  });
+
+  const populateOptions = getPopulateOptions(role, {
+    vendor:
+      'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
+    productCategory: 'name',
+  });
+
+  populateOptions.forEach((option) => {
+    productQuery.populate(option);
+  });
+
+  const product = await productQuery;
+
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
   return product;
 };
 
@@ -885,7 +943,9 @@ export const ProductServices = {
   approvedProduct,
   deleteProductImages,
   getAllProducts,
+  getAllProductsPublic,
   getSingleProduct,
+  getSingleProductPublic,
   softDeleteProduct,
   permanentDeleteProduct,
   getOutOfStockAlerts,

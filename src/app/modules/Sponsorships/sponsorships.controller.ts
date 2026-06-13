@@ -55,6 +55,16 @@ const getAllSponsorships = catchAsync(async (req, res) => {
     data: result?.data,
   });
 });
+const getAllSponsorshipsPublic = catchAsync(async (req, res) => {
+  const result = await SponsorshipServices.getAllSponsorshipsPublic(req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Sponsorships retrieved successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
 
 // get single sponsorships controller
 const getSingleSponsorship = catchAsync(async (req, res) => {
@@ -104,6 +114,7 @@ export const SponsorshipControllers = {
   createSponsorship,
   updateSponsorship,
   getAllSponsorships,
+  getAllSponsorshipsPublic,
   getSingleSponsorship,
   softDeleteSponsorship,
   permanentDeleteSponsorship,
