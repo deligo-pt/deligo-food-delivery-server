@@ -91,6 +91,8 @@ router.get(
   ProductControllers.getAllProducts,
 );
 
+router.get('/public', ProductControllers.getAllProductsPublic);
+
 // Get single product
 router.get(
   '/:productId',
