@@ -120,6 +120,24 @@ const getAllSponsorships = async (
 
   return { meta, data };
 };
+const getAllSponsorshipsPublic = async (query: Record<string, unknown>) => {
+  query.isDeleted = false;
+  query.isActive = true;
+
+  const sponsorships = new QueryBuilder(Sponsorship.find(), query)
+    .search(['sponsorName', 'sponsorType'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const [meta, data] = await Promise.all([
+    sponsorships.countTotal(),
+    sponsorships.modelQuery,
+  ]);
+
+  return { meta, data };
+};
 
 // get single sponsorship
 const getSingleSponsorship = async (currentUser: TCurrentUser, id: string) => {
@@ -205,6 +223,7 @@ export const SponsorshipServices = {
   createSponsorship,
   updateSponsorship,
   getAllSponsorships,
+  getAllSponsorshipsPublic,
   getSingleSponsorship,
   softDeletedSponsorship,
   permanentDeleteSponsorship,
