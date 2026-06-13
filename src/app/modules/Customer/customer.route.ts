@@ -21,7 +21,9 @@ router.patch(
 router.patch(
   '/:customerId/update-live-location',
   auth('CUSTOMER'),
-  validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
+  validateRequest(
+    CustomerValidation.updateCustomerLiveLocationValidationSchema,
+  ),
   CustomerControllers.updateCustomerLiveLocation,
 );
 
