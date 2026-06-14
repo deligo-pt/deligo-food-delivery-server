@@ -174,7 +174,7 @@ export const processOrderPostUpdate = async (job: Job) => {
           type: 'VENDOR_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
-          remarks: `Earnings for Order: ${orderDbId}`,
+          remarks: `Earnings for Order: ${orderDisplayId}`,
         },
         {
           transactionId: `TXN-DP-${orderDisplayId}`,
