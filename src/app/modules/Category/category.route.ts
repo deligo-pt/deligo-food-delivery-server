@@ -41,6 +41,10 @@ router.get(
   ),
   CategoryController.getAllBusinessCategories,
 );
+router.get(
+  '/businessCategory/open',
+  CategoryController.getAllBusinessCategoriesPublic,
+);
 
 // Get Single Business Category
 router.get(
@@ -54,6 +58,10 @@ router.get(
     'CUSTOMER',
   ),
   CategoryController.getSingleBusinessCategory,
+);
+router.get(
+  '/businessCategory/open/:id',
+  CategoryController.getSingleBusinessCategoryPublic,
 );
 
 // soft Delete Business Category

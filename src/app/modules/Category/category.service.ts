@@ -89,6 +89,25 @@ const getAllBusinessCategories = async (
   ]);
   return { meta, data };
 };
+const getAllBusinessCategoriesPublic = async (
+  query: Record<string, unknown>,
+) => {
+  query.isActive = true;
+  query.isDeleted = false;
+
+  const businessCategories = new QueryBuilder(BusinessCategory.find(), query)
+    .search(['name', 'slug'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const [meta, data] = await Promise.all([
+    businessCategories.countTotal(),
+    businessCategories.modelQuery,
+  ]);
+  return { meta, data };
+};
 
 //  Get Single Business Category
 const getSingleBusinessCategory = async (
@@ -104,6 +123,18 @@ const getSingleBusinessCategory = async (
   }
 
   if (!isAdmin && category.isActive === false && category.isDeleted === true) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+  }
+
+  return category;
+};
+const getSingleBusinessCategoryPublic = async (id: string) => {
+  const category = await BusinessCategory.findById(id);
+  if (!category) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+  }
+
+  if (category.isActive === false && category.isDeleted === true) {
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
@@ -359,7 +390,9 @@ const permanentDeleteProductCategory = async (id: string) => {
 export const CategoryService = {
   createBusinessCategory,
   getAllBusinessCategories,
+  getAllBusinessCategoriesPublic,
   getSingleBusinessCategory,
+  getSingleBusinessCategoryPublic,
   updateBusinessCategory,
   softDeleteBusinessCategory,
   permanentDeleteBusinessCategory,

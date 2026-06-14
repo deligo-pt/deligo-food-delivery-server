@@ -49,12 +49,35 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
     data: result,
   });
 });
+const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
+  const result = await CategoryService.getAllBusinessCategoriesPublic(
+    req.query,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Business categories fetched successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
 
 // Get Single Business Category Controllers
 const getSingleBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.getSingleBusinessCategory(
     req.params.id,
     req.user as TCurrentUser,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Business category fetched successfully',
+    data: result,
+  });
+});
+const getSingleBusinessCategoryPublic = catchAsync(async (req, res) => {
+  const result = await CategoryService.getSingleBusinessCategoryPublic(
+    req.params.id,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -177,7 +200,9 @@ export const CategoryController = {
   createBusinessCategory,
   updateBusinessCategory,
   getAllBusinessCategories,
+  getAllBusinessCategoriesPublic,
   getSingleBusinessCategory,
+  getSingleBusinessCategoryPublic,
   softDeleteBusinessCategory,
   permanentDeleteBusinessCategory,
   createProductCategory,
