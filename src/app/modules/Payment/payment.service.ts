@@ -263,8 +263,8 @@ const createIngredientRedUniqPayment = async (
         amount: Math.round(grandTotal * 100),
         date: new Date().toISOString().slice(0, 19).replace('T', ' '),
       },
-      returnUrlOk: `${config.frontend_urls.test}/vendor/ingredients/orders/payment-success?orderId=${newOrder._id}`,
-      returnUrlError: `${config.frontend_urls.test}/vendor/ingredients/orders/payment-failed?orderId=${newOrder._id}`,
+      returnUrlOk: `${config.frontend_urls.vendor}/vendor/ingredients/orders/payment-success?orderId=${newOrder._id}`,
+      returnUrlError: `${config.frontend_urls.vendor}/vendor/ingredients/orders/payment-failed?orderId=${newOrder._id}`,
     };
 
     const response = await axios.post(
