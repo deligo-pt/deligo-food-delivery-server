@@ -42,6 +42,12 @@ router.get(
   CategoryController.getAllBusinessCategories,
 );
 
+// Get All Business Categories Public
+router.get(
+  '/businessCategory/open',
+  CategoryController.getAllBusinessCategoriesPublic,
+);
+
 // Get Single Business Category
 router.get(
   '/businessCategory/:id',
@@ -54,6 +60,12 @@ router.get(
     'CUSTOMER',
   ),
   CategoryController.getSingleBusinessCategory,
+);
+
+// Get Single Business Category Public
+router.get(
+  '/businessCategory/open/:id',
+  CategoryController.getSingleBusinessCategoryPublic,
 );
 
 // soft Delete Business Category
@@ -96,12 +108,22 @@ router.get(
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
   CategoryController.getAllProductCategories,
 );
+// Get All Product Categories Public
+router.get(
+  '/productCategory/open',
+  CategoryController.getAllProductCategoriesPublic,
+);
 
 // Get Single Product Category
 router.get(
   '/productCategory/:id',
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
   CategoryController.getSingleProductCategory,
+);
+// Get Single Product Category Public
+router.get(
+  '/productCategory/open/:id',
+  CategoryController.getSingleProductCategoryPublic,
 );
 
 // Soft Delete Product Category

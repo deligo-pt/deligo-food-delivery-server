@@ -50,11 +50,38 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
   });
 });
 
+// Get Business Category Controllers Public
+const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
+  const result = await CategoryService.getAllBusinessCategoriesPublic(
+    req.query,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Business categories fetched successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 // Get Single Business Category Controllers
 const getSingleBusinessCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.getSingleBusinessCategory(
     req.params.id,
     req.user as TCurrentUser,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Business category fetched successfully',
+    data: result,
+  });
+});
+
+// Get Single Business Category Controllers Public
+const getSingleBusinessCategoryPublic = catchAsync(async (req, res) => {
+  const result = await CategoryService.getSingleBusinessCategoryPublic(
+    req.params.id,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -135,11 +162,36 @@ const getAllProductCategories = catchAsync(async (req, res) => {
   });
 });
 
+// Get Product Category Controllers Public
+const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
+  const result = await CategoryService.getAllProductCategoriesPublic(req.query);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Product categories fetched successfully',
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 // Get Single Product Category Controllers
 const getSingleProductCategory = catchAsync(async (req, res) => {
   const result = await CategoryService.getSingleProductCategory(
     req.params.id,
     req.user as TCurrentUser,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Product category fetched successfully',
+    data: result,
+  });
+});
+
+// Get Single Product Category Controllers Public
+const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
+  const result = await CategoryService.getSingleProductCategoryPublic(
+    req.params.id,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -177,13 +229,17 @@ export const CategoryController = {
   createBusinessCategory,
   updateBusinessCategory,
   getAllBusinessCategories,
+  getAllBusinessCategoriesPublic,
   getSingleBusinessCategory,
+  getSingleBusinessCategoryPublic,
   softDeleteBusinessCategory,
   permanentDeleteBusinessCategory,
   createProductCategory,
   updateProductCategory,
   getAllProductCategories,
+  getAllProductCategoriesPublic,
   getSingleProductCategory,
+  getSingleProductCategoryPublic,
   softDeleteProductCategory,
   permanentDeleteProductCategory,
 };
