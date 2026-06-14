@@ -1197,7 +1197,18 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
     resetURL = `${config.frontend_urls.delivery_partner}/reset-password?token=${token}`;
   }
 
-  await user.save({ validateBeforeSave: false });
+  // await user.save({ validateBeforeSave: false });
+
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const redisKey = `reset-token:${hashedToken}`;
+  const redisValue = JSON.stringify({
+    userId: user._id,
+    email: formattedEmail,
+    role: user.role,
+  });
+
+  await RedisService.set(redisKey, redisValue, 600);
 
   // create email html
   const emailHtml = await EmailHelper.createEmailContent(
@@ -1223,7 +1234,7 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
 
   return {
     message: 'Password reset link sent to your email address successfully',
-    // token,
+    token: hashedToken,
   };
 };
 

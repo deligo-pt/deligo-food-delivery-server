@@ -156,7 +156,7 @@ const forgotPassword = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
-    data: null,
+    data: result?.token,
   });
 });
 
