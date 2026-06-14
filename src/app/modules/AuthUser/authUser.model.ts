@@ -82,14 +82,6 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
       type: String,
       required: false, // Kept optional as some users might use social/OTP login
     },
-    passwordResetToken: {
-      type: String,
-      default: null,
-    },
-    passwordResetTokenExpiresAt: {
-      type: Date,
-      default: null,
-    },
     passwordChangedAt: {
       type: Date,
       default: null,
