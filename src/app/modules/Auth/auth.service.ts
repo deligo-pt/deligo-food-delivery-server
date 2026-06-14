@@ -1162,9 +1162,7 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
     email: formattedEmail,
     role,
     isDeleted: false,
-  })
-    .populate('profileId', 'name')
-    .select('role status profileId isEmailVerified');
+  }).populate('profileId', 'name');
 
   const populatedUser = user?.profileId as any;
 
@@ -1197,7 +1195,16 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
     resetURL = `${config.frontend_urls.delivery_partner}/reset-password?token=${token}`;
   }
 
-  await user.save({ validateBeforeSave: false });
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const redisKey = `reset-token:${hashedToken}`;
+  const redisValue = JSON.stringify({
+    userId: user._id,
+    email: formattedEmail,
+    role: user.role,
+  });
+
+  await RedisService.set(redisKey, redisValue, 600);
 
   // create email html
   const emailHtml = await EmailHelper.createEmailContent(
@@ -1223,7 +1230,6 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
 
   return {
     message: 'Password reset link sent to your email address successfully',
-    // token,
   };
 };
 
@@ -1243,21 +1249,39 @@ const resetPassword = async (payload: {
       'Customers login via OTP/Contact, password reset is not required.',
     );
   }
+
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const redisKey = `reset-token:${hashedToken}`;
+  const tokenData = await RedisService.get(redisKey);
+
+  if (!tokenData) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Reset token is invalid or has expired.',
+    );
+  }
+
+  const parsedData = tokenData as {
+    userId: string;
+    email: string;
+    role: string;
+  };
+  if (parsedData.email !== formattedEmail || parsedData.role !== role) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Token does not match with this user or role.',
+    );
+  }
 
   const user = await AuthUser.findOne({
     email: formattedEmail,
     role,
-    passwordResetToken: hashedToken,
-    passwordResetTokenExpiresAt: { $gt: new Date() },
     isDeleted: false,
   });
 
   if (!user) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'User not found or Reset token is invalid or has been expired',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
   }
 
   if (
@@ -1280,10 +1304,9 @@ const resetPassword = async (payload: {
   user.password = newPassword;
   user.passwordChangedAt = new Date();
 
-  user.passwordResetToken = undefined;
-  user.passwordResetTokenExpiresAt = undefined;
-
   await user.save();
+
+  await RedisService.del(redisKey);
 
   return {
     success: true,
