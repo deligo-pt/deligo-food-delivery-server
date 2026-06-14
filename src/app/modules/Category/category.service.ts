@@ -89,6 +89,8 @@ const getAllBusinessCategories = async (
   ]);
   return { meta, data };
 };
+
+//  Get All Business Categories Public
 const getAllBusinessCategoriesPublic = async (
   query: Record<string, unknown>,
 ) => {
@@ -128,6 +130,8 @@ const getSingleBusinessCategory = async (
 
   return category;
 };
+
+//  Get Single Business Category Public
 const getSingleBusinessCategoryPublic = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
@@ -311,6 +315,29 @@ const getAllProductCategories = async (
   return { meta, data };
 };
 
+//  Get All Product Categories Public
+const getAllProductCategoriesPublic = async (
+  query: Record<string, unknown>,
+) => {
+  query.isActive = true;
+  query.isDeleted = false;
+
+  // Build and execute the query
+  const productCategories = new QueryBuilder(ProductCategory.find(), query)
+    .search(['name', 'slug'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const [meta, data] = await Promise.all([
+    productCategories.countTotal(),
+    productCategories.modelQuery,
+  ]);
+
+  return { meta, data };
+};
+
 // get single product category
 const getSingleProductCategory = async (
   id: string,
@@ -344,6 +371,20 @@ const getSingleProductCategory = async (
     ) {
       throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
     }
+  }
+
+  return category;
+};
+
+//  get single product category public
+const getSingleProductCategoryPublic = async (id: string) => {
+  const category = await ProductCategory.findById(id);
+  if (!category) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+  }
+
+  if (category.isDeleted || !category.isActive) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
   }
 
   return category;
@@ -399,7 +440,9 @@ export const CategoryService = {
   createProductCategory,
   updateProductCategory,
   getAllProductCategories,
+  getAllProductCategoriesPublic,
   getSingleProductCategory,
+  getSingleProductCategoryPublic,
   softDeleteProductCategory,
   permanentDeleteProductCategory,
 };
