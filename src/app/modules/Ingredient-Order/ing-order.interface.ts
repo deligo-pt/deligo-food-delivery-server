@@ -10,7 +10,7 @@ export interface IIngredientOrderDetail {
   ingredient: Types.ObjectId; // it will have everything related ingredient
 }
 
-export interface IIngredientOrder {
+export type TIngredientOrder = {
   vendor: Types.ObjectId;
   admin?: Types.ObjectId;
   orderId?: string;
@@ -29,8 +29,9 @@ export interface IIngredientOrder {
   };
   delivery: {
     charge: number;
-    distance: number;
-    estimatedTime: number;
+    vatRate: number;
+    vatAmount: number;
+    totalDeliveryCharge: number;
   };
 
   grandTotal: number;
@@ -48,4 +49,4 @@ export interface IIngredientOrder {
   isDeleted: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-}
+};

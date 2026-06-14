@@ -23,6 +23,12 @@ export type TGlobalSettings = {
     vatRate: number;
   };
 
+  ingredientsOrder: {
+    deliveryChargeInsideLisbon: number;
+    deliveryChargeOutsideLisbon: number;
+    vatRate: number;
+  };
+
   // --------------------------------------------------
   // Commission & VAT
   // --------------------------------------------------

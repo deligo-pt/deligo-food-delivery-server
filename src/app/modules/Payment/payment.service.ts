@@ -4,7 +4,7 @@ import config from '../../config';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
-import { IIngredientOrder } from '../Ingredient-Order/ing-order.interface';
+import { TIngredientOrder } from '../Ingredient-Order/ing-order.interface';
 import mongoose from 'mongoose';
 import { Vendor } from '../Vendor/vendor.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
@@ -14,6 +14,15 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Admin } from '../Admin/admin.model';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+
+const solutionIds = {
+  CARD: '117',
+  MB_WAY: '110',
+  APPLE_PAY: '115',
+  PAYPAL: '105',
+  GOOGLE_PAY: '114',
+  OTHER: null,
+};
 
 // create redUniq payment intent service
 const createRedUniqPayment = async (
@@ -50,15 +59,6 @@ const createRedUniqPayment = async (
       'RedUniq API URL is not configured',
     );
   }
-
-  const solutionIds = {
-    CARD: '117',
-    MB_WAY: '110',
-    APPLE_PAY: '115',
-    PAYPAL: '105',
-    GOOGLE_PAY: '114',
-    OTHER: null,
-  };
 
   const payload = {
     method: 'initPayment',
@@ -156,9 +156,10 @@ const handlePaymentFailure = async (
 
 // create ingredients payment service
 const createIngredientRedUniqPayment = async (
-  payload: IIngredientOrder,
+  payload: TIngredientOrder,
   currentUser: TCurrentUser,
 ) => {
+  const { orderDetails, paymentMethod } = payload;
   const session = await mongoose.startSession();
 
   try {
@@ -168,9 +169,6 @@ const createIngredientRedUniqPayment = async (
     const ingredient = await Ingredient.findById(
       payload.orderDetails?.ingredient,
     ).session(session);
-    const adminInfo = await Admin.findOne({ role: 'SUPER_ADMIN' })
-      .select('address')
-      .session(session);
 
     if (!vendorInfo) {
       throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
@@ -179,47 +177,53 @@ const createIngredientRedUniqPayment = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
     }
 
-    const vendorCoords = vendorInfo.currentSessionLocation?.coordinates as [
-      number,
-      number,
-    ];
+    if (orderDetails.totalQuantity > ingredient?.stock) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Ingredient stock not available',
+      );
+    }
 
-    // 3. Calculate Distance and Delivery Charges
-    const distanceData = await calculateGoggleRoadDistance(
-      adminInfo?.address?.longitude as number,
-      adminInfo?.address?.latitude as number,
-      vendorCoords[0],
-      vendorCoords[1],
-    );
+    if (orderDetails.totalQuantity < ingredient.minOrder!) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Minimum order quantity is ${ingredient.minOrder}`,
+      );
+    }
 
     const globalSettings = await GlobalSettingsService.getGlobalSettings();
-    const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
+    const ingredientOrderData = globalSettings?.ingredientOrder;
 
-    const deliveryChargeBase =
-      distanceData.meters <= 1000
-        ? BASE_FIXED_DELIVERY_CHARGE
-        : Number(
-            (
-              distanceData.meters *
-              (globalSettings?.deliveryChargePerMeter || 0)
-            ).toFixed(2),
-          );
+    const vendorCity =
+      vendorInfo.businessLocation?.city?.trim().toLowerCase() || '';
+
+    let deliveryChargeBase = 0;
+
+    if (vendorCity === 'lisbon' || vendorCity === 'lisboa') {
+      deliveryChargeBase =
+        ingredientOrderData?.deliveryChargeInsideLisbon || 20;
+    } else {
+      deliveryChargeBase =
+        ingredientOrderData?.deliveryChargeOutsideLisbon || 30;
+    }
+
+    deliveryChargeBase = Number(deliveryChargeBase.toFixed(2));
+
+    const vatRate = ingredientOrderData?.vatRate || 0;
+    const deliveryVatAmount = Number(
+      ((deliveryChargeBase * vatRate) / 100).toFixed(2),
+    );
+    const deliveryChargeTotal = Number(
+      (deliveryChargeBase + deliveryVatAmount).toFixed(2),
+    );
 
     const totalIngredientCost =
       payload.orderDetails.totalQuantity * Number(ingredient.price);
     const grandTotal = Number(
-      (totalIngredientCost + deliveryChargeBase).toFixed(2),
+      (totalIngredientCost + deliveryChargeTotal).toFixed(2),
     );
 
     const paymentMethod = payload.paymentMethod as TPaymentMethod;
-    const solutionIds = {
-      CARD: '117',
-      MB_WAY: '110',
-      APPLE_PAY: '115',
-      PAYPAL: '105',
-      GOOGLE_PAY: '114',
-      OTHER: null,
-    };
 
     // Create order within transaction
     const [newOrder] = await IngredientOrder.create(
@@ -234,8 +238,9 @@ const createIngredientRedUniqPayment = async (
           deliveryAddress: vendorInfo.businessLocation,
           delivery: {
             charge: deliveryChargeBase,
-            distance: Number(distanceData.km.toFixed(2)),
-            estimatedTime: distanceData.durationMinutes,
+            vatRate: Number(ingredientOrderData?.vatRate || 0),
+            vatAmount: deliveryVatAmount,
+            totalDeliveryCharge: deliveryChargeTotal,
           },
           grandTotal,
           paymentStatus: 'PROCESSING',
