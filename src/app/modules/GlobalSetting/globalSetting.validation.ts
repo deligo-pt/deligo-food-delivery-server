@@ -29,6 +29,13 @@ const deliverySettingSchema = z
     vatRate: z.number().min(0).max(100),
   })
   .strict();
+const ingredientsOrderSchema = z
+  .object({
+    deliveryChargeInsideLisbon: z.number().nonnegative(),
+    deliveryChargeOutsideLisbon: z.number().nonnegative(),
+    vatRate: z.number().min(0).max(100),
+  })
+  .strict();
 
 const commissionSettingSchema = z
   .object({
@@ -104,6 +111,7 @@ const createGlobalSettingValidationSchema = z.object({
   body: z
     .object({
       delivery: deliverySettingSchema.optional(),
+      ingredientsOrder: ingredientsOrderSchema.optional(),
       commission: commissionSettingSchema.optional(),
       order: orderSettingSchema.optional(),
       rewards: rewardSettingSchema.optional(),
@@ -118,6 +126,7 @@ const updateGlobalSettingValidationSchema = z.object({
   body: z
     .object({
       delivery: deliverySettingSchema.partial().optional(),
+      ingredientsOrder: ingredientsOrderSchema.partial().optional(),
       commission: commissionSettingSchema.partial().optional(),
       order: orderSettingSchema.partial().optional(),
       rewards: rewardSettingSchema.partial().optional(),
