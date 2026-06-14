@@ -669,6 +669,7 @@ const loginUser = async (
   // checking if the user is exist
   const user = await AuthUser.findOne({
     email: payload?.email,
+    role: { $ne: 'CUSTOMER' },
   });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
