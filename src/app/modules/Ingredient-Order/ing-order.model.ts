@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import {
-  IIngredientOrder,
+  TIngredientOrder,
   IIngredientOrderDetail,
 } from './ing-order.interface';
 import { PaymentMethods } from '../../constant/GlobalConstant/payment.constant';
@@ -18,7 +18,7 @@ const ingredientOrderDetailSchema = new Schema<IIngredientOrderDetail>(
   { _id: false },
 );
 
-const ingredientOrderSchema = new Schema<IIngredientOrder>(
+const ingredientOrderSchema = new Schema<TIngredientOrder>(
   {
     vendor: { type: Schema.Types.ObjectId, ref: 'Vendor', required: true },
     admin: { type: Schema.Types.ObjectId, ref: 'Admin' },
@@ -40,8 +40,9 @@ const ingredientOrderSchema = new Schema<IIngredientOrder>(
     },
     delivery: {
       charge: { type: Number, required: true },
-      distance: { type: Number, required: true },
-      estimatedTime: { type: Number },
+      vatRate: { type: Number, required: true },
+      vatAmount: { type: Number, required: true },
+      totalDeliveryCharge: { type: Number, required: true },
     },
 
     grandTotal: { type: Number, required: true },
@@ -77,7 +78,7 @@ const ingredientOrderSchema = new Schema<IIngredientOrder>(
   },
 );
 
-export const IngredientOrder = model<IIngredientOrder>(
+export const IngredientOrder = model<TIngredientOrder>(
   'IngredientOrder',
   ingredientOrderSchema,
 );

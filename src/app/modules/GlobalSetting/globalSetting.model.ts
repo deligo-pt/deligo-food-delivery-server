@@ -32,6 +32,16 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
       vatRate: { type: Number, required: true, default: 0 },
     },
 
+    ingredientsOrder: {
+      deliveryChargeInsideLisbon: { type: Number, required: true, default: 20 },
+      deliveryChargeOutsideLisbon: {
+        type: Number,
+        required: true,
+        default: 30,
+      },
+      vatRate: { type: Number, required: true, default: 23 },
+    },
+
     // --------------------------------------------------
     // Commission & VAT
     // --------------------------------------------------

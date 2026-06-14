@@ -235,7 +235,7 @@ const getGlobalSettingsForAdmin = async (currentUser: TCurrentUser) => {
 // get for checkout
 const getGlobalSettings = async (session?: ClientSession) => {
   const result = await GlobalSettings.findOne({})
-    .select('commission delivery order rewards')
+    .select('commission delivery order rewards ingredientsOrder')
     .session(session as ClientSession);
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Global settings not found');
@@ -250,6 +250,7 @@ const getGlobalSettings = async (session?: ClientSession) => {
     baseDeliveryCharge: result?.delivery?.baseCharge,
     customerNearestVendorRadiusKm: result?.order?.nearestVendorRadiusKm,
     rewards: result?.rewards,
+    ingredientOrder: result?.ingredientsOrder,
   };
 };
 
