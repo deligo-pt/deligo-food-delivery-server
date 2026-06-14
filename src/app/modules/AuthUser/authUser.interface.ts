@@ -32,8 +32,6 @@ export type TAuthUser = {
   // 5. Password Credentials & Security Audit Logs
   // ------------------------------------------------------------------
   password?: string; // Hashed password (mirrored here during dual-update mode)
-  passwordResetToken?: string | null; // Token used for account recovery or password resets
-  passwordResetTokenExpiresAt?: Date | null;
   passwordChangedAt?: Date | null; // Tracks password updates to invalidate older active JWT sessions
   twoFactorEnabled?: boolean; // Flag indicating if two-factor authentication is active
 
