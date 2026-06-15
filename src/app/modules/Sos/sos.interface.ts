@@ -17,7 +17,6 @@ export type TSos = {
   userId: {
     id: mongoose.Types.ObjectId;
     model: 'Vendor' | 'FleetManager' | 'DeliveryPartner';
-    role: TUserRole;
   };
   orderId?: mongoose.Types.ObjectId;
   role: TUserRole;
