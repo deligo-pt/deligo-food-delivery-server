@@ -31,7 +31,6 @@ const triggerSos = async (
     userId: {
       id: currentUser._id,
       model: userModelType,
-      role: currentUser.role,
     },
     role: currentUser.role,
     status: 'ACTIVE',
