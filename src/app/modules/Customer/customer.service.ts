@@ -146,6 +146,7 @@ const updateCustomerLiveLocation = async (
   );
 
   let updateQuery: Record<string, any> = {};
+  let arrayFilters: any[] = [];
 
   const { geoAccuracy: _, isMocked: ___, ...cleanAddressPayload } = payload;
 
@@ -160,15 +161,23 @@ const updateCustomerLiveLocation = async (
 
     const flattenedAddressFields = flattenObject(
       addressDataWithCoords,
-      'deliveryAddresses.$[elem]',
+      'deliveryAddresses.$[primaryElem]',
     );
 
     updateQuery['$set'] = {
       ...updateData,
       ...flattenedAddressFields,
+      'deliveryAddresses.$[otherElem].isActive': false,
     };
+    arrayFilters = [
+      { 'primaryElem.addressType': 'PRIMARY' },
+      { 'otherElem.addressType': { $ne: 'PRIMARY' } },
+    ];
   } else {
-    updateQuery['$set'] = updateData;
+    updateQuery['$set'] = {
+      ...updateData,
+      'deliveryAddresses.$[allElem].isActive': false,
+    };
     updateQuery['$push'] = {
       deliveryAddresses: {
         street: cleanAddressPayload.street || '',
@@ -184,6 +193,7 @@ const updateCustomerLiveLocation = async (
         isActive: true,
       },
     };
+    arrayFilters = [{ 'allElem._id': { $exists: true } }];
   }
 
   const updatedCustomer = await Customer.findOneAndUpdate(
@@ -192,9 +202,7 @@ const updateCustomerLiveLocation = async (
     {
       new: true,
       runValidators: true,
-      arrayFilters: hasPrimaryAddress
-        ? [{ 'elem.addressType': 'PRIMARY' }]
-        : undefined,
+      arrayFilters: arrayFilters.length > 0 ? arrayFilters : undefined,
     },
   );
 
