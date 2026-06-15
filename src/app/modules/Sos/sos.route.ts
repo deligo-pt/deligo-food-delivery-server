@@ -32,7 +32,7 @@ router.get(
 // get all sos alerts route
 router.get(
   '/',
-  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER'),
+  auth('ADMIN', 'SUPER_ADMIN', 'FLEET_MANAGER', 'VENDOR', 'SUB_VENDOR'),
   SosController.getAllSosAlerts,
 );
 

@@ -135,8 +135,12 @@ const getAllSosAlerts = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
 ) => {
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   let filterConditions = {};
-  if (currentUser.role === 'FLEET_MANAGER') {
+
+  if (isAdmin) {
+    filterConditions = {};
+  } else if (currentUser.role === 'FLEET_MANAGER') {
     const partners = await DeliveryPartner.find({
       'registeredBy.id': currentUser._id.toString(),
     }).select('_id');
@@ -144,6 +148,8 @@ const getAllSosAlerts = async (
     const partnerIds = partners.map((p) => p._id);
 
     filterConditions = { 'userId.id': { $in: partnerIds } };
+  } else {
+    filterConditions = { 'userId.id': currentUser._id };
   }
   const sosQuery = new QueryBuilder(SosModel.find(filterConditions), query)
     .search(['status', 'role', 'issueTags'])
