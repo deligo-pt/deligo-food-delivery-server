@@ -84,6 +84,6 @@ const sosSchema = new Schema<TSos>(
   },
 );
 
-sosSchema.index({ location: '2dsphere' }); // 2dsphere index
+sosSchema.index({ location: '2dsphere' });
 
 export const SosModel = model<TSos>('Sos', sosSchema);
