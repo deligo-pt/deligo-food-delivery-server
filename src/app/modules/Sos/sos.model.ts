@@ -15,11 +15,6 @@ const sosSchema = new Schema<TSos>(
         enum: ['Vendor', 'FleetManager', 'DeliveryPartner'],
         required: true,
       },
-      role: {
-        type: String,
-        enum: Object.values(USER_ROLE),
-        required: true,
-      },
     },
     orderId: {
       type: Schema.Types.ObjectId,
