@@ -467,8 +467,8 @@
 
       <div class='section'>
         <h2>15. DURAÇÃO E DENÚNCIA DO CONTRATO</h2>
-        <p>O presente Contrato produz efeitos a partir da data da sua assinatura
-          e mantém-se em vigor até denúncia por qualquer das Partes.</p>
+        <p>O presente Contrato produces efeitos a partir da data da sua
+          assinatura e mantém-se em vigor até denúncia por qualquer das Partes.</p>
       </div>
 
       <div class='section'>
@@ -506,7 +506,7 @@
         </p>
       </div>
 
-      <!-- Fixed & Balanced Signature Section -->
+      <!-- Fixed & Balanced Signature Section (Variables Synced) -->
       <div class='signature-container'>
         <div class='signature-card-header'>Assinaturas das Partes</div>
 
@@ -529,13 +529,16 @@
             </div>
           </div>
 
-          <!-- Right Column: Establishment (Perfectly Balanced Now) -->
+          <!-- Right Column: Establishment -->
           <div class='signature-col'>
             <div class='signature-area'>
               <div class='signature-image-box'>
                 <div class='signature-image-cell'>
-                  {{#if signatureImage}}
-                    <img src='{{signatureImage}}' alt='Assinatura' />
+                  {{#if establishmentSignature}}
+                    <img
+                      src='{{establishmentSignature}}'
+                      alt='Assinatura do Estabelecimento'
+                    />
                   {{/if}}
                 </div>
               </div>
