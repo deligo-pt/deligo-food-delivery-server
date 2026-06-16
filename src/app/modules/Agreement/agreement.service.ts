@@ -219,7 +219,7 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
   }
   const normalizedEmail = email.toLowerCase();
 
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
+  const isSuperAdmin = ['SUPER_ADMIN'].includes(currentUser.role);
 
   // 2. Find agreement
   const agreement = await Agreement.findOne({ email: normalizedEmail });
@@ -229,7 +229,7 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
   }
 
   if (
-    !isAdmin &&
+    !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
@@ -425,8 +425,8 @@ const getAllAgreements = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
 ) => {
-  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
-  if (!isAdmin) {
+  const isSuperAdmin = ['SUPER_ADMIN'].includes(currentUser.role);
+  if (!isSuperAdmin) {
     query.createdBy = currentUser._id;
   }
 
