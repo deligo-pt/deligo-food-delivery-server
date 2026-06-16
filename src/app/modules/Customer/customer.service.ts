@@ -174,26 +174,33 @@ const updateCustomerLiveLocation = async (
       { 'otherElem.addressType': { $ne: 'PRIMARY' } },
     ];
   } else {
+    const updatedExistingAddresses = (
+      customerExists.deliveryAddresses || []
+    ).map((addr: any) => ({
+      ...(addr.toObject?.() || addr),
+      isActive: false,
+    }));
+
+    const newPrimaryAddress = {
+      street: cleanAddressPayload.street || '',
+      city: cleanAddressPayload.city || '',
+      state: cleanAddressPayload.state || '',
+      postalCode: cleanAddressPayload.postalCode || '',
+      country: cleanAddressPayload.country || '',
+      detailedAddress: cleanAddressPayload.detailedAddress || '',
+      notes: cleanAddressPayload.notes || '',
+      longitude,
+      latitude,
+      addressType: 'PRIMARY',
+      isActive: true,
+    };
+
     updateQuery['$set'] = {
       ...updateData,
-      'deliveryAddresses.$[allElem].isActive': false,
+      deliveryAddresses: [...updatedExistingAddresses, newPrimaryAddress],
     };
-    updateQuery['$push'] = {
-      deliveryAddresses: {
-        street: cleanAddressPayload.street || '',
-        city: cleanAddressPayload.city || '',
-        state: cleanAddressPayload.state || '',
-        postalCode: cleanAddressPayload.postalCode || '',
-        country: cleanAddressPayload.country || '',
-        detailedAddress: cleanAddressPayload.detailedAddress || '',
-        notes: cleanAddressPayload.notes || '',
-        longitude,
-        latitude,
-        addressType: 'PRIMARY',
-        isActive: true,
-      },
-    };
-    arrayFilters = [{ 'allElem._id': { $exists: true } }];
+
+    arrayFilters = [];
   }
 
   const updatedCustomer = await Customer.findOneAndUpdate(
