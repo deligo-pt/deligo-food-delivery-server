@@ -521,68 +521,33 @@
         </p>
       </div>
 
-      <!-- Company Signature Block -->
-      <div class='signature-card'>
-        <div class='signature-card-header'>Em Representação da Empresa</div>
+      <div class='signature-container'>
+        <div class='signature-card-header'>Assinaturas das Partes</div>
 
         <div class='signature-grid'>
-          <!-- Company Signature 1 -->
+          <!-- Left Column: Company Agent (Jabe tar sign) -->
           <div class='signature-col'>
-            {{#if companySignature1}}
-              <div class='signature-script'>
-                <img
-                  src='{{companySignature1}}'
-                  alt='Carlos Sá Signature'
-                  style='max-height: 50px; max-width: 180px;'
-                />
-              </div>
-            {{else}}
-              <div class='signature-script'></div>
-            {{/if}}
-
-            <div class='signature-underline'></div>
-            <div class='signature-name'>Carlos Nelson Fernandes de Sá</div>
-            <div class='signature-role'>Gerente</div>
-          </div>
-
-          <!-- Company Signature 2 -->
-          <div class='signature-col'>
-            {{#if companySignature2}}
-              <div class='signature-script'>
-                <img
-                  src='{{companySignature2}}'
-                  alt='Mohammad Jibon Signature'
-                  style='max-height: 50px; max-width: 180px;'
-                />
-              </div>
-            {{else}}
-              <div class='signature-script'></div>
-            {{/if}}
-
-            <div class='signature-underline'></div>
-            <div class='signature-name'>Mohammad Jibon</div>
-            <div class='signature-role'>Gerente</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Establishment Signature Block -->
-      <div class='establishment-signature'>
-        <div class='signature-card-header'>
-          Em Representação do Estabelecimento
-        </div>
-
-        <div class='establishment-body'>
-          {{#if signatureImage}}
-            <div class='signature-image'>
-              <img src='{{signatureImage}}' alt='Assinatura' />
+            <div class='signature-block'>
+              {{#if agentSignature}}
+                <img src='{{agentSignature}}' alt='Assinatura do Agente' />
+              {{/if}}
             </div>
-          {{else}}
-            <div class='signature-image'></div>
-          {{/if}}
+            <div class='signature-underline'></div>
+            <div class='signature-name'>{{agentName}}</div>
+            <div class='signature-role'>Pelo Agente da Empresa</div>
+          </div>
 
-          <div class='signature-line'>{{establishmentName}}</div>
-          <div class='signature-subrole'>Representante Legal</div>
+          <!-- Right Column: Establishment (Jar kache jabe tar sign) -->
+          <div class='signature-col'>
+            <div class='signature-block'>
+              {{#if signatureImage}}
+                <img src='{{signatureImage}}' alt='Assinatura' />
+              {{/if}}
+            </div>
+            <div class='signature-underline'></div>
+            <div class='signature-name'>{{establishmentName}}</div>
+            <div class='signature-role'>Representante Legal</div>
+          </div>
         </div>
       </div>
 
