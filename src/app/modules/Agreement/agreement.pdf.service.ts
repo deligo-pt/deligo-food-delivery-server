@@ -63,10 +63,12 @@ class AgreementPdfService {
         waitUntil: 'domcontentloaded',
       });
 
+      await page.waitForNetworkIdle({ idleTime: 500 });
+
       await page.pdf({
         path: pdfPath,
         format: 'A4',
-        printBackground: false,
+        printBackground: true,
       });
 
       return pdfPath;
