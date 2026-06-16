@@ -128,7 +128,7 @@ const verifyAgreementOtp = async (
     );
   }
 
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
+  const isSuperAdmin = ['SUPER_ADMIN'].includes(currentUser.role);
 
   // 2. Find agreement
   const agreement = await Agreement.findOne({ email: normalizedEmail });
@@ -138,7 +138,7 @@ const verifyAgreementOtp = async (
   }
 
   if (
-    !isAdmin &&
+    !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
@@ -169,6 +169,10 @@ const verifyAgreementOtp = async (
   agreement.emailVerifiedAt = new Date();
   agreement.status = AGREEMENT_STATUS.VERIFIED;
 
+  const agentName = currentUser?.name?.firstName
+    ? `${currentUser.name.firstName} ${currentUser.name.lastName || ''}`.trim()
+    : 'Agente DeliGo';
+
   // 8. Generate draft PDF
   const localDraftPdfPath = await agreementPdfService.generateDraftPdf(
     {
@@ -176,6 +180,7 @@ const verifyAgreementOtp = async (
       email: agreement.email,
       contactNumber: agreement.contactNumber,
       nif: agreement.nif,
+      agentName: agentName,
     },
     agreement._id.toString(),
   );
@@ -337,12 +342,17 @@ const signAgreement = async (
     'image',
   );
 
+  const agentName = currentUser?.name?.firstName
+    ? `${currentUser.name.firstName} ${currentUser.name.lastName || ''}`.trim()
+    : 'Agente DeliGo';
+
   const localSignedPdfPath = await agreementPdfService.generateSignedPdf(
     {
       establishmentName: agreement.establishmentName,
       email: agreement.email,
       contactNumber: agreement.contactNumber,
       nif: agreement.nif,
+      agentName: agentName,
       agentSignature: agentSignatureUrl,
       establishmentSignature: establishmentSignatureUrl,
     },

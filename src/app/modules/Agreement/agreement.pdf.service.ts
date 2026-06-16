@@ -10,6 +10,7 @@ type TAgreementPdfData = {
   contactNumber: string;
   nif: string;
 
+  agentName?: string;
   agentSignature?: string | null;
   establishmentSignature?: string | null;
 };
