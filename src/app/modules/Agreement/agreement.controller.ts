@@ -46,10 +46,9 @@ const resendAgreementOtp = catchAsync(async (req, res) => {
 
 const signAgreement = catchAsync(async (req, res) => {
   const { agreementId } = req.params;
-  const { signatureImage } = req.body;
   const result = await AgreementService.signAgreement(
     agreementId,
-    signatureImage,
+    req.body,
     req.user as TCurrentUser,
   );
   sendResponse(res, {

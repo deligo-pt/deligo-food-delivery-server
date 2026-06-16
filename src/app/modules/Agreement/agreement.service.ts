@@ -128,7 +128,7 @@ const verifyAgreementOtp = async (
     );
   }
 
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
+  const isSuperAdmin = ['SUPER_ADMIN'].includes(currentUser.role);
 
   // 2. Find agreement
   const agreement = await Agreement.findOne({ email: normalizedEmail });
@@ -138,7 +138,7 @@ const verifyAgreementOtp = async (
   }
 
   if (
-    !isAdmin &&
+    !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
@@ -169,6 +169,10 @@ const verifyAgreementOtp = async (
   agreement.emailVerifiedAt = new Date();
   agreement.status = AGREEMENT_STATUS.VERIFIED;
 
+  const agentName = currentUser?.name?.firstName
+    ? `${currentUser.name.firstName} ${currentUser.name.lastName || ''}`.trim()
+    : 'Agente DeliGo';
+
   // 8. Generate draft PDF
   const localDraftPdfPath = await agreementPdfService.generateDraftPdf(
     {
@@ -176,6 +180,7 @@ const verifyAgreementOtp = async (
       email: agreement.email,
       contactNumber: agreement.contactNumber,
       nif: agreement.nif,
+      agentName: agentName,
     },
     agreement._id.toString(),
   );
@@ -275,10 +280,14 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
 
 const signAgreement = async (
   agreementId: string,
-  signatureImage: string,
+  payload: {
+    agentSignature: string;
+    establishmentSignature: string;
+  },
   currentUser: TCurrentUser,
 ) => {
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
+  const { agentSignature, establishmentSignature } = payload;
+  const isSuperAdmin = ['SUPER_ADMIN'].includes(currentUser.role);
   const agreement = await Agreement.findById(agreementId);
 
   if (!agreement) {
@@ -286,7 +295,7 @@ const signAgreement = async (
   }
 
   if (
-    !isAdmin &&
+    !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
@@ -309,17 +318,33 @@ const signAgreement = async (
     );
   }
 
-  const localSignaturePath = await saveSignatureImage(
-    signatureImage,
+  const localAgentSignaturePath = await saveSignatureImage(
+    agentSignature,
     agreement._id.toString(),
+    'agent',
   );
-
-  const signatureUrl = await uploadLocalFileToCloudinary(
-    localSignaturePath,
+  const agentSignatureUrl = await uploadLocalFileToCloudinary(
+    localAgentSignaturePath,
     'signatures',
-    `signature-${agreement._id}`,
+    `signature-${agreement._id}-agent`,
     'image',
   );
+
+  const localEstSignaturePath = await saveSignatureImage(
+    establishmentSignature,
+    agreement._id.toString(),
+    'establishment',
+  );
+  const establishmentSignatureUrl = await uploadLocalFileToCloudinary(
+    localEstSignaturePath,
+    'signatures',
+    `signature-${agreement._id}-establishment`,
+    'image',
+  );
+
+  const agentName = currentUser?.name?.firstName
+    ? `${currentUser.name.firstName} ${currentUser.name.lastName || ''}`.trim()
+    : 'Agente DeliGo';
 
   const localSignedPdfPath = await agreementPdfService.generateSignedPdf(
     {
@@ -327,7 +352,9 @@ const signAgreement = async (
       email: agreement.email,
       contactNumber: agreement.contactNumber,
       nif: agreement.nif,
-      signatureImage,
+      agentName: agentName,
+      agentSignature: agentSignatureUrl,
+      establishmentSignature: establishmentSignatureUrl,
     },
     agreement._id.toString(),
   );
@@ -339,7 +366,8 @@ const signAgreement = async (
     'raw',
   );
 
-  agreement.signaturePath = signatureUrl;
+  agreement.agentSignaturePath = agentSignatureUrl;
+  agreement.establishmentSignaturePath = establishmentSignatureUrl;
   agreement.signedPdfPath = signedPdfUrl;
   agreement.status = AGREEMENT_STATUS.SIGNED;
   agreement.signedAt = new Date();
@@ -370,7 +398,7 @@ const getAgreementById = async (
   agreementId: string,
   currentUser: TCurrentUser,
 ) => {
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
+  const isSuperAdmin = ['SUPER_ADMIN'].includes(currentUser.role);
   const agreement = await Agreement.findById(agreementId);
 
   if (!agreement) {
@@ -378,7 +406,7 @@ const getAgreementById = async (
   }
 
   if (
-    !isAdmin &&
+    !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
     throw new AppError(
