@@ -154,9 +154,8 @@
         margin-left: 18px;
       }
 
-      /* Company Signatures */
-      .signature-card,
-      .establishment-signature {
+      /* Signatures Container */
+      .signature-container {
         background: #ffffff;
         border: 1px solid var(--border);
         border-radius: 6px;
@@ -168,13 +167,10 @@
       }
 
       .signature-card-header {
-        display: inline-block;
-        margin: 14px 0 0 16px;
         background: var(--primary);
         color: #ffffff;
-        padding: 6px 14px;
-        border-radius: 4px;
-        font-size: 10px;
+        padding: 8px 16px;
+        font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.4px;
@@ -183,25 +179,32 @@
       .signature-grid {
         display: table;
         width: 100%;
-        padding: 18px 18px 20px;
+        padding: 24px 18px;
       }
 
       .signature-col {
         display: table-cell;
         width: 50%;
         vertical-align: bottom;
-        padding: 0 10px;
+        padding: 0 20px;
       }
 
       .signature-col + .signature-col {
         border-left: 1px solid #f3d6e2;
       }
 
-      .signature-script {
-        height: 52px;
+      .signature-block {
+        min-height: 75px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .signature-block img {
+        max-height: 60px;
+        max-width: 100%;
         display: block;
-        text-align: center;
-        margin-bottom: 6px;
       }
 
       .signature-underline {
@@ -223,36 +226,6 @@
         font-weight: 700;
       }
 
-      /* Establishment Signature */
-      .establishment-body {
-        padding: 20px 22px 24px;
-      }
-
-      .signature-image {
-        min-height: 90px;
-        margin-bottom: 10px;
-      }
-
-      .signature-image img {
-        max-height: 90px;
-        max-width: 320px;
-        display: block;
-      }
-
-      .signature-line {
-        width: 340px;
-        border-top: 2px solid var(--primary);
-        padding-top: 8px;
-        font-weight: 700;
-      }
-
-      .signature-subrole {
-        color: var(--primary);
-        font-size: 10px;
-        margin-top: 2px;
-        font-weight: 700;
-      }
-
       /* Footer */
       .footer {
         margin-top: 20px;
@@ -268,8 +241,7 @@
       }
 
       .card,
-      .signature-card,
-      .establishment-signature {
+      .signature-container {
         page-break-inside: avoid;
       }
     </style>
@@ -316,12 +288,11 @@
         </p>
       </div>
 
-      <!-- Keep your full legal clauses below. This sample keeps abbreviated content. -->
       <div class='section'>
         <h2>CONSIDERANDO QUE</h2>
 
         <p>A. A EMPRESA pode disponibilizar determinados serviços ("Serviços")
-          ao ESTABELECIMENTO para facilitar a comercialização, venda e
+          al ESTABELECIMENTO para facilitar a comercialização, venda e
           fornecimento de bens alimentares, bebidas e/ou outros produtos
           ("Artigos").</p>
         <p>B. Os Serviços incluem, nomeadamente, serviços de lead generation a
@@ -521,6 +492,7 @@
         </p>
       </div>
 
+      <!-- New Unified Signature Section (Agent & Client) -->
       <div class='signature-container'>
         <div class='signature-card-header'>Assinaturas das Partes</div>
 
