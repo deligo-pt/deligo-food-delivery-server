@@ -154,7 +154,7 @@
         margin-left: 18px;
       }
 
-      /* Signatures Container */
+      /* Signatures Container Fixed */
       .signature-container {
         background: #ffffff;
         border: 1px solid var(--border);
@@ -179,50 +179,64 @@
       .signature-grid {
         display: table;
         width: 100%;
-        padding: 24px 18px;
+        table-layout: fixed;
       }
 
       .signature-col {
         display: table-cell;
         width: 50%;
-        vertical-align: bottom;
-        padding: 0 20px;
+        vertical-align: top;
+        padding: 24px 20px;
       }
 
       .signature-col + .signature-col {
         border-left: 1px solid #f3d6e2;
       }
 
-      .signature-block {
-        min-height: 75px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 10px;
+      .signature-area {
+        width: 100%;
+        text-align: center;
       }
 
-      .signature-block img {
+      .signature-image-box {
+        height: 70px;
+        display: table;
+        width: 100%;
+      }
+
+      .signature-image-cell {
+        display: table-cell;
+        vertical-align: bottom;
+        text-align: center;
+        padding-bottom: 5px;
+      }
+
+      .signature-image-cell img {
         max-height: 60px;
-        max-width: 100%;
-        display: block;
+        max-width: 90%;
+        display: inline-block;
       }
 
       .signature-underline {
         border-top: 2px solid var(--primary);
-        margin-bottom: 6px;
+        width: 100%;
+        margin-bottom: 8px;
+      }
+
+      .signature-details {
+        text-align: center;
+        min-height: 35px;
       }
 
       .signature-name {
-        text-align: center;
         font-weight: 700;
         font-size: 11px;
+        margin-bottom: 2px;
       }
 
       .signature-role {
-        text-align: center;
         color: var(--primary);
         font-size: 10px;
-        margin-top: 2px;
         font-weight: 700;
       }
 
@@ -492,33 +506,45 @@
         </p>
       </div>
 
-      <!-- New Unified Signature Section (Agent & Client) -->
+      <!-- Fixed & Balanced Signature Section -->
       <div class='signature-container'>
         <div class='signature-card-header'>Assinaturas das Partes</div>
 
         <div class='signature-grid'>
-          <!-- Left Column: Company Agent (Jabe tar sign) -->
+          <!-- Left Column: Company Agent -->
           <div class='signature-col'>
-            <div class='signature-block'>
-              {{#if agentSignature}}
-                <img src='{{agentSignature}}' alt='Assinatura do Agente' />
-              {{/if}}
+            <div class='signature-area'>
+              <div class='signature-image-box'>
+                <div class='signature-image-cell'>
+                  {{#if agentSignature}}
+                    <img src='{{agentSignature}}' alt='Assinatura do Agente' />
+                  {{/if}}
+                </div>
+              </div>
+              <div class='signature-underline'></div>
+              <div class='signature-details'>
+                <div class='signature-name'>{{agentName}}</div>
+                <div class='signature-role'>Pelo Agente da Empresa</div>
+              </div>
             </div>
-            <div class='signature-underline'></div>
-            <div class='signature-name'>{{agentName}}</div>
-            <div class='signature-role'>Pelo Agente da Empresa</div>
           </div>
 
-          <!-- Right Column: Establishment (Jar kache jabe tar sign) -->
+          <!-- Right Column: Establishment (Perfectly Balanced Now) -->
           <div class='signature-col'>
-            <div class='signature-block'>
-              {{#if signatureImage}}
-                <img src='{{signatureImage}}' alt='Assinatura' />
-              {{/if}}
+            <div class='signature-area'>
+              <div class='signature-image-box'>
+                <div class='signature-image-cell'>
+                  {{#if signatureImage}}
+                    <img src='{{signatureImage}}' alt='Assinatura' />
+                  {{/if}}
+                </div>
+              </div>
+              <div class='signature-underline'></div>
+              <div class='signature-details'>
+                <div class='signature-name'>{{establishmentName}}</div>
+                <div class='signature-role'>Representante Legal</div>
+              </div>
             </div>
-            <div class='signature-underline'></div>
-            <div class='signature-name'>{{establishmentName}}</div>
-            <div class='signature-role'>Representante Legal</div>
           </div>
         </div>
       </div>
