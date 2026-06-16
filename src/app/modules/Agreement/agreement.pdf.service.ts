@@ -9,11 +9,9 @@ type TAgreementPdfData = {
   email: string;
   contactNumber: string;
   nif: string;
-  signatureImage?: string | null;
 
-  // Company signatures
-  companySignature1?: string | null;
-  companySignature2?: string | null;
+  agentSignature?: string | null;
+  establishmentSignature?: string | null;
 };
 
 class AgreementPdfService {
@@ -36,14 +34,6 @@ class AgreementPdfService {
     return template({
       ...data,
       currentDate: new Date().toLocaleDateString('pt-PT'),
-      companySignature1:
-        data.companySignature1 ||
-        config.signature.company_signature_1_url ||
-        '',
-      companySignature2:
-        data.companySignature2 ||
-        config.signature.company_signature_2_url ||
-        '',
     });
   }
 
@@ -88,13 +78,14 @@ class AgreementPdfService {
    * Generate draft agreement (without signature)
    */
   async generateDraftPdf(
-    data: Omit<TAgreementPdfData, 'signatureImage'>,
+    data: Omit<TAgreementPdfData, 'agentSignature' | 'establishmentSignature'>,
     agreementId: string,
   ): Promise<string> {
     return this.generatePdf(
       {
         ...data,
-        signatureImage: null,
+        agentSignature: null,
+        establishmentSignature: null,
       },
       `draft-${agreementId}.pdf`,
     );

@@ -62,11 +62,22 @@ const resendAgreementOtpValidationSchema = z.object({
 const signAgreementValidationSchema = z.object({
   body: z
     .object({
-      signatureImage: z
+      agentSignature: z
         .string({
-          required_error: 'Signature image is required',
+          required_error: 'Agent signature image is required',
         })
-        .startsWith('data:image/', 'Signature must be a valid Base64 image'),
+        .startsWith(
+          'data:image/',
+          'Agent signature must be a valid Base64 image',
+        ),
+      establishmentSignature: z
+        .string({
+          required_error: 'Establishment signature image is required',
+        })
+        .startsWith(
+          'data:image/',
+          'Establishment signature must be a valid Base64 image',
+        ),
     })
     .strict(),
 });
