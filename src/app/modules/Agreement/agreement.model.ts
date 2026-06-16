@@ -52,7 +52,11 @@ const agreementSchema = new Schema<TAgreement>(
       default: null,
     },
 
-    signaturePath: {
+    agentSignaturePath: {
+      type: String,
+      default: null,
+    },
+    establishmentSignaturePath: {
       type: String,
       default: null,
     },

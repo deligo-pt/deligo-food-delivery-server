@@ -32,7 +32,8 @@ export type TAgreement = {
   // File Paths
   // ------------------------------------------------------------------
   draftPdfPath: string;
-  signaturePath?: string | null;
+  agentSignaturePath?: string | null;
+  establishmentSignaturePath?: string | null;
   signedPdfPath?: string | null;
 
   // ------------------------------------------------------------------
