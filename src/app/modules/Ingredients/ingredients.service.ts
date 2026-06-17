@@ -8,6 +8,7 @@ import { IngredientsSearchFields } from './ingredients.constant';
 import { TIngredients } from './ingredients.interface';
 import customNanoId from '../../utils/customNanoId';
 import { Tax } from '../Tax/tax.model';
+import { flattenObject } from '../../utils/flattenObject';
 
 const createIngredient = async (
   payload: TIngredients,
@@ -54,6 +55,7 @@ const createIngredient = async (
   }
 
   payload.sku = generatedSku;
+  payload.totalAddedQuantity = payload.stock;
 
   // 5. Database Insertion
   const newIngredient = await Ingredient.create(payload);
@@ -62,34 +64,55 @@ const createIngredient = async (
 };
 
 const updateIngredient = async (
-  id: string,
+  ingredientId: string,
   payload: Partial<TIngredients>,
-  image: string | null,
 ) => {
-  const ingredient = await Ingredient.findById(id);
+  const ingredient = await Ingredient.findById(ingredientId);
   if (!ingredient) {
     throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
   }
 
-  // delete existing image and replace new one
-  if (image) {
-    if (ingredient.image) {
-      const oldImage = ingredient.image;
-      deleteSingleImageFromCloudinary(oldImage).catch((error) => {
-        console.error('Cloudinary delete error:', error);
-      });
+  if (payload.tax) {
+    const isTaxExist = await Tax.findOne({
+      _id: payload.tax,
+      isDeleted: false,
+      isActive: true,
+    });
+    if (!isTaxExist) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'The provided Tax configuration ID is invalid or inactive.',
+      );
     }
-    payload.image = image;
   }
 
-  // Update category to UpperCase if it exists in payload
+  if (payload.stock !== undefined) {
+    const stockDifference = payload.stock - ingredient.stock;
+
+    payload.totalAddedQuantity =
+      ingredient.totalAddedQuantity + stockDifference;
+  }
+
+  if (payload.image && ingredient.image) {
+    const oldImage = ingredient.image;
+    deleteSingleImageFromCloudinary(oldImage).catch((error) => {
+      console.error('Cloudinary delete error:', error);
+    });
+  }
+
   if (payload.category) {
     payload.category = payload.category.toUpperCase().trim();
   }
 
-  Object.assign(ingredient, payload);
-  await ingredient.save();
-  return ingredient;
+  const flattenedData = flattenObject(payload);
+
+  const updatedIngredient = await Ingredient.findByIdAndUpdate(
+    ingredientId,
+    { $set: flattenedData },
+    { new: true, runValidators: true },
+  );
+
+  return updatedIngredient;
 };
 
 const getIngredientDetails = async (sku: string) => {

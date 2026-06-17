@@ -9,6 +9,7 @@ export type TIngredients = {
   tax: Types.ObjectId;
   unit: 'kg' | 'g' | 'litre' | 'ml' | 'piece' | 'packet' | 'box';
   stock: number;
+  totalAddedQuantity: number;
   lowStockAlert: number;
   minOrder?: number;
   image: string;

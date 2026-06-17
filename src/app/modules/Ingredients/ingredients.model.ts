@@ -1,6 +1,17 @@
 import { Schema, model } from 'mongoose';
 import { TIngredients } from './ingredients.interface';
 
+const bulkDiscountSchema = new Schema(
+  {
+    minQty: { type: Number, required: true },
+    discountPrice: { type: Number, required: true },
+  },
+  {
+    _id: false,
+    versionKey: false,
+  },
+);
+
 const ingredientsSchema = new Schema<TIngredients>(
   {
     name: {
@@ -45,6 +56,13 @@ const ingredientsSchema = new Schema<TIngredients>(
       default: 0,
       min: 0,
     },
+
+    totalAddedQuantity: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
     lowStockAlert: {
       type: Number,
       required: true,
@@ -67,12 +85,7 @@ const ingredientsSchema = new Schema<TIngredients>(
     shelfLifeDays: {
       type: Number,
     },
-    bulkDiscount: [
-      {
-        minQty: { type: Number, required: true },
-        discountPrice: { type: Number, required: true },
-      },
-    ],
+    bulkDiscount: [bulkDiscountSchema],
     isDeleted: {
       type: Boolean,
       default: false,

@@ -3,7 +3,6 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { IngredientsServices } from './ingredients.service';
-import { TImageFile } from '../../interfaces/image.interface';
 
 const createIngredient = catchAsync(async (req, res) => {
   const result = await IngredientsServices.createIngredient(
@@ -20,13 +19,11 @@ const createIngredient = catchAsync(async (req, res) => {
 });
 
 const updateIngredient = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const file = req.file as TImageFile;
+  const { ingredientId } = req.params;
 
   const result = await IngredientsServices.updateIngredient(
-    id,
+    ingredientId,
     req.body,
-    file?.path,
   );
 
   sendResponse(res, {

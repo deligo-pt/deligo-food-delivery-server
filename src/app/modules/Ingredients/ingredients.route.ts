@@ -18,10 +18,8 @@ router.post(
 
 // 2. Update ingredient
 router.patch(
-  '/update-ingredient',
+  '/update-ingredient/:ingredientId',
   auth('ADMIN', 'SUPER_ADMIN', ['CAN_MANAGE_INGREDIENTS']),
-  multerUpload.single('file'),
-  parseBody,
   validateRequest(IngredientValidation.updateIngredientValidationSchema),
   IngredientsController.updateIngredient,
 );
