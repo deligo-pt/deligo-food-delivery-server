@@ -42,4 +42,16 @@ router.get(
   IngredientsController.getAllIngredients,
 );
 
+router.delete(
+  '/soft-delete/:ingredientId',
+  auth('ADMIN', 'SUPER_ADMIN', ['CAN_MANAGE_INGREDIENTS']),
+  IngredientsController.softDeleteIngredient,
+);
+
+router.delete(
+  '/permanent-delete/:ingredientId',
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_INGREDIENTS']),
+  IngredientsController.permanentDeleteIngredient,
+);
+
 export const IngredientRoutes = router;

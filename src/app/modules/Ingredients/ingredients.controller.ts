@@ -58,9 +58,36 @@ const getAllIngredients = catchAsync(async (req, res) => {
   });
 });
 
+const softDeleteIngredient = catchAsync(async (req, res) => {
+  const { ingredientId } = req.params;
+  const result = await IngredientsServices.softDeleteIngredient(ingredientId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Ingredient soft deleted successfully',
+    data: result,
+  });
+});
+
+const permanentDeleteIngredient = catchAsync(async (req, res) => {
+  const { ingredientId } = req.params;
+  const result =
+    await IngredientsServices.permanentDeleteIngredient(ingredientId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Ingredient permanently removed from database',
+    data: result,
+  });
+});
+
 export const IngredientsController = {
   createIngredient,
   updateIngredient,
   getIngredientDetails,
   getAllIngredients,
+  softDeleteIngredient,
+  permanentDeleteIngredient,
 };

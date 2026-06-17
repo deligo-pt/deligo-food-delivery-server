@@ -143,9 +143,65 @@ const getAllIngredients = async (query: Record<string, unknown>) => {
   };
 };
 
+const softDeleteIngredient = async (ingredientId: string) => {
+  const ingredient = await Ingredient.findById(ingredientId);
+
+  if (!ingredient || ingredient.isDeleted) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Ingredient not found or already deleted',
+    );
+  }
+
+  // Soft delete workflow: Update flags
+  await Ingredient.findByIdAndUpdate(
+    ingredientId,
+    {
+      $set: {
+        isDeleted: true,
+      },
+    },
+    { new: true },
+  );
+
+  return null;
+};
+
+const permanentDeleteIngredient = async (ingredientId: string) => {
+  const ingredient = await Ingredient.findById(ingredientId);
+
+  if (!ingredient) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Ingredient not found in database',
+    );
+  }
+
+  if (!ingredient.isDeleted) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please first soft delete for permanent delete',
+    );
+  }
+
+  // 1. Wipe out images from Cloudinary storage right away
+  if (ingredient.image) {
+    deleteSingleImageFromCloudinary(ingredient.image).catch((error) => {
+      console.error('Cloudinary wipe failed for permanent delete:', error);
+    });
+  }
+
+  // 2. Completely remove the record from MongoDB
+  const result = await Ingredient.findByIdAndDelete(ingredientId);
+
+  return result;
+};
+
 export const IngredientsServices = {
   createIngredient,
   updateIngredient,
   getIngredientDetails,
   getAllIngredients,
+  softDeleteIngredient,
+  permanentDeleteIngredient,
 };
