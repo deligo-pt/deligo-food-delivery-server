@@ -3,6 +3,8 @@ import {
   USER_ROLE,
   USER_STATUS,
 } from '../../constant/GlobalConstant/user.constant';
+
+const portugalPhoneRegex = /^(?:\+351|351)?9[1236]\d{7}$/;
 // Register
 const registerValidationSchema = z.object({
   body: z
@@ -94,7 +96,13 @@ const loginCustomerValidationSchema = z.object({
   body: z
     .object({
       email: z.string().email('Invalid email format').optional(),
-      contactNumber: z.string().optional(),
+      contactNumber: z
+        .string()
+        .refine((val) => !val || portugalPhoneRegex.test(val), {
+          message:
+            'Only valid Portugal contact numbers are allowed (+351xxxxxxxxx)',
+        })
+        .optional(),
       referralCode: z.string().optional(),
     })
     .strict()
@@ -103,6 +111,8 @@ const loginCustomerValidationSchema = z.object({
       path: ['email'],
     }),
 });
+
+//
 const logoutValidationSchema = z.object({
   body: z
     .object({
