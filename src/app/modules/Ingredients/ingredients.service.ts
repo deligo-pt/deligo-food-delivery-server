@@ -1,17 +1,19 @@
 import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
-import { IIngredients } from './ingredients.interface';
 import { Ingredient } from './ingredients.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { IngredientsSearchFields } from './ingredients.constant';
+import { TIngredients } from './ingredients.interface';
+import customNanoId from '../../utils/customNanoId';
+import { Tax } from '../Tax/tax.model';
 
 const createIngredient = async (
-  payload: IIngredients,
+  payload: TIngredients,
   currentUser: TCurrentUser,
-  file: string,
 ) => {
+  // 1. Role Validation
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -19,15 +21,41 @@ const createIngredient = async (
     );
   }
 
+  const isTaxExist = await Tax.findOne({
+    _id: payload.tax,
+    isDeleted: false,
+    isActive: true,
+  });
+
+  if (!isTaxExist) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'The provided Tax configuration ID is invalid, inactive, or does not exist.',
+    );
+  }
+
+  // 3. Category Formatting
   const formattedCategory = payload.category.toUpperCase().trim();
   payload.category = formattedCategory;
-
   const categorySuffix = formattedCategory.substring(0, 3);
-  const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
 
-  payload.sku = `ING-${categorySuffix}-${shortId}`;
-  payload.image = file;
+  // 4. Unique SKU Generation
+  let isUnique = false;
+  let generatedSku = '';
 
+  while (!isUnique) {
+    const shortId = customNanoId(4);
+    generatedSku = `ING-${categorySuffix}-${shortId}`;
+
+    const existingSku = await Ingredient.findOne({ sku: generatedSku }).lean();
+    if (!existingSku) {
+      isUnique = true;
+    }
+  }
+
+  payload.sku = generatedSku;
+
+  // 5. Database Insertion
   const newIngredient = await Ingredient.create(payload);
 
   return newIngredient;
@@ -35,7 +63,7 @@ const createIngredient = async (
 
 const updateIngredient = async (
   id: string,
-  payload: Partial<IIngredients>,
+  payload: Partial<TIngredients>,
   image: string | null,
 ) => {
   const ingredient = await Ingredient.findById(id);

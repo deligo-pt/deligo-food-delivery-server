@@ -8,12 +8,12 @@ import { NotificationService } from '../Notification/notification.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { IngredientOrder } from './ing-order.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
-import { IIngredients } from '../Ingredients/ingredients.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Vendor } from '../Vendor/vendor.model';
 import { searchableFields } from './ing-order.constant';
 import { formatDateTime } from '../../utils/formatDateTime';
 import customNanoId from '../../utils/customNanoId';
+import { TIngredients } from '../Ingredients/ingredients.interface';
 
 // confirm ingredient order after reduniq payment success
 const confirmIngredientOrder = async (
@@ -46,7 +46,7 @@ const confirmIngredientOrder = async (
     );
   }
   const ingredientData = existingOrder.orderDetails
-    .ingredient as Partial<IIngredients>;
+    .ingredient as Partial<TIngredients>;
 
   // 4. Verify Payment with RedUniq (getResult)
   const verifyPayload = {
