@@ -22,13 +22,13 @@ router.patch(
 
 router.get(
   '/',
-  auth('SUPER_ADMIN', 'ADMIN'),
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
   PermissionControllers.getAllPermissions,
 );
 
 router.get(
   '/:permissionId',
-  auth('SUPER_ADMIN', 'ADMIN'),
+  auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
   PermissionControllers.getSinglePermission,
 );
 
