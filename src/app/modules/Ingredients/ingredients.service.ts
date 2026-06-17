@@ -116,7 +116,7 @@ const updateIngredient = async (
 };
 
 const getIngredientDetails = async (sku: string) => {
-  const result = await Ingredient.findOne({ sku });
+  const result = await Ingredient.findOne({ sku }).populate('tax', 'taxRate');
   if (!result || result.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
   }
@@ -125,7 +125,7 @@ const getIngredientDetails = async (sku: string) => {
 
 const getAllIngredients = async (query: Record<string, unknown>) => {
   const ingredientQuery = new QueryBuilder(
-    Ingredient.find({ isDeleted: false }),
+    Ingredient.find({ isDeleted: false }).populate('tax', 'taxRate'),
     query,
   )
     .search(IngredientsSearchFields)
