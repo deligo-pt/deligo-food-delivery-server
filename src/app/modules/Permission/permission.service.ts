@@ -188,8 +188,9 @@ const assignPermissionsToAdmin = async (
 
 const revokePermissionsFromAdmin = async (
   targetAdminCustomId: string,
-  payload: { permissionIds: string[] },
+  payload: { permissionActions: string[] },
 ) => {
+  const { permissionActions } = payload;
   const targetAdmin = await Admin.findOne({
     userId: targetAdminCustomId,
     isDeleted: false,
@@ -198,13 +199,23 @@ const revokePermissionsFromAdmin = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Target Admin account not found!');
   }
 
-  const actionCodes = await validateIdsAndGetActionCodes(payload.permissionIds);
+  const userCurrentPermissions = targetAdmin.permissions || [];
+  const missingActions = permissionActions.filter(
+    (action) => !userCurrentPermissions.includes(action),
+  );
+
+  if (missingActions.length > 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Revoke failed: The target admin does not currently have these permission(s): [${missingActions.join(', ')}]`,
+    );
+  }
 
   const result = await Admin.findOneAndUpdate(
     { userId: targetAdminCustomId },
     {
       $pull: {
-        permissions: { $in: actionCodes },
+        permissions: { $in: permissionActions },
       },
     },
     { new: true, runValidators: true },
