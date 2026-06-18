@@ -150,13 +150,12 @@ const getMyIngredientOrders = async (
 
   const ingredientOrderQuery = new QueryBuilder(
     IngredientOrder.find({
-      vendor: vendorInfo._id,
+      vendorId: vendorInfo._id,
       isDeleted: false,
-      isPaid: true,
       paymentStatus: 'PAID',
       orderStatus: { $ne: 'PENDING' }, // Exclude orders that are still pending
       orderId: { $exists: true }, // Ensure we only get orders that have been confirmed and have an orderId
-    }).populate('orderDetails.ingredient'),
+    }).populate('orderDetails.ingredientId'),
     query,
   )
     .search(searchableFields)
@@ -181,13 +180,12 @@ const getAllIngredientOrdersForAdmin = async (
   const ingredientOrderQuery = new QueryBuilder(
     IngredientOrder.find({
       isDeleted: false,
-      isPaid: true,
       paymentStatus: 'PAID',
       orderStatus: { $ne: 'PENDING' }, // Exclude orders that are still pending
       orderId: { $exists: true }, // Ensure we only get orders that have been confirmed and have an orderId
     })
-      .populate('orderDetails.ingredient')
-      .populate('vendor'),
+      .populate('orderDetails.ingredientId')
+      .populate('vendorId'),
     query,
   )
     .search(searchableFields)
@@ -210,11 +208,10 @@ const getSingleIngredientOrder = async (orderId: string) => {
   const result = await IngredientOrder.findOne({
     orderId,
     isDeleted: false,
-    isPaid: true,
     paymentStatus: 'PAID',
   })
-    .populate('vendor')
-    .populate('orderDetails.ingredient');
+    .populate('vendorId')
+    .populate('orderDetails.ingredientId');
 
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Ingredient order not found');
@@ -248,7 +245,7 @@ const getSingleIngredientOrder = async (orderId: string) => {
 
 // update order status (SHIPPED, DELIVERED) - only Admin can do this
 const updateIngredientOrderStatus = async (
-  id: string,
+  orderId: string,
   status: 'SHIPPED' | 'DELIVERED',
   currentUser: TCurrentUser,
 ) => {
@@ -260,7 +257,9 @@ const updateIngredientOrderStatus = async (
     );
   }
 
-  const order = await IngredientOrder.findById(id);
+  const order = await IngredientOrder.findOne({ orderId }).setOptions({
+    skipFilter: true,
+  });
 
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
@@ -273,19 +272,50 @@ const updateIngredientOrderStatus = async (
     );
   }
 
-  const updatedData: Record<string, unknown> = {
-    orderStatus: status,
-    admin: adminId,
+  if (order.orderStatus === status) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Order is already marked as ${status}`,
+    );
+  }
+
+  if (status === 'DELIVERED' && order.orderStatus !== 'SHIPPED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Order must be SHIPPED before it can be marked as DELIVERED',
+    );
+  }
+
+  if (status === 'SHIPPED' && order.orderStatus === 'DELIVERED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Cannot change status to SHIPPED after the order has already been DELIVERED',
+    );
+  }
+
+  const updateQuery: Record<string, any> = {
+    $set: {
+      orderStatus: status,
+      adminId: adminId,
+    },
   };
 
-  // Store the specific date for the timeline
-  if (status === 'SHIPPED') updatedData['statusHistory.shippedAt'] = new Date();
-  if (status === 'DELIVERED')
-    updatedData['statusHistory.deliveredAt'] = new Date();
+  if (status === 'SHIPPED') {
+    updateQuery.$set['statusHistory.shippedAt'] = new Date();
+  }
 
-  const result = await IngredientOrder.findByIdAndUpdate(id, updatedData, {
-    new: true,
-  });
+  if (status === 'DELIVERED') {
+    updateQuery.$set['statusHistory.deliveredAt'] = new Date();
+  }
+
+  const result = await IngredientOrder.findOneAndUpdate(
+    { orderId },
+    updateQuery,
+    {
+      new: true,
+      runValidators: true,
+    },
+  ).setOptions({ skipFilter: true });
 
   return result;
 };

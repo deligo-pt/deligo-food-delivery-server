@@ -34,8 +34,11 @@ router.get(
 );
 
 router.patch(
-  '/:id/status', //_id eita
+  '/:orderId/status', //_id eita
   auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(
+    IngredientOrderValidation.updateIngredientOrderStatusValidationSchema,
+  ),
   IngredientOrderController.updateIngredientOrderStatus,
 );
 

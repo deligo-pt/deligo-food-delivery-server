@@ -55,7 +55,19 @@ const confirmIngredientOrderValidationSchema = z.object({
     .strict(),
 });
 
+const updateIngredientOrderStatusValidationSchema = z.object({
+  body: z
+    .object({
+      status: z.enum(['SHIPPED', 'DELIVERED'], {
+        required_error: 'Status is required',
+        invalid_type_error: 'Status must be either SHIPPED or DELIVERED',
+      }),
+    })
+    .strict(),
+});
+
 export const IngredientOrderValidation = {
   createIngredientOrderValidationSchema,
   confirmIngredientOrderValidationSchema,
+  updateIngredientOrderStatusValidationSchema,
 };
