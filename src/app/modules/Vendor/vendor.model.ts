@@ -169,6 +169,11 @@ const vendorSchema = new Schema<TVendor>(
   },
 );
 
-vendorSchema.index({ currentSessionLocation: '2dsphere' });
+vendorSchema.index({
+  status: 1,
+  isDeleted: 1,
+  'businessLocation.latitude': 1,
+  'businessLocation.longitude': 1,
+});
 
 export const Vendor = model<TVendor>('Vendor', vendorSchema);
