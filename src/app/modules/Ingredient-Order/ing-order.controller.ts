@@ -60,12 +60,12 @@ const getSingleIngredientOrder = catchAsync(async (req, res) => {
 });
 
 const updateIngredientOrderStatus = catchAsync(async (req, res) => {
-  const { id } = req.params;
+  const { orderId } = req.params;
   const { status } = req.body;
   const currentUser = req.user as TCurrentUser;
 
   const result = await IngredientOrderService.updateIngredientOrderStatus(
-    id,
+    orderId,
     status,
     currentUser,
   );
