@@ -7,13 +7,11 @@ import { Transaction } from '../Transaction/transaction.model';
 import { NotificationService } from '../Notification/notification.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { IngredientOrder } from './ing-order.model';
-import { Ingredient } from '../Ingredients/ingredients.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Vendor } from '../Vendor/vendor.model';
 import { searchableFields } from './ing-order.constant';
 import { formatDateTime } from '../../utils/formatDateTime';
 import customNanoId from '../../utils/customNanoId';
-import { TIngredients } from '../Ingredients/ingredients.interface';
 
 // confirm ingredient order after reduniq payment success
 const confirmIngredientOrder = async (
@@ -22,33 +20,28 @@ const confirmIngredientOrder = async (
 ) => {
   const { orderId, paymentToken } = payload;
 
-  // 1. Find the initiated order (in PROCESSING state)
-  const existingOrder = await IngredientOrder.findById(orderId).populate(
-    'orderDetails.ingredient',
-  );
+  const existingOrder = await IngredientOrder.findById(orderId).setOptions({
+    skipFilter: true,
+  });
+
   if (!existingOrder) {
     throw new AppError(httpStatus.NOT_FOUND, 'Ingredient order not found');
   }
 
-  // 2. Security Check: Ensure the person completing is the one who initiated
-  if (existingOrder.vendor.toString() !== currentUser._id.toString()) {
+  if (existingOrder.vendorId.toString() !== currentUser._id.toString()) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
       'Unauthorized to complete this order',
     );
   }
 
-  // 3. Prevent double processing
   if (existingOrder.paymentStatus === 'PAID') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Order already paid and confirmed',
     );
   }
-  const ingredientData = existingOrder.orderDetails
-    .ingredient as Partial<TIngredients>;
 
-  // 4. Verify Payment with RedUniq (getResult)
   const verifyPayload = {
     method: 'getResult',
     api: {
@@ -65,7 +58,6 @@ const confirmIngredientOrder = async (
 
   const paymentData = verifyRes.data;
 
-  // Status "4" usually indicates a successful authorized/captured transaction in Reduniq
   if (
     !paymentData ||
     !paymentData.transaction ||
@@ -77,72 +69,54 @@ const confirmIngredientOrder = async (
     );
   }
 
-  const transactionId = paymentData.transaction.id;
+  const gatewayTransactionId = paymentData.transaction.id;
   const uniqueOrderId = `ING-ORD-${customNanoId(10)}`;
 
-  // --- Start Database Transaction ---
   const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    // 1. Update the Order Status
+    session.startTransaction();
+
     existingOrder.paymentStatus = 'PAID';
-    existingOrder.isPaid = true;
-    existingOrder.transactionId = transactionId;
+    existingOrder.transactionId = gatewayTransactionId;
     existingOrder.orderStatus = 'CONFIRMED';
-    existingOrder.orderId = uniqueOrderId; // Generate the final readable Order ID
+    existingOrder.orderId = uniqueOrderId;
 
     await existingOrder.save({ session });
 
-    // 2. Stock Management (Atomic update)
-    // We check if stock is sufficient within the update to prevent race conditions
-    const updatedIngredient = await Ingredient.findOneAndUpdate(
-      {
-        _id: existingOrder.orderDetails.ingredient,
-        stock: { $gte: existingOrder.orderDetails.totalQuantity },
-      },
-      { $inc: { stock: -existingOrder.orderDetails.totalQuantity } },
-      { session, new: true },
-    );
-
-    if (!updatedIngredient) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Insufficient stock to complete the purchase',
+    if (typeof Transaction !== 'undefined') {
+      await Transaction.create(
+        [
+          {
+            transactionId: gatewayTransactionId,
+            orderId: existingOrder._id,
+            userId: currentUser?._id,
+            userModel: 'Vendor',
+            totalAmount: existingOrder.grandTotal,
+            type: 'INGREDIENT_PURCHASE',
+            status: 'SUCCESS',
+            paymentMethod: existingOrder.paymentMethod,
+            remarks: `Ingredient purchase successful: ${uniqueOrderId}`,
+          },
+        ],
+        { session },
       );
     }
 
-    // 3. Create General Transaction Record (if your system uses a Transaction model)
-    await Transaction.create(
-      [
-        {
-          transactionId: transactionId,
-          orderId: existingOrder._id,
-          userId: currentUser?._id,
-          userModel: 'Vendor',
-          totalAmount: existingOrder.grandTotal,
-          type: 'INGREDIENT_PURCHASE',
-          status: 'SUCCESS',
-          paymentMethod: existingOrder.paymentMethod,
-          remarks: `Ingredient purchase successful: ${existingOrder.orderId}`,
-        },
-      ],
-      { session },
-    );
-
     await session.commitTransaction();
 
-    // 4. Post-confirmation logic (Notifications)
+    const itemsCount = existingOrder.orderDetails.reduce(
+      (acc, item) => acc + item.quantity,
+      0,
+    );
     const adminNotification = {
       title: 'New Ingredient Purchase',
-      body: `Vendor ${currentUser.name.firstName} purchased ${existingOrder.orderDetails.totalQuantity}x ${ingredientData?.name}. Order ID: ${uniqueOrderId}`,
+      body: `Vendor ${currentUser.name?.firstName || 'Business'} purchased ${itemsCount} items. Order ID: ${uniqueOrderId}`,
       data: {
         orderId: existingOrder._id.toString(),
         type: 'INGREDIENT_ORDER',
       },
     };
 
-    // Assuming you have a method to find Admins or send to all Admins
     NotificationService.sendToRole(
       'Admin',
       ['ADMIN', 'SUPER_ADMIN'],
@@ -152,9 +126,13 @@ const confirmIngredientOrder = async (
     );
 
     return existingOrder;
-  } catch (err) {
-    await session.abortTransaction();
-    throw err;
+  } catch (err: unknown) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    const errorMessage =
+      err instanceof Error ? err.message : 'Failed to confirm order';
+    throw new AppError(httpStatus.BAD_REQUEST, errorMessage);
   } finally {
     session.endSession();
   }
@@ -288,7 +266,7 @@ const updateIngredientOrderStatus = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
   }
 
-  if (!order.isPaid) {
+  if (order.paymentStatus !== 'PAID') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Cannot update status of an unpaid order',

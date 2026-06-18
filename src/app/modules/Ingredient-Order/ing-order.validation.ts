@@ -35,6 +35,27 @@ const createIngredientOrderValidationSchema = z.object({
     .strict(),
 });
 
+const confirmIngredientOrderValidationSchema = z.object({
+  body: z
+    .object({
+      orderId: z
+        .string({
+          required_error: 'Order ID is required.',
+          invalid_type_error: 'Order ID must be a string.',
+        })
+        .min(1, 'Order id cannot be empty.'),
+
+      paymentToken: z
+        .string({
+          required_error: 'Payment token is required.',
+          invalid_type_error: 'Payment token must be a string.',
+        })
+        .min(1, 'Payment token cannot be empty.'),
+    })
+    .strict(),
+});
+
 export const IngredientOrderValidation = {
   createIngredientOrderValidationSchema,
+  confirmIngredientOrderValidationSchema,
 };
