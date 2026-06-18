@@ -1,22 +1,102 @@
-import { Schema, model } from "mongoose";
-import { IIngredients } from "./ingredients.interface";
+import { Schema, model } from 'mongoose';
+import { TIngredients } from './ingredients.interface';
 
-const ingredientsSchema = new Schema<IIngredients>(
-    {
-        name: { type: String, required: true, trim: true },
-        category: { type: String, required: true },
-        description: { type: String },
-        sku: { type: String, required: true, unique: true },
-        price: { type: Number, required: true },
-        stock: { type: Number, required: true, default: 0 },
-        minOrder: { type: Number, default: 1 },
-        image: { type: String, required: true },
-        isDeleted: { type: Boolean, default: false },
-    },
-    {
-        versionKey: false,
-        timestamps: true,
-    }
+const bulkDiscountSchema = new Schema(
+  {
+    minQty: { type: Number, required: true },
+    discountPrice: { type: Number, required: true },
+  },
+  {
+    _id: false,
+    versionKey: false,
+  },
 );
 
-export const Ingredient = model<IIngredients>("Ingredient", ingredientsSchema);
+const ingredientsSchema = new Schema<TIngredients>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    category: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+    sku: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    tax: {
+      type: Schema.Types.ObjectId,
+      ref: 'Tax',
+      required: true,
+    },
+    unit: {
+      type: String,
+      required: true,
+      enum: ['kg', 'g', 'litre', 'ml', 'piece', 'packet', 'box'],
+    },
+    stock: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+
+    totalAddedQuantity: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    lowStockAlert: {
+      type: Number,
+      required: true,
+      default: 5,
+    },
+    minOrder: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+    image: {
+      type: String,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ['available', 'out-of-stock'],
+      default: 'available',
+    },
+    shelfLifeDays: {
+      type: Number,
+    },
+    bulkDiscount: [bulkDiscountSchema],
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  {
+    versionKey: false,
+    timestamps: true,
+  },
+);
+
+ingredientsSchema.index({ name: 'text', description: 'text', sku: 'text' });
+
+export const Ingredient = model<TIngredients>('Ingredient', ingredientsSchema);

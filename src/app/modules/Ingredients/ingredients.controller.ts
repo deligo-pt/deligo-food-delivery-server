@@ -3,15 +3,11 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { IngredientsServices } from './ingredients.service';
-import { TImageFile } from '../../interfaces/image.interface';
 
 const createIngredient = catchAsync(async (req, res) => {
-  const file = req.file as TImageFile;
-
   const result = await IngredientsServices.createIngredient(
     req.body,
     req.user as TCurrentUser,
-    file?.path,
   );
 
   sendResponse(res, {
@@ -23,13 +19,11 @@ const createIngredient = catchAsync(async (req, res) => {
 });
 
 const updateIngredient = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const file = req.file as TImageFile;
+  const { ingredientId } = req.params;
 
   const result = await IngredientsServices.updateIngredient(
-    id,
+    ingredientId,
     req.body,
-    file?.path,
   );
 
   sendResponse(res, {
@@ -64,9 +58,36 @@ const getAllIngredients = catchAsync(async (req, res) => {
   });
 });
 
+const softDeleteIngredient = catchAsync(async (req, res) => {
+  const { ingredientId } = req.params;
+  const result = await IngredientsServices.softDeleteIngredient(ingredientId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Ingredient soft deleted successfully',
+    data: result,
+  });
+});
+
+const permanentDeleteIngredient = catchAsync(async (req, res) => {
+  const { ingredientId } = req.params;
+  const result =
+    await IngredientsServices.permanentDeleteIngredient(ingredientId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Ingredient permanently removed from database',
+    data: result,
+  });
+});
+
 export const IngredientsController = {
   createIngredient,
   updateIngredient,
   getIngredientDetails,
   getAllIngredients,
+  softDeleteIngredient,
+  permanentDeleteIngredient,
 };

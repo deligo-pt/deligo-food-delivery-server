@@ -2,19 +2,24 @@ import { Types } from 'mongoose';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 
 export type TOrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED';
-export type TPaymentStatus = 'PROCESSING' | 'PAID'; // | 'FAILED' | 'REFUNDED';
+export type TPaymentStatus = 'PROCESSING' | 'PAID';
 
-export interface IIngredientOrderDetail {
-  totalQuantity: number;
-  totalAmount: number;
-  ingredient: Types.ObjectId; // it will have everything related ingredient
-}
-
+export type TIngredientOrderDetail = {
+  ingredientId: Types.ObjectId;
+  name: string; // Snapshot: Ingredient name at the time of order
+  sku: string; // Snapshot: SKU for SAF-T billing auditing
+  unit: string; // Snapshot: unit (e.g., kg, litre)
+  quantity: number; // Ordered quantity
+  pricePerUnit: number; // Snapshot: Net Price before tax
+  taxRate: number; // Snapshot: Portugal Tax Rate percentage (e.g., 6, 23)
+  taxAmount: number; // Calculated tax for this item quantity: (price * quantity) * (taxRate/100)
+  totalAmount: number; // Gross amount for this item: (Price * Qty) + TaxAmount
+};
 export type TIngredientOrder = {
-  vendor: Types.ObjectId;
-  admin?: Types.ObjectId;
   orderId?: string;
-  orderDetails: IIngredientOrderDetail;
+  vendorId: Types.ObjectId;
+  adminId?: Types.ObjectId;
+  orderDetails: TIngredientOrderDetail[];
   deliveryAddress: {
     label: string;
     street: string;
@@ -34,9 +39,16 @@ export type TIngredientOrder = {
     totalDeliveryCharge: number;
   };
 
-  grandTotal: number;
-  paymentMethod: TPaymentMethod;
+  orderCalculation: {
+    totalOriginalPrice: number;
+    totalProductDiscount: number;
+    taxableAmount: number;
+    totalTaxAmount: number;
+  };
 
+  grandTotal: number;
+
+  paymentMethod: TPaymentMethod;
   orderStatus: TOrderStatus;
   paymentStatus: TPaymentStatus;
 
@@ -44,8 +56,8 @@ export type TIngredientOrder = {
     shippedAt?: Date;
     deliveredAt?: Date;
   };
+
   transactionId?: string;
-  isPaid?: boolean;
   isDeleted: boolean;
   createdAt?: Date;
   updatedAt?: Date;

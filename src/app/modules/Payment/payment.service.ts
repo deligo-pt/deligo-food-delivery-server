@@ -4,7 +4,10 @@ import config from '../../config';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
-import { TIngredientOrder } from '../Ingredient-Order/ing-order.interface';
+import {
+  TIngredientOrder,
+  TIngredientOrderDetail,
+} from '../Ingredient-Order/ing-order.interface';
 import mongoose from 'mongoose';
 import { Vendor } from '../Vendor/vendor.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
@@ -14,6 +17,7 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { Admin } from '../Admin/admin.model';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import customNanoId from '../../utils/customNanoId';
 
 const solutionIds = {
   CARD: '117',
@@ -159,92 +163,183 @@ const createIngredientRedUniqPayment = async (
   payload: TIngredientOrder,
   currentUser: TCurrentUser,
 ) => {
-  const { orderDetails, paymentMethod } = payload;
+  const { orderDetails, paymentMethod, deliveryAddress } = payload;
+
+  if (!orderDetails || orderDetails.length === 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Order details/items cannot be empty',
+    );
+  }
+
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
     const vendorInfo = await Vendor.findById(currentUser._id).session(session);
-    const ingredient = await Ingredient.findById(
-      payload.orderDetails?.ingredient,
-    ).session(session);
-
     if (!vendorInfo) {
       throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
     }
-    if (!ingredient) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
+
+    const pendingOrders = await IngredientOrder.find({
+      vendorId: currentUser._id,
+      paymentStatus: 'PROCESSING',
+      orderStatus: 'PENDING',
+    })
+      .setOptions({ skipFilter: true })
+      .session(session);
+
+    for (const oldOrder of pendingOrders) {
+      if (oldOrder.isDeleted) {
+        await IngredientOrder.deleteOne({ _id: oldOrder._id }).session(session);
+        continue;
+      }
+
+      for (const item of oldOrder.orderDetails) {
+        await Ingredient.findByIdAndUpdate(
+          item.ingredientId,
+          { $inc: { stock: item.quantity } },
+          { session },
+        );
+      }
+
+      await IngredientOrder.deleteOne({ _id: oldOrder._id }).session(session);
     }
 
-    if (orderDetails.totalQuantity > ingredient?.stock) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Ingredient stock not available',
-      );
-    }
+    const processedOrderDetails: TIngredientOrderDetail[] = [];
+    let totalOriginalPrice = 0;
+    let totalProductDiscount = 0;
+    let totalTaxAmount = 0;
 
-    if (orderDetails.totalQuantity < ingredient.minOrder!) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Minimum order quantity is ${ingredient.minOrder}`,
+    for (const item of orderDetails) {
+      const ingredient = await Ingredient.findOne({
+        _id: item.ingredientId,
+        isDeleted: false,
+      })
+        .populate('tax')
+        .session(session);
+
+      if (!ingredient) {
+        throw new AppError(
+          httpStatus.NOT_FOUND,
+          `Ingredient with ID ${item.ingredientId} not found`,
+        );
+      }
+
+      if (item.quantity > ingredient.stock) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Stock not available for ${ingredient.name}. Available: ${ingredient.stock}`,
+        );
+      }
+
+      if (item.quantity < (ingredient.minOrder || 1)) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Minimum order quantity for ${ingredient.name} is ${ingredient.minOrder}`,
+        );
+      }
+
+      let activePrice = ingredient.price;
+      if (ingredient.bulkDiscount && ingredient.bulkDiscount.length > 0) {
+        const applicableDiscount = ingredient.bulkDiscount
+          .filter((d) => item.quantity >= d.minQty)
+          .sort((a, b) => b.minQty - a.minQty)[0];
+
+        if (applicableDiscount) {
+          activePrice = applicableDiscount.discountPrice;
+        }
+      }
+
+      const itemOriginalCost = item.quantity * ingredient.price;
+      const itemActualCostBeforeTax = item.quantity * activePrice;
+      const itemDiscount = itemOriginalCost - itemActualCostBeforeTax;
+
+      const taxRate = (ingredient.tax as any)?.taxRate || 0;
+      const itemTaxAmount = Number(
+        ((itemActualCostBeforeTax * taxRate) / 100).toFixed(2),
       );
+      const itemTotalAmount = Number(
+        (itemActualCostBeforeTax + itemTaxAmount).toFixed(2),
+      );
+
+      ingredient.stock =
+        (Number(ingredient.stock) || 0) - Number(item.quantity);
+      await ingredient.save({ session });
+
+      processedOrderDetails.push({
+        ingredientId: ingredient._id,
+        name: ingredient.name,
+        sku: ingredient.sku,
+        unit: ingredient.unit,
+        quantity: item.quantity,
+        pricePerUnit: activePrice,
+        taxRate: taxRate,
+        taxAmount: itemTaxAmount,
+        totalAmount: itemTotalAmount,
+      });
+
+      totalOriginalPrice += itemOriginalCost;
+      totalProductDiscount += itemDiscount;
+      totalTaxAmount += itemTaxAmount;
     }
 
     const globalSettings = await GlobalSettingsService.getGlobalSettings();
-    const ingredientOrderData = globalSettings?.ingredientOrder;
-
+    const ingredientOrderSettings = globalSettings?.ingredientOrder;
     const vendorCity =
       vendorInfo.businessLocation?.city?.trim().toLowerCase() || '';
 
     let deliveryChargeBase = 0;
-
     if (vendorCity === 'lisbon' || vendorCity === 'lisboa') {
       deliveryChargeBase =
-        ingredientOrderData?.deliveryChargeInsideLisbon || 20;
+        ingredientOrderSettings?.deliveryChargeInsideLisbon || 20;
     } else {
       deliveryChargeBase =
-        ingredientOrderData?.deliveryChargeOutsideLisbon || 30;
+        ingredientOrderSettings?.deliveryChargeOutsideLisbon || 30;
     }
 
     deliveryChargeBase = Number(deliveryChargeBase.toFixed(2));
-
-    const vatRate = ingredientOrderData?.vatRate || 0;
+    const deliveryVatRate = globalSettings?.deliveryVatRate || 0;
     const deliveryVatAmount = Number(
-      ((deliveryChargeBase * vatRate) / 100).toFixed(2),
+      ((deliveryChargeBase * deliveryVatRate) / 100).toFixed(2),
     );
     const deliveryChargeTotal = Number(
       (deliveryChargeBase + deliveryVatAmount).toFixed(2),
     );
 
-    const totalIngredientCost =
-      payload.orderDetails.totalQuantity * Number(ingredient.price);
+    const taxableAmount = Number(
+      (totalOriginalPrice - totalProductDiscount).toFixed(2),
+    );
+    totalTaxAmount = Number(totalTaxAmount.toFixed(2));
+
     const grandTotal = Number(
-      (totalIngredientCost + deliveryChargeTotal).toFixed(2),
+      (taxableAmount + totalTaxAmount + deliveryChargeTotal).toFixed(2),
     );
 
-    const paymentMethod = payload.paymentMethod as TPaymentMethod;
-
-    // Create order within transaction
     const [newOrder] = await IngredientOrder.create(
       [
         {
-          orderDetails: {
-            ...payload.orderDetails,
-            totalAmount: totalIngredientCost,
-          },
-          paymentMethod: paymentMethod,
-          vendor: currentUser._id,
-          deliveryAddress: vendorInfo.businessLocation,
+          vendorId: currentUser._id,
+          orderDetails: processedOrderDetails,
+          deliveryAddress: deliveryAddress || vendorInfo.businessLocation,
           delivery: {
             charge: deliveryChargeBase,
-            vatRate: Number(ingredientOrderData?.vatRate || 0),
+            vatRate: deliveryVatRate,
             vatAmount: deliveryVatAmount,
             totalDeliveryCharge: deliveryChargeTotal,
           },
+          orderCalculation: {
+            totalOriginalPrice: Number(totalOriginalPrice.toFixed(2)),
+            totalProductDiscount: Number(totalProductDiscount.toFixed(2)),
+            taxableAmount,
+            totalTaxAmount,
+          },
           grandTotal,
-          paymentStatus: 'PROCESSING',
+          paymentMethod,
           orderStatus: 'PENDING',
+          paymentStatus: 'PROCESSING',
+          isDeleted: false,
         },
       ],
       { session },
@@ -261,7 +356,7 @@ const createIngredientRedUniqPayment = async (
         action: 101,
         currency: '978',
         solution: paymentMethod !== 'OTHER' ? solutionIds[paymentMethod] : null,
-        description: `Ingredient Order via ${paymentMethod}`,
+        description: `Ingredient Order Reference: ${newOrder._id}`,
       },
       order: {
         ref: newOrder._id.toString(),
@@ -278,7 +373,24 @@ const createIngredientRedUniqPayment = async (
     );
     const { result, token, redirectUrl } = response.data;
 
-    if (result.code === '00000000') {
+    if (
+      !result?.code ||
+      (result.code !== '00000000' && result.code !== '17000000000')
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        result?.message || 'Payment initiation failed by gateway',
+      );
+    }
+
+    if (!token) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Payment token not received from RedUniq',
+      );
+    }
+
+    if (token) {
       newOrder.transactionId = token;
       await newOrder.save({ session });
 
@@ -289,10 +401,16 @@ const createIngredientRedUniqPayment = async (
         paymentToken: token,
       };
     } else {
-      throw new Error('Payment initiation failed');
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'RedUniq payment initiation failed',
+      );
     }
   } catch (error: unknown) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+
     const errorMessage =
       error instanceof Error ? error.message : 'Transaction failed';
     throw new AppError(httpStatus.BAD_REQUEST, errorMessage);

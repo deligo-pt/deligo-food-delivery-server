@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { addressValidationSchema } from '../Admin/admin.validation';
 
+const portugalPhoneRegex = /^(?:\+351|351)?9[1236]\d{7}$/;
+
 // ---------------------------------------------
 // User Profile Update Validation
 // ---------------------------------------------
@@ -41,6 +43,10 @@ const sendOtpValidationSchema = z.object({
           invalid_type_error: 'Contact number must be a string.',
         })
         .trim()
+        .refine((val) => !val || portugalPhoneRegex.test(val), {
+          message:
+            'Only valid Portugal contact numbers are allowed (+351xxxxxxxxx).',
+        })
         .optional(),
 
       email: z

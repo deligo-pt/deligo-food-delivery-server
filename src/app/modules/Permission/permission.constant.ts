@@ -13,6 +13,7 @@ export const VALID_PERMISSION_ACTIONS = [
   'CAN_VIEW_ANALYTICS',
   'CAN_MANAGE_SYSTEM_SETTINGS',
   'CAN_MANAGE_AGREEMENTS',
+  'CAN_MANAGE_INGREDIENTS',
 ] as const;
 
 export const permissionActionZodSchema = z.enum(VALID_PERMISSION_ACTIONS);

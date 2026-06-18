@@ -1,17 +1,20 @@
 import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
-import { IIngredients } from './ingredients.interface';
 import { Ingredient } from './ingredients.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { IngredientsSearchFields } from './ingredients.constant';
+import { TIngredients } from './ingredients.interface';
+import customNanoId from '../../utils/customNanoId';
+import { Tax } from '../Tax/tax.model';
+import { flattenObject } from '../../utils/flattenObject';
 
 const createIngredient = async (
-  payload: IIngredients,
+  payload: TIngredients,
   currentUser: TCurrentUser,
-  file: string,
 ) => {
+  // 1. Role Validation
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -19,53 +22,101 @@ const createIngredient = async (
     );
   }
 
+  const isTaxExist = await Tax.findOne({
+    _id: payload.tax,
+    isDeleted: false,
+    isActive: true,
+  });
+
+  if (!isTaxExist) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'The provided Tax configuration ID is invalid, inactive, or does not exist.',
+    );
+  }
+
+  // 3. Category Formatting
   const formattedCategory = payload.category.toUpperCase().trim();
   payload.category = formattedCategory;
-
   const categorySuffix = formattedCategory.substring(0, 3);
-  const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
 
-  payload.sku = `ING-${categorySuffix}-${shortId}`;
-  payload.image = file;
+  // 4. Unique SKU Generation
+  let isUnique = false;
+  let generatedSku = '';
 
+  while (!isUnique) {
+    const shortId = customNanoId(4);
+    generatedSku = `ING-${categorySuffix}-${shortId}`;
+
+    const existingSku = await Ingredient.findOne({ sku: generatedSku }).lean();
+    if (!existingSku) {
+      isUnique = true;
+    }
+  }
+
+  payload.sku = generatedSku;
+  payload.totalAddedQuantity = payload.stock;
+
+  // 5. Database Insertion
   const newIngredient = await Ingredient.create(payload);
 
   return newIngredient;
 };
 
 const updateIngredient = async (
-  id: string,
-  payload: Partial<IIngredients>,
-  image: string | null,
+  ingredientId: string,
+  payload: Partial<TIngredients>,
 ) => {
-  const ingredient = await Ingredient.findById(id);
+  const ingredient = await Ingredient.findById(ingredientId);
   if (!ingredient) {
     throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
   }
 
-  // delete existing image and replace new one
-  if (image) {
-    if (ingredient.image) {
-      const oldImage = ingredient.image;
-      deleteSingleImageFromCloudinary(oldImage).catch((error) => {
-        console.error('Cloudinary delete error:', error);
-      });
+  if (payload.tax) {
+    const isTaxExist = await Tax.findOne({
+      _id: payload.tax,
+      isDeleted: false,
+      isActive: true,
+    });
+    if (!isTaxExist) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'The provided Tax configuration ID is invalid or inactive.',
+      );
     }
-    payload.image = image;
   }
 
-  // Update category to UpperCase if it exists in payload
+  if (payload.stock !== undefined) {
+    const stockDifference = payload.stock - ingredient.stock;
+
+    payload.totalAddedQuantity =
+      ingredient.totalAddedQuantity + stockDifference;
+  }
+
+  if (payload.image && ingredient.image) {
+    const oldImage = ingredient.image;
+    deleteSingleImageFromCloudinary(oldImage).catch((error) => {
+      console.error('Cloudinary delete error:', error);
+    });
+  }
+
   if (payload.category) {
     payload.category = payload.category.toUpperCase().trim();
   }
 
-  Object.assign(ingredient, payload);
-  await ingredient.save();
-  return ingredient;
+  const flattenedData = flattenObject(payload);
+
+  const updatedIngredient = await Ingredient.findByIdAndUpdate(
+    ingredientId,
+    { $set: flattenedData },
+    { new: true, runValidators: true },
+  );
+
+  return updatedIngredient;
 };
 
 const getIngredientDetails = async (sku: string) => {
-  const result = await Ingredient.findOne({ sku });
+  const result = await Ingredient.findOne({ sku }).populate('tax', 'taxRate');
   if (!result || result.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
   }
@@ -74,7 +125,7 @@ const getIngredientDetails = async (sku: string) => {
 
 const getAllIngredients = async (query: Record<string, unknown>) => {
   const ingredientQuery = new QueryBuilder(
-    Ingredient.find({ isDeleted: false }),
+    Ingredient.find({ isDeleted: false }).populate('tax', 'taxRate'),
     query,
   )
     .search(IngredientsSearchFields)
@@ -92,9 +143,65 @@ const getAllIngredients = async (query: Record<string, unknown>) => {
   };
 };
 
+const softDeleteIngredient = async (ingredientId: string) => {
+  const ingredient = await Ingredient.findById(ingredientId);
+
+  if (!ingredient || ingredient.isDeleted) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Ingredient not found or already deleted',
+    );
+  }
+
+  // Soft delete workflow: Update flags
+  await Ingredient.findByIdAndUpdate(
+    ingredientId,
+    {
+      $set: {
+        isDeleted: true,
+      },
+    },
+    { new: true },
+  );
+
+  return null;
+};
+
+const permanentDeleteIngredient = async (ingredientId: string) => {
+  const ingredient = await Ingredient.findById(ingredientId);
+
+  if (!ingredient) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Ingredient not found in database',
+    );
+  }
+
+  if (!ingredient.isDeleted) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Please first soft delete for permanent delete',
+    );
+  }
+
+  // 1. Wipe out images from Cloudinary storage right away
+  if (ingredient.image) {
+    deleteSingleImageFromCloudinary(ingredient.image).catch((error) => {
+      console.error('Cloudinary wipe failed for permanent delete:', error);
+    });
+  }
+
+  // 2. Completely remove the record from MongoDB
+  const result = await Ingredient.findByIdAndDelete(ingredientId);
+
+  return result;
+};
+
 export const IngredientsServices = {
   createIngredient,
   updateIngredient,
   getIngredientDetails,
   getAllIngredients,
+  softDeleteIngredient,
+  permanentDeleteIngredient,
 };
