@@ -649,7 +649,10 @@ const getAllVendorsForCustomerPublic = async (
   }
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
-  const radiusInRadians = globalSettings.customerNearestVendorRadiusKm / 6378.1;
+  const radiusInKm = globalSettings.customerNearestVendorRadiusKm;
+
+  const latDelta = radiusInKm / 111;
+  const lngDelta = radiusInKm / (111 * Math.cos(lat * (Math.PI / 180)));
 
   const activeProductVendorIds = await Product.distinct('vendorId', {
     isDeleted: false,
@@ -659,10 +662,13 @@ const getAllVendorsForCustomerPublic = async (
     _id: { $in: activeProductVendorIds },
     status: 'APPROVED',
     isDeleted: false,
-    currentSessionLocation: {
-      $geoWithin: {
-        $centerSphere: [[lng, lat], radiusInRadians],
-      },
+    'businessLocation.latitude': {
+      $gte: lat - latDelta,
+      $lte: lat + latDelta,
+    },
+    'businessLocation.longitude': {
+      $gte: lng - lngDelta,
+      $lte: lng + lngDelta,
     },
   };
 
@@ -683,8 +689,12 @@ const getAllVendorsForCustomerPublic = async (
   }
 
   if (query.productCategory) {
+    const categoryObjectId = new Types.ObjectId(
+      query.productCategory as string,
+    );
+
     const matchingVendorIds = await Product.distinct('vendorId', {
-      category: query.productCategory,
+      category: categoryObjectId,
       isDeleted: false,
       vendorId: { $in: activeProductVendorIds },
     });
@@ -700,11 +710,15 @@ const getAllVendorsForCustomerPublic = async (
         data: [],
       };
     }
-    filter._id = {
-      $in: matchingVendorIds.filter((id) =>
-        activeProductVendorIds.map(String).includes(String(id)),
-      ),
-    };
+    const activeVendorStrSet = new Set(
+      activeProductVendorIds.map((id) => id.toString()),
+    );
+
+    const finalMatchingIds = matchingVendorIds
+      .filter((id) => activeVendorStrSet.has(id.toString()))
+      .map((id) => new Types.ObjectId(id.toString()));
+
+    filter._id = { $in: finalMatchingIds };
     delete query.productCategory;
   }
 
