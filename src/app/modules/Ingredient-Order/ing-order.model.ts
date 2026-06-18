@@ -1,18 +1,44 @@
-import { Schema, model } from 'mongoose';
 import {
   TIngredientOrder,
-  IIngredientOrderDetail,
+  TIngredientOrderDetail,
 } from './ing-order.interface';
 import { PaymentMethods } from '../../constant/GlobalConstant/payment.constant';
+import { model, Query, Schema } from 'mongoose';
 
-const ingredientOrderDetailSchema = new Schema<IIngredientOrderDetail>(
+const ingredientOrderDetailSchema = new Schema<TIngredientOrderDetail>(
   {
-    totalQuantity: { type: Number, required: true },
-    totalAmount: { type: Number },
     ingredient: {
       type: Schema.Types.ObjectId,
       ref: 'Ingredient',
+      required: [true, 'Ingredient reference is required'],
+    },
+    name: { type: String, required: true },
+    sku: { type: String, required: true },
+    unit: { type: String, required: true },
+    quantity: {
+      type: Number,
       required: true,
+      min: [1, 'Quantity cannot be less than 1'],
+    },
+    pricePerUnit: {
+      type: Number,
+      required: true,
+      min: [0, 'Price cannot be negative'],
+    },
+    taxRate: {
+      type: Number,
+      required: true,
+      min: [0, 'Tax rate cannot be negative'],
+    },
+    taxAmount: {
+      type: Number,
+      required: true,
+      min: [0, 'Tax amount cannot be negative'],
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: [0, 'Total amount cannot be negative'],
     },
   },
   { _id: false },
@@ -20,10 +46,24 @@ const ingredientOrderDetailSchema = new Schema<IIngredientOrderDetail>(
 
 const ingredientOrderSchema = new Schema<TIngredientOrder>(
   {
-    vendor: { type: Schema.Types.ObjectId, ref: 'Vendor', required: true },
-    admin: { type: Schema.Types.ObjectId, ref: 'Admin' },
-    orderId: { type: String },
-    orderDetails: { type: ingredientOrderDetailSchema, required: true },
+    orderId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    vendorId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Vendor',
+      required: [true, 'Vendor Id is required'],
+    },
+    adminId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Admin',
+    },
+    orderDetails: {
+      type: [ingredientOrderDetailSchema],
+      required: [true, 'Order details are required'],
+    },
     deliveryAddress: {
       label: { type: String },
       street: { type: String, required: true },
@@ -34,47 +74,71 @@ const ingredientOrderSchema = new Schema<TIngredientOrder>(
       longitude: { type: Number, required: true },
       latitude: { type: Number, required: true },
       geoAccuracy: { type: Number },
-      detailedAddress: {
-        type: String,
-      },
+      detailedAddress: { type: String },
     },
     delivery: {
-      charge: { type: Number, required: true },
-      vatRate: { type: Number, required: true },
-      vatAmount: { type: Number, required: true },
-      totalDeliveryCharge: { type: Number, required: true },
+      charge: { type: Number, required: true, default: 0 },
+      vatRate: { type: Number, required: true, default: 0 },
+      vatAmount: { type: Number, required: true, default: 0 },
+      totalDeliveryCharge: { type: Number, required: true, default: 0 },
     },
-
-    grandTotal: { type: Number, required: true },
+    orderCalculation: {
+      totalOriginalPrice: { type: Number, required: true, min: 0 },
+      totalProductDiscount: {
+        type: Number,
+        required: true,
+        default: 0,
+        min: 0,
+      },
+      taxableAmount: { type: Number, required: true, min: 0 },
+      totalTaxAmount: { type: Number, required: true, min: 0 },
+    },
+    grandTotal: {
+      type: Number,
+      required: [true, 'Grand total is required'],
+      min: [0, 'Grand total cannot be negative'],
+    },
     paymentMethod: {
       type: String,
-      enum: Object.values(PaymentMethods),
+      enum: {
+        values: Object.values(PaymentMethods),
+        message: '{VALUE} is not a valid payment method',
+      },
       required: true,
     },
-
     orderStatus: {
       type: String,
-      enum: ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED'],
+      enum: {
+        values: ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED'],
+        message: '{VALUE} is not a valid order status',
+      },
       default: 'PENDING',
     },
-
+    paymentStatus: {
+      type: String,
+      enum: {
+        values: ['PROCESSING', 'PAID'],
+        message: '{VALUE} is not a valid payment status',
+      },
+      default: 'PROCESSING',
+    },
     statusHistory: {
       shippedAt: { type: Date },
       deliveredAt: { type: Date },
     },
-
-    paymentStatus: {
-      type: String,
-      enum: ['PROCESSING', 'PAID'], // 'FAILED', 'REFUNDED' can be added later
-      default: 'PROCESSING',
-    },
-
     transactionId: { type: String },
-    isPaid: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,
+  },
+);
+
+ingredientOrderSchema.pre(
+  /^find/,
+  function (this: Query<unknown, unknown>, next) {
+    this.where({ isDeleted: { $ne: true } });
+    next();
   },
 );
 
