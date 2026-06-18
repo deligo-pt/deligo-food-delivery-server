@@ -5,7 +5,7 @@ export type TOrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED';
 export type TPaymentStatus = 'PROCESSING' | 'PAID';
 
 export type TIngredientOrderDetail = {
-  ingredient: Types.ObjectId;
+  ingredientId: Types.ObjectId;
   name: string; // Snapshot: Ingredient name at the time of order
   sku: string; // Snapshot: SKU for SAF-T billing auditing
   unit: string; // Snapshot: unit (e.g., kg, litre)

@@ -7,7 +7,7 @@ import { model, Query, Schema } from 'mongoose';
 
 const ingredientOrderDetailSchema = new Schema<TIngredientOrderDetail>(
   {
-    ingredient: {
+    ingredientId: {
       type: Schema.Types.ObjectId,
       ref: 'Ingredient',
       required: [true, 'Ingredient reference is required'],
