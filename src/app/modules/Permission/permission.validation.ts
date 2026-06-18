@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import { z } from 'zod';
-import { permissionActionZodSchema } from './permission.constant';
+import {
+  permissionActionZodSchema,
+  VALID_PERMISSION_ACTIONS,
+} from './permission.constant';
 
 const createPermissionValidationSchema = z.object({
   body: z
@@ -45,19 +48,21 @@ const updatePermissionValidationSchema = z.object({
 const assignPermissionsValidationSchema = z.object({
   body: z
     .object({
-      permissionIds: z
+      permissionActions: z
         .array(
-          z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
-            message: 'Invalid MongoDB ObjectId format for permission',
+          z.enum(VALID_PERMISSION_ACTIONS, {
+            errorMap: () => ({
+              message: 'Invalid permission action provided',
+            }),
           }),
           {
             required_error:
-              'Permissions array containing MongoDB ObjectIds is required',
+              'Permissions array containing valid action strings is required',
           },
         )
         .min(
           1,
-          'Permissions array cannot be empty. Pass an empty array if revoking all.',
+          'Permissions array cannot be empty. At least one action must be provided.',
         ),
     })
     .strict(),
