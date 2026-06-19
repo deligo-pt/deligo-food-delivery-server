@@ -95,4 +95,5 @@ export const PermissionValidations = {
   createPermissionValidationSchema,
   updatePermissionValidationSchema,
   assignPermissionsValidationSchema,
+  revokePermissionsValidationSchema
 };
