@@ -48,7 +48,7 @@ router.patch(
 router.patch(
   '/revoke-permissions/:adminId',
   auth('SUPER_ADMIN', 'ADMIN', ['CAN_MANAGE_PERMISSIONS']),
-  validateRequest(PermissionValidations.assignPermissionsValidationSchema),
+  validateRequest(PermissionValidations.revokePermissionsValidationSchema),
   PermissionControllers.revokePermissionsFromAdmin,
 );
 
