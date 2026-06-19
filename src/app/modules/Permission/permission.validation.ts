@@ -45,7 +45,26 @@ const updatePermissionValidationSchema = z.object({
     .strict(),
 });
 
+
 const assignPermissionsValidationSchema = z.object({
+  body: z
+    .object({
+      permissionIds: z
+        .array(
+          z.string().refine((val) => Types.ObjectId.isValid(val), {
+            message: 'Invalid Permission ID format',
+          }),
+          {
+            required_error: 'permissionIds array is required',
+          }
+        )
+        .min(1, 'At least one permission ID must be provided'),
+    })
+    .strict(),
+});
+
+
+const revokePermissionsValidationSchema = z.object({
   body: z
     .object({
       permissionActions: z
@@ -72,4 +91,5 @@ export const PermissionValidations = {
   createPermissionValidationSchema,
   updatePermissionValidationSchema,
   assignPermissionsValidationSchema,
+  revokePermissionsValidationSchema
 };
