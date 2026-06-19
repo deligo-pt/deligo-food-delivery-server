@@ -45,28 +45,24 @@ const updatePermissionValidationSchema = z.object({
     .strict(),
 });
 
+
 const assignPermissionsValidationSchema = z.object({
   body: z
     .object({
-      permissionActions: z
+      permissionIds: z
         .array(
-          z.enum(VALID_PERMISSION_ACTIONS, {
-            errorMap: () => ({
-              message: 'Invalid permission action provided',
-            }),
+          z.string().refine((val) => Types.ObjectId.isValid(val), {
+            message: 'Invalid Permission ID format',
           }),
           {
-            required_error:
-              'Permissions array containing valid action strings is required',
-          },
+            required_error: 'permissionIds array is required',
+          }
         )
-        .min(
-          1,
-          'Permissions array cannot be empty. At least one action must be provided.',
-        ),
+        .min(1, 'At least one permission ID must be provided'),
     })
     .strict(),
 });
+
 
 const revokePermissionsValidationSchema = z.object({
   body: z
