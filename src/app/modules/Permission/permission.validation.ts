@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { Types } from 'mongoose';
 import {
   permissionActionZodSchema,
   VALID_PERMISSION_ACTIONS,
