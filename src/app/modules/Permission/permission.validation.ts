@@ -68,6 +68,29 @@ const assignPermissionsValidationSchema = z.object({
     .strict(),
 });
 
+const revokePermissionsValidationSchema = z.object({
+  body: z
+    .object({
+      permissionActions: z
+        .array(
+          z.enum(VALID_PERMISSION_ACTIONS, {
+            errorMap: () => ({
+              message: 'Invalid permission action provided',
+            }),
+          }),
+          {
+            required_error:
+              'Permissions array containing valid action strings is required',
+          },
+        )
+        .min(
+          1,
+          'Permissions array cannot be empty. At least one action must be provided.',
+        ),
+    })
+    .strict(),
+});
+
 export const PermissionValidations = {
   createPermissionValidationSchema,
   updatePermissionValidationSchema,
