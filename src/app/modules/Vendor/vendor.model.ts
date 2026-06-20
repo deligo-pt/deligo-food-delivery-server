@@ -169,6 +169,8 @@ const vendorSchema = new Schema<TVendor>(
   },
 );
 
+vendorSchema.index({ currentSessionLocation: '2dsphere' });
+
 vendorSchema.index({
   status: 1,
   isDeleted: 1,

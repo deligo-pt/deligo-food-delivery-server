@@ -3,7 +3,6 @@ import auth from '../../middlewares/auth';
 import { VendorControllers } from './vendor.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { VendorValidation } from './vendor.validation';
-import { LocationValidation } from '../../constant/GlobalValidation/location.validation';
 
 const router = Router();
 
@@ -32,12 +31,12 @@ router.delete(
 );
 
 // Vendor business location update route
-router.patch(
-  '/:vendorId/liveLocation',
-  auth('VENDOR', 'SUB_VENDOR'),
-  validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
-  VendorControllers.updateVendorLiveLocation,
-);
+// router.patch(
+//   '/:vendorId/liveLocation',
+//   auth('VENDOR', 'SUB_VENDOR'),
+//   validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
+//   VendorControllers.updateVendorLiveLocation,
+// );
 
 // Vendor toggle store open close route
 router.patch(

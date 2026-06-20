@@ -466,9 +466,6 @@ const getAllVendorsForCustomer = async (
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
   const radiusInKm = globalSettings.customerNearestVendorRadiusKm;
 
-  const latDelta = radiusInKm / 111;
-  const lngDelta = radiusInKm / (111 * Math.cos(lat * (Math.PI / 180)));
-
   const activeProductVendorIds = await Product.distinct('vendorId', {
     isDeleted: false,
   });
@@ -477,13 +474,14 @@ const getAllVendorsForCustomer = async (
     _id: { $in: activeProductVendorIds },
     status: 'APPROVED',
     isDeleted: false,
-    'businessLocation.latitude': {
-      $gte: lat - latDelta,
-      $lte: lat + latDelta,
-    },
-    'businessLocation.longitude': {
-      $gte: lng - lngDelta,
-      $lte: lng + lngDelta,
+    currentSessionLocation: {
+      $near: {
+        $geometry: {
+          type: 'Point',
+          coordinates: [lng, lat],
+        },
+        $maxDistance: radiusInKm * 1000,
+      },
     },
   };
 
@@ -540,10 +538,12 @@ const getAllVendorsForCustomer = async (
   // 4. QueryBuilder Execution
   const vendors = new QueryBuilder(Vendor.find(filter), query)
     .search(['businessDetails.businessName'])
-    .filter()
-    .sort()
-    .paginate()
-    .fields();
+    .filter();
+
+  if (query.sort) {
+    vendors.sort();
+  }
+  vendors.paginate().fields();
 
   vendors.modelQuery = vendors.modelQuery.select(
     'name userId businessDetails businessLocation documents rating currentSessionLocation',
