@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 
 export const BusinessCategoryName = {
   RESTAURANT: 'RESTAURANT',
@@ -9,7 +9,7 @@ export type TBusinessCategoryName =
   (typeof BusinessCategoryName)[keyof typeof BusinessCategoryName];
 
 export type TBusinessCategory = {
-  _id?: string;
+  _id?: Types.ObjectId;
   name: TBusinessCategoryName;
   slug: string;
   description?: string;
@@ -21,12 +21,23 @@ export type TBusinessCategory = {
 };
 
 export type TProductCategory = {
-  _id?: string;
+  _id?: Types.ObjectId;
   name: string; // e.g. "Pizza", "Burger", "Medicine"
   slug: string;
   description?: string;
   icon: string;
   businessCategoryId: mongoose.Types.ObjectId | string; // reference to BusinessCategory
+  isActive: boolean;
+  isDeleted: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type TCuisine = {
+  _id?: Types.ObjectId;
+  name: string;
+  slug: string;
+  imageUrl: string;
   isActive: boolean;
   isDeleted: boolean;
   createdAt?: Date;
