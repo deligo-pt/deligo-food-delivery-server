@@ -46,7 +46,6 @@ const updatePermissionValidationSchema = z.object({
     .strict(),
 });
 
-
 const assignPermissionsValidationSchema = z.object({
   body: z
     .object({
@@ -57,13 +56,12 @@ const assignPermissionsValidationSchema = z.object({
           }),
           {
             required_error: 'permissionIds array is required',
-          }
+          },
         )
         .min(1, 'At least one permission ID must be provided'),
     })
     .strict(),
 });
-
 
 const revokePermissionsValidationSchema = z.object({
   body: z
@@ -92,5 +90,5 @@ export const PermissionValidations = {
   createPermissionValidationSchema,
   updatePermissionValidationSchema,
   assignPermissionsValidationSchema,
-  revokePermissionsValidationSchema
+  revokePermissionsValidationSchema,
 };

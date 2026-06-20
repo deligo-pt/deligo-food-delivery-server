@@ -1,10 +1,12 @@
 import { Router } from 'express';
-import { CategoryController } from './category.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { CategoryValidation } from './category.validation';
 import auth from '../../middlewares/auth';
 import { multerUpload } from '../../config/multer.config';
 import { parseBody } from '../../middlewares/bodyParser';
+import { BusinessCategoryController } from './businessCategory.controller';
+import { ProductCategoryController } from './productCategory.controller';
+import { CuisineController } from './cuisineCategory.controller';
 
 const router = Router();
 
@@ -15,7 +17,7 @@ router.post(
   parseBody,
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(CategoryValidation.createBusinessCategoryValidationSchema),
-  CategoryController.createBusinessCategory,
+  BusinessCategoryController.createBusinessCategory,
 );
 
 // Update Business Category
@@ -25,7 +27,7 @@ router.patch(
   parseBody,
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(CategoryValidation.updateBusinessCategoryValidationSchema),
-  CategoryController.updateBusinessCategory,
+  BusinessCategoryController.updateBusinessCategory,
 );
 
 // Get All Business Categories
@@ -39,13 +41,13 @@ router.get(
     'SUB_VENDOR',
     'CUSTOMER',
   ),
-  CategoryController.getAllBusinessCategories,
+  BusinessCategoryController.getAllBusinessCategories,
 );
 
 // Get All Business Categories Public
 router.get(
   '/businessCategory/open',
-  CategoryController.getAllBusinessCategoriesPublic,
+  BusinessCategoryController.getAllBusinessCategoriesPublic,
 );
 
 // Get Single Business Category
@@ -59,27 +61,27 @@ router.get(
     'SUB_VENDOR',
     'CUSTOMER',
   ),
-  CategoryController.getSingleBusinessCategory,
+  BusinessCategoryController.getSingleBusinessCategory,
 );
 
 // Get Single Business Category Public
 router.get(
   '/businessCategory/open/:id',
-  CategoryController.getSingleBusinessCategoryPublic,
+  BusinessCategoryController.getSingleBusinessCategoryPublic,
 );
 
 // soft Delete Business Category
 router.delete(
   '/businessCategory/soft-delete/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  CategoryController.softDeleteBusinessCategory,
+  BusinessCategoryController.softDeleteBusinessCategory,
 );
 
 // Permanent Delete Business Category
 router.delete(
   '/businessCategory/permanent-delete/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  CategoryController.permanentDeleteBusinessCategory,
+  BusinessCategoryController.permanentDeleteBusinessCategory,
 );
 
 //Create Product Category Routes
@@ -89,7 +91,7 @@ router.post(
   parseBody,
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(CategoryValidation.createProductCategoryValidationSchema),
-  CategoryController.createProductCategory,
+  ProductCategoryController.createProductCategory,
 );
 
 // Update Product Category
@@ -99,45 +101,103 @@ router.patch(
   parseBody,
   auth('ADMIN', 'SUPER_ADMIN'),
   validateRequest(CategoryValidation.updateProductCategoryValidationSchema),
-  CategoryController.updateProductCategory,
+  ProductCategoryController.updateProductCategory,
 );
 
 // Get All Product Categories
 router.get(
   '/productCategory',
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
-  CategoryController.getAllProductCategories,
+  ProductCategoryController.getAllProductCategories,
 );
 // Get All Product Categories Public
 router.get(
   '/productCategory/open',
-  CategoryController.getAllProductCategoriesPublic,
+  ProductCategoryController.getAllProductCategoriesPublic,
 );
 
 // Get Single Product Category
 router.get(
   '/productCategory/:id',
   auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
-  CategoryController.getSingleProductCategory,
+  ProductCategoryController.getSingleProductCategory,
 );
 // Get Single Product Category Public
 router.get(
   '/productCategory/open/:id',
-  CategoryController.getSingleProductCategoryPublic,
+  ProductCategoryController.getSingleProductCategoryPublic,
 );
 
 // Soft Delete Product Category
 router.delete(
   '/productCategory/soft-delete/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  CategoryController.softDeleteProductCategory,
+  ProductCategoryController.softDeleteProductCategory,
 );
 
 // Permanent Delete Product Category
 router.delete(
   '/productCategory/permanent-delete/:id',
   auth('ADMIN', 'SUPER_ADMIN'),
-  CategoryController.permanentDeleteProductCategory,
+  ProductCategoryController.permanentDeleteProductCategory,
+);
+
+// ==================== Public Routes ====================
+
+// Get all cuisines for public app view
+router.get('/cuisine/open', CuisineController.getAllCuisinesPublic);
+
+// Get single cuisine details for public app view
+router.get('/cuisine/open/:id', CuisineController.getSingleCuisinePublic);
+
+// =================== Protected Routes ===================
+
+// Get all cuisines (Supports Admin dashboard layout and filtered Vendor views)
+router.get(
+  '/cuisine',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  CuisineController.getAllCuisines,
+);
+
+// Get single cuisine details (Protected layout verification)
+router.get(
+  '/cuisine/:id',
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  CuisineController.getSingleCuisine,
+);
+
+// Create new cuisine (Admin/Super Admin only + handles single image file upload)
+router.post(
+  '/cuisine/create',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  multerUpload.single('file'),
+  parseBody,
+  validateRequest(CategoryValidation.createCuisineValidationSchema),
+  CuisineController.createCuisine,
+);
+
+// Update cuisine details or switch status toggle (Admin/Super Admin only)
+router.patch(
+  '/cuisine/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  multerUpload.single('file'),
+  parseBody,
+  validateRequest(CategoryValidation.updateCuisineValidationSchema),
+  CuisineController.updateCuisine,
+);
+
+// Soft delete a cuisine (Hides it safely before final removal check)
+router.delete(
+  '/cuisine/soft-delete/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  CuisineController.softDeleteCuisine,
+);
+
+// Permanent delete cuisine (Hard removal from DB + deletes Cloudinary storage image)
+router.delete(
+  '/cuisine/permanent-delete/:id',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  CuisineController.permanentDeleteCuisine,
 );
 
 export const CategoryRoutes = router;
