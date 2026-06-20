@@ -1,5 +1,9 @@
 import { Schema, model } from 'mongoose';
-import { TBusinessCategory, TProductCategory } from './category.interface';
+import {
+  TBusinessCategory,
+  TCuisine,
+  TProductCategory,
+} from './category.interface';
 
 export const BusinessCategoryNameEnum = ['RESTAURANT', 'STORE'] as const;
 
@@ -38,6 +42,23 @@ const productCategorySchema = new Schema<TProductCategory>(
   { timestamps: true },
 );
 
+const CuisineSchema = new Schema<TCuisine>(
+  {
+    name: { type: String, required: true, unique: true, trim: true },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    imageUrl: { type: String, required: true },
+    isActive: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false },
+  },
+  { timestamps: true },
+);
+
 productCategorySchema.index({ isActive: 1, isDeleted: 1 });
 
 export const BusinessCategory = model<TBusinessCategory>(
@@ -48,3 +69,5 @@ export const ProductCategory = model<TProductCategory>(
   'ProductCategory',
   productCategorySchema,
 );
+
+export const Cuisine = model<TCuisine>('Cuisine', CuisineSchema);
