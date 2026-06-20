@@ -73,7 +73,10 @@ export class QueryBuilder<T> {
   }
 
   async countTotal() {
-    const totalQueries = this.modelQuery.getFilter();
+    const totalQueries = { ...this.modelQuery.getFilter() };
+    if (totalQueries.currentSessionLocation) {
+      delete totalQueries.currentSessionLocation;
+    }
     const total = await this.modelQuery.model.countDocuments(totalQueries);
     const page = Number(this?.query?.page) || 1;
     const limit = Number(this?.query?.limit) || 10;
