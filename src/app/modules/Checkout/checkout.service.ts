@@ -55,6 +55,7 @@ const checkout = async (
   const activeAddress = currentUser?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
   );
+
   if (!activeAddress) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
