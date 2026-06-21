@@ -59,8 +59,37 @@ const sendPushSafely = async (
 
   await Promise.allSettled(
     tokens.map((token) =>
-      sendPushNotification(token, payload).catch((err) => {
-        console.error('Push send failed:', err);
+      sendPushNotification(token, payload).catch(async (err) => {
+        const errCode = err?.errorInfo?.code || err?.code;
+        const errMsg = err?.message || '';
+
+        if (
+          errCode === 'messaging/registration-token-not-registered' ||
+          errCode === 'messaging/invalid-registration-token' ||
+          errCode === 'messaging/invalid-argument' ||
+          errCode === 'messaging/mismatched-credential' ||
+          errMsg.includes('not found') ||
+          errMsg.includes('NotRegistered') ||
+          errMsg.includes('not a valid FCM registration token') ||
+          errMsg.includes('SenderId mismatch')
+        ) {
+          console.log(
+            `[FCM Cleanup] Expired token detected. Removing from DB...`,
+          );
+
+          await AuthUser.updateOne(
+            { 'loginDevices.fcmToken': token },
+            {
+              $pull: {
+                loginDevices: { fcmToken: token },
+              },
+            },
+          );
+
+          console.log(
+            `[FCM Cleanup] Successfully deleted invalid token: ...${token.slice(-15)}`,
+          );
+        }
       }),
     ),
   );
@@ -134,7 +163,6 @@ const sendToUser = (
 
 // Send to role(s)
 const sendToRole = (
-  modelName: string,
   roles: TUserRole[],
   title: string,
   message: string,
@@ -144,10 +172,7 @@ const sendToRole = (
 ) => {
   setImmediate(async () => {
     try {
-      const Model = mongoose.model(modelName) as any;
-      if (!Model) return;
-
-      const users = await Model.find({
+      const users = await AuthUser.find({
         isDeleted: false,
         role: { $in: roles },
         loginDevices: {
@@ -476,10 +501,6 @@ const sendBroadcastNotification = async (
   } = payload;
 
   for (const role of targetAudience) {
-    const modelName = ROLE_COLLECTION_MAP[role as TUserRole];
-    const Model = mongoose.model(modelName) as any;
-    if (!Model) continue;
-
     const query: any = {
       isDeleted: false,
       role: role.toLocaleUpperCase() as TUserRole,
@@ -497,8 +518,9 @@ const sendBroadcastNotification = async (
       };
     }
 
-    const userCursor = Model.find(query).cursor();
-
+    const userCursor = AuthUser.find(query)
+      .populate('profileId', 'name')
+      .cursor();
     setImmediate(async () => {
       try {
         for (
@@ -506,7 +528,8 @@ const sendBroadcastNotification = async (
           user != null;
           user = await userCursor.next()
         ) {
-          const userName = user.name?.firstName || 'User';
+          const profile = user.profileId as any;
+          const userName = profile?.name?.firstName || 'User';
           const personalizedBody = body.replace(/{name}/g, userName);
 
           if (communicationType === 'PUSH' || communicationType === 'BOTH') {
@@ -562,6 +585,8 @@ const sendBroadcastNotification = async (
         }
       } catch (error) {
         console.error(`Broadcast failed for role ${role}:`, error);
+      } finally {
+        await userCursor.close();
       }
     });
   }
