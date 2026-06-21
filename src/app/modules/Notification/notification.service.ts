@@ -59,8 +59,37 @@ const sendPushSafely = async (
 
   await Promise.allSettled(
     tokens.map((token) =>
-      sendPushNotification(token, payload).catch((err) => {
-        console.error('Push send failed:', err);
+      sendPushNotification(token, payload).catch(async (err) => {
+        const errCode = err?.errorInfo?.code || err?.code;
+        const errMsg = err?.message || '';
+
+        if (
+          errCode === 'messaging/registration-token-not-registered' ||
+          errCode === 'messaging/invalid-registration-token' ||
+          errCode === 'messaging/invalid-argument' ||
+          errCode === 'messaging/mismatched-credential' ||
+          errMsg.includes('not found') ||
+          errMsg.includes('NotRegistered') ||
+          errMsg.includes('not a valid FCM registration token') ||
+          errMsg.includes('SenderId mismatch')
+        ) {
+          console.log(
+            `[FCM Cleanup] Expired token detected. Removing from DB...`,
+          );
+
+          await AuthUser.updateOne(
+            { 'loginDevices.fcmToken': token },
+            {
+              $pull: {
+                loginDevices: { fcmToken: token },
+              },
+            },
+          );
+
+          console.log(
+            `[FCM Cleanup] Successfully deleted invalid token: ...${token.slice(-15)}`,
+          );
+        }
       }),
     ),
   );

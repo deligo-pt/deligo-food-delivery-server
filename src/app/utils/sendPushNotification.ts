@@ -15,6 +15,13 @@ export const sendPushNotification = async (
   token: string,
   payload: TPushNotificationPayload,
 ) => {
+  if (!token || token.trim() === '' || token === 'malmo' || token.length < 20) {
+    const error = new Error(
+      'The registration token is not a valid FCM registration token',
+    );
+    (error as any).code = 'messaging/invalid-argument';
+    throw error;
+  }
   try {
     const message = {
       token,
@@ -47,18 +54,28 @@ export const sendPushNotification = async (
     const response = await fcm.send(message);
     return { success: true, response };
   } catch (error: any) {
-    console.error('Error sending push notification:', error);
+    const errCode = error?.errorInfo?.code || error?.code;
+    const errMsg = error?.message || '';
 
-    if (
-      error.code === 'messaging/registration-token-not-registered' ||
-      error.code === 'messaging/invalid-registration-token'
-    ) {
-      if (config.NODE_ENV === 'development') {
-        console.error('Cleanup needed: Token is no longer valid.');
-      }
+    const isInvalidToken =
+      errCode === 'messaging/registration-token-not-registered' ||
+      errCode === 'messaging/invalid-registration-token' ||
+      errCode === 'messaging/invalid-argument' ||
+      errCode === 'messaging/mismatched-credential' ||
+      errMsg.includes('not found') ||
+      errMsg.includes('NotRegistered') ||
+      errMsg.includes('not a valid FCM registration token') ||
+      errMsg.includes('SenderId mismatch');
+
+    if (isInvalidToken) {
+      console.warn(
+        `[FCM Warning] Expired/Invalid token detected. Forwarding to cleanup flow...`,
+      );
+    } else {
+      console.error('Error sending push notification:', error);
     }
 
-    return { success: false, error: error.message };
+    throw error;
   }
 };
 export const sendTestPushNotification = async (
