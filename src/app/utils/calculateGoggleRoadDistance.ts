@@ -4,7 +4,7 @@ import httpStatus from 'http-status';
 import AppError from '../errors/AppError';
 import { roundTo2 } from './mathProvider';
 
-export const calculateGoggleRoadDistance = async (
+export const calculateGoogleRoadDistance = async (
   lng1: number,
   lat1: number,
   lng2: number,
