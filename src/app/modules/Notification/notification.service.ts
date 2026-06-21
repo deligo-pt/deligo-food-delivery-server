@@ -9,13 +9,13 @@ import AppError from '../../errors/AppError';
 import { sendPushNotification } from '../../utils/sendPushNotification';
 import { Notification } from './notification.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { findUserById } from '../../utils/findUserByEmailOrId';
 import {
   TBroadcastNotificationPayload,
   TNotificationType,
 } from './notification.interface';
 import { EmailHelper } from '../../utils/emailSender';
 import mongoose from 'mongoose';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -78,9 +78,13 @@ const sendToUser = (
   //  Detach from request lifecycle
   setImmediate(async () => {
     try {
-      const { user } = await findUserById({
+      const user = await AuthUser.findOne({
         userId,
       });
+
+      console.log({ userId });
+
+      console.log({ user });
 
       if (!user) return;
 
@@ -96,6 +100,8 @@ const sendToUser = (
 
       const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
 
+      console.log({ uniqueTokens });
+
       if (uniqueTokens.length > 0) {
         // Push notification (parallel)
         await sendPushSafely(uniqueTokens, {
@@ -104,6 +110,11 @@ const sendToUser = (
           data,
           channelId: channelId || 'default',
         });
+        console.log(`[Notification] Push sent safely to tokens.`);
+      } else {
+        console.warn(
+          `[Notification Warning] No valid FCM tokens found for user: ${userId}`,
+        );
       }
 
       // Save log (DB)
