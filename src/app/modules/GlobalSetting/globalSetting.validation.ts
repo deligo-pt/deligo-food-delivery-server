@@ -44,6 +44,7 @@ const commissionSettingSchema = z
     fleetManagerPercent: z.number().min(0).max(100),
     deliveryPartnerPercent: z.number().min(0).max(100),
     vendorVatPercent: z.number().min(0).max(100),
+    serviceCharge: z.number().min(0).max(100),
   })
   .strict();
 
