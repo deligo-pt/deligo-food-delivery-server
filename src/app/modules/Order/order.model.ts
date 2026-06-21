@@ -100,6 +100,7 @@ const orderSchema = new Schema<TOrder>(
       totalOfferDiscount: { type: Number, default: 0 },
       taxableAmount: { type: Number, required: true },
       totalTaxAmount: { type: Number, required: true },
+      serviceCharge: { type: Number, required: true },
     },
 
     delivery: {
@@ -120,6 +121,7 @@ const orderSchema = new Schema<TOrder>(
         amount: { type: Number, required: true },
         vatAmount: { type: Number, required: true },
         totalDeduction: { type: Number, required: true },
+        earnedServiceCharge: { type: Number, required: true },
       },
       fleet: {
         rate: { type: Number, required: true },
