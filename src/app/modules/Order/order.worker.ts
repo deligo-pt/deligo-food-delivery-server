@@ -87,12 +87,15 @@ export const processOrderPostUpdate = async (job: Job) => {
       const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
       const deliGoCommissionNet =
         payoutSummary?.deliGoCommission?.totalDeduction || 0;
-
+      const earnedServiceCharge =
+        payoutSummary?.deliGoCommission?.earnedServiceCharge || 0;
       const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
       const fleetManagerId = isManagedByFleet
         ? partner?.registeredBy?.id
         : null;
 
+      const totalPlatformEarnings =
+        roundTo2(deliGoCommissionNet + earnedServiceCharge) || 0;
       const riderEarningAmount = isManagedByFleet
         ? riderNetEarnings
         : totalDeliveryCharge;
@@ -132,13 +135,13 @@ export const processOrderPostUpdate = async (job: Job) => {
         .lean();
       // Admin Wallet
       await Wallet.findOneAndUpdate(
-        { userId: SYSTEM_ADMIN, userModel: 'Admin' },
+        { userId: SYSTEM_ADMIN?._id, userModel: 'Admin' },
         {
           $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
           $inc: {
             totalUnpaidTax: roundTo2(commissionVat) || 0,
             totalTax: roundTo2(commissionVat) || 0,
-            totalEarnings: roundTo2(deliGoCommissionNet) || 0,
+            totalEarnings: roundTo2(totalPlatformEarnings) || 0,
           },
         },
         { session, upsert: true },
@@ -194,11 +197,11 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           transactionId: `TXN-DELIGO-${orderDisplayId}`,
           orderId: orderDbId,
-          userId: SYSTEM_ADMIN,
+          userId: SYSTEM_ADMIN?._id,
           userModel: 'Admin',
           baseAmount: roundTo2(deliGoCommission),
           taxAmount: roundTo2(commissionVat),
-          totalAmount: roundTo2(deliGoCommissionNet),
+          totalAmount: roundTo2(totalPlatformEarnings),
           type: 'PLATFORM_COMMISSION',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
