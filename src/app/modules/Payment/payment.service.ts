@@ -12,12 +12,9 @@ import mongoose from 'mongoose';
 import { Vendor } from '../Vendor/vendor.model';
 import { Ingredient } from '../Ingredients/ingredients.model';
 import { IngredientOrder } from '../Ingredient-Order/ing-order.model';
-import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
-import { Admin } from '../Admin/admin.model';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import customNanoId from '../../utils/customNanoId';
 
 const solutionIds = {
   CARD: '117',
