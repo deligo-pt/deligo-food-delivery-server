@@ -96,6 +96,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         totalOfferDiscount: { type: Number, default: 0 },
         taxableAmount: { type: Number, required: true },
         totalTaxAmount: { type: Number, required: true },
+        serviceCharge: { type: Number, required: true },
       },
       _id: false,
     },
@@ -120,6 +121,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           amount: { type: Number, required: true },
           vatAmount: { type: Number, required: true },
           totalDeduction: { type: Number, required: true },
+          earnedServiceCharge: { type: Number, required: true },
         },
         fleet: {
           rate: { type: Number, required: true },

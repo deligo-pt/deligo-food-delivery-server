@@ -9,7 +9,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
-import { calculateGoggleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
+import { calculateGoogleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 
 // Checkout Service
 const checkout = async (
@@ -82,15 +82,16 @@ const checkout = async (
 
   const { latitude, longitude } = vendorLocation;
 
-  const distanceData = await calculateGoggleRoadDistance(
+  const distanceData = await calculateGoogleRoadDistance(
     longitude,
     latitude,
-    activeAddress.longitude,
-    activeAddress.latitude,
+    activeAddress.longitude || 0,
+    activeAddress.latitude || 0,
   );
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
-  const deliveryVatRate = globalSettings?.deliveryVatRate || 23;
+  const deliveryVatRate = globalSettings?.deliveryVatRate || 0;
+  const serviceCharge = globalSettings?.serviceCharge || 0;
 
   const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
 
@@ -108,9 +109,6 @@ const checkout = async (
   const PLATFORM_COMMISSION_RATE =
     globalSettings?.platformCommissionPercent || 0;
   const COMMISSION_VAT_RATE = globalSettings?.platformCommissionVatRate || 0;
-
-  let cumulativeRawGrandTotal = 0;
-  cumulativeRawGrandTotal += deliveryGrossRaw;
 
   const orderItems = selectedItems.map((item: any) => {
     const product = products.find(
@@ -145,7 +143,6 @@ const checkout = async (
       const addonLineNet = roundTo2(aPrice * aQty);
 
       const addonGrossRaw = addonLineNet * (1 + aTaxRate / 100);
-      cumulativeRawGrandTotal += addonGrossRaw; // Raw value যোগ হচ্ছে
       return {
         optionId: a.optionId,
         name: a.name,
@@ -174,7 +171,6 @@ const checkout = async (
     const productTaxRate = product.pricing?.taxRate || 0;
 
     const productGrossRaw = productLineNet * (1 + productTaxRate / 100);
-    cumulativeRawGrandTotal += productGrossRaw; // Raw value
 
     const productTaxAmount = roundTo2(productLineNet * (productTaxRate / 100));
 
@@ -239,7 +235,6 @@ const checkout = async (
     (sum, i) => sum + i.productPricing.originalPrice * i.itemSummary.quantity,
     0,
   );
-  const finalGrandTotal = roundTo2(cumulativeRawGrandTotal);
 
   const totalProductDiscount = orderItems.reduce(
     (sum, i) => sum + i.itemSummary.totalProductDiscount,
@@ -250,7 +245,7 @@ const checkout = async (
     0,
   );
   const totalTaxAmount = roundTo2(
-    finalGrandTotal - (taxableAmount + totalDeliveryCharge),
+    orderItems.reduce((sum, i) => sum + i.itemSummary.totalTaxAmount, 0),
   );
 
   const totalCommAmt = orderItems.reduce(
@@ -275,6 +270,10 @@ const checkout = async (
   const riderNetEarnings = roundTo2(totalDeliveryCharge - fleetFee);
   const riderEarningsWithoutTax = roundTo2(riderNetEarnings - deliveryVat);
 
+  const finalGrandTotal = roundTo2(
+    taxableAmount + totalTaxAmount + totalDeliveryCharge + serviceCharge,
+  );
+
   const finalSummaryData = {
     customerId,
     vendorId,
@@ -292,6 +291,7 @@ const checkout = async (
       totalOfferDiscount: 0,
       taxableAmount: roundTo2(taxableAmount),
       totalTaxAmount: roundTo2(totalTaxAmount),
+      serviceCharge: roundTo2(serviceCharge),
     },
 
     delivery: {
@@ -310,6 +310,7 @@ const checkout = async (
         amount: roundTo2(totalCommAmt),
         vatAmount: roundTo2(totalCommVat),
         totalDeduction: roundTo2(totalCommAmt + totalCommVat),
+        earnedServiceCharge: roundTo2(serviceCharge),
       },
       fleet: {
         rate: globalSettings?.fleetManagerCommissionPercent || 0,

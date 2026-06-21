@@ -61,6 +61,7 @@ export type TCheckoutSummary = {
     totalOfferDiscount: number;
     taxableAmount: number;
     totalTaxAmount: number;
+    serviceCharge: number;
   };
 
   delivery: {
@@ -79,6 +80,7 @@ export type TCheckoutSummary = {
       amount: number;
       vatAmount: number;
       totalDeduction: number;
+      earnedServiceCharge: number;
     };
     fleet: {
       rate: number;

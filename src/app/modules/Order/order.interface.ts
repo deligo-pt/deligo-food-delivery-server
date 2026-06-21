@@ -37,6 +37,7 @@ export type TOrder = {
     totalOfferDiscount: number;
     taxableAmount: number;
     totalTaxAmount: number;
+    serviceCharge: number;
   };
 
   delivery: {
@@ -57,6 +58,7 @@ export type TOrder = {
       amount: number;
       vatAmount: number;
       totalDeduction: number;
+      earnedServiceCharge: number;
     };
     fleet: {
       rate: number;
