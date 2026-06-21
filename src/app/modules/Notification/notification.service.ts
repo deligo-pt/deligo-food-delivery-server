@@ -472,10 +472,6 @@ const sendBroadcastNotification = async (
   } = payload;
 
   for (const role of targetAudience) {
-    const modelName = ROLE_COLLECTION_MAP[role as TUserRole];
-    const Model = mongoose.model(modelName) as any;
-    if (!Model) continue;
-
     const query: any = {
       isDeleted: false,
       role: role.toLocaleUpperCase() as TUserRole,
@@ -493,8 +489,9 @@ const sendBroadcastNotification = async (
       };
     }
 
-    const userCursor = Model.find(query).cursor();
-
+    const userCursor = AuthUser.find(query)
+      .populate('profileId', 'name')
+      .cursor();
     setImmediate(async () => {
       try {
         for (
@@ -502,7 +499,8 @@ const sendBroadcastNotification = async (
           user != null;
           user = await userCursor.next()
         ) {
-          const userName = user.name?.firstName || 'User';
+          const profile = user.profileId as any;
+          const userName = profile?.name?.firstName || 'User';
           const personalizedBody = body.replace(/{name}/g, userName);
 
           if (communicationType === 'PUSH' || communicationType === 'BOTH') {
@@ -558,6 +556,8 @@ const sendBroadcastNotification = async (
         }
       } catch (error) {
         console.error(`Broadcast failed for role ${role}:`, error);
+      } finally {
+        await userCursor.close();
       }
     });
   }
