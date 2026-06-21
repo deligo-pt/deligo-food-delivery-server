@@ -51,6 +51,7 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
       fleetManagerPercent: { type: Number, required: true, default: 0 },
       deliveryPartnerPercent: { type: Number, required: true, default: 0 },
       vendorVatPercent: { type: Number, required: true, default: 0 },
+      serviceCharge: { type: Number, required: true, default: 0 },
     },
 
     // --------------------------------------------------
