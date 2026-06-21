@@ -244,10 +244,11 @@ const getGlobalSettings = async (session?: ClientSession) => {
   return {
     platformCommissionPercent: result?.commission?.platformPercent,
     platformCommissionVatRate: result?.commission?.platformVatRate,
-    deliveryVatRate: result?.delivery?.vatRate,
-    deliveryChargePerMeter: perMeter,
     fleetManagerCommissionPercent: result?.commission?.fleetManagerPercent,
+    serviceCharge: result?.commission?.serviceCharge,
     baseDeliveryCharge: result?.delivery?.baseCharge,
+    deliveryChargePerMeter: perMeter,
+    deliveryVatRate: result?.delivery?.vatRate,
     customerNearestVendorRadiusKm: result?.order?.nearestVendorRadiusKm,
     rewards: result?.rewards,
     ingredientOrder: result?.ingredientsOrder,
