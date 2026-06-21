@@ -118,7 +118,6 @@ const confirmIngredientOrder = async (
     };
 
     NotificationService.sendToRole(
-      'Admin',
       ['ADMIN', 'SUPER_ADMIN'],
       adminNotification.title,
       adminNotification.body,

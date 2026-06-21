@@ -134,7 +134,6 @@ const sendToUser = (
 
 // Send to role(s)
 const sendToRole = (
-  modelName: string,
   roles: TUserRole[],
   title: string,
   message: string,
@@ -144,10 +143,7 @@ const sendToRole = (
 ) => {
   setImmediate(async () => {
     try {
-      const Model = mongoose.model(modelName) as any;
-      if (!Model) return;
-
-      const users = await Model.find({
+      const users = await AuthUser.find({
         isDeleted: false,
         role: { $in: roles },
         loginDevices: {
