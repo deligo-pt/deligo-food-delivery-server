@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import generateUserId, { USER_TYPE_MAP } from '../../utils/generateUserId';
+import generateUserId from '../../utils/generateUserId';
 import generateOtp from '../../utils/generateOtp';
 import { Model } from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import {
   ROLE_ONBOARD_PERMISSIONS,
   TApprovedRejectsPayload,
-  USER_MODEL_MAP,
 } from './auth.constant';
 import {
   ROLE_COLLECTION_MAP,
@@ -20,7 +19,7 @@ import {
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginCustomer, TLoginUser, TRegisterUser } from './auth.interface';
-import { findUserByEmail, findUserById } from '../../utils/findUserByEmailOrId';
+import { findUserById } from '../../utils/findUserByEmailOrId';
 import { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../../config';
@@ -28,7 +27,6 @@ import { Customer } from '../Customer/customer.model';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import { resendMobileOtp } from '../../utils/resendMobileOtp';
-import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
@@ -443,22 +441,20 @@ const verifyOtp = async (payload: {
 
     await RedisService.del(redisOtpKey);
   } else if (contactNumber) {
+    const redisMobileOtpKey = `otp:${role.toLowerCase()}:${contactNumber}`;
+    const storedMobileOtp = await RedisService.get(redisMobileOtpKey);
+
     if (contactNumber === config.customer.test_customer_contact_number) {
       if (otp !== config.customer.test_customer_contact_otp) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
       } else {
         console.log('Contact otp verification bypassed for test customer');
       }
-    } else {
-      const res = await verifyMobileOtp(
-        userData.mobileOtpId as string,
-        otp as string,
-      );
-
-      if (!res?.data?.verified) {
-        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
-      }
+    } else if (!storedMobileOtp || String(storedMobileOtp) !== String(otp)) {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
     }
+
+    await RedisService.del(redisMobileOtpKey);
   }
 
   const newDevice: TLoginDevice = {
@@ -563,9 +559,10 @@ const resendOtp = async (payload: {
   let successMessage = 'OTP resent successfully.';
 
   if (contactNumber) {
+    const formattedContact = contactNumber.trim();
     const user = await AuthUser.findOne({
       role: 'CUSTOMER',
-      contactNumber: contactNumber.trim(),
+      contactNumber: formattedContact,
       isDeleted: false,
     });
 
@@ -576,15 +573,22 @@ const resendOtp = async (payload: {
       );
     }
 
-    const id = user.mobileOtpId;
-    if (!id) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'No active OTP session found to resend. Please request a new login.',
-      );
+    const isTestNumber =
+      formattedContact ===
+      (config.customer.test_customer_contact_number as string);
+
+    let otpCode = '';
+
+    if (isTestNumber) {
+      otpCode = config.customer.test_customer_contact_otp as string;
+    } else {
+      const res = await sendMobileOtp(formattedContact);
+      console.log('BulkGate Resend SMS Sent:', res);
+      otpCode = res.otp;
     }
 
-    await resendMobileOtp(id as string);
+    const redisMobileOtpKey = `otp:${USER_ROLE.CUSTOMER.toLowerCase()}:${formattedContact}`;
+    await RedisService.set(redisMobileOtpKey, otpCode, 300);
 
     user.requiresOtpVerification = true;
     await user.save();
@@ -932,9 +936,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         formattedContact ===
         (config.customer.test_customer_contact_number as string);
 
-      const res = await sendMobileOtp(formattedContact);
-      const mobileOtpId = isTestNumber ? 'test-otp-id' : res.data.id;
-
       if (existingUser) {
         if (!existingUser.referredBy && referralCode) {
           await handleReferral(existingUser, referralCode, session);
@@ -942,7 +943,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         await AuthUser.updateOne(
           { profileId: existingUser._id, role: USER_ROLE.CUSTOMER },
           {
-            mobileOtpId,
             requiresOtpVerification: true,
           },
           { session },
@@ -970,7 +970,6 @@ const loginCustomer = async (payload: TLoginCustomer) => {
               contactNumber: formattedContact,
               role: USER_ROLE.CUSTOMER,
               requiresOtpVerification: true,
-              mobileOtpId,
             },
           ],
           { session },
@@ -983,6 +982,19 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
       await session.commitTransaction();
       session.endSession();
+
+      let otpCode = '';
+
+      if (isTestNumber) {
+        otpCode = config.customer.test_customer_contact_otp as string;
+      } else {
+        const res = await sendMobileOtp(formattedContact);
+        console.log('BulkGate SMS Sent:', res);
+        otpCode = res.otp;
+      }
+
+      const redisMobileOtpKey = `otp:${USER_ROLE.CUSTOMER.toLowerCase()}:${formattedContact}`;
+      await RedisService.set(redisMobileOtpKey, otpCode, 300);
 
       return {
         message: 'OTP sent to your mobile number. Please verify to login.',

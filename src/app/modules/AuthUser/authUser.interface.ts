@@ -27,7 +27,6 @@ export type TAuthUser = {
   isContactNumberVerified: boolean; // Global flag to track mobile number verification state
 
   requiresOtpVerification?: boolean;
-  mobileOtpId?: string;
   // ------------------------------------------------------------------
   // 5. Password Credentials & Security Audit Logs
   // ------------------------------------------------------------------

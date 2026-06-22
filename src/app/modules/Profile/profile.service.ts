@@ -88,7 +88,8 @@ const sendOtp = async (
   }
 
   if (payload.contactNumber) {
-    const globalMobileLockKey = `lock:mobile:${payload.contactNumber}`;
+    const formattedContact = payload.contactNumber.trim();
+    const globalMobileLockKey = `lock:mobile:${formattedContact}`;
 
     const isLockedBySomeone = await RedisService.get(globalMobileLockKey);
 
@@ -99,22 +100,16 @@ const sendOtp = async (
       );
     }
 
-    const response = await sendMobileOtp(payload.contactNumber);
-    const mobileOtpId = response?.data?.id;
-
-    if (!mobileOtpId) {
-      throw new AppError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Failed to receive OTP reference from gateway',
-      );
-    }
+    const response = await sendMobileOtp(formattedContact);
+    console.log('BulkGate Profile Update SMS Sent:', response);
+    const otpCode = response.otp;
 
     await RedisService.set(globalMobileLockKey, currentUserId, OTP_TTL_SECONDS);
 
     const redisMobileKey = `otp:profile-update-mobile:${currentUserId}`;
     const redisMobileData = JSON.stringify({
-      mobileOtpId,
-      pendingContactNumber: payload.contactNumber,
+      otp: otpCode,
+      pendingContactNumber: formattedContact,
     });
 
     await RedisService.set(redisMobileKey, redisMobileData, OTP_TTL_SECONDS);
@@ -244,6 +239,7 @@ const updateEmailOrContactNumber = async (
 
     if (type === 'mobile') {
       const redisMobileKey = `otp:profile-update-mobile:${currentUserId}`;
+      const globalMobileLockKey = `lock:mobile`;
 
       const cachedRawData = await RedisService.get(redisMobileKey);
       if (!cachedRawData) {
@@ -257,19 +253,16 @@ const updateEmailOrContactNumber = async (
         typeof cachedRawData === 'string'
           ? JSON.parse(cachedRawData)
           : cachedRawData;
-      const { mobileOtpId, pendingContactNumber } = cachedData;
 
-      const isGatewayOtpValid = await verifyMobileOtp(mobileOtpId, otp);
-      if (!isGatewayOtpValid) {
-        throw new AppError(
-          httpStatus.UNAUTHORIZED,
-          'Invalid or expired OTP code.',
-        );
+      const { otp: savedOtp, pendingContactNumber } = cachedData;
+
+      if (String(savedOtp) !== String(otp)) {
+        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP code.');
       }
 
       await AuthUser.findOneAndUpdate(
         { userId: currentUserId },
-        { contactNumber: pendingContactNumber },
+        { contactNumber: pendingContactNumber, isContactNumberVerified: true },
         { session },
       );
 
@@ -283,6 +276,7 @@ const updateEmailOrContactNumber = async (
       session.endSession();
 
       await RedisService.del(redisMobileKey);
+      await RedisService.del(`${globalMobileLockKey}:${pendingContactNumber}`);
 
       return { message: 'Contact number updated successfully.' };
     }
