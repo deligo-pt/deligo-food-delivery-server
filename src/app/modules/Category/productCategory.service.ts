@@ -188,6 +188,7 @@ const getAllProductCategoriesPublic = async (
 const getSingleProductCategory = async (
   id: string,
   currentUser: TCurrentUser,
+  lng: 'en' | 'pt',
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
@@ -219,7 +220,9 @@ const getSingleProductCategory = async (
     }
   }
 
-  return category;
+  const formattedCategory = formatProductCategoryResponse(category, lng);
+
+  return formattedCategory;
 };
 
 //  get single product category public
