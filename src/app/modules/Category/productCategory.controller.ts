@@ -87,8 +87,10 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
 
 // Get Single Product Category Controllers Public
 const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getSingleProductCategoryPublic(
     req.params.id,
+    lng,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

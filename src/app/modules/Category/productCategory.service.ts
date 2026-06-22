@@ -226,7 +226,7 @@ const getSingleProductCategory = async (
 };
 
 //  get single product category public
-const getSingleProductCategoryPublic = async (id: string) => {
+const getSingleProductCategoryPublic = async (id: string, lng: 'en' | 'pt') => {
   const category = await ProductCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
@@ -236,7 +236,9 @@ const getSingleProductCategoryPublic = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
   }
 
-  return category;
+  const formattedCategory = formatProductCategoryResponse(category, lng);
+
+  return formattedCategory;
 };
 
 // soft delete Product Category
