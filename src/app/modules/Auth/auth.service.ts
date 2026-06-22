@@ -25,8 +25,6 @@ import crypto from 'crypto';
 import config from '../../config';
 import { Customer } from '../Customer/customer.model';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
-import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
-import { resendMobileOtp } from '../../utils/resendMobileOtp';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';

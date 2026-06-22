@@ -9,9 +9,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { EmailHelper } from '../../utils/emailSender';
 import generateOtp from '../../utils/generateOtp';
-import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import { RedisService } from '../../config/redis';
-import { findUserById } from '../../utils/findUserByEmailOrId';
 import { AuthUser } from '../AuthUser/authUser.model';
 import mongoose from 'mongoose';
 
