@@ -54,8 +54,10 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
 
 // Get Business Category Controllers Public
 const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getAllBusinessCategoriesPublic(
     req.query,
+    lng,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

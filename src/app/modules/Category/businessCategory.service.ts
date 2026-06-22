@@ -98,6 +98,7 @@ const getAllBusinessCategories = async (
 //  Get All Business Categories Public
 const getAllBusinessCategoriesPublic = async (
   query: Record<string, unknown>,
+  lng: 'en' | 'pt',
 ) => {
   query.isActive = true;
   query.isDeleted = false;
@@ -113,7 +114,10 @@ const getAllBusinessCategoriesPublic = async (
     businessCategories.countTotal(),
     businessCategories.modelQuery,
   ]);
-  return { meta, data };
+  const formattedData = data.map((category) =>
+    formatCategoryResponse(category, lng),
+  );
+  return { meta, data: formattedData };
 };
 
 //  Get Single Business Category
