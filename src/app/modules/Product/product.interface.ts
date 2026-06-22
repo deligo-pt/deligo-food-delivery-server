@@ -30,7 +30,6 @@ export type TProduct = {
       label: TLocalizedText;
       price: number;
       sku: string;
-      pdItemId?: string;
       stockQuantity?: number;
       totalAddedQuantity?: number;
       isOutOfStock?: boolean;
