@@ -144,7 +144,10 @@ const getSingleBusinessCategory = async (
 };
 
 //  Get Single Business Category Public
-const getSingleBusinessCategoryPublic = async (id: string) => {
+const getSingleBusinessCategoryPublic = async (
+  id: string,
+  lng: 'en' | 'pt',
+) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
@@ -154,7 +157,9 @@ const getSingleBusinessCategoryPublic = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  return category;
+  const formattedCategory = formatCategoryResponse(category, lng);
+
+  return formattedCategory;
 };
 
 // Soft Delete Business Category

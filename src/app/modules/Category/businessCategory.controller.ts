@@ -86,8 +86,10 @@ const getSingleBusinessCategory = catchAsync(async (req, res) => {
 
 // Get Single Business Category Controllers Public
 const getSingleBusinessCategoryPublic = catchAsync(async (req, res) => {
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getSingleBusinessCategoryPublic(
     req.params.id,
+    lng,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
