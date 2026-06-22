@@ -5,6 +5,7 @@ import { TBusinessCategory, TProductCategory } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatProductCategoryResponse } from './category.utils';
 
 //  Create Product Category (Linked to Business)
 const createProductCategory = async (
@@ -110,6 +111,7 @@ const updateProductCategory = async (
 const getAllProductCategories = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
+  lng: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -136,7 +138,7 @@ const getAllProductCategories = async (
 
   // Build and execute the query
   const productCategories = new QueryBuilder(ProductCategory.find(), query)
-    .search(['name', 'slug'])
+    .search(['name.en', 'name.pt', 'slug'])
     .filter()
     .sort()
     .paginate()
@@ -147,7 +149,11 @@ const getAllProductCategories = async (
     productCategories.modelQuery,
   ]);
 
-  return { meta, data };
+  const formattedData = data.map((category) =>
+    formatProductCategoryResponse(category, lng),
+  );
+
+  return { meta, data: formattedData };
 };
 
 //  Get All Product Categories Public
@@ -159,7 +165,7 @@ const getAllProductCategoriesPublic = async (
 
   // Build and execute the query
   const productCategories = new QueryBuilder(ProductCategory.find(), query)
-    .search(['name', 'slug'])
+    .search(['name.en', 'name.pt', 'slug'])
     .filter()
     .sort()
     .paginate()

@@ -38,15 +38,18 @@ const updateProductCategory = catchAsync(async (req, res) => {
 
 // Get Product Category Controllers
 const getAllProductCategories = catchAsync(async (req, res) => {
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getAllProductCategories(
     req.query,
     req.user as TCurrentUser,
+    lng,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Product categories fetched successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

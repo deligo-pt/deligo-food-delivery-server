@@ -5,7 +5,7 @@ import { TBusinessCategory, TProductCategory } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { formatCategoryResponse } from './category.utils';
+import { formatBusinessCategoryResponse } from './category.utils';
 
 //  Create Business Category
 const createBusinessCategory = async (
@@ -90,7 +90,7 @@ const getAllBusinessCategories = async (
     businessCategories.modelQuery,
   ]);
   const formattedData = data.map((category) =>
-    formatCategoryResponse(category, lng),
+    formatBusinessCategoryResponse(category, lng),
   );
   return { meta, data: formattedData };
 };
@@ -115,7 +115,7 @@ const getAllBusinessCategoriesPublic = async (
     businessCategories.modelQuery,
   ]);
   const formattedData = data.map((category) =>
-    formatCategoryResponse(category, lng),
+    formatBusinessCategoryResponse(category, lng),
   );
   return { meta, data: formattedData };
 };
@@ -138,7 +138,7 @@ const getSingleBusinessCategory = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  const formattedCategory = formatCategoryResponse(category, lng);
+  const formattedCategory = formatBusinessCategoryResponse(category, lng);
 
   return formattedCategory;
 };
@@ -157,7 +157,7 @@ const getSingleBusinessCategoryPublic = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  const formattedCategory = formatCategoryResponse(category, lng);
+  const formattedCategory = formatBusinessCategoryResponse(category, lng);
 
   return formattedCategory;
 };

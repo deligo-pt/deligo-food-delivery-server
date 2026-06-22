@@ -3,7 +3,7 @@ import {
   TBusinessCategoryName,
 } from './category.interface';
 
-export const formatCategoryResponse = (
+export const formatBusinessCategoryResponse = (
   category: any,
   lng: 'en' | 'pt' = 'en',
 ) => {
@@ -20,5 +20,23 @@ export const formatCategoryResponse = (
     isDeleted: categoryObj.isDeleted,
     createdAt: categoryObj.createdAt,
     updatedAt: categoryObj.updatedAt,
+  };
+};
+
+export const formatProductCategoryResponse = (data: any, lng: string) => {
+  if (Array.isArray(data)) {
+    return data.map((item) => {
+      const itemObj = item.toObject?.() || item;
+      return {
+        ...itemObj,
+        name: itemObj.name?.[lng] || itemObj.name?.['en'] || '',
+      };
+    });
+  }
+
+  const dataObj = data.toObject?.() || data;
+  return {
+    ...dataObj,
+    name: dataObj.name?.[lng] || dataObj.name?.['en'] || '',
   };
 };
