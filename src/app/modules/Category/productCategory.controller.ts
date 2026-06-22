@@ -55,8 +55,10 @@ const getAllProductCategories = catchAsync(async (req, res) => {
 
 // Get Product Category Controllers Public
 const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getAllProductCategoriesPublic(
     req.query,
+    lng,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
