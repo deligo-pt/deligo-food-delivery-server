@@ -3,13 +3,21 @@ import { model, Schema } from 'mongoose';
 import { TProduct } from './product.interface';
 import { roundTo2 } from '../../utils/mathProvider';
 
+const localizedSchema = new Schema(
+  {
+    en: { type: String, required: true },
+    pt: { type: String, required: true },
+  },
+  { _id: false },
+);
+
 const variationSchema = new Schema({
-  name: { type: String, required: true }, // e.g., "Size"
+  name: { type: localizedSchema, required: true },
   options: [
     {
       _id: false,
-      label: { type: String, required: true }, // e.g., "Large"
-      price: { type: Number, required: true }, // e.g., 500
+      label: { type: localizedSchema, required: true },
+      price: { type: Number, required: true },
       sku: { type: String },
       stockQuantity: { type: Number },
       totalAddedQuantity: { type: Number },
@@ -23,9 +31,11 @@ const productSchema = new Schema<TProduct>(
     productId: { type: String, required: true, unique: true },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     sku: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
+
+    name: { type: localizedSchema, required: true },
     slug: { type: String, required: true },
-    description: { type: String },
+    description: { type: localizedSchema, required: true },
+
     isDeleted: { type: Boolean, default: false },
     isApproved: { type: Boolean, default: true },
     approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },

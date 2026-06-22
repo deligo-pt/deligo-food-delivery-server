@@ -2,7 +2,7 @@
 import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
-import { TProduct } from './product.interface';
+import { TLocalizedText, TProduct } from './product.interface';
 import { Product } from './product.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
@@ -28,7 +28,11 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
   ]);
 
   CreateProductUtils.validateRestaurantStock(vendorCategoryExist, payload);
-  CreateProductUtils.validateCategory(vendorCategoryExist, category);
+  CreateProductUtils.validateCategory(
+    vendorCategoryExist,
+    category,
+    currentUser.role,
+  );
 
   await CreateProductUtils.validateAddons(payload, currentUser._id);
   await CreateProductUtils.applyTax(payload);
@@ -73,7 +77,7 @@ const updateProduct = async (
 
   if (payload.name) {
     modifiedData.name = payload.name;
-    modifiedData.slug = generateSlug(payload.name);
+    modifiedData.slug = generateSlug(payload.name?.en || '');
   }
   if (payload.description) modifiedData.description = payload.description;
   if (payload.category) modifiedData.category = payload.category;
@@ -164,7 +168,7 @@ const updateProduct = async (
 // manage product variations service
 const manageProductVariations = async (
   productId: string,
-  payload: { name: string; options: any[] },
+  payload: { name: TLocalizedText; options: any[] },
   currentUser: TCurrentUser,
 ) => {
   const existingProduct = await Product.findOne({
@@ -184,39 +188,56 @@ const manageProductVariations = async (
     vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
 
   const { name, options } = payload;
-  const normalizedName = name.trim();
-  const productNamePart = cleanForSKU(existingProduct.name);
+
+  const normalizedEnName = name.en?.trim();
+  if (!normalizedEnName) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'English variation name is required',
+    );
+  }
+
+  const productNamePart = cleanForSKU(existingProduct.name?.en || '');
 
   if (!existingProduct.variations) {
     existingProduct.variations = [];
   }
 
   const variationIndex = existingProduct.variations.findIndex(
-    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+    (v) => v.name?.en?.toLowerCase() === normalizedEnName.toLowerCase(),
   );
 
   const finalOptionsToPush: any[] = [];
 
   for (const opt of options) {
-    const normalizedLabel = opt.label.trim();
+    const normalizedEnLabel = opt.label?.en?.trim();
+    const normalizedPtLabel = opt.label?.pt?.trim();
+
+    if (!normalizedEnLabel || !normalizedPtLabel) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Variation options must have both English and Portuguese labels',
+      );
+    }
 
     if (variationIndex > -1) {
       const isOptionExists = existingProduct.variations[
         variationIndex
       ].options.some(
-        (o: any) => o.label.toLowerCase() === normalizedLabel.toLowerCase(),
+        (o: any) =>
+          o.label?.en?.toLowerCase() === normalizedEnLabel.toLowerCase(),
       );
       if (isOptionExists) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          `Option '${normalizedLabel}' already exists.`,
+          `Option '${normalizedEnLabel}' already exists.`,
         );
       }
     }
 
     const generatedSku =
       opt.sku ||
-      `VAR-${productNamePart}-${cleanForSKU(normalizedLabel)}-${customNanoId(3)}`;
+      `VAR-${productNamePart}-${cleanForSKU(normalizedEnLabel)}-${customNanoId(3)}`;
 
     const isSkuTaken = await Product.findOne({
       'variations.options.sku': generatedSku,
@@ -229,7 +250,10 @@ const manageProductVariations = async (
     }
 
     const newOption: any = {
-      label: normalizedLabel,
+      label: {
+        en: normalizedEnLabel,
+        pt: normalizedPtLabel,
+      },
       price: opt.price,
       sku: generatedSku,
     };
@@ -250,7 +274,10 @@ const manageProductVariations = async (
     );
   } else {
     existingProduct.variations.push({
-      name: normalizedName,
+      name: {
+        en: name.en.trim(),
+        pt: name.pt.trim(),
+      },
       options: finalOptionsToPush,
     });
   }
@@ -295,9 +322,9 @@ const renameProductVariation = async (
   productId: string,
   payload: {
     oldName: string;
-    newName?: string;
+    newName?: TLocalizedText;
     oldLabel?: string;
-    newLabel?: string;
+    newLabel?: TLocalizedText;
   },
   currentUser: TCurrentUser,
 ) => {
@@ -319,7 +346,7 @@ const renameProductVariation = async (
   const { oldName, newName, oldLabel, newLabel } = payload;
 
   const variationIndex = existingProduct.variations.findIndex(
-    (v) => v.name.toLowerCase() === oldName.trim().toLowerCase(),
+    (v) => v.name?.en?.toLowerCase() === oldName.trim().toLowerCase(),
   );
 
   if (variationIndex === -1)
@@ -329,14 +356,30 @@ const renameProductVariation = async (
     );
 
   if (newName && !oldLabel) {
-    existingProduct.variations[variationIndex].name = newName.trim();
+    if (!newName.en || !newName.pt) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'New variation name must include both English and Portuguese translations',
+      );
+    }
+    existingProduct.variations[variationIndex].name = {
+      en: newName.en.trim(),
+      pt: newName.pt.trim(),
+    };
   }
 
   if (oldLabel && newLabel) {
+    if (!newLabel.en || !newLabel.pt) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'New option label must include both English and Portuguese translations',
+      );
+    }
+
     const optionIndex = existingProduct.variations[
       variationIndex
     ].options.findIndex(
-      (o: any) => o.label.toLowerCase() === oldLabel.trim().toLowerCase(),
+      (o: any) => o.label?.en?.toLowerCase() === oldLabel.trim().toLowerCase(),
     );
 
     if (optionIndex === -1)
@@ -345,8 +388,10 @@ const renameProductVariation = async (
         `Option '${oldLabel}' not found`,
       );
 
-    existingProduct.variations[variationIndex].options[optionIndex].label =
-      newLabel.trim();
+    existingProduct.variations[variationIndex].options[optionIndex].label = {
+      en: newLabel.en.trim(),
+      pt: newLabel.pt.trim(),
+    };
   }
 
   await existingProduct.save();
@@ -366,13 +411,17 @@ const removeProductVariations = async (
     productId,
     ...((currentUser.role === 'VENDOR' ||
       currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
-  });
+  }).populate('vendorId', 'businessDetails.businessType');
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
   if (currentUser?.status !== 'APPROVED')
     throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+
+  const vendor = existingProduct.vendorId as any;
+  const isRestaurant =
+    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
 
   const { name, labelToRemove } = payload;
   const normalizedName = name.trim();
@@ -382,7 +431,7 @@ const removeProductVariations = async (
   }
 
   const variationIndex = existingProduct.variations.findIndex(
-    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+    (v) => v.name?.en?.toLowerCase() === normalizedName.toLowerCase(),
   );
 
   if (variationIndex === -1) {
@@ -396,7 +445,8 @@ const removeProductVariations = async (
     const optionIndex = existingProduct.variations[
       variationIndex
     ].options.findIndex(
-      (o: any) => o.label.toLowerCase() === labelToRemove.trim().toLowerCase(),
+      (o: any) =>
+        o.label?.en?.toLowerCase() === labelToRemove.trim().toLowerCase(),
     );
 
     if (optionIndex === -1) {
@@ -438,16 +488,18 @@ const removeProductVariations = async (
     }
   });
 
-  if (existingProduct.stock && existingProduct.stock.quantity) {
+  if (!isRestaurant && existingProduct.stock) {
     existingProduct.stock.quantity = totalQty;
     existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
     existingProduct.stock.hasVariations = existingProduct.variations.length > 0;
     existingProduct.stock.availabilityStatus =
       totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  } else if (isRestaurant) {
+    existingProduct.stock = undefined;
+  }
 
-    if (minPrice !== Infinity) {
-      existingProduct.pricing.price = minPrice;
-    }
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
   }
 
   await existingProduct.save();
@@ -659,6 +711,7 @@ const deleteProductImages = async (
 const getAllProducts = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
+  lang: 'en' | 'pt',
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -696,12 +749,37 @@ const getAllProducts = async (
   });
 
   const meta = await products.countTotal();
-  const data = await products.modelQuery;
+  const rawData = await products.modelQuery;
+
+  const localizedData = rawData.map((product: any) => {
+    const productObj = product.toObject({ virtuals: true });
+
+    if (role === 'VENDOR' || role === 'ADMIN') {
+      return productObj;
+    }
+
+    return {
+      ...productObj,
+      name: productObj.name?.[lang] || productObj.name?.en || '',
+      description:
+        productObj.description?.[lang] || productObj.description?.en || '',
+      variations: productObj.variations?.map((v: any) => ({
+        ...v,
+        name: v.name?.[lang] || v.name?.en || '',
+        options: v.options?.map((o: any) => ({
+          ...o,
+          label: o.label?.[lang] || o.label?.en || '',
+        })),
+      })),
+    };
+  });
   return {
     meta,
-    data,
+    data: localizedData,
   };
 };
+
+// get all products service
 const getAllProductsPublic = async (query: Record<string, unknown>) => {
   const role = 'CUSTOMER';
 
@@ -780,6 +858,8 @@ const getSingleProduct = async (
   }
   return product;
 };
+
+// get single product service
 const getSingleProductPublic = async (productId: string) => {
   const role = 'CUSTOMER';
 

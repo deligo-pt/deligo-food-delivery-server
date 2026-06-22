@@ -10,6 +10,7 @@ import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { Types } from 'mongoose';
+import { TUserRole } from '../../constant/GlobalConstant/user.constant';
 
 const validateVendor = (currentUser: TCurrentUser) => {
   if (currentUser?.status !== 'APPROVED') {
@@ -29,14 +30,20 @@ const validateBasePayload = (payload: TProduct) => {
   }
 };
 
-const validateCategory = (vendorCategoryExist: any, category: any) => {
+const validateCategory = (
+  vendorCategoryExist: any,
+  category: any,
+  role: TUserRole,
+) => {
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(role);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
   }
 
   if (
+    !isAdmin &&
     category.businessCategoryId.toString() !==
-    vendorCategoryExist?._id.toString()
+      vendorCategoryExist?._id.toString()
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -92,11 +99,13 @@ const prepareBasicFields = (
   category: any,
 ) => {
   const shortId = customNanoId(6);
-  const productNamePart = cleanForSKU(payload.name);
+
+  const productNamePart = cleanForSKU(payload.name.en || payload.name.pt || '');
 
   payload.vendorId = currentUser._id;
   payload.productId = `PROD-${shortId}`;
-  payload.slug = generateSlug(payload.name);
+
+  payload.slug = generateSlug(payload.name.en || payload.name.pt || '');
 
   payload.sku = `${category.name
     .substring(0, 3)
@@ -124,14 +133,15 @@ const handleVariations = (
       if (price < minPrice) minPrice = price;
       totalStock += stock;
 
+      // 🛠️ আপডেট: option.label.en ব্যবহার করে ভেরিয়েশন SKU জেনারেট করা হচ্ছে
+      const variationLabelPart = cleanForSKU(option.label.en || '');
+
       return {
         ...option,
         price,
         sku:
           option.sku ||
-          `VAR-${productNamePart}-${cleanForSKU(option.label)}-${customNanoId(
-            3,
-          )}`,
+          `VAR-${productNamePart}-${variationLabelPart}-${customNanoId(3)}`,
         stockQuantity: stock,
         totalAddedQuantity: stock,
         isOutOfStock: stock <= 0,

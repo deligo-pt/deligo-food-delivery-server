@@ -29,7 +29,7 @@ const prepareUpdateData = async (payload: Partial<TProduct>) => {
 
   if (payload.name) {
     modifiedData.name = payload.name;
-    modifiedData.slug = generateSlug(payload.name);
+    modifiedData.slug = generateSlug(payload.name.en || payload.name.pt || '');
   }
   if (payload.description) modifiedData.description = payload.description;
   if (payload.category) modifiedData.category = payload.category;

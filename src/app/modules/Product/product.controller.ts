@@ -141,9 +141,11 @@ const deleteProductImages = catchAsync(async (req, res) => {
 
 // get all products controller
 const getAllProducts = catchAsync(async (req, res) => {
+  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
   const result = await ProductServices.getAllProducts(
     req.query,
     req.user as TCurrentUser,
+    lang,
   );
 
   sendResponse(res, {
@@ -154,6 +156,8 @@ const getAllProducts = catchAsync(async (req, res) => {
     data: result?.data,
   });
 });
+
+// get all products controller
 const getAllProductsPublic = catchAsync(async (req, res) => {
   const result = await ProductServices.getAllProductsPublic(req.query);
 
