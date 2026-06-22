@@ -38,9 +38,11 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
 
 // Get Business Category Controllers
 const getAllBusinessCategories = catchAsync(async (req, res) => {
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getAllBusinessCategories(
     req.query,
     req.user as TCurrentUser,
+    lng,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

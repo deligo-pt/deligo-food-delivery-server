@@ -2,7 +2,7 @@
 import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
-import { TLocalizedText, TProduct } from './product.interface';
+import { TProduct } from './product.interface';
 import { Product } from './product.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
@@ -14,6 +14,7 @@ import { Tax } from '../Tax/tax.model';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {

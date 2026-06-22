@@ -8,6 +8,17 @@ export const BusinessCategoryName = {
 export type TBusinessCategoryName =
   (typeof BusinessCategoryName)[keyof typeof BusinessCategoryName];
 
+export const BusinessCategoryTranslation = {
+  [BusinessCategoryName.RESTAURANT]: {
+    en: 'Restaurant',
+    pt: 'Restaurante',
+  },
+  [BusinessCategoryName.STORE]: {
+    en: 'Store',
+    pt: 'Loja',
+  },
+} as const;
+
 export type TBusinessCategory = {
   _id?: Types.ObjectId;
   name: TBusinessCategoryName;

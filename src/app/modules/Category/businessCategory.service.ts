@@ -5,6 +5,7 @@ import { TBusinessCategory, TProductCategory } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatCategoryResponse } from './category.utils';
 
 //  Create Business Category
 const createBusinessCategory = async (
@@ -70,6 +71,7 @@ const updateBusinessCategory = async (
 const getAllBusinessCategories = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
+  lng: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -87,7 +89,10 @@ const getAllBusinessCategories = async (
     businessCategories.countTotal(),
     businessCategories.modelQuery,
   ]);
-  return { meta, data };
+  const formattedData = data.map((category) =>
+    formatCategoryResponse(category, lng),
+  );
+  return { meta, data: formattedData };
 };
 
 //  Get All Business Categories Public

@@ -1,9 +1,5 @@
 import mongoose from 'mongoose';
-
-export type TLocalizedText = {
-  en: string; // English
-  pt: string; // Portuguese
-};
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 export type TProduct = {
   _id: mongoose.Types.ObjectId;
