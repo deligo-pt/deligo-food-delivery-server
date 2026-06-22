@@ -98,10 +98,10 @@ const loginCustomerValidationSchema = z.object({
       email: z.string().email('Invalid email format').optional(),
       contactNumber: z
         .string()
-        .refine((val) => !val || portugalPhoneRegex.test(val), {
-          message:
-            'Only valid Portugal contact numbers are allowed (+351xxxxxxxxx)',
-        })
+        // .refine((val) => !val || portugalPhoneRegex.test(val), {
+        //   message:
+        //     'Only valid Portugal contact numbers are allowed (+351xxxxxxxxx)',
+        // })
         .optional(),
       referralCode: z.string().optional(),
     })

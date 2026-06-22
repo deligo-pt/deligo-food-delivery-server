@@ -24,8 +24,6 @@ export default {
   },
   bulkgate: {
     bulkgate_send_api_url: process.env.BULKGATE_SEND_API_URL,
-    bulkgate_verify_api_url: process.env.BULKGATE_VERIFY_API_URL,
-    bulkgate_resend_api_url: process.env.BULKGATE_RESEND_API_URL,
     bulkgate_api_key: process.env.BULKGATE_API_KEY,
     bulkgate_app_id: process.env.BULKGATE_APP_ID,
   },
