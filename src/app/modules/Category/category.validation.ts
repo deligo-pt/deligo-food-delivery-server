@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BusinessCategoryNameEnum } from './category.model';
+import { localizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
 // Create Business Category Validation
 const createBusinessCategoryValidationSchema = z.object({
@@ -32,9 +33,7 @@ const updateBusinessCategoryValidationSchema = z.object({
 const createProductCategoryValidationSchema = z.object({
   body: z
     .object({
-      name: z
-        .string({ required_error: 'Product category name is required' })
-        .min(2, 'Product category name must be at least 2 characters'),
+      name: localizedValidationSchema,
       slug: z.string().optional(),
       description: z.string().optional(),
       businessCategoryId: z
@@ -49,7 +48,7 @@ const createProductCategoryValidationSchema = z.object({
 const updateProductCategoryValidationSchema = z.object({
   body: z
     .object({
-      name: z.string().optional(),
+      name: localizedValidationSchema.partial().optional(),
       slug: z.string().optional(),
       description: z.string().optional(),
       icon: z.string().optional(),
@@ -60,6 +59,7 @@ const updateProductCategoryValidationSchema = z.object({
     .strict(),
 });
 
+// Create Cuisine Validation Schema
 const createCuisineValidationSchema = z.object({
   body: z
     .object({

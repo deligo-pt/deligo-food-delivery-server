@@ -1,17 +1,10 @@
 import { z } from 'zod';
-
-// মাল্টি-ল্যাঙ্গুয়েজ (EN/PT) এর জন্য রিইউজেবল স্কিমা
-const localizedStringSchema = z
-  .object({
-    en: z.string().min(1, 'English text is required'),
-    pt: z.string().min(1, 'Portuguese text is required'),
-  })
-  .strict();
+import { localizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
 // Variation Options Schema (e.g., Small, Medium, Large)
 const variationOptionSchema = z
   .object({
-    label: localizedStringSchema, // আপডেট: string থেকে localized অবজেক্ট
+    label: localizedValidationSchema,
     price: z.number().min(0, 'Variation price must be non-negative'),
     sku: z.string().optional(),
     stockQuantity: z
@@ -25,7 +18,7 @@ const variationOptionSchema = z
 // Variation Group Schema (e.g., Size, Color)
 const variationSchema = z
   .object({
-    name: localizedStringSchema, // আপডেট: string থেকে localized অবজেক্ট
+    name: localizedValidationSchema,
     options: z
       .array(variationOptionSchema)
       .min(1, 'At least one option is required'),
@@ -36,8 +29,8 @@ const variationSchema = z
 const createProductValidationSchema = z.object({
   body: z
     .object({
-      name: localizedStringSchema, // আপডেট: string থেকে localized অবজেক্ট
-      description: localizedStringSchema, // আপডেট: string থেকে localized অবজেক্ট
+      name: localizedValidationSchema,
+      description: localizedValidationSchema,
       category: z.string().min(1, 'Category is required'),
       subCategory: z.string().optional(),
       brand: z.string().optional(),
@@ -50,7 +43,7 @@ const createProductValidationSchema = z.object({
 
       pricing: z
         .object({
-          price: z.number().min(0, 'Price must be non-negative'), // রিকোয়ার্ড এবং পজিটিভ করা ভালো
+          price: z.number().min(0, 'Price must be non-negative'),
           discount: z.number().min(0).max(100).default(0),
           taxId: z.string({ required_error: 'Tax ID is required' }),
           currency: z.string().default('EUR'),
@@ -85,8 +78,8 @@ const createProductValidationSchema = z.object({
 const updateProductValidationSchema = z.object({
   body: z
     .object({
-      name: localizedStringSchema.partial().optional(), // আপডেট: en বা pt যেকোনো একটিও আপডেট করা যাবে
-      description: localizedStringSchema.partial().optional(), // আপডেট
+      name: localizedValidationSchema.partial().optional(),
+      description: localizedValidationSchema.partial().optional(),
       category: z.string().optional(),
       subCategory: z.string().optional(),
       brand: z.string().optional(),
@@ -95,7 +88,7 @@ const updateProductValidationSchema = z.object({
 
       pricing: z
         .object({
-          price: z.number().min(0).optional(), // প্রোডাক্ট আপডেটে প্রাইজ চেঞ্জ করার অপশন রাখা হলো
+          price: z.number().min(0).optional(),
           discount: z.number().min(0).max(100).optional(),
           taxId: z.string().optional(),
           currency: z.string().optional(),
@@ -127,12 +120,12 @@ const updateProductValidationSchema = z.object({
 const manageVariationValidationSchema = z.object({
   body: z
     .object({
-      name: localizedStringSchema, // আপডেট
+      name: localizedValidationSchema,
       options: z
         .array(
           z
             .object({
-              label: localizedStringSchema, // আপডেট
+              label: localizedValidationSchema,
               price: z
                 .number({
                   required_error: 'Price is required',
@@ -154,13 +147,12 @@ const manageVariationValidationSchema = z.object({
 const renameVariationValidationSchema = z.object({
   body: z
     .object({
-      oldName: localizedStringSchema.optional(), // আপডেট: গ্রুপ রিনেমের জন্য ওল্ড নেম অবজেক্ট হতে পারে
+      oldName: localizedValidationSchema.optional(),
 
-      newName: localizedStringSchema.optional(), // আপডেট
+      newName: localizedValidationSchema.optional(),
 
-      oldLabel: localizedStringSchema.optional(), // আপডেট: অপশন রিনেমের জন্য
-
-      newLabel: localizedStringSchema.optional(), // আপডেট
+      oldLabel: localizedValidationSchema.optional(),
+      newLabel: localizedValidationSchema.optional(),
     })
     .strict()
     .refine(
@@ -181,8 +173,8 @@ const renameVariationValidationSchema = z.object({
 const removeVariationValidationSchema = z.object({
   body: z
     .object({
-      name: localizedStringSchema, // আপডেট: ভেরিয়েশন রিমুভের জন্য অবজেক্ট ম্যাচিং লাগতে পারে (বা নির্দিষ্ট ল্যাঙ্গুয়েজ কী)
-      labelToRemove: localizedStringSchema.optional(), // আপডেট
+      name: localizedValidationSchema,
+      labelToRemove: localizedValidationSchema.optional(),
     })
     .strict(),
 });

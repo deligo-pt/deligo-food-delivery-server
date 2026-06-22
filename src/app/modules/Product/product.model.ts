@@ -2,14 +2,7 @@
 import { model, Schema } from 'mongoose';
 import { TProduct } from './product.interface';
 import { roundTo2 } from '../../utils/mathProvider';
-
-const localizedSchema = new Schema(
-  {
-    en: { type: String, required: true },
-    pt: { type: String, required: true },
-  },
-  { _id: false },
-);
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const variationSchema = new Schema({
   name: { type: localizedSchema, required: true },

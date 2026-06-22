@@ -19,12 +19,15 @@ const createProductCategory = async (
     );
   }
 
-  const exists = await ProductCategory.findOne({ name: payload.name });
+  const exists = await ProductCategory.findOne({ 'name.en': payload.name.en });
   if (exists) {
     throw new AppError(httpStatus.CONFLICT, 'Product category already exists');
   }
-  payload.name = payload.name.toUpperCase();
-  payload.slug = payload.name
+
+  payload.name.en = payload.name.en.toUpperCase();
+  payload.name.pt = payload.name.pt.toUpperCase();
+
+  payload.slug = payload.name.en
     .toLowerCase()
     .replace(/[^\w ]+/g, '')
     .replace(/ +/g, '-');
@@ -49,10 +52,20 @@ const updateProductCategory = async (
   }
 
   if (payload.name) {
-    payload.slug = payload.name
-      .toLowerCase()
-      .replace(/[^\w ]+/g, '')
-      .replace(/ +/g, '-');
+    payload.name = {
+      ...category.name,
+      ...payload.name,
+    };
+
+    if (payload.name.en) payload.name.en = payload.name.en.toUpperCase();
+    if (payload.name.pt) payload.name.pt = payload.name.pt.toUpperCase();
+
+    if (payload.name.en) {
+      payload.slug = payload.name.en
+        .toLowerCase()
+        .replace(/[^\w ]+/g, '')
+        .replace(/ +/g, '-');
+    }
   }
 
   if (payload?.businessCategoryId) {
@@ -67,7 +80,10 @@ const updateProductCategory = async (
     }
   }
 
-  if (payload?.isActive === category.isActive) {
+  if (
+    payload?.isActive !== undefined &&
+    payload.isActive === category.isActive
+  ) {
     throw new AppError(
       httpStatus.CONFLICT,
       `Product category is already ${category.isActive}`,

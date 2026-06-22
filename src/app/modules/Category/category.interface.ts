@@ -1,4 +1,5 @@
 import mongoose, { Types } from 'mongoose';
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 export const BusinessCategoryName = {
   RESTAURANT: 'RESTAURANT',
@@ -33,7 +34,7 @@ export type TBusinessCategory = {
 
 export type TProductCategory = {
   _id?: Types.ObjectId;
-  name: string; // e.g. "Pizza", "Burger", "Medicine"
+  name: TLocalizedText; // e.g. "Pizza", "Burger", "Medicine"
   slug: string;
   description?: string;
   icon: string;

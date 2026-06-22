@@ -4,6 +4,7 @@ import {
   TCuisine,
   TProductCategory,
 } from './category.interface';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 export const BusinessCategoryNameEnum = ['RESTAURANT', 'STORE'] as const;
 
@@ -26,13 +27,13 @@ const businessCategorySchema = new Schema<TBusinessCategory>(
 
 const productCategorySchema = new Schema<TProductCategory>(
   {
-    name: { type: String, required: true, unique: true },
+    name: { type: localizedSchema, required: true },
     slug: { type: String, required: true, unique: true },
     description: { type: String },
     icon: { type: String, required: true },
     businessCategoryId: {
       type: Schema.Types.ObjectId,
-      ref: 'BusinessCategory', // reference to BusinessCategory
+      ref: 'BusinessCategory',
       required: true,
       index: true,
     },
@@ -60,6 +61,7 @@ const CuisineSchema = new Schema<TCuisine>(
 );
 
 productCategorySchema.index({ isActive: 1, isDeleted: 1 });
+productCategorySchema.index({ 'name.en': 1 }, { unique: true });
 
 export const BusinessCategory = model<TBusinessCategory>(
   'BusinessCategory',
