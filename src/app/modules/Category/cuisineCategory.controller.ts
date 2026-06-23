@@ -55,7 +55,8 @@ const getAllCuisines = catchAsync(async (req, res) => {
 
 // Get All Cuisines Controller Public
 const getAllCuisinesPublic = catchAsync(async (req, res) => {
-  const result = await CuisineService.getAllCuisinesPublic(req.query);
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const result = await CuisineService.getAllCuisinesPublic(req.query, lng);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
