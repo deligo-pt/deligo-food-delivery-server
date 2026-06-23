@@ -67,8 +67,8 @@ const validateRestaurantStock = (
   }
 };
 
-export const validateAddons = async (
-  payload: TProduct,
+const validateAddons = async (
+  payload: Partial<TProduct>,
   vendorId: Types.ObjectId,
 ) => {
   if (!payload.addonGroups?.length) return;
@@ -136,7 +136,6 @@ const handleVariations = (
       if (price < minPrice) minPrice = price;
       totalStock += stock;
 
-      // 🛠️ আপডেট: option.label.en ব্যবহার করে ভেরিয়েশন SKU জেনারেট করা হচ্ছে
       const variationLabelPart = cleanForSKU(option.label.en || '');
 
       return {

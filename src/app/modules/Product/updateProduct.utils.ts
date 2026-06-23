@@ -7,7 +7,7 @@ import { generateSlug } from './product.utils';
 import { TProduct } from './product.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { Product } from './product.model';
-import { validateAddons } from './createProduct.utils';
+import { CreateProductUtils } from './createProduct.utils';
 
 const getAndValidateProduct = async (
   productId: string,
@@ -54,8 +54,8 @@ const prepareUpdateData = async (
   if (payload.category) modifiedData.category = payload.category;
   if (payload.subCategory) modifiedData.subCategory = payload.subCategory;
   if (payload.brand) modifiedData.brand = payload.brand;
-  if (payload.addonGroups) {
-    validateAddons(payload?.addonGroups, existingProduct.vendorId);
+  if (payload.addonGroups && payload.addonGroups.length > 0) {
+    await CreateProductUtils.validateAddons(payload, existingProduct.vendorId);
     modifiedData.addonGroups = payload.addonGroups;
   }
 

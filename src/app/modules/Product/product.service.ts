@@ -36,7 +36,9 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
     currentUser.role,
   );
 
-  await CreateProductUtils.validateAddons(payload, currentUser._id);
+  if (payload.addonGroups) {
+    await CreateProductUtils.validateAddons(payload, currentUser._id);
+  }
   await CreateProductUtils.applyTax(payload);
 
   const { productNamePart } = CreateProductUtils.prepareBasicFields(
@@ -56,87 +58,6 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
 
   return newProduct;
 };
-
-// update Product Service
-// const updateProduct = async (
-//   productId: string,
-//   payload: Partial<TProduct>,
-//   currentUser: TCurrentUser,
-// ) => {
-//   const { images } = payload;
-//   const existingProduct = await Product.findOne({
-//     productId,
-//     ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
-//   }).populate('vendorId', 'businessDetails.businessType');
-
-//   if (!existingProduct)
-//     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-
-//   if (currentUser?.status !== 'APPROVED')
-//     throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
-
-//   const modifiedData: Record<string, any> = {};
-
-//   if (payload.name) {
-//     modifiedData.name = payload.name;
-//     modifiedData.slug = generateSlug(payload.name?.en || '');
-//   }
-//   if (payload.description) modifiedData.description = payload.description;
-//   if (payload.category) modifiedData.category = payload.category;
-//   if (payload.subCategory) modifiedData.subCategory = payload.subCategory;
-//   if (payload.brand) modifiedData.brand = payload.brand;
-//   if (payload.addonGroups) modifiedData.addonGroups = payload.addonGroups;
-
-//   // Pricing & Tax Update
-//   if (payload.pricing) {
-//     if (payload.pricing.taxId) {
-//       const tax = await Tax.findById(payload.pricing.taxId);
-//       if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
-//       modifiedData['pricing.taxId'] = payload.pricing.taxId;
-//       modifiedData['pricing.taxRate'] = tax.taxRate;
-//     }
-//     if (payload.pricing.currency)
-//       modifiedData['pricing.currency'] = payload.pricing.currency;
-//     if (payload.pricing.discount !== undefined)
-//       modifiedData['pricing.discount'] = payload.pricing.discount;
-//   }
-
-//   // Meta & Stock Unit Update
-//   if (payload.stock?.unit) modifiedData['stock.unit'] = payload.stock.unit;
-//   if (payload.meta) {
-//     Object.keys(payload.meta).forEach((key) => {
-//       modifiedData[`meta.${key}`] = (payload.meta as any)[key];
-//     });
-//   }
-
-//   // Database Update Query
-//   if (images && images.length > 0) {
-//     modifiedData.images = images;
-//   }
-
-//   const updateQuery: any = { $set: modifiedData };
-//   const updatedProduct = await Product.findOneAndUpdate(
-//     { productId },
-//     updateQuery,
-//     { new: true, runValidators: true },
-//   );
-
-//   // Availability Status Auto-Update (Based on the current variation stock)
-//   const vendorBusinessType = (existingProduct?.vendorId as any)?.businessDetails
-//     ?.businessType;
-//   if (
-//     updatedProduct &&
-//     vendorBusinessType !== BusinessCategoryName.RESTAURANT &&
-//     updatedProduct.stock
-//   ) {
-//     const finalQty = updatedProduct.stock.quantity;
-//     updatedProduct.stock.availabilityStatus =
-//       finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
-//     await updatedProduct.save();
-//   }
-
-//   return updatedProduct;
-// };
 
 const updateProduct = async (
   productId: string,
