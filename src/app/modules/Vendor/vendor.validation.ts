@@ -27,9 +27,7 @@ const vendorUpdateValidationSchema = z.object({
         .object({
           businessName: z.string().optional(),
           businessType: z.string().optional(),
-          restaurantCuisineType: z
-            .enum(Object.values(CuisineType) as [string, ...string[]])
-            .optional(),
+          restaurantCuisineType: z.array(z.string()).optional(),
           businessLicenseNumber: z.string().optional(),
           NIF: z.string().optional(),
           totalBranches: z.number().optional(),
