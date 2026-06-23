@@ -107,7 +107,7 @@ const prepareBasicFields = (
 
   payload.slug = generateSlug(payload.name.en || payload.name.pt || '');
 
-  payload.sku = `${category.name
+  payload.sku = `${category?.name?.en
     .substring(0, 3)
     .toUpperCase()}-${productNamePart}-${shortId.split('-').pop()}`;
 

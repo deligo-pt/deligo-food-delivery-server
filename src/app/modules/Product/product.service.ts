@@ -959,6 +959,7 @@ const permanentDeleteProduct = async (
   };
 };
 
+// get out of stock alerts
 const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
   const {
     page = 1,
