@@ -155,14 +155,14 @@ router.get('/cuisine/open/:id', CuisineController.getSingleCuisinePublic);
 // Get all cuisines (Supports Admin dashboard layout and filtered Vendor views)
 router.get(
   '/cuisine',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
   CuisineController.getAllCuisines,
 );
 
 // Get single cuisine details (Protected layout verification)
 router.get(
   '/cuisine/:id',
-  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR'),
+  auth('ADMIN', 'SUPER_ADMIN', 'VENDOR', 'SUB_VENDOR', 'CUSTOMER'),
   CuisineController.getSingleCuisine,
 );
 
