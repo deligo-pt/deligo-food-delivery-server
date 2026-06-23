@@ -59,6 +59,7 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
   return newProduct;
 };
 
+// Update Product Service
 const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
@@ -116,14 +117,17 @@ const manageProductVariations = async (
   const { name, options } = payload;
 
   const normalizedEnName = name.en?.trim();
-  if (!normalizedEnName) {
+  const normalizedPtName = name.pt?.trim();
+
+  if (!normalizedEnName || !normalizedPtName) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'English variation name is required',
+      'Both English and Portuguese variation names are required',
     );
   }
-
-  const productNamePart = cleanForSKU(existingProduct.name?.en || '');
+  const productNamePart = cleanForSKU(
+    existingProduct.name?.en || existingProduct.name?.pt || '',
+  );
 
   if (!existingProduct.variations) {
     existingProduct.variations = [];
@@ -166,6 +170,7 @@ const manageProductVariations = async (
       `VAR-${productNamePart}-${cleanForSKU(normalizedEnLabel)}-${customNanoId(3)}`;
 
     const isSkuTaken = await Product.findOne({
+      productId: { $ne: productId },
       'variations.options.sku': generatedSku,
     });
     if (isSkuTaken) {
@@ -201,8 +206,8 @@ const manageProductVariations = async (
   } else {
     existingProduct.variations.push({
       name: {
-        en: name.en.trim(),
-        pt: name.pt.trim(),
+        en: normalizedEnName,
+        pt: normalizedPtName,
       },
       options: finalOptionsToPush,
     });

@@ -35,15 +35,13 @@ const validateCategory = (
   category: any,
   role: TUserRole,
 ) => {
-  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(role);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
   }
 
   if (
-    !isAdmin &&
     category.businessCategoryId.toString() !==
-      vendorCategoryExist?._id.toString()
+    vendorCategoryExist?._id.toString()
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -56,14 +54,18 @@ const validateRestaurantStock = (
   vendorCategoryExist: any,
   payload: TProduct,
 ) => {
-  if (
-    vendorCategoryExist?.name === BusinessCategoryName.RESTAURANT &&
-    payload.stock
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Stock is not allowed for Restaurants',
-    );
+  const isRestaurant =
+    vendorCategoryExist?.name === BusinessCategoryName.RESTAURANT;
+
+  if (isRestaurant) {
+    if (payload.stock && (payload.stock.quantity || 0) > 0) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Stock management is not allowed for Restaurants',
+      );
+    }
+
+    payload.stock = undefined;
   }
 };
 
@@ -123,7 +125,7 @@ const handleVariations = (
   vendorCategory: any,
 ) => {
   if (!payload.variations?.length) return;
-
+  const isRestaurant = vendorCategory?.name === BusinessCategoryName.RESTAURANT;
   let totalStock = 0;
   let minPrice = Infinity;
 
@@ -131,32 +133,46 @@ const handleVariations = (
     ...variation,
     options: variation.options.map((option) => {
       const price = option.price;
-      const stock = option.stockQuantity || 0;
+
+      if (isRestaurant && (option.stockQuantity || 0) > 0) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'Variation stock quantity is not allowed for Restaurants',
+        );
+      }
+
+      const stock = isRestaurant ? 0 : option.stockQuantity || 0;
 
       if (price < minPrice) minPrice = price;
       totalStock += stock;
 
       const variationLabelPart = cleanForSKU(option.label.en || '');
 
-      return {
+      const cleanOption: any = {
         ...option,
         price,
         sku:
           option.sku ||
           `VAR-${productNamePart}-${variationLabelPart}-${customNanoId(3)}`,
-        stockQuantity: stock,
-        totalAddedQuantity: stock,
-        isOutOfStock: stock <= 0,
       };
+
+      if (!isRestaurant) {
+        cleanOption.stockQuantity = stock;
+        cleanOption.totalAddedQuantity = stock;
+        cleanOption.isOutOfStock = stock <= 0;
+      } else {
+        delete cleanOption.stockQuantity;
+        delete cleanOption.totalAddedQuantity;
+        delete cleanOption.isOutOfStock;
+      }
+
+      return cleanOption;
     }),
   }));
 
   payload.pricing.price = minPrice === Infinity ? 0 : minPrice;
 
-  if (
-    vendorCategory?.name !== BusinessCategoryName.RESTAURANT &&
-    payload.stock
-  ) {
+  if (!isRestaurant && payload.stock) {
     payload.stock.quantity = totalStock;
     payload.stock.totalAddedQuantity = totalStock;
     payload.stock.hasVariations = true;

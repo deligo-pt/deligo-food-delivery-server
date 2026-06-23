@@ -5,7 +5,11 @@ import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
-import { BusinessCategory, ProductCategory } from '../Category/category.model';
+import {
+  BusinessCategory,
+  Cuisine,
+  ProductCategory,
+} from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
@@ -88,8 +92,8 @@ const vendorUpdate = async (
     }
 
     if (cuisineType && cuisineType.length > 0) {
-      const cuisineTypeExists = await BusinessCategory.find({
-        name: { $in: cuisineType },
+      const cuisineTypeExists = await Cuisine.find({
+        'name.en': { $in: cuisineType },
       });
       if (cuisineTypeExists.length !== cuisineType.length) {
         throw new AppError(httpStatus.BAD_REQUEST, 'Invalid cuisine type.');

@@ -7,10 +7,7 @@ const variationOptionSchema = z
     label: localizedValidationSchema,
     price: z.number().min(0, 'Variation price must be non-negative'),
     sku: z.string().optional(),
-    stockQuantity: z
-      .number({ required_error: 'Variation stock quantity is required' })
-      .min(0)
-      .optional(),
+    stockQuantity: z.number().min(0).optional(),
     isOutOfStock: z.boolean().default(false),
   })
   .strict();
