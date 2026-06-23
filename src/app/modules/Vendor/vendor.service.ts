@@ -5,7 +5,11 @@ import httpStatus from 'http-status';
 import { Vendor } from './vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { VendorSearchableFields } from './vendor.constant';
-import { BusinessCategory, ProductCategory } from '../Category/category.model';
+import {
+  BusinessCategory,
+  Cuisine,
+  ProductCategory,
+} from '../Category/category.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
@@ -57,6 +61,7 @@ const vendorUpdate = async (
   }
 
   const businessType = payload.businessDetails?.businessType;
+  const cuisineType = payload.businessDetails?.restaurantCuisineType;
 
   // 5. Business Validation: Verify that the provided business type exists in the database
   if (businessType) {
@@ -68,14 +73,21 @@ const vendorUpdate = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid business type.');
     }
 
-    if (
-      businessType === BusinessCategoryName.RESTAURANT &&
-      !payload.businessDetails?.restaurantCuisineType
-    ) {
+    if (businessType === BusinessCategoryName.RESTAURANT && !cuisineType) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'Please select a cuisine type.',
       );
+    }
+  }
+
+  if (cuisineType && cuisineType.length > 0) {
+    const cuisineTypes = await Cuisine.find({
+      name: { $in: cuisineType },
+    });
+
+    if (cuisineTypes.length !== cuisineType.length) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid cuisine type.');
     }
   }
 
@@ -486,18 +498,10 @@ const getAllVendorsForCustomer = async (
   };
 
   if (query.restaurantCuisineType) {
-    if (
-      typeof query.restaurantCuisineType === 'string' &&
-      query.restaurantCuisineType.includes(',')
-    ) {
-      const cuisineArray = query.restaurantCuisineType
-        .split(',')
-        .map((item) => item.trim());
-      filter['businessDetails.restaurantCuisineType'] = { $in: cuisineArray };
-    } else {
-      filter['businessDetails.restaurantCuisineType'] =
-        query.restaurantCuisineType;
-    }
+    const cuisineInput = query.restaurantCuisineType as string;
+    filter['businessDetails.restaurantCuisineType'] = cuisineInput
+      .trim()
+      .toUpperCase();
     delete query.restaurantCuisineType;
   }
 
@@ -673,18 +677,10 @@ const getAllVendorsForCustomerPublic = async (
   };
 
   if (query.restaurantCuisineType) {
-    if (
-      typeof query.restaurantCuisineType === 'string' &&
-      query.restaurantCuisineType.includes(',')
-    ) {
-      const cuisineArray = query.restaurantCuisineType
-        .split(',')
-        .map((item) => item.trim());
-      filter['businessDetails.restaurantCuisineType'] = { $in: cuisineArray };
-    } else {
-      filter['businessDetails.restaurantCuisineType'] =
-        query.restaurantCuisineType;
-    }
+    const cuisineInput = query.restaurantCuisineType as string;
+    filter['businessDetails.restaurantCuisineType'] = cuisineInput
+      .trim()
+      .toUpperCase();
     delete query.restaurantCuisineType;
   }
 
