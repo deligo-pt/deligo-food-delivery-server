@@ -2,10 +2,7 @@
 import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
-import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
-import { CuisineType } from './vendor.constant';
 
 const vendorSchema = new Schema<TVendor>(
   {
@@ -80,8 +77,8 @@ const vendorSchema = new Schema<TVendor>(
       businessName: { type: String, default: '' },
       businessType: { type: String, default: '' },
       restaurantCuisineType: {
-        type: String,
-        enum: Object.values(CuisineType),
+        type: [String],
+        default: [],
       },
       businessLicenseNumber: { type: String, default: '' },
       NIF: { type: String, default: '' },
