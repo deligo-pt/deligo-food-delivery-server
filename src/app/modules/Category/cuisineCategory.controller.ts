@@ -84,7 +84,11 @@ const getSingleCuisine = catchAsync(async (req, res) => {
 
 // Get Single Cuisine Controller Public
 const getSingleCuisinePublic = catchAsync(async (req, res) => {
-  const result = await CuisineService.getSingleCuisinePublic(req.params.id);
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const result = await CuisineService.getSingleCuisinePublic(
+    req.params.id,
+    lng,
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
