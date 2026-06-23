@@ -7,35 +7,57 @@ import { generateSlug } from './product.utils';
 import { TProduct } from './product.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { Product } from './product.model';
+import { validateAddons } from './createProduct.utils';
 
 const getAndValidateProduct = async (
   productId: string,
   currentUser: TCurrentUser,
 ) => {
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  if (currentUser?.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not authorized to update.Your account is ${currentUser.status}`,
+    );
+  }
   const product = await Product.findOne({
     productId,
-    ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
+    ...(!isAdmin &&
+      currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
   }).populate('vendorId', 'businessDetails.businessType');
 
-  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
 
   return product;
 };
 
-const prepareUpdateData = async (payload: Partial<TProduct>) => {
+const prepareUpdateData = async (
+  payload: Partial<TProduct>,
+  existingProduct: TProduct,
+) => {
   const modifiedData: Record<string, any> = {};
 
   if (payload.name) {
-    modifiedData.name = payload.name;
-    modifiedData.slug = generateSlug(payload.name.en || payload.name.pt || '');
+    if (payload.name.en) modifiedData['name.en'] = payload.name.en;
+    if (payload.name.pt) modifiedData['name.pt'] = payload.name.pt;
+    const finalSlugName = payload.name.en || existingProduct?.name?.en || '';
+    modifiedData.slug = generateSlug(finalSlugName);
   }
-  if (payload.description) modifiedData.description = payload.description;
+  if (payload.description) {
+    if (payload.description.en)
+      modifiedData['description.en'] = payload.description.en;
+    if (payload.description.pt)
+      modifiedData['description.pt'] = payload.description.pt;
+  }
   if (payload.category) modifiedData.category = payload.category;
   if (payload.subCategory) modifiedData.subCategory = payload.subCategory;
   if (payload.brand) modifiedData.brand = payload.brand;
-  if (payload.addonGroups) modifiedData.addonGroups = payload.addonGroups;
+  if (payload.addonGroups) {
+    validateAddons(payload?.addonGroups, existingProduct.vendorId);
+    modifiedData.addonGroups = payload.addonGroups;
+  }
 
   if (payload.pricing) {
     const { taxId, currency, discount, price } = payload.pricing;

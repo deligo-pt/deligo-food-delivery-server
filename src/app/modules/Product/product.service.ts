@@ -142,17 +142,20 @@ const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
   currentUser: TCurrentUser,
-  images: string[],
 ) => {
+  const { images } = payload;
   const existingProduct = await UpdateProductUtils.getAndValidateProduct(
     productId,
     currentUser,
   );
 
-  const modifiedData = await UpdateProductUtils.prepareUpdateData(payload);
+  const modifiedData = await UpdateProductUtils.prepareUpdateData(
+    payload,
+    existingProduct,
+  );
 
   const updateQuery: any = { $set: modifiedData };
-  if (images?.length > 0) {
+  if (images && images?.length > 0) {
     updateQuery.$push = { images: { $each: images } };
   }
 

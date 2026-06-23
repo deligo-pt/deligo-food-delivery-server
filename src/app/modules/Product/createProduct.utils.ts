@@ -67,7 +67,10 @@ const validateRestaurantStock = (
   }
 };
 
-const validateAddons = async (payload: TProduct, vendorId: Types.ObjectId) => {
+export const validateAddons = async (
+  payload: TProduct,
+  vendorId: Types.ObjectId,
+) => {
   if (!payload.addonGroups?.length) return;
 
   const validAddonsCount = await AddonGroup.countDocuments({
