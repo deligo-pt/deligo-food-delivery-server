@@ -49,11 +49,20 @@ const updateCuisine = async (
   }
 
   if (payload.name) {
-    payload.name = payload.name.toUpperCase();
-    payload.slug = payload.name
-      .toLowerCase()
-      .replace(/[^\w ]+/g, '')
-      .replace(/ +/g, '-');
+    payload.name = {
+      ...cuisine.name,
+      ...payload.name,
+    };
+
+    if (payload.name.en) payload.name.en = payload.name.en.toUpperCase();
+    if (payload.name.pt) payload.name.pt = payload.name.pt.toUpperCase();
+
+    if (payload.name.en) {
+      payload.slug = payload.name.en
+        .toLowerCase()
+        .replace(/[^\w ]+/g, '')
+        .replace(/ +/g, '-');
+    }
   }
 
   if (
