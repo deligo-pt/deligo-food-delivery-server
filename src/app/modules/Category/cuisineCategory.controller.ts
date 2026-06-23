@@ -38,9 +38,11 @@ const updateCuisine = catchAsync(async (req, res) => {
 
 // Get All Cuisines Controller (Protected)
 const getAllCuisines = catchAsync(async (req, res) => {
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await CuisineService.getAllCuisines(
     req.query,
     req.user as TCurrentUser,
+    lng,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

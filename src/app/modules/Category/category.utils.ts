@@ -40,3 +40,20 @@ export const formatProductCategoryResponse = (data: any, lng: string) => {
     name: dataObj.name?.[lng] || dataObj.name?.['en'] || '',
   };
 };
+export const formatCuisineResponse = (data: any, lng: string) => {
+  if (Array.isArray(data)) {
+    return data.map((item) => {
+      const itemObj = item.toObject?.() || item;
+      return {
+        ...itemObj,
+        name: itemObj.name?.[lng] || itemObj.name?.['en'] || '',
+      };
+    });
+  }
+
+  const dataObj = data.toObject?.() || data;
+  return {
+    ...dataObj,
+    name: dataObj.name?.[lng] || dataObj.name?.['en'] || '',
+  };
+};

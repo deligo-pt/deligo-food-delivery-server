@@ -5,6 +5,7 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TCuisine } from './category.interface';
 import { Cuisine } from './category.model';
+import { formatCuisineResponse } from './category.utils';
 
 // Create Cuisine
 const createCuisine = async (payload: TCuisine, image: string | null) => {
@@ -95,6 +96,7 @@ const updateCuisine = async (
 const getAllCuisines = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
+  lng: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -117,7 +119,11 @@ const getAllCuisines = async (
     cuisineQuery.modelQuery,
   ]);
 
-  return { meta, data };
+  const formattedData = data.map((cuisine) =>
+    formatCuisineResponse(cuisine, lng),
+  );
+
+  return { meta, data: formattedData };
 };
 
 // Get All Cuisines Public
