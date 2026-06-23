@@ -47,7 +47,7 @@ export type TProductCategory = {
 
 export type TCuisine = {
   _id?: Types.ObjectId;
-  name: string;
+  name: TLocalizedText;
   slug: string;
   imageUrl: string;
   isActive: boolean;

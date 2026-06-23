@@ -43,9 +43,9 @@ const productCategorySchema = new Schema<TProductCategory>(
   { timestamps: true },
 );
 
-const CuisineSchema = new Schema<TCuisine>(
+const cuisineSchema = new Schema<TCuisine>(
   {
-    name: { type: String, required: true, unique: true, trim: true },
+    name: { type: localizedSchema, required: true },
     slug: {
       type: String,
       required: true,
@@ -62,6 +62,7 @@ const CuisineSchema = new Schema<TCuisine>(
 
 productCategorySchema.index({ isActive: 1, isDeleted: 1 });
 productCategorySchema.index({ 'name.en': 1 }, { unique: true });
+cuisineSchema.index({ 'name.en': 1 }, { unique: true });
 
 export const BusinessCategory = model<TBusinessCategory>(
   'BusinessCategory',
@@ -72,4 +73,4 @@ export const ProductCategory = model<TProductCategory>(
   productCategorySchema,
 );
 
-export const Cuisine = model<TCuisine>('Cuisine', CuisineSchema);
+export const Cuisine = model<TCuisine>('Cuisine', cuisineSchema);

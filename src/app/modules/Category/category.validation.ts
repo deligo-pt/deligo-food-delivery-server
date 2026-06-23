@@ -63,9 +63,7 @@ const updateProductCategoryValidationSchema = z.object({
 const createCuisineValidationSchema = z.object({
   body: z
     .object({
-      name: z
-        .string({ required_error: 'Cuisine name is required' })
-        .min(2, 'Cuisine name must be at least 2 characters'),
+      name: localizedValidationSchema,
       slug: z.string().optional(),
       isActive: z.boolean().default(true).optional(),
     })
@@ -76,7 +74,7 @@ const createCuisineValidationSchema = z.object({
 const updateCuisineValidationSchema = z.object({
   body: z
     .object({
-      name: z.string().optional(),
+      name: localizedValidationSchema.partial().optional(),
       slug: z.string().optional(),
       isActive: z.boolean().optional(),
       isDeleted: z.boolean().optional(),

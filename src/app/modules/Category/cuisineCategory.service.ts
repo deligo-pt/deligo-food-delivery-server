@@ -8,7 +8,10 @@ import { Cuisine } from './category.model';
 
 // Create Cuisine
 const createCuisine = async (payload: TCuisine, image: string | null) => {
-  const exists = await Cuisine.findOne({ name: payload.name.toUpperCase() });
+  const exists = await Cuisine.findOne({
+    'name.en': payload.name.en.toUpperCase(),
+  });
+
   if (exists) {
     throw new AppError(
       httpStatus.CONFLICT,
@@ -16,8 +19,10 @@ const createCuisine = async (payload: TCuisine, image: string | null) => {
     );
   }
 
-  payload.name = payload.name.toUpperCase();
-  payload.slug = payload.name
+  payload.name.en = payload.name.en.toUpperCase();
+  payload.name.pt = payload.name.pt.toUpperCase();
+
+  payload.slug = payload.name.en
     .toLowerCase()
     .replace(/[^\w ]+/g, '')
     .replace(/ +/g, '-');
