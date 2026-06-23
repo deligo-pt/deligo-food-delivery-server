@@ -68,9 +68,11 @@ const getAllCuisinesPublic = catchAsync(async (req, res) => {
 
 // Get Single Cuisine Controller (Protected)
 const getSingleCuisine = catchAsync(async (req, res) => {
+  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await CuisineService.getSingleCuisine(
     req.params.id,
     req.user as TCurrentUser,
+    lng,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
