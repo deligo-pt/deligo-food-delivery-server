@@ -180,6 +180,13 @@ const manageProductVariations = async (
       );
     }
 
+    if (isRestaurant && opt.stockQuantity) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Variation stock quantity is not allowed for Restaurants',
+      );
+    }
+
     const newOption: any = {
       label: {
         en: normalizedEnLabel,
@@ -190,7 +197,7 @@ const manageProductVariations = async (
     };
 
     if (!isRestaurant) {
-      const inputStockQty = opt.stockQuantity || 0;
+      const inputStockQty = opt.stockQuantity ?? 0;
       newOption.stockQuantity = inputStockQty;
       newOption.totalAddedQuantity = inputStockQty;
       newOption.isOutOfStock = inputStockQty <= 0;

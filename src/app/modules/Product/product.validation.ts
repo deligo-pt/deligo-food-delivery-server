@@ -132,7 +132,7 @@ const manageVariationValidationSchema = z.object({
               stockQuantity: z
                 .number()
                 .min(0, 'Stock cannot be negative')
-                .default(0),
+                .optional(),
             })
             .strict(),
         )
@@ -141,6 +141,7 @@ const manageVariationValidationSchema = z.object({
     .strict(),
 });
 
+// renameVariationValidationSchema
 const renameVariationValidationSchema = z.object({
   body: z
     .object({
