@@ -177,8 +177,8 @@ const renameVariationValidationSchema = z.object({
 const removeVariationValidationSchema = z.object({
   body: z
     .object({
-      name: localizedValidationSchema,
-      labelToRemove: localizedValidationSchema.optional(),
+      name: z.string().min(1, 'Variation name is required'),
+      labelToRemove: z.string().optional(),
     })
     .strict(),
 });
