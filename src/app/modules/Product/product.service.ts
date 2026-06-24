@@ -20,6 +20,7 @@ import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
 import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 import { UpdateProductUtils } from './updateProduct.utils';
+import { Order } from '../Order/order.model';
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
@@ -967,10 +968,29 @@ const softDeleteProduct = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'Product is already deleted');
   }
 
-  // --------------------------------------------------------------------------
-  // TODO: check if product in active order or not. if in active order, throw error
-  // --------------------------------------------------------------------------
+  const activeOrderStatuses = [
+    'PENDING',
+    'ACCEPTED',
+    'AWAITING_PARTNER',
+    'DISPATCHING',
+    'ASSIGNED',
+    'REASSIGNMENT_NEEDED',
+    'PREPARING',
+    'READY_FOR_PICKUP',
+    'PICKED_UP',
+    'ON_THE_WAY',
+  ];
 
+  const hasActiveOrder = await Order.findOne({
+    'items.productId': product._id,
+    orderStatus: { $in: activeOrderStatuses },
+  });
+  if (hasActiveOrder) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Cannot delete product. This product is currently tied to an active, ongoing order.',
+    );
+  }
   product.isDeleted = true;
   await product.save();
 
