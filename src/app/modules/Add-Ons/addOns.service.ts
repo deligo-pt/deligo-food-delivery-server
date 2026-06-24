@@ -264,7 +264,7 @@ const addOptionToAddonGroup = async (
 // toggle option status (active/inactive)
 const toggleOptionStatus = async (
   groupId: string,
-  optionId: string,
+  optionSku: string,
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -277,7 +277,7 @@ const toggleOptionStatus = async (
   const group = await AddonGroup.findOne({
     _id: groupId,
     vendorId: currentUser._id,
-    'options._id': optionId,
+    'options.sku': optionSku,
     isDeleted: false,
   });
 
@@ -285,19 +285,18 @@ const toggleOptionStatus = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Addon Group or Option not found');
   }
 
-  const currentOption = group.options.find(
-    (opt: any) => opt._id.toString() === optionId,
-  );
+  const currentOption = group.options.find((opt: any) => opt.sku === optionSku);
 
-  if (!currentOption)
+  if (!currentOption) {
     throw new AppError(httpStatus.NOT_FOUND, 'Option not found');
+  }
 
   const newStatus = !currentOption.isActive;
 
   const result = await AddonGroup.findOneAndUpdate(
     {
       _id: groupId,
-      'options._id': optionId,
+      'options.sku': optionSku,
     },
     {
       $set: { 'options.$.isActive': newStatus },
@@ -306,7 +305,7 @@ const toggleOptionStatus = async (
       new: true,
       runValidators: true,
     },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxName taxCode taxRate');
 
   return result;
 };

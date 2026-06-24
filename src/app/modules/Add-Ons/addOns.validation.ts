@@ -97,9 +97,17 @@ const addOptionToAddonGroupValidationSchema = z.object({
     })
     .strict(),
 });
+const toggleOptionStatusValidationSchema = z.object({
+  body: z
+    .object({
+      optionSku: z.string({ required_error: 'Option SKU is required' }),
+    })
+    .strict(),
+});
 
 export const AddOnsValidation = {
   createAddonGroupValidationSchema,
   updateAddonGroupValidationSchema,
   addOptionToAddonGroupValidationSchema,
+  toggleOptionStatusValidationSchema,
 };

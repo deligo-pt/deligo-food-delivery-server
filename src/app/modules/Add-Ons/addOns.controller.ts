@@ -53,10 +53,10 @@ const addOptionToGroup = catchAsync(async (req, res) => {
 // toggle option status controller
 const toggleOptionStatus = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
-  const { optionId } = req.body;
+  const { optionSku } = req.body;
   const result = await AddOnsServices.toggleOptionStatus(
     addonGroupId,
-    optionId as string,
+    optionSku as string,
     req.user as TCurrentUser,
   );
   sendResponse(res, {

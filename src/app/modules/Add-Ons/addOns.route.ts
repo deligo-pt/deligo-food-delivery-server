@@ -34,6 +34,7 @@ router.patch(
 router.patch(
   '/:addonGroupId/toggle-option-status',
   auth('VENDOR', 'SUB_VENDOR'),
+  validateRequest(AddOnsValidation.toggleOptionStatusValidationSchema),
   AddOnsControllers.toggleOptionStatus,
 );
 
