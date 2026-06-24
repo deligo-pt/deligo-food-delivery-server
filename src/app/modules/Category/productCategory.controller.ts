@@ -84,16 +84,25 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
 // Get Single Product Category Controllers
 const getSingleProductCategory = catchAsync(async (req, res) => {
   const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const user = req.user as TCurrentUser;
+  const role = user?.role;
   const result = await ProductCategoryService.getSingleProductCategory(
     req.params.id,
-    req.user as TCurrentUser,
-    lang,
+    user,
   );
+
+  let formattedData;
+
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    formattedData = result;
+  } else {
+    formattedData = formatProductCategoryResponse(result, lang);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Product category fetched successfully',
-    data: result,
+    data: formattedData,
   });
 });
 
