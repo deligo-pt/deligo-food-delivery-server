@@ -66,17 +66,17 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
 
 // Get Business Category Controllers Public
 const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getAllBusinessCategoriesPublic(
     req.query,
-    lang,
   );
+
+  const formattedData = formatBusinessCategoryResponse(result.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Business categories fetched successfully',
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
