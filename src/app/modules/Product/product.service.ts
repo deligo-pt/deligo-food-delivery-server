@@ -950,34 +950,38 @@ const softDeleteProduct = async (
   }
 
   const product = await Product.findOne({ productId });
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
-    if (currentUser._id.toString() !== product?.vendorId.toString()) {
+    if (currentUser._id.toString() !== product.vendorId.toString()) {
       throw new AppError(
-        httpStatus.NOT_FOUND,
+        httpStatus.FORBIDDEN,
         'You are not authorized to delete this product',
       );
     }
   }
 
-  if (product?.isDeleted) {
+  if (product.isDeleted) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Product is already deleted');
   }
 
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  }
+  // --------------------------------------------------------------------------
+  // TODO: check if product in active order or not. if in active order, throw error
+  // --------------------------------------------------------------------------
 
-  // --------------------------------------------------------------------------
-  // TODO: check if product in order or not. if in order, throw error will be added
-  // --------------------------------------------------------------------------
   product.isDeleted = true;
   await product.save();
+
+  const productName = product.name?.en || 'Product';
+
   return {
-    message: `${product.name} has been deleted successfully`,
+    message: `${productName} has been deleted successfully`,
   };
 };
 
-//  product permanent delete service (admin only)
+// product permanent delete service (admin only)
 const permanentDeleteProduct = async (
   productId: string,
   currentUser: TCurrentUser,
@@ -989,21 +993,31 @@ const permanentDeleteProduct = async (
     );
   }
 
-  const product = await Product.findOne({ productId });
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only admins can permanently delete products',
+    );
+  }
 
-  if (product?.isDeleted === false) {
+  const product = await Product.findOne({ productId });
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+
+  if (product.isDeleted === false) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       'Product must be soft deleted before permanent deletion',
     );
   }
 
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  }
+  const productName = product.name?.en || 'Product';
+
   await product.deleteOne();
+
   return {
-    message: `${product.name} has been permanently deleted successfully`,
+    message: `${productName} has been permanently deleted successfully`,
   };
 };
 
