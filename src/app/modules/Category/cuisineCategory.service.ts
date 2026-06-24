@@ -142,11 +142,7 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
 };
 
 // Get Single Cuisine
-const getSingleCuisine = async (
-  id: string,
-  currentUser: TCurrentUser,
-  lang: 'en' | 'pt',
-) => {
+const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
@@ -159,9 +155,7 @@ const getSingleCuisine = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
   }
 
-  const formattedCuisine = formatCuisineResponse(cuisine, lang);
-
-  return formattedCuisine;
+  return cuisine;
 };
 
 // Get Single Cuisine Public

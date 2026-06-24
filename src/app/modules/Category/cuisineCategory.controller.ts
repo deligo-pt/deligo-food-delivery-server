@@ -74,17 +74,21 @@ const getAllCuisinesPublic = catchAsync(async (req, res) => {
 
 // Get Single Cuisine Controller (Protected)
 const getSingleCuisine = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
-  const result = await CuisineService.getSingleCuisine(
-    req.params.id,
-    req.user as TCurrentUser,
-    lang,
-  );
+  const user = req.user as TCurrentUser;
+  const result = await CuisineService.getSingleCuisine(req.params.id, user);
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
+  if (isAdmin) {
+    formattedData = result;
+  } else {
+    formattedData = formatCuisineResponse(result, req.lang);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Cuisine fetched successfully',
-    data: result,
+    data: formattedData,
   });
 });
 
