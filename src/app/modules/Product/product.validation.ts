@@ -145,23 +145,29 @@ const manageVariationValidationSchema = z.object({
 const renameVariationValidationSchema = z.object({
   body: z
     .object({
-      oldName: localizedValidationSchema.optional(),
+      oldName: z.string().min(1, 'Old variation name is required'),
 
-      newName: localizedValidationSchema.optional(),
+      newName: localizedValidationSchema.partial().optional(),
 
-      oldLabel: localizedValidationSchema.optional(),
-      newLabel: localizedValidationSchema.optional(),
+      oldLabel: z.string().optional(),
+      newLabel: localizedValidationSchema.partial().optional(),
     })
     .strict()
     .refine(
       (data) => {
-        const isRenamingGroup = !!data.newName && !!data.oldName;
-        const isRenamingOption = !!(data.oldLabel && data.newLabel);
+        const isRenamingGroup =
+          !!data.newName && (!!data.newName.en || !!data.newName.pt);
+
+        const isRenamingOption =
+          !!data.oldLabel &&
+          !!data.newLabel &&
+          (!!data.newLabel.en || !!data.newLabel.pt);
+
         return isRenamingGroup || isRenamingOption;
       },
       {
         message:
-          "You must provide both 'oldName' and 'newName' to rename the group, or both 'oldLabel' and 'newLabel' to rename an option.",
+          "You must provide at least one field (en/pt) inside 'newName' to rename the group, or 'oldLabel' along with at least one field inside 'newLabel' to rename an option.",
         path: ['newName'],
       },
     ),

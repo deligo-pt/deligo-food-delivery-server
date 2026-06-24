@@ -260,9 +260,9 @@ const renameProductVariation = async (
   productId: string,
   payload: {
     oldName: string;
-    newName?: TLocalizedText;
+    newName?: Partial<TLocalizedText>;
     oldLabel?: string;
-    newLabel?: TLocalizedText;
+    newLabel?: Partial<TLocalizedText>;
   },
   currentUser: TCurrentUser,
 ) => {
@@ -294,26 +294,65 @@ const renameProductVariation = async (
     );
 
   if (newName && !oldLabel) {
-    if (!newName.en || !newName.pt) {
+    const normalizedNewEn = newName.en?.trim();
+    const normalizedNewPt = newName.pt?.trim();
+
+    if (!normalizedNewEn && !normalizedNewPt) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'New variation name must include both English and Portuguese translations',
+        'At least one language translation (English or Portuguese) must be provided',
       );
     }
-    existingProduct.variations[variationIndex].name = {
-      en: newName.en.trim(),
-      pt: newName.pt.trim(),
-    };
+
+    if (normalizedNewEn) {
+      if (normalizedNewEn.toLowerCase() !== oldName.trim().toLowerCase()) {
+        const hasEnDuplicate = existingProduct.variations.some(
+          (v, idx) =>
+            idx !== variationIndex &&
+            v.name?.en?.toLowerCase() === normalizedNewEn.toLowerCase(),
+        );
+        if (hasEnDuplicate) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Another variation group named '${normalizedNewEn}' (English) already exists.`,
+          );
+        }
+      }
+      existingProduct.variations[variationIndex].name.en = normalizedNewEn;
+    }
+
+    if (normalizedNewPt) {
+      const currentPtName = existingProduct.variations[variationIndex].name.pt;
+      if (
+        !currentPtName ||
+        normalizedNewPt.toLowerCase() !== currentPtName.toLowerCase()
+      ) {
+        const hasPtDuplicate = existingProduct.variations.some(
+          (v, idx) =>
+            idx !== variationIndex &&
+            v.name?.pt?.toLowerCase() === normalizedNewPt.toLowerCase(),
+        );
+        if (hasPtDuplicate) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Another variation group named '${normalizedNewPt}' (Portuguese) already exists.`,
+          );
+        }
+      }
+      existingProduct.variations[variationIndex].name.pt = normalizedNewPt;
+    }
   }
 
   if (oldLabel && newLabel) {
-    if (!newLabel.en || !newLabel.pt) {
+    const normalizedNewEnLabel = newLabel.en?.trim();
+    const normalizedNewPtLabel = newLabel.pt?.trim();
+
+    if (!normalizedNewEnLabel && !normalizedNewPtLabel) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'New option label must include both English and Portuguese translations',
+        'At least one option label translation (English or Portuguese) must be provided',
       );
     }
-
     const optionIndex = existingProduct.variations[
       variationIndex
     ].options.findIndex(
@@ -323,13 +362,56 @@ const renameProductVariation = async (
     if (optionIndex === -1)
       throw new AppError(
         httpStatus.NOT_FOUND,
-        `Option '${oldLabel}' not found`,
+        `Option '${oldLabel}' not found in variation group '${oldName}'`,
       );
 
-    existingProduct.variations[variationIndex].options[optionIndex].label = {
-      en: newLabel.en.trim(),
-      pt: newLabel.pt.trim(),
-    };
+    if (normalizedNewEnLabel) {
+      if (
+        normalizedNewEnLabel.toLowerCase() !== oldLabel.trim().toLowerCase()
+      ) {
+        const hasEnLabelDuplicate = existingProduct.variations[
+          variationIndex
+        ].options.some(
+          (o: any, idx: number) =>
+            idx !== optionIndex &&
+            o.label?.en?.toLowerCase() === normalizedNewEnLabel.toLowerCase(),
+        );
+        if (hasEnLabelDuplicate) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `An option with label '${normalizedNewEnLabel}' (English) already exists in this group.`,
+          );
+        }
+      }
+      existingProduct.variations[variationIndex].options[optionIndex].label.en =
+        normalizedNewEnLabel;
+    }
+
+    if (normalizedNewPtLabel) {
+      const currentPtLabel =
+        existingProduct.variations[variationIndex].options[optionIndex].label
+          .pt;
+      if (
+        !currentPtLabel ||
+        normalizedNewPtLabel.toLowerCase() !== currentPtLabel.toLowerCase()
+      ) {
+        const hasPtLabelDuplicate = existingProduct.variations[
+          variationIndex
+        ].options.some(
+          (o: any, idx: number) =>
+            idx !== optionIndex &&
+            o.label?.pt?.toLowerCase() === normalizedNewPtLabel.toLowerCase(),
+        );
+        if (hasPtLabelDuplicate) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `An option with label '${normalizedNewPtLabel}' (Portuguese) already exists in this group.`,
+          );
+        }
+      }
+      existingProduct.variations[variationIndex].options[optionIndex].label.pt =
+        normalizedNewPtLabel;
+    }
   }
 
   await existingProduct.save();
