@@ -111,13 +111,14 @@ const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
   const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getSingleProductCategoryPublic(
     req.params.id,
-    lang,
   );
+
+  const formattedData = formatProductCategoryResponse(result, lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Product category fetched successfully',
-    data: result,
+    data: formattedData,
   });
 });
 
