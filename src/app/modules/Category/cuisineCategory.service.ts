@@ -122,10 +122,7 @@ const getAllCuisines = async (
 };
 
 // Get All Cuisines Public
-const getAllCuisinesPublic = async (
-  query: Record<string, unknown>,
-  lang: 'en' | 'pt',
-) => {
+const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
   query.isActive = true;
   query.isDeleted = false;
 
@@ -141,11 +138,7 @@ const getAllCuisinesPublic = async (
     cuisineQuery.modelQuery,
   ]);
 
-  const formattedData = data.map((cuisine) =>
-    formatCuisineResponse(cuisine, lang),
-  );
-
-  return { meta, data: formattedData };
+  return { meta, data };
 };
 
 // Get Single Cuisine

@@ -61,14 +61,14 @@ const getAllCuisines = catchAsync(async (req, res) => {
 
 // Get All Cuisines Controller Public
 const getAllCuisinesPublic = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
-  const result = await CuisineService.getAllCuisinesPublic(req.query, lang);
+  const result = await CuisineService.getAllCuisinesPublic(req.query);
+  const formattedData = formatCuisineResponse(result.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Cuisines fetched successfully',
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
