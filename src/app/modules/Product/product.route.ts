@@ -73,6 +73,7 @@ router.patch(
 router.delete(
   '/:productId/images',
   auth('VENDOR', 'SUB_VENDOR'),
+  validateRequest(ProductValidation.deleteProductImagesValidationSchema),
   ProductControllers.deleteProductImages,
 );
 

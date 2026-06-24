@@ -731,7 +731,18 @@ const deleteProductImages = async (
   // -------------check if images to be deleted exist in product images-------------
   const invalidImages = images.filter((img) => !product.images.includes(img));
   if (invalidImages.length > 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid images');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'The following images do not belong to this product.',
+    );
+  }
+
+  const remainingImagesCount = product.images.length - images.length;
+  if (remainingImagesCount < 1) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'A product must have at least one image remaining. You cannot delete all images.',
+    );
   }
 
   // delete image from cloudinary

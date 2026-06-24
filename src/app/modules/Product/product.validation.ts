@@ -225,6 +225,19 @@ const approveProductValidationSchema = z.object({
     ),
 });
 
+// deleteProductImagesValidationSchema
+const deleteProductImagesValidationSchema = z.object({
+  body: z
+    .object({
+      images: z
+        .array(
+          z.string().url({ message: 'Each image must be a valid URL string' }),
+        )
+        .min(1, 'Please provide at least one image URL to delete'),
+    })
+    .strict(),
+});
+
 export const ProductValidation = {
   createProductValidationSchema,
   updateProductValidationSchema,
@@ -233,4 +246,5 @@ export const ProductValidation = {
   removeVariationValidationSchema,
   updateStockAndPriceValidationSchema,
   approveProductValidationSchema,
+  deleteProductImagesValidationSchema,
 };
