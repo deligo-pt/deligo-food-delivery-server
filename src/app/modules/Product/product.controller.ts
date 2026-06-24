@@ -141,11 +141,10 @@ const deleteProductImages = catchAsync(async (req, res) => {
 
 // get all products controller
 const getAllProducts = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
   const result = await ProductServices.getAllProducts(
     req.query,
     req.user as TCurrentUser,
-    lang,
+    req.lang,
   );
 
   sendResponse(res, {
@@ -159,8 +158,10 @@ const getAllProducts = catchAsync(async (req, res) => {
 
 // get all products controller
 const getAllProductsPublic = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
-  const result = await ProductServices.getAllProductsPublic(req.query, lang);
+  const result = await ProductServices.getAllProductsPublic(
+    req.query,
+    req.lang,
+  );
 
   sendResponse(res, {
     success: true,
@@ -173,12 +174,11 @@ const getAllProductsPublic = catchAsync(async (req, res) => {
 
 // get single product controller
 const getSingleProduct = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
   const { productId } = req.params;
   const result = await ProductServices.getSingleProduct(
     productId,
     req.user as TCurrentUser,
-    lang,
+    req.lang,
   );
   sendResponse(res, {
     success: true,
@@ -189,9 +189,11 @@ const getSingleProduct = catchAsync(async (req, res) => {
 });
 // get single product controller
 const getSingleProductPublic = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
   const { productId } = req.params;
-  const result = await ProductServices.getSingleProductPublic(productId, lang);
+  const result = await ProductServices.getSingleProductPublic(
+    productId,
+    req.lang,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -231,11 +233,10 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
 });
 
 const getOutOfStockAlerts = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
   const result = await ProductServices.getOutOfStockAlerts(
     req.query,
     req.user as TCurrentUser,
-    lang,
+    req.lang,
   );
   sendResponse(res, {
     success: true,

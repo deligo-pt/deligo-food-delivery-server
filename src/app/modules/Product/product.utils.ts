@@ -1,3 +1,5 @@
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+
 export const generateSlug = (name: string): string =>
   name
     .toLowerCase()
@@ -16,7 +18,7 @@ export const cleanForSKU = (str: string): string =>
 export const localizeProductData = (
   product: any,
   role: string,
-  lang: 'en' | 'pt',
+  lang: TLanguageCode = 'en',
 ) => {
   if (!product) return null;
 

@@ -18,7 +18,10 @@ import { Tax } from '../Tax/tax.model';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
-import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
+import {
+  TLanguageCode,
+  TLocalizedText,
+} from '../../constant/GlobalInterface/language.interface';
 import { UpdateProductUtils } from './updateProduct.utils';
 import { Order } from '../Order/order.model';
 
@@ -764,7 +767,7 @@ const deleteProductImages = async (
 const getAllProducts = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
-  lang: 'en' | 'pt',
+  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -817,7 +820,7 @@ const getAllProducts = async (
 // get all products service
 const getAllProductsPublic = async (
   query: Record<string, unknown>,
-  lang: 'en' | 'pt',
+  lang: TLanguageCode,
 ) => {
   const role = 'CUSTOMER';
 
@@ -857,7 +860,7 @@ const getAllProductsPublic = async (
 const getSingleProduct = async (
   productId: string,
   currentUser: TCurrentUser,
-  lang: 'en' | 'pt',
+  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -910,7 +913,10 @@ const getSingleProduct = async (
 };
 
 // get single product service
-const getSingleProductPublic = async (productId: string, lang: 'en' | 'pt') => {
+const getSingleProductPublic = async (
+  productId: string,
+  lang: TLanguageCode,
+) => {
   const role = 'CUSTOMER';
 
   const productQuery = Product.findOne({
@@ -1045,7 +1051,7 @@ const permanentDeleteProduct = async (
 const getOutOfStockAlerts = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
-  lang: 'en' | 'pt' = 'en',
+  lang: TLanguageCode = 'en',
 ) => {
   const {
     page = 1,

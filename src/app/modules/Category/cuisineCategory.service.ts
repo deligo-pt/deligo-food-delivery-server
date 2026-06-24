@@ -159,7 +159,7 @@ const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
 };
 
 // Get Single Cuisine Public
-const getSingleCuisinePublic = async (id: string, lang: 'en' | 'pt') => {
+const getSingleCuisinePublic = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
@@ -169,9 +169,7 @@ const getSingleCuisinePublic = async (id: string, lang: 'en' | 'pt') => {
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
   }
 
-  const formattedCuisine = formatCuisineResponse(cuisine, lang);
-
-  return formattedCuisine;
+  return cuisine;
 };
 
 // Soft Delete Cuisine

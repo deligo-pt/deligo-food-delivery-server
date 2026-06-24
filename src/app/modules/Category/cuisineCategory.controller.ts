@@ -94,16 +94,13 @@ const getSingleCuisine = catchAsync(async (req, res) => {
 
 // Get Single Cuisine Controller Public
 const getSingleCuisinePublic = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
-  const result = await CuisineService.getSingleCuisinePublic(
-    req.params.id,
-    lang,
-  );
+  const result = await CuisineService.getSingleCuisinePublic(req.params.id);
+  const formattedData = formatCuisineResponse(result, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Cuisine fetched successfully',
-    data: result,
+    data: formattedData,
   });
 });
 

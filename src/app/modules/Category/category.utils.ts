@@ -31,7 +31,10 @@ export const formatBusinessCategoryResponse = (
   };
 };
 
-export const formatProductCategoryResponse = (data: any, lang: 'en' | 'pt') => {
+export const formatProductCategoryResponse = (
+  data: any,
+  lang: TLanguageCode,
+) => {
   if (Array.isArray(data)) {
     return data.map((item) => {
       const itemObj = item.toObject?.() || item;
@@ -48,7 +51,7 @@ export const formatProductCategoryResponse = (data: any, lang: 'en' | 'pt') => {
     name: dataObj.name?.[lang] || dataObj.name?.['en'] || '',
   };
 };
-export const formatCuisineResponse = (data: any, lang: 'en' | 'pt') => {
+export const formatCuisineResponse = (data: any, lang: TLanguageCode) => {
   if (Array.isArray(data)) {
     return data.map((item) => {
       const itemObj = item.toObject?.() || item;
