@@ -856,6 +856,7 @@ const getAllProductsPublic = async (
 const getSingleProduct = async (
   productId: string,
   currentUser: TCurrentUser,
+  lang: 'en' | 'pt',
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -864,26 +865,32 @@ const getSingleProduct = async (
     );
   }
 
+  const role = currentUser.role;
   let query;
+
   if (
-    currentUser.role === 'CUSTOMER' ||
-    currentUser.role === 'DELIVERY_PARTNER' ||
-    currentUser.role === 'FLEET_MANAGER'
+    role === 'CUSTOMER' ||
+    role === 'DELIVERY_PARTNER' ||
+    role === 'FLEET_MANAGER'
   ) {
     query = Product.findOne({
       productId,
       isApproved: true,
       isDeleted: false,
     });
-  } else if (currentUser.role === 'VENDOR') {
+  } else if (role === 'VENDOR' || role === 'SUB_VENDOR') {
     query = Product.findOne({
       productId,
       vendorId: currentUser._id,
+      isDeleted: false,
     });
-  } else {
+  } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
     query = Product.findOne({ productId });
+  } else {
+    throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized role access');
   }
-  const populateOptions = getPopulateOptions(currentUser.role, {
+
+  const populateOptions = getPopulateOptions(role, {
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
@@ -892,11 +899,13 @@ const getSingleProduct = async (
   populateOptions.forEach((option) => {
     query.populate(option);
   });
+
   const product = await query;
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  return product;
+
+  return localizeProductData(product, role, lang);
 };
 
 // get single product service

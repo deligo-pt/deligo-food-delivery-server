@@ -173,10 +173,12 @@ const getAllProductsPublic = catchAsync(async (req, res) => {
 
 // get single product controller
 const getSingleProduct = catchAsync(async (req, res) => {
+  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
   const { productId } = req.params;
   const result = await ProductServices.getSingleProduct(
     productId,
     req.user as TCurrentUser,
+    lang,
   );
   sendResponse(res, {
     success: true,
@@ -185,6 +187,7 @@ const getSingleProduct = catchAsync(async (req, res) => {
     data: result,
   });
 });
+// get single product controller
 const getSingleProductPublic = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const result = await ProductServices.getSingleProductPublic(productId);
