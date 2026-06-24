@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { CuisineService } from './cuisineCategory.service';
+import { formatCuisineResponse } from './category.utils';
 
 // Create Cuisine Controller
 const createCuisine = catchAsync(async (req, res) => {
@@ -38,18 +39,23 @@ const updateCuisine = catchAsync(async (req, res) => {
 
 // Get All Cuisines Controller (Protected)
 const getAllCuisines = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
-  const result = await CuisineService.getAllCuisines(
-    req.query,
-    req.user as TCurrentUser,
-    lang,
-  );
+  const user = req.user as TCurrentUser;
+  const result = await CuisineService.getAllCuisines(req.query, user);
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
+  if (isAdmin) {
+    formattedData = result.data;
+  } else {
+    formattedData = formatCuisineResponse(result.data, req.lang);
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Cuisines fetched successfully',
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 

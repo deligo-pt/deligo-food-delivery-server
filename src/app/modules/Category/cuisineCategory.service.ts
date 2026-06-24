@@ -96,7 +96,6 @@ const updateCuisine = async (
 const getAllCuisines = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
-  lang: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -119,11 +118,7 @@ const getAllCuisines = async (
     cuisineQuery.modelQuery,
   ]);
 
-  const formattedData = data.map((cuisine) =>
-    formatCuisineResponse(cuisine, lang),
-  );
-
-  return { meta, data: formattedData };
+  return { meta, data };
 };
 
 // Get All Cuisines Public
