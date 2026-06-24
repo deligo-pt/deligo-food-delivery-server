@@ -687,133 +687,146 @@ const broadcastOrderToPartners = async (
 const partnerAcceptsDispatchedOrder = async (
   currentUser: TCurrentUser,
   orderId: string,
-  payload: {
-    action: 'ACCEPT' | 'REJECT';
-  },
+  payload: { action: 'ACCEPT' | 'REJECT' },
 ) => {
+  if (
+    currentUser.status !== 'APPROVED' ||
+    currentUser.role !== 'DELIVERY_PARTNER'
+  ) {
+    throw new AppError(httpStatus.FORBIDDEN, 'Partner not approved.');
+  }
+
+  if (
+    payload.action === 'ACCEPT' &&
+    currentUser.operationalData?.currentOrderId
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You already have an active order.',
+    );
+  }
+
   const session = await mongoose.startSession();
-  session.startTransaction();
+
+  let resultData: any = null;
+  let notifiedPartnerIds: string[] = [];
+  let vendorUserId: string | null = null;
+  let isExpiredAction = false;
+  let isRejectAction = false;
 
   try {
-    if (
-      currentUser.status !== 'APPROVED' ||
-      currentUser.role !== 'DELIVERY_PARTNER'
-    ) {
-      throw new AppError(httpStatus.FORBIDDEN, 'Partner not approved.');
-    }
+    await session.withTransaction(async () => {
+      const order = await Order.findOne({ orderId }).session(session);
+      if (!order) throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
 
-    const order = await Order.findOne({ orderId })
-      .populate('vendorId')
-      .session(session);
-    if (!order) throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+      vendorUserId = (order.vendorId as any)?.userId;
+      const isExpired =
+        order.dispatchExpiresAt &&
+        new Date() > new Date(order.dispatchExpiresAt);
 
-    const vendorUserId = (order.vendorId as any)?.userId;
-    const io = getIO();
+      if (isExpired && order.orderStatus === ORDER_STATUS.DISPATCHING) {
+        await Order.updateOne(
+          { orderId },
+          {
+            $set: {
+              orderStatus: ORDER_STATUS.AWAITING_PARTNER,
+              dispatchPartnerPool: [],
+            },
+          },
+          { session },
+        );
+        isExpiredAction = true;
+        return;
+      }
 
-    const isExpired =
-      order.dispatchExpiresAt && new Date() > new Date(order.dispatchExpiresAt);
+      if (payload.action === 'REJECT') {
+        const isInPool = order.dispatchPartnerPool?.includes(
+          currentUser.userId,
+        );
+        if (!isInPool)
+          throw new AppError(httpStatus.BAD_REQUEST, 'Not in pool.');
 
-    if (isExpired && order.orderStatus === ORDER_STATUS.DISPATCHING) {
-      await Order.updateOne(
-        { orderId },
+        const isLastPartner = order.dispatchPartnerPool?.length === 1;
+        await Order.updateOne(
+          { orderId },
+          {
+            $pull: { dispatchPartnerPool: currentUser.userId },
+            ...(isLastPartner && {
+              $set: { orderStatus: ORDER_STATUS.AWAITING_PARTNER },
+            }),
+          },
+          { session },
+        );
+
+        await DeliveryPartner.updateOne(
+          { userId: currentUser.userId },
+          {
+            $inc: { 'operationalData.totalRejectedOrders': 1 },
+            $set: { 'operationalData.lastActivityAt': new Date() },
+          },
+          { session },
+        );
+        isRejectAction = true;
+        return;
+      }
+
+      notifiedPartnerIds = [...(order.dispatchPartnerPool || [])];
+
+      const claimedOrder = await Order.findOneAndUpdate(
+        {
+          orderId,
+          orderStatus: ORDER_STATUS.DISPATCHING,
+          deliveryPartnerId: null,
+          dispatchPartnerPool: { $in: [currentUser.userId] },
+          dispatchExpiresAt: { $gt: new Date() },
+        },
         {
           $set: {
-            orderStatus: ORDER_STATUS.AWAITING_PARTNER,
+            deliveryPartnerId: currentUser._id,
+            orderStatus: ORDER_STATUS.ASSIGNED,
             dispatchPartnerPool: [],
           },
         },
+        { new: true, session },
+      ).populate('customerId', 'name userId contactNumber profilePhoto');
+
+      if (!claimedOrder) {
+        throw new AppError(
+          httpStatus.CONFLICT,
+          'Order already claimed or expired.',
+        );
+      }
+
+      await DeliveryPartner.updateOne(
+        { _id: currentUser._id },
+        {
+          $set: {
+            'operationalData.currentOrderId': claimedOrder._id,
+            'operationalData.currentStatus': 'ON_DELIVERY',
+          },
+          $inc: { 'operationalData.totalAcceptedOrders': 1 },
+        },
         { session },
       );
-      await session.commitTransaction();
 
+      resultData = claimedOrder;
+    });
+
+    const io = getIO();
+
+    if (isExpiredAction) {
       io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
-      return {
-        data: null,
-        message: 'Order request has expired.',
-      };
+      return { data: null, message: 'Order request has expired.' };
     }
 
-    if (payload.action === 'REJECT') {
-      const isInPool = order.dispatchPartnerPool?.includes(currentUser.userId);
-      if (!isInPool) throw new AppError(httpStatus.BAD_REQUEST, 'Not in pool.');
-
-      const isLastPartner = order.dispatchPartnerPool?.length === 1;
-      await Order.updateOne(
-        { orderId },
-        {
-          $pull: { dispatchPartnerPool: currentUser.userId },
-          ...(isLastPartner && {
-            $set: { orderStatus: ORDER_STATUS.AWAITING_PARTNER },
-          }),
-        },
-        { session },
-      );
-
-      await DeliveryPartner.updateOne(
-        { userId: currentUser.userId },
-        {
-          $inc: { 'operationalData.totalRejectedOrders': 1 },
-          $set: { 'operationalData.lastActivityAt': new Date() },
-        },
-        { session },
-      );
-
-      await session.commitTransaction();
+    if (isRejectAction) {
       io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
       return { data: null, message: 'Order rejected.' };
     }
-
-    if (currentUser.operationalData?.currentOrderId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You already have an active order.',
-      );
-    }
-
-    const notifiedPartnerIds = [...(order.dispatchPartnerPool || [])];
-
-    const claimedOrder = await Order.findOneAndUpdate(
-      {
-        orderId,
-        orderStatus: ORDER_STATUS.DISPATCHING,
-        deliveryPartnerId: null,
-        dispatchPartnerPool: { $in: [currentUser.userId] },
-        dispatchExpiresAt: { $gt: new Date() },
-      },
-      {
-        $set: {
-          deliveryPartnerId: currentUser._id,
-          orderStatus: ORDER_STATUS.ASSIGNED,
-          dispatchPartnerPool: [],
-        },
-      },
-      { new: true, session },
-    ).populate('customerId', 'name userId contactNumber profilePhoto');
-
-    if (!claimedOrder) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        'Order already claimed or expired.',
-      );
-    }
-
-    await DeliveryPartner.updateOne(
-      { _id: currentUser._id },
-      {
-        $set: {
-          'operationalData.currentOrderId': claimedOrder._id,
-          'operationalData.currentStatus': 'ON_DELIVERY',
-        },
-        $inc: { 'operationalData.totalAcceptedOrders': 1 },
-      },
-      { session },
-    );
-
-    await session.commitTransaction();
 
     notifiedPartnerIds.forEach((id) => {
       io.to(`user_${id}`).emit('REMOVE_ORDER_POPUP', { orderId });
@@ -824,35 +837,19 @@ const partnerAcceptsDispatchedOrder = async (
         orderId,
         partnerName: `${currentUser.name.firstName} ${currentUser.name.lastName}`,
       });
-    }
 
-    // notification payload
-    const notificationPayload = {
-      title: `Order is accepted`,
-      body: `Order is now accepted by delivery partner`,
-      data: {
-        orderId,
-        orderStatus: claimedOrder.orderStatus,
-        type: 'ORDER_STATUS',
-      },
-    };
-
-    if (vendorUserId) {
       NotificationService.sendToUser(
-        vendorUserId!,
-        notificationPayload.title,
-        notificationPayload.body,
-        notificationPayload.data,
+        vendorUserId,
+        `Order is accepted`,
+        `Order is now accepted by delivery partner`,
+        { orderId, orderStatus: resultData.orderStatus, type: 'ORDER_STATUS' },
         'default',
         'ORDER',
       );
     }
 
-    return { data: claimedOrder, message: 'Order accepted.' };
+    return { data: resultData, message: 'Order accepted.' };
   } catch (error) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-    }
     throw error;
   } finally {
     session.endSession();
