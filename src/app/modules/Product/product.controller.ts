@@ -189,8 +189,9 @@ const getSingleProduct = catchAsync(async (req, res) => {
 });
 // get single product controller
 const getSingleProductPublic = catchAsync(async (req, res) => {
+  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
   const { productId } = req.params;
-  const result = await ProductServices.getSingleProductPublic(productId);
+  const result = await ProductServices.getSingleProductPublic(productId, lang);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

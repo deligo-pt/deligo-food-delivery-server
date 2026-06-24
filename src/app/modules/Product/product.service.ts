@@ -909,7 +909,7 @@ const getSingleProduct = async (
 };
 
 // get single product service
-const getSingleProductPublic = async (productId: string) => {
+const getSingleProductPublic = async (productId: string, lang: 'en' | 'pt') => {
   const role = 'CUSTOMER';
 
   const productQuery = Product.findOne({
@@ -934,7 +934,7 @@ const getSingleProductPublic = async (productId: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  return product;
+  return localizeProductData(product, role, lang);
 };
 
 // product soft delete service
