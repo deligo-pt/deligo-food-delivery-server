@@ -5,6 +5,7 @@ import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { BusinessCategoryService } from './businessCategory.service';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { formatBusinessCategoryResponse } from './category.utils';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {
@@ -39,18 +40,27 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
 
 // Get Business Category Controllers
 const getAllBusinessCategories = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as TLanguageCode) || 'en';
+  const user = req.user as TCurrentUser;
   const result = await BusinessCategoryService.getAllBusinessCategories(
     req.query,
-    req.user as TCurrentUser,
-    lang,
+    user,
   );
+
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
+
+  let formattedData;
+  if (isAdmin) {
+    formattedData = result.data;
+  } else {
+    formattedData = formatBusinessCategoryResponse(result.data, req.lang);
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Business categories fetched successfully',
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 

@@ -1,3 +1,4 @@
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import {
   BusinessCategoryTranslation,
   TBusinessCategoryName,
@@ -5,21 +6,28 @@ import {
 
 export const formatBusinessCategoryResponse = (
   category: any,
-  lang: 'en' | 'pt' = 'en',
+  lang: TLanguageCode = 'en',
 ) => {
-  const categoryObj = category.toObject ? category.toObject() : category;
+  if (Array.isArray(category)) {
+    return category.map((item) => {
+      const itemObj = item.toObject?.() || item;
+      const translation =
+        BusinessCategoryTranslation[itemObj.name as TBusinessCategoryName];
+
+      return {
+        ...itemObj,
+        name: translation?.[lang] || translation?.['en'] || itemObj.name,
+      };
+    });
+  }
+
+  const categoryObj = category.toObject?.() || category;
   const translation =
     BusinessCategoryTranslation[categoryObj.name as TBusinessCategoryName];
 
   return {
-    _id: categoryObj._id,
+    ...categoryObj,
     name: translation?.[lang] || translation?.['en'] || categoryObj.name,
-    slug: categoryObj.slug,
-    icon: categoryObj.icon,
-    isActive: categoryObj.isActive,
-    isDeleted: categoryObj.isDeleted,
-    createdAt: categoryObj.createdAt,
-    updatedAt: categoryObj.updatedAt,
   };
 };
 

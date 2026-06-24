@@ -71,7 +71,6 @@ const updateBusinessCategory = async (
 const getAllBusinessCategories = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
-  lang: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -89,10 +88,8 @@ const getAllBusinessCategories = async (
     businessCategories.countTotal(),
     businessCategories.modelQuery,
   ]);
-  const formattedData = data.map((category) =>
-    formatBusinessCategoryResponse(category, lang),
-  );
-  return { meta, data: formattedData };
+
+  return { meta, data };
 };
 
 //  Get All Business Categories Public
