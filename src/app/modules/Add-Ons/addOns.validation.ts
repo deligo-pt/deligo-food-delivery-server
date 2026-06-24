@@ -1,11 +1,20 @@
 import z from 'zod';
 import { createLocalizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
-const optionSchema = z.object({
+const createOptionSchema = z.object({
   name: createLocalizedValidationSchema('option name'),
   price: z.number().min(0, 'Price cannot be negative'),
   tax: z.string({ required_error: 'Tax ID is required for each option' }),
   isActive: z.boolean().optional().default(true),
+});
+
+const updateOptionSchema = z.object({
+  name: createLocalizedValidationSchema('option name', true).optional(),
+  price: z.number().min(0, 'Price cannot be negative').optional(),
+  tax: z
+    .string({ required_error: 'Tax ID is required for each option' })
+    .optional(),
+  isActive: z.boolean().optional(),
 });
 
 // --- CREATE SCHEMA ---
@@ -19,7 +28,7 @@ const createAddonGroupValidationSchema = z.object({
         .default(0),
       maxSelectable: z.number().min(1, 'Maximum selection must be at least 1'),
       options: z
-        .array(optionSchema)
+        .array(createOptionSchema)
         .min(1, 'At least one option must be provided in the group'),
       isActive: z.boolean().optional().default(true),
     })
@@ -38,10 +47,13 @@ const createAddonGroupValidationSchema = z.object({
 const updateAddonGroupValidationSchema = z.object({
   body: z
     .object({
-      title: z.string().optional(),
+      title: createLocalizedValidationSchema(
+        'addon group title',
+        true,
+      ).optional(),
       minSelectable: z.number().min(0).optional(),
       maxSelectable: z.number().min(1).optional(),
-      options: z.array(optionSchema).min(1).optional(),
+      options: z.array(updateOptionSchema).min(1).optional(),
       isActive: z.boolean().optional(),
     })
     .strict()

@@ -92,23 +92,26 @@ const updateAddonGroup = async (
       'Your vendor account is not approved yet!',
     );
   }
-  const isGroupExists = await AddonGroup.findOne({
-    _id: { $ne: id },
-    vendorId: currentUser._id,
-    title: { $regex: new RegExp(`^${payload.title}$`, 'i') },
-    isDeleted: false,
-  });
 
-  if (isGroupExists) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'An addon group with this title already exists!',
-    );
+  if (payload.title && payload.title.en) {
+    const isGroupExists = await AddonGroup.findOne({
+      _id: { $ne: id },
+      vendorId: currentUser._id,
+      'title.en': { $regex: new RegExp(`^${payload.title.en}$`, 'i') },
+      isDeleted: false,
+    });
+
+    if (isGroupExists) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'An addon group with this title already exists!',
+      );
+    }
   }
 
   if (payload.options && payload.options.length > 0) {
     const taxIds = [
-      ...new Set(payload.options.map((opt) => opt.tax).filter(Boolean)),
+      ...new Set(payload.options.map((opt: any) => opt.tax).filter(Boolean)),
     ];
 
     if (taxIds.length > 0) {
@@ -126,18 +129,28 @@ const updateAddonGroup = async (
     }
   }
 
-  payload.options = payload?.options?.map((opt) => {
-    if (!opt.sku) {
-      const cleanTitle = (payload.title || 'ADD').substring(0, 3).toUpperCase();
-      const cleanName = opt.name.substring(0, 3).toUpperCase();
-      const randomStr = Math.random()
-        .toString(36)
-        .substring(2, 5)
-        .toUpperCase();
-      opt.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
+  if (payload.options && payload.options.length > 0) {
+    const currentGroup = await AddonGroup.findById(id);
+    if (!currentGroup) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Addon group not found');
     }
-    return opt;
-  });
+
+    const groupTitleEnglish =
+      payload.title?.en || currentGroup.title?.en || 'ADD';
+
+    payload.options = payload.options.map((opt: any) => {
+      if (!opt.sku) {
+        const cleanTitle = groupTitleEnglish.substring(0, 3).toUpperCase();
+        const cleanName = (opt.name?.en || 'OPT').substring(0, 3).toUpperCase();
+        const randomStr = Math.random()
+          .toString(36)
+          .substring(2, 5)
+          .toUpperCase();
+        opt.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
+      }
+      return opt;
+    });
+  }
 
   const { options, ...remainingData } = payload;
   const modifiedUpdatedData: Record<string, unknown> = { ...remainingData };
@@ -157,7 +170,7 @@ const updateAddonGroup = async (
       new: true,
       runValidators: true,
     },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxName taxCode taxRate');
 
   if (!result) {
     throw new AppError(
