@@ -207,7 +207,22 @@ const approveProductValidationSchema = z.object({
       isApproved: z.boolean({ required_error: 'isApproved is required' }),
       remarks: z.string().optional(),
     })
-    .strict(),
+    .strict()
+    .refine(
+      (data) => {
+        if (
+          data.isApproved === false &&
+          (!data.remarks || data.remarks.trim() === '')
+        ) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: 'Remarks are required when rejecting a product',
+        path: ['remarks'],
+      },
+    ),
 });
 
 export const ProductValidation = {

@@ -655,45 +655,47 @@ const approvedProduct = async (
   currentUser: TCurrentUser,
   payload: { isApproved: boolean; remarks?: string },
 ) => {
-  const existingProduct = await Product.findOne({
-    productId,
-  });
+  const existingProduct = await Product.findOne({ productId });
+
   if (!existingProduct) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  if (existingProduct.isApproved === payload.isApproved) {
+  const { isApproved, remarks } = payload;
+
+  const currentStatus = existingProduct.isApproved ?? false;
+
+  if (currentStatus === isApproved) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Product is already ${payload.isApproved ? 'approved' : 'rejected'}`,
+      `Product is already ${isApproved ? 'approved' : 'rejected'}`,
     );
   }
 
-  if (existingProduct.isApproved === false && payload.isApproved === true) {
-    existingProduct.isApproved = payload.isApproved;
-  } else if (
-    existingProduct.isApproved === true &&
-    payload.isApproved === false
-  ) {
-    if (payload.isApproved === false && !payload.remarks) {
+  if (!isApproved) {
+    if (!remarks || remarks.trim() === '') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'Remarks are required when rejecting a product',
       );
     }
-    existingProduct.remarks = payload.remarks;
-    existingProduct.isApproved = payload.isApproved;
+    existingProduct.remarks = remarks.trim();
+  } else {
+    existingProduct.remarks = undefined;
   }
 
+  existingProduct.isApproved = isApproved;
+  existingProduct.approvedBy = currentUser._id as any;
+
   await existingProduct.save();
+
   return {
-    message: `Product has been ${
-      payload.isApproved ? 'approved' : 'rejected'
-    } successfully`,
+    message: `Product has been ${isApproved ? 'approved' : 'rejected'} successfully`,
     data: {
       productId: existingProduct.productId,
       isApproved: existingProduct.isApproved,
       remarks: existingProduct.remarks,
+      approvedBy: existingProduct.approvedBy,
     },
   };
 };
