@@ -769,7 +769,7 @@ const getAllProducts = async (
   }
   const role = currentUser.role;
 
-  if (role === 'VENDOR') {
+  if (role === 'VENDOR' || role === 'SUB_VENDOR') {
     query.vendorId = currentUser._id;
     query.isDeleted = false;
   }
@@ -777,6 +777,7 @@ const getAllProducts = async (
   if (['CUSTOMER', 'FLEET_MANAGER', 'DELIVERY_PARTNER'].includes(role)) {
     query.isApproved = true;
     query.isDeleted = false;
+    query['meta.status'] = 'ACTIVE';
   }
 
   const products = new QueryBuilder(Product.find(), query)
@@ -802,7 +803,12 @@ const getAllProducts = async (
   const localizedData = rawData.map((product: any) => {
     const productObj = product.toObject({ virtuals: true });
 
-    if (role === 'VENDOR' || role === 'ADMIN') {
+    if (
+      role === 'VENDOR' ||
+      role === 'SUB_VENDOR' ||
+      role === 'ADMIN' ||
+      role === 'SUPER_ADMIN'
+    ) {
       return productObj;
     }
 
