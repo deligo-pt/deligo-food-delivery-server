@@ -39,8 +39,6 @@ const updateProductCategory = catchAsync(async (req, res) => {
 
 // Get Product Category Controllers
 const getAllProductCategories = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
-
   const user = req.user as TCurrentUser;
   const role = user?.role;
   const result = await ProductCategoryService.getAllProductCategories(
@@ -53,7 +51,7 @@ const getAllProductCategories = catchAsync(async (req, res) => {
   if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
     formattedData = result.data;
   } else {
-    formattedData = formatProductCategoryResponse(result.data, lang);
+    formattedData = formatProductCategoryResponse(result.data, req.lang);
   }
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -66,12 +64,11 @@ const getAllProductCategories = catchAsync(async (req, res) => {
 
 // Get Product Category Controllers Public
 const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getAllProductCategoriesPublic(
     req.query,
   );
 
-  const formattedData = formatProductCategoryResponse(result.data, lang);
+  const formattedData = formatProductCategoryResponse(result.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -83,7 +80,6 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
 
 // Get Single Product Category Controllers
 const getSingleProductCategory = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const user = req.user as TCurrentUser;
   const role = user?.role;
   const result = await ProductCategoryService.getSingleProductCategory(
@@ -96,7 +92,7 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
   if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
     formattedData = result;
   } else {
-    formattedData = formatProductCategoryResponse(result, lang);
+    formattedData = formatProductCategoryResponse(result, req.lang);
   }
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -108,12 +104,11 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
 
 // Get Single Product Category Controllers Public
 const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getSingleProductCategoryPublic(
     req.params.id,
   );
 
-  const formattedData = formatProductCategoryResponse(result, lang);
+  const formattedData = formatProductCategoryResponse(result, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

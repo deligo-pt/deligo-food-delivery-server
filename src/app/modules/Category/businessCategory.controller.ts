@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { BusinessCategoryService } from './businessCategory.service';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {
@@ -38,7 +39,7 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
 
 // Get Business Category Controllers
 const getAllBusinessCategories = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as TLanguageCode) || 'en';
   const result = await BusinessCategoryService.getAllBusinessCategories(
     req.query,
     req.user as TCurrentUser,

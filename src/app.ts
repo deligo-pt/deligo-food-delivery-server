@@ -9,6 +9,7 @@ import notFound from './app/middlewares/notFound';
 import config from './app/config';
 import { rateLimiter } from './app/middlewares/rateLimiter';
 import router from './app/routes';
+import { parseLanguage } from './app/middlewares/parseLanguage';
 
 const app: Application = express();
 
@@ -36,6 +37,9 @@ app.use(express.urlencoded({ extended: true }));
 // app.use(logIPToDB);
 
 app.use(rateLimiter('global'));
+
+app.use(parseLanguage);
+
 app.use('/api/v1', router);
 
 //Testing
