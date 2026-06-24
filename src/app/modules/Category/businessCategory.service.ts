@@ -117,7 +117,6 @@ const getAllBusinessCategoriesPublic = async (
 const getSingleBusinessCategory = async (
   id: string,
   currentUser: TCurrentUser,
-  lang: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -131,9 +130,7 @@ const getSingleBusinessCategory = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  const formattedCategory = formatBusinessCategoryResponse(category, lang);
-
-  return formattedCategory;
+  return category;
 };
 
 //  Get Single Business Category Public

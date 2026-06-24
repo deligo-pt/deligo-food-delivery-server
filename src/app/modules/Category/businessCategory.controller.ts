@@ -82,17 +82,23 @@ const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
 
 // Get Single Business Category Controllers
 const getSingleBusinessCategory = catchAsync(async (req, res) => {
-  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getSingleBusinessCategory(
     req.params.id,
     req.user as TCurrentUser,
-    lang,
   );
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user?.role);
+  if (isAdmin) {
+    formattedData = result;
+  } else {
+    formattedData = formatBusinessCategoryResponse(result, req.lang);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Business category fetched successfully',
-    data: result,
+    data: formattedData,
   });
 });
 
