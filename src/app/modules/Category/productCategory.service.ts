@@ -154,7 +154,6 @@ const getAllProductCategories = async (
 //  Get All Product Categories Public
 const getAllProductCategoriesPublic = async (
   query: Record<string, unknown>,
-  lang: 'en' | 'pt',
 ) => {
   query.isActive = true;
   query.isDeleted = false;
@@ -172,11 +171,7 @@ const getAllProductCategoriesPublic = async (
     productCategories.modelQuery,
   ]);
 
-  const formattedData = data.map((category) =>
-    formatProductCategoryResponse(category, lang),
-  );
-
-  return { meta, data: formattedData };
+  return { meta, data };
 };
 
 // get single product category

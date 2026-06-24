@@ -67,17 +67,17 @@ const getAllProductCategories = catchAsync(async (req, res) => {
 // Get Product Category Controllers Public
 const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
   const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
-  const role = 'CUSTOMER';
   const result = await ProductCategoryService.getAllProductCategoriesPublic(
     req.query,
-    lang,
   );
+
+  const formattedData = formatProductCategoryResponse(result.data, lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Product categories fetched successfully',
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
