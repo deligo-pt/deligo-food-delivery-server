@@ -1008,7 +1008,11 @@ const permanentDeleteProduct = async (
 };
 
 // get out of stock alerts
-const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
+const getOutOfStockAlerts = async (
+  query: Record<string, unknown>,
+  currentUser: TCurrentUser,
+  lang: 'en' | 'pt' = 'en',
+) => {
   const {
     page = 1,
     limit = 10,
@@ -1017,12 +1021,13 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
   } = query;
 
   const skip = (Number(page) - 1) * Number(limit);
+  const role = currentUser.role;
 
   const lowStockConditions: any = {
     isDeleted: false,
     $or: [
-      { 'stock.quantity': { $lt: 10 } },
-      { 'variations.options.stockQuantity': { $lt: 10 } },
+      { 'stock.quantity': { $exists: true, $lt: 10 } },
+      { 'variations.options.stockQuantity': { $exists: true, $lt: 10 } },
       { 'stock.availabilityStatus': 'Out of Stock' },
       { 'variations.options.isOutOfStock': true },
     ],
@@ -1032,19 +1037,20 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
     lowStockConditions.$and = [
       {
         $or: [
-          { name: { $regex: searchTerm, $options: 'i' } },
+          { 'name.en': { $regex: searchTerm, $options: 'i' } },
+          { 'name.pt': { $regex: searchTerm, $options: 'i' } },
           { sku: { $regex: searchTerm, $options: 'i' } },
         ],
       },
     ];
   }
 
-  const data = await Product.find(lowStockConditions)
+  const rawData = await Product.find(lowStockConditions)
     .select(
       'name sku stock variations vendorId category images createdAt updatedAt',
     )
     .populate('vendorId', 'userId businessDetails')
-    .populate('category')
+    .populate('productCategory', 'name')
     .sort(sortBy as string)
     .skip(skip)
     .limit(Number(limit))
@@ -1053,8 +1059,12 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
   const total = await Product.countDocuments(lowStockConditions);
   const totalPage = Math.ceil(total / Number(limit));
 
+  const localizedData = rawData.map((product: any) =>
+    localizeProductData(product, role, lang),
+  );
+
   return {
-    data,
+    data: localizedData,
     meta: {
       page: Number(page),
       limit: Number(limit),

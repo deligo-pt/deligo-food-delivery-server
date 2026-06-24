@@ -231,7 +231,12 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
 });
 
 const getOutOfStockAlerts = catchAsync(async (req, res) => {
-  const result = await ProductServices.getOutOfStockAlerts(req.query);
+  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
+  const result = await ProductServices.getOutOfStockAlerts(
+    req.query,
+    req.user as TCurrentUser,
+    lang,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
