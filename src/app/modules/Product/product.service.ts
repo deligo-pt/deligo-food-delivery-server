@@ -9,7 +9,11 @@ import { ProductSearchableFields } from './product.constant';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import { cleanForSKU, generateSlug } from './product.utils';
+import {
+  cleanForSKU,
+  generateSlug,
+  localizeProductData,
+} from './product.utils';
 import { Tax } from '../Tax/tax.model';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { CreateProductUtils } from './createProduct.utils';
@@ -800,33 +804,9 @@ const getAllProducts = async (
   const meta = await products.countTotal();
   const rawData = await products.modelQuery;
 
-  const localizedData = rawData.map((product: any) => {
-    const productObj = product.toObject({ virtuals: true });
-
-    if (
-      role === 'VENDOR' ||
-      role === 'SUB_VENDOR' ||
-      role === 'ADMIN' ||
-      role === 'SUPER_ADMIN'
-    ) {
-      return productObj;
-    }
-
-    return {
-      ...productObj,
-      name: productObj.name?.[lang] || productObj.name?.en || '',
-      description:
-        productObj.description?.[lang] || productObj.description?.en || '',
-      variations: productObj.variations?.map((v: any) => ({
-        ...v,
-        name: v.name?.[lang] || v.name?.en || '',
-        options: v.options?.map((o: any) => ({
-          ...o,
-          label: o.label?.[lang] || o.label?.en || '',
-        })),
-      })),
-    };
-  });
+  const localizedData = rawData.map((product: any) =>
+    localizeProductData(product, role, lang),
+  );
   return {
     meta,
     data: localizedData,
@@ -836,7 +816,7 @@ const getAllProducts = async (
 // get all products service
 const getAllProductsPublic = async (
   query: Record<string, unknown>,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   const role = 'CUSTOMER';
 
@@ -861,26 +841,11 @@ const getAllProductsPublic = async (
   });
 
   const meta = await products.countTotal();
-  const data = await products.modelQuery;
+  const rawData = await products.modelQuery;
 
-  const localizedData = data.map((product: any) => {
-    const productObj = product.toObject({ virtuals: true });
-    return {
-      ...productObj,
-      name: productObj.name?.[lng] || productObj.name?.en || '',
-      description:
-        productObj.description?.[lng] || productObj.description?.en || '',
-      variations: productObj.variations?.map((v: any) => ({
-        ...v,
-        name: v.name?.[lng] || v.name?.en || '',
-        options: v.options?.map((o: any) => ({
-          ...o,
-          label: o.label?.[lng] || o.label?.en || '',
-        })),
-      })),
-    };
-  });
-
+  const localizedData = rawData.map((product: any) =>
+    localizeProductData(product, 'CUSTOMER', lang),
+  );
   return {
     meta,
     data: localizedData,

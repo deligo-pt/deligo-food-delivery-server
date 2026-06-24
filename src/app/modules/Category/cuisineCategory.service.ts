@@ -96,7 +96,7 @@ const updateCuisine = async (
 const getAllCuisines = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -120,7 +120,7 @@ const getAllCuisines = async (
   ]);
 
   const formattedData = data.map((cuisine) =>
-    formatCuisineResponse(cuisine, lng),
+    formatCuisineResponse(cuisine, lang),
   );
 
   return { meta, data: formattedData };
@@ -129,7 +129,7 @@ const getAllCuisines = async (
 // Get All Cuisines Public
 const getAllCuisinesPublic = async (
   query: Record<string, unknown>,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   query.isActive = true;
   query.isDeleted = false;
@@ -147,7 +147,7 @@ const getAllCuisinesPublic = async (
   ]);
 
   const formattedData = data.map((cuisine) =>
-    formatCuisineResponse(cuisine, lng),
+    formatCuisineResponse(cuisine, lang),
   );
 
   return { meta, data: formattedData };
@@ -157,7 +157,7 @@ const getAllCuisinesPublic = async (
 const getSingleCuisine = async (
   id: string,
   currentUser: TCurrentUser,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
@@ -171,13 +171,13 @@ const getSingleCuisine = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
   }
 
-  const formattedCuisine = formatCuisineResponse(cuisine, lng);
+  const formattedCuisine = formatCuisineResponse(cuisine, lang);
 
   return formattedCuisine;
 };
 
 // Get Single Cuisine Public
-const getSingleCuisinePublic = async (id: string, lng: 'en' | 'pt') => {
+const getSingleCuisinePublic = async (id: string, lang: 'en' | 'pt') => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
@@ -187,7 +187,7 @@ const getSingleCuisinePublic = async (id: string, lng: 'en' | 'pt') => {
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
   }
 
-  const formattedCuisine = formatCuisineResponse(cuisine, lng);
+  const formattedCuisine = formatCuisineResponse(cuisine, lang);
 
   return formattedCuisine;
 };

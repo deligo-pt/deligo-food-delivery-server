@@ -111,7 +111,7 @@ const updateProductCategory = async (
 const getAllProductCategories = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -150,7 +150,7 @@ const getAllProductCategories = async (
   ]);
 
   const formattedData = data.map((category) =>
-    formatProductCategoryResponse(category, lng),
+    formatProductCategoryResponse(category, lang),
   );
 
   return { meta, data: formattedData };
@@ -159,7 +159,7 @@ const getAllProductCategories = async (
 //  Get All Product Categories Public
 const getAllProductCategoriesPublic = async (
   query: Record<string, unknown>,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   query.isActive = true;
   query.isDeleted = false;
@@ -178,7 +178,7 @@ const getAllProductCategoriesPublic = async (
   ]);
 
   const formattedData = data.map((category) =>
-    formatProductCategoryResponse(category, lng),
+    formatProductCategoryResponse(category, lang),
   );
 
   return { meta, data: formattedData };
@@ -188,7 +188,7 @@ const getAllProductCategoriesPublic = async (
 const getSingleProductCategory = async (
   id: string,
   currentUser: TCurrentUser,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
@@ -220,13 +220,16 @@ const getSingleProductCategory = async (
     }
   }
 
-  const formattedCategory = formatProductCategoryResponse(category, lng);
+  const formattedCategory = formatProductCategoryResponse(category, lang);
 
   return formattedCategory;
 };
 
 //  get single product category public
-const getSingleProductCategoryPublic = async (id: string, lng: 'en' | 'pt') => {
+const getSingleProductCategoryPublic = async (
+  id: string,
+  lang: 'en' | 'pt',
+) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
@@ -236,7 +239,7 @@ const getSingleProductCategoryPublic = async (id: string, lng: 'en' | 'pt') => {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
   }
 
-  const formattedCategory = formatProductCategoryResponse(category, lng);
+  const formattedCategory = formatProductCategoryResponse(category, lang);
 
   return formattedCategory;
 };

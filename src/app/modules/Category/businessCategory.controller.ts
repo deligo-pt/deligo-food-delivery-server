@@ -38,11 +38,11 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
 
 // Get Business Category Controllers
 const getAllBusinessCategories = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getAllBusinessCategories(
     req.query,
     req.user as TCurrentUser,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -55,10 +55,10 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
 
 // Get Business Category Controllers Public
 const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getAllBusinessCategoriesPublic(
     req.query,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -71,11 +71,11 @@ const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
 
 // Get Single Business Category Controllers
 const getSingleBusinessCategory = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getSingleBusinessCategory(
     req.params.id,
     req.user as TCurrentUser,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -87,10 +87,10 @@ const getSingleBusinessCategory = catchAsync(async (req, res) => {
 
 // Get Single Business Category Controllers Public
 const getSingleBusinessCategoryPublic = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await BusinessCategoryService.getSingleBusinessCategoryPublic(
     req.params.id,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

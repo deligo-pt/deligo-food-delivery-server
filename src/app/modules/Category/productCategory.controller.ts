@@ -38,11 +38,11 @@ const updateProductCategory = catchAsync(async (req, res) => {
 
 // Get Product Category Controllers
 const getAllProductCategories = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getAllProductCategories(
     req.query,
     req.user as TCurrentUser,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -55,10 +55,10 @@ const getAllProductCategories = catchAsync(async (req, res) => {
 
 // Get Product Category Controllers Public
 const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getAllProductCategoriesPublic(
     req.query,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -71,11 +71,11 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
 
 // Get Single Product Category Controllers
 const getSingleProductCategory = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getSingleProductCategory(
     req.params.id,
     req.user as TCurrentUser,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -87,10 +87,10 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
 
 // Get Single Product Category Controllers Public
 const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await ProductCategoryService.getSingleProductCategoryPublic(
     req.params.id,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

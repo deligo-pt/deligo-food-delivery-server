@@ -38,11 +38,11 @@ const updateCuisine = catchAsync(async (req, res) => {
 
 // Get All Cuisines Controller (Protected)
 const getAllCuisines = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await CuisineService.getAllCuisines(
     req.query,
     req.user as TCurrentUser,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -55,8 +55,8 @@ const getAllCuisines = catchAsync(async (req, res) => {
 
 // Get All Cuisines Controller Public
 const getAllCuisinesPublic = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
-  const result = await CuisineService.getAllCuisinesPublic(req.query, lng);
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const result = await CuisineService.getAllCuisinesPublic(req.query, lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -68,11 +68,11 @@ const getAllCuisinesPublic = catchAsync(async (req, res) => {
 
 // Get Single Cuisine Controller (Protected)
 const getSingleCuisine = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await CuisineService.getSingleCuisine(
     req.params.id,
     req.user as TCurrentUser,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -84,10 +84,10 @@ const getSingleCuisine = catchAsync(async (req, res) => {
 
 // Get Single Cuisine Controller Public
 const getSingleCuisinePublic = catchAsync(async (req, res) => {
-  const lng = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
   const result = await CuisineService.getSingleCuisinePublic(
     req.params.id,
-    lng,
+    lang,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

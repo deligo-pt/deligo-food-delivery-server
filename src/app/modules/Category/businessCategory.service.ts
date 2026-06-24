@@ -71,7 +71,7 @@ const updateBusinessCategory = async (
 const getAllBusinessCategories = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -90,7 +90,7 @@ const getAllBusinessCategories = async (
     businessCategories.modelQuery,
   ]);
   const formattedData = data.map((category) =>
-    formatBusinessCategoryResponse(category, lng),
+    formatBusinessCategoryResponse(category, lang),
   );
   return { meta, data: formattedData };
 };
@@ -98,7 +98,7 @@ const getAllBusinessCategories = async (
 //  Get All Business Categories Public
 const getAllBusinessCategoriesPublic = async (
   query: Record<string, unknown>,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   query.isActive = true;
   query.isDeleted = false;
@@ -115,7 +115,7 @@ const getAllBusinessCategoriesPublic = async (
     businessCategories.modelQuery,
   ]);
   const formattedData = data.map((category) =>
-    formatBusinessCategoryResponse(category, lng),
+    formatBusinessCategoryResponse(category, lang),
   );
   return { meta, data: formattedData };
 };
@@ -124,7 +124,7 @@ const getAllBusinessCategoriesPublic = async (
 const getSingleBusinessCategory = async (
   id: string,
   currentUser: TCurrentUser,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -138,7 +138,7 @@ const getSingleBusinessCategory = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  const formattedCategory = formatBusinessCategoryResponse(category, lng);
+  const formattedCategory = formatBusinessCategoryResponse(category, lang);
 
   return formattedCategory;
 };
@@ -146,7 +146,7 @@ const getSingleBusinessCategory = async (
 //  Get Single Business Category Public
 const getSingleBusinessCategoryPublic = async (
   id: string,
-  lng: 'en' | 'pt',
+  lang: 'en' | 'pt',
 ) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
@@ -157,7 +157,7 @@ const getSingleBusinessCategoryPublic = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  const formattedCategory = formatBusinessCategoryResponse(category, lng);
+  const formattedCategory = formatBusinessCategoryResponse(category, lang);
 
   return formattedCategory;
 };

@@ -5,7 +5,7 @@ import {
 
 export const formatBusinessCategoryResponse = (
   category: any,
-  lng: 'en' | 'pt' = 'en',
+  lang: 'en' | 'pt' = 'en',
 ) => {
   const categoryObj = category.toObject ? category.toObject() : category;
   const translation =
@@ -13,7 +13,7 @@ export const formatBusinessCategoryResponse = (
 
   return {
     _id: categoryObj._id,
-    name: translation?.[lng] || translation?.['en'] || categoryObj.name,
+    name: translation?.[lang] || translation?.['en'] || categoryObj.name,
     slug: categoryObj.slug,
     icon: categoryObj.icon,
     isActive: categoryObj.isActive,
@@ -23,13 +23,13 @@ export const formatBusinessCategoryResponse = (
   };
 };
 
-export const formatProductCategoryResponse = (data: any, lng: string) => {
+export const formatProductCategoryResponse = (data: any, lang: 'en' | 'pt') => {
   if (Array.isArray(data)) {
     return data.map((item) => {
       const itemObj = item.toObject?.() || item;
       return {
         ...itemObj,
-        name: itemObj.name?.[lng] || itemObj.name?.['en'] || '',
+        name: itemObj.name?.[lang] || itemObj.name?.['en'] || '',
       };
     });
   }
@@ -37,16 +37,16 @@ export const formatProductCategoryResponse = (data: any, lng: string) => {
   const dataObj = data.toObject?.() || data;
   return {
     ...dataObj,
-    name: dataObj.name?.[lng] || dataObj.name?.['en'] || '',
+    name: dataObj.name?.[lang] || dataObj.name?.['en'] || '',
   };
 };
-export const formatCuisineResponse = (data: any, lng: string) => {
+export const formatCuisineResponse = (data: any, lang: 'en' | 'pt') => {
   if (Array.isArray(data)) {
     return data.map((item) => {
       const itemObj = item.toObject?.() || item;
       return {
         ...itemObj,
-        name: itemObj.name?.[lng] || itemObj.name?.['en'] || '',
+        name: itemObj.name?.[lang] || itemObj.name?.['en'] || '',
       };
     });
   }
@@ -54,6 +54,6 @@ export const formatCuisineResponse = (data: any, lng: string) => {
   const dataObj = data.toObject?.() || data;
   return {
     ...dataObj,
-    name: dataObj.name?.[lng] || dataObj.name?.['en'] || '',
+    name: dataObj.name?.[lang] || dataObj.name?.['en'] || '',
   };
 };
