@@ -111,7 +111,6 @@ const updateProductCategory = async (
 const getAllProductCategories = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
-  lang: 'en' | 'pt',
 ) => {
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -149,11 +148,7 @@ const getAllProductCategories = async (
     productCategories.modelQuery,
   ]);
 
-  const formattedData = data.map((category) =>
-    formatProductCategoryResponse(category, lang),
-  );
-
-  return { meta, data: formattedData };
+  return { meta, data };
 };
 
 //  Get All Product Categories Public

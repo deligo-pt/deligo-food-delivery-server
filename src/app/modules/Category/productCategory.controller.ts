@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { ProductCategoryService } from './productCategory.service';
+import { formatProductCategoryResponse } from './category.utils';
 
 // Create Product Category Controllers
 const createProductCategory = catchAsync(async (req, res) => {
@@ -39,23 +40,34 @@ const updateProductCategory = catchAsync(async (req, res) => {
 // Get Product Category Controllers
 const getAllProductCategories = catchAsync(async (req, res) => {
   const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+
+  const user = req.user as TCurrentUser;
+  const role = user?.role;
   const result = await ProductCategoryService.getAllProductCategories(
     req.query,
-    req.user as TCurrentUser,
-    lang,
+    user,
   );
+
+  let formattedData;
+
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    formattedData = result.data;
+  } else {
+    formattedData = formatProductCategoryResponse(result.data, lang);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Product categories fetched successfully',
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
 // Get Product Category Controllers Public
 const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
   const lang = (req.headers['accept-language'] as 'en' | 'pt') || 'en';
+  const role = 'CUSTOMER';
   const result = await ProductCategoryService.getAllProductCategoriesPublic(
     req.query,
     lang,
