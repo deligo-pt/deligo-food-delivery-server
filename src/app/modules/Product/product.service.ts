@@ -834,7 +834,10 @@ const getAllProducts = async (
 };
 
 // get all products service
-const getAllProductsPublic = async (query: Record<string, unknown>) => {
+const getAllProductsPublic = async (
+  query: Record<string, unknown>,
+  lng: 'en' | 'pt',
+) => {
   const role = 'CUSTOMER';
 
   query.isApproved = true;
@@ -860,9 +863,27 @@ const getAllProductsPublic = async (query: Record<string, unknown>) => {
   const meta = await products.countTotal();
   const data = await products.modelQuery;
 
+  const localizedData = data.map((product: any) => {
+    const productObj = product.toObject({ virtuals: true });
+    return {
+      ...productObj,
+      name: productObj.name?.[lng] || productObj.name?.en || '',
+      description:
+        productObj.description?.[lng] || productObj.description?.en || '',
+      variations: productObj.variations?.map((v: any) => ({
+        ...v,
+        name: v.name?.[lng] || v.name?.en || '',
+        options: v.options?.map((o: any) => ({
+          ...o,
+          label: o.label?.[lng] || o.label?.en || '',
+        })),
+      })),
+    };
+  });
+
   return {
     meta,
-    data,
+    data: localizedData,
   };
 };
 

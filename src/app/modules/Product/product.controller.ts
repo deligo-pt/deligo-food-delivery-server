@@ -159,7 +159,8 @@ const getAllProducts = catchAsync(async (req, res) => {
 
 // get all products controller
 const getAllProductsPublic = catchAsync(async (req, res) => {
-  const result = await ProductServices.getAllProductsPublic(req.query);
+  const lang = (req.headers['accept-language'] || 'en') as 'en' | 'pt';
+  const result = await ProductServices.getAllProductsPublic(req.query, lang);
 
   sendResponse(res, {
     success: true,
