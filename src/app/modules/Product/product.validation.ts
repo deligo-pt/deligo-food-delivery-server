@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { localizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
+import { createLocalizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
 // Variation Options Schema (e.g., Small, Medium, Large)
 const variationOptionSchema = z
   .object({
-    label: localizedValidationSchema,
+    label: createLocalizedValidationSchema('variation option name'),
     price: z.number().min(0, 'Variation price must be non-negative'),
     sku: z.string().optional(),
     stockQuantity: z.number().min(0).optional(),
@@ -15,7 +15,7 @@ const variationOptionSchema = z
 // Variation Group Schema (e.g., Size, Color)
 const variationSchema = z
   .object({
-    name: localizedValidationSchema,
+    name: createLocalizedValidationSchema('variation group name'),
     options: z
       .array(variationOptionSchema)
       .min(1, 'At least one option is required'),
@@ -26,8 +26,8 @@ const variationSchema = z
 const createProductValidationSchema = z.object({
   body: z
     .object({
-      name: localizedValidationSchema,
-      description: localizedValidationSchema,
+      name: createLocalizedValidationSchema('product name'),
+      description: createLocalizedValidationSchema('product description'),
       category: z.string().min(1, 'Category is required'),
       subCategory: z.string().optional(),
       brand: z.string().optional(),
@@ -75,8 +75,11 @@ const createProductValidationSchema = z.object({
 const updateProductValidationSchema = z.object({
   body: z
     .object({
-      name: localizedValidationSchema.partial().optional(),
-      description: localizedValidationSchema.partial().optional(),
+      name: createLocalizedValidationSchema('product name', true).optional(),
+      description: createLocalizedValidationSchema(
+        'product description',
+        true,
+      ).optional(),
       category: z.string().optional(),
       subCategory: z.string().optional(),
       brand: z.string().optional(),
@@ -117,12 +120,12 @@ const updateProductValidationSchema = z.object({
 const manageVariationValidationSchema = z.object({
   body: z
     .object({
-      name: localizedValidationSchema,
+      name: createLocalizedValidationSchema('variation group name'),
       options: z
         .array(
           z
             .object({
-              label: localizedValidationSchema,
+              label: createLocalizedValidationSchema('variation option name'),
               price: z
                 .number({
                   required_error: 'Price is required',
@@ -147,10 +150,16 @@ const renameVariationValidationSchema = z.object({
     .object({
       oldName: z.string().min(1, 'Old variation name is required'),
 
-      newName: localizedValidationSchema.partial().optional(),
+      newName: createLocalizedValidationSchema(
+        'new variation name',
+        true,
+      ).optional(),
 
       oldLabel: z.string().optional(),
-      newLabel: localizedValidationSchema.partial().optional(),
+      newLabel: createLocalizedValidationSchema(
+        'new variation label',
+        true,
+      ).optional(),
     })
     .strict()
     .refine(

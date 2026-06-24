@@ -1,17 +1,17 @@
 import { Schema, model } from 'mongoose';
 import { TAddonGroup } from './addOns.interface';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const addonGroupSchema = new Schema<TAddonGroup>(
   {
     vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor', required: true },
-    title: { type: String, required: true },
+    title: { type: localizedSchema },
     minSelectable: { type: Number, default: 0 },
     maxSelectable: { type: Number, default: 1 },
     options: [
       {
-        name: { type: String, required: true },
-        sku: { type: String, unique: true },
-        pdItemId: { type: String, default: null },
+        name: { type: localizedSchema },
+        sku: { type: String },
         price: { type: Number, required: true },
         tax: {
           type: Schema.Types.ObjectId,
@@ -26,5 +26,7 @@ const addonGroupSchema = new Schema<TAddonGroup>(
   },
   { timestamps: true },
 );
+
+addonGroupSchema.index({ 'options.sku': 1 }, { unique: true, sparse: true });
 
 export const AddonGroup = model<TAddonGroup>('AddonGroup', addonGroupSchema);

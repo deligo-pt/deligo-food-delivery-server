@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 export type TAddonOption = {
-  name: string;
+  name: TLocalizedText;
   sku: string;
-  pdItemId?: string;
   price: number;
   tax: mongoose.Types.ObjectId;
   isActive: boolean;
@@ -12,7 +12,7 @@ export type TAddonOption = {
 export type TAddonGroup = {
   _id?: mongoose.Types.ObjectId;
   vendorId: mongoose.Types.ObjectId;
-  title: string;
+  title: TLocalizedText;
   minSelectable: number;
   maxSelectable: number;
   options: TAddonOption[];

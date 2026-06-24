@@ -1,7 +1,8 @@
 import z from 'zod';
+import { createLocalizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
 const optionSchema = z.object({
-  name: z.string({ required_error: 'Option name is required' }),
+  name: createLocalizedValidationSchema('option name'),
   price: z.number().min(0, 'Price cannot be negative'),
   tax: z.string({ required_error: 'Tax ID is required for each option' }),
   isActive: z.boolean().optional().default(true),
@@ -11,9 +12,7 @@ const optionSchema = z.object({
 const createAddonGroupValidationSchema = z.object({
   body: z
     .object({
-      title: z.string({
-        required_error: 'Group title is required (e.g., Extra Cheese)',
-      }),
+      title: createLocalizedValidationSchema('addon group title'),
       minSelectable: z
         .number()
         .min(0, 'Minimum selection cannot be negative')

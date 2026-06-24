@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { BusinessCategoryNameEnum } from './category.model';
-import { localizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
+import { createLocalizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
 // Create Business Category Validation
 const createBusinessCategoryValidationSchema = z.object({
@@ -33,7 +33,7 @@ const updateBusinessCategoryValidationSchema = z.object({
 const createProductCategoryValidationSchema = z.object({
   body: z
     .object({
-      name: localizedValidationSchema,
+      name: createLocalizedValidationSchema('product category name'),
       slug: z.string().optional(),
       description: z.string().optional(),
       businessCategoryId: z
@@ -48,7 +48,10 @@ const createProductCategoryValidationSchema = z.object({
 const updateProductCategoryValidationSchema = z.object({
   body: z
     .object({
-      name: localizedValidationSchema.partial().optional(),
+      name: createLocalizedValidationSchema(
+        'product category name',
+        true,
+      ).optional(),
       slug: z.string().optional(),
       description: z.string().optional(),
       icon: z.string().optional(),
@@ -63,7 +66,7 @@ const updateProductCategoryValidationSchema = z.object({
 const createCuisineValidationSchema = z.object({
   body: z
     .object({
-      name: localizedValidationSchema,
+      name: createLocalizedValidationSchema('cuisine name'),
       slug: z.string().optional(),
       isActive: z.boolean().default(true).optional(),
     })
@@ -74,7 +77,7 @@ const createCuisineValidationSchema = z.object({
 const updateCuisineValidationSchema = z.object({
   body: z
     .object({
-      name: localizedValidationSchema.partial().optional(),
+      name: createLocalizedValidationSchema('cuisine name', true).optional(),
       slug: z.string().optional(),
       isActive: z.boolean().optional(),
       isDeleted: z.boolean().optional(),

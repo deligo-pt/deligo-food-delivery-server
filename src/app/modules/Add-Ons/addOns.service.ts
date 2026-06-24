@@ -21,7 +21,7 @@ const createAddonGroup = async (
 
   const isGroupExists = await AddonGroup.findOne({
     vendorId: currentUser._id,
-    title: { $regex: new RegExp(`^${payload.title}$`, 'i') },
+    'title.en': { $regex: new RegExp(`^${payload.title.en}$`, 'i') },
     isDeleted: false,
   });
 
@@ -54,8 +54,8 @@ const createAddonGroup = async (
 
   payload.options = payload.options.map((opt) => {
     if (!opt.sku) {
-      const cleanTitle = payload.title.substring(0, 3).toUpperCase();
-      const cleanName = opt.name.substring(0, 3).toUpperCase();
+      const cleanTitle = payload.title.en.substring(0, 3).toUpperCase();
+      const cleanName = opt.name.en.substring(0, 3).toUpperCase();
       const randomStr = Math.random()
         .toString(36)
         .substring(2, 5)
@@ -74,6 +74,7 @@ const createAddonGroup = async (
 
   const result = await AddonGroup.findById(createdRecord._id).populate(
     'options.tax',
+    'taxName taxCode taxRate',
   );
 
   return result;
