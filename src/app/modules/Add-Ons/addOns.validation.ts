@@ -86,7 +86,20 @@ const updateAddonGroupValidationSchema = z.object({
     ),
 });
 
+const addOptionToAddonGroupValidationSchema = z.object({
+  body: z
+    .object({
+      name: createLocalizedValidationSchema('option name'),
+      price: z
+        .number({ required_error: 'Price is required' })
+        .min(0, 'Price cannot be negative'),
+      tax: z.string({ required_error: 'Tax ID is required for the option' }),
+    })
+    .strict(),
+});
+
 export const AddOnsValidation = {
   createAddonGroupValidationSchema,
   updateAddonGroupValidationSchema,
+  addOptionToAddonGroupValidationSchema,
 };

@@ -6,6 +6,7 @@ import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Tax } from '../Tax/tax.model';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 // create addon group service
 const createAddonGroup = async (
@@ -185,7 +186,12 @@ const updateAddonGroup = async (
 // add option to addon group service
 const addOptionToAddonGroup = async (
   groupId: string,
-  newOption: { name: string; price: number; tax: string; sku?: string },
+  newOption: {
+    name: TLocalizedText;
+    price: number;
+    tax: string;
+    sku?: string;
+  },
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -211,14 +217,20 @@ const addOptionToAddonGroup = async (
   const group = await AddonGroup.findOne({
     _id: groupId,
     vendorId: currentUser._id,
+    isDeleted: false,
   });
   if (!group) {
     throw new AppError(httpStatus.NOT_FOUND, 'Addon group not found');
   }
 
-  const isDuplicate = group.options.some(
-    (opt) => opt.name.toLowerCase() === newOption.name.toLowerCase(),
-  );
+  const isDuplicate = group.options.some((opt) => {
+    const existingNameEn = opt?.name?.en?.toLowerCase() || '';
+    const newNameEn = newOption?.name?.en?.toLowerCase() || '';
+
+    if (!existingNameEn || !newNameEn) return false;
+
+    return existingNameEn === newNameEn;
+  });
 
   if (isDuplicate) {
     throw new AppError(
@@ -228,9 +240,13 @@ const addOptionToAddonGroup = async (
   }
 
   if (!newOption.sku) {
-    const cleanTitle = group.title.substring(0, 3).toUpperCase();
-    const cleanName = newOption.name.substring(0, 3).toUpperCase();
+    const groupTitleEnglish = group.title?.en || 'ADD';
+    const optionNameEnglish = newOption.name?.en || 'OPT';
+
+    const cleanTitle = groupTitleEnglish.substring(0, 3).toUpperCase();
+    const cleanName = optionNameEnglish.substring(0, 3).toUpperCase();
     const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+
     newOption.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
   }
 

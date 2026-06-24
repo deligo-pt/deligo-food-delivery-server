@@ -26,6 +26,7 @@ router.patch(
 router.patch(
   '/:addonGroupId/add-option',
   auth('VENDOR', 'SUB_VENDOR'),
+  validateRequest(AddOnsValidation.addOptionToAddonGroupValidationSchema),
   AddOnsControllers.addOptionToGroup,
 );
 
