@@ -561,17 +561,31 @@ const updateInventoryAndPricing = async (
 
   const netQuantityChange = addedQuantity - reduceQuantity;
 
-  if (product.variations && product.variations.length > 0) {
-    if (!variationSku) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Variation SKU is required');
-    }
+  const hasVariations = product.variations && product.variations.length > 0;
 
+  if (variationSku && !hasVariations) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This product does not have any variations. Cannot update using variationSku.',
+    );
+  }
+
+  if (!variationSku && hasVariations) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Variation SKU is required for this product.',
+    );
+  }
+
+  if (hasVariations && product.variations) {
     let variationFound = false;
     let minPrice = Infinity;
 
     product.variations.forEach((variation) => {
       variation.options.forEach((opt) => {
         if (opt.sku === variationSku) {
+          variationFound = true;
+
           if (!isRestaurant) {
             if (
               reduceQuantity > 0 &&
@@ -583,13 +597,14 @@ const updateInventoryAndPricing = async (
               );
             }
             opt.stockQuantity = (opt.stockQuantity || 0) + netQuantityChange;
+
             opt.totalAddedQuantity =
-              (opt.totalAddedQuantity || 0) + netQuantityChange;
+              (opt.totalAddedQuantity || 0) + addedQuantity;
+
             opt.isOutOfStock = opt.stockQuantity <= 0;
           }
 
           if (newPrice !== undefined) opt.price = newPrice;
-          variationFound = true;
         }
         if (opt.price < minPrice) minPrice = opt.price;
       });
@@ -605,7 +620,7 @@ const updateInventoryAndPricing = async (
       );
       product.stock.quantity = totalStock;
       product.stock.totalAddedQuantity =
-        (product.stock.totalAddedQuantity || 0) + netQuantityChange;
+        (product.stock.totalAddedQuantity || 0) + addedQuantity;
     }
 
     if (newPrice !== undefined) product.pricing.price = minPrice;
@@ -616,7 +631,7 @@ const updateInventoryAndPricing = async (
       }
       product.stock.quantity += netQuantityChange;
       product.stock.totalAddedQuantity =
-        (product.stock.totalAddedQuantity || 0) + netQuantityChange;
+        (product.stock.totalAddedQuantity || 0) + addedQuantity;
     }
 
     if (newPrice !== undefined) product.pricing.price = newPrice;
