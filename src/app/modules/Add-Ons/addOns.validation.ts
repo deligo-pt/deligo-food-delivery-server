@@ -17,7 +17,7 @@ const updateOptionSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-// --- CREATE SCHEMA ---
+// Create Addon Group Validation Schema
 const createAddonGroupValidationSchema = z.object({
   body: z
     .object({
@@ -43,7 +43,7 @@ const createAddonGroupValidationSchema = z.object({
     }),
 });
 
-// --- UPDATE SCHEMA ---
+// Update Addon Group Validation Schema
 const updateAddonGroupValidationSchema = z.object({
   body: z
     .object({
@@ -86,6 +86,7 @@ const updateAddonGroupValidationSchema = z.object({
     ),
 });
 
+// Add Option to Addon Group Validation Schema
 const addOptionToAddonGroupValidationSchema = z.object({
   body: z
     .object({
@@ -97,7 +98,9 @@ const addOptionToAddonGroupValidationSchema = z.object({
     })
     .strict(),
 });
-const toggleOptionStatusValidationSchema = z.object({
+
+// Toggle Option Status Validation Schema
+const toggleStatusAndDeleteOptionValidationSchema = z.object({
   body: z
     .object({
       optionSku: z.string({ required_error: 'Option SKU is required' }),
@@ -109,5 +112,5 @@ export const AddOnsValidation = {
   createAddonGroupValidationSchema,
   updateAddonGroupValidationSchema,
   addOptionToAddonGroupValidationSchema,
-  toggleOptionStatusValidationSchema,
+  toggleStatusAndDeleteOptionValidationSchema,
 };

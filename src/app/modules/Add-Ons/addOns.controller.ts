@@ -70,10 +70,10 @@ const toggleOptionStatus = catchAsync(async (req, res) => {
 // delete option from addon group controller
 const deleteOptionFromGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
-  const { optionId } = req.body;
+  const { optionSku } = req.body;
   const result = await AddOnsServices.deleteOptionFromAddonGroup(
     addonGroupId,
-    optionId,
+    optionSku,
     req.user as TCurrentUser,
   );
   sendResponse(res, {

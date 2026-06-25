@@ -313,7 +313,7 @@ const toggleOptionStatus = async (
 // delete option from addon group service
 const deleteOptionFromAddonGroup = async (
   groupId: string,
-  optionId: string,
+  optionSku: string,
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -328,13 +328,13 @@ const deleteOptionFromAddonGroup = async (
       _id: groupId,
       vendorId: currentUser._id,
       isDeleted: false,
-      'options._id': optionId,
+      'options.sku': optionSku,
     },
     {
-      $pull: { options: { _id: optionId } },
+      $pull: { options: { sku: optionSku } },
     },
     { new: true },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxName taxCode taxRate');
 
   if (!result) {
     throw new AppError(
