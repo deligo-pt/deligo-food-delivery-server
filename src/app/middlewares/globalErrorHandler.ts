@@ -96,6 +96,8 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
       if (sanitizedBody.password) sanitizedBody.password = '********';
       if (sanitizedBody.oldPassword) sanitizedBody.oldPassword = '********';
 
+      const frontendUrl = req.headers.referer || req.headers.origin || null;
+
       await ErrorLog.create({
         message: message || err?.message || 'Unknown Server Error',
         stack: err?.stack || null,
@@ -104,6 +106,7 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
         requestDetails: {
           method: req.method,
           url: req.originalUrl,
+          frontendUrl,
           ip: req.ip || req.headers['x-forwarded-for'] || '',
           body: Object.keys(sanitizedBody).length ? sanitizedBody : null,
         },

@@ -499,9 +499,10 @@ const getAllVendorsForCustomer = async (
 
   if (query.restaurantCuisineType) {
     const cuisineInput = query.restaurantCuisineType as string;
-    filter['businessDetails.restaurantCuisineType'] = cuisineInput
-      .trim()
-      .toUpperCase();
+
+    filter['businessDetails.restaurantCuisineType'] = {
+      $regex: new RegExp(`^${cuisineInput.trim()}$`, 'i'),
+    };
     delete query.restaurantCuisineType;
   }
 
@@ -678,9 +679,10 @@ const getAllVendorsForCustomerPublic = async (
 
   if (query.restaurantCuisineType) {
     const cuisineInput = query.restaurantCuisineType as string;
-    filter['businessDetails.restaurantCuisineType'] = cuisineInput
-      .trim()
-      .toUpperCase();
+
+    filter['businessDetails.restaurantCuisineType'] = {
+      $regex: new RegExp(`^${cuisineInput.trim()}$`, 'i'),
+    };
     delete query.restaurantCuisineType;
   }
 
