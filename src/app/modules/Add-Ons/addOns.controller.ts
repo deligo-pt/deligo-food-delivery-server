@@ -110,15 +110,24 @@ const getAllAddonGroups = catchAsync(async (req, res) => {
 // get single addon group controller
 const getSingleAddonGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
+  const currentUser = req.user as TCurrentUser;
+  const role = currentUser?.role;
   const result = await AddOnsServices.getSingleAddonGroup(
     addonGroupId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  let formattedData;
+  if (role === 'CUSTOMER') {
+    formattedData = formatAddonGroupResponse(result, req.lang);
+  } else {
+    formattedData = result;
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Addon group fetched successfully',
-    data: result,
+    data: formattedData,
   });
 });
 
