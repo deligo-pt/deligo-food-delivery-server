@@ -81,7 +81,6 @@ const vendorSchema = new Schema<TVendor>(
       businessType: { type: String, default: '' },
       restaurantCuisineType: {
         type: [String],
-        default: [],
       },
       businessLicenseNumber: { type: String, default: '' },
       NIF: { type: String, default: '' },
