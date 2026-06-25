@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AddOnsServices } from './addOns.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatAddonGroupResponse } from './addOns.utils';
 
 // create addon group controller
 const createAddonGroup = catchAsync(async (req, res) => {
@@ -86,16 +87,23 @@ const deleteOptionFromGroup = catchAsync(async (req, res) => {
 
 // get all addon groups controller
 const getAllAddonGroups = catchAsync(async (req, res) => {
-  const result = await AddOnsServices.getAllAddonGroups(
-    req.query,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const role = currentUser?.role;
+  const result = await AddOnsServices.getAllAddonGroups(req.query, currentUser);
+
+  let formattedData;
+  if (role === 'CUSTOMER') {
+    formattedData = formatAddonGroupResponse(result.data, req.lang);
+  } else {
+    formattedData = result.data;
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Addon groups fetched successfully',
     meta: result.meta,
-    data: result.data,
+    data: formattedData,
   });
 });
 

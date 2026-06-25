@@ -361,7 +361,7 @@ const getAllAddonGroups = async (
     AddonGroup.find().populate('options.tax'),
     query,
   )
-    .search(['title'])
+    .search(['title.en', 'title.pt', 'options.name.en', 'options.name.pt'])
     .filter()
     .sort()
     .paginate()
