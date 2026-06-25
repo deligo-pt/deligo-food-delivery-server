@@ -10,11 +10,13 @@ import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 // Add cart Service
 const addToCart = async (
   payload: TCartItemInput,
   currentUser: TCurrentUser,
+  lang: TLanguageCode,
 ) => {
   if (currentUser.role !== 'CUSTOMER') {
     throw new AppError(
@@ -110,12 +112,24 @@ const addToCart = async (
   const productLineTotal = roundTo2(priceAfterDiscount * quantity);
   const productTaxAmount = roundTo2((productLineTotal * taxRate) / 100);
 
+  const pName = existingProduct.name?.[lang] || existingProduct.name?.en || '';
+
+  let finalItemName = pName;
+  if (selectedVariantLabel) {
+    const vLabel =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+        : selectedVariantLabel;
+
+    if (vLabel) {
+      finalItemName = `${pName} - ${vLabel}`;
+    }
+  }
+
   const newItem: any = {
     productId: existingProduct._id,
     vendorId: existingProduct.vendorId,
-    name: selectedVariantLabel
-      ? `${existingProduct.name} - ${selectedVariantLabel}`
-      : existingProduct.name,
+    name: finalItemName,
     image: existingProduct?.images[0] || '',
     hasVariations: hasVariations,
     variationSku: finalVariationSku,
@@ -154,6 +168,7 @@ const addToCart = async (
 
     if (itemIndex > -1) {
       const currentItem = cart.items[itemIndex];
+      currentItem.name = finalItemName;
       const finalQuantity = currentItem.itemSummary.quantity + quantity;
 
       if (!isRestaurant && finalQuantity > availableStock) {

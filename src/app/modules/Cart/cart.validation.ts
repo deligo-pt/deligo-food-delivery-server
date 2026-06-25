@@ -10,14 +10,6 @@ const addToCartValidationSchema = z.object({
             productId: z.string({ required_error: 'Product ID is required' }),
             quantity: z.number().min(1, 'Quantity must be at least 1'),
             variationSku: z.string().optional(),
-            addons: z
-              .array(
-                z.object({
-                  addOnId: z.string(),
-                  quantity: z.number().min(1),
-                }),
-              )
-              .optional(),
           })
           .strict(),
       ),
