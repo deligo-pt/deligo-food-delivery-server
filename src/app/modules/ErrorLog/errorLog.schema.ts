@@ -9,6 +9,7 @@ const errorLogSchema = new Schema(
     requestDetails: {
       method: { type: String },
       url: { type: String },
+      frontendUrl: { type: String },
       ip: { type: String },
       body: { type: Schema.Types.Mixed },
     },
