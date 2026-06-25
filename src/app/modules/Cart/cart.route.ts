@@ -14,11 +14,11 @@ router.post(
   CartControllers.addToCart,
 );
 
-// activate item
+// toggle cart item status
 router.patch(
-  '/activate-item/:productId',
+  '/toggle-item-status/:productId',
   auth('CUSTOMER'),
-  CartControllers.activateItem,
+  CartControllers.toggleCartItemStatus,
 );
 
 // update cart item quantity

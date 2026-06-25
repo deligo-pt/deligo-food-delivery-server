@@ -227,8 +227,8 @@ const addToCart = async (
   return cart;
 };
 
-// active item Service
-const activateItem = async (
+// toggle cart item status service
+const toggleCartItemStatus = async (
   currentUser: TCurrentUser,
   productId: string,
   variationSku?: string,
@@ -242,50 +242,50 @@ const activateItem = async (
 
   const customerId = currentUser._id;
 
-  const cart = await Cart.findOne({ customerId });
+  const cart = await Cart.findOne({ customerId, isDeleted: false });
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
-  const itemToActivate = cart.items.find((i: any) => {
+  const itemToToggle = cart.items.find((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
     const currentItemSku = i.variationSku || null;
     const inputSku = variationSku || null;
 
     return isSameProduct && currentItemSku === inputSku;
   });
-  if (!itemToActivate) {
+
+  if (!itemToToggle) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
 
-  const selectedVendorId = itemToActivate.vendorId.toString();
+  const willBeActive = !itemToToggle.isActive;
 
-  // Get existing active items
-  const activeItems = cart.items.filter((i) => i.isActive === true);
+  if (willBeActive) {
+    const selectedVendorId = itemToToggle.vendorId.toString();
 
-  //  If already active items exist → vendor must match
-  if (activeItems.length > 0) {
-    const activeVendorId = activeItems[0].vendorId;
+    const activeItems = cart.items.filter((i) => i.isActive === true);
 
-    if (activeVendorId.toString() !== selectedVendorId) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'You can only select items from the same vendor',
-      );
+    if (activeItems.length > 0) {
+      const activeVendorId = activeItems[0].vendorId;
+
+      if (activeVendorId.toString() !== selectedVendorId) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'You can only select items from the same vendor',
+        );
+      }
     }
   }
 
-  // Activate this item
-  itemToActivate.isActive = !itemToActivate.isActive;
+  itemToToggle.isActive = willBeActive;
 
-  // re-calculate active total
   await recalculateCartTotals(cart);
 
   cart.markModified('items');
   await cart.save();
-  const freshCart = await Cart.findOne({ customerId });
 
-  return freshCart;
+  return cart;
 };
 
 // update cart item quantity
@@ -740,7 +740,7 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
 export const CartServices = {
   addToCart,
-  activateItem,
+  toggleCartItemStatus,
   updateCartItemQuantity,
   updateAddonQuantity,
   deleteCartItem,
