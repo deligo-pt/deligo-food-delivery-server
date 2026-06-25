@@ -11,6 +11,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import redis, { RedisService } from '../../config/redis';
 
 // Add cart Service
 const addToCart = async (
@@ -155,10 +156,33 @@ const addToCart = async (
     },
   };
 
-  let cart = await Cart.findOne({ customerId, isDeleted: false });
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
 
   if (!cart) {
-    cart = new Cart({ customerId, items: [newItem] });
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
+  if (!cart) {
+    cart = {
+      customerId: customerId,
+      items: [newItem],
+      totalItems: 1,
+      cartCalculation: {
+        totalOriginalPrice: 0,
+        totalProductDiscount: 0,
+        taxableAmount: 0,
+        totalTaxAmount: 0,
+        grandTotal: 0,
+      },
+      isDeleted: false,
+    };
   } else {
     const itemIndex = cart.items.findIndex(
       (i: any) =>
@@ -222,8 +246,13 @@ const addToCart = async (
   }
 
   await recalculateCartTotals(cart);
-  cart.markModified('items');
-  await cart.save();
+
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+
+  await RedisService.set(expiryKey, '', 86400);
+
   return cart;
 };
 

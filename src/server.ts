@@ -7,6 +7,8 @@ import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
 import { initAllCronJobs } from './app/cron';
 import './app/BullMQ/Workers/index';
+import { initCartEventListener } from './app/modules/Cart/cart.event';
+import { RedisService } from './app/config/redis';
 const server = http.createServer(app);
 
 // Handle unexpected errors
@@ -40,6 +42,10 @@ async function bootstrap() {
 
     // Initialize Socket.IO
     initializeSocket(server);
+
+    initCartEventListener();
+
+    await RedisService.initKeySpaceNotification();
 
     initAllCronJobs();
 

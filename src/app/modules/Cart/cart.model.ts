@@ -80,6 +80,10 @@ const cartSchema = new Schema<TCart>(
       _id: false,
     },
 
+    status: {
+      type: String,
+      enum: ['abandoned'],
+    },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },

@@ -17,6 +17,18 @@ const addToCartValidationSchema = z.object({
     .strict(),
 });
 
+const toggleCartItemStatusValidationSchema = z.object({
+  body: z
+    .object({
+      variationSku: z
+        .string({
+          invalid_type_error: 'Variation SKU must be a string',
+        })
+        .optional(),
+    })
+    .strict(),
+});
+
 // update cart quantity validation
 const updateCartItemQuantityValidationSchema = z.object({
   body: z
@@ -66,6 +78,7 @@ const deleteCartItemValidationSchema = z.object({
 
 export const CartValidation = {
   addToCartValidationSchema,
+  toggleCartItemStatusValidationSchema,
   updateCartItemQuantityValidationSchema,
   updateAddonQuantityValidationSchema,
   deleteCartItemValidationSchema,

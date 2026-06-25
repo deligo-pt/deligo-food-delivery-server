@@ -25,6 +25,11 @@ subscriber.on('error', (err) => console.error('Redis Subscriber Error:', err));
 
 const subscriptions = new Map<string, (data: any) => void>();
 
+const expirySubscriptions = new Map<
+  string,
+  (key: string) => void | Promise<void>
+>();
+
 subscriber.on('message', (channel, message) => {
   const callback = subscriptions.get(channel);
   if (callback) {
@@ -32,6 +37,16 @@ subscriber.on('message', (channel, message) => {
       callback(JSON.parse(message));
     } catch {
       callback(message);
+    }
+  }
+});
+
+subscriber.on('pmessage', async (pattern, channel, message) => {
+  if (channel.endsWith(':expired')) {
+    for (const [prefix, callback] of expirySubscriptions.entries()) {
+      if (message.startsWith(prefix)) {
+        await callback(message);
+      }
     }
   }
 });
@@ -70,6 +85,19 @@ export const RedisService = {
     subscriptions.set(channel, callback);
     await subscriber.subscribe(channel);
     console.log(`Listening to channel: ${channel}`);
+  },
+
+  onKeyExpire: (
+    keyPrefix: string,
+    callback: (key: string) => void | Promise<void>,
+  ) => {
+    expirySubscriptions.set(keyPrefix, callback);
+    console.log(`Dynamic expiry handler registered for prefix: ${keyPrefix}`);
+  },
+
+  initKeySpaceNotification: async () => {
+    await subscriber.psubscribe('__keyevent@0__:expired');
+    console.log('Redis Keyspace Expiry Notifications Activated');
   },
 };
 
