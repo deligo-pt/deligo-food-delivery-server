@@ -95,8 +95,8 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
       const sanitizedBody = req.body ? { ...req.body } : {};
       if (sanitizedBody.password) sanitizedBody.password = '********';
       if (sanitizedBody.oldPassword) sanitizedBody.oldPassword = '********';
-
-      const frontendUrl = req.headers.referer || req.headers.origin || null;
+      const frontendUrl =
+        req.headers.host || req.headers.referer || req.headers.origin || null;
 
       await ErrorLog.create({
         message: message || err?.message || 'Unknown Server Error',
