@@ -36,9 +36,9 @@ async function bootstrap() {
     await mongoose.connect(config.db_url as string);
 
     // Seed database
-    if (config.NODE_ENV === 'development') {
+ 
       await seed();
-    }
+    
 
     // Initialize Socket.IO
     initializeSocket(server);
