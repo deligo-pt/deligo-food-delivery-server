@@ -260,6 +260,7 @@ const addToCart = async (
 const toggleCartItemStatus = async (
   currentUser: TCurrentUser,
   productId: string,
+  lang: TLanguageCode,
   variationSku?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -304,6 +305,44 @@ const toggleCartItemStatus = async (
   if (willBeActive) {
     const selectedVendorId = itemToToggle.vendorId.toString();
 
+    const product = await Product.findOne({
+      _id: itemToToggle.productId,
+      isDeleted: false,
+      isApproved: true,
+    }).lean();
+
+    if (!product) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Product is no longer available',
+      );
+    }
+
+    const pName = product.name?.[lang] || product.name?.en || '';
+    let finalItemName = pName;
+
+    const hasVariations =
+      product?.stock?.hasVariations === true ||
+      (product?.variations && product.variations.length > 0);
+
+    if (itemToToggle.variationSku && hasVariations) {
+      const targetOption = product.variations
+        ?.flatMap((v: any) => v.options)
+        .find((opt: any) => opt.sku === itemToToggle.variationSku);
+
+      const selectedVariantLabel = targetOption?.label;
+      const vLabel =
+        typeof selectedVariantLabel === 'object'
+          ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+          : selectedVariantLabel;
+
+      if (vLabel) {
+        finalItemName = `${pName} - ${vLabel}`;
+      }
+    }
+
+    itemToToggle.name = finalItemName;
+
     const activeItems = cart.items.filter((i: any) => i.isActive === true);
 
     if (activeItems.length > 0) {
@@ -340,6 +379,7 @@ const updateCartItemQuantity = async (
     quantity: number;
     action: 'increment' | 'decrement';
   },
+  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -350,7 +390,19 @@ const updateCartItemQuantity = async (
 
   const { productId, variationSku, quantity, action } = payload;
   const customerId = currentUser._id;
-  const cart = await Cart.findOne({ customerId, isDeleted: false });
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
@@ -368,9 +420,14 @@ const updateCartItemQuantity = async (
 
   const targetItem = cart.items[itemIndex];
 
-  const product = await Product.findById(productId).lean();
+  const product = await Product.findOne({
+    _id: productId,
+    isDeleted: false,
+    isApproved: true,
+  }).lean();
+
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'Product is no longer available');
   }
 
   const vendor = await Vendor.findOne({
@@ -383,7 +440,6 @@ const updateCartItemQuantity = async (
   }
 
   const isRestaurant = vendor?.businessDetails?.businessType === 'RESTAURANT';
-
   const shouldCheckStock = !isRestaurant;
 
   let availableStock = product?.stock?.quantity ?? 0;
@@ -415,6 +471,26 @@ const updateCartItemQuantity = async (
     currentQty -= quantity;
   }
 
+  const pName = product.name?.[lang] || product.name?.en || '';
+  let finalItemName = pName;
+
+  if (targetItem.variationSku && hasVariations) {
+    const targetOption = product.variations
+      ?.flatMap((v: any) => v.options)
+      .find((opt: any) => opt.sku === targetItem.variationSku);
+
+    const selectedVariantLabel = targetOption?.label;
+    const vLabel =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+        : selectedVariantLabel;
+
+    if (vLabel) {
+      finalItemName = `${pName} - ${vLabel}`;
+    }
+  }
+
+  targetItem.name = finalItemName;
   targetItem.itemSummary.quantity = currentQty;
 
   let totalAddonsPrice = 0;
@@ -423,9 +499,9 @@ const updateCartItemQuantity = async (
   if (targetItem.addons && targetItem.addons.length > 0) {
     targetItem.addons.forEach((addon: any) => {
       const price = Number(addon.unitPrice) || Number(addon.price) || 0;
-      const qty = Number(addon.quantity) || 0;
+      const singleItemAddonQty = Number(addon.quantity) || 1;
 
-      const addonSubtotal = roundTo2(price * qty);
+      const addonSubtotal = roundTo2(price * singleItemAddonQty * currentQty);
       const addonTaxValue = roundTo2(
         addonSubtotal * ((Number(addon.taxRate) || 0) / 100),
       );
@@ -460,11 +536,15 @@ const updateCartItemQuantity = async (
     targetItem.itemSummary.totalBeforeTax +
       targetItem.itemSummary.totalTaxAmount,
   );
-  // re-calculate active total
+
   await recalculateCartTotals(cart);
 
-  cart.markModified('items');
-  await cart.save();
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+
+  await RedisService.set(expiryKey, '', 86400);
+
   return cart;
 };
 
