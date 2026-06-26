@@ -256,7 +256,7 @@ const addOptionToAddonGroup = async (
       $push: { options: { ...newOption, isActive: true } },
     },
     { new: true, runValidators: true },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxName taxCode taxRate');
 
   return result;
 };
@@ -358,7 +358,7 @@ const getAllAddonGroups = async (
   query.isDeleted = false;
 
   const addOns = new QueryBuilder(
-    AddonGroup.find().populate('options.tax'),
+    AddonGroup.find().populate('options.tax', 'taxName taxCode taxRate'),
     query,
   )
     .search(['title.en', 'title.pt', 'options.name.en', 'options.name.pt'])
@@ -387,7 +387,7 @@ const getSingleAddonGroup = async (id: string, currentUser: TCurrentUser) => {
   }
 
   const result = await AddonGroup.findOne(queryObj)
-    .populate('options.tax')
+    .populate('options.tax', 'taxName taxCode taxRate')
     .lean();
 
   if (!result) {

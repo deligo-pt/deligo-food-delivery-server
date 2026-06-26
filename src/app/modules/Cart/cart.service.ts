@@ -260,6 +260,7 @@ const addToCart = async (
 const toggleCartItemStatus = async (
   currentUser: TCurrentUser,
   productId: string,
+  lang: TLanguageCode,
   variationSku?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -304,6 +305,44 @@ const toggleCartItemStatus = async (
   if (willBeActive) {
     const selectedVendorId = itemToToggle.vendorId.toString();
 
+    const product = await Product.findOne({
+      _id: itemToToggle.productId,
+      isDeleted: false,
+      isApproved: true,
+    }).lean();
+
+    if (!product) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Product is no longer available',
+      );
+    }
+
+    const pName = product.name?.[lang] || product.name?.en || '';
+    let finalItemName = pName;
+
+    const hasVariations =
+      product?.stock?.hasVariations === true ||
+      (product?.variations && product.variations.length > 0);
+
+    if (itemToToggle.variationSku && hasVariations) {
+      const targetOption = product.variations
+        ?.flatMap((v: any) => v.options)
+        .find((opt: any) => opt.sku === itemToToggle.variationSku);
+
+      const selectedVariantLabel = targetOption?.label;
+      const vLabel =
+        typeof selectedVariantLabel === 'object'
+          ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+          : selectedVariantLabel;
+
+      if (vLabel) {
+        finalItemName = `${pName} - ${vLabel}`;
+      }
+    }
+
+    itemToToggle.name = finalItemName;
+
     const activeItems = cart.items.filter((i: any) => i.isActive === true);
 
     if (activeItems.length > 0) {
@@ -340,6 +379,7 @@ const updateCartItemQuantity = async (
     quantity: number;
     action: 'increment' | 'decrement';
   },
+  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -350,7 +390,19 @@ const updateCartItemQuantity = async (
 
   const { productId, variationSku, quantity, action } = payload;
   const customerId = currentUser._id;
-  const cart = await Cart.findOne({ customerId, isDeleted: false });
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
@@ -368,9 +420,14 @@ const updateCartItemQuantity = async (
 
   const targetItem = cart.items[itemIndex];
 
-  const product = await Product.findById(productId).lean();
+  const product = await Product.findOne({
+    _id: productId,
+    isDeleted: false,
+    isApproved: true,
+  }).lean();
+
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'Product is no longer available');
   }
 
   const vendor = await Vendor.findOne({
@@ -383,7 +440,6 @@ const updateCartItemQuantity = async (
   }
 
   const isRestaurant = vendor?.businessDetails?.businessType === 'RESTAURANT';
-
   const shouldCheckStock = !isRestaurant;
 
   let availableStock = product?.stock?.quantity ?? 0;
@@ -415,6 +471,26 @@ const updateCartItemQuantity = async (
     currentQty -= quantity;
   }
 
+  const pName = product.name?.[lang] || product.name?.en || '';
+  let finalItemName = pName;
+
+  if (targetItem.variationSku && hasVariations) {
+    const targetOption = product.variations
+      ?.flatMap((v: any) => v.options)
+      .find((opt: any) => opt.sku === targetItem.variationSku);
+
+    const selectedVariantLabel = targetOption?.label;
+    const vLabel =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+        : selectedVariantLabel;
+
+    if (vLabel) {
+      finalItemName = `${pName} - ${vLabel}`;
+    }
+  }
+
+  targetItem.name = finalItemName;
   targetItem.itemSummary.quantity = currentQty;
 
   let totalAddonsPrice = 0;
@@ -423,9 +499,9 @@ const updateCartItemQuantity = async (
   if (targetItem.addons && targetItem.addons.length > 0) {
     targetItem.addons.forEach((addon: any) => {
       const price = Number(addon.unitPrice) || Number(addon.price) || 0;
-      const qty = Number(addon.quantity) || 0;
+      const singleItemAddonQty = Number(addon.quantity) || 1;
 
-      const addonSubtotal = roundTo2(price * qty);
+      const addonSubtotal = roundTo2(price * singleItemAddonQty * currentQty);
       const addonTaxValue = roundTo2(
         addonSubtotal * ((Number(addon.taxRate) || 0) / 100),
       );
@@ -460,11 +536,15 @@ const updateCartItemQuantity = async (
     targetItem.itemSummary.totalBeforeTax +
       targetItem.itemSummary.totalTaxAmount,
   );
-  // re-calculate active total
+
   await recalculateCartTotals(cart);
 
-  cart.markModified('items');
-  await cart.save();
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+
+  await RedisService.set(expiryKey, '', 86400);
+
   return cart;
 };
 
@@ -474,9 +554,10 @@ const updateAddonQuantity = async (
   payload: {
     productId: string;
     variationSku?: string;
-    optionId: string;
+    optionSku: string;
     action: 'increment' | 'decrement';
   },
+  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -485,11 +566,21 @@ const updateAddonQuantity = async (
     );
   }
 
-  const { productId, variationSku, optionId, action } = payload;
-  const cart = await Cart.findOne({
-    customerId: currentUser._id,
-    isDeleted: false,
-  });
+  const { productId, variationSku, optionSku, action } = payload;
+  const customerId = currentUser._id;
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
   if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
   const itemIndex = cart.items.findIndex((i: any) => {
@@ -519,18 +610,17 @@ const updateAddonQuantity = async (
   if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
   let addonData: any = null;
-
   let parentGroup: any = null;
 
   ((product.addonGroups as any[]) || []).forEach((group) => {
     if (group.isActive && !group.isDeleted) {
-      const option = group.options.find(
-        (opt: any) => opt._id.toString() === optionId,
-      );
+      const option = group.options.find((opt: any) => opt.sku === optionSku);
       if (option && option.isActive) {
+        const addonNameObj = option.name as Record<string, string>;
+        const localizedAddonName =
+          addonNameObj[lang] || addonNameObj['en'] || '';
         addonData = {
-          optionId: option._id.toString(),
-          name: option.name,
+          name: localizedAddonName,
           sku: option.sku,
           unitPrice: option.price,
           taxRate: option.tax?.taxRate || 0,
@@ -546,8 +636,38 @@ const updateAddonQuantity = async (
       'Addon is inactive or unavailable',
     );
 
+  const nameObject = product.name as { en: string; pt: string };
+  const pName =
+    nameObject[lang as keyof typeof nameObject] || nameObject.en || '';
+  let finalItemName = pName;
+
+  const hasVariations =
+    product?.stock?.hasVariations === true ||
+    (product?.variations && product.variations.length > 0);
+
+  if (targetItem.variationSku && hasVariations) {
+    const targetOption = product.variations
+      ?.flatMap((v: any) => v.options)
+      .find((opt: any) => opt.sku === targetItem.variationSku);
+
+    const selectedVariantLabel = targetOption?.label;
+    if (selectedVariantLabel) {
+      const vLabel =
+        typeof selectedVariantLabel === 'object'
+          ? (selectedVariantLabel as Record<string, string>)[lang] ||
+            (selectedVariantLabel as Record<string, string>)['en'] ||
+            ''
+          : selectedVariantLabel;
+
+      if (vLabel) {
+        finalItemName = `${pName} - ${vLabel}`;
+      }
+    }
+  }
+
+  targetItem.name = finalItemName;
+
   const selectedAddon = addonData as {
-    optionId: string;
     name: string;
     sku?: string;
     price: number;
@@ -555,21 +675,22 @@ const updateAddonQuantity = async (
   };
 
   const existingAddonIndex = targetItem.addons.findIndex(
-    (a: any) => a.optionId?.toString() === selectedAddon.optionId.toString(),
+    (a: any) => a.sku === selectedAddon.sku,
   );
 
   if (action === 'increment') {
-    const groupOptionIds = parentGroup.options.map((o: any) =>
-      o._id.toString(),
-    );
+    const groupOptionSkuS = parentGroup.options.map((o: any) => o.sku);
     const currentGroupSelectionCount = targetItem.addons
-      .filter((a: any) => groupOptionIds.includes(a.optionId.toString()))
+      .filter((a: any) => groupOptionSkuS.includes(a.sku))
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
 
     if (currentGroupSelectionCount >= parentGroup.maxSelectable) {
+      const groupTitleObj = parentGroup.title as Record<string, string>;
+      const localizedGroupTitle =
+        groupTitleObj?.[lang] || groupTitleObj?.['en'] || 'this group';
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Maximum selection limit of ${parentGroup.maxSelectable} reached for ${parentGroup.title}`,
+        `Maximum selection limit of ${parentGroup.maxSelectable} reached for ${localizedGroupTitle}`,
       );
     }
     if (existingAddonIndex > -1) {
@@ -629,9 +750,14 @@ const updateAddonQuantity = async (
     targetItem.itemSummary.totalBeforeTax +
       targetItem.itemSummary.totalTaxAmount,
   );
+
   await recalculateCartTotals(cart);
-  cart.markModified('items');
-  await cart.save();
+
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+
+  await RedisService.set(expiryKey, '', 86400);
 
   return cart;
 };
@@ -648,10 +774,20 @@ const deleteCartItem = async (
     );
   }
 
-  const cart = await Cart.findOne({
-    customerId: currentUser._id,
-    isDeleted: false,
-  });
+  const customerId = currentUser._id;
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
   if (!cart || !cart.items || cart.items.length === 0) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart is empty or not found');
   }
@@ -678,39 +814,79 @@ const deleteCartItem = async (
     );
   }
 
+  if (cart.items.length === 0) {
+    await RedisService.del(dataKey);
+    await RedisService.del(expiryKey);
+
+    await Cart.deleteOne({ customerId });
+
+    return {
+      customerId,
+      items: [],
+      totalItems: 0,
+      cartCalculation: {
+        totalOriginalPrice: 0,
+        totalProductDiscount: 0,
+        taxableAmount: 0,
+        totalTaxAmount: 0,
+        grandTotal: 0,
+      },
+      isDeleted: false,
+    };
+  }
+
   await recalculateCartTotals(cart);
 
-  cart.markModified('items');
-  await cart.save();
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+  await RedisService.set(expiryKey, '', 86400);
 
   return cart;
 };
 
 // clear cart Service
 const clearCart = async (currentUser: TCurrentUser) => {
-  const cart = await Cart.findOne({
-    customerId: currentUser._id,
-    isDeleted: false,
-  });
-  if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found for this user');
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update cart. Your account is ${currentUser.status}`,
+    );
   }
-  cart.items = [];
-  cart.cartCalculation = {
-    totalOriginalPrice: 0,
-    totalProductDiscount: 0,
-    taxableAmount: 0,
-    totalTaxAmount: 0,
-    grandTotal: 0,
+
+  const customerId = currentUser._id;
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  const cartExists = await RedisService.exists(dataKey);
+
+  if (!cartExists) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false });
+    if (!dbCart) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Cart not found for this user');
+    }
+  }
+
+  await RedisService.del(dataKey);
+  await RedisService.del(expiryKey);
+
+  await Cart.deleteOne({ customerId });
+
+  return {
+    customerId,
+    items: [],
+    totalItems: 0,
+    cartCalculation: {
+      totalOriginalPrice: 0,
+      totalProductDiscount: 0,
+      taxableAmount: 0,
+      totalTaxAmount: 0,
+      grandTotal: 0,
+    },
+    isDeleted: false,
   };
-
-  cart.totalItems = 0;
-
-  await cart.save();
-
-  return cart;
 };
-
 // get all cart service
 const getAllCart = async (
   currentUser: TCurrentUser,
@@ -723,7 +899,7 @@ const getAllCart = async (
     );
   }
 
-  const cart = new QueryBuilder(Cart.find(), query)
+  const cartQuery = new QueryBuilder(Cart.find({ isDeleted: false }), query)
     .search([])
     .filter()
     .sort()
@@ -734,13 +910,38 @@ const getAllCart = async (
     customer: 'name',
   });
   populateOptions.forEach((option) => {
-    cart.modelQuery = cart.modelQuery.populate(option);
+    cartQuery.modelQuery = cartQuery.modelQuery.populate(option);
   });
 
-  const meta = await cart.countTotal();
-  const data = await cart.modelQuery;
+  const meta = await cartQuery.countTotal();
+  const dbCarts = await cartQuery.modelQuery;
 
-  return { meta, data };
+  const combinedData = await Promise.all(
+    dbCarts.map(async (dbCart: any) => {
+      const customerIdStr = dbCart.customerId._id
+        ? dbCart.customerId._id.toString()
+        : dbCart.customerId.toString();
+
+      const dataKey = `cart:data:${customerIdStr}`;
+
+      const redisCart = await RedisService.get<any>(dataKey);
+
+      if (redisCart) {
+        return {
+          ...redisCart,
+          _id: dbCart._id,
+          status: 'active',
+          customerId: dbCart.customerId,
+          createdAt: dbCart.createdAt,
+          updatedAt: new Date(),
+        };
+      }
+
+      return dbCart;
+    }),
+  );
+
+  return { meta, data: combinedData };
 };
 
 // view cart Service
@@ -756,24 +957,51 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Customer id is required');
   }
 
-  let customerId;
-  let query: any;
-  if (currentUser.role === 'CUSTOMER') {
-    customerId = currentUser._id;
-    query = Cart.findOne({ customerId });
-  } else {
-    query = Cart.findOne({ customerId: cartCustomerId });
+  const targetCustomerId =
+    currentUser.role === 'CUSTOMER' ? currentUser._id : cartCustomerId!;
+
+  const customerIdStr = targetCustomerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    let dbQuery = Cart.findOne({
+      customerId: targetCustomerId,
+      isDeleted: false,
+    });
+
+    const populateOptions = getPopulateOptions(currentUser.role, {
+      customer: 'name',
+      itemVendor: 'name userId',
+    });
+
+    populateOptions.forEach((option) => {
+      dbQuery = dbQuery.populate(option);
+    });
+
+    const dbCart = await dbQuery.lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
   }
 
-  const populateOptions = getPopulateOptions(currentUser.role, {
-    customer: 'name',
-    itemVendor: 'name userId',
-  });
-  populateOptions.forEach((option) => {
-    query = query.populate(option);
-  });
+  if (!cart && currentUser.role === 'CUSTOMER') {
+    return {
+      customerId: targetCustomerId,
+      items: [],
+      totalItems: 0,
+      cartCalculation: {
+        totalOriginalPrice: 0,
+        totalProductDiscount: 0,
+        taxableAmount: 0,
+        totalTaxAmount: 0,
+        grandTotal: 0,
+      },
+      isDeleted: false,
+    };
+  }
 
-  const cart = await query;
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }

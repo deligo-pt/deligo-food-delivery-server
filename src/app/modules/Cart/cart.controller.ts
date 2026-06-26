@@ -26,6 +26,7 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
   const result = await CartServices.toggleCartItemStatus(
     req.user as TCurrentUser,
     productId,
+    req.lang,
     req.body.variationSku,
   );
   sendResponse(res, {
@@ -41,6 +42,7 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateCartItemQuantity(
     req.user as TCurrentUser,
     req.body,
+    req.lang,
   );
   sendResponse(res, {
     success: true,
@@ -55,6 +57,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateAddonQuantity(
     req.user as TCurrentUser,
     req.body,
+    req.lang,
   );
   sendResponse(res, {
     success: true,
@@ -102,7 +105,8 @@ const getAllCart = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Cart retrieved successfully',
-    data: result,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
