@@ -899,7 +899,7 @@ const getAllCart = async (
     );
   }
 
-  const cart = new QueryBuilder(Cart.find(), query)
+  const cartQuery = new QueryBuilder(Cart.find({ isDeleted: false }), query)
     .search([])
     .filter()
     .sort()
@@ -910,13 +910,38 @@ const getAllCart = async (
     customer: 'name',
   });
   populateOptions.forEach((option) => {
-    cart.modelQuery = cart.modelQuery.populate(option);
+    cartQuery.modelQuery = cartQuery.modelQuery.populate(option);
   });
 
-  const meta = await cart.countTotal();
-  const data = await cart.modelQuery;
+  const meta = await cartQuery.countTotal();
+  const dbCarts = await cartQuery.modelQuery;
 
-  return { meta, data };
+  const combinedData = await Promise.all(
+    dbCarts.map(async (dbCart: any) => {
+      const customerIdStr = dbCart.customerId._id
+        ? dbCart.customerId._id.toString()
+        : dbCart.customerId.toString();
+
+      const dataKey = `cart:data:${customerIdStr}`;
+
+      const redisCart = await RedisService.get<any>(dataKey);
+
+      if (redisCart) {
+        return {
+          ...redisCart,
+          _id: dbCart._id,
+          status: 'active',
+          customerId: dbCart.customerId,
+          createdAt: dbCart.createdAt,
+          updatedAt: new Date(),
+        };
+      }
+
+      return dbCart;
+    }),
+  );
+
+  return { meta, data: combinedData };
 };
 
 // view cart Service
