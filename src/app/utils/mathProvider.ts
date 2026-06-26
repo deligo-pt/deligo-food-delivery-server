@@ -5,8 +5,15 @@ export const roundTo4 = (num: any): number => {
   return Math.round((num + Number.EPSILON) * 10000) / 10000;
 };
 
+// export const roundTo2 = (num: any): number => {
+//   const value = Number(num);
+//   if (isNaN(value)) return 0;
+//   return Math.round((value + Number.EPSILON) * 100) / 100;
+// };
+
 export const roundTo2 = (num: any): number => {
   const value = Number(num);
   if (isNaN(value)) return 0;
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+
+  return Math.round(value * 100 + Number.EPSILON) / 100;
 };

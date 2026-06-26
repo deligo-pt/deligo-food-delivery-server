@@ -270,8 +270,19 @@ const toggleCartItemStatus = async (
   }
 
   const customerId = currentUser._id;
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
 
-  const cart = await Cart.findOne({ customerId, isDeleted: false });
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
@@ -293,7 +304,7 @@ const toggleCartItemStatus = async (
   if (willBeActive) {
     const selectedVendorId = itemToToggle.vendorId.toString();
 
-    const activeItems = cart.items.filter((i) => i.isActive === true);
+    const activeItems = cart.items.filter((i: any) => i.isActive === true);
 
     if (activeItems.length > 0) {
       const activeVendorId = activeItems[0].vendorId;
@@ -311,8 +322,11 @@ const toggleCartItemStatus = async (
 
   await recalculateCartTotals(cart);
 
-  cart.markModified('items');
-  await cart.save();
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+
+  await RedisService.set(expiryKey, '', 86400);
 
   return cart;
 };
