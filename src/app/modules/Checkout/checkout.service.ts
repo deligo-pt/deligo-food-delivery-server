@@ -10,19 +10,30 @@ import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoogleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { RedisService } from '../../config/redis';
 
 // Checkout Service
 const checkout = async (
   currentUser: TCurrentUser,
   payload: TCheckoutPayload,
+  lang: TLanguageCode,
 ) => {
   const customerId = currentUser._id.toString();
   let selectedItems = [];
 
   if (payload.useCart) {
-    const cart = await Cart.findOne({ customerId, isDeleted: false });
-    if (!cart || cart.items.length === 0)
+    const dataKey = `cart:data:${customerId}`;
+
+    let cart = await RedisService.get<any>(dataKey);
+
+    if (!cart) {
+      cart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    }
+
+    if (!cart || !cart.items || cart.items.length === 0)
       throw new AppError(httpStatus.BAD_REQUEST, 'Cart is empty');
+
     selectedItems = cart.items.filter((i: any) => i.isActive === true);
     if (selectedItems.length === 0)
       throw new AppError(httpStatus.BAD_REQUEST, 'No active items in cart');
@@ -36,21 +47,15 @@ const checkout = async (
   }
 
   const productIds = selectedItems.map((i: any) => i.productId.toString());
-  const products = await Product.find({ _id: { $in: productIds } });
+  const products = await Product.find({ _id: { $in: productIds } }).lean();
   if (products.length === 0)
     throw new AppError(httpStatus.NOT_FOUND, 'Products not found');
 
   const vendorId = products[0].vendorId;
-  const existingVendor = await Vendor.findById(vendorId);
+  const existingVendor = await Vendor.findById(vendorId).lean();
   if (!existingVendor || !existingVendor.businessDetails?.isStoreOpen) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor is closed');
   }
-
-  // const isRestaurant =
-  //   existingVendor.businessDetails?.businessType?.toUpperCase() ===
-  //   'RESTAURANT';
-
-  // const shouldCheckStock = !isRestaurant;
 
   const activeAddress = currentUser?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
@@ -76,7 +81,6 @@ const checkout = async (
   }
 
   const vendorLocation = existingVendor.businessLocation;
-
   if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not found');
   }
@@ -119,18 +123,31 @@ const checkout = async (
 
     let basePrice = product.pricing?.price || 0;
 
+    const productNameObj = product.name as Record<string, string>;
+    const localizedProductName =
+      productNameObj[lang] || productNameObj['en'] || '';
+
     let selectedVariantLabel = '';
     if (item.variationSku && product.variations?.length) {
       const selectedOption = product.variations
         .flatMap((v: any) => v.options || [])
         .find((opt: any) => opt.sku === item.variationSku);
+
       if (selectedOption) {
         basePrice = selectedOption.price;
-        selectedVariantLabel = selectedOption.label;
+
+        const variantLabelObj = selectedOption.label;
+        selectedVariantLabel =
+          typeof variantLabelObj === 'object'
+            ? (variantLabelObj as Record<string, string>)[lang] ||
+              (variantLabelObj as Record<string, string>)['en'] ||
+              ''
+            : variantLabelObj;
       }
     }
 
-    const qty = item.itemSummary.quantity || 1;
+    const qty = item.itemSummary?.quantity || item.quantity || 1;
+
     const storeDiscountUnit = roundTo2(
       basePrice * ((product.pricing?.discount || 0) / 100),
     );
@@ -140,10 +157,8 @@ const checkout = async (
       const aPrice = Number(a.unitPrice) || 0;
       const aQty = Number(a.quantity) || 0;
       const aTaxRate = Number(a.taxRate) || 0;
-
       const addonLineNet = roundTo2(aPrice * aQty);
 
-      const addonGrossRaw = addonLineNet * (1 + aTaxRate / 100);
       return {
         optionId: a.optionId,
         name: a.name,
@@ -168,11 +183,7 @@ const checkout = async (
     );
 
     const productLineNet = roundTo2(priceAfterStoreDiscount * qty);
-
     const productTaxRate = product.pricing?.taxRate || 0;
-
-    const productGrossRaw = productLineNet * (1 + productTaxRate / 100);
-
     const productTaxAmount = roundTo2(productLineNet * (productTaxRate / 100));
 
     const itemTotalBeforeTax = roundTo2(productLineNet + totalAddonsLineTotal);
@@ -184,7 +195,6 @@ const checkout = async (
     const commVat = roundTo2(commAmt * (COMMISSION_VAT_RATE / 100));
 
     const totalVendorDeduction = roundTo2(commAmt + commVat);
-
     const vendorNetEarnings = roundTo2(
       itemTotalBeforeTax + itemTotalTax - totalVendorDeduction,
     );
@@ -194,8 +204,8 @@ const checkout = async (
       productId: product._id,
       vendorId: product.vendorId,
       name: selectedVariantLabel
-        ? `${product.name} - ${selectedVariantLabel}`
-        : product.name,
+        ? `${localizedProductName} - ${selectedVariantLabel}`
+        : localizedProductName,
       image: product.images?.[0] || '',
       hasVariations: product?.stock?.hasVariations || false,
       variationSku: item.variationSku || null,
@@ -207,7 +217,7 @@ const checkout = async (
         promoDiscountAmount: 0,
         unitPrice: priceAfterStoreDiscount,
         lineTotal: productLineNet,
-        taxRate: product.pricing?.taxRate || 0,
+        taxRate: productTaxRate,
         taxAmount: productTaxAmount,
       },
       itemSummary: {
@@ -233,28 +243,31 @@ const checkout = async (
   });
 
   const totalOriginalPrice = orderItems.reduce(
-    (sum, i) => sum + i.productPricing.originalPrice * i.itemSummary.quantity,
+    (sum: number, i: any) =>
+      sum + i.productPricing.originalPrice * i.itemSummary.quantity,
     0,
   );
-
   const totalProductDiscount = orderItems.reduce(
-    (sum, i) => sum + i.itemSummary.totalProductDiscount,
+    (sum: number, i: any) => sum + i.itemSummary.totalProductDiscount,
     0,
   );
   const taxableAmount = orderItems.reduce(
-    (sum, i) => sum + i.itemSummary.totalBeforeTax,
+    (sum: number, i: any) => sum + i.itemSummary.totalBeforeTax,
     0,
   );
   const totalTaxAmount = roundTo2(
-    orderItems.reduce((sum, i) => sum + i.itemSummary.totalTaxAmount, 0),
+    orderItems.reduce(
+      (sum: number, i: any) => sum + i.itemSummary.totalTaxAmount,
+      0,
+    ),
   );
 
   const totalCommAmt = orderItems.reduce(
-    (sum, i) => sum + i.commission.deliGoCommissionAmount,
+    (sum: number, i: any) => sum + i.commission.deliGoCommissionAmount,
     0,
   );
   const totalCommVat = orderItems.reduce(
-    (sum, i) => sum + i.commission.deliGoCommissionVatAmount,
+    (sum: number, i: any) => sum + i.commission.deliGoCommissionVatAmount,
     0,
   );
 
@@ -285,7 +298,6 @@ const checkout = async (
       (s: number, i: any) => s + i.itemSummary.quantity,
       0,
     ),
-
     orderCalculation: {
       totalOriginalPrice: roundTo2(totalOriginalPrice),
       totalProductDiscount: roundTo2(totalProductDiscount),
@@ -294,7 +306,6 @@ const checkout = async (
       totalTaxAmount: roundTo2(totalTaxAmount),
       serviceCharge: roundTo2(serviceCharge),
     },
-
     delivery: {
       charge: deliveryChargeBase,
       vatRate: globalSettings?.deliveryVatRate || 0,
@@ -303,7 +314,6 @@ const checkout = async (
       distance: roundTo2(distanceData.km),
       estimatedTime: distanceData.durationMinutes,
     },
-
     payoutSummary: {
       grandTotal: finalGrandTotal,
       deliGoCommission: {
@@ -328,12 +338,10 @@ const checkout = async (
         riderNetEarnings,
       },
     },
-
     offer: {
       isApplied: false,
       offerApplied: null,
     },
-
     deliveryAddress: activeAddress,
     paymentStatus: 'PENDING',
     isConvertedToOrder: false,
@@ -344,6 +352,7 @@ const checkout = async (
     vendorId,
     isConvertedToOrder: false,
   });
+
   return await CheckoutSummary.create(finalSummaryData);
 };
 
