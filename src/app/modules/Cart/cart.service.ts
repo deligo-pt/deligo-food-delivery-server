@@ -847,29 +847,46 @@ const deleteCartItem = async (
 
 // clear cart Service
 const clearCart = async (currentUser: TCurrentUser) => {
-  const cart = await Cart.findOne({
-    customerId: currentUser._id,
-    isDeleted: false,
-  });
-  if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found for this user');
+  if (currentUser.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You are not approved to update cart. Your account is ${currentUser.status}`,
+    );
   }
-  cart.items = [];
-  cart.cartCalculation = {
-    totalOriginalPrice: 0,
-    totalProductDiscount: 0,
-    taxableAmount: 0,
-    totalTaxAmount: 0,
-    grandTotal: 0,
+
+  const customerId = currentUser._id;
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  const cartExists = await RedisService.exists(dataKey);
+
+  if (!cartExists) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false });
+    if (!dbCart) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Cart not found for this user');
+    }
+  }
+
+  await RedisService.del(dataKey);
+  await RedisService.del(expiryKey);
+
+  await Cart.deleteOne({ customerId });
+
+  return {
+    customerId,
+    items: [],
+    totalItems: 0,
+    cartCalculation: {
+      totalOriginalPrice: 0,
+      totalProductDiscount: 0,
+      taxableAmount: 0,
+      totalTaxAmount: 0,
+      grandTotal: 0,
+    },
+    isDeleted: false,
   };
-
-  cart.totalItems = 0;
-
-  await cart.save();
-
-  return cart;
 };
-
 // get all cart service
 const getAllCart = async (
   currentUser: TCurrentUser,
