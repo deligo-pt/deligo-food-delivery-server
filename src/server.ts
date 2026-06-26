@@ -36,9 +36,7 @@ async function bootstrap() {
     await mongoose.connect(config.db_url as string);
 
     // Seed database
- 
-      await seed();
-    
+    await seed();
 
     // Initialize Socket.IO
     initializeSocket(server);

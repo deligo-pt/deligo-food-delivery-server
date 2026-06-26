@@ -4,13 +4,19 @@ import { Cart } from './cart.model';
 export const initCartEventListener = () => {
   RedisService.onKeyExpire('cart:expiry:', async (expiredKey: string) => {
     try {
-      const customerId = expiredKey.split(':')[2];
-      const dataKey = `cart:data:${customerId}`;
+      console.log(`[Redis Expiry Triggered] Key: ${expiredKey}`);
 
+      const customerId = expiredKey.split(':')[2];
+      if (!customerId) {
+        console.error('[Cart Event Error] Customer ID could not be extracted');
+        return;
+      }
+
+      const dataKey = `cart:data:${customerId}`;
       const cartObj = await RedisService.get<any>(dataKey);
 
       if (cartObj) {
-        await Cart.findOneAndUpdate(
+        const updatedCart = await Cart.findOneAndUpdate(
           { customerId: customerId },
           {
             items: cartObj.items,
@@ -22,10 +28,18 @@ export const initCartEventListener = () => {
           { upsert: true, new: true },
         );
 
-        await RedisService.del(dataKey);
-
-        console.log(
-          `[Cart Event] Customer ${customerId} cart has been updated to redis and mongodb`,
+        if (updatedCart) {
+          console.log(
+            `[Mongoose Success] Cart saved to DB for Customer: ${customerId}`,
+          );
+          await RedisService.del(dataKey);
+          console.log(
+            `[Cart Event Cleanup] Redis data key cleared for customer: ${customerId}`,
+          );
+        }
+      } else {
+        console.warn(
+          `[Cart Event Warning] No data found in Redis for key: ${dataKey}`,
         );
       }
     } catch (error) {

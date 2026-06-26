@@ -41,16 +41,15 @@ subscriber.on('message', (channel, message) => {
   }
 });
 
-subscriber.on('pmessage', async (pattern, channel, message) => {
-  if (channel.endsWith(':expired')) {
+subscriber.on('pmessage', async (pattern, channel, expiredKey) => {
+  if (expiredKey) {
     for (const [prefix, callback] of expirySubscriptions.entries()) {
-      if (message.startsWith(prefix)) {
-        await callback(message);
+      if (expiredKey.startsWith(prefix)) {
+        await callback(expiredKey);
       }
     }
   }
 });
-
 export const RedisService = {
   set: async (key: string, value: unknown, ttl: number = 3600) => {
     const data =
@@ -96,8 +95,12 @@ export const RedisService = {
   },
 
   initKeySpaceNotification: async () => {
+    await redis.config('SET', 'notify-keyspace-events', 'Ex');
+
     await subscriber.psubscribe('__keyevent@0__:expired');
-    console.log('Redis Keyspace Expiry Notifications Activated');
+    console.log(
+      'Redis Keyspace Expiry Notifications Activated with Config SET',
+    );
   },
 };
 
