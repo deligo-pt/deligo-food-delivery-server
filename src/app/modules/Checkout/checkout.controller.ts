@@ -9,6 +9,7 @@ const checkout = catchAsync(async (req, res) => {
   const result = await CheckoutServices.checkout(
     req.user as TCurrentUser,
     req.body,
+    req.lang,
   );
 
   sendResponse(res, {
