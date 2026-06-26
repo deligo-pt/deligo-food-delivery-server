@@ -554,9 +554,10 @@ const updateAddonQuantity = async (
   payload: {
     productId: string;
     variationSku?: string;
-    optionId: string;
+    optionSku: string;
     action: 'increment' | 'decrement';
   },
+  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
@@ -565,11 +566,21 @@ const updateAddonQuantity = async (
     );
   }
 
-  const { productId, variationSku, optionId, action } = payload;
-  const cart = await Cart.findOne({
-    customerId: currentUser._id,
-    isDeleted: false,
-  });
+  const { productId, variationSku, optionSku, action } = payload;
+  const customerId = currentUser._id;
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
   if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
 
   const itemIndex = cart.items.findIndex((i: any) => {
@@ -599,18 +610,17 @@ const updateAddonQuantity = async (
   if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
 
   let addonData: any = null;
-
   let parentGroup: any = null;
 
   ((product.addonGroups as any[]) || []).forEach((group) => {
     if (group.isActive && !group.isDeleted) {
-      const option = group.options.find(
-        (opt: any) => opt._id.toString() === optionId,
-      );
+      const option = group.options.find((opt: any) => opt.sku === optionSku);
       if (option && option.isActive) {
+        const addonNameObj = option.name as Record<string, string>;
+        const localizedAddonName =
+          addonNameObj[lang] || addonNameObj['en'] || '';
         addonData = {
-          optionId: option._id.toString(),
-          name: option.name,
+          name: localizedAddonName,
           sku: option.sku,
           unitPrice: option.price,
           taxRate: option.tax?.taxRate || 0,
@@ -626,8 +636,38 @@ const updateAddonQuantity = async (
       'Addon is inactive or unavailable',
     );
 
+  const nameObject = product.name as { en: string; pt: string };
+  const pName =
+    nameObject[lang as keyof typeof nameObject] || nameObject.en || '';
+  let finalItemName = pName;
+
+  const hasVariations =
+    product?.stock?.hasVariations === true ||
+    (product?.variations && product.variations.length > 0);
+
+  if (targetItem.variationSku && hasVariations) {
+    const targetOption = product.variations
+      ?.flatMap((v: any) => v.options)
+      .find((opt: any) => opt.sku === targetItem.variationSku);
+
+    const selectedVariantLabel = targetOption?.label;
+    if (selectedVariantLabel) {
+      const vLabel =
+        typeof selectedVariantLabel === 'object'
+          ? (selectedVariantLabel as Record<string, string>)[lang] ||
+            (selectedVariantLabel as Record<string, string>)['en'] ||
+            ''
+          : selectedVariantLabel;
+
+      if (vLabel) {
+        finalItemName = `${pName} - ${vLabel}`;
+      }
+    }
+  }
+
+  targetItem.name = finalItemName;
+
   const selectedAddon = addonData as {
-    optionId: string;
     name: string;
     sku?: string;
     price: number;
@@ -635,21 +675,22 @@ const updateAddonQuantity = async (
   };
 
   const existingAddonIndex = targetItem.addons.findIndex(
-    (a: any) => a.optionId?.toString() === selectedAddon.optionId.toString(),
+    (a: any) => a.sku === selectedAddon.sku,
   );
 
   if (action === 'increment') {
-    const groupOptionIds = parentGroup.options.map((o: any) =>
-      o._id.toString(),
-    );
+    const groupOptionSkuS = parentGroup.options.map((o: any) => o.sku);
     const currentGroupSelectionCount = targetItem.addons
-      .filter((a: any) => groupOptionIds.includes(a.optionId.toString()))
+      .filter((a: any) => groupOptionSkuS.includes(a.sku))
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
 
     if (currentGroupSelectionCount >= parentGroup.maxSelectable) {
+      const groupTitleObj = parentGroup.title as Record<string, string>;
+      const localizedGroupTitle =
+        groupTitleObj?.[lang] || groupTitleObj?.['en'] || 'this group';
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Maximum selection limit of ${parentGroup.maxSelectable} reached for ${parentGroup.title}`,
+        `Maximum selection limit of ${parentGroup.maxSelectable} reached for ${localizedGroupTitle}`,
       );
     }
     if (existingAddonIndex > -1) {
@@ -709,9 +750,14 @@ const updateAddonQuantity = async (
     targetItem.itemSummary.totalBeforeTax +
       targetItem.itemSummary.totalTaxAmount,
   );
+
   await recalculateCartTotals(cart);
-  cart.markModified('items');
-  await cart.save();
+
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+
+  await RedisService.set(expiryKey, '', 86400);
 
   return cart;
 };

@@ -57,6 +57,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateAddonQuantity(
     req.user as TCurrentUser,
     req.body,
+    req.lang,
   );
   sendResponse(res, {
     success: true,
