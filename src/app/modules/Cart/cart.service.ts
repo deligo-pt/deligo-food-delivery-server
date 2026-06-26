@@ -957,24 +957,51 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Customer id is required');
   }
 
-  let customerId;
-  let query: any;
-  if (currentUser.role === 'CUSTOMER') {
-    customerId = currentUser._id;
-    query = Cart.findOne({ customerId });
-  } else {
-    query = Cart.findOne({ customerId: cartCustomerId });
+  const targetCustomerId =
+    currentUser.role === 'CUSTOMER' ? currentUser._id : cartCustomerId!;
+
+  const customerIdStr = targetCustomerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    let dbQuery = Cart.findOne({
+      customerId: targetCustomerId,
+      isDeleted: false,
+    });
+
+    const populateOptions = getPopulateOptions(currentUser.role, {
+      customer: 'name',
+      itemVendor: 'name userId',
+    });
+
+    populateOptions.forEach((option) => {
+      dbQuery = dbQuery.populate(option);
+    });
+
+    const dbCart = await dbQuery.lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
   }
 
-  const populateOptions = getPopulateOptions(currentUser.role, {
-    customer: 'name',
-    itemVendor: 'name userId',
-  });
-  populateOptions.forEach((option) => {
-    query = query.populate(option);
-  });
+  if (!cart && currentUser.role === 'CUSTOMER') {
+    return {
+      customerId: targetCustomerId,
+      items: [],
+      totalItems: 0,
+      cartCalculation: {
+        totalOriginalPrice: 0,
+        totalProductDiscount: 0,
+        taxableAmount: 0,
+        totalTaxAmount: 0,
+        grandTotal: 0,
+      },
+      isDeleted: false,
+    };
+  }
 
-  const cart = await query;
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
