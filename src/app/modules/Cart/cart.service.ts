@@ -774,10 +774,20 @@ const deleteCartItem = async (
     );
   }
 
-  const cart = await Cart.findOne({
-    customerId: currentUser._id,
-    isDeleted: false,
-  });
+  const customerId = currentUser._id;
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
   if (!cart || !cart.items || cart.items.length === 0) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart is empty or not found');
   }
@@ -804,10 +814,33 @@ const deleteCartItem = async (
     );
   }
 
+  if (cart.items.length === 0) {
+    await RedisService.del(dataKey);
+    await RedisService.del(expiryKey);
+
+    await Cart.deleteOne({ customerId });
+
+    return {
+      customerId,
+      items: [],
+      totalItems: 0,
+      cartCalculation: {
+        totalOriginalPrice: 0,
+        totalProductDiscount: 0,
+        taxableAmount: 0,
+        totalTaxAmount: 0,
+        grandTotal: 0,
+      },
+      isDeleted: false,
+    };
+  }
+
   await recalculateCartTotals(cart);
 
-  cart.markModified('items');
-  await cart.save();
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+  await RedisService.set(expiryKey, '', 86400);
 
   return cart;
 };
