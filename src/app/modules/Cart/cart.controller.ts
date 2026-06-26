@@ -20,10 +20,10 @@ const addToCart = catchAsync(async (req, res) => {
   });
 });
 
-// activate item Controller
-const activateItem = catchAsync(async (req, res) => {
+// toggle cart item status Controller
+const toggleCartItemStatus = catchAsync(async (req, res) => {
   const { productId } = req.params;
-  const result = await CartServices.activateItem(
+  const result = await CartServices.toggleCartItemStatus(
     req.user as TCurrentUser,
     productId,
     req.body.variationSku,
@@ -124,7 +124,7 @@ const viewCart = catchAsync(async (req, res) => {
 
 export const CartControllers = {
   addToCart,
-  activateItem,
+  toggleCartItemStatus,
   updateCartItemQuantity,
   updateAddonQuantity,
   deleteCartItem,

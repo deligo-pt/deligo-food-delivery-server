@@ -11,6 +11,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import redis, { RedisService } from '../../config/redis';
 
 // Add cart Service
 const addToCart = async (
@@ -155,10 +156,33 @@ const addToCart = async (
     },
   };
 
-  let cart = await Cart.findOne({ customerId, isDeleted: false });
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
 
   if (!cart) {
-    cart = new Cart({ customerId, items: [newItem] });
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
+  if (!cart) {
+    cart = {
+      customerId: customerId,
+      items: [newItem],
+      totalItems: 1,
+      cartCalculation: {
+        totalOriginalPrice: 0,
+        totalProductDiscount: 0,
+        taxableAmount: 0,
+        totalTaxAmount: 0,
+        grandTotal: 0,
+      },
+      isDeleted: false,
+    };
   } else {
     const itemIndex = cart.items.findIndex(
       (i: any) =>
@@ -222,13 +246,18 @@ const addToCart = async (
   }
 
   await recalculateCartTotals(cart);
-  cart.markModified('items');
-  await cart.save();
+
+  cart.totalItems = cart.items.length;
+
+  await RedisService.set(dataKey, cart, 259200);
+
+  await RedisService.set(expiryKey, '', 86400);
+
   return cart;
 };
 
-// active item Service
-const activateItem = async (
+// toggle cart item status service
+const toggleCartItemStatus = async (
   currentUser: TCurrentUser,
   productId: string,
   variationSku?: string,
@@ -241,51 +270,65 @@ const activateItem = async (
   }
 
   const customerId = currentUser._id;
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
 
-  const cart = await Cart.findOne({ customerId });
+  let cart = await RedisService.get<any>(dataKey);
+
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) {
+      cart = dbCart;
+    }
+  }
+
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
-  const itemToActivate = cart.items.find((i: any) => {
+  const itemToToggle = cart.items.find((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
     const currentItemSku = i.variationSku || null;
     const inputSku = variationSku || null;
 
     return isSameProduct && currentItemSku === inputSku;
   });
-  if (!itemToActivate) {
+
+  if (!itemToToggle) {
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
   }
 
-  const selectedVendorId = itemToActivate.vendorId.toString();
+  const willBeActive = !itemToToggle.isActive;
 
-  // Get existing active items
-  const activeItems = cart.items.filter((i) => i.isActive === true);
+  if (willBeActive) {
+    const selectedVendorId = itemToToggle.vendorId.toString();
 
-  //  If already active items exist → vendor must match
-  if (activeItems.length > 0) {
-    const activeVendorId = activeItems[0].vendorId;
+    const activeItems = cart.items.filter((i: any) => i.isActive === true);
 
-    if (activeVendorId.toString() !== selectedVendorId) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'You can only select items from the same vendor',
-      );
+    if (activeItems.length > 0) {
+      const activeVendorId = activeItems[0].vendorId;
+
+      if (activeVendorId.toString() !== selectedVendorId) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'You can only select items from the same vendor',
+        );
+      }
     }
   }
 
-  // Activate this item
-  itemToActivate.isActive = !itemToActivate.isActive;
+  itemToToggle.isActive = willBeActive;
 
-  // re-calculate active total
   await recalculateCartTotals(cart);
 
-  cart.markModified('items');
-  await cart.save();
-  const freshCart = await Cart.findOne({ customerId });
+  cart.totalItems = cart.items.length;
 
-  return freshCart;
+  await RedisService.set(dataKey, cart, 259200);
+
+  await RedisService.set(expiryKey, '', 86400);
+
+  return cart;
 };
 
 // update cart item quantity
@@ -740,7 +783,7 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
 export const CartServices = {
   addToCart,
-  activateItem,
+  toggleCartItemStatus,
   updateCartItemQuantity,
   updateAddonQuantity,
   deleteCartItem,
