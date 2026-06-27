@@ -240,14 +240,13 @@ const getGlobalSettings = async (session?: ClientSession) => {
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Global settings not found');
   }
-  const perMeter = result?.delivery?.chargePerKm / 1000;
   return {
     platformCommissionPercent: result?.commission?.platformPercent,
     platformCommissionVatRate: result?.commission?.platformVatRate,
     fleetManagerCommissionPercent: result?.commission?.fleetManagerPercent,
     serviceCharge: result?.commission?.serviceCharge,
     baseDeliveryCharge: result?.delivery?.baseCharge,
-    deliveryChargePerMeter: perMeter,
+    deliveryChargePerKm: result?.delivery?.chargePerKm,
     deliveryVatRate: result?.delivery?.vatRate,
     customerNearestVendorRadiusKm: result?.order?.nearestVendorRadiusKm,
     rewards: result?.rewards,
