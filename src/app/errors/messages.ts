@@ -1,3 +1,4 @@
+import { addonMessages } from '../modules/Add-Ons/addOns.messages';
 import { authMessages } from '../modules/Auth/auth.messages';
 
 const globalCommonMessages = {
@@ -29,6 +30,7 @@ const globalCommonMessages = {
 export const localizedMessages = {
   ...globalCommonMessages,
   ...authMessages,
+  ...addonMessages,
 } as const;
 
 // Global type safe key
