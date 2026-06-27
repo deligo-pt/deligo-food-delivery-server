@@ -15,8 +15,8 @@ const updateAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin update successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -43,9 +43,9 @@ const getAllAdmins = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admins retrieved successfully',
-    meta: result.meta,
-    data: result.data,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -59,8 +59,8 @@ const getSingleAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
