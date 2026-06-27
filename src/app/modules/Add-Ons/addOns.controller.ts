@@ -14,8 +14,8 @@ const createAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Addon group created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -30,8 +30,8 @@ const updateAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Addon group updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -46,8 +46,8 @@ const addOptionToGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'New option added to group successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -63,8 +63,8 @@ const toggleOptionStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Option status updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -80,8 +80,8 @@ const deleteOptionFromGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Option removed from group successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -101,7 +101,7 @@ const getAllAddonGroups = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Addon groups fetched successfully',
+    message: result?.message,
     meta: result.meta,
     data: formattedData,
   });
@@ -126,7 +126,7 @@ const getSingleAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Addon group fetched successfully',
+    message: result?.message,
     data: formattedData,
   });
 });
