@@ -155,23 +155,26 @@ const getAdminDashboardAnalytics = async () => {
     .select('name rating completedDeliveries');
 
   return {
-    counts: {
-      customers,
-      vendors,
-      fleetManagers,
-      deliveryPartners,
-      totalProducts,
+    message: 'Admin dashboard analytics fetched successfully',
+    data: {
+      counts: {
+        customers,
+        vendors,
+        fleetManagers,
+        deliveryPartners,
+        totalProducts,
+      },
+      orders: {
+        total: totalOrders,
+        pending: pendingOrders,
+        completed: completedOrders,
+        canceled: canceledOrders,
+      },
+      popularCategories,
+      recentOrders,
+      topRatedItems,
+      topRatedDeliveryPartners,
     },
-    orders: {
-      total: totalOrders,
-      pending: pendingOrders,
-      completed: completedOrders,
-      canceled: canceledOrders,
-    },
-    popularCategories,
-    recentOrders,
-    topRatedItems,
-    topRatedDeliveryPartners,
   };
 };
 
@@ -354,20 +357,23 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
   // Final Response
   // --------------------------------------------------
   return {
-    products: {
-      total: products.length,
-      active: products.filter((p) => p.meta.status === 'ACTIVE').length,
-      inactive: products.filter((p) => p.meta.status === 'INACTIVE').length,
+    message: 'Vendor dashboard analytics fetched successfully',
+    data: {
+      products: {
+        total: products.length,
+        active: products.filter((p) => p.meta.status === 'ACTIVE').length,
+        inactive: products.filter((p) => p.meta.status === 'INACTIVE').length,
+      },
+      orders: {
+        total: totalOrders,
+        pending: pendingOrders,
+        completed: completedOrders,
+        canceled: canceledOrders,
+      },
+      popularCategories,
+      recentOrders,
+      topRatedItems,
     },
-    orders: {
-      total: totalOrders,
-      pending: pendingOrders,
-      completed: completedOrders,
-      canceled: canceledOrders,
-    },
-    popularCategories,
-    recentOrders,
-    topRatedItems,
   };
 };
 
@@ -459,32 +465,35 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    cards: {
-      totalPartners,
-      onlineNow: {
-        count: onlinePartners,
-        percentage: `${onlinePercentage}%`,
+    message: 'Fleet dashboard analytics fetched successfully',
+    data: {
+      cards: {
+        totalPartners,
+        onlineNow: {
+          count: onlinePartners,
+          percentage: `${onlinePercentage}%`,
+        },
+        deliveriesToday: {
+          total: deliveriesToday,
+          avgPerPartner: avgDeliveries,
+        },
+        availabilityRate: `${availabilityRate}%`,
       },
-      deliveriesToday: {
-        total: deliveriesToday,
-        avgPerPartner: avgDeliveries,
+      fleetComposition: vehicleComposition.map((item) => ({
+        vehicle: item._id || 'Other',
+        count: item.count,
+      })),
+      partnerStatus: {
+        onDelivery:
+          statusStats.find((s) => s._id === currentStatusOptions.ON_DELIVERY)
+            ?.count || 0,
+        waiting: waitingPartners,
+        offline:
+          statusStats.find((s) => s._id === currentStatusOptions.OFFLINE)
+            ?.count || 0,
       },
-      availabilityRate: `${availabilityRate}%`,
+      topRatedDrivers: topDrivers,
     },
-    fleetComposition: vehicleComposition.map((item) => ({
-      vehicle: item._id || 'Other',
-      count: item.count,
-    })),
-    partnerStatus: {
-      onDelivery:
-        statusStats.find((s) => s._id === currentStatusOptions.ON_DELIVERY)
-          ?.count || 0,
-      waiting: waitingPartners,
-      offline:
-        statusStats.find((s) => s._id === currentStatusOptions.OFFLINE)
-          ?.count || 0,
-    },
-    topRatedDrivers: topDrivers,
   };
 };
 
@@ -595,44 +604,48 @@ const getPartnerPerformanceAnalytics = async (
       : 0;
 
   return {
-    cards: {
-      topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
-      avgDeliveryTime: `${avgDeliveryTimeMin} min`,
-      avgAcceptanceRate: `${avgAcceptanceRate}%`,
-      totalEarnings: `€${roundTo2(stats.totalEarnings)}`,
-    },
-    table: {
-      data: tableData.map((partner: TDeliveryPartner) => {
-        const opData = partner.operationalData;
+    message: 'Partner performance analytics fetched successfully',
+    data: {
+      cards: {
+        topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
+        avgDeliveryTime: `${avgDeliveryTimeMin} min`,
+        avgAcceptanceRate: `${avgAcceptanceRate}%`,
+        totalEarnings: `€${roundTo2(stats.totalEarnings)}`,
+      },
+      table: {
+        data: tableData.map((partner: TDeliveryPartner) => {
+          const opData = partner.operationalData;
 
-        const rowAcceptance =
-          opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
-            ? Math.round(
-                (opData.totalAcceptedOrders! / opData.totalOfferedOrders) * 100,
-              ) + '%'
-            : '0%';
+          const rowAcceptance =
+            opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
+              ? Math.round(
+                  (opData.totalAcceptedOrders! / opData.totalOfferedOrders) *
+                    100,
+                ) + '%'
+              : '0%';
 
-        const rowAvgMins =
-          opData?.completedDeliveries &&
-          opData.completedDeliveries > 0 &&
-          opData.totalDeliveryMinutes
-            ? Math.round(
-                opData.totalDeliveryMinutes / opData.completedDeliveries,
-              )
-            : 0;
+          const rowAvgMins =
+            opData?.completedDeliveries &&
+            opData.completedDeliveries > 0 &&
+            opData.totalDeliveryMinutes
+              ? Math.round(
+                  opData.totalDeliveryMinutes / opData.completedDeliveries,
+                )
+              : 0;
 
-        return {
-          id: partner._id,
-          name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
-          displayId: partner.userId,
-          vehicle: partner?.vehicleInfo?.vehicleType,
-          city: partner?.address?.city || 'N/A',
-          deliveries: opData?.completedDeliveries || 0,
-          avgMins: `${rowAvgMins} min`,
-          acceptance: rowAcceptance,
-        };
-      }),
-      meta,
+          return {
+            id: partner._id,
+            name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
+            displayId: partner.userId,
+            vehicle: partner?.vehicleInfo?.vehicleType,
+            city: partner?.address?.city || 'N/A',
+            deliveries: opData?.completedDeliveries || 0,
+            avgMins: `${rowAvgMins} min`,
+            acceptance: rowAcceptance,
+          };
+        }),
+        meta,
+      },
     },
   };
 };
@@ -702,11 +715,14 @@ const getDeliveryPartnerEarningAnalytics = async (
   };
 
   return {
-    daily: roundTo2(report.dailyEarnings),
-    weekly: roundTo2(report.weeklyEarnings),
-    monthly: roundTo2(report.monthlyEarnings),
-    total: roundTo2(report.totalEarnings),
-    unpaid: roundTo2(wallet?.totalUnpaidEarnings || 0),
+    message: 'Delivery partner earning analytics fetched successfully',
+    data: {
+      daily: roundTo2(report.dailyEarnings),
+      weekly: roundTo2(report.weeklyEarnings),
+      monthly: roundTo2(report.monthlyEarnings),
+      total: roundTo2(report.totalEarnings),
+      unpaid: roundTo2(wallet?.totalUnpaidEarnings || 0),
+    },
   };
 };
 
@@ -817,15 +833,18 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
   const netEarnings = totalRevenue - totalRiderPayable;
 
   return {
-    overview: {
-      totalRevenue: totalRevenue,
-      riderPayable: totalRiderPayable,
-      netEarnings: roundTo2(netEarnings),
-      monthlyEarnings: cardData.monthlyEarnings,
-      weeklyEarnings: cardData.weeklyEarnings,
-      currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,
+    message: 'Fleet manager earning analytics fetched successfully',
+    data: {
+      overview: {
+        totalRevenue: totalRevenue,
+        riderPayable: totalRiderPayable,
+        netEarnings: roundTo2(netEarnings),
+        monthlyEarnings: cardData.monthlyEarnings,
+        weeklyEarnings: cardData.weeklyEarnings,
+        currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,
+      },
+      graph: graphData,
     },
-    graph: graphData,
   };
 };
 
@@ -1017,27 +1036,30 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
   }));
 
   return {
-    topCard: {
-      totalEarnings: roundTo2(earnings.totalIncome),
-      orders: orders.totalOrders,
-      completed: orders.completedOrders,
-      pending: orders.pendingOrders,
-    },
+    message: 'Vendor earnings analytics fetched successfully',
+    data: {
+      topCard: {
+        totalEarnings: roundTo2(earnings.totalIncome),
+        orders: orders.totalOrders,
+        completed: orders.completedOrders,
+        pending: orders.pendingOrders,
+      },
 
-    earningsOverview: {
-      today: roundTo2(earnings.todayIncome),
-      thisWeek: roundTo2(earnings.weekIncome),
-      thisMonth: roundTo2(earnings.monthIncome),
-      totalIncome: roundTo2(earnings.totalIncome),
-    },
+      earningsOverview: {
+        today: roundTo2(earnings.todayIncome),
+        thisWeek: roundTo2(earnings.weekIncome),
+        thisMonth: roundTo2(earnings.monthIncome),
+        totalIncome: roundTo2(earnings.totalIncome),
+      },
 
-    products: {
-      total: products.total,
-      active: products.active,
-      inactive: products.inactive,
-    },
+      products: {
+        total: products.total,
+        active: products.active,
+        inactive: products.inactive,
+      },
 
-    monthlyEarnings,
+      monthlyEarnings,
+    },
   };
 };
 
@@ -1114,6 +1136,7 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
   const total = finalResult[0]?.totalCount[0]?.count || 0;
 
   return {
+    message: 'All customers analytics fetched successfully',
     meta: {
       page: pageNumber,
       limit: limitNumber,
@@ -1328,6 +1351,7 @@ const getVendorPerformanceAnalytics = async (
   const total = data.totalCount[0]?.count || 0;
 
   return {
+    message: 'Vendor performance analytics fetched successfully',
     data: {
       vendorPerformance: data.vendorPerformance,
       vendorPerformanceStat: data.vendorPerformanceStat[0] || {},
@@ -1462,22 +1486,25 @@ const getSingleVendorPerformanceDetails = async (
   const topRatedItems = results[0]?.topRatedItems || [];
 
   return {
-    vendorPerformance: {
-      _id: vendor._id,
-      profilePhoto: vendor.profilePhoto,
-      userId: vendor.userId,
-      email: vendor.email,
-      status: vendor.status,
-      name: vendor.name,
-      businessDetails: vendor.businessDetails,
-      businessLocation: vendor.businessLocation,
-      rating: vendor.rating,
-      totalOrders: stats.totalOrders,
-      totalRevenue: Math.round(stats.totalRevenue * 100) / 100,
-      totalItems: stats.totalItems,
+    message: 'Single vendor performance details fetched successfully',
+    data: {
+      vendorPerformance: {
+        _id: vendor._id,
+        profilePhoto: vendor.profilePhoto,
+        userId: vendor.userId,
+        email: vendor.email,
+        status: vendor.status,
+        name: vendor.name,
+        businessDetails: vendor.businessDetails,
+        businessLocation: vendor.businessLocation,
+        rating: vendor.rating,
+        totalOrders: stats.totalOrders,
+        totalRevenue: Math.round(stats.totalRevenue * 100) / 100,
+        totalItems: stats.totalItems,
+      },
+      vendorMonthlyPerformance,
+      topRatedItems,
     },
-    vendorMonthlyPerformance,
-    topRatedItems,
   };
 };
 
@@ -1615,15 +1642,18 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
   });
 
   return {
-    stats: {
-      totalOffers: stats.totalOffers,
-      activeOffers: stats.activeOffers,
-      totalRedemptions: orders.overall[0]?.totalRedemptions || 0,
-      revenueImpact: roundTo2(orders.overall[0]?.revenueImpact || 0),
+    message: 'Offer analytics for admin fetched successfully',
+    data: {
+      stats: {
+        totalOffers: stats.totalOffers,
+        activeOffers: stats.activeOffers,
+        totalRedemptions: orders.overall[0]?.totalRedemptions || 0,
+        revenueImpact: roundTo2(orders.overall[0]?.revenueImpact || 0),
+      },
+      usageOverTime: last7DaysArray,
+      offerTypeUsage: formattedTypeUsage,
+      topOffers: orders.topOffers,
     },
-    usageOverTime: last7DaysArray,
-    offerTypeUsage: formattedTypeUsage,
-    topOffers: orders.topOffers,
   };
 };
 
@@ -1766,25 +1796,28 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
   ];
 
   return {
-    stats: {
-      totalSales: roundTo2(stats.totalSales),
-      totalTax: roundTo2(stats.totalTax),
-      netRevenue: roundTo2(stats.netRevenue),
+    message: 'Tax report analytics for vendor fetched successfully',
+    data: {
+      stats: {
+        totalSales: roundTo2(stats.totalSales),
+        totalTax: roundTo2(stats.totalTax),
+        netRevenue: roundTo2(stats.netRevenue),
+      },
+      taxContribution,
+      taxByCategory: (result?.taxByCategory || []).map((t: any) => ({
+        name: `${t._id}%`,
+        value: roundTo2(t.totalValue),
+      })),
+      revenueData: (result?.revenueTrend || []).map((r: any) => ({
+        name: r._id,
+        revenue: roundTo2(r.revenue),
+        tax: roundTo2(r.tax),
+      })),
+      addonTax: (result?.addonTaxBreakdown || []).map((a: any) => ({
+        name: a._id,
+        tax: roundTo2(a.tax),
+      })),
     },
-    taxContribution,
-    taxByCategory: (result?.taxByCategory || []).map((t: any) => ({
-      name: `${t._id}%`,
-      value: roundTo2(t.totalValue),
-    })),
-    revenueData: (result?.revenueTrend || []).map((r: any) => ({
-      name: r._id,
-      revenue: roundTo2(r.revenue),
-      tax: roundTo2(r.tax),
-    })),
-    addonTax: (result?.addonTaxBreakdown || []).map((a: any) => ({
-      name: a._id,
-      tax: roundTo2(a.tax),
-    })),
   };
 };
 
