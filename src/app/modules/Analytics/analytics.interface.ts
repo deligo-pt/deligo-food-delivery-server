@@ -54,48 +54,54 @@ export interface DailyRevenueFacet {
 // }
 
 export interface SalesAnalyticsResponse {
-  stats: {
-    totalRevenue: number;
-    completedOrders: number;
-    cancelledOrders: number;
-    avgOrderValue: number;
-  };
-  revenueTrend: {
-    time: string;
-    revenue: number;
-  }[];
-  charts?: {
-    revenueTrend: { date: string; revenue: number }[];
+  message: string;
+  data: {
+    stats: {
+      totalRevenue: number;
+      completedOrders: number;
+      cancelledOrders: number;
+      avgOrderValue: number;
+    };
+    revenueTrend: {
+      time: string;
+      revenue: number;
+    }[];
+    charts?: {
+      revenueTrend: { date: string; revenue: number }[];
+    };
   };
 }
 
 export interface OrderReportAnalyticsResponse {
-  stats: {
-    totalRevenue: number;
-    totalOrders: number;
-    avgOrderValue: number;
+  message: string;
+  data: {
+    stats: {
+      totalRevenue: number;
+      totalOrders: number;
+      avgOrderValue: number;
+    };
+
+    ordersByZone: {
+      label: string;
+      value: number;
+    }[];
+
+    ordersTrend: {
+      time: string;
+      orders: number;
+    }[];
+
+    revenueTrend: {
+      date: string;
+      revenue: number;
+    }[];
+
+    zoneHeatmap: {
+      zone: string;
+      hour: number;
+      orderCount: number;
+    }[];
   };
-
-  ordersByZone: {
-    label: string;
-    value: number;
-  }[];
-
-  ordersTrend: {
-    time: string;
-    orders: number;
-  }[];
-
-  revenueTrend: {
-    date: string;
-    revenue: number;
-  }[];
-
-  zoneHeatmap: {
-    zone: string;
-    hour: number;
-    orderCount: number;
-  }[];
 }
 // export interface OrderReportAnalyticsResponse {
 //   summary: {
@@ -122,16 +128,19 @@ export interface OrderReportAnalyticsResponse {
 // }
 
 export type TVendorSalesReport = {
-  stats: {
-    totalSales: number;
-    totalOrders: number;
-    avgOrderValue: number;
+  message: string;
+  data: {
+    stats: {
+      totalSales: number;
+      totalOrders: number;
+      avgOrderValue: number;
+    };
+    salesData: {
+      name: string;
+      sales: number;
+      orders: number;
+    }[];
   };
-  salesData: {
-    name: string;
-    sales: number;
-    orders: number;
-  }[];
 };
 
 // for fleet manager performance analysis
@@ -182,6 +191,7 @@ export type TTopFleetPerformers = {
 };
 
 export type TFleetPerformanceData = {
+  message: string;
   data: {
     fleetPerformance: TFleetManagerPerformance[];
     fleetPerformanceStat: TFleetPerformanceStat;
@@ -250,8 +260,11 @@ export type TPartnerPerformanceData = {
 };
 
 export type TPartnerPerformanceDetailsData = {
-  partnerPerformance: TDeliveryPartnerPerformance;
-  partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
+  message: string;
+  data: {
+    partnerPerformance: TDeliveryPartnerPerformance;
+    partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
+  };
 };
 
 // ---> for top vendors analytics
@@ -281,11 +294,14 @@ export type TVendorRatingDistribution = {
   rating: number;
 };
 export type TVendorInsights = {
-  topSellingVendors: TTopSellingVendor[];
+  message: string;
+  data: {
+    topSellingVendors: TTopSellingVendor[];
 
-  vendorPerformance: TVendorPerformance[];
+    vendorPerformance: TVendorPerformance[];
 
-  ratingDistribution: TVendorRatingDistribution[];
+    ratingDistribution: TVendorRatingDistribution[];
+  };
 };
 
 // --> get admin delivery insights
@@ -327,13 +343,16 @@ export type TRejectedDeliveryReason = {
   count: number;
 };
 export type TDeliveryInsights = {
-  summary: TDeliverySummary;
+  message: string;
+  data: {
+    summary: TDeliverySummary;
 
-  riderPerformance: TRiderPerformance[];
-  distanceTimeAnalysis: TDistanceTimeAnalysis[];
-  areaPerformance: TAreaDeliveryPerformance[];
-  riderIdleTime: TRiderIdleTime[];
-  rejectedReasons: TRejectedDeliveryReason[];
+    riderPerformance: TRiderPerformance[];
+    distanceTimeAnalysis: TDistanceTimeAnalysis[];
+    areaPerformance: TAreaDeliveryPerformance[];
+    riderIdleTime: TRiderIdleTime[];
+    rejectedReasons: TRejectedDeliveryReason[];
+  };
 };
 
 // ---> get customer insights
@@ -368,15 +387,18 @@ export type THourlyOrders = {
   orderCount: number;
 };
 export type TCustomerInsights = {
-  summary: TCustomerSummary;
+  message: string;
+  data: {
+    summary: TCustomerSummary;
 
-  activeUsers: TActiveUsers;
+    activeUsers: TActiveUsers;
 
-  topCustomers: TTopCustomer[];
+    topCustomers: TTopCustomer[];
 
-  orderFrequency: TOrderFrequency[];
+    orderFrequency: TOrderFrequency[];
 
-  hourlyOrders: THourlyOrders[];
+    hourlyOrders: THourlyOrders[];
+  };
 };
 
 // ---> get peak hour analytics
@@ -408,42 +430,48 @@ export type TRiderDemandGap = {
 };
 // MAIN RESPONSE TYPE
 export type TPeakHoursInsights = {
-  hourlyOrders: THourlyOrders[];
+  message: string;
+  data: {
+    hourlyOrders: THourlyOrders[];
 
-  mealTimeComparison: TMealTimeComparison[];
+    mealTimeComparison: TMealTimeComparison[];
 
-  dayWiseOrders: TDayWiseOrders[];
+    dayWiseOrders: TDayWiseOrders[];
 
-  heatmap: THeatmapData[];
+    heatmap: THeatmapData[];
 
-  riderDemandGap: TRiderDemandGap[];
+    riderDemandGap: TRiderDemandGap[];
+  };
 };
 
 // vendor tax report
 export type TTaxReport = {
-  stats: {
-    totalSales: number;
-    totalTax: number;
-    netRevenue: number; // sales - tax
+  message: string;
+  data: {
+    stats: {
+      totalSales: number;
+      totalTax: number;
+      netRevenue: number; // sales - tax
+    };
+    taxContribution: {
+      name: string; // sun
+      value: number;
+    }[];
+
+    taxByCategory: {
+      name: string; // tax rate like 6%, 10%, 23%
+      value: number; // tax amount
+    }[];
+
+    revenueData: {
+      name: string; // Month name like Feb
+      revenue: number; // revenue on that month like 3200
+      tax: number; // tax amount on that month like 420
+    }[]; // based on last 6 months
+
+    addonTax: {
+      name: string;
+      tax: number;
+    }[];
   };
-  taxContribution: {
-    name: string; // sun
-    value: number;
-  }[];
-
-  taxByCategory: {
-    name: string; // tax rate like 6%, 10%, 23%
-    value: number; // tax amount
-  }[];
-
-  revenueData: {
-    name: string; // Month name like Feb
-    revenue: number; // revenue on that month like 3200
-    tax: number; // tax amount on that month like 420
-  }[]; // based on last 6 months
-
-  addonTax: {
-    name: string;
-    tax: number;
-  }[];
 };

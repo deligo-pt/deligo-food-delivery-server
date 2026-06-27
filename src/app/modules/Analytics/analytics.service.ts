@@ -142,16 +142,19 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
       : 'N/A';
 
   return {
-    totalSales,
-    bestPerformingDay,
-    slowestDay,
-    weeklyTrend,
-    topSellingItems:
-      result?.topItems?.map((item: any) => ({
-        id: item._id,
-        name: item.name,
-        sold: item.sold,
-      })) || [],
+    message: 'Vendor sales analytics fetched successfully',
+    data: {
+      totalSales,
+      bestPerformingDay,
+      slowestDay,
+      weeklyTrend,
+      topSellingItems:
+        result?.topItems?.map((item: any) => ({
+          id: item._id,
+          name: item.name,
+          sold: item.sold,
+        })) || [],
+    },
   };
 };
 
@@ -318,68 +321,71 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
   };
 
   return {
-    summaryCards: {
-      totalCustomers: {
-        value: totalCustomers,
-        subValue: `${newCustomers} new`,
+    message: 'Customer insights fetched successfully',
+    data: {
+      summaryCards: {
+        totalCustomers: {
+          value: totalCustomers,
+          subValue: `${newCustomers} new`,
+        },
+
+        returningCustomers: {
+          value: returningCustomers,
+          subValue: `${avgOrders} orders/avg`,
+        },
+
+        topCity: {
+          value: demographicsRaw[0]?.city || 'N/A',
+          subValue:
+            totalCustomers > 0
+              ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(0)}% of customers`
+              : '0%',
+        },
+
+        retentionRate: {
+          value:
+            totalCustomers > 0
+              ? `${((returningCustomers / totalCustomers) * 100).toFixed(0)}%`
+              : '0%',
+          subValue: 'Avg. Repeat',
+        },
       },
 
-      returningCustomers: {
-        value: returningCustomers,
-        subValue: `${avgOrders} orders/avg`,
-      },
-
-      topCity: {
-        value: demographicsRaw[0]?.city || 'N/A',
-        subValue:
+      demographics: demographicsRaw.map((d: any) => ({
+        city: d.city,
+        percentage:
           totalCustomers > 0
-            ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(0)}% of customers`
+            ? `${((d.count / totalCustomers) * 100).toFixed(0)}%`
             : '0%',
-      },
+      })),
 
-      retentionRate: {
-        value:
-          totalCustomers > 0
-            ? `${((returningCustomers / totalCustomers) * 100).toFixed(0)}%`
-            : '0%',
-        subValue: 'Avg. Repeat',
-      },
+      customerValue: [
+        { segment: 'Top 1%', avgOrder: `€${getSegmentAvg(1)}` },
+        { segment: 'Top 5%', avgOrder: `€${getSegmentAvg(5)}` },
+        { segment: 'Top 10%', avgOrder: `€${getSegmentAvg(10)}` },
+      ],
+
+      orderFrequency: [
+        {
+          name: 'weekly',
+          orders: orderFrequencyRaw.weekly || 0,
+        },
+        {
+          name: 'biweekly',
+          orders: orderFrequencyRaw.biweekly || 0,
+        },
+        {
+          name: 'monthly',
+          orders: orderFrequencyRaw.monthly || 0,
+        },
+      ],
+
+      heatmap: heatmapRaw.map((h: any) => ({
+        day: days[h._id.day - 1],
+        hour: formatHour(h._id.hour),
+        orderCount: h.orders,
+      })),
     },
-
-    demographics: demographicsRaw.map((d: any) => ({
-      city: d.city,
-      percentage:
-        totalCustomers > 0
-          ? `${((d.count / totalCustomers) * 100).toFixed(0)}%`
-          : '0%',
-    })),
-
-    customerValue: [
-      { segment: 'Top 1%', avgOrder: `€${getSegmentAvg(1)}` },
-      { segment: 'Top 5%', avgOrder: `€${getSegmentAvg(5)}` },
-      { segment: 'Top 10%', avgOrder: `€${getSegmentAvg(10)}` },
-    ],
-
-    orderFrequency: [
-      {
-        name: 'weekly',
-        orders: orderFrequencyRaw.weekly || 0,
-      },
-      {
-        name: 'biweekly',
-        orders: orderFrequencyRaw.biweekly || 0,
-      },
-      {
-        name: 'monthly',
-        orders: orderFrequencyRaw.monthly || 0,
-      },
-    ],
-
-    heatmap: heatmapRaw.map((h: any) => ({
-      day: days[h._id.day - 1],
-      hour: formatHour(h._id.hour),
-      orderCount: h.orders,
-    })),
   };
 };
 
@@ -520,40 +526,43 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    summary: {
-      totalOrders: currentCount,
-      percentage: `${Math.abs(percentageChange).toFixed(0)}%`,
-      trend,
+    message: 'Order trend insights fetched successfully',
+    data: {
+      summary: {
+        totalOrders: currentCount,
+        percentage: `${Math.abs(percentageChange).toFixed(0)}%`,
+        trend,
+      },
+
+      dailyVolume: Array.from({ length: 14 }, (_, i) => {
+        const found = facet.dailyVolume.find((d: any) => d._id === i + 1);
+
+        return {
+          day: `D${i + 1}`,
+          orders: found ? found.orders : 0,
+        };
+      }),
+
+      peakOrderingTimes: facet.peakTimes.map((p: any) => ({
+        time:
+          p._id === 0
+            ? '12 AM'
+            : p._id < 12
+              ? `${p._id} AM`
+              : p._id === 12
+                ? '12 PM'
+                : `${p._id - 12} PM`,
+        orderCount: p.count,
+      })),
+
+      categoryGrowth: facet.categoryPerformance.map((c: any) => ({
+        category: c._id || 'Other',
+        percentage:
+          currentCount > 0
+            ? `${((c.count / currentCount) * 100).toFixed(0)}%`
+            : '0%',
+      })),
     },
-
-    dailyVolume: Array.from({ length: 14 }, (_, i) => {
-      const found = facet.dailyVolume.find((d: any) => d._id === i + 1);
-
-      return {
-        day: `D${i + 1}`,
-        orders: found ? found.orders : 0,
-      };
-    }),
-
-    peakOrderingTimes: facet.peakTimes.map((p: any) => ({
-      time:
-        p._id === 0
-          ? '12 AM'
-          : p._id < 12
-            ? `${p._id} AM`
-            : p._id === 12
-              ? '12 PM'
-              : `${p._id - 12} PM`,
-      orderCount: p.count,
-    })),
-
-    categoryGrowth: facet.categoryPerformance.map((c: any) => ({
-      category: c._id || 'Other',
-      percentage:
-        currentCount > 0
-          ? `${((c.count / currentCount) * 100).toFixed(0)}%`
-          : '0%',
-    })),
   };
 };
 
@@ -673,10 +682,13 @@ const getTopSellingItemsAnalytics = async (currentUser: TCurrentUser) => {
     .slice(0, 4);
 
   return {
-    summary: {
-      totalItemsSold,
+    message: 'Top selling items analytics fetched successfully',
+    data: {
+      summary: {
+        totalItemsSold,
+      },
+      topItems,
     },
-    topItems,
   };
 };
 
@@ -767,19 +779,22 @@ const getAdminSalesReportAnalytics = async (
   });
 
   return {
-    stats: {
-      totalRevenue: roundTo2(stats.totalRevenue),
-      completedOrders: stats.completedOrders,
-      cancelledOrders: stats.cancelledOrders,
-      avgOrderValue:
-        stats.completedOrders > 0
-          ? roundTo2(stats.totalRevenue / stats.completedOrders)
-          : 0.0,
+    message: 'Admin sales report analytics fetched successfully',
+    data: {
+      stats: {
+        totalRevenue: roundTo2(stats.totalRevenue),
+        completedOrders: stats.completedOrders,
+        cancelledOrders: stats.cancelledOrders,
+        avgOrderValue:
+          stats.completedOrders > 0
+            ? roundTo2(stats.totalRevenue / stats.completedOrders)
+            : 0.0,
+      },
+      revenueTrend: revenueTrend.map((item) => ({
+        time: item.time,
+        revenue: roundTo2(item.value as number),
+      })),
     },
-    revenueTrend: revenueTrend.map((item) => ({
-      time: item.time,
-      revenue: roundTo2(item.value as number),
-    })),
   };
 };
 
@@ -894,33 +909,36 @@ const getAdminOrderReportAnalytics = async (
   });
 
   return {
-    stats: {
-      totalRevenue: roundTo2(statsData.totalRevenue),
-      totalOrders: statsData.totalOrders,
-      avgOrderValue:
-        statsData.totalOrders > 0
-          ? roundTo2(statsData.totalRevenue / statsData.totalOrders)
-          : 0.0,
+    message: 'Admin order report analytics fetched successfully',
+    data: {
+      stats: {
+        totalRevenue: roundTo2(statsData.totalRevenue),
+        totalOrders: statsData.totalOrders,
+        avgOrderValue:
+          statsData.totalOrders > 0
+            ? roundTo2(statsData.totalRevenue / statsData.totalOrders)
+            : 0.0,
+      },
+
+      ordersByZone: result?.ordersByZone ?? [],
+
+      // New Requirement: Orders Trend based on timeframe
+      ordersTrend: ordersTrend.map((item) => ({
+        time: item.time,
+        orders: item.value as number,
+      })),
+
+      // Backward compatibility for charts
+      revenueTrend: (result?.revenueTrend ?? []).map((d: any) => ({
+        date: d._id,
+        revenue: roundTo2(d.revenue),
+      })),
+      zoneHeatmap: (result?.zoneHeatmap ?? []).map((h: any) => ({
+        zone: h._id.zone || 'Unknown',
+        hour: h._id.hour,
+        orderCount: h.orderCount,
+      })),
     },
-
-    ordersByZone: result?.ordersByZone ?? [],
-
-    // New Requirement: Orders Trend based on timeframe
-    ordersTrend: ordersTrend.map((item) => ({
-      time: item.time,
-      orders: item.value as number,
-    })),
-
-    // Backward compatibility for charts
-    revenueTrend: (result?.revenueTrend ?? []).map((d: any) => ({
-      date: d._id,
-      revenue: roundTo2(d.revenue),
-    })),
-    zoneHeatmap: (result?.zoneHeatmap ?? []).map((h: any) => ({
-      zone: h._id.zone || 'Unknown',
-      hour: h._id.hour,
-      orderCount: h.orderCount,
-    })),
   };
 };
 
@@ -1012,23 +1030,28 @@ const getAdminCustomerReportAnalytics = async (
   }));
 
   return {
-    stats: {
-      totalCustomers: rawStats.totalCustomers || 0,
-      activeCustomers: rawStats.activeCustomers || 0,
-      totalSpent: rawStats.walletStats?.[0]?.totalRev || 0,
-      totalOrders: rawStats.totalOrderCount?.[0]?.count || 0,
-    },
+    message: 'Admin customer report analytics fetched successfully',
+    data: {
+      stats: {
+        totalCustomers: rawStats.totalCustomers || 0,
+        activeCustomers: rawStats.activeCustomers || 0,
+        totalSpent: rawStats.walletStats?.[0]?.totalRev || 0,
+        totalOrders: rawStats.totalOrderCount?.[0]?.count || 0,
+      },
 
-    customerGrowth,
+      customerGrowth,
 
-    statusDistribution: {
-      active:
-        analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
-        0,
-      blocked:
-        analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count || 0,
-      pending:
-        analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count || 0,
+      statusDistribution: {
+        active:
+          analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
+          0,
+        blocked:
+          analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count ||
+          0,
+        pending:
+          analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count ||
+          0,
+      },
     },
   };
 };
@@ -1106,21 +1129,24 @@ const getAdminVendorReportAnalytics = async (
   const blocked = getCount('BLOCKED');
 
   return {
-    stats: {
-      totalVendors: approved + pending + submitted + rejected + blocked,
-      approvedVendors: approved,
-      pendingVendors: pending,
-      blockedVendors: blocked + rejected,
-    },
+    message: 'Admin vendor report analytics fetched successfully',
+    data: {
+      stats: {
+        totalVendors: approved + pending + submitted + rejected + blocked,
+        approvedVendors: approved,
+        pendingVendors: pending,
+        blockedVendors: blocked + rejected,
+      },
 
-    vendorGrowths,
+      vendorGrowths,
 
-    statusDistribution: {
-      approved,
-      pending,
-      submitted,
-      rejected,
-      blocked,
+      statusDistribution: {
+        approved,
+        pending,
+        submitted,
+        rejected,
+        blocked,
+      },
     },
   };
 };
@@ -1218,21 +1244,24 @@ const getAdminFleetManagerReportAnalytics = async (
     analytics.statusStats.find((s: any) => s._id === status)?.count || 0;
 
   return {
-    stats: {
-      totalManagers: summary.totalManagers || 0,
-      approvedManagers: summary.approvedManagers || 0,
-      totalDrivers: summary.driverCount?.[0]?.count || 0,
-      totalDeliveries: summary.deliveryCount?.[0]?.count || 0,
-    },
+    message: 'Admin fleet manager report analytics fetched successfully',
+    data: {
+      stats: {
+        totalManagers: summary.totalManagers || 0,
+        approvedManagers: summary.approvedManagers || 0,
+        totalDrivers: summary.driverCount?.[0]?.count || 0,
+        totalDeliveries: summary.deliveryCount?.[0]?.count || 0,
+      },
 
-    fleetGrowths,
+      fleetGrowths,
 
-    statusDistribution: {
-      approved: getStatusCount('APPROVED'),
-      pending: getStatusCount('PENDING'),
-      submitted: getStatusCount('SUBMITTED'),
-      rejected: getStatusCount('REJECTED'),
-      blocked: getStatusCount('BLOCKED'),
+      statusDistribution: {
+        approved: getStatusCount('APPROVED'),
+        pending: getStatusCount('PENDING'),
+        submitted: getStatusCount('SUBMITTED'),
+        rejected: getStatusCount('REJECTED'),
+        blocked: getStatusCount('BLOCKED'),
+      },
     },
   };
 };
@@ -1331,21 +1360,24 @@ const getAdminDeliveryPartnerReportAnalytics = async (
     analytics.vehicleStats.find((v: any) => v._id === type)?.count || 0;
 
   return {
-    stats: {
-      totalPartners: summary.totalPartners || 0,
-      approvedPartners: summary.approvedPartners || 0,
-      totalDeliveries: summary.totalDeliveries || 0,
-      totalEarnings: summary.walletStats?.[0]?.totalEarned || 0,
-    },
+    message: 'Admin delivery partner report analytics fetched successfully',
+    data: {
+      stats: {
+        totalPartners: summary.totalPartners || 0,
+        approvedPartners: summary.approvedPartners || 0,
+        totalDeliveries: summary.totalDeliveries || 0,
+        totalEarnings: summary.walletStats?.[0]?.totalEarned || 0,
+      },
 
-    partnerGrowths,
+      partnerGrowths,
 
-    vehicleDistribution: {
-      'E-BIKE': getVehicleCount('E-BIKE'),
-      BICYCLE: getVehicleCount('BICYCLE'),
-      SCOOTER: getVehicleCount('SCOOTER'),
-      MOTORBIKE: getVehicleCount('MOTORBIKE'),
-      CAR: getVehicleCount('CAR'),
+      vehicleDistribution: {
+        'E-BIKE': getVehicleCount('E-BIKE'),
+        BICYCLE: getVehicleCount('BICYCLE'),
+        SCOOTER: getVehicleCount('SCOOTER'),
+        MOTORBIKE: getVehicleCount('MOTORBIKE'),
+        CAR: getVehicleCount('CAR'),
+      },
     },
   };
 };
@@ -1452,8 +1484,11 @@ const getVendorSalesReportAnalytics = async (
   };
 
   return {
-    stats,
-    salesData: last7DaysData,
+    message: 'Vendor sales report analytics fetched successfully',
+    data: {
+      stats,
+      salesData: last7DaysData,
+    },
   };
 };
 
@@ -1681,15 +1716,18 @@ const getVendorCustomerReport = async (
   };
 
   return {
-    stats: {
-      totalCustomers: statsData.totalCustomers,
-      highestSpender: statsData.highestSpender?.name || 'N/A',
-      mostOrders: statsData.mostOrders?.name || 'N/A',
-    },
-    monthlyCustomers,
-    customers: {
-      data: customerTable,
-      meta,
+    message: 'Vendor customer report fetched successfully',
+    data: {
+      stats: {
+        totalCustomers: statsData.totalCustomers,
+        highestSpender: statsData.highestSpender?.name || 'N/A',
+        mostOrders: statsData.mostOrders?.name || 'N/A',
+      },
+      monthlyCustomers,
+      customers: {
+        data: customerTable,
+        meta,
+      },
     },
   };
 };
@@ -1951,23 +1989,26 @@ const getVendorTaxReport = async (
   };
 
   return {
-    stats: {
-      totalSales: Number(stats.totalSales.toFixed(2)),
-      totalTax: Number(stats.totalTax.toFixed(2)),
-      netRevenue: Number(stats.netRevenue.toFixed(2)),
+    message: 'Vendor Tax report fetched successfully',
+    data: {
+      stats: {
+        totalSales: Number(stats.totalSales.toFixed(2)),
+        totalTax: Number(stats.totalTax.toFixed(2)),
+        netRevenue: Number(stats.netRevenue.toFixed(2)),
+      },
+      taxContribution: report.taxContribution.length
+        ? report.taxContribution.map((c: any) => ({
+            name: c.name,
+            value: Number(c.value.toFixed(1)),
+          }))
+        : [
+            { name: 'Product', value: 0 },
+            { name: 'Addon', value: 0 },
+          ],
+      taxByCategory: report.taxByCategory,
+      revenueData,
+      addonTax: report.addonTax,
     },
-    taxContribution: report.taxContribution.length
-      ? report.taxContribution.map((c: any) => ({
-          name: c.name,
-          value: Number(c.value.toFixed(1)),
-        }))
-      : [
-          { name: 'Product', value: 0 },
-          { name: 'Addon', value: 0 },
-        ],
-    taxByCategory: report.taxByCategory,
-    revenueData,
-    addonTax: report.addonTax,
   };
 };
 
@@ -2151,6 +2192,7 @@ const getFleetManagerPerformanceAnalytics = async (
   });
 
   return {
+    message: 'Fleet manager performance analytics fetched successfully',
     data: {
       fleetPerformance: result.fleetPerformance,
 
@@ -2296,9 +2338,12 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     }));
 
   return {
-    fleetPerformance,
-    fleetWeeklyPerformance,
-    topRatedDrivers,
+    message: 'Single fleet manager performance analytics fetched successfully',
+    data: {
+      fleetPerformance,
+      fleetWeeklyPerformance,
+      topRatedDrivers,
+    },
   };
 };
 
@@ -2306,6 +2351,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
 const getDeliveryPartnerPerformanceAnalytics = async (
   query: Record<string, unknown>,
 ): Promise<{
+  message: string;
   data: TPartnerPerformanceData;
   meta: TMeta;
 }> => {
@@ -2534,8 +2580,8 @@ const getDeliveryPartnerPerformanceAnalytics = async (
   };
 
   return {
+    message: 'Delivery partner performance analytics fetched successfully',
     data: response,
-
     meta: {
       page: Number(page),
       limit: Number(limit),
@@ -2650,8 +2696,12 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   }
 
   return {
-    partnerPerformance,
-    partnerMonthlyPerformance,
+    message:
+      'Single delivery partner performance analytics fetched successfully',
+    data: {
+      partnerPerformance,
+      partnerMonthlyPerformance,
+    },
   };
 };
 
@@ -2793,6 +2843,7 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
   });
 
   return {
+    message: 'Admin platform earnings fetched successfully',
     data: {
       stats: {
         totalRevenue,
@@ -2805,7 +2856,6 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
 
       commissions,
     },
-
     meta: {
       page,
       limit,
@@ -3119,40 +3169,43 @@ const getAdminSalesAnalytics = async (query: any) => {
   }));
 
   return {
-    summary: {
-      totalOrders: current.orderCount,
-      totalRevenue: +roundTo2(current.totalRevenue),
-      averageOrderValue:
-        current.orderCount > 0
-          ? +roundTo2(current.totalRevenue / current.orderCount)
-          : 0,
-      growthRate: growthRate,
+    message: 'Admin vendor sales analytics fetched successfully',
+    data: {
+      summary: {
+        totalOrders: current.orderCount,
+        totalRevenue: +roundTo2(current.totalRevenue),
+        averageOrderValue:
+          current.orderCount > 0
+            ? +roundTo2(current.totalRevenue / current.orderCount)
+            : 0,
+        growthRate: growthRate,
+      },
+      daily,
+      weekly,
+      monthly,
+      statusDistribution: {
+        completed:
+          result.statusDistribution.find((s: any) => s._id === 'DELIVERED')
+            ?.count || 0,
+        cancelled:
+          result.statusDistribution.find((s: any) => s._id === 'CANCELED')
+            ?.count || 0,
+      },
+      paymentSplit: result.paymentSplit.map((p: any) => ({
+        method: p._id,
+        count: p.count,
+        revenue: +roundTo2(p.revenue),
+      })),
+      revenueByLocation: result.revenueByLocation.map((l: any) => ({
+        location: l._id || 'Unknown',
+        revenue: +roundTo2(l.revenue),
+      })),
+      revenueByVendor: result.revenueByVendor.map((v: any) => ({
+        vendorId: v._id.toString(),
+        vendorName: v.vendorDetails?.name?.firstName || 'Vendor',
+        revenue: +roundTo2(v.revenue),
+      })),
     },
-    daily,
-    weekly,
-    monthly,
-    statusDistribution: {
-      completed:
-        result.statusDistribution.find((s: any) => s._id === 'DELIVERED')
-          ?.count || 0,
-      cancelled:
-        result.statusDistribution.find((s: any) => s._id === 'CANCELED')
-          ?.count || 0,
-    },
-    paymentSplit: result.paymentSplit.map((p: any) => ({
-      method: p._id,
-      count: p.count,
-      revenue: +roundTo2(p.revenue),
-    })),
-    revenueByLocation: result.revenueByLocation.map((l: any) => ({
-      location: l._id || 'Unknown',
-      revenue: +roundTo2(l.revenue),
-    })),
-    revenueByVendor: result.revenueByVendor.map((v: any) => ({
-      vendorId: v._id.toString(),
-      vendorName: v.vendorDetails?.name?.firstName || 'Vendor',
-      revenue: +roundTo2(v.revenue),
-    })),
   };
 };
 
@@ -3316,66 +3369,72 @@ const getAdminCustomerInsights = async (query: {
   );
 
   return {
-    summary: {
-      newCustomers,
-      returningCustomers,
-      churnRate:
-        customerBase.length > 0
-          ? Number(((churnedCustomers / customerBase.length) * 100).toFixed(2))
-          : 0,
-      averageCLV:
-        customerBase.length > 0
-          ? Math.round(totalLifetimeRevenue / customerBase.length)
-          : 0,
-    },
-    activeUsers: {
-      dau: active.dau,
-      wau: active.wau,
-      mau: active.mau,
-    },
-    topCustomers: customerBase
-      .sort((a: any, b: any) => b.totalSpent - a.totalSpent)
-      .slice(0, 5)
-      .map((c: any) => ({
-        customerId: c.userDetails?.userId || 'N/A',
-        name: c.userDetails
-          ? `${c.userDetails.name?.firstName} ${c.userDetails.name?.lastName}`.trim()
-          : 'Anonymous',
-        totalSpent: Number(c.totalSpent.toFixed(2)),
-        totalOrders: c.totalOrders,
+    message: 'Admin customer insights fetched successfully',
+    data: {
+      summary: {
+        newCustomers,
+        returningCustomers,
+        churnRate:
+          customerBase.length > 0
+            ? Number(
+                ((churnedCustomers / customerBase.length) * 100).toFixed(2),
+              )
+            : 0,
+        averageCLV:
+          customerBase.length > 0
+            ? Math.round(totalLifetimeRevenue / customerBase.length)
+            : 0,
+      },
+      activeUsers: {
+        dau: active.dau,
+        wau: active.wau,
+        mau: active.mau,
+      },
+      topCustomers: customerBase
+        .sort((a: any, b: any) => b.totalSpent - a.totalSpent)
+        .slice(0, 5)
+        .map((c: any) => ({
+          customerId: c.userDetails?.userId || 'N/A',
+          name: c.userDetails
+            ? `${c.userDetails.name?.firstName} ${c.userDetails.name?.lastName}`.trim()
+            : 'Anonymous',
+          totalSpent: Number(c.totalSpent.toFixed(2)),
+          totalOrders: c.totalOrders,
+        })),
+      orderFrequency: [
+        {
+          range: '1 order',
+          userCount: customerBase.filter(
+            (c: any) => c.ordersInSelectedRange === 1,
+          ).length,
+        },
+        {
+          range: '2-3 orders',
+          userCount: customerBase.filter(
+            (c: any) =>
+              c.ordersInSelectedRange >= 2 && c.ordersInSelectedRange <= 3,
+          ).length,
+        },
+        {
+          range: '4-5 orders',
+          userCount: customerBase.filter(
+            (c: any) =>
+              c.ordersInSelectedRange >= 4 && c.ordersInSelectedRange <= 5,
+          ).length,
+        },
+        {
+          range: '5+ orders',
+          userCount: customerBase.filter(
+            (c: any) => c.ordersInSelectedRange > 5,
+          ).length,
+        },
+      ],
+      hourlyOrders: Array.from({ length: 24 }, (_, hour) => ({
+        hour,
+        orderCount:
+          facet.hourlyDistribution.find((h: any) => h._id === hour)?.count || 0,
       })),
-    orderFrequency: [
-      {
-        range: '1 order',
-        userCount: customerBase.filter(
-          (c: any) => c.ordersInSelectedRange === 1,
-        ).length,
-      },
-      {
-        range: '2-3 orders',
-        userCount: customerBase.filter(
-          (c: any) =>
-            c.ordersInSelectedRange >= 2 && c.ordersInSelectedRange <= 3,
-        ).length,
-      },
-      {
-        range: '4-5 orders',
-        userCount: customerBase.filter(
-          (c: any) =>
-            c.ordersInSelectedRange >= 4 && c.ordersInSelectedRange <= 5,
-        ).length,
-      },
-      {
-        range: '5+ orders',
-        userCount: customerBase.filter((c: any) => c.ordersInSelectedRange > 5)
-          .length,
-      },
-    ],
-    hourlyOrders: Array.from({ length: 24 }, (_, hour) => ({
-      hour,
-      orderCount:
-        facet.hourlyDistribution.find((h: any) => h._id === hour)?.count || 0,
-    })),
+    },
   };
 };
 
@@ -3513,9 +3572,12 @@ const getTopVendors = async (query: {
   ]);
 
   return {
-    topSellingVendors: results.topSellingVendors || [],
-    vendorPerformance: results.vendorPerformance || [],
-    ratingDistribution: results.ratingDistribution || [],
+    message: 'Top vendors fetched successfully',
+    data: {
+      topSellingVendors: results.topSellingVendors || [],
+      vendorPerformance: results.vendorPerformance || [],
+      ratingDistribution: results.ratingDistribution || [],
+    },
   };
 };
 
@@ -3656,33 +3718,36 @@ const getPeakHourAnalytics = async (query: {
     .reduce((s, h) => s + h.orderCount, 0);
 
   return {
-    hourlyOrders: hourlyOrders.map(({ hour, orderCount }) => ({
-      hour,
-      orderCount,
-    })),
-    mealTimeComparison: [
-      {
-        type: 'LUNCH',
-        orderCount: lunch,
-        percentage: Number(((lunch / total) * 100).toFixed(1)),
-      },
-      {
-        type: 'DINNER',
-        orderCount: dinner,
-        percentage: Number(((dinner / total) * 100).toFixed(1)),
-      },
-    ],
-    dayWiseOrders: DAYS_MAP.map((day, i) => ({
-      day,
-      orderCount:
-        results.dayWise.find((d: any) => d._id === i + 1)?.orderCount || 0,
-    })),
-    heatmap: results.heatmap.map((item: any) => ({
-      day: DAYS_MAP[item._id.day - 1] || 'Unknown',
-      hour: item._id.hour,
-      orderCount: item.orderCount,
-    })),
-    riderDemandGap,
+    message: 'Peak hour fetched successfully',
+    data: {
+      hourlyOrders: hourlyOrders.map(({ hour, orderCount }) => ({
+        hour,
+        orderCount,
+      })),
+      mealTimeComparison: [
+        {
+          type: 'LUNCH',
+          orderCount: lunch,
+          percentage: Number(((lunch / total) * 100).toFixed(1)),
+        },
+        {
+          type: 'DINNER',
+          orderCount: dinner,
+          percentage: Number(((dinner / total) * 100).toFixed(1)),
+        },
+      ],
+      dayWiseOrders: DAYS_MAP.map((day, i) => ({
+        day,
+        orderCount:
+          results.dayWise.find((d: any) => d._id === i + 1)?.orderCount || 0,
+      })),
+      heatmap: results.heatmap.map((item: any) => ({
+        day: DAYS_MAP[item._id.day - 1] || 'Unknown',
+        hour: item._id.hour,
+        orderCount: item.orderCount,
+      })),
+      riderDemandGap,
+    },
   };
 };
 
@@ -3949,26 +4014,31 @@ const getDeliveryInsights = async (query: {
   };
 
   return {
-    summary: {
-      averageDeliveryTime: Number((summary.avgTime || 0).toFixed(1)),
-      lateDeliveryPercentage:
-        summary.successOrders > 0
-          ? Number(
-              ((summary.lateCount / summary.successOrders) * 100).toFixed(1),
-            )
-          : 0,
-      rejectedDeliveryPercentage:
-        summary.totalOrders > 0
-          ? Number(
-              ((summary.rejectedCount / summary.totalOrders) * 100).toFixed(1),
-            )
-          : 0,
+    message: 'Delivery insights fetched successfully',
+    data: {
+      summary: {
+        averageDeliveryTime: Number((summary.avgTime || 0).toFixed(1)),
+        lateDeliveryPercentage:
+          summary.successOrders > 0
+            ? Number(
+                ((summary.lateCount / summary.successOrders) * 100).toFixed(1),
+              )
+            : 0,
+        rejectedDeliveryPercentage:
+          summary.totalOrders > 0
+            ? Number(
+                ((summary.rejectedCount / summary.totalOrders) * 100).toFixed(
+                  1,
+                ),
+              )
+            : 0,
+      },
+      riderPerformance: facet.riderPerformance,
+      distanceTimeAnalysis: facet.distanceTimeAnalysis,
+      areaPerformance: facet.areaPerformance,
+      riderIdleTime: riderIdle,
+      rejectedReasons: facet.rejectedReasons,
     },
-    riderPerformance: facet.riderPerformance,
-    distanceTimeAnalysis: facet.distanceTimeAnalysis,
-    areaPerformance: facet.areaPerformance,
-    riderIdleTime: riderIdle,
-    rejectedReasons: facet.rejectedReasons,
   };
 };
 
