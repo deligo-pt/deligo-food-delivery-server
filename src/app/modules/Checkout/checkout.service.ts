@@ -100,12 +100,12 @@ const checkout = async (
 
   const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
 
+  console.log(distanceData);
+
   const deliveryChargeBase =
     distanceData.meters <= 1000
       ? BASE_FIXED_DELIVERY_CHARGE || 0
-      : roundTo2(
-          distanceData.meters * (globalSettings?.deliveryChargePerMeter || 0),
-        );
+      : roundTo2(distanceData.km * (globalSettings?.deliveryChargePerKm || 0));
   const deliveryGrossRaw = deliveryChargeBase * (1 + deliveryVatRate / 100);
 
   const totalDeliveryCharge = roundTo2(deliveryGrossRaw);
