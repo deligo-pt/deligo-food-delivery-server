@@ -388,9 +388,12 @@ const signAgreement = async (
   await agreement.save();
 
   return {
-    agreementId: agreement._id,
-    signedPdfPath: agreement.signedPdfPath,
-    status: agreement.status,
+    message: 'Agreement signed successfully',
+    data: {
+      agreementId: agreement._id,
+      signedPdfPath: agreement.signedPdfPath,
+      status: agreement.status,
+    },
   };
 };
 
