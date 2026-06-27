@@ -365,4 +365,9 @@ export const authMessages = {
     pt: (vars: { role: string }) =>
       `Conta e perfil de ${vars.role} eliminados permanentemente dos sistemas DeliGo.`,
   },
+
+  REFRESH_TOKEN_SUCCESS: {
+    en: 'Access token retrieved successfully!',
+    pt: 'Token de acesso recuperado com sucesso!',
+  },
 } as const;

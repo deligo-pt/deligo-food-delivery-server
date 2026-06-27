@@ -1381,6 +1381,7 @@ const refreshToken = async (token: string) => {
   );
 
   return {
+    message: 'Access token retrieved successfully!',
     accessToken,
   };
 };

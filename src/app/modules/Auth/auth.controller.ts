@@ -179,7 +179,7 @@ const refreshToken = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Access token retrieved successfully!',
+    message: result?.message,
     data: result,
   });
 });
