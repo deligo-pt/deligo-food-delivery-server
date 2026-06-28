@@ -16,6 +16,7 @@ import {
 } from './offer.utils';
 import { Order } from '../Order/order.model';
 import { flattenObject } from '../../utils/flattenObject';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
@@ -375,6 +376,7 @@ const validateAndApplyOffer = async (
   checkoutId: string,
   offerIdentifier: string,
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData)
@@ -400,7 +402,7 @@ const validateAndApplyOffer = async (
   );
 
   if (!offer) {
-    const resetPayload = await calculateOfferRemoval(checkoutData);
+    const resetPayload = await calculateOfferRemoval(checkoutData, lang);
 
     const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
       checkoutId,
@@ -420,6 +422,7 @@ const validateAndApplyOffer = async (
     checkoutData,
     offer,
     discountData,
+    lang,
   );
 
   const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(

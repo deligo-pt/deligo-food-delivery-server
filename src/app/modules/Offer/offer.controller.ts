@@ -57,6 +57,7 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
     checkoutId,
     offerIdentifier,
     req.user as TCurrentUser,
+    req.lang,
   );
   sendResponse(res, {
     success: true,
