@@ -4,6 +4,7 @@ import { agreementMessages } from '../modules/Agreement/agreement.messages';
 import { analyticsMessages } from '../modules/Analytics/analytics.messages';
 import { analyticsSecondMessages } from '../modules/Analytics/analyticsSecond.messages';
 import { authMessages } from '../modules/Auth/auth.messages';
+import { cartMessages } from '../modules/Cart/cart.messages';
 
 const globalCommonMessages = {
   // --- DEFAULT SERVER ERRORS ---
@@ -39,6 +40,7 @@ export const localizedMessages = {
   ...agreementMessages,
   ...analyticsMessages,
   ...analyticsSecondMessages,
+  ...cartMessages,
 } as const;
 
 // Global type safe key

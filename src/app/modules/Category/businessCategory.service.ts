@@ -1,11 +1,10 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import { BusinessCategory, ProductCategory } from './category.model';
-import { TBusinessCategory, TProductCategory } from './category.interface';
+import { BusinessCategory } from './category.model';
+import { TBusinessCategory } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { formatBusinessCategoryResponse } from './category.utils';
 
 //  Create Business Category
 const createBusinessCategory = async (
@@ -24,7 +23,10 @@ const createBusinessCategory = async (
     .replace(/ +/g, '-');
 
   const category = await BusinessCategory.create({ ...payload, icon });
-  return category;
+  return {
+    message: 'Business category created successfully',
+    data: category,
+  };
 };
 
 //  Update Business Category
@@ -64,7 +66,10 @@ const updateBusinessCategory = async (
 
   Object.assign(category, payload);
   await category.save();
-  return category;
+  return {
+    message: 'Business category updated successfully',
+    data: category,
+  };
 };
 
 //  Get All Business Categories
@@ -89,7 +94,11 @@ const getAllBusinessCategories = async (
     businessCategories.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    message: 'Business categories fetched successfully',
+    meta,
+    data,
+  };
 };
 
 //  Get All Business Categories Public
@@ -110,7 +119,11 @@ const getAllBusinessCategoriesPublic = async (
     businessCategories.countTotal(),
     businessCategories.modelQuery,
   ]);
-  return { meta, data };
+  return {
+    message: 'Business categories fetched successfully',
+    meta,
+    data,
+  };
 };
 
 //  Get Single Business Category
@@ -130,7 +143,10 @@ const getSingleBusinessCategory = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  return category;
+  return {
+    message: 'Business category fetched successfully',
+    data: category,
+  };
 };
 
 //  Get Single Business Category Public
@@ -144,7 +160,10 @@ const getSingleBusinessCategoryPublic = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
   }
 
-  return category;
+  return {
+    message: 'Business category fetched successfully',
+    data: category,
+  };
 };
 
 // Soft Delete Business Category
