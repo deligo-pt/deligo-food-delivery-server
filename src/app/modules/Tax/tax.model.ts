@@ -1,12 +1,16 @@
 import { Schema, model } from 'mongoose';
 import { TTax } from './tax.interface';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const taxSchema = new Schema<TTax>(
   {
     taxName: {
-      type: String,
-      required: [true, 'Tax name is required'],
-      trim: true,
+      type: localizedSchema,
+      required: true,
+    },
+    description: {
+      type: localizedSchema,
+      required: true,
     },
     taxCode: {
       type: String,
@@ -32,18 +36,12 @@ const taxSchema = new Schema<TTax>(
       type: String,
       default: 'IVA',
     },
-    description: {
-      type: String,
-      required: [true, 'Description is mandatory for compliance'],
-      trim: true,
-    },
     taxExemptionCode: {
       type: String,
       default: '',
     },
     taxExemptionReason: {
-      type: String,
-      default: '',
+      type: localizedSchema,
     },
     isActive: {
       type: Boolean,
@@ -60,17 +58,41 @@ const taxSchema = new Schema<TTax>(
   },
 );
 
-taxSchema.pre('save', function (next) {
-  if (this.taxRate === 0) {
-    if (!this.taxExemptionCode || !this.taxExemptionReason) {
-      return next(
-        new Error(
-          'Tax rate 0 requires a TaxExemptionCode and Reason for Portuguese law.',
-        ),
+const validateZeroTaxCompliance = (doc: any) => {
+  if (doc.taxRate === 0) {
+    const reason = doc.taxExemptionReason;
+    const hasReasonText = reason && (reason.en?.trim() || reason.pt?.trim());
+
+    if (!doc.taxExemptionCode?.trim() || !hasReasonText) {
+      throw new Error(
+        'Tax rate 0 requires a valid TaxExemptionCode and Localized Reason for Portuguese law.',
       );
     }
   }
-  next();
+};
+
+taxSchema.pre('save', function (next) {
+  try {
+    validateZeroTaxCompliance(this);
+    next();
+  } catch (error: any) {
+    next(error);
+  }
+});
+
+taxSchema.pre('findOneAndUpdate', function (next) {
+  try {
+    const updatePayload = this.getUpdate() as any;
+
+    const data = updatePayload.$set || updatePayload;
+
+    if (data.taxRate === 0) {
+      validateZeroTaxCompliance(data);
+    }
+    next();
+  } catch (error: any) {
+    next(error);
+  }
 });
 
 export const Tax = model<TTax>('Tax', taxSchema);
