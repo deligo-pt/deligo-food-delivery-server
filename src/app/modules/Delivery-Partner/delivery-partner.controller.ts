@@ -15,8 +15,8 @@ const updateDeliveryPartner = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery Partner updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -77,7 +77,7 @@ const getAllDeliveryPartners = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery Partners Retrieved Successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -93,8 +93,8 @@ const getSingleDeliveryPartner = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery Partner Retrieved Successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

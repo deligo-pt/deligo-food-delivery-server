@@ -102,7 +102,10 @@ const updateDeliveryPartner = async (
     );
   }
 
-  return updatedDeliveryPartner;
+  return {
+    message: 'Delivery Partner updated successfully',
+    data: updatedDeliveryPartner,
+  };
 };
 
 // update delivery partner live location
@@ -314,6 +317,7 @@ const getAllDeliveryPartnersFromDB = async (
   const data = await deliveryPartners.modelQuery;
 
   return {
+    message: 'Delivery Partners Retrieved Successfully',
     meta,
     data,
   };
@@ -362,7 +366,10 @@ const getSingleDeliveryPartnerFromDB = async (
     );
   }
 
-  return existingDeliveryPartner;
+  return {
+    message: 'Delivery Partner Retrieved Successfully',
+    data: existingDeliveryPartner,
+  };
 };
 
 export const DeliveryPartnerServices = {
