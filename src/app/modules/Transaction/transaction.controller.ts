@@ -14,7 +14,7 @@ const getMyTransactions = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Transactions fetched successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -28,8 +28,8 @@ const getTransactionById = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Transactions fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

@@ -10,8 +10,8 @@ const createZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Zone created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -24,20 +24,20 @@ const checkPointInZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Zone found successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
 // get all zones controller
 const getAllZonesController = catchAsync(async (req, res) => {
-  const zones = await ZoneService.getAllZones(req.query);
+  const result = await ZoneService.getAllZones(req.query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Zones retrieved successfully',
-    meta: zones.meta,
-    data: zones.data,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -48,8 +48,8 @@ const getSingleZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Zone retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -60,8 +60,8 @@ const updateZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Zone updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -74,7 +74,7 @@ const toggleZoneStatusController = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -86,7 +86,7 @@ const softDeleteZoneController = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -98,7 +98,7 @@ const permanentDeleteZoneController = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result.message,
-    data: null,
+    data: result?.data,
   });
 });
 

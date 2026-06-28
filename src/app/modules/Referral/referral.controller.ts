@@ -12,8 +12,8 @@ const getMyReferralStats = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Referral statistics and history retrieved successfully.',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

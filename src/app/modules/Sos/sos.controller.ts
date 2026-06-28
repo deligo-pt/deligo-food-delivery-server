@@ -14,8 +14,8 @@ const triggerSos = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'SOS triggered successfully. Help is on the way!',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -27,8 +27,8 @@ const updateSosStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'SOS status updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -37,8 +37,8 @@ const getNearbySosAlerts = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Nearby SOS alerts retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -51,7 +51,7 @@ const getAllSosAlerts = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'SOS alerts retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -66,8 +66,8 @@ const getSingleSosAlert = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'SOS alert retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -81,7 +81,7 @@ const getUserSosHistory = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'SOS alerts retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -93,8 +93,8 @@ const getSosStats = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'SOS stats retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

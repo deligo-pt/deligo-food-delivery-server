@@ -15,36 +15,36 @@ const sendMessage = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Message processed successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
 const getAllTickets = catchAsync(async (req, res) => {
-  const { meta, data } = await SupportService.getAllTickets(
+  const result = await SupportService.getAllTickets(
     req.query,
     req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Tickets retrieved',
-    meta,
-    data,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
 const getMessagesByTicketId = catchAsync(async (req, res) => {
-  const { meta, data } = await SupportService.getMessagesByTicketId(
+  const result = await SupportService.getMessagesByTicketId(
     req.params.ticketId,
     req.query,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Chat history retrieved',
-    meta,
-    data,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -57,7 +57,7 @@ const markAsRead = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -69,8 +69,8 @@ const closeTicket = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Ticket closed',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

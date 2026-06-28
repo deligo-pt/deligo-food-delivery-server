@@ -94,6 +94,7 @@ const getMyTransactions = async (
   });
 
   return {
+    message: 'Transactions fetched successfully',
     data,
     meta,
   };
@@ -117,47 +118,50 @@ const getTransactionById = async (id: string) => {
   const customer = order?.customerId;
 
   return {
-    _id: txn._id.toString(),
-    transactionId: txn.transactionId,
-    type: txn.type,
-    status: txn.status,
-    description: txn.remarks || `${txn.type.replace(/_/g, ' ')}`,
+    message: 'Transactions fetched successfully',
+    data: {
+      _id: txn._id.toString(),
+      transactionId: txn.transactionId,
+      type: txn.type,
+      status: txn.status,
+      description: txn.remarks || `${txn.type.replace(/_/g, ' ')}`,
 
-    // Basic Amounts
-    amount: roundTo2(txn.totalAmount),
+      // Basic Amounts
+      amount: roundTo2(txn.totalAmount),
 
-    // Order context
-    orderId: order?.orderId,
-    // -> admin
-    orderGrandTotal: roundTo2(order?.payoutSummary?.grandTotal),
-    platformFee: roundTo2(
-      order?.payoutSummary?.deliGoCommission?.totalDeduction,
-    ),
-    // -> vendor
-    vendorNetEarning: roundTo2(order?.payoutSummary?.vendor?.vendorNetPayout),
-    // -> delivery partner
-    riderNetEarnings: order?.payoutSummary?.rider?.riderNetEarnings,
-    // -> fleet manager
-    fleetEarnings: order?.payoutSummary?.fleet?.fee,
+      // Order context
+      orderId: order?.orderId,
+      // -> admin
+      orderGrandTotal: roundTo2(order?.payoutSummary?.grandTotal),
+      platformFee: roundTo2(
+        order?.payoutSummary?.deliGoCommission?.totalDeduction,
+      ),
+      // -> vendor
+      vendorNetEarning: roundTo2(order?.payoutSummary?.vendor?.vendorNetPayout),
+      // -> delivery partner
+      riderNetEarnings: order?.payoutSummary?.rider?.riderNetEarnings,
+      // -> fleet manager
+      fleetEarnings: order?.payoutSummary?.fleet?.fee,
 
-    customer: customer || 'N/A',
-    deliveryAddress:
-      order?.deliveryAddress?.street +
-        ', ' +
-        order?.deliveryAddress?.city +
-        ', ' +
-        order?.deliveryAddress?.country || 'N/A',
+      customer: customer || 'N/A',
+      deliveryAddress:
+        order?.deliveryAddress?.street +
+          ', ' +
+          order?.deliveryAddress?.city +
+          ', ' +
+          order?.deliveryAddress?.country || 'N/A',
 
-    items:
-      order?.items?.map((item: TOrderItemSnapshot) => ({
-        name: item.name,
-        qty: item.itemSummary?.quantity || 0,
-        price: item.productPricing?.unitPrice?.toFixed(2) || '0.00',
-      })) || [],
+      items:
+        order?.items?.map((item: TOrderItemSnapshot) => ({
+          name: item.name,
+          qty: item.itemSummary?.quantity || 0,
+          price: item.productPricing?.unitPrice?.toFixed(2) || '0.00',
+        })) || [],
 
-    paymentMethod: txn.paymentMethod,
-    createdAt: txn.createdAt.toISOString(),
-    updatedAt: txn.updatedAt.toISOString(),
+      paymentMethod: txn.paymentMethod,
+      createdAt: txn.createdAt.toISOString(),
+      updatedAt: txn.updatedAt.toISOString(),
+    },
   };
 };
 

@@ -58,7 +58,10 @@ const createTax = async (payload: TTax) => {
   }
 
   const result = await Tax.create(payload);
-  return result;
+  return {
+    message: 'Tax created successfully',
+    data: result,
+  };
 };
 
 // Update Tax Service
@@ -104,7 +107,10 @@ const updateTax = async (taxId: string, payload: Partial<TTax>) => {
     runValidators: true,
   });
 
-  return result;
+  return {
+    message: 'Tax updated successfully',
+    data: result,
+  };
 };
 
 // Get all taxes service
@@ -117,7 +123,11 @@ const getAllTaxes = async (query: Record<string, unknown>) => {
     .fields();
   const meta = await taxes.countTotal();
   const data = await taxes.modelQuery;
-  return { meta, data };
+  return {
+    message: 'Taxes retrieved successfully',
+    meta,
+    data,
+  };
 };
 
 // Get single tax service
@@ -129,7 +139,10 @@ const getSingleTax = async (taxId: string) => {
       `Tax record with ID '${taxId}' not found!`,
     );
   }
-  return result;
+  return {
+    message: 'Tax retrieved successfully',
+    data: result,
+  };
 };
 
 // soft delete  tax service
@@ -153,6 +166,7 @@ const softDeleteTax = async (taxId: string) => {
 
   return {
     message: 'Tax soft deleted successfully',
+    data: null,
   };
 };
 
@@ -177,6 +191,7 @@ const permanentDeleteTax = async (taxId: string) => {
 
   return {
     message: 'Tax permanently deleted successfully',
+    data: null,
   };
 };
 

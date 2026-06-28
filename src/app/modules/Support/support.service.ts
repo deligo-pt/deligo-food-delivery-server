@@ -169,7 +169,10 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
   ticket.lastMessageTime = new Date();
 
   await ticket.save();
-  return newMessage;
+  return {
+    message: 'Message processed successfully',
+    data: newMessage,
+  };
 };
 
 const getAllTickets = async (
@@ -199,7 +202,11 @@ const getAllTickets = async (
     .sort()
     .paginate()
     .fields();
-  return { meta: await qb.countTotal(), data: await qb.modelQuery };
+  return {
+    message: 'Tickets retrieved',
+    meta: await qb.countTotal(),
+    data: await qb.modelQuery,
+  };
 };
 
 const getMessagesByTicketId = async (
@@ -210,7 +217,11 @@ const getMessagesByTicketId = async (
     .sort()
     .paginate()
     .fields();
-  return { meta: await qb.countTotal(), data: await qb.modelQuery };
+  return {
+    message: 'Chat history retrieved',
+    meta: await qb.countTotal(),
+    data: await qb.modelQuery,
+  };
 };
 
 const markReadByAdminOrUser = async (
@@ -237,6 +248,7 @@ const markReadByAdminOrUser = async (
   }
   return {
     message: 'Messages marked as read',
+    data: null,
   };
 };
 
@@ -269,7 +281,10 @@ const closeTicket = async (ticketId: string, currentUser: TCurrentUser) => {
     messageType: 'SYSTEM',
   });
 
-  return { success: true };
+  return {
+    message: 'Ticket closed',
+    data: { success: true },
+  };
 };
 
 export const SupportService = {

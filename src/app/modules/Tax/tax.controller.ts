@@ -9,8 +9,8 @@ const createTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Tax created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -21,8 +21,8 @@ const updateTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Tax updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -32,8 +32,9 @@ const getAllTaxes = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Taxes retrieved successfully',
-    data: result,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -44,8 +45,8 @@ const getSingleTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Tax retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -57,7 +58,7 @@ const softDeleteTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -69,7 +70,7 @@ const permanentDeleteTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 

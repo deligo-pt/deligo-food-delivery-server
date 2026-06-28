@@ -64,7 +64,10 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
 
   const newProduct = await Product.create(payload);
 
-  return newProduct;
+  return {
+    message: 'Product created successfully',
+    data: newProduct,
+  };
 };
 
 // Update Product Service
@@ -97,7 +100,10 @@ const updateProduct = async (
 
   await UpdateProductUtils.syncStockStatus(updatedProduct, existingProduct);
 
-  return updatedProduct;
+  return {
+    message: 'Product updated successfully',
+    data: updatedProduct,
+  };
 };
 
 // manage product variations service
@@ -261,7 +267,10 @@ const manageProductVariations = async (
   }
 
   await existingProduct.save();
-  return existingProduct;
+  return {
+    message: 'Product variations updated successfully',
+    data: existingProduct,
+  };
 };
 
 const renameProductVariation = async (
@@ -423,7 +432,10 @@ const renameProductVariation = async (
   }
 
   await existingProduct.save();
-  return existingProduct;
+  return {
+    message: 'Product variations renamed successfully',
+    data: existingProduct,
+  };
 };
 
 // remove product variations service
@@ -531,7 +543,10 @@ const removeProductVariations = async (
   }
 
   await existingProduct.save();
-  return existingProduct;
+  return {
+    message: 'Product variations removed successfully',
+    data: existingProduct,
+  };
 };
 
 // update inventory and pricing service
@@ -654,7 +669,10 @@ const updateInventoryAndPricing = async (
   }
 
   await product.save();
-  return product;
+  return {
+    message: 'Inventory and pricing updated successfully',
+    data: product,
+  };
 };
 
 // Approved Product Service
@@ -760,7 +778,10 @@ const deleteProductImages = async (
   product.images = product.images.filter((img) => !images.includes(img));
   await product.save();
 
-  return product;
+  return {
+    message: 'Product images deleted successfully',
+    data: product,
+  };
 };
 
 // get all products service
@@ -812,6 +833,7 @@ const getAllProducts = async (
     localizeProductData(product, role, lang),
   );
   return {
+    message: 'Products retrieved successfully',
     meta,
     data: localizedData,
   };
@@ -851,6 +873,7 @@ const getAllProductsPublic = async (
     localizeProductData(product, 'CUSTOMER', lang),
   );
   return {
+    message: 'Products retrieved successfully',
     meta,
     data: localizedData,
   };
@@ -909,7 +932,10 @@ const getSingleProduct = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  return localizeProductData(product, role, lang);
+  return {
+    message: 'Product retrieved successfully',
+    data: localizeProductData(product, role, lang),
+  };
 };
 
 // get single product service
@@ -941,7 +967,10 @@ const getSingleProductPublic = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  return localizeProductData(product, role, lang);
+  return {
+    message: 'Product retrieved successfully',
+    data: localizeProductData(product, role, lang),
+  };
 };
 
 // product soft delete service
@@ -1004,6 +1033,7 @@ const softDeleteProduct = async (
 
   return {
     message: `${productName} has been deleted successfully`,
+    data: null,
   };
 };
 
@@ -1044,6 +1074,7 @@ const permanentDeleteProduct = async (
 
   return {
     message: `${productName} has been permanently deleted successfully`,
+    data: null,
   };
 };
 
@@ -1104,6 +1135,7 @@ const getOutOfStockAlerts = async (
   );
 
   return {
+    message: 'Products retrieved successfully',
     data: localizedData,
     meta: {
       page: Number(page),

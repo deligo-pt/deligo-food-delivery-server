@@ -134,7 +134,10 @@ const vendorUpdate = async (
     );
   }
 
-  return updatedVendor;
+  return {
+    message: 'Vendor updated successfully',
+    data: updatedVendor,
+  };
 };
 
 /**
@@ -362,6 +365,7 @@ const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
     message: `Store is ${
       currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
     }`,
+    data: null,
   };
 };
 
@@ -397,6 +401,7 @@ const getAllVendors = async (
   const data = await vendors.modelQuery;
 
   return {
+    message: 'Vendors Retrieved Successfully',
     meta,
     data,
   };
@@ -438,7 +443,10 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
   }
 
-  return existingVendor;
+  return {
+    message: 'Vendor Retrieved Successfully',
+    data: existingVendor,
+  };
 };
 
 // get all vendors for customer
@@ -529,6 +537,7 @@ const getAllVendorsForCustomer = async (
 
     if (matchingVendorIds.length === 0) {
       return {
+        message: 'Vendors Retrieved Successfully',
         meta: {
           total: 0,
           page: 1,
@@ -621,6 +630,7 @@ const getAllVendorsForCustomer = async (
   });
 
   return {
+    message: 'Vendors Retrieved Successfully',
     meta,
     data,
   };
@@ -636,7 +646,10 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
   }
 
-  return existingVendor;
+  return {
+    message: 'Vendor Retrieved Successfully',
+    data: existingVendor,
+  };
 };
 
 const getAllVendorsForCustomerPublic = async (
@@ -709,6 +722,7 @@ const getAllVendorsForCustomerPublic = async (
 
     if (matchingVendorIds.length === 0) {
       return {
+        message: 'Vendors Retrieved Successfully',
         meta: {
           total: 0,
           page: 1,
@@ -799,6 +813,7 @@ const getAllVendorsForCustomerPublic = async (
   });
 
   return {
+    message: 'Vendors Retrieved Successfully',
     meta,
     data,
   };

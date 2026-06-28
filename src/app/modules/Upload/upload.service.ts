@@ -11,6 +11,15 @@ const processUploadedFiles = async (files: TImageFile[]): Promise<string[]> => {
   return fileUrls;
 };
 
+const processUploadedFilesWithMessage = async (files: TImageFile[]) => {
+  const fileUrls = await processUploadedFiles(files);
+  return {
+    message: 'Files uploaded to Cloudinary successfully',
+    data: fileUrls,
+  };
+};
+
 export const UploadService = {
   processUploadedFiles,
+  processUploadedFilesWithMessage,
 };

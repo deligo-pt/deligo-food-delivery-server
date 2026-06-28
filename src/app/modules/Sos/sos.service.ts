@@ -50,7 +50,10 @@ const triggerSos = async (
     data: result,
   });
 
-  return result;
+  return {
+    message: 'SOS triggered successfully. Help is on the way!',
+    data: result,
+  };
 };
 
 // update sos status in db
@@ -102,7 +105,10 @@ const updateSosStatus = async (
     getIO().emit(`sos-status-updated-${id}`, result);
   }
 
-  return result;
+  return {
+    message: 'SOS status updated successfully',
+    data: result,
+  };
 };
 
 // get nearby sos alerts
@@ -126,7 +132,10 @@ const getNearbySosAlerts = async (currentUser: TCurrentUser) => {
     },
     status: 'ACTIVE',
   });
-  return result;
+  return {
+    message: 'Nearby SOS alerts retrieved successfully',
+    data: result,
+  };
 };
 
 // get all sos alerts
@@ -170,6 +179,7 @@ const getAllSosAlerts = async (
   const meta = await sosQuery.countTotal();
 
   return {
+    message: 'SOS alerts retrieved successfully',
     meta,
     data,
   };
@@ -200,7 +210,10 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
     }
   }
 
-  return result;
+  return {
+    message: 'SOS alert retrieved successfully',
+    data: result,
+  };
 };
 
 // get sos alerts by user id
@@ -232,6 +245,7 @@ const getUserSosHistory = async (
   const meta = await sosQuery.countTotal();
 
   return {
+    message: 'SOS alerts retrieved successfully',
     meta,
     data,
   };
@@ -275,7 +289,10 @@ const getSosStats = async (currentUser: TCurrentUser) => {
     }
   });
 
-  return formattedStats;
+  return {
+    message: 'SOS stats retrieved successfully',
+    data: formattedStats,
+  };
 };
 
 export const SosService = {
