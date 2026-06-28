@@ -13,8 +13,8 @@ const createIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Ingredient created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -29,8 +29,8 @@ const updateIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Ingredient updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -41,8 +41,8 @@ const getIngredientDetails = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Ingredient details retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -52,9 +52,9 @@ const getAllIngredients = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Ingredients retrieved successfully',
-    meta: result.meta,
-    data: result.data,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -65,8 +65,8 @@ const softDeleteIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Ingredient soft deleted successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -78,8 +78,8 @@ const permanentDeleteIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Ingredient permanently removed from database',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
