@@ -15,6 +15,7 @@ import {
   rebuildCheckoutSummary,
 } from './offer.utils';
 import { Order } from '../Order/order.model';
+import { flattenObject } from '../../utils/flattenObject';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
@@ -305,15 +306,17 @@ const updateOffer = async (
     );
   }
 
+  const flattenedPayload = flattenObject(payload);
+
   // --------------------------------------------------
   // Update offer
   // --------------------------------------------------
   const updatedOffer = await Offer.findByIdAndUpdate(
     id,
-    { $set: payload },
+    { $set: flattenedPayload },
     {
       new: true,
-      runValidators: true,
+      runValidators: false,
     },
   );
 
