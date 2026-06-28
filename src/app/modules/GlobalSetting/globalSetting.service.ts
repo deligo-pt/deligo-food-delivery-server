@@ -78,7 +78,10 @@ const createGlobalSettings = async (
   // --------------------------------------------------
   const settings = await GlobalSettings.create(payload);
 
-  return settings;
+  return {
+    message: 'Global settings created successfully',
+    data: settings,
+  };
 };
 
 // update global settings service
@@ -179,7 +182,10 @@ const updateGlobalSettings = async (
   }
 
   if (Object.keys(payload).length === 0) {
-    return existingSettings;
+    return {
+      message: 'Global settings updated successfully',
+      data: existingSettings,
+    };
   }
 
   // --------------------------------------------------
@@ -202,7 +208,10 @@ const updateGlobalSettings = async (
     },
   );
 
-  return updatedSettings;
+  return {
+    message: 'Global settings updated successfully',
+    data: updatedSettings,
+  };
 };
 
 const getGlobalSettingsForAdmin = async (currentUser: TCurrentUser) => {
@@ -229,7 +238,10 @@ const getGlobalSettingsForAdmin = async (currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Global settings not found');
   }
 
-  return settings;
+  return {
+    message: 'Global settings fetched successfully',
+    data: settings,
+  };
 };
 
 // get for checkout
