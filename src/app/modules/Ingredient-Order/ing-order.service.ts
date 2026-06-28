@@ -124,7 +124,10 @@ const confirmIngredientOrder = async (
       adminNotification.data,
     );
 
-    return existingOrder;
+    return {
+      message: 'Ingredient order confirmed successfully',
+      data: existingOrder,
+    };
   } catch (err: unknown) {
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -167,6 +170,7 @@ const getMyIngredientOrders = async (
   const meta = await ingredientOrderQuery.countTotal();
 
   return {
+    message: 'Ingredient orders retrieved successfully',
     meta,
     data: result,
   };
@@ -197,6 +201,7 @@ const getAllIngredientOrdersForAdmin = async (
   const meta = await ingredientOrderQuery.countTotal();
 
   return {
+    message: 'All ingredient orders retrieved successfully',
     meta,
     data: result,
   };
@@ -237,8 +242,11 @@ const getSingleIngredientOrder = async (orderId: string) => {
   ];
 
   return {
-    ...order,
-    timeline,
+    message: 'Order details retrieved successfully',
+    data: {
+      ...order,
+      timeline,
+    },
   };
 };
 
@@ -316,7 +324,10 @@ const updateIngredientOrderStatus = async (
     },
   ).setOptions({ skipFilter: true });
 
-  return result;
+  return {
+    message: `Order status updated to ${status}`,
+    data: result,
+  };
 };
 
 export const IngredientOrderService = {
