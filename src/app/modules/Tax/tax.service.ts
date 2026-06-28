@@ -37,27 +37,44 @@ const createTax = async (payload: TTax) => {
   const isDuplicate = await checkExistingTax(
     payload.taxCode,
     payload.taxRate,
-    payload.countryID,
+    payload.countryID || 'PRT',
   );
 
   if (isDuplicate) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `A tax with code '${payload.taxCode}' or rate '${payload.taxRate}%' already exists in ${payload.countryID}.`,
+      `A tax with code '${payload.taxCode}' or rate '${payload.taxRate}%' already exists in ${payload.countryID || 'PRT'}.`,
     );
   }
 
-  if (
-    payload.taxRate === 0 &&
-    (!payload.taxExemptionCode || !payload.taxExemptionReason)
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Tax rate 0 requires a valid Tax Exemption Code and Reason for Portugal compliance.',
-    );
+  if (payload.taxName && payload.taxName.en) {
+    const existingName = await Tax.findOne({
+      'taxName.en': { $regex: new RegExp(`^${payload.taxName.en}$`, 'i') },
+      isDeleted: false,
+    });
+
+    if (existingName) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'A tax configuration with this name already exists!',
+      );
+    }
+  }
+
+  if (payload.taxRate === 0) {
+    const reason = payload.taxExemptionReason;
+    const hasReasonText = reason && (reason.en?.trim() || reason.pt?.trim());
+
+    if (!payload.taxExemptionCode?.trim() || !hasReasonText) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Tax rate 0 requires a valid Tax Exemption Code and Localized Reason for Portugal compliance.',
+      );
+    }
   }
 
   const result = await Tax.create(payload);
+
   return {
     message: 'Tax created successfully',
     data: result,
