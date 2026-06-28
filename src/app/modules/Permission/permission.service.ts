@@ -34,7 +34,10 @@ const createPermission = async (
   payload.createdBy = currentUser._id;
 
   const result = await Permission.create(payload);
-  return result;
+  return {
+    message: 'Permission created successfully',
+    data: result,
+  };
 };
 
 const updatePermission = async (
@@ -81,7 +84,10 @@ const updatePermission = async (
     runValidators: true,
   });
 
-  return result;
+  return {
+    message: 'Permission updated successfully',
+    data: result,
+  };
 };
 
 const getAllPermissions = async (query: Record<string, unknown>) => {
@@ -99,6 +105,7 @@ const getAllPermissions = async (query: Record<string, unknown>) => {
   const data = await permissionQuery.modelQuery;
 
   return {
+    message: 'Permissions retrieved successfully',
     meta,
     data,
   };
@@ -109,7 +116,10 @@ const getSinglePermission = async (permissionId: string) => {
   if (!result || result.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
   }
-  return result;
+  return {
+    message: 'Permission details retrieved successfully',
+    data: result,
+  };
 };
 
 const deletePermission = async (permissionId: string) => {
@@ -131,7 +141,10 @@ const deletePermission = async (permissionId: string) => {
     { isDeleted: true },
     { new: true },
   );
-  return result;
+  return {
+    message: 'Permission soft-deleted successfully',
+    data: null,
+  };
 };
 
 const validateIdsAndGetActionCodes = async (
@@ -183,7 +196,10 @@ const assignPermissionsToAdmin = async (
     { new: true, runValidators: true },
   ).select('-password');
 
-  return result;
+  return {
+    message: 'New permissions assigned to admin successfully',
+    data: result,
+  };
 };
 
 const revokePermissionsFromAdmin = async (
@@ -221,7 +237,10 @@ const revokePermissionsFromAdmin = async (
     { new: true, runValidators: true },
   ).select('-password');
 
-  return result;
+  return {
+    message: 'Specified permissions revoked from admin successfully',
+    data: result,
+  };
 };
 
 export const PermissionServices = {

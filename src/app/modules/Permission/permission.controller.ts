@@ -13,8 +13,8 @@ const createPermission = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Permission created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -29,8 +29,8 @@ const updatePermission = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Permission updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -40,9 +40,9 @@ const getAllPermissions = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Permissions retrieved successfully',
-    meta: result.meta,
-    data: result.data,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -53,20 +53,20 @@ const getSinglePermission = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Permission details retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
 const deletePermission = catchAsync(async (req, res) => {
   const { permissionId } = req.params;
-  await PermissionServices.deletePermission(permissionId);
+  const result = await PermissionServices.deletePermission(permissionId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Permission soft-deleted successfully',
-    data: null,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -80,8 +80,8 @@ const assignPermissionsToAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'New permissions assigned to admin successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -95,8 +95,8 @@ const revokePermissionsFromAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Specified permissions revoked from admin successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
