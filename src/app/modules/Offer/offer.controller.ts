@@ -69,15 +69,24 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
 // get available offers for checkout controller
 const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
   const { checkoutId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await OfferServices.getAvailableOffersForCheckout(
     checkoutId as string,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  let formattedData;
+  if (currentUser?.role === 'CUSTOMER') {
+    formattedData = formatOfferResponse(result.data, req.lang);
+  } else {
+    formattedData = result.data;
+  }
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
