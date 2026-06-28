@@ -1,11 +1,10 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { BusinessCategory, ProductCategory } from './category.model';
-import { TBusinessCategory, TProductCategory } from './category.interface';
+import { TProductCategory } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { formatProductCategoryResponse } from './category.utils';
 
 //  Create Product Category (Linked to Business)
 const createProductCategory = async (
@@ -38,7 +37,10 @@ const createProductCategory = async (
   }
 
   const category = await ProductCategory.create(payload);
-  return category;
+  return {
+    message: 'Product category created successfully',
+    data: category,
+  };
 };
 
 //  Update Product Category
@@ -104,7 +106,10 @@ const updateProductCategory = async (
   Object.assign(category, payload);
   await category.save();
 
-  return category;
+  return {
+    message: 'Product category updated successfully',
+    data: category,
+  };
 };
 
 //  Get All Product Categories (with Business ref)
@@ -148,7 +153,11 @@ const getAllProductCategories = async (
     productCategories.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    message: 'Product categories fetched successfully',
+    meta,
+    data,
+  };
 };
 
 //  Get All Product Categories Public
@@ -171,7 +180,11 @@ const getAllProductCategoriesPublic = async (
     productCategories.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    message: 'Product categories fetched successfully',
+    meta,
+    data,
+  };
 };
 
 // get single product category
@@ -209,7 +222,10 @@ const getSingleProductCategory = async (
     }
   }
 
-  return category;
+  return {
+    message: 'Product category fetched successfully',
+    data: category,
+  };
 };
 
 //  get single product category public
@@ -223,7 +239,10 @@ const getSingleProductCategoryPublic = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
   }
 
-  return category;
+  return {
+    message: 'Product category fetched successfully',
+    data: category,
+  };
 };
 
 // soft delete Product Category
