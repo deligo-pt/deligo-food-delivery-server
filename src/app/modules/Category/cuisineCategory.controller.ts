@@ -16,8 +16,8 @@ const createCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Cuisine created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -32,8 +32,8 @@ const updateCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisine updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -53,7 +53,7 @@ const getAllCuisines = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisines fetched successfully',
+    message: result?.message,
     meta: result?.meta,
     data: formattedData,
   });
@@ -66,7 +66,7 @@ const getAllCuisinesPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisines fetched successfully',
+    message: result?.message,
     meta: result?.meta,
     data: formattedData,
   });
@@ -80,14 +80,14 @@ const getSingleCuisine = catchAsync(async (req, res) => {
   let formattedData;
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
   if (isAdmin) {
-    formattedData = result;
+    formattedData = result?.data;
   } else {
-    formattedData = formatCuisineResponse(result, req.lang);
+    formattedData = formatCuisineResponse(result?.data, req.lang);
   }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisine fetched successfully',
+    message: result?.message,
     data: formattedData,
   });
 });
@@ -95,11 +95,11 @@ const getSingleCuisine = catchAsync(async (req, res) => {
 // Get Single Cuisine Controller Public
 const getSingleCuisinePublic = catchAsync(async (req, res) => {
   const result = await CuisineService.getSingleCuisinePublic(req.params.id);
-  const formattedData = formatCuisineResponse(result, req.lang);
+  const formattedData = formatCuisineResponse(result?.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisine fetched successfully',
+    message: result?.message,
     data: formattedData,
   });
 });

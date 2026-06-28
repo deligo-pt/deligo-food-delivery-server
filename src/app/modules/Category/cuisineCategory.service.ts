@@ -5,7 +5,6 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TCuisine } from './category.interface';
 import { Cuisine } from './category.model';
-import { formatCuisineResponse } from './category.utils';
 
 // Create Cuisine
 const createCuisine = async (payload: TCuisine, image: string | null) => {
@@ -35,7 +34,10 @@ const createCuisine = async (payload: TCuisine, image: string | null) => {
   }
 
   const cuisine = await Cuisine.create(payload);
-  return cuisine;
+  return {
+    message: 'Cuisine created successfully',
+    data: cuisine,
+  };
 };
 
 // Update Cuisine
@@ -89,7 +91,10 @@ const updateCuisine = async (
   Object.assign(cuisine, payload);
   await cuisine.save();
 
-  return cuisine;
+  return {
+    message: 'Cuisine updated successfully',
+    data: cuisine,
+  };
 };
 
 // Get All Cuisines (Protected / Admin & Vendor Layouts)
@@ -118,7 +123,11 @@ const getAllCuisines = async (
     cuisineQuery.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    message: 'Cuisines fetched successfully',
+    meta,
+    data,
+  };
 };
 
 // Get All Cuisines Public
@@ -138,7 +147,11 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
     cuisineQuery.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    message: 'Cuisines fetched successfully',
+    meta,
+    data,
+  };
 };
 
 // Get Single Cuisine
@@ -155,7 +168,10 @@ const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
   }
 
-  return cuisine;
+  return {
+    message: 'Cuisine fetched successfully',
+    data: cuisine,
+  };
 };
 
 // Get Single Cuisine Public
@@ -169,7 +185,10 @@ const getSingleCuisinePublic = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
   }
 
-  return cuisine;
+  return {
+    message: 'Cuisine fetched successfully',
+    data: cuisine,
+  };
 };
 
 // Soft Delete Cuisine
