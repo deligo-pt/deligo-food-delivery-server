@@ -16,8 +16,8 @@ const fleetManagerUpdate = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Fleet Manager updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 //  fleet manager doc image upload controller
@@ -61,7 +61,7 @@ const getAllFleetManagers = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Fleet Managers Retrieved Successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -77,8 +77,8 @@ const getSingleFleetManager = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Fleet Manager Retrieved Successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

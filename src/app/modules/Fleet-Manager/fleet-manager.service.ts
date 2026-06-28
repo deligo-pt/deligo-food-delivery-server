@@ -113,7 +113,10 @@ const fleetManagerUpdate = async (
     );
   }
 
-  return updatedFleetManager;
+  return {
+    message: 'Fleet Manager updated successfully',
+    data: updatedFleetManager,
+  };
 };
 
 // fleet manager doc image upload service
@@ -255,6 +258,7 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 
   const data = await fleetManagers.modelQuery;
   return {
+    message: 'Fleet Managers Retrieved Successfully',
     meta,
     data,
   };
@@ -289,7 +293,10 @@ const getSingleFleetManagerFromDB = async (
     throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
   }
 
-  return existingFleetManager;
+  return {
+    message: 'Fleet Manager Retrieved Successfully',
+    data: existingFleetManager,
+  };
 };
 
 export const FleetManagerServices = {
