@@ -107,8 +107,11 @@ const createRedUniqPayment = async (
     }
 
     return {
-      redirectUrl,
-      paymentToken: token,
+      message: 'RedUniq payment session created',
+      data: {
+        redirectUrl,
+        paymentToken: token,
+      },
     };
   } catch (error: any) {
     if (axios.isAxiosError(error) && error.response) {
@@ -152,7 +155,10 @@ const handlePaymentFailure = async (
     await summary.save();
   }
 
-  return { message: 'Payment status reset successfully' };
+  return {
+    message: 'Payment status reset successfully',
+    data: null,
+  };
 };
 
 // create ingredients payment service
@@ -394,8 +400,11 @@ const createIngredientRedUniqPayment = async (
       await session.commitTransaction();
 
       return {
-        redirectUrl: redirectUrl,
-        paymentToken: token,
+        message: 'Ingredient redUniq payment session created',
+        data: {
+          redirectUrl: redirectUrl,
+          paymentToken: token,
+        },
       };
     } else {
       throw new AppError(
