@@ -14,7 +14,7 @@ const getMyNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Notifications retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -23,23 +23,28 @@ const getMyNotifications = catchAsync(async (req, res) => {
 // Mark as read (one)
 const markAsRead = catchAsync(async (req, res) => {
   const { id } = req.params;
-  await NotificationService.markAsRead(id, req?.user as TCurrentUser);
+  const result = await NotificationService.markAsRead(
+    id,
+    req?.user as TCurrentUser,
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Notification marked as read',
-    data: null,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
 // Mark as read (all)
 const markAllAsRead = catchAsync(async (req, res) => {
-  await NotificationService.markAllAsRead(req?.user as TCurrentUser);
+  const result = await NotificationService.markAllAsRead(
+    req?.user as TCurrentUser,
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'All notifications marked as read',
-    data: null,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -52,7 +57,7 @@ const getAllNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'All notifications retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
