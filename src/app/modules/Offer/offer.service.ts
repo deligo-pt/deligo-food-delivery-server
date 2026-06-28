@@ -555,7 +555,7 @@ const getAllOffers = async (
     delete query.isExpired;
   }
   const offers = new QueryBuilder(Offer.find(), query)
-    .search(['title', 'code'])
+    .search(['title.en', 'title.pt', 'code'])
     .filter()
     .sort()
     .paginate()

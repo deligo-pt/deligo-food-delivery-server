@@ -4,6 +4,7 @@ import AppError from '../../errors/AppError';
 import { TTax } from './tax.interface';
 import { Tax } from './tax.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { flattenObject } from '../../utils/flattenObject';
 
 const checkExistingTax = async (
   taxCode: string,
@@ -111,18 +112,28 @@ const updateTax = async (taxId: string, payload: Partial<TTax>) => {
     const exemptionReason =
       payload.taxExemptionReason || isExist.taxExemptionReason;
 
-    if (!exemptionCode || !exemptionReason) {
+    const hasReasonText =
+      exemptionReason &&
+      (exemptionReason.en?.trim() || exemptionReason.pt?.trim());
+
+    if (!exemptionCode?.trim() || !hasReasonText) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Tax rate 0 requires a valid Tax Exemption Code and Reason.',
+        'Tax rate 0 requires a valid Tax Exemption Code and Localized Reason.',
       );
     }
   }
 
-  const result = await Tax.findByIdAndUpdate(taxId, payload, {
-    new: true,
-    runValidators: true,
-  });
+  const flattenedPayload = flattenObject(payload);
+
+  const result = await Tax.findByIdAndUpdate(
+    taxId,
+    { $set: flattenedPayload },
+    {
+      new: true,
+      runValidators: false,
+    },
+  );
 
   return {
     message: 'Tax updated successfully',
@@ -133,7 +144,7 @@ const updateTax = async (taxId: string, payload: Partial<TTax>) => {
 // Get all taxes service
 const getAllTaxes = async (query: Record<string, unknown>) => {
   const taxes = new QueryBuilder(Tax.find(), query)
-    .search(['taxName'])
+    .search(['taxName.en', 'taxName.pt'])
     .filter()
     .sort()
     .paginate()

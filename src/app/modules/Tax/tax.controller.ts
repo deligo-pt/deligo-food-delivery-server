@@ -2,6 +2,8 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { TaxService } from './tax.service';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatTaxResponse } from './tax.utils';
 
 // create tax controller
 const createTax = catchAsync(async (req, res) => {
@@ -28,25 +30,45 @@ const updateTax = catchAsync(async (req, res) => {
 
 // get all taxes controller
 const getAllTaxes = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await TaxService.getAllTaxes(req.query);
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser?.role);
+  if (isAdmin) {
+    formattedData = result.data;
+  } else {
+    formattedData = formatTaxResponse(result.data, req.lang);
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
 // get single tax controller
 const getSingleTax = catchAsync(async (req, res) => {
   const { taxId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await TaxService.getSingleTax(taxId);
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser?.role);
+  if (isAdmin) {
+    formattedData = result.data;
+  } else {
+    formattedData = formatTaxResponse(result.data, req.lang);
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
