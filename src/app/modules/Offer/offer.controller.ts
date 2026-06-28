@@ -106,15 +106,21 @@ const getAllOffers = catchAsync(async (req, res) => {
 // get single offer controller
 const getSingleOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
-  const result = await OfferServices.getSingleOffer(
-    offerId,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await OfferServices.getSingleOffer(offerId, currentUser);
+
+  let formattedData;
+  if (currentUser?.role === 'CUSTOMER') {
+    formattedData = formatOfferResponse(result.data, req.lang);
+  } else {
+    formattedData = result.data;
+  }
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
