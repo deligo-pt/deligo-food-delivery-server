@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { createLocalizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
 export const objectIdSchema = z
   .string()
@@ -9,15 +10,16 @@ export const objectIdSchema = z
 
 const offerBody = z
   .object({
-    title: z.string({ required_error: 'Title is required' }).min(3).trim(),
-    description: z.string().optional(),
+    title: createLocalizedValidationSchema('offer title'),
+    description: createLocalizedValidationSchema(
+      'offer description',
+      true,
+    ).optional(),
     offerType: z.enum(['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO']),
 
-    // Discount values
     discountValue: z.number().nonnegative().optional(),
     maxDiscountAmount: z.number().nonnegative().optional(),
 
-    // BOGO fields
     bogo: z
       .object({
         buyQty: z.number().int().positive(),
@@ -34,17 +36,14 @@ const offerBody = z
       message: 'Invalid end date',
     }),
 
-    // Ownership & Target
     adminId: objectIdSchema.nullable().optional(),
     isGlobal: z.boolean().default(false),
     vendorId: objectIdSchema.nullable().optional(),
     minOrderAmount: z.number().nonnegative().default(0),
 
-    // Applicability
     applicableCategories: z.array(objectIdSchema).default([]),
     applicableProducts: z.array(objectIdSchema).default([]),
 
-    // Apply logic
     isAutoApply: z.boolean().default(false),
     code: z.string().trim().toUpperCase().optional(),
 
@@ -56,7 +55,17 @@ const offerBody = z
   })
   .strict();
 
-// Create Offer Validation
+const updateOfferBody = offerBody
+  .extend({
+    title: createLocalizedValidationSchema('offer title', true).optional(),
+    description: createLocalizedValidationSchema(
+      'offer description',
+      true,
+    ).optional(),
+  })
+  .partial();
+
+// --- CREATE OFFER VALIDATION ---
 const createOfferValidation = z
   .object({
     body: offerBody.superRefine((data, ctx) => {
@@ -106,13 +115,14 @@ const createOfferValidation = z
   })
   .strict();
 
-// Update Offer Validation
+// --- UPDATE OFFER VALIDATION ---
 const updateOfferValidation = z
   .object({
-    body: offerBody.partial(),
+    body: updateOfferBody,
   })
   .strict();
 
+// --- APPLY OFFER SCHEMA ---
 const applyOfferSchema = z.object({
   body: z
     .object({
