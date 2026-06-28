@@ -3,6 +3,7 @@ import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { OfferServices } from './offer.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatOfferResponse } from './offer.utils';
 
 // create offer controller
 const createOffer = catchAsync(async (req, res) => {
@@ -13,8 +14,8 @@ const createOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Offer created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -29,8 +30,8 @@ const updateOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offer updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -44,8 +45,8 @@ const toggleOfferStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offer status updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -56,59 +57,80 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
     checkoutId,
     offerIdentifier,
     req.user as TCurrentUser,
+    req.lang,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.offer?.isApplied
-      ? 'Offer applied successfully'
-      : 'Offer removed/invalid',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
 // get available offers for checkout controller
 const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
   const { checkoutId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await OfferServices.getAvailableOffersForCheckout(
     checkoutId as string,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  let formattedData;
+  if (currentUser?.role === 'CUSTOMER') {
+    formattedData = formatOfferResponse(result.data, req.lang);
+  } else {
+    formattedData = result.data;
+  }
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Available offers fetched successfully',
-    data: result,
+    message: result?.message,
+    data: formattedData,
   });
 });
 
 // get all offers controller
 const getAllOffers = catchAsync(async (req, res) => {
-  const result = await OfferServices.getAllOffers(
-    req.user as TCurrentUser,
-    req.query,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await OfferServices.getAllOffers(currentUser, req.query);
+
+  let formattedData;
+
+  if (currentUser?.role === 'CUSTOMER') {
+    formattedData = formatOfferResponse(result.data, req.lang);
+  } else {
+    formattedData = result.data;
+  }
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offers fetched successfully',
-    meta: result.meta,
-    data: result.data,
+    message: result?.message,
+    meta: result?.meta,
+    data: formattedData,
   });
 });
 
 // get single offer controller
 const getSingleOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
-  const result = await OfferServices.getSingleOffer(
-    offerId,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await OfferServices.getSingleOffer(offerId, currentUser);
+
+  let formattedData;
+  if (currentUser?.role === 'CUSTOMER') {
+    formattedData = formatOfferResponse(result.data, req.lang);
+  } else {
+    formattedData = result.data;
+  }
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offer fetched successfully',
-    data: result,
+    message: result?.message,
+    data: formattedData,
   });
 });
 

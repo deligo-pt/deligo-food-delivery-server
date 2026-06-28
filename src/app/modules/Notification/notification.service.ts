@@ -232,6 +232,11 @@ const markAsRead = async (id: string, currentUser: TCurrentUser) => {
 
   notification.isRead = true;
   await notification.save();
+
+  return {
+    message: 'Notification marked as read',
+    data: null,
+  };
 };
 
 // mark as read (all)
@@ -240,7 +245,10 @@ const markAllAsRead = async (currentUser: TCurrentUser) => {
     { receiverId: currentUser.userId },
     { isRead: true },
   );
-  return null;
+  return {
+    message: 'All notifications marked as read',
+    data: null,
+  };
 };
 
 const getMyNotifications = async (
@@ -261,6 +269,7 @@ const getMyNotifications = async (
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
   return {
+    message: 'Notifications retrieved successfully',
     meta,
     data,
   };
@@ -284,7 +293,11 @@ const getAllNotifications = async (
 
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
-  return { meta, data };
+  return {
+    message: 'All notifications retrieved successfully',
+    meta,
+    data,
+  };
 };
 
 // soft delete single notification

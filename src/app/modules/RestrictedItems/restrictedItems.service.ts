@@ -12,7 +12,10 @@ const createRestrictedItem = async (payload: TRestrictedItem) => {
   }
 
   const result = await RestrictedItem.create(payload);
-  return result;
+  return {
+    message: 'Item added to restricted list successfully',
+    data: result,
+  };
 };
 
 const updateRestrictedItem = async (
@@ -28,7 +31,10 @@ const updateRestrictedItem = async (
     throw new Error('Restricted item not found!');
   }
 
-  return result;
+  return {
+    message: 'Item updated successfully',
+    data: result,
+  };
 };
 
 const getAllRestrictedItems = async (query: Record<string, unknown>) => {
@@ -41,7 +47,11 @@ const getAllRestrictedItems = async (query: Record<string, unknown>) => {
   const meta = await items.countTotal();
   const data = await items.modelQuery;
 
-  return { meta, data };
+  return {
+    message: 'Items retrieved successfully',
+    meta,
+    data,
+  };
 };
 
 const getSingleRestrictedItem = async (itemId: string) => {
@@ -49,7 +59,10 @@ const getSingleRestrictedItem = async (itemId: string) => {
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
   }
-  return result;
+  return {
+    message: 'Item retrieved successfully',
+    data: result,
+  };
 };
 
 const softDeleteRestrictedItem = async (itemId: string) => {
@@ -71,7 +84,10 @@ const softDeleteRestrictedItem = async (itemId: string) => {
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
   }
-  return result;
+  return {
+    message: 'Item deleted successfully',
+    data: result,
+  };
 };
 
 const permanentDeleteRestrictedItem = async (itemId: string) => {
@@ -82,7 +98,10 @@ const permanentDeleteRestrictedItem = async (itemId: string) => {
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
   }
-  return result;
+  return {
+    message: 'Item permanently deleted successfully',
+    data: result,
+  };
 };
 
 export const RestrictedItemService = {

@@ -26,7 +26,10 @@ const getMyProfile = async (currentUser: TCurrentUser) => {
       `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`,
     );
   }
-  return currentUser;
+  return {
+    message: 'My Profile Retrieve Successfully',
+    data: currentUser,
+  };
 };
 
 // send otp service
@@ -122,6 +125,7 @@ const sendOtp = async (
     return {
       message:
         'OTP sent to your mobile number. Please verify within 5 minutes to update.',
+      data: null,
     };
   }
 
@@ -172,6 +176,7 @@ const sendOtp = async (
     return {
       message:
         'OTP sent to your email. Please verify within 5 minutes to update.',
+      data: null,
     };
   }
 };
@@ -239,7 +244,7 @@ const updateEmailOrContactNumber = async (
       await RedisService.del(redisEmailKey);
       await RedisService.del(`${globalEmailLockKey}:${pendingEmail}`);
 
-      return { message: 'Email updated successfully.' };
+      return { message: 'Email updated successfully.', data: null };
     }
 
     if (type === 'mobile') {
@@ -284,7 +289,7 @@ const updateEmailOrContactNumber = async (
 
       await RedisService.del(redisMobileKey);
 
-      return { message: 'Contact number updated successfully.' };
+      return { message: 'Contact number updated successfully.', data: null };
     }
   } catch (error) {
     await session.abortTransaction();

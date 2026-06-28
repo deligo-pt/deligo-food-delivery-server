@@ -64,7 +64,10 @@ const createZone = async (payload: TZone) => {
 
   // Create and Save the New Zone
   const newZone = await Zone.create(payload);
-  return newZone;
+  return {
+    message: 'Zone created successfully',
+    data: newZone,
+  };
 };
 
 // Get Zone by Coordinates
@@ -86,7 +89,10 @@ const getZoneByCoordinates = async (lng: number, lat: number) => {
   if (!zone) {
     throw new AppError(httpStatus.NOT_FOUND, 'Zone not found.');
   }
-  return zone;
+  return {
+    message: 'Zone found successfully',
+    data: zone,
+  };
 };
 
 // get all zones
@@ -101,6 +107,7 @@ const getAllZones = async (query: Record<string, unknown>) => {
   const meta = await zones.countTotal();
   const zoneData = await zones.modelQuery;
   return {
+    message: 'Zones retrieved successfully',
     meta,
     data: zoneData,
   };
@@ -109,7 +116,10 @@ const getAllZones = async (query: Record<string, unknown>) => {
 // get single
 const getSingleZone = async (id: string) => {
   const zone = await Zone.findOne({ zoneId: id });
-  return zone;
+  return {
+    message: 'Zone retrieved successfully',
+    data: zone,
+  };
 };
 
 // update zone by id
@@ -145,7 +155,10 @@ const updateZone = async (zoneId: string, payload: Partial<TZone>) => {
     );
   }
 
-  return updatedZone;
+  return {
+    message: 'Zone updated successfully',
+    data: updatedZone,
+  };
 };
 
 // toggle zone operational status
@@ -173,6 +186,7 @@ const toggleZoneStatus = async (zoneId: string, isOperational: boolean) => {
     message: `Zone with ID '${zoneId}' has been ${
       isOperational ? 'activated' : 'deactivated'
     }.`,
+    data: null,
   };
 };
 // soft delete zone by id (set isOperational to false)
@@ -194,6 +208,7 @@ const softDeleteZone = async (zoneId: string) => {
   await zone.save();
   return {
     message: `Zone with ID '${zoneId}' has been deleted.`,
+    data: null,
   };
 };
 
@@ -215,6 +230,7 @@ const permanentDeleteZone = async (zoneId: string) => {
   await Zone.deleteOne({ zoneId });
   return {
     message: `Zone with ID '${zoneId}' has been permanently deleted.`,
+    data: null,
   };
 };
 

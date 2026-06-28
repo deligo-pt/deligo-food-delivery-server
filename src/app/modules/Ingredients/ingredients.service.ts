@@ -60,7 +60,10 @@ const createIngredient = async (
   // 5. Database Insertion
   const newIngredient = await Ingredient.create(payload);
 
-  return newIngredient;
+  return {
+    message: 'Ingredient created successfully',
+    data: newIngredient,
+  };
 };
 
 const updateIngredient = async (
@@ -112,7 +115,10 @@ const updateIngredient = async (
     { new: true, runValidators: true },
   );
 
-  return updatedIngredient;
+  return {
+    message: 'Ingredient updated successfully',
+    data: updatedIngredient,
+  };
 };
 
 const getIngredientDetails = async (sku: string) => {
@@ -120,7 +126,10 @@ const getIngredientDetails = async (sku: string) => {
   if (!result || result.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
   }
-  return result;
+  return {
+    message: 'Ingredient details retrieved successfully',
+    data: result,
+  };
 };
 
 const getAllIngredients = async (query: Record<string, unknown>) => {
@@ -138,6 +147,7 @@ const getAllIngredients = async (query: Record<string, unknown>) => {
   const meta = await ingredientQuery.countTotal();
 
   return {
+    message: 'Ingredients retrieved successfully',
     meta,
     data: result,
   };
@@ -164,7 +174,10 @@ const softDeleteIngredient = async (ingredientId: string) => {
     { new: true },
   );
 
-  return null;
+  return {
+    message: 'Ingredient soft deleted successfully',
+    data: null,
+  };
 };
 
 const permanentDeleteIngredient = async (ingredientId: string) => {
@@ -194,7 +207,10 @@ const permanentDeleteIngredient = async (ingredientId: string) => {
   // 2. Completely remove the record from MongoDB
   const result = await Ingredient.findByIdAndDelete(ingredientId);
 
-  return result;
+  return {
+    message: 'Ingredient permanently removed from database',
+    data: result,
+  };
 };
 
 export const IngredientsServices = {

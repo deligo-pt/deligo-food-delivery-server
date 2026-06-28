@@ -15,8 +15,8 @@ const addToCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product added to cart successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -32,8 +32,8 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Item activated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -47,8 +47,8 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product quantity updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -62,8 +62,8 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product addon quantity updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -79,8 +79,8 @@ const deleteCartItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart updated: Item(s) removed successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -90,8 +90,8 @@ const clearCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart cleared successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -104,7 +104,7 @@ const getAllCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -121,8 +121,8 @@ const viewCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

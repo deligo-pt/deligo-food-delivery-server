@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import generateUserId, { USER_TYPE_MAP } from '../../utils/generateUserId';
+import generateUserId from '../../utils/generateUserId';
 import generateOtp from '../../utils/generateOtp';
 import { Model } from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import {
   ROLE_ONBOARD_PERMISSIONS,
   TApprovedRejectsPayload,
-  USER_MODEL_MAP,
 } from './auth.constant';
 import {
   ROLE_COLLECTION_MAP,
@@ -20,7 +19,7 @@ import {
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
 import { TLoginCustomer, TLoginUser, TRegisterUser } from './auth.interface';
-import { findUserByEmail, findUserById } from '../../utils/findUserByEmailOrId';
+import { findUserById } from '../../utils/findUserByEmailOrId';
 import { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../../config';
@@ -28,7 +27,6 @@ import { Customer } from '../Customer/customer.model';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { verifyMobileOtp } from '../../utils/verifyMobileOtp';
 import { resendMobileOtp } from '../../utils/resendMobileOtp';
-import { Admin } from '../Admin/admin.model';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
@@ -40,7 +38,6 @@ import {
 import { AuthUser } from '../AuthUser/authUser.model';
 
 // Register User [Vendor, Fleet Manager, Admin]
-
 const registerUser = async (payload: TRegisterUser) => {
   const { email, role, password } = payload;
   const currentRegisteringRole = role as TUserRole;
@@ -1384,6 +1381,7 @@ const refreshToken = async (token: string) => {
   );
 
   return {
+    message: 'Access token retrieved successfully!',
     accessToken,
   };
 };

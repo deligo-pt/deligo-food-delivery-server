@@ -253,7 +253,7 @@ const addToCart = async (
 
   await RedisService.set(expiryKey, '', 86400);
 
-  return cart;
+  return { message: 'Product added to cart successfully', data: cart };
 };
 
 // toggle cart item status service
@@ -367,7 +367,10 @@ const toggleCartItemStatus = async (
 
   await RedisService.set(expiryKey, '', 86400);
 
-  return cart;
+  return {
+    message: `Product ${willBeActive ? 'activated' : 'deactivated'} successfully`,
+    data: cart,
+  };
 };
 
 // update cart item quantity
@@ -545,7 +548,10 @@ const updateCartItemQuantity = async (
 
   await RedisService.set(expiryKey, '', 86400);
 
-  return cart;
+  return {
+    message: 'Product quantity updated successfully',
+    data: cart,
+  };
 };
 
 // update add on quantity Service
@@ -759,7 +765,10 @@ const updateAddonQuantity = async (
 
   await RedisService.set(expiryKey, '', 86400);
 
-  return cart;
+  return {
+    message: 'Product addon quantity updated successfully',
+    data: cart,
+  };
 };
 
 // delete cart item
@@ -821,17 +830,20 @@ const deleteCartItem = async (
     await Cart.deleteOne({ customerId });
 
     return {
-      customerId,
-      items: [],
-      totalItems: 0,
-      cartCalculation: {
-        totalOriginalPrice: 0,
-        totalProductDiscount: 0,
-        taxableAmount: 0,
-        totalTaxAmount: 0,
-        grandTotal: 0,
+      message: 'Cart updated: Item(s) removed successfully',
+      data: {
+        customerId,
+        items: [],
+        totalItems: 0,
+        cartCalculation: {
+          totalOriginalPrice: 0,
+          totalProductDiscount: 0,
+          taxableAmount: 0,
+          totalTaxAmount: 0,
+          grandTotal: 0,
+        },
+        isDeleted: false,
       },
-      isDeleted: false,
     };
   }
 
@@ -842,7 +854,10 @@ const deleteCartItem = async (
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
 
-  return cart;
+  return {
+    message: 'Cart updated: Item(s) removed successfully',
+    data: cart,
+  };
 };
 
 // clear cart Service
@@ -874,19 +889,23 @@ const clearCart = async (currentUser: TCurrentUser) => {
   await Cart.deleteOne({ customerId });
 
   return {
-    customerId,
-    items: [],
-    totalItems: 0,
-    cartCalculation: {
-      totalOriginalPrice: 0,
-      totalProductDiscount: 0,
-      taxableAmount: 0,
-      totalTaxAmount: 0,
-      grandTotal: 0,
+    message: 'Cart cleared successfully',
+    data: {
+      customerId,
+      items: [],
+      totalItems: 0,
+      cartCalculation: {
+        totalOriginalPrice: 0,
+        totalProductDiscount: 0,
+        taxableAmount: 0,
+        totalTaxAmount: 0,
+        grandTotal: 0,
+      },
+      isDeleted: false,
     },
-    isDeleted: false,
   };
 };
+
 // get all cart service
 const getAllCart = async (
   currentUser: TCurrentUser,
@@ -941,7 +960,7 @@ const getAllCart = async (
     }),
   );
 
-  return { meta, data: combinedData };
+  return { message: 'Carts fetched successfully', meta, data: combinedData };
 };
 
 // view cart Service
@@ -988,17 +1007,20 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
   if (!cart && currentUser.role === 'CUSTOMER') {
     return {
-      customerId: targetCustomerId,
-      items: [],
-      totalItems: 0,
-      cartCalculation: {
-        totalOriginalPrice: 0,
-        totalProductDiscount: 0,
-        taxableAmount: 0,
-        totalTaxAmount: 0,
-        grandTotal: 0,
+      message: 'Cart fetched successfully',
+      data: {
+        customerId: targetCustomerId,
+        items: [],
+        totalItems: 0,
+        cartCalculation: {
+          totalOriginalPrice: 0,
+          totalProductDiscount: 0,
+          taxableAmount: 0,
+          totalTaxAmount: 0,
+          grandTotal: 0,
+        },
+        isDeleted: false,
       },
-      isDeleted: false,
     };
   }
 
@@ -1006,7 +1028,10 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
-  return cart;
+  return {
+    message: 'Cart fetched successfully',
+    data: cart,
+  };
 };
 
 export const CartServices = {

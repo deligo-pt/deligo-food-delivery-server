@@ -78,7 +78,10 @@ const createAddonGroup = async (
     'taxName taxCode taxRate',
   );
 
-  return result;
+  return {
+    message: 'Addon group created successfully',
+    data: result,
+  };
 };
 
 // update addon group service
@@ -180,7 +183,10 @@ const updateAddonGroup = async (
     );
   }
 
-  return result;
+  return {
+    message: 'Addon group updated successfully',
+    data: result,
+  };
 };
 
 // add option to addon group service
@@ -258,7 +264,10 @@ const addOptionToAddonGroup = async (
     { new: true, runValidators: true },
   ).populate('options.tax', 'taxName taxCode taxRate');
 
-  return result;
+  return {
+    message: 'Option added to addon group successfully',
+    data: result,
+  };
 };
 
 // toggle option status (active/inactive)
@@ -307,7 +316,10 @@ const toggleOptionStatus = async (
     },
   ).populate('options.tax', 'taxName taxCode taxRate');
 
-  return result;
+  return {
+    message: `Option status updated to ${newStatus ? 'active' : 'inactive'}`,
+    data: result,
+  };
 };
 
 // delete option from addon group service
@@ -343,7 +355,10 @@ const deleteOptionFromAddonGroup = async (
     );
   }
 
-  return result;
+  return {
+    message: 'Option deleted from addon group successfully',
+    data: result,
+  };
 };
 
 // get all addon groups service
@@ -373,6 +388,7 @@ const getAllAddonGroups = async (
   ]);
 
   return {
+    message: 'Addon groups fetched successfully',
     meta,
     data,
   };
@@ -394,7 +410,10 @@ const getSingleAddonGroup = async (id: string, currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Addon group not found');
   }
 
-  return result;
+  return {
+    message: 'Addon group fetched successfully',
+    data: result,
+  };
 };
 
 // soft delete addon group

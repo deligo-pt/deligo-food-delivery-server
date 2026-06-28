@@ -8,8 +8,8 @@ const createRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Item added to restricted list successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -21,8 +21,8 @@ const updateRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Item updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -31,7 +31,7 @@ const getAllRestrictedItems = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Items retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -44,8 +44,8 @@ const getSingleRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Item retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -56,8 +56,8 @@ const softDeleteRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Item deleted successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -68,8 +68,8 @@ const permanentDeleteRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Item permanently deleted successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

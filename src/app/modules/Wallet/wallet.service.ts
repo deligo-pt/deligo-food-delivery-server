@@ -33,6 +33,7 @@ const getAllWallets = async (
   const data = await wallets.modelQuery;
   const meta = await wallets.countTotal();
   return {
+    message: 'Wallets retrieved successfully',
     meta,
     data,
   };
@@ -63,7 +64,10 @@ const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
     }
   }
 
-  return wallet;
+  return {
+    message: 'Wallet retrieved successfully',
+    data: wallet,
+  };
 };
 
 // get my wallet
@@ -86,7 +90,10 @@ const getMyWallet = async (currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Wallet not found for this user');
   }
 
-  return wallet;
+  return {
+    message: 'Wallet retrieved successfully',
+    data: wallet,
+  };
 };
 
 export const WalletServices = {

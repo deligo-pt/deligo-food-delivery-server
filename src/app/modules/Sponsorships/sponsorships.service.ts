@@ -43,7 +43,10 @@ const createSponsorship = async (
     bannerImage,
   };
   const result = await Sponsorship.create(sponsorshipData);
-  return result;
+  return {
+    message: 'Sponsorship created successfully',
+    data: result,
+  };
 };
 
 // Update sponsorship by id
@@ -87,7 +90,10 @@ const updateSponsorship = async (
     runValidators: true,
   });
 
-  return result;
+  return {
+    message: 'Sponsorship updated successfully',
+    data: result,
+  };
 };
 
 // get all sponsorships
@@ -118,7 +124,11 @@ const getAllSponsorships = async (
     sponsorships.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    message: 'Sponsorships retrieved successfully',
+    meta,
+    data,
+  };
 };
 const getAllSponsorshipsPublic = async (query: Record<string, unknown>) => {
   query.isDeleted = false;
@@ -136,7 +146,11 @@ const getAllSponsorshipsPublic = async (query: Record<string, unknown>) => {
     sponsorships.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    message: 'Sponsorships retrieved successfully',
+    meta,
+    data,
+  };
 };
 
 // get single sponsorship
@@ -160,7 +174,10 @@ const getSingleSponsorship = async (currentUser: TCurrentUser, id: string) => {
       );
     }
   }
-  return sponsorship;
+  return {
+    message: 'Sponsorship retrieved successfully',
+    data: sponsorship,
+  };
 };
 
 // soft deleted sponsorship
@@ -192,7 +209,10 @@ const softDeletedSponsorship = async (
     },
   );
 
-  return { message: 'Sponsorship deleted successfully' };
+  return {
+    message: 'Sponsorship deleted successfully',
+    data: null,
+  };
 };
 
 // permanent delete sponsorship
@@ -216,6 +236,7 @@ const permanentDeleteSponsorship = async (
   await Sponsorship.findByIdAndDelete(id);
   return {
     message: 'Sponsorship deleted permanently',
+    data: null,
   };
 };
 

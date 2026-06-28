@@ -22,8 +22,8 @@ const vendorUpdate = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 //  vendor doc image upload controller
@@ -83,7 +83,7 @@ const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -97,7 +97,7 @@ const getAllVendors = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendors Retrieved Successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -113,8 +113,8 @@ const getSingleVendor = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor Retrieved Successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -128,7 +128,7 @@ const getAllVendorsForCustomer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendors Retrieved Successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -143,8 +143,8 @@ const getSingleVendorForCustomer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor Retrieved Successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -154,7 +154,7 @@ const getAllVendorsForCustomerPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendors Retrieved Successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });

@@ -353,7 +353,11 @@ const checkout = async (
     isConvertedToOrder: false,
   });
 
-  return await CheckoutSummary.create(finalSummaryData);
+  const summary = await CheckoutSummary.create(finalSummaryData);
+  return {
+    message: 'Checkout successfully',
+    data: summary,
+  };
 };
 
 // get checkout summary
@@ -387,7 +391,10 @@ const getCheckoutSummary = async (
     );
   }
 
-  return summary;
+  return {
+    message: 'Checkout summary retrieved successfully',
+    data: summary,
+  };
 };
 
 export const CheckoutServices = {

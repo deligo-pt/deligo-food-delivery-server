@@ -13,8 +13,8 @@ const createRating = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Rating created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -27,9 +27,9 @@ const getAllRatings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Ratings fetched successfully',
-    meta: result.meta,
-    data: result.data,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -41,8 +41,8 @@ const getSingleRating = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Rating fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -53,8 +53,8 @@ const getRatingSummary = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Ratings fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

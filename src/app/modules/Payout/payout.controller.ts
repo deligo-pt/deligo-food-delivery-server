@@ -15,8 +15,8 @@ const initiateSettlement = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Settlement initiated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -46,9 +46,9 @@ const getAllPayouts = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Payouts fetched successfully',
+    message: result?.message,
     meta: result?.meta,
-    data: result?.result,
+    data: result?.data,
   });
 });
 
@@ -61,8 +61,8 @@ const getSinglePayout = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Payout fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

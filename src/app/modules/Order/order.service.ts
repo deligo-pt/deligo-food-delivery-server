@@ -168,7 +168,10 @@ const createOrderAfterRedUniqPayment = async (
       grandTotal: order.payoutSummary.grandTotal,
     });
 
-    return order;
+    return {
+      message: 'Order created successfully',
+      data: order,
+    };
   } catch (err) {
     await session.abortTransaction();
     throw err;
@@ -512,7 +515,10 @@ const updateOrderStatusByVendor = async (
 
     await session.commitTransaction();
     session.endSession();
-    return order;
+    return {
+      message: `Order ${action.type.toLowerCase()} successfully`,
+      data: order,
+    };
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -1055,7 +1061,11 @@ const getAllOrders = async (
   const meta = await builder.countTotal();
   const data = await builder.modelQuery;
 
-  return { meta, data };
+  return {
+    message: 'Orders retrieved successfully',
+    meta,
+    data,
+  };
 };
 
 // get single order for customer service
@@ -1122,7 +1132,10 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
   }
 
-  return order;
+  return {
+    message: 'Order retrieved successfully',
+    data: order,
+  };
 };
 
 // get delivery partners dispatch order service
@@ -1138,7 +1151,10 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
       'No dispatch orders found for this partner',
     );
   }
-  return orders;
+  return {
+    message: 'Delivery partner dispatch order fetched successfully',
+    data: orders,
+  };
 };
 
 // get delivery partner current order service
@@ -1166,7 +1182,10 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
   }
-  return order;
+  return {
+    message: 'Delivery partner current order fetched successfully',
+    data: order,
+  };
 };
 
 export const OrderServices = {

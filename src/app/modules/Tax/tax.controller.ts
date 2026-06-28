@@ -2,6 +2,8 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { TaxService } from './tax.service';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatTaxResponse } from './tax.utils';
 
 // create tax controller
 const createTax = catchAsync(async (req, res) => {
@@ -9,8 +11,8 @@ const createTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Tax created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -21,31 +23,52 @@ const updateTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Tax updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
 // get all taxes controller
 const getAllTaxes = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await TaxService.getAllTaxes(req.query);
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser?.role);
+  if (isAdmin) {
+    formattedData = result.data;
+  } else {
+    formattedData = formatTaxResponse(result.data, req.lang);
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Taxes retrieved successfully',
-    data: result,
+    message: result?.message,
+    meta: result?.meta,
+    data: formattedData,
   });
 });
 
 // get single tax controller
 const getSingleTax = catchAsync(async (req, res) => {
   const { taxId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await TaxService.getSingleTax(taxId);
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser?.role);
+  if (isAdmin) {
+    formattedData = result.data;
+  } else {
+    formattedData = formatTaxResponse(result.data, req.lang);
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Tax retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: formattedData,
   });
 });
 
@@ -57,7 +80,7 @@ const softDeleteTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -69,7 +92,7 @@ const permanentDeleteTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 

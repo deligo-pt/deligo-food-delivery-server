@@ -14,8 +14,8 @@ const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Order created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -29,7 +29,7 @@ const getAllOrders = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Orders retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -45,8 +45,8 @@ const getSingleOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Order retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -61,8 +61,8 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: `Order ${req.body.type.toLowerCase()} successfully`,
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -136,8 +136,8 @@ const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery partner dispatch order fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -149,8 +149,8 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery partner current order fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

@@ -64,7 +64,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
       // Call Service (Updated to your latest service logic)
       const savedMessage = await SupportService.createMessage(payload, user);
 
-      const ticketId = savedMessage.ticketId;
+      const ticketId = savedMessage?.data?.ticketId;
 
       // Ensure the sender is in the ticket room
       socket.join(ticketId);

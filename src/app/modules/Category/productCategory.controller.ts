@@ -16,8 +16,8 @@ const createProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Product category created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -32,8 +32,8 @@ const updateProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product category updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -56,7 +56,7 @@ const getAllProductCategories = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product categories fetched successfully',
+    message: result?.message,
     meta: result?.meta,
     data: formattedData,
   });
@@ -72,7 +72,7 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product categories fetched successfully',
+    message: result?.message,
     meta: result?.meta,
     data: formattedData,
   });
@@ -90,14 +90,14 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
   let formattedData;
 
   if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-    formattedData = result;
+    formattedData = result?.data;
   } else {
-    formattedData = formatProductCategoryResponse(result, req.lang);
+    formattedData = formatProductCategoryResponse(result?.data, req.lang);
   }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product category fetched successfully',
+    message: result?.message,
     data: formattedData,
   });
 });
@@ -108,11 +108,11 @@ const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
     req.params.id,
   );
 
-  const formattedData = formatProductCategoryResponse(result, req.lang);
+  const formattedData = formatProductCategoryResponse(result?.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product category fetched successfully',
+    message: result?.message,
     data: formattedData,
   });
 });

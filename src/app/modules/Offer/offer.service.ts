@@ -15,6 +15,8 @@ import {
   rebuildCheckoutSummary,
 } from './offer.utils';
 import { Order } from '../Order/order.model';
+import { flattenObject } from '../../utils/flattenObject';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
@@ -148,7 +150,10 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
     isDeleted: false,
   });
 
-  return offer;
+  return {
+    message: 'Offer created successfully',
+    data: offer,
+  };
 };
 
 // update offer service
@@ -302,19 +307,24 @@ const updateOffer = async (
     );
   }
 
+  const flattenedPayload = flattenObject(payload);
+
   // --------------------------------------------------
   // Update offer
   // --------------------------------------------------
   const updatedOffer = await Offer.findByIdAndUpdate(
     id,
-    { $set: payload },
+    { $set: flattenedPayload },
     {
       new: true,
-      runValidators: true,
+      runValidators: false,
     },
   );
 
-  return updatedOffer;
+  return {
+    message: 'Offer updated successfully',
+    data: updatedOffer,
+  };
 };
 
 // toggle offer status service
@@ -366,6 +376,7 @@ const validateAndApplyOffer = async (
   checkoutId: string,
   offerIdentifier: string,
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData)
@@ -391,13 +402,18 @@ const validateAndApplyOffer = async (
   );
 
   if (!offer) {
-    const resetPayload = await calculateOfferRemoval(checkoutData);
+    const resetPayload = await calculateOfferRemoval(checkoutData, lang);
 
-    return await CheckoutSummary.findByIdAndUpdate(
+    const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
       checkoutId,
       { $set: resetPayload },
       { new: true },
     ).lean();
+
+    return {
+      message: 'Offer removed/invalid',
+      data: updatedCheckout,
+    };
   }
 
   const discountData = calculateOfferDiscount(offer, checkoutData);
@@ -406,13 +422,19 @@ const validateAndApplyOffer = async (
     checkoutData,
     offer,
     discountData,
+    lang,
   );
 
-  return await CheckoutSummary.findByIdAndUpdate(
+  const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
     checkoutId,
     { $set: updatePayload },
     { new: true, runValidators: true },
   ).lean();
+
+  return {
+    message: 'Offer applied successfully',
+    data: updatedCheckout,
+  };
 };
 
 // get available offers for checkout service
@@ -494,7 +516,10 @@ const getAvailableOffersForCheckout = async (
     };
   });
 
-  return availableOffers;
+  return {
+    message: 'Available offers fetched successfully',
+    data: availableOffers,
+  };
 };
 
 // get all offers service
@@ -530,7 +555,7 @@ const getAllOffers = async (
     delete query.isExpired;
   }
   const offers = new QueryBuilder(Offer.find(), query)
-    .search(['title', 'code'])
+    .search(['title.en', 'title.pt', 'code'])
     .filter()
     .sort()
     .paginate()
@@ -538,6 +563,7 @@ const getAllOffers = async (
   const meta = await offers.countTotal();
   const data = await offers.modelQuery;
   return {
+    message: 'Offers fetched successfully',
     meta,
     data,
   };
@@ -575,7 +601,10 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
     );
   }
 
-  return offer;
+  return {
+    message: 'Offer fetched successfully',
+    data: offer,
+  };
 };
 
 // soft delete offer service

@@ -144,7 +144,10 @@ const initiateSettlement = async (
       );
     }
 
-    return payout;
+    return {
+      message: 'Settlement initiated successfully',
+      data: payout,
+    };
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -362,8 +365,9 @@ const getAllPayouts = async (
   });
 
   return {
+    message: 'Payouts fetched successfully',
     meta,
-    result,
+    data: result,
   };
 };
 
@@ -420,9 +424,12 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    ...payout.toObject(),
-    payoutCategory,
-    userId: updatedUser,
+    message: 'Payout fetched successfully',
+    data: {
+      ...payout.toObject(),
+      payoutCategory,
+      userId: updatedUser,
+    },
   };
 };
 

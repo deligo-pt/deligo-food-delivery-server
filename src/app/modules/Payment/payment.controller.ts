@@ -8,7 +8,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 const createRedUniqPayment = catchAsync(async (req, res) => {
   const { checkoutSummaryId, paymentMethod } = req.body;
 
-  const session = await PaymentServices.createRedUniqPayment(
+  const result = await PaymentServices.createRedUniqPayment(
     checkoutSummaryId,
     paymentMethod,
   );
@@ -16,8 +16,8 @@ const createRedUniqPayment = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'RedUniq payment session created',
-    data: session,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -31,7 +31,7 @@ const handlePaymentFailure = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -40,7 +40,7 @@ const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
   const payload = req.body;
   const currentUser = req.user as TCurrentUser;
 
-  const session = await PaymentServices.createIngredientRedUniqPayment(
+  const result = await PaymentServices.createIngredientRedUniqPayment(
     payload,
     currentUser,
   );
@@ -48,8 +48,8 @@ const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Ingredient redUniq payment session created',
-    data: session,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

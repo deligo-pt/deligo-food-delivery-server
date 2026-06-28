@@ -54,8 +54,8 @@ const signAgreement = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Agreement signed successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

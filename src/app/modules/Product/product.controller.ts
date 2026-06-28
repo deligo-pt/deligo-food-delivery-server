@@ -14,8 +14,8 @@ const productCreate = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -31,8 +31,8 @@ const updateProduct = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -47,8 +47,8 @@ const renameProductVariation = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product variations renamed successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -63,8 +63,8 @@ const manageProductVariations = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product variations updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -79,8 +79,8 @@ const removeProductVariations = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product variations removed successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -99,8 +99,8 @@ const updateInventoryAndPricing = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Inventory and pricing updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -134,8 +134,8 @@ const deleteProductImages = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product images deleted successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -150,7 +150,7 @@ const getAllProducts = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Products retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -166,7 +166,7 @@ const getAllProductsPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Products retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });
@@ -183,8 +183,8 @@ const getSingleProduct = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 // get single product controller
@@ -197,8 +197,8 @@ const getSingleProductPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -213,7 +213,7 @@ const softDeleteProduct = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -228,7 +228,7 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -241,7 +241,7 @@ const getOutOfStockAlerts = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Products retrieved successfully',
+    message: result?.message,
     meta: result?.meta,
     data: result?.data,
   });

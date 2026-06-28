@@ -13,8 +13,8 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'My Profile Retrieve Successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -28,7 +28,7 @@ const sendOtp = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 
@@ -42,7 +42,7 @@ const updateEmailOrContactNumber = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
-    data: null,
+    data: result?.data,
   });
 });
 

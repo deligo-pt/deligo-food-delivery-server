@@ -4,6 +4,7 @@ import AppError from '../../errors/AppError';
 import { TTax } from './tax.interface';
 import { Tax } from './tax.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { flattenObject } from '../../utils/flattenObject';
 
 const checkExistingTax = async (
   taxCode: string,
@@ -37,28 +38,48 @@ const createTax = async (payload: TTax) => {
   const isDuplicate = await checkExistingTax(
     payload.taxCode,
     payload.taxRate,
-    payload.countryID,
+    payload.countryID || 'PRT',
   );
 
   if (isDuplicate) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `A tax with code '${payload.taxCode}' or rate '${payload.taxRate}%' already exists in ${payload.countryID}.`,
+      `A tax with code '${payload.taxCode}' or rate '${payload.taxRate}%' already exists in ${payload.countryID || 'PRT'}.`,
     );
   }
 
-  if (
-    payload.taxRate === 0 &&
-    (!payload.taxExemptionCode || !payload.taxExemptionReason)
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Tax rate 0 requires a valid Tax Exemption Code and Reason for Portugal compliance.',
-    );
+  if (payload.taxName && payload.taxName.en) {
+    const existingName = await Tax.findOne({
+      'taxName.en': { $regex: new RegExp(`^${payload.taxName.en}$`, 'i') },
+      isDeleted: false,
+    });
+
+    if (existingName) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'A tax configuration with this name already exists!',
+      );
+    }
+  }
+
+  if (payload.taxRate === 0) {
+    const reason = payload.taxExemptionReason;
+    const hasReasonText = reason && (reason.en?.trim() || reason.pt?.trim());
+
+    if (!payload.taxExemptionCode?.trim() || !hasReasonText) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Tax rate 0 requires a valid Tax Exemption Code and Localized Reason for Portugal compliance.',
+      );
+    }
   }
 
   const result = await Tax.create(payload);
-  return result;
+
+  return {
+    message: 'Tax created successfully',
+    data: result,
+  };
 };
 
 // Update Tax Service
@@ -91,33 +112,50 @@ const updateTax = async (taxId: string, payload: Partial<TTax>) => {
     const exemptionReason =
       payload.taxExemptionReason || isExist.taxExemptionReason;
 
-    if (!exemptionCode || !exemptionReason) {
+    const hasReasonText =
+      exemptionReason &&
+      (exemptionReason.en?.trim() || exemptionReason.pt?.trim());
+
+    if (!exemptionCode?.trim() || !hasReasonText) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Tax rate 0 requires a valid Tax Exemption Code and Reason.',
+        'Tax rate 0 requires a valid Tax Exemption Code and Localized Reason.',
       );
     }
   }
 
-  const result = await Tax.findByIdAndUpdate(taxId, payload, {
-    new: true,
-    runValidators: true,
-  });
+  const flattenedPayload = flattenObject(payload);
 
-  return result;
+  const result = await Tax.findByIdAndUpdate(
+    taxId,
+    { $set: flattenedPayload },
+    {
+      new: true,
+      runValidators: false,
+    },
+  );
+
+  return {
+    message: 'Tax updated successfully',
+    data: result,
+  };
 };
 
 // Get all taxes service
 const getAllTaxes = async (query: Record<string, unknown>) => {
   const taxes = new QueryBuilder(Tax.find(), query)
-    .search(['taxName'])
+    .search(['taxName.en', 'taxName.pt'])
     .filter()
     .sort()
     .paginate()
     .fields();
   const meta = await taxes.countTotal();
   const data = await taxes.modelQuery;
-  return { meta, data };
+  return {
+    message: 'Taxes retrieved successfully',
+    meta,
+    data,
+  };
 };
 
 // Get single tax service
@@ -129,7 +167,10 @@ const getSingleTax = async (taxId: string) => {
       `Tax record with ID '${taxId}' not found!`,
     );
   }
-  return result;
+  return {
+    message: 'Tax retrieved successfully',
+    data: result,
+  };
 };
 
 // soft delete  tax service
@@ -153,6 +194,7 @@ const softDeleteTax = async (taxId: string) => {
 
   return {
     message: 'Tax soft deleted successfully',
+    data: null,
   };
 };
 
@@ -177,6 +219,7 @@ const permanentDeleteTax = async (taxId: string) => {
 
   return {
     message: 'Tax permanently deleted successfully',
+    data: null,
   };
 };
 

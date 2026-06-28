@@ -10,6 +10,7 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { Offer } from './offer.model';
 import mongoose from 'mongoose';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 /**
  * Validates the offer by checking status, expiration, vendor mapping,
@@ -196,6 +197,7 @@ export const rebuildCheckoutSummary = async (
   checkoutData: any,
   offer: any,
   discountData: any,
+  lang: TLanguageCode = 'en',
 ) => {
   const { totalOfferDiscount, finalDeliveryChargeNet, bogoSnapshot } =
     discountData;
@@ -364,6 +366,11 @@ export const rebuildCheckoutSummary = async (
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
 
+  const flattenedTitle =
+    typeof offer.title === 'object'
+      ? offer.title?.[lang] || offer.title?.['en'] || ''
+      : offer.title || '';
+
   // 20. Return the complete updated checkout object structure
   return {
     items: updatedItems,
@@ -411,7 +418,7 @@ export const rebuildCheckoutSummary = async (
       isApplied: true,
       offerApplied: {
         promoId: offer._id,
-        title: offer.title,
+        title: flattenedTitle,
         code: offer.code,
         offerType: offer.offerType,
         discountValue: offer.discountValue,
@@ -426,7 +433,10 @@ export const rebuildCheckoutSummary = async (
  * Utility to reset checkout state to its original values by removing any applied offers.
  * This ensures unit prices, taxes, and payouts are recalculated without discounts.
  */
-export const calculateOfferRemoval = async (checkoutData: any) => {
+export const calculateOfferRemoval = async (
+  checkoutData: any,
+  lang: TLanguageCode = 'en',
+) => {
   const cleanItems = checkoutData.items.map((item: any) => ({
     ...item,
     productPricing: {
@@ -461,6 +471,7 @@ export const calculateOfferRemoval = async (checkoutData: any) => {
     cleanCheckoutData,
     dummyOffer,
     zeroDiscountData,
+    lang,
   );
 
   const { offer: _, ...otherUpdates } = updatePayload;
@@ -472,4 +483,26 @@ export const calculateOfferRemoval = async (checkoutData: any) => {
       offerApplied: null,
     },
   };
+};
+
+export const formatOfferResponse = (
+  offerData: any,
+  lang: TLanguageCode = 'en',
+) => {
+  const formatSingleOffer = (item: any) => {
+    const itemObj = item.toObject?.() || item;
+
+    return {
+      ...itemObj,
+      title: itemObj.title?.[lang] || itemObj.title?.['en'] || '',
+      description:
+        itemObj.description?.[lang] || itemObj.description?.['en'] || '',
+    };
+  };
+
+  if (Array.isArray(offerData)) {
+    return offerData.map((item) => formatSingleOffer(item));
+  }
+
+  return formatSingleOffer(offerData);
 };

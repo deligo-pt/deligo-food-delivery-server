@@ -13,8 +13,8 @@ const createGlobalSettings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Global settings created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -27,8 +27,8 @@ const updateGlobalSettings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Global settings updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -40,8 +40,8 @@ const getGlobalSettingsForAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Global settings fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 

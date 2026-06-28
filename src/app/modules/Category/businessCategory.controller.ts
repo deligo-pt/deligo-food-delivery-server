@@ -4,7 +4,6 @@ import sendResponse from '../../utils/sendResponse';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { BusinessCategoryService } from './businessCategory.service';
-import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { formatBusinessCategoryResponse } from './category.utils';
 
 // Create Business Category Controllers
@@ -17,8 +16,8 @@ const createBusinessCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Business category created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -33,8 +32,8 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business category updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -58,7 +57,7 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business categories fetched successfully',
+    message: result?.message,
     meta: result?.meta,
     data: formattedData,
   });
@@ -74,7 +73,7 @@ const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business categories fetched successfully',
+    message: result?.message,
     meta: result?.meta,
     data: formattedData,
   });
@@ -90,14 +89,14 @@ const getSingleBusinessCategory = catchAsync(async (req, res) => {
   let formattedData;
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user?.role);
   if (isAdmin) {
-    formattedData = result;
+    formattedData = result?.data;
   } else {
-    formattedData = formatBusinessCategoryResponse(result, req.lang);
+    formattedData = formatBusinessCategoryResponse(result?.data, req.lang);
   }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business category fetched successfully',
+    message: result?.message,
     data: formattedData,
   });
 });
@@ -107,11 +106,11 @@ const getSingleBusinessCategoryPublic = catchAsync(async (req, res) => {
   const result = await BusinessCategoryService.getSingleBusinessCategoryPublic(
     req.params.id,
   );
-  const formattedData = formatBusinessCategoryResponse(result, req.lang);
+  const formattedData = formatBusinessCategoryResponse(result?.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business category fetched successfully',
+    message: result?.message,
     data: formattedData,
   });
 });

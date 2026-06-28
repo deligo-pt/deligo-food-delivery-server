@@ -9,7 +9,6 @@ import { CustomerSearchableFields } from './customer.constant';
 import { TDeliveryAddress } from '../../constant/GlobalInterface/address.interface';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { generateReferralCode } from '../../utils/generateReferralCode';
-import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { flattenObject } from '../../utils/flattenObject';
 import { AuthUser } from '../AuthUser/authUser.model';
 
@@ -88,7 +87,10 @@ const updateCustomer = async (
     'name address deliveryAddresses NIF userId profilePhoto currentSessionLocation',
   );
 
-  return updated;
+  return {
+    message: 'Customer updated successfully',
+    data: updated,
+  };
 };
 
 // --------------------------------------------------------------
@@ -363,7 +365,7 @@ const addDeliveryAddress = async (
   );
   return {
     message: 'Delivery address added successfully',
-    activeAddress: newDeliveryAddress,
+    data: newDeliveryAddress,
   };
 };
 
@@ -478,7 +480,7 @@ const updateDeliveryAddress = async (
 
   return {
     message: 'Delivery address updated successfully',
-    updatedAddress: updatedCustomer?.deliveryAddresses?.find(
+    data: updatedCustomer?.deliveryAddresses?.find(
       (addr: any) => addr._id?.toString() === addressId,
     ),
   };
@@ -545,7 +547,7 @@ const toggleDeliveryAddressStatus = async (
   return {
     success: true,
     message: 'Delivery address changed successfully',
-    activeAddress: selectedActiveAddress,
+    data: selectedActiveAddress,
   };
 };
 
@@ -601,7 +603,10 @@ const deleteDeliveryAddress = async (
     { runValidators: true },
   );
 
-  return null;
+  return {
+    message: 'Delivery address deleted successfully',
+    data: null,
+  };
 };
 //get all customers
 const getAllCustomersFromDB = async (
@@ -637,6 +642,7 @@ const getAllCustomersFromDB = async (
   const data = await customers.modelQuery;
 
   return {
+    message: 'Customers Retrieved Successfully',
     meta,
     data,
   };
@@ -692,7 +698,10 @@ const getSingleCustomerFromDB = async (
     );
   }
 
-  return data;
+  return {
+    message: 'Customer Retrieved Successfully',
+    data,
+  };
 };
 
 export const CustomerServices = {

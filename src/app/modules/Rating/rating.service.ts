@@ -116,7 +116,10 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
       { session },
     );
     await session.commitTransaction();
-    return result;
+    return {
+      message: 'Rating created successfully',
+      data: result,
+    };
   } catch (err) {
     await session.abortTransaction();
     throw err;
@@ -173,7 +176,11 @@ const getAllRatings = async (
   const data = await ratingQuery.modelQuery;
   const meta = await ratingQuery.countTotal();
 
-  return { meta, data };
+  return {
+    message: 'Ratings fetched successfully',
+    meta,
+    data,
+  };
 };
 
 // get single rating
@@ -229,7 +236,10 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
     );
   }
 
-  return rating;
+  return {
+    message: 'Rating fetched successfully',
+    data: rating,
+  };
 };
 
 const getRatingSummary = async (currentUser: TCurrentUser) => {
@@ -481,19 +491,22 @@ const getRatingSummary = async (currentUser: TCurrentUser) => {
   ]);
 
   return {
-    summary: stats[0].overallStats[0] || {
-      totalRatings: 0,
-      avgRating: 0,
-      sentimentPercentages: { positive: 0, neutral: 0, negative: 0 },
-      starPercentages: { five: 0, four: 0, three: 0, two: 0, one: 0 },
-      categoryRatings: {
-        foodQuality: 0,
-        packaging: 0,
-        deliverySpeed: 0,
-        riderBehavior: 0,
+    message: 'Ratings fetched successfully',
+    data: {
+      summary: stats[0].overallStats[0] || {
+        totalRatings: 0,
+        avgRating: 0,
+        sentimentPercentages: { positive: 0, neutral: 0, negative: 0 },
+        starPercentages: { five: 0, four: 0, three: 0, two: 0, one: 0 },
+        categoryRatings: {
+          foodQuality: 0,
+          packaging: 0,
+          deliverySpeed: 0,
+          riderBehavior: 0,
+        },
       },
+      chart: stats[0].chartData || [],
     },
-    chart: stats[0].chartData || [],
   };
 };
 

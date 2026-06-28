@@ -242,36 +242,39 @@ const getReferralStats = async (currentUser: TCurrentUser) => {
   );
 
   return {
-    myReferralCode: (userData as any)?.referralCode || 'N/A',
-    summary: {
-      totalInvites: referrals.length,
-      successfulInvites,
-      pendingInvites,
-      totalEarned: userBalance?.totalEarned || 0,
-      currentWalletBalance: userBalance?.totalBalance || 0,
-      friendsRemainingForNextMilestone: nextMilestone
-        ? nextMilestone.friendsRequired - successfulInvites
-        : 0,
+    message: 'Referral statistics and history retrieved successfully.',
+    data: {
+      myReferralCode: (userData as any)?.referralCode || 'N/A',
+      summary: {
+        totalInvites: referrals.length,
+        successfulInvites,
+        pendingInvites,
+        totalEarned: userBalance?.totalEarned || 0,
+        currentWalletBalance: userBalance?.totalBalance || 0,
+        friendsRemainingForNextMilestone: nextMilestone
+          ? nextMilestone.friendsRequired - successfulInvites
+          : 0,
+      },
+      milestones: milestones.map((m: any) => ({
+        friendsRequired: m.friendsRequired,
+        rewardType: m.rewardType,
+        rewardValue: m.rewardValue,
+        isCompleted: successfulInvites >= m.friendsRequired,
+        isNext: nextMilestone
+          ? m.friendsRequired === nextMilestone.friendsRequired
+          : false,
+      })),
+      referralHistory: referrals.map((ref: any) => ({
+        id: ref._id,
+        friendName:
+          ref.referredId?.name?.firstName +
+            ' ' +
+            ref.referredId?.name?.lastName || 'DeliGo User',
+        friendPhoto: ref.referredId?.profilePhoto,
+        status: ref.status,
+        date: ref.createdAt,
+      })),
     },
-    milestones: milestones.map((m: any) => ({
-      friendsRequired: m.friendsRequired,
-      rewardType: m.rewardType,
-      rewardValue: m.rewardValue,
-      isCompleted: successfulInvites >= m.friendsRequired,
-      isNext: nextMilestone
-        ? m.friendsRequired === nextMilestone.friendsRequired
-        : false,
-    })),
-    referralHistory: referrals.map((ref: any) => ({
-      id: ref._id,
-      friendName:
-        ref.referredId?.name?.firstName +
-          ' ' +
-          ref.referredId?.name?.lastName || 'DeliGo User',
-      friendPhoto: ref.referredId?.profilePhoto,
-      status: ref.status,
-      date: ref.createdAt,
-    })),
   };
 };
 

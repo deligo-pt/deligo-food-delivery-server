@@ -95,7 +95,10 @@ const updateAdmin = async (
     );
   }
 
-  return updatedAdmin;
+  return {
+    message: 'Admin profile updated successfully',
+    data: updatedAdmin,
+  };
 };
 
 // admin doc image upload service
@@ -164,6 +167,7 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
   const data = await admins.modelQuery;
 
   return {
+    message: 'Admins fetched successfully',
     meta,
     data,
   };
@@ -190,7 +194,10 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
   }
 
-  return existingAdmin;
+  return {
+    message: 'Admin fetched successfully',
+    data: existingAdmin,
+  };
 };
 
 export const AdminServices = {
