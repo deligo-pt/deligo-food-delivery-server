@@ -15,8 +15,8 @@ const checkout = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Checkout successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -30,8 +30,8 @@ const getCheckoutSummary = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Checkout summary retrieved successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
