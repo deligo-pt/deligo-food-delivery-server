@@ -148,7 +148,10 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
     isDeleted: false,
   });
 
-  return offer;
+  return {
+    message: 'Offer created successfully',
+    data: offer,
+  };
 };
 
 // update offer service
@@ -314,7 +317,10 @@ const updateOffer = async (
     },
   );
 
-  return updatedOffer;
+  return {
+    message: 'Offer updated successfully',
+    data: updatedOffer,
+  };
 };
 
 // toggle offer status service
@@ -393,11 +399,16 @@ const validateAndApplyOffer = async (
   if (!offer) {
     const resetPayload = await calculateOfferRemoval(checkoutData);
 
-    return await CheckoutSummary.findByIdAndUpdate(
+    const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
       checkoutId,
       { $set: resetPayload },
       { new: true },
     ).lean();
+
+    return {
+      message: 'Offer removed/invalid',
+      data: updatedCheckout,
+    };
   }
 
   const discountData = calculateOfferDiscount(offer, checkoutData);
@@ -408,11 +419,16 @@ const validateAndApplyOffer = async (
     discountData,
   );
 
-  return await CheckoutSummary.findByIdAndUpdate(
+  const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
     checkoutId,
     { $set: updatePayload },
     { new: true, runValidators: true },
   ).lean();
+
+  return {
+    message: 'Offer applied successfully',
+    data: updatedCheckout,
+  };
 };
 
 // get available offers for checkout service
@@ -494,7 +510,10 @@ const getAvailableOffersForCheckout = async (
     };
   });
 
-  return availableOffers;
+  return {
+    message: 'Available offers fetched successfully',
+    data: availableOffers,
+  };
 };
 
 // get all offers service
@@ -538,6 +557,7 @@ const getAllOffers = async (
   const meta = await offers.countTotal();
   const data = await offers.modelQuery;
   return {
+    message: 'Offers fetched successfully',
     meta,
     data,
   };
@@ -575,7 +595,10 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
     );
   }
 
-  return offer;
+  return {
+    message: 'Offer fetched successfully',
+    data: offer,
+  };
 };
 
 // soft delete offer service

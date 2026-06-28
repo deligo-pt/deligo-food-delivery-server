@@ -13,8 +13,8 @@ const createOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Offer created successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -29,8 +29,8 @@ const updateOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offer updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -44,8 +44,8 @@ const toggleOfferStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offer status updated successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -60,10 +60,8 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.offer?.isApplied
-      ? 'Offer applied successfully'
-      : 'Offer removed/invalid',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -77,8 +75,8 @@ const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Available offers fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
@@ -91,9 +89,9 @@ const getAllOffers = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offers fetched successfully',
-    meta: result.meta,
-    data: result.data,
+    message: result?.message,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -107,8 +105,8 @@ const getSingleOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Offer fetched successfully',
-    data: result,
+    message: result?.message,
+    data: result?.data,
   });
 });
 
