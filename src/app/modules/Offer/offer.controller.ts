@@ -3,6 +3,7 @@ import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { OfferServices } from './offer.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatOfferResponse } from './offer.utils';
 
 // create offer controller
 const createOffer = catchAsync(async (req, res) => {
@@ -82,16 +83,23 @@ const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
 
 // get all offers controller
 const getAllOffers = catchAsync(async (req, res) => {
-  const result = await OfferServices.getAllOffers(
-    req.user as TCurrentUser,
-    req.query,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await OfferServices.getAllOffers(currentUser, req.query);
+
+  let formattedData;
+
+  if (currentUser?.role === 'CUSTOMER') {
+    formattedData = formatOfferResponse(result.data, req.lang);
+  } else {
+    formattedData = result.data;
+  }
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: result?.message,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
