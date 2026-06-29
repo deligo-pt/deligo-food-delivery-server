@@ -12,7 +12,8 @@ const registerUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -27,7 +28,8 @@ const onboardUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -36,7 +38,7 @@ const onboardUser = catchAsync(async (req, res) => {
 const verifyOtp = catchAsync(async (req, res) => {
   const result = await AuthServices.verifyOtp(req.body);
 
-  const { accessToken, refreshToken, message } = result;
+  const { accessToken, refreshToken } = result;
 
   res.cookie('refreshToken', refreshToken, {
     secure: config.NODE_ENV === 'production',
@@ -46,7 +48,8 @@ const verifyOtp = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: { accessToken, refreshToken },
   });
 });
@@ -58,7 +61,7 @@ const resendOtp = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -82,7 +85,8 @@ const loginUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: {
       accessToken,
       refreshToken,
@@ -97,7 +101,7 @@ const loginCustomer = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -112,7 +116,7 @@ const updateFcmToken = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -128,7 +132,8 @@ const logoutUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -144,7 +149,7 @@ const changePassword = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -155,7 +160,7 @@ const forgotPassword = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -166,7 +171,7 @@ const resetPassword = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -179,7 +184,7 @@ const refreshToken = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result,
   });
 });
@@ -194,7 +199,8 @@ const submitForApproval = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -210,7 +216,8 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -225,7 +232,8 @@ const softDeleteUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -240,7 +248,8 @@ const permanentDeleteUser = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });

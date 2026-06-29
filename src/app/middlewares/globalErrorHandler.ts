@@ -13,14 +13,25 @@ import { TImageFiles } from '../interfaces/image.interface';
 import { deleteImageFromCloudinary } from '../utils/deleteImage';
 import multer from 'multer';
 import { ErrorLog } from '../modules/ErrorLog/errorLog.schema';
+import { localizedMessages, TMessageKey } from '../errors/messages';
+
+type TMessageFunction = (
+  vars: Record<string, string | number | boolean>,
+) => string;
 
 const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
+  const lang = (req as unknown as { lang?: 'en' | 'pt' }).lang || 'en';
+
   let statusCode = 500;
-  let message = 'Something went wrong on the server!';
+
+  let message: string =
+    localizedMessages.SOMETHING_WENT_WRONG[lang] ||
+    localizedMessages.SOMETHING_WENT_WRONG['en'];
+
   let errorSources: TErrorSources = [
     {
       path: '',
-      message: 'Something went wrong on the server!',
+      message,
     },
   ];
 
@@ -34,13 +45,23 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
 
   if (err instanceof multer.MulterError) {
     statusCode = 400;
+    let errorKey: TMessageKey = 'SOMETHING_WENT_WRONG';
 
     if (err.code === 'LIMIT_FILE_SIZE') {
-      message = 'File size is too large. Maximum limit is 5MB.';
+      errorKey = 'FILE_TOO_LARGE';
     } else if (err.code === 'LIMIT_FILE_COUNT') {
-      message = 'You cannot upload more than 5 files at a time.';
+      errorKey = 'FILE_COUNT_EXCEEDED';
     } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      message = 'Unexpected field. Please check the key name (e.g., "files").';
+      errorKey = 'UNEXPECTED_FILE_FIELD';
+    }
+
+    const target = localizedMessages[errorKey];
+    if (target) {
+      const msgTemplate = target[lang] || target['en'];
+      message =
+        typeof msgTemplate === 'function'
+          ? (msgTemplate as () => string)()
+          : (msgTemplate as string);
     } else {
       message = err.message;
     }
@@ -73,11 +94,23 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
     errorSources = simplifiedError?.errorSources;
   } else if (err instanceof AppError) {
     statusCode = err?.statusCode;
-    message = err.message;
+
+    const target = localizedMessages[err.errorKey];
+    if (target) {
+      const msgTemplate = target[lang] || target['en'];
+
+      message =
+        typeof msgTemplate === 'function'
+          ? (msgTemplate as TMessageFunction)(err.variables || {})
+          : (msgTemplate as string);
+    } else {
+      message = err.message;
+    }
+
     errorSources = [
       {
         path: '',
-        message: err?.message,
+        message: message,
       },
     ];
   } else if (err instanceof Error) {
@@ -98,8 +131,12 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
       const frontendUrl =
         req.headers.host || req.headers.referer || req.headers.origin || null;
 
+      const serverErrorFallback = localizedMessages.UNKNOWN_SERVER_ERROR
+        ? localizedMessages.UNKNOWN_SERVER_ERROR['en']
+        : 'Unknown Server Error';
+
       await ErrorLog.create({
-        message: message || err?.message || 'Unknown Server Error',
+        message: message || err?.message || serverErrorFallback,
         stack: err?.stack || null,
         statusCode,
         userId:
@@ -118,7 +155,7 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
     }
   }
 
-  //ultimate return
+  // ultimate return
   return res.status(statusCode).json({
     success: false,
     message,

@@ -4,10 +4,10 @@ export const authMessages = {
     pt: 'Caminho de registro inválido',
   },
   EMAIL_ALREADY_REGISTERED: {
-    en: (vars: { role: string }) =>
-      `This email is already registered as an active ${vars.role}. You cannot register as a ${vars.role}.`,
-    pt: (vars: { role: string }) =>
-      `Este e-mail já está registrado como um ${vars.role} ativo. Você não pode se registrar como um ${vars.role}.`,
+    en: (vars: { role: string; targetRole: string }) =>
+      `This email is already registered as an active ${vars.role}. You cannot register as a ${vars.targetRole}.`,
+    pt: (vars: { role: string; targetRole: string }) =>
+      `Este e-mail já está registrado como um ${vars.role} ativo. Você não pode se registrar como um ${vars.targetRole}.`,
   },
   EMAIL_ALREADY_VERIFIED: {
     en: (vars: { formattedEmail: string; role: string }) =>
@@ -19,7 +19,7 @@ export const authMessages = {
     en: 'The email already exists for this role. Please use another email.',
     pt: 'O e-mail já existe para este cargo. Por favor, use outro e-mail.',
   },
-  REGISTER_SUCCESS: {
+  REGISTRATION_SUCCESS: {
     en: (vars: { role: string }) =>
       `${vars.role} registered successfully. Check your email for OTP.`,
     pt: (vars: { role: string }) =>
