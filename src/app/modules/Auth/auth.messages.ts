@@ -130,6 +130,34 @@ export const authMessages = {
     en: 'This user is not verified. Please verify your email.',
     pt: 'Este usuário não está verificado. Por favor, verifique seu e-mail.',
   },
+  AUTHENTICATION_REQUIRED: {
+    en: 'Authentication required. Please log in',
+    pt: 'Autenticação necessária. Por favor, faça login',
+  },
+  ACCOUNT_BLOCKED: {
+    en: 'Your account is blocked. Please contact support.',
+    pt: 'Sua conta está bloqueada. Por favor, entre em contato com o suporte.',
+  },
+  DEVICE_LOGGED_OUT: {
+    en: 'You have been logged out from this device. Please log in again.',
+    pt: 'Você foi desconectado deste dispositivo. Por favor, faça login novamente.',
+  },
+  PASSWORD_RECENTLY_CHANGED: {
+    en: 'Your password was recently changed. Please log in again.',
+    pt: 'Sua senha foi alterada recentemente. Por favor, faça login novamente.',
+  },
+  ROLE_ACCESS_DENIED: {
+    en: 'Access denied. You do not have the necessary permissions.',
+    pt: 'Acesso negado. Você não possui as permissões necessárias.',
+  },
+  ROLE_PERMISSION_DENIED: {
+    en: 'Access denied. You do not have the necessary role permission.',
+    pt: 'Acesso negado. Você não possui a permissão de função necessária.',
+  },
+  ADMIN_ACTION_PERMISSION_DENIED: {
+    en: 'Access denied. Your Admin account lacks the specific permission required for this action.',
+    pt: 'Acesso negado. Sua conta de Administrador não possui a permissão específica necessária para esta ação.',
+  },
   PASSWORD_MISSING: {
     en: 'Password  information missing',
     pt: 'Informações de senha ausentes',
@@ -137,6 +165,10 @@ export const authMessages = {
   PASSWORD_NOT_MATCHED: {
     en: 'Password did not match',
     pt: 'A senha não confere',
+  },
+  SOCKET_NOT_INITIALIZED: {
+    en: 'Socket not initialized',
+    pt: 'Socket não inicializado',
   },
   LOGIN_SUCCESS: {
     en: (vars: { role: string }) => `${vars.role} logged in successfully!`,

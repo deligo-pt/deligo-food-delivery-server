@@ -132,7 +132,9 @@ const updateCustomerLiveLocation = async (
   const updateQuery: Record<string, any> = {};
   let arrayFilters: any[] = [];
 
-  const { geoAccuracy: _, isMocked: ___, ...cleanAddressPayload } = payload;
+  const cleanAddressPayload: Record<string, any> = { ...payload };
+  delete cleanAddressPayload.geoAccuracy;
+  delete cleanAddressPayload.isMocked;
 
   if (hasPrimaryAddress) {
     const addressDataWithCoords = {
