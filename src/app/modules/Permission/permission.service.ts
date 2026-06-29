@@ -10,10 +10,6 @@ const createPermission = async (
   payload: TPermission,
   currentUser: TCurrentUser,
 ) => {
-  const isPermissionExist = await Permission.findOne({
-    action: payload.action,
-  });
-
   const checkDuplicate = await Permission.findOne({
     action: payload.action,
   });
@@ -136,7 +132,7 @@ const deletePermission = async (permissionId: string) => {
     );
   }
 
-  const result = await Permission.findByIdAndUpdate(
+  await Permission.findByIdAndUpdate(
     permissionId,
     { isDeleted: true },
     { new: true },

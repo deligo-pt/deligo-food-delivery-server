@@ -10,6 +10,18 @@ import { cuisineCategoryMessages } from '../modules/Category/cuisineCategory.mes
 import { productCategoryMessages } from '../modules/Category/productCategory.messages';
 import { checkoutMessages } from '../modules/Checkout/checkout.messages';
 import { contactMessages } from '../modules/ContactUs/contact.messages';
+import { customerMessages } from '../modules/Customer/customer.messages';
+import { deliveryPartnerMessages } from '../modules/Delivery-Partner/delivery-partner.messages';
+import { fleetManagerMessages } from '../modules/Fleet-Manager/fleet-manager.messages';
+import { globalSettingMessages } from '../modules/GlobalSetting/globalSetting.messages';
+import { ingredientOrderMessages } from '../modules/Ingredient-Order/ing-order.messages';
+import { ingredientsMessages } from '../modules/Ingredients/ingredients.messages';
+import { notificationMessages } from '../modules/Notification/notificationMessages';
+import { offerMessages } from '../modules/Offer/offer.messages';
+import { orderMessages } from '../modules/Order/order.messages';
+import { paymentMessages } from '../modules/Payment/payment.messages';
+import { payoutMessages } from '../modules/Payout/payout.messages';
+import { permissionMessages } from '../modules/Permission/permission.messages';
 
 const globalCommonMessages = {
   // --- DEFAULT SERVER ERRORS ---
@@ -51,6 +63,18 @@ export const localizedMessages = {
   ...productCategoryMessages,
   ...checkoutMessages,
   ...contactMessages,
+  ...customerMessages,
+  ...deliveryPartnerMessages,
+  ...fleetManagerMessages,
+  ...globalSettingMessages,
+  ...ingredientOrderMessages,
+  ...ingredientsMessages,
+  ...notificationMessages,
+  ...offerMessages,
+  ...orderMessages,
+  ...paymentMessages,
+  ...payoutMessages,
+  ...permissionMessages,
 } as const;
 
 // Global type safe key
