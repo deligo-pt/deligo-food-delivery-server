@@ -23,7 +23,7 @@ const createContact = async (payload: TContact) => {
   );
 
   return {
-    message: 'Contact message sent successfully',
+    messageKey: 'CONTACT_SENT_SUCCESS' as const,
     data: {
       name,
       sender,

@@ -94,8 +94,6 @@ const checkout = async (
 
   const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
 
-  console.log(distanceData);
-
   const deliveryChargeBase =
     distanceData.meters <= 1000
       ? BASE_FIXED_DELIVERY_CHARGE || 0

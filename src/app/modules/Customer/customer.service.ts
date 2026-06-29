@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import AppError from '../../errors/AppError';
@@ -19,10 +21,9 @@ const updateCustomer = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Access denied. Your account is currently ${currentUser.status.toLowerCase()}. Please complete any pending requirements or contact support for assistance.`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCESS_DENIED_ACCOUNT_STATUS', {
+      status: currentUser.status,
+    });
   }
 
   const customer = await AuthUser.findOne({
@@ -31,36 +32,24 @@ const updateCustomer = async (
   }).populate('profileId');
 
   if (!customer) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Account not found. Please ensure that you have the correct user Id.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'ACCOUNT_NOT_FOUND');
   }
 
   if (customer.requiresOtpVerification) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Verification required. Please complete the identity verification process by entering your OTP to continue.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'OTP_VERIFICATION_REQUIRED');
   }
 
   const customerProfile = customer.profileId as any;
 
   if (!customerProfile) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Profile details not found. Please complete your profile setup to proceed.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
   }
 
   if (
     currentUser.role === 'CUSTOMER' &&
     currentUser.userId !== customer.userId
   ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      "You don't have permission to update this profile. If you believe this is a mistake, please reach out to our support team.",
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_PROFILE_FORBIDDEN');
   }
 
   // -----------------------------
@@ -88,7 +77,7 @@ const updateCustomer = async (
   );
 
   return {
-    message: 'Customer updated successfully',
+    messageKey: 'CUSTOMER_UPDATED_SUCCESS' as const,
     data: updated,
   };
 };
@@ -102,26 +91,19 @@ const updateCustomerLiveLocation = async (
   customerId: string,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Location updates are currently unavailable for your account status (${currentUser?.status.toLowerCase()}). Please contact support for more information.`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'LOCATION_UPDATE_STATUS_BLOCKED', {
+      status: currentUser?.status,
+    });
   }
 
   if (currentUser?.userId !== customerId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "You're not authorized to update the location for this account.",
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'LOCATION_UPDATE_UNAUTHORIZED');
   }
 
   const { latitude, longitude, geoAccuracy, isMocked } = payload;
 
   if (geoAccuracy !== undefined && geoAccuracy > 100) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Low location accuracy detected. Please ensure your device's location services are working correctly and try again.",
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'LOW_LOCATION_ACCURACY');
   }
 
   const currentSessionLocation: Record<string, any> = {
@@ -134,20 +116,20 @@ const updateCustomerLiveLocation = async (
     currentSessionLocation.isMocked = isMocked;
   }
 
-  let updateData: Record<string, any> = {
+  const updateData: Record<string, any> = {
     currentSessionLocation,
   };
 
   const customerExists = await Customer.findOne({ userId: currentUser.userId });
   if (!customerExists) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Customer profile not found.');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUSTOMER_PROFILE_NOT_FOUND');
   }
 
   const hasPrimaryAddress = customerExists.deliveryAddresses?.some(
     (addr: any) => addr.addressType === 'PRIMARY',
   );
 
-  let updateQuery: Record<string, any> = {};
+  const updateQuery: Record<string, any> = {};
   let arrayFilters: any[] = [];
 
   const { geoAccuracy: _, isMocked: ___, ...cleanAddressPayload } = payload;
@@ -216,15 +198,12 @@ const updateCustomerLiveLocation = async (
   );
 
   if (!updatedCustomer) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'We encountered an issue while updating your location. Please try again.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'LOCATION_UPDATE_FAILED');
   }
 
   return {
     success: true,
-    message: 'Live location and PRIMARY delivery address updated successfully',
+    messageKey: 'LIVE_LOCATION_UPDATED_SUCCESS' as const,
     data: {
       currentSessionLocation: updatedCustomer.currentSessionLocation,
       deliveryAddresses: updatedCustomer.deliveryAddresses,
@@ -253,25 +232,19 @@ const addDeliveryAddress = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please fill in all address fields, including street, city, state, country, postal code, and map location, so we can deliver to you accurately.',
+      'DELIVERY_ADDRESS_FIELDS_REQUIRED',
     );
   }
 
   if (currentUser?.role !== 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Only customer accounts can add delivery addresses.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ONLY_CUSTOMER_CAN_ADD_ADDRESS');
   }
 
   const customerProfile = await Customer.findOne({
     userId: currentUser.userId,
   });
   if (!customerProfile) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "We couldn't find your profile. Please ensure your account is fully set up.",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'CUSTOMER_PROFILE_SETUP_REQUIRED');
   }
 
   const currentAddresses: any[] = customerProfile.deliveryAddresses
@@ -279,10 +252,7 @@ const addDeliveryAddress = async (
     : [];
 
   if (currentAddresses.length >= 5) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "You've reached the maximum limit of 5 saved addresses. Please remove an old address before adding a new one.",
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'ADDRESS_LIMIT_REACHED');
   }
 
   // --------------------------------------------------
@@ -310,10 +280,7 @@ const addDeliveryAddress = async (
   );
 
   if (isDuplicate) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'This address is already in your saved list. No need to add it again!',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'ADDRESS_ALREADY_EXISTS');
   }
 
   const updatedAddresses = currentAddresses.map((addr: any) => ({
@@ -364,7 +331,7 @@ const addDeliveryAddress = async (
     { runValidators: true, new: true },
   );
   return {
-    message: 'Delivery address added successfully',
+    messageKey: 'DELIVERY_ADDRESS_ADDED_SUCCESS' as const,
     data: newDeliveryAddress,
   };
 };
@@ -384,7 +351,7 @@ const updateDeliveryAddress = async (
   if (!customer) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      "We couldn't find this address, or you may not have permission to update it.",
+      'UPDATE_ADDRESS_NOT_FOUND_OR_FORBIDDEN',
     );
   }
 
@@ -397,10 +364,7 @@ const updateDeliveryAddress = async (
   );
 
   if (targetAddressIndex === -1) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'The requested delivery address could not be found.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'REQUESTED_ADDRESS_NOT_FOUND');
   }
 
   const targetAddress = currentAddresses[targetAddressIndex];
@@ -412,7 +376,7 @@ const updateDeliveryAddress = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'The type of a PRIMARY address cannot be modified.',
+      'PRIMARY_ADDRESS_TYPE_IMMUTABLE',
     );
   }
 
@@ -420,10 +384,7 @@ const updateDeliveryAddress = async (
     targetAddress.addressType !== 'PRIMARY' &&
     payload.addressType === 'PRIMARY'
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You cannot manually set an address type to PRIMARY.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'CANNOT_SET_PRIMARY_MANUALLY');
   }
 
   const newLng =
@@ -442,10 +403,7 @@ const updateDeliveryAddress = async (
     );
 
     if (isDuplicate) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        'An address with these coordinates is already saved in your list.',
-      );
+      throw new AppError(httpStatus.CONFLICT, 'ADDRESS_COORDINATES_DUPLICATE');
     }
   }
 
@@ -479,7 +437,7 @@ const updateDeliveryAddress = async (
   );
 
   return {
-    message: 'Delivery address updated successfully',
+    messageKey: 'DELIVERY_ADDRESS_UPDATED_SUCCESS' as const,
     data: updatedCustomer?.deliveryAddresses?.find(
       (addr: any) => addr._id?.toString() === addressId,
     ),
@@ -494,10 +452,7 @@ const toggleDeliveryAddressStatus = async (
   const customer = await Customer.findById(currentUser._id).lean();
 
   if (!customer) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Profile not found. Please try logging in again.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_NOT_FOUND_LOGIN_AGAIN');
   }
   const currentAddresses: any[] = customer.deliveryAddresses
     ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
@@ -508,10 +463,7 @@ const toggleDeliveryAddressStatus = async (
   );
 
   if (!targetAddressExists) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "We couldn't find the delivery address you're trying to activate.",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'ACTIVATE_ADDRESS_NOT_FOUND');
   }
 
   let selectedActiveAddress: any = null;
@@ -546,7 +498,7 @@ const toggleDeliveryAddressStatus = async (
 
   return {
     success: true,
-    message: 'Delivery address changed successfully',
+    messageKey: 'DELIVERY_ADDRESS_CHANGED_SUCCESS' as const,
     data: selectedActiveAddress,
   };
 };
@@ -559,10 +511,7 @@ const deleteDeliveryAddress = async (
   const customer = await Customer.findById(currentUser._id).lean();
 
   if (!customer) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Profile not found. Please try again.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_NOT_FOUND_TRY_AGAIN');
   }
   const currentAddresses: any[] = customer.deliveryAddresses
     ? JSON.parse(JSON.stringify(customer.deliveryAddresses))
@@ -573,24 +522,15 @@ const deleteDeliveryAddress = async (
   );
 
   if (!targetAddress) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "The address you're trying to delete doesn't exist.",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'DELETE_ADDRESS_NOT_FOUND');
   }
 
   if (targetAddress.isActive) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You cannot delete your active delivery address. Please set another address as active before deleting this one.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'CANNOT_DELETE_ACTIVE_ADDRESS');
   }
 
   if (targetAddress.addressType === 'PRIMARY') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Your primary address is required and cannot be deleted. Please update it if your details have changed.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'CANNOT_DELETE_PRIMARY_ADDRESS');
   }
 
   const remainingAddresses = currentAddresses.filter(
@@ -604,7 +544,7 @@ const deleteDeliveryAddress = async (
   );
 
   return {
-    message: 'Delivery address deleted successfully',
+    messageKey: 'DELIVERY_ADDRESS_DELETED_SUCCESS' as const,
     data: null,
   };
 };
@@ -614,10 +554,9 @@ const getAllCustomersFromDB = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Access denied. Your account status (${currentUser.status.toLowerCase()}) does not allow you to view customer lists.`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'VIEW_CUSTOMER_LIST_FORBIDDEN', {
+      status: currentUser.status,
+    });
   }
 
   const customers = new QueryBuilder(Customer.find(), query)
@@ -642,7 +581,7 @@ const getAllCustomersFromDB = async (
   const data = await customers.modelQuery;
 
   return {
-    message: 'Customers Retrieved Successfully',
+    messageKey: 'CUSTOMERS_RETRIEVED_SUCCESS' as const,
     meta,
     data,
   };
@@ -654,10 +593,9 @@ const getSingleCustomerFromDB = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Access denied. Your account status (${currentUser.status.toLowerCase()}) does not allow you to view this information.`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'VIEW_CUSTOMER_INFO_FORBIDDEN', {
+      status: currentUser.status,
+    });
   }
 
   let query: any;
@@ -672,7 +610,7 @@ const getSingleCustomerFromDB = async (
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        "You don't have permission to view this customer's details.",
+        'VIEW_CUSTOMER_DETAILS_FORBIDDEN',
       );
     }
   } else {
@@ -692,14 +630,11 @@ const getSingleCustomerFromDB = async (
   });
   const data = await query;
   if (!data) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'The requested customer profile could not be found.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'REQUESTED_CUSTOMER_NOT_FOUND');
   }
 
   return {
-    message: 'Customer Retrieved Successfully',
+    messageKey: 'CUSTOMER_RETRIEVED_SUCCESS' as const,
     data,
   };
 };
