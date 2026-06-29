@@ -5,6 +5,11 @@ import { analyticsMessages } from '../modules/Analytics/analytics.messages';
 import { analyticsSecondMessages } from '../modules/Analytics/analyticsSecond.messages';
 import { authMessages } from '../modules/Auth/auth.messages';
 import { cartMessages } from '../modules/Cart/cart.messages';
+import { businessCategoryMessages } from '../modules/Category/businessCategory.messages';
+import { cuisineCategoryMessages } from '../modules/Category/cuisineCategory.messages';
+import { productCategoryMessages } from '../modules/Category/productCategory.messages';
+import { checkoutMessages } from '../modules/Checkout/checkout.messages';
+import { contactMessages } from '../modules/ContactUs/contact.messages';
 
 const globalCommonMessages = {
   // --- DEFAULT SERVER ERRORS ---
@@ -41,6 +46,11 @@ export const localizedMessages = {
   ...analyticsMessages,
   ...analyticsSecondMessages,
   ...cartMessages,
+  ...businessCategoryMessages,
+  ...cuisineCategoryMessages,
+  ...productCategoryMessages,
+  ...checkoutMessages,
+  ...contactMessages,
 } as const;
 
 // Global type safe key
