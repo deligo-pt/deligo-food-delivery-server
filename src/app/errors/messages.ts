@@ -22,6 +22,21 @@ import { orderMessages } from '../modules/Order/order.messages';
 import { paymentMessages } from '../modules/Payment/payment.messages';
 import { payoutMessages } from '../modules/Payout/payout.messages';
 import { permissionMessages } from '../modules/Permission/permission.messages';
+import { pointsMessages } from '../modules/Points/points.messages';
+import { productMessages } from '../modules/Product/product.messages';
+import { profileMessages } from '../modules/Profile/profile.messages';
+import { ratingMessages } from '../modules/Rating/rating.messages';
+import { referralMessages } from '../modules/Referral/referral.messages';
+import { restrictedItemsMessages } from '../modules/RestrictedItems/restrictedItems.messages';
+import { sosMessages } from '../modules/Sos/sos.messages';
+import { sponsorshipsMessages } from '../modules/Sponsorships/sponsorships.messages';
+import { supportMessages } from '../modules/Support/support.messages';
+import { taxMessages } from '../modules/Tax/tax.messages';
+import { transactionMessages } from '../modules/Transaction/transaction.messages';
+import { uploadMessages } from '../modules/Upload/upload.messages';
+import { vendorMessages } from '../modules/Vendor/vendor.messages';
+import { walletMessages } from '../modules/Wallet/wallet.messages';
+import { zoneMessages } from '../modules/Zone/zone.messages';
 
 const globalCommonMessages = {
   // --- DEFAULT SERVER ERRORS ---
@@ -75,6 +90,21 @@ export const localizedMessages = {
   ...paymentMessages,
   ...payoutMessages,
   ...permissionMessages,
+  ...pointsMessages,
+  ...productMessages,
+  ...profileMessages,
+  ...ratingMessages,
+  ...referralMessages,
+  ...restrictedItemsMessages,
+  ...sosMessages,
+  ...sponsorshipsMessages,
+  ...supportMessages,
+  ...taxMessages,
+  ...transactionMessages,
+  ...uploadMessages,
+  ...vendorMessages,
+  ...walletMessages,
+  ...zoneMessages,
 } as const;
 
 // Global type safe key
