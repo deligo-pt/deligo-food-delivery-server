@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
-import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 
 export type TAdmin = {
   // ------------------------------------------------------------------
