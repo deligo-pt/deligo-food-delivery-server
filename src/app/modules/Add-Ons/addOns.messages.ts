@@ -81,6 +81,9 @@ export const addonMessages = {
     en: 'Addon group deleted successfully.',
     pt: 'Grupo de adicionais excluído com sucesso.',
   },
+} as const;
+
+export const addonZodErrors = {
   PRICE_NEGATIVE: {
     en: 'Price cannot be negative.',
     pt: 'O preço não pode ser negativo.',

@@ -43,6 +43,9 @@ export const adminMessages = {
     en: 'Admin profile fetched successfully.',
     pt: 'Perfil do administrador recuperado com sucesso.',
   },
+} as const;
+
+export const adminZodErrors = {
   EMAIL_REQUIRED: {
     en: 'Email address is required.',
     pt: 'O endereço de e-mail é obrigatório.',

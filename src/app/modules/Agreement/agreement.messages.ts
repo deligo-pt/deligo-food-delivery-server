@@ -63,6 +63,9 @@ export const agreementMessages = {
     en: 'Agreements retrieved successfully.',
     pt: 'Contratos recuperados com sucesso.',
   },
+} as const;
+
+export const agreementZodErrors = {
   INVALID_SIGNATURE_FORMAT: {
     en: 'The provided signature image format is invalid.',
     pt: 'O formato da imagem de assinatura fornecido é inválido.',

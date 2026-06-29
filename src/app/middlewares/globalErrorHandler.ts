@@ -102,7 +102,9 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
         message: message || err?.message || 'Unknown Server Error',
         stack: err?.stack || null,
         statusCode,
-        userId: (req as any).user?.userId || null,
+        userId:
+          (req as unknown as { user?: { userId: string } }).user?.userId ||
+          null,
         requestDetails: {
           method: req.method,
           url: req.originalUrl,

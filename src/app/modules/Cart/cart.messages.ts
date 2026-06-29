@@ -150,8 +150,9 @@ export const cartMessages = {
     pt: (vars: { status: string }) =>
       `Você não está aprovado para visualizar o carrinho. Sua conta está ${vars.status}`,
   },
+} as const;
 
-  // --- Zod Validation Messages ---
+export const cartZodErrors = {
   VALIDATION_PRODUCT_ID_REQUIRED: {
     en: 'Product ID is required.',
     pt: 'O ID do produto é obrigatório.',
