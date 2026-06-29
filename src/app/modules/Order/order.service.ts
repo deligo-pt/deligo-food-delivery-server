@@ -855,8 +855,6 @@ const partnerAcceptsDispatchedOrder = async (
     }
 
     return { data: resultData, message: 'Order accepted.' };
-  } catch (error) {
-    throw error;
   } finally {
     session.endSession();
   }
