@@ -8,6 +8,7 @@ import { cartMessages } from '../modules/Cart/cart.messages';
 import { businessCategoryMessages } from '../modules/Category/businessCategory.messages';
 import { cuisineCategoryMessages } from '../modules/Category/cuisineCategory.messages';
 import { productCategoryMessages } from '../modules/Category/productCategory.messages';
+import { checkoutMessages } from '../modules/Checkout/checkout.messages';
 
 const globalCommonMessages = {
   // --- DEFAULT SERVER ERRORS ---
@@ -47,6 +48,7 @@ export const localizedMessages = {
   ...businessCategoryMessages,
   ...cuisineCategoryMessages,
   ...productCategoryMessages,
+  ...checkoutMessages,
 } as const;
 
 // Global type safe key
