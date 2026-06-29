@@ -54,7 +54,7 @@ export interface DailyRevenueFacet {
 // }
 
 export interface SalesAnalyticsResponse {
-  message: string;
+  messageKey: string;
   data: {
     stats: {
       totalRevenue: number;
@@ -73,7 +73,7 @@ export interface SalesAnalyticsResponse {
 }
 
 export interface OrderReportAnalyticsResponse {
-  message: string;
+  messageKey: string;
   data: {
     stats: {
       totalRevenue: number;
@@ -128,7 +128,7 @@ export interface OrderReportAnalyticsResponse {
 // }
 
 export type TVendorSalesReport = {
-  message: string;
+  messageKey: string;
   data: {
     stats: {
       totalSales: number;
@@ -191,7 +191,7 @@ export type TTopFleetPerformers = {
 };
 
 export type TFleetPerformanceData = {
-  message: string;
+  messageKey: string;
   data: {
     fleetPerformance: TFleetManagerPerformance[];
     fleetPerformanceStat: TFleetPerformanceStat;
@@ -260,7 +260,7 @@ export type TPartnerPerformanceData = {
 };
 
 export type TPartnerPerformanceDetailsData = {
-  message: string;
+  messageKey: string;
   data: {
     partnerPerformance: TDeliveryPartnerPerformance;
     partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
@@ -294,7 +294,7 @@ export type TVendorRatingDistribution = {
   rating: number;
 };
 export type TVendorInsights = {
-  message: string;
+  messageKey: string;
   data: {
     topSellingVendors: TTopSellingVendor[];
 
@@ -343,7 +343,7 @@ export type TRejectedDeliveryReason = {
   count: number;
 };
 export type TDeliveryInsights = {
-  message: string;
+  messageKey: string;
   data: {
     summary: TDeliverySummary;
 
@@ -387,7 +387,7 @@ export type THourlyOrders = {
   orderCount: number;
 };
 export type TCustomerInsights = {
-  message: string;
+  messageKey: string;
   data: {
     summary: TCustomerSummary;
 
@@ -430,7 +430,7 @@ export type TRiderDemandGap = {
 };
 // MAIN RESPONSE TYPE
 export type TPeakHoursInsights = {
-  message: string;
+  messageKey: string;
   data: {
     hourlyOrders: THourlyOrders[];
 
@@ -446,7 +446,7 @@ export type TPeakHoursInsights = {
 
 // vendor tax report
 export type TTaxReport = {
-  message: string;
+  messageKey: string;
   data: {
     stats: {
       totalSales: number;

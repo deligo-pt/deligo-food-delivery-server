@@ -15,7 +15,7 @@ const getVendorSalesAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'VENDOR_SALES_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -28,7 +28,7 @@ const getCustomerInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'CUSTOMER_INSIGHTS_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -41,7 +41,7 @@ const getOrderTrendInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'ORDER_TREND_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -54,7 +54,7 @@ const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'TOP_SELLING_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -66,7 +66,7 @@ const getAdminSalesReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'ADMIN_SALES_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -79,7 +79,7 @@ const getAdminOrderReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'ADMIN_ORDER_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -97,7 +97,7 @@ const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'ADMIN_CUSTOMER_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -115,7 +115,7 @@ const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'ADMIN_VENDOR_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -133,7 +133,7 @@ const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'ADMIN_FLEET_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -150,7 +150,7 @@ const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'ADMIN_PARTNER_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -164,7 +164,7 @@ const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'VENDOR_SALES_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -179,7 +179,7 @@ const getVendorCustomerReport = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'VENDOR_CUSTOMER_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -193,7 +193,7 @@ const getVendorTaxReport = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'VENDOR_TAX_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -207,8 +207,8 @@ const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Fleet manager performance analytics fetched successfully',
-    data: result,
+    messageKey: 'FLEET_PERFORMANCE_FETCH_SUCCESS',
+    data: result?.data,
   });
 });
 
@@ -224,7 +224,7 @@ const getSingleFleetPerformanceDetailsAnalytics = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: result?.message,
+      messageKey: 'SINGLE_FLEET_DETAILS_FETCH_SUCCESS',
       data: result?.data,
     });
   },
@@ -239,7 +239,7 @@ const getDeliveryPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'PARTNER_PERFORMANCE_FETCH_SUCCESS',
     meta: result?.meta,
     data: result?.data,
   });
@@ -257,7 +257,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: result?.message,
+      messageKey: 'SINGLE_PARTNER_DETAILS_FETCH_SUCCESS',
       data: result?.data,
     });
   },
@@ -270,7 +270,7 @@ const getPlatformEarnings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'PLATFORM_EARNINGS_FETCH_SUCCESS',
     meta: result?.meta,
     data: result?.data,
   });
@@ -283,7 +283,7 @@ const getAdminSalesAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'ADMIN_SALES_REPORT_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -295,7 +295,7 @@ const getAdminCustomerInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'CUSTOMER_INSIGHTS_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -307,7 +307,7 @@ const getTopVendors = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'TOP_VENDORS_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -319,7 +319,7 @@ const getPeakHourAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'PEAK_HOUR_FETCH_SUCCESS',
     data: result?.data,
   });
 });
@@ -331,7 +331,7 @@ const getDeliveryInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: 'DELIVERY_INSIGHTS_FETCH_SUCCESS',
     data: result?.data,
   });
 });
