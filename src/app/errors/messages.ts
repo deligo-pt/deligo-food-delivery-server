@@ -1,6 +1,7 @@
 import { addonMessages } from '../modules/Add-Ons/addOns.messages';
 import { adminMessages } from '../modules/Admin/admin.messages';
 import { agreementMessages } from '../modules/Agreement/agreement.messages';
+import { aiContentMessages } from '../modules/Ai-Content-Generator/ai-content-generator.messages';
 import { analyticsMessages } from '../modules/Analytics/analytics.messages';
 import { analyticsSecondMessages } from '../modules/Analytics/analyticsSecond.messages';
 import { authMessages } from '../modules/Auth/auth.messages';
@@ -70,6 +71,7 @@ export const localizedMessages = {
   ...addonMessages,
   ...adminMessages,
   ...agreementMessages,
+  ...aiContentMessages,
   ...analyticsMessages,
   ...analyticsSecondMessages,
   ...cartMessages,
