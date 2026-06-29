@@ -9,12 +9,7 @@ import { ProductSearchableFields } from './product.constant';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import {
-  cleanForSKU,
-  generateSlug,
-  localizeProductData,
-} from './product.utils';
-import { Tax } from '../Tax/tax.model';
+import { cleanForSKU, localizeProductData } from './product.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
