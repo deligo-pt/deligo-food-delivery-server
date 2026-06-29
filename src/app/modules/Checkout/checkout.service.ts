@@ -32,16 +32,16 @@ const checkout = async (
     }
 
     if (!cart || !cart.items || cart.items.length === 0)
-      throw new AppError(httpStatus.BAD_REQUEST, 'Cart is empty');
+      throw new AppError(httpStatus.BAD_REQUEST, 'CART_EMPTY');
 
     selectedItems = cart.items.filter((i: any) => i.isActive === true);
     if (selectedItems.length === 0)
-      throw new AppError(httpStatus.BAD_REQUEST, 'No active items in cart');
+      throw new AppError(httpStatus.BAD_REQUEST, 'NO_ACTIVE_CART_ITEMS');
   } else {
     if (!payload.items || payload.items.length !== 1)
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Direct checkout supports 1 item',
+        'DIRECT_CHECKOUT_SINGLE_ITEM_ONLY',
       );
     selectedItems = payload.items;
   }
@@ -49,12 +49,12 @@ const checkout = async (
   const productIds = selectedItems.map((i: any) => i.productId.toString());
   const products = await Product.find({ _id: { $in: productIds } }).lean();
   if (products.length === 0)
-    throw new AppError(httpStatus.NOT_FOUND, 'Products not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCTS_NOT_FOUND');
 
   const vendorId = products[0].vendorId;
   const existingVendor = await Vendor.findById(vendorId).lean();
   if (!existingVendor || !existingVendor.businessDetails?.isStoreOpen) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Vendor is closed');
+    throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_CLOSED');
   }
 
   const activeAddress = currentUser?.deliveryAddresses?.find(
@@ -62,10 +62,7 @@ const checkout = async (
   );
 
   if (!activeAddress) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'No active delivery address found',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'NO_ACTIVE_DELIVERY_ADDRESS');
   }
 
   if (
@@ -74,15 +71,12 @@ const checkout = async (
     !activeAddress.city ||
     !activeAddress.street
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Your active delivery address info is incomplete. Please re-save your address.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'DELIVERY_ADDRESS_INCOMPLETE');
   }
 
   const vendorLocation = existingVendor.businessLocation;
   if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not found');
+    throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_LOCATION_NOT_FOUND');
   }
 
   const { latitude, longitude } = vendorLocation;
@@ -119,7 +113,7 @@ const checkout = async (
     const product = products.find(
       (p) => p._id.toString() === item.productId.toString(),
     );
-    if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
     let basePrice = product.pricing?.price || 0;
 
@@ -355,7 +349,7 @@ const checkout = async (
 
   const summary = await CheckoutSummary.create(finalSummaryData);
   return {
-    message: 'Checkout successfully',
+    messageKey: 'CHECKOUT_SUCCESS' as const,
     data: summary,
   };
 };
@@ -366,33 +360,29 @@ const getCheckoutSummary = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ORDER_VIEW_APPROVAL_REQUIRED', {
+      status: currentUser.status,
+    });
   }
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
   if (!summary) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
   }
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to view',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_TO_VIEW');
   }
 
   if (summary.isConvertedToOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order',
+      'CHECKOUT_SUMMARY_ALREADY_CONVERTED',
     );
   }
 
   return {
-    message: 'Checkout summary retrieved successfully',
+    messageKey: 'CHECKOUT_SUMMARY_RETRIEVED_SUCCESS' as const,
     data: summary,
   };
 };
