@@ -13,15 +13,12 @@ const createProductCategory = async (
 ) => {
   const business = await BusinessCategory.findById(payload.businessCategoryId);
   if (!business) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Invalid Business Category reference',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'INVALID_BUSINESS_CATEGORY');
   }
 
   const exists = await ProductCategory.findOne({ 'name.en': payload.name.en });
   if (exists) {
-    throw new AppError(httpStatus.CONFLICT, 'Product category already exists');
+    throw new AppError(httpStatus.CONFLICT, 'ALREADY_EXISTS');
   }
 
   payload.name.en = payload.name.en.toUpperCase();
@@ -38,7 +35,7 @@ const createProductCategory = async (
 
   const category = await ProductCategory.create(payload);
   return {
-    message: 'Product category created successfully',
+    messageKey: 'CREATE_SUCCESS' as const,
     data: category,
   };
 };
@@ -51,7 +48,7 @@ const updateProductCategory = async (
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   if (payload.name) {
@@ -76,10 +73,7 @@ const updateProductCategory = async (
       payload.businessCategoryId,
     );
     if (!business) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'Invalid Business Category reference',
-      );
+      throw new AppError(httpStatus.NOT_FOUND, 'INVALID_BUSINESS_CATEGORY');
     }
   }
 
@@ -89,7 +83,7 @@ const updateProductCategory = async (
   ) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `Product category is already ${category.isActive}`,
+      category.isActive ? 'ALREADY_ACTIVE' : 'ALREADY_INACTIVE',
     );
   }
 
@@ -107,7 +101,7 @@ const updateProductCategory = async (
   await category.save();
 
   return {
-    message: 'Product category updated successfully',
+    messageKey: 'UPDATE_SUCCESS' as const,
     data: category,
   };
 };
@@ -154,7 +148,7 @@ const getAllProductCategories = async (
   ]);
 
   return {
-    message: 'Product categories fetched successfully',
+    messageKey: 'FETCH_ALL_SUCCESS' as const,
     meta,
     data,
   };
@@ -181,7 +175,7 @@ const getAllProductCategoriesPublic = async (
   ]);
 
   return {
-    message: 'Product categories fetched successfully',
+    messageKey: 'FETCH_ALL_SUCCESS' as const,
     meta,
     data,
   };
@@ -194,7 +188,7 @@ const getSingleProductCategory = async (
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   const { role } = currentUser;
@@ -203,7 +197,7 @@ const getSingleProductCategory = async (
 
   // Non-admin users cannot access deleted or inactive categories
   if (!isAdmin && (category.isDeleted || !category.isActive)) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   // Vendors can only access categories from their business type
@@ -218,12 +212,12 @@ const getSingleProductCategory = async (
       !userBusinessCategory ||
       String(category.businessCategoryId) !== String(userBusinessCategory._id)
     ) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
     }
   }
 
   return {
-    message: 'Product category fetched successfully',
+    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
     data: category,
   };
 };
@@ -232,15 +226,15 @@ const getSingleProductCategory = async (
 const getSingleProductCategoryPublic = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   if (category.isDeleted || !category.isActive) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   return {
-    message: 'Product category fetched successfully',
+    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
     data: category,
   };
 };
@@ -249,37 +243,37 @@ const getSingleProductCategoryPublic = async (id: string) => {
 const softDeleteProductCategory = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   if (category.isDeleted === true) {
-    throw new AppError(httpStatus.CONFLICT, 'Product category already deleted');
+    throw new AppError(httpStatus.CONFLICT, 'ALREADY_DELETED');
   }
 
   if (category.isActive) {
-    throw new AppError(httpStatus.CONFLICT, 'Product category is active');
+    throw new AppError(httpStatus.CONFLICT, 'ACTIVE_CANNOT_DELETE');
   }
 
   category.isDeleted = true;
   await category.save();
   return {
-    message: 'Product category deleted successfully',
+    messageKey: 'SOFT_DELETE_SUCCESS' as const,
   };
 };
 // Permanent Delete Product Category
 const permanentDeleteProductCategory = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   if (category.isDeleted === false) {
-    throw new AppError(httpStatus.CONFLICT, 'Please soft delete first');
+    throw new AppError(httpStatus.CONFLICT, 'SOFT_DELETE_FIRST');
   }
 
   await ProductCategory.findByIdAndDelete(id);
   return {
-    message: 'Product category permanently deleted successfully',
+    messageKey: 'PERMANENT_DELETE_SUCCESS' as const,
   };
 };
 
