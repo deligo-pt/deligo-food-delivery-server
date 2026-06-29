@@ -13,10 +13,7 @@ export const saveSignatureImage = async (
   );
 
   if (!matches) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Invalid signature image format',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_SIGNATURE_FORMAT');
   }
 
   const extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];

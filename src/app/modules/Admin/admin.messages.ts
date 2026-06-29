@@ -44,26 +44,3 @@ export const adminMessages = {
     pt: 'Perfil do administrador recuperado com sucesso.',
   },
 } as const;
-
-export const adminZodErrors = {
-  EMAIL_REQUIRED: {
-    en: 'Email address is required.',
-    pt: 'O endereço de e-mail é obrigatório.',
-  },
-  EMAIL_INVALID: {
-    en: 'Please enter a valid email address.',
-    pt: 'Por favor, insira um endereço de e-mail válido.',
-  },
-  STATUS_REQUIRED: {
-    en: 'Account status is required.',
-    pt: 'O status da conta é obrigatório.',
-  },
-  OTP_REQUIRED: {
-    en: 'Verification code (OTP) is required.',
-    pt: 'O código de verificação (OTP) é obrigatório.',
-  },
-  DOCUMENT_TITLE_REQUIRED: {
-    en: 'Document title is required.',
-    pt: 'O título do documento é obrigatório.',
-  },
-} as const;
