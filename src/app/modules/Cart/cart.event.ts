@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { RedisService } from '../../config/redis';
 import { Cart } from './cart.model';
 
