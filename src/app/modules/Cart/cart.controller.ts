@@ -31,11 +31,13 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
     req.lang,
     req.body.variationSku,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 

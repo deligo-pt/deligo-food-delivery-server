@@ -309,8 +309,13 @@ const toggleCartItemStatus = async (
       throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_UNAVAILABLE');
     }
 
-    const pName = product.name?.[lang] || product.name?.en || '';
-    let finalItemName = pName;
+    const pNameEn = product.name?.en || '';
+    const pNamePt = product.name?.pt || pNameEn;
+
+    const finalItemName = {
+      en: pNameEn,
+      pt: pNamePt,
+    };
 
     const hasVariations =
       product?.stock?.hasVariations === true ||
@@ -322,14 +327,18 @@ const toggleCartItemStatus = async (
         .find((opt: any) => opt.sku === itemToToggle.variationSku);
 
       const selectedVariantLabel = targetOption?.label;
-      const vLabel =
+
+      const vLabelEn =
         typeof selectedVariantLabel === 'object'
-          ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+          ? selectedVariantLabel.en || ''
+          : selectedVariantLabel;
+      const vLabelPt =
+        typeof selectedVariantLabel === 'object'
+          ? selectedVariantLabel.pt || vLabelEn
           : selectedVariantLabel;
 
-      if (vLabel) {
-        finalItemName = `${pName} - ${vLabel}`;
-      }
+      if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+      if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
     }
 
     itemToToggle.name = finalItemName;
