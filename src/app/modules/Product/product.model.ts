@@ -50,7 +50,12 @@ const productSchema = new Schema<TProduct>(
     addonGroups: [{ type: Schema.Types.ObjectId, ref: 'AddonGroup' }],
 
     pricing: {
-      price: { type: Number, required: true },
+      price: {
+        type: Number,
+        required: function () {
+          return !this.variations || this.variations.length === 0;
+        },
+      },
       discount: { type: Number, default: 0 },
       taxId: {
         type: Schema.Types.ObjectId,

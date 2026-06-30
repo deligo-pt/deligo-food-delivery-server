@@ -40,7 +40,7 @@ const createProductValidationSchema = z.object({
 
       pricing: z
         .object({
-          price: z.number().min(0, 'Price must be non-negative'),
+          price: z.number().min(0, 'Price must be non-negative').optional(),
           discount: z.number().min(0).max(100).default(0),
           taxId: z.string({ required_error: 'Tax ID is required' }),
           currency: z.string().default('EUR'),
@@ -68,7 +68,22 @@ const createProductValidationSchema = z.object({
         .strict()
         .optional(),
     })
-    .strict(),
+    .strict()
+    .refine(
+      (data) => {
+        const hasVariations = data.variations && data.variations.length > 0;
+        const hasPrice = data.pricing && data.pricing.price !== undefined;
+
+        if (!hasVariations && !hasPrice) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: 'Price is required when the product has no variations',
+        path: ['pricing', 'price'],
+      },
+    ),
 });
 
 // updateProductValidationSchema
