@@ -70,11 +70,13 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
     req.body,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -84,11 +86,14 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
     req.params.orderId,
     req.user as TCurrentUser,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -100,11 +105,13 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
     req.body,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -115,11 +122,14 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
     req.body,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -145,11 +155,16 @@ const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getDeliveryPartnersDispatchOrder(
     req.user as TCurrentUser,
   );
+
+  const formattedData = result?.data?.map((order) =>
+    formatOrderResponse(order, req.lang),
+  );
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -158,11 +173,14 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getDeliveryPartnerCurrentOrder(
     req.user as TCurrentUser,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
