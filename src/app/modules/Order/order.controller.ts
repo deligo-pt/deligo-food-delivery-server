@@ -52,11 +52,13 @@ const getSingleOrder = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
