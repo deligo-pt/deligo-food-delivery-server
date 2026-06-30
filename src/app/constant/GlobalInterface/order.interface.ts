@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { TLocalizedText } from './language.interface';
 
 export type TAddress = {
   label?: 'Home' | 'Work' | 'Other';
@@ -16,13 +17,13 @@ export type TAddress = {
 export type TOrderItemSnapshot = {
   productId: mongoose.Types.ObjectId;
   vendorId: mongoose.Types.ObjectId;
-  name: string;
+  name: TLocalizedText;
   image?: string;
   hasVariations: boolean;
   variationSku?: string | null;
   addons?: {
     optionId: string;
-    name: string;
+    name: TLocalizedText;
     sku: string;
     originalPrice: number;
     promoDiscountAmount: number;

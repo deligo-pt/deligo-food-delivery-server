@@ -1,10 +1,11 @@
 import { model, Schema } from 'mongoose';
 import { TCart } from './cart.interface';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const cartAddonSchema = new Schema(
   {
     optionId: { type: String, required: true },
-    name: { type: String, required: true },
+    name: { type: localizedSchema, required: true },
     sku: { type: String, required: true },
     originalPrice: { type: Number, required: true },
     promoDiscountAmount: { type: Number, default: 0 },
@@ -21,7 +22,7 @@ const cartItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
-    name: { type: String, required: true }, // Snapshot of product name
+    name: { type: localizedSchema, required: true }, // Snapshot of product name
     image: { type: String }, // Snapshot of product image
     hasVariations: { type: Boolean, default: false },
     variationSku: { type: String, default: null },

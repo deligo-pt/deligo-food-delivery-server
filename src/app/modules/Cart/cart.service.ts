@@ -17,7 +17,6 @@ import { RedisService } from '../../config/redis';
 const addToCart = async (
   payload: TCartItemInput,
   currentUser: TCurrentUser,
-  lang: TLanguageCode,
 ) => {
   if (currentUser.role !== 'CUSTOMER') {
     throw new AppError(httpStatus.FORBIDDEN, 'CUSTOMER_ONLY_ACTION');
@@ -58,7 +57,7 @@ const addToCart = async (
     existingVendor?.businessDetails?.businessType === 'RESTAURANT';
 
   let selectedPrice = existingProduct.pricing.price;
-  let selectedVariantLabel = '';
+  let selectedVariantLabel: any = null;
   let availableStock = existingProduct?.stock?.quantity ?? 0;
   let finalVariationSku = variationSku || null;
 
@@ -98,18 +97,26 @@ const addToCart = async (
   const productLineTotal = roundTo2(priceAfterDiscount * quantity);
   const productTaxAmount = roundTo2((productLineTotal * taxRate) / 100);
 
-  const pName = existingProduct.name?.[lang] || existingProduct.name?.en || '';
+  const pNameEn = existingProduct.name?.en || '';
+  const pNamePt = existingProduct.name?.pt || pNameEn;
 
-  let finalItemName = pName;
+  const finalItemName = {
+    en: pNameEn,
+    pt: pNamePt,
+  };
+
   if (selectedVariantLabel) {
-    const vLabel =
+    const vLabelEn =
       typeof selectedVariantLabel === 'object'
-        ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+        ? selectedVariantLabel.en || ''
+        : selectedVariantLabel;
+    const vLabelPt =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel.pt || vLabelEn
         : selectedVariantLabel;
 
-    if (vLabel) {
-      finalItemName = `${pName} - ${vLabel}`;
-    }
+    if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+    if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
   }
 
   const newItem: any = {

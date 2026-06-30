@@ -3,20 +3,22 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { CartServices } from './cart.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatCartResponse } from './cart.utils';
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {
   const result = await CartServices.addToCart(
     req.body,
     req.user as TCurrentUser,
-    req.lang,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -118,11 +120,13 @@ const viewCart = catchAsync(async (req, res) => {
     cartCustomerId,
   );
 
+  const formattedData = formatCartResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
