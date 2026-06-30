@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import mongoose from 'mongoose';
 import axios from 'axios';
@@ -12,6 +13,7 @@ import { Vendor } from '../Vendor/vendor.model';
 import { searchableFields } from './ing-order.constant';
 import { formatDateTime } from '../../utils/formatDateTime';
 import customNanoId from '../../utils/customNanoId';
+import { TMessageKey } from '../../errors/messages';
 
 // confirm ingredient order after reduniq payment success
 const confirmIngredientOrder = async (
@@ -25,21 +27,15 @@ const confirmIngredientOrder = async (
   });
 
   if (!existingOrder) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Ingredient order not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_ORDER_NOT_FOUND');
   }
 
   if (existingOrder.vendorId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'Unauthorized to complete this order',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_COMPLETE_ORDER');
   }
 
   if (existingOrder.paymentStatus === 'PAID') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Order already paid and confirmed',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'ORDER_ALREADY_PAID_CONFIRMED');
   }
 
   const verifyPayload = {
@@ -63,10 +59,7 @@ const confirmIngredientOrder = async (
     !paymentData.transaction ||
     paymentData.transaction.status !== '4'
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Payment verification failed. Transaction not successful.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_VERIFICATION_FAILED');
   }
 
   const gatewayTransactionId = paymentData.transaction.id;
@@ -125,16 +118,17 @@ const confirmIngredientOrder = async (
     );
 
     return {
-      message: 'Ingredient order confirmed successfully',
+      messageKey: 'INGREDIENT_ORDER_CONFIRMED_SUCCESS' as TMessageKey,
       data: existingOrder,
     };
   } catch (err: unknown) {
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
-    const errorMessage =
-      err instanceof Error ? err.message : 'Failed to confirm order';
-    throw new AppError(httpStatus.BAD_REQUEST, errorMessage);
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'INGREDIENT_ORDER_CONFIRMATION_FAILED' as TMessageKey,
+    );
   } finally {
     session.endSession();
   }
@@ -147,7 +141,7 @@ const getMyIngredientOrders = async (
 ) => {
   const vendorInfo = await Vendor.findById(currentUser._id);
   if (!vendorInfo) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
   const ingredientOrderQuery = new QueryBuilder(
@@ -170,7 +164,7 @@ const getMyIngredientOrders = async (
   const meta = await ingredientOrderQuery.countTotal();
 
   return {
-    message: 'Ingredient orders retrieved successfully',
+    messageKey: 'INGREDIENT_ORDERS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data: result,
   };
@@ -201,7 +195,7 @@ const getAllIngredientOrdersForAdmin = async (
   const meta = await ingredientOrderQuery.countTotal();
 
   return {
-    message: 'All ingredient orders retrieved successfully',
+    messageKey: 'ALL_INGREDIENT_ORDERS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data: result,
   };
@@ -218,7 +212,7 @@ const getSingleIngredientOrder = async (orderId: string) => {
     .populate('orderDetails.ingredientId');
 
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Ingredient order not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_ORDER_NOT_FOUND');
   }
   const order = result.toObject();
 
@@ -242,7 +236,7 @@ const getSingleIngredientOrder = async (orderId: string) => {
   ];
 
   return {
-    message: 'Order details retrieved successfully',
+    messageKey: 'ORDER_DETAILS_RETRIEVED_SUCCESS' as TMessageKey,
     data: {
       ...order,
       timeline,
@@ -260,7 +254,7 @@ const updateIngredientOrderStatus = async (
   if (!adminId) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
-      'Unauthorized to update order status',
+      'UNAUTHORIZED_UPDATE_ORDER_STATUS',
     );
   }
 
@@ -269,34 +263,30 @@ const updateIngredientOrderStatus = async (
   });
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
   }
 
   if (order.paymentStatus !== 'PAID') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Cannot update status of an unpaid order',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'CANNOT_UPDATE_UNPAID_ORDER');
   }
 
   if (order.orderStatus === status) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Order is already marked as ${status}`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'ORDER_ALREADY_MARKED', {
+      status,
+    });
   }
 
   if (status === 'DELIVERED' && order.orderStatus !== 'SHIPPED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Order must be SHIPPED before it can be marked as DELIVERED',
+      'ORDER_MUST_BE_SHIPPED_BEFORE_DELIVERED',
     );
   }
 
   if (status === 'SHIPPED' && order.orderStatus === 'DELIVERED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Cannot change status to SHIPPED after the order has already been DELIVERED',
+      'CANNOT_CHANGE_TO_SHIPPED_AFTER_DELIVERED',
     );
   }
 
@@ -325,7 +315,8 @@ const updateIngredientOrderStatus = async (
   ).setOptions({ skipFilter: true });
 
   return {
-    message: `Order status updated to ${status}`,
+    messageKey: 'ORDER_STATUS_UPDATED' as TMessageKey,
+    variables: { status },
     data: result,
   };
 };
