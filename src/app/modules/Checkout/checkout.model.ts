@@ -31,7 +31,6 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         variationSku: { type: String, default: null },
         addons: [
           {
-            optionId: { type: String },
             name: { type: localizedSchema },
             sku: { type: String },
             originalPrice: { type: Number, required: true, min: 0 },

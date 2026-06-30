@@ -5,18 +5,23 @@ import { OrderServices } from './order.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
 import { TMessageKey } from '../../errors/messages';
+import { formatOrderResponse } from './order.utils';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderAfterRedUniqPayment(
     req.body,
     req.user as TCurrentUser,
+    req.lang,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 

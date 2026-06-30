@@ -13,7 +13,6 @@ import {
 } from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
-import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
 import mongoose from 'mongoose';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
@@ -28,6 +27,7 @@ import { Transaction } from '../Transaction/transaction.model';
 import customNanoId from '../../utils/customNanoId';
 import { orderQueue } from '../../BullMQ/Queue/order.queue';
 import { TMessageKey } from '../../errors/messages';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -37,6 +37,7 @@ const createOrderAfterRedUniqPayment = async (
     deliveryNotes?: string;
   },
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   const { checkoutSummaryId, paymentToken, deliveryNotes } = payload;
 
@@ -138,21 +139,6 @@ const createOrderAfterRedUniqPayment = async (
 
     await summary.save({ session });
 
-    await Cart.updateOne(
-      { customerId: summary.customerId },
-      {
-        $pull: {
-          items: {
-            productId: {
-              $in: summary.items.map((i) => i.productId.toString()),
-            },
-          },
-        },
-        $set: { discount: 0, totalItems: 0, totalPrice: 0 },
-      },
-      { session },
-    );
-
     await session.commitTransaction();
 
     await orderQueue.add('NEW_ORDER_POST_PROCESS', {
@@ -161,6 +147,12 @@ const createOrderAfterRedUniqPayment = async (
       vendorUserId: existingVendor.userId,
       orderDisplayId: order.orderId,
       grandTotal: order.payoutSummary.grandTotal,
+      lang: lang,
+      customerId: summary.customerId.toString(),
+      orderedItems: summary.items.map((i: any) => ({
+        productId: i.productId.toString(),
+        variationSku: i.variationSku || null,
+      })),
     });
 
     return {
