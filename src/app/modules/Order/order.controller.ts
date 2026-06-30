@@ -32,12 +32,16 @@ const getAllOrders = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = result?.data?.map((order) =>
+    formatOrderResponse(order, req.lang),
+  );
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
