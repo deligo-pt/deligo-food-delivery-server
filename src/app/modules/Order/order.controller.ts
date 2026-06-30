@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
+import { TMessageKey } from '../../errors/messages';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
@@ -14,7 +15,7 @@ const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -29,7 +30,7 @@ const getAllOrders = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -45,7 +46,7 @@ const getSingleOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -61,7 +62,7 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -75,7 +76,7 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -91,7 +92,7 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -106,7 +107,7 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -136,7 +137,7 @@ const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -149,7 +150,7 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });

@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import { PaymentServices } from './payment.service';
 import sendResponse from '../../utils/sendResponse';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // create redUniq payment intent controller
 const createRedUniqPayment = catchAsync(async (req, res) => {
@@ -16,7 +17,7 @@ const createRedUniqPayment = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -30,7 +31,7 @@ const handlePaymentFailure = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -48,7 +49,7 @@ const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });

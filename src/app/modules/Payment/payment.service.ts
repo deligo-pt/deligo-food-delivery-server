@@ -15,6 +15,7 @@ import { IngredientOrder } from '../Ingredient-Order/ing-order.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 const solutionIds = {
   CARD: '117',
@@ -31,33 +32,27 @@ const createRedUniqPayment = async (
   paymentMethod: TPaymentMethod,
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
-  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'Summary not found');
+  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'SUMMARY_NOT_FOUND');
 
   if (summary.isConvertedToOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order',
+      'CHECKOUT_SUMMARY_ALREADY_CONVERTED',
     );
   }
 
   if (summary.paymentStatus === 'PROCESSING') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Payment already in process for this checkout.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_ALREADY_IN_PROCESS');
   }
 
   if (summary.paymentStatus === 'PAID') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Payment already completed for this checkout',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_ALREADY_COMPLETED');
   }
 
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'RedUniq API URL is not configured',
+      'REDUNIQ_API_URL_NOT_CONFIGURED',
     );
   }
 
@@ -96,7 +91,7 @@ const createRedUniqPayment = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        result?.message || 'Payment initiation failed by gateway',
+        'PAYMENT_INITIATION_FAILED_BY_GATEWAY',
       );
     }
 
@@ -107,7 +102,7 @@ const createRedUniqPayment = async (
     }
 
     return {
-      message: 'RedUniq payment session created',
+      messageKey: 'REDUNIQ_PAYMENT_SESSION_CREATED' as TMessageKey,
       data: {
         redirectUrl,
         paymentToken: token,
@@ -115,12 +110,14 @@ const createRedUniqPayment = async (
     };
   } catch (error: any) {
     if (axios.isAxiosError(error) && error.response) {
-      const errorMessage =
-        error.response.status === 502
-          ? 'Payment Gateway is temporarily unavailable (502 Bad Gateway)'
-          : error.response.data?.message || 'Gateway Error';
+      if (error.response.status === 502) {
+        throw new AppError(
+          error.response.status,
+          'PAYMENT_GATEWAY_TEMP_UNAVAILABLE_502',
+        );
+      }
 
-      throw new AppError(error.response.status, errorMessage);
+      throw new AppError(error.response.status, 'GATEWAY_ERROR');
     }
 
     if (error instanceof AppError) {
@@ -129,7 +126,7 @@ const createRedUniqPayment = async (
 
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      error.message || 'Something went wrong during payment processing',
+      'PAYMENT_PROCESSING_FAILED',
     );
   }
 };
@@ -141,13 +138,10 @@ const handlePaymentFailure = async (
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
-  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'Summary not found');
+  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'SUMMARY_NOT_FOUND');
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to view',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED_TO_VIEW');
   }
 
   if (!summary.isConvertedToOrder) {
@@ -156,7 +150,7 @@ const handlePaymentFailure = async (
   }
 
   return {
-    message: 'Payment status reset successfully',
+    messageKey: 'PAYMENT_STATUS_RESET_SUCCESS' as TMessageKey,
     data: null,
   };
 };
@@ -169,10 +163,7 @@ const createIngredientRedUniqPayment = async (
   const { orderDetails, paymentMethod, deliveryAddress } = payload;
 
   if (!orderDetails || orderDetails.length === 0) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Order details/items cannot be empty',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'ORDER_DETAILS_EMPTY');
   }
 
   const session = await mongoose.startSession();
@@ -182,7 +173,7 @@ const createIngredientRedUniqPayment = async (
 
     const vendorInfo = await Vendor.findById(currentUser._id).session(session);
     if (!vendorInfo) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+      throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
     }
 
     const pendingOrders = await IngredientOrder.find({
@@ -224,23 +215,23 @@ const createIngredientRedUniqPayment = async (
         .session(session);
 
       if (!ingredient) {
-        throw new AppError(
-          httpStatus.NOT_FOUND,
-          `Ingredient with ID ${item.ingredientId} not found`,
-        );
+        throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND', {
+          ingredientId: String(item.ingredientId),
+        });
       }
 
       if (item.quantity > ingredient.stock) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          `Stock not available for ${ingredient.name}. Available: ${ingredient.stock}`,
-        );
+        throw new AppError(httpStatus.BAD_REQUEST, 'STOCK_NOT_AVAILABLE', {
+          name: ingredient.name,
+          stock: ingredient.stock,
+        });
       }
 
       if (item.quantity < (ingredient.minOrder || 1)) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          `Minimum order quantity for ${ingredient.name} is ${ingredient.minOrder}`,
+          'MINIMUM_ORDER_QUANTITY_REQUIRED',
+          { name: ingredient.name, minOrder: ingredient.minOrder || 1 },
         );
       }
 
@@ -382,14 +373,14 @@ const createIngredientRedUniqPayment = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        result?.message || 'Payment initiation failed by gateway',
+        'REDUNIQ_PAYMENT_INITIATION_FAILED',
       );
     }
 
     if (!token) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'Payment token not received from RedUniq',
+        'PAYMENT_TOKEN_NOT_RECEIVED',
       );
     }
 
@@ -400,7 +391,7 @@ const createIngredientRedUniqPayment = async (
       await session.commitTransaction();
 
       return {
-        message: 'Ingredient redUniq payment session created',
+        messageKey: 'INGREDIENT_REDUNIQ_PAYMENT_SESSION_CREATED' as TMessageKey,
         data: {
           redirectUrl: redirectUrl,
           paymentToken: token,
@@ -409,7 +400,7 @@ const createIngredientRedUniqPayment = async (
     } else {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'RedUniq payment initiation failed',
+        'REDUNIQ_PAYMENT_INITIATION_FAILED',
       );
     }
   } catch (error: unknown) {
@@ -417,9 +408,11 @@ const createIngredientRedUniqPayment = async (
       await session.abortTransaction();
     }
 
-    const errorMessage =
-      error instanceof Error ? error.message : 'Transaction failed';
-    throw new AppError(httpStatus.BAD_REQUEST, errorMessage);
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError(httpStatus.BAD_REQUEST, 'TRANSACTION_FAILED');
   } finally {
     session.endSession();
   }
