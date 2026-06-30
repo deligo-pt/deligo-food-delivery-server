@@ -7,6 +7,7 @@ import { Points, PointsLog } from './points.model';
 import mongoose, { ClientSession, Types } from 'mongoose';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { TMessageKey } from '../../errors/messages';
 
 /**
  * Adds loyalty points to a customer based on their order amount.
@@ -34,7 +35,7 @@ const addOrderPoints = async (
       // Exit silently if already granted to prevent double points
       if (!externalSession) await session.commitTransaction();
       return {
-        message: 'Points already granted for this order',
+        messageKey: 'POINTS_ALREADY_GRANTED_FOR_ORDER' as TMessageKey,
         pointsEarned: 0,
       };
     }
@@ -43,13 +44,13 @@ const addOrderPoints = async (
     const existsOrder = await Order.findById(orderId).session(session);
 
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
     }
     // 3. Security: Ensure the points are being added for the correct customer
     if (existsOrder.customerId?.toString() !== userObjectId.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'Unauthorized: This order does not belong to the specified user.',
+        'UNAUTHORIZED_ORDER_NOT_BELONG_TO_USER',
       );
     }
 
@@ -57,7 +58,8 @@ const addOrderPoints = async (
     if (existsOrder.orderStatus !== 'DELIVERED') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Points can only be earned for DELIVERED orders. Current status: ${existsOrder.orderStatus}`,
+        'POINTS_ONLY_FOR_DELIVERED_ORDER',
+        { status: existsOrder.orderStatus },
       );
     }
 
@@ -68,7 +70,7 @@ const addOrderPoints = async (
     if (!settings) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'Global settings could not be retrieved.',
+        'GLOBAL_SETTINGS_NOT_RETRIEVED',
       );
     }
 
@@ -100,7 +102,7 @@ const addOrderPoints = async (
     if (!externalSession) await session.commitTransaction();
 
     return {
-      message: 'Order points added successfully',
+      messageKey: 'ORDER_POINTS_ADDED_SUCCESS' as TMessageKey,
       pointsEarned: pointsToAdd,
     };
   } catch (error: any) {
@@ -115,7 +117,7 @@ const addOrderPoints = async (
         description: `FAILED: ${error.message}`,
       });
     } catch (logError) {
-      console.error('PointsLog backup logging failed:', logError);
+      void logError;
     }
 
     return { success: false, error: error.message };
@@ -150,7 +152,7 @@ const addDeliveryPartnerPoints = async (
       // If already granted, we exit silently to avoid crashing the main process
       if (!externalSession) await session.commitTransaction();
       return {
-        message: 'Points already granted for this order',
+        messageKey: 'POINTS_ALREADY_GRANTED_FOR_ORDER' as TMessageKey,
         pointsEarned: 0,
       };
     }
@@ -159,10 +161,7 @@ const addDeliveryPartnerPoints = async (
     const existsOrder = await Order.findById(orderId).session(session);
 
     if (!existsOrder) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'The specified order was not found.',
-      );
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_SPECIFIED');
     }
 
     // 3. Security: Ensure the delivery partner is the authorized delivery partner for this order
@@ -171,7 +170,7 @@ const addDeliveryPartnerPoints = async (
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'Unauthorized: You are not the assigned delivery partner for this order.',
+        'UNAUTHORIZED_NOT_ASSIGNED_DELIVERY_PARTNER',
       );
     }
 
@@ -179,7 +178,8 @@ const addDeliveryPartnerPoints = async (
     if (existsOrder.orderStatus !== 'DELIVERED') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Points cannot be granted. Order status is ${existsOrder.orderStatus}, but it must be DELIVERED.`,
+        'POINTS_CANNOT_BE_GRANTED_ORDER_STATUS',
+        { status: existsOrder.orderStatus },
       );
     }
 
@@ -231,7 +231,7 @@ const addDeliveryPartnerPoints = async (
     if (!externalSession) await session.commitTransaction();
 
     return {
-      message: 'Delivery points added successfully',
+      messageKey: 'DELIVERY_POINTS_ADDED_SUCCESS' as TMessageKey,
       pointsEarned: points,
     };
   } catch (error: any) {
@@ -247,10 +247,7 @@ const addDeliveryPartnerPoints = async (
         description: `FAILED: ${error.message}`,
       });
     } catch (logError) {
-      console.error(
-        'Critical: Failed to log loyalty error to database:',
-        logError,
-      );
+      void logError;
     }
 
     // Return failure object instead of throwing, to keep the main flow alive
@@ -314,10 +311,7 @@ const updatePointBalance = async (
   );
 
   if (!updatedPoints && type === 'REDEEM') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Insufficient points balance. Transaction declined to prevent negative balance.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'INSUFFICIENT_POINTS_BALANCE');
   }
 
   await PointsLog.create(
@@ -344,7 +338,7 @@ const getMyPoints = async (currentUser: TCurrentUser) => {
   }).lean();
 
   return {
-    message: 'Points fetched successfully',
+    messageKey: 'POINTS_FETCHED_SUCCESS' as TMessageKey,
     data: {
       currentPoints: points?.currentPoints || 0,
       totalEarned: points?.totalEarned || 0,
@@ -368,7 +362,7 @@ const getAllPoints = async (query: Record<string, unknown>) => {
   const data = await points.modelQuery;
 
   return {
-    message: 'Points fetched successfully',
+    messageKey: 'POINTS_FETCHED_SUCCESS' as TMessageKey,
     data,
     meta,
   };
