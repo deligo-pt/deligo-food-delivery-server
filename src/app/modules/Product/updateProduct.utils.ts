@@ -17,7 +17,8 @@ const getAndValidateProduct = async (
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not authorized to update.Your account is ${currentUser.status}`,
+      'NOT_AUTHORIZED_TO_UPDATE_ACCOUNT_STATUS',
+      { status: currentUser.status },
     );
   }
   const product = await Product.findOne({
@@ -27,7 +28,7 @@ const getAndValidateProduct = async (
   }).populate('vendorId', 'businessDetails.businessType');
 
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   return product;
@@ -67,7 +68,7 @@ const prepareUpdateData = async (
 
     if (taxId) {
       const tax = await Tax.findById(taxId);
-      if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
+      if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'TAX_NOT_FOUND');
       modifiedData['pricing.taxId'] = taxId;
       modifiedData['pricing.taxRate'] = tax.taxRate;
     }

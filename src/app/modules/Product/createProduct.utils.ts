@@ -10,13 +10,12 @@ import { Tax } from '../Tax/tax.model';
 import { TTax } from '../Tax/tax.interface';
 import { AddonGroup } from '../Add-Ons/addOns.model';
 import { Types } from 'mongoose';
-import { TUserRole } from '../../constant/GlobalConstant/user.constant';
 
 const validateVendor = (currentUser: TCurrentUser) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Vendor is not approved to add products',
+      'VENDOR_NOT_APPROVED_TO_ADD_PRODUCTS',
     );
   }
 };
@@ -25,18 +24,14 @@ const validateBasePayload = (payload: TProduct) => {
   if (!payload.variations && !payload.pricing.price) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Price is required when no variations',
+      'PRICE_REQUIRED_WHEN_NO_VARIATIONS',
     );
   }
 };
 
-const validateCategory = (
-  vendorCategoryExist: any,
-  category: any,
-  role: TUserRole,
-) => {
+const validateCategory = (vendorCategoryExist: any, category: any) => {
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CATEGORY_NOT_FOUND');
   }
 
   if (
@@ -45,7 +40,7 @@ const validateCategory = (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Category is not under your business type',
+      'CATEGORY_NOT_UNDER_BUSINESS_TYPE',
     );
   }
 };
@@ -61,7 +56,7 @@ const validateRestaurantStock = (
     if (payload.stock && (payload.stock.quantity || 0) > 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Stock management is not allowed for Restaurants',
+        'STOCK_MANAGEMENT_NOT_ALLOWED_FOR_RESTAURANTS',
       );
     }
 
@@ -82,10 +77,7 @@ const validateAddons = async (
   });
 
   if (validAddonsCount !== payload.addonGroups.length) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'One or more invalid Addon Groups',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_ADDON_GROUPS');
   }
 };
 
@@ -93,7 +85,7 @@ const applyTax = async (payload: TProduct) => {
   if (!payload.pricing.taxId) return;
 
   const tax: TTax | null = await Tax.findById(payload.pricing.taxId);
-  if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
+  if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'TAX_NOT_FOUND');
 
   payload.pricing.taxRate = tax.taxRate;
 };
@@ -137,7 +129,7 @@ const handleVariations = (
       if (isRestaurant && (option.stockQuantity || 0) > 0) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'Variation stock quantity is not allowed for Restaurants',
+          'VARIATION_STOCK_NOT_ALLOWED_FOR_RESTAURANTS',
         );
       }
 

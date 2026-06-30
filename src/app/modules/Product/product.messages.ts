@@ -1,4 +1,38 @@
 export const productMessages = {
+  VENDOR_NOT_APPROVED_TO_ADD_PRODUCTS: {
+    en: 'Vendor is not approved to add products',
+    pt: 'O vendedor não está aprovado para adicionar produtos',
+  },
+  PRICE_REQUIRED_WHEN_NO_VARIATIONS: {
+    en: 'Price is required when no variations',
+    pt: 'O preço é obrigatório quando não há variações',
+  },
+  CATEGORY_NOT_FOUND: {
+    en: 'Category not found',
+    pt: 'Categoria não encontrada',
+  },
+  CATEGORY_NOT_UNDER_BUSINESS_TYPE: {
+    en: 'Category is not under your business type',
+    pt: 'A categoria não pertence ao seu tipo de negócio',
+  },
+  STOCK_MANAGEMENT_NOT_ALLOWED_FOR_RESTAURANTS: {
+    en: 'Stock management is not allowed for Restaurants',
+    pt: 'A gestão de estoque não é permitida para Restaurantes',
+  },
+  INVALID_ADDON_GROUPS: {
+    en: 'One or more invalid Addon Groups',
+    pt: 'Um ou mais grupos de adicionais são inválidos',
+  },
+  TAX_NOT_FOUND: {
+    en: 'Tax not found',
+    pt: 'Imposto não encontrado',
+  },
+  NOT_AUTHORIZED_TO_UPDATE_ACCOUNT_STATUS: {
+    en: (vars: { status: string }) =>
+      `You are not authorized to update.Your account is ${vars.status}`,
+    pt: (vars: { status: string }) =>
+      `Você não está autorizado a atualizar. Sua conta está ${vars.status.toLowerCase()}`,
+  },
   PRODUCT_CREATED_SUCCESS: {
     en: 'Product created successfully',
     pt: 'Produto criado com sucesso',
