@@ -12,6 +12,7 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { RedisService } from '../../config/redis';
+import { formatCartResponse } from './cart.utils';
 
 // Add cart Service
 const addToCart = async (
@@ -623,11 +624,14 @@ const updateAddonQuantity = async (
     if (group.isActive && !group.isDeleted) {
       const option = group.options.find((opt: any) => opt.sku === optionSku);
       if (option && option.isActive) {
-        const addonNameObj = option.name as Record<string, string>;
-        const localizedAddonName =
-          addonNameObj[lang] || addonNameObj['en'] || '';
+        const addonNameEn = option.name?.en || '';
+        const addonNamePt = option.name?.pt || addonNameEn;
+
         addonData = {
-          name: localizedAddonName,
+          name: {
+            en: addonNameEn,
+            pt: addonNamePt,
+          },
           sku: option.sku,
           unitPrice: option.price,
           taxRate: option.tax?.taxRate || 0,
@@ -640,10 +644,13 @@ const updateAddonQuantity = async (
   if (!addonData)
     throw new AppError(httpStatus.BAD_REQUEST, 'ADDON_UNAVAILABLE');
 
-  const nameObject = product.name as { en: string; pt: string };
-  const pName =
-    nameObject[lang as keyof typeof nameObject] || nameObject.en || '';
-  let finalItemName = pName;
+  const pNameEn = product.name?.en || '';
+  const pNamePt = product.name?.pt || pNameEn;
+
+  const finalItemName = {
+    en: pNameEn,
+    pt: pNamePt,
+  };
 
   const hasVariations =
     product?.stock?.hasVariations === true ||
@@ -656,25 +663,26 @@ const updateAddonQuantity = async (
 
     const selectedVariantLabel = targetOption?.label;
     if (selectedVariantLabel) {
-      const vLabel =
+      const vLabelEn =
         typeof selectedVariantLabel === 'object'
-          ? (selectedVariantLabel as Record<string, string>)[lang] ||
-            (selectedVariantLabel as Record<string, string>)['en'] ||
-            ''
+          ? (selectedVariantLabel as Record<string, string>).en || ''
+          : selectedVariantLabel;
+      const vLabelPt =
+        typeof selectedVariantLabel === 'object'
+          ? (selectedVariantLabel as Record<string, string>).pt || vLabelEn
           : selectedVariantLabel;
 
-      if (vLabel) {
-        finalItemName = `${pName} - ${vLabel}`;
-      }
+      if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+      if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
     }
   }
 
   targetItem.name = finalItemName;
 
   const selectedAddon = addonData as {
-    name: string;
+    name: any;
     sku?: string;
-    price: number;
+    unitPrice: number;
     taxRate: number;
   };
 
@@ -763,9 +771,11 @@ const updateAddonQuantity = async (
 
   await RedisService.set(expiryKey, '', 86400);
 
+  const formattedCart = formatCartResponse(cart, lang);
+
   return {
     messageKey: 'ADDON_QUANTITY_UPDATE_SUCCESS' as const,
-    data: cart,
+    data: formattedCart,
   };
 };
 

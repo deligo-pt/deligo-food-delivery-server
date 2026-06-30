@@ -4,7 +4,6 @@ import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const cartAddonSchema = new Schema(
   {
-    optionId: { type: String, required: true },
     name: { type: localizedSchema, required: true },
     sku: { type: String, required: true },
     originalPrice: { type: Number, required: true },

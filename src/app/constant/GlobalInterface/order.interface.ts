@@ -22,7 +22,6 @@ export type TOrderItemSnapshot = {
   hasVariations: boolean;
   variationSku?: string | null;
   addons?: {
-    optionId: string;
     name: TLocalizedText;
     sku: string;
     originalPrice: number;
