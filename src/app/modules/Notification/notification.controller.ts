@@ -14,7 +14,7 @@ const getMyNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -30,7 +30,7 @@ const markAsRead = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -43,7 +43,7 @@ const markAllAsRead = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -57,7 +57,7 @@ const getAllNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -73,7 +73,7 @@ const softDeleteSingleNotification = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -88,7 +88,8 @@ const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -101,7 +102,8 @@ const softDeleteAllNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -116,7 +118,7 @@ const permanentDeleteSingleNotification = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -131,7 +133,8 @@ const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -144,7 +147,8 @@ const permanentDeleteAllNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -155,7 +159,7 @@ const sendBroadcastNotification = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
