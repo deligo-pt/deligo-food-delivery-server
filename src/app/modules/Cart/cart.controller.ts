@@ -46,13 +46,15 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateCartItemQuantity(
     req.user as TCurrentUser,
     req.body,
-    req.lang,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 

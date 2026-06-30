@@ -381,7 +381,6 @@ const updateCartItemQuantity = async (
     quantity: number;
     action: 'increment' | 'decrement';
   },
-  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(httpStatus.FORBIDDEN, 'CART_UPDATE_RESTRICTED', {
@@ -469,8 +468,13 @@ const updateCartItemQuantity = async (
     currentQty -= quantity;
   }
 
-  const pName = product.name?.[lang] || product.name?.en || '';
-  let finalItemName = pName;
+  const pNameEn = product.name?.en || '';
+  const pNamePt = product.name?.pt || pNameEn;
+
+  const finalItemName = {
+    en: pNameEn,
+    pt: pNamePt,
+  };
 
   if (targetItem.variationSku && hasVariations) {
     const targetOption = product.variations
@@ -478,14 +482,17 @@ const updateCartItemQuantity = async (
       .find((opt: any) => opt.sku === targetItem.variationSku);
 
     const selectedVariantLabel = targetOption?.label;
-    const vLabel =
+    const vLabelEn =
       typeof selectedVariantLabel === 'object'
-        ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+        ? selectedVariantLabel.en || ''
+        : selectedVariantLabel;
+    const vLabelPt =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel.pt || vLabelEn
         : selectedVariantLabel;
 
-    if (vLabel) {
-      finalItemName = `${pName} - ${vLabel}`;
-    }
+    if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+    if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
   }
 
   targetItem.name = finalItemName;
