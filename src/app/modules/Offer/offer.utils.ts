@@ -46,13 +46,13 @@ export const findAndValidateOffer = async (
       });
 
   if (!offer)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer or promo code');
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_OFFER_OR_PROMO_CODE');
 
   // 4. Ensure Auto-apply offers aren't being forced manually via code incorrectly
   if (!offer.isAutoApply && isObjectId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'This offer requires a valid promo code.',
+      'OFFER_REQUIRES_VALID_PROMO_CODE',
     );
   }
 
@@ -66,7 +66,8 @@ export const findAndValidateOffer = async (
   if (originalTaxableAmount < (offer?.minOrderAmount || 0)) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `This offer requires minimum order amount of ${offer.minOrderAmount}`,
+      'MIN_ORDER_AMOUNT_REQUIRED_TEMPLATE',
+      { amount: offer.minOrderAmount || 0 },
     );
   }
 
@@ -77,7 +78,8 @@ export const findAndValidateOffer = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `This offer requires minimum order amount of ${offer.discountValue}`,
+      'MIN_ORDER_AMOUNT_REQUIRED_TEMPLATE',
+      { amount: offer.discountValue || 0 },
     );
   }
 
@@ -97,7 +99,7 @@ export const findAndValidateOffer = async (
     if (!isProductMatched) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This offer is not valid for the products in your cart.',
+        'OFFER_NOT_VALID_FOR_CART_PRODUCTS',
       );
     }
   }
@@ -111,10 +113,7 @@ export const findAndValidateOffer = async (
   });
 
   if (usageCount >= (offer.userUsageLimit || 0)) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `You have exceeded the usage limit for this offer`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'OFFER_USAGE_LIMIT_EXCEEDED');
   }
 
   return offer;

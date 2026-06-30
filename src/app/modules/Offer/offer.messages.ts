@@ -9,6 +9,20 @@ export const offerMessages = {
     en: 'An active offer with this code already exists',
     pt: 'Uma oferta ativa com este código já existe',
   },
+  INVALID_OFFER_OR_PROMO_CODE: {
+    en: 'Invalid offer or promo code',
+    pt: 'Oferta ou código promocional inválido',
+  },
+  OFFER_REQUIRES_VALID_PROMO_CODE: {
+    en: 'This offer requires a valid promo code.',
+    pt: 'Esta oferta requer um código promocional válido.',
+  },
+  MIN_ORDER_AMOUNT_REQUIRED_TEMPLATE: {
+    en: (vars: { amount: number }) =>
+      `This offer requires minimum order amount of ${vars.amount}`,
+    pt: (vars: { amount: number }) =>
+      `Esta oferta exige valor mínimo de pedido de ${vars.amount}`,
+  },
   BOGO_CREATE_DISABLED: {
     en: 'BOGO offers are temporarily disabled and cannot be created at this time.',
     pt: 'Ofertas do tipo "Leve 2, Pague 1" (BOGO) estão temporariamente desativadas e não podem ser criadas no momento.',
