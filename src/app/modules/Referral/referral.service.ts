@@ -37,7 +37,7 @@ const createReferralEntry = async (
   };
 
   const target = roleMap[newUser.role];
-  if (!target) throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role');
+  if (!target) throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_USER_ROLE');
 
   const referrer = await target.model
     .findOne({ referralCode })
@@ -47,10 +47,7 @@ const createReferralEntry = async (
   const modelName = target.name;
 
   if (!referrer) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Please enter a valid referral code.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'INVALID_REFERRAL_CODE');
   }
 
   const referredUserId = new Types.ObjectId(newUser._id as string);
@@ -107,7 +104,7 @@ const distributeReferralBonus = async (
       if (!externalSession) await session.abortTransaction();
       return {
         success: false,
-        message: 'Referral already processed or not found',
+        messageKey: 'REFERRAL_ALREADY_PROCESSED_OR_NOT_FOUND',
       };
     }
 
@@ -139,7 +136,7 @@ const distributeReferralBonus = async (
         await referral.save({ session });
 
         if (!externalSession) await session.commitTransaction();
-        return { success: false, message: 'Min order amount not met' };
+        return { success: false, messageKey: 'ORDER_DATA_MISSING' };
       }
     }
 
@@ -242,7 +239,7 @@ const getReferralStats = async (currentUser: TCurrentUser) => {
   );
 
   return {
-    message: 'Referral statistics and history retrieved successfully.',
+    messageKey: 'REFERRAL_STATS_RETRIEVED_SUCCESS',
     data: {
       myReferralCode: (userData as any)?.referralCode || 'N/A',
       summary: {
