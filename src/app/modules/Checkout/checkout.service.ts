@@ -10,14 +10,12 @@ import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoogleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
-import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { RedisService } from '../../config/redis';
 
 // Checkout Service
 const checkout = async (
   currentUser: TCurrentUser,
   payload: TCheckoutPayload,
-  lang: TLanguageCode,
 ) => {
   const customerId = currentUser._id.toString();
   let selectedItems = [];
@@ -115,11 +113,21 @@ const checkout = async (
 
     let basePrice = product.pricing?.price || 0;
 
-    const productNameObj = product.name as Record<string, string>;
-    const localizedProductName =
-      productNameObj[lang] || productNameObj['en'] || '';
+    // --- ১. লোকালইজড নাম অবজেক্ট প্রিপারেশন (en, pt দুটাই থাকবে) ---
+    let finalItemNameObj = { en: '', pt: '' };
 
-    let selectedVariantLabel = '';
+    if (payload.useCart && item.name && typeof item.name === 'object') {
+      finalItemNameObj = {
+        en: item.name.en || '',
+        pt: item.name.pt || item.name.en || '',
+      };
+    } else {
+      finalItemNameObj = {
+        en: product.name?.en || '',
+        pt: product.name?.pt || product.name?.en || '',
+      };
+    }
+
     if (item.variationSku && product.variations?.length) {
       const selectedOption = product.variations
         .flatMap((v: any) => v.options || [])
@@ -128,13 +136,22 @@ const checkout = async (
       if (selectedOption) {
         basePrice = selectedOption.price;
 
-        const variantLabelObj = selectedOption.label;
-        selectedVariantLabel =
-          typeof variantLabelObj === 'object'
-            ? (variantLabelObj as Record<string, string>)[lang] ||
-              (variantLabelObj as Record<string, string>)['en'] ||
-              ''
-            : variantLabelObj;
+        // ডিরেক্ট চেকাউটের ক্ষেত্রে ভ্যারিয়েন্ট লেবেল অ্যাপেন্ড করা
+        if (!payload.useCart) {
+          const vLabelEn =
+            typeof selectedOption.label === 'object'
+              ? selectedOption.label.en || ''
+              : selectedOption.label;
+          const vLabelPt =
+            typeof selectedOption.label === 'object'
+              ? selectedOption.label.pt || vLabelEn
+              : selectedOption.label;
+
+          if (vLabelEn)
+            finalItemNameObj.en = `${finalItemNameObj.en} - ${vLabelEn}`;
+          if (vLabelPt)
+            finalItemNameObj.pt = `${finalItemNameObj.pt} - ${vLabelPt}`;
+        }
       }
     }
 
@@ -145,15 +162,26 @@ const checkout = async (
     );
     const priceAfterStoreDiscount = roundTo2(basePrice - storeDiscountUnit);
 
+    // --- ২. অ্যাড-অনের লোকালইজড নাম অবজেক্ট প্রসেসিং ---
     const processedAddons = (item.addons || []).map((a: any) => {
       const aPrice = Number(a.unitPrice) || 0;
       const aQty = Number(a.quantity) || 0;
       const aTaxRate = Number(a.taxRate) || 0;
       const addonLineNet = roundTo2(aPrice * aQty);
 
+      let finalAddonNameObj = { en: '', pt: '' };
+      if (a.name && typeof a.name === 'object') {
+        finalAddonNameObj = {
+          en: a.name.en || '',
+          pt: a.name.pt || a.name.en || '',
+        };
+      } else {
+        finalAddonNameObj = { en: a.name || '', pt: a.name || '' };
+      }
+
       return {
         optionId: a.optionId,
-        name: a.name,
+        name: finalAddonNameObj, // অবজেক্ট আকারে অ্যাসাইন হলো
         sku: a.sku,
         originalPrice: a.originalPrice,
         promoDiscountAmount: 0,
@@ -195,9 +223,7 @@ const checkout = async (
     return {
       productId: product._id,
       vendorId: product.vendorId,
-      name: selectedVariantLabel
-        ? `${localizedProductName} - ${selectedVariantLabel}`
-        : localizedProductName,
+      name: finalItemNameObj, // অবজেক্ট হিসেবে ডেটাবেজে যাবে
       image: product.images?.[0] || '',
       hasVariations: product?.stock?.hasVariations || false,
       variationSku: item.variationSku || null,
