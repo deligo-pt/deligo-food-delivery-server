@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { TLoginDevice } from '../../constant/GlobalInterface/user.interface';
 import { currentStatusOptions } from './delivery-partner.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
 
