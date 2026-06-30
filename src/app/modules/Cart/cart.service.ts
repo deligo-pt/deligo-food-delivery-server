@@ -920,6 +920,22 @@ const getAllCart = async (
     });
   }
 
+  const redisKeys = await RedisService.keys('cart:data:*');
+  const redisCarts: any[] = [];
+
+  if (redisKeys && redisKeys.length > 0) {
+    for (const key of redisKeys) {
+      const cartData = await RedisService.get<any>(key);
+      if (cartData && cartData.items && cartData.items.length > 0) {
+        redisCarts.push({
+          ...cartData,
+          createdAt: cartData.createdAt || new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
+  }
+
   const cartQuery = new QueryBuilder(Cart.find({ isDeleted: false }), query)
     .search([])
     .filter()
@@ -934,38 +950,47 @@ const getAllCart = async (
     cartQuery.modelQuery = cartQuery.modelQuery.populate(option);
   });
 
-  const meta = await cartQuery.countTotal();
   const dbCarts = await cartQuery.modelQuery;
 
-  const combinedData = await Promise.all(
-    dbCarts.map(async (dbCart: any) => {
-      const customerIdStr = dbCart.customerId._id
-        ? dbCart.customerId._id.toString()
-        : dbCart.customerId.toString();
+  const formattedDbCarts = dbCarts.map((dbCart: any) => ({
+    ...(dbCart.toObject ? dbCart.toObject() : dbCart),
+    status: 'abandoned',
+  }));
 
-      const dataKey = `cart:data:${customerIdStr}`;
+  const combinedData = [...redisCarts];
 
-      const redisCart = await RedisService.get<any>(dataKey);
+  formattedDbCarts.forEach((dbCart) => {
+    const dbCustId =
+      dbCart.customerId?._id?.toString() || dbCart.customerId?.toString();
+    const isAlreadyInRedis = redisCarts.some((rc) => {
+      const redisCustId =
+        rc.customerId?._id?.toString() || rc.customerId?.toString();
+      return redisCustId === dbCustId;
+    });
 
-      if (redisCart) {
-        return {
-          ...redisCart,
-          _id: dbCart._id,
-          status: 'active',
-          customerId: dbCart.customerId,
-          createdAt: dbCart.createdAt,
-          updatedAt: new Date(),
-        };
-      }
+    if (!isAlreadyInRedis) {
+      combinedData.push(dbCart);
+    }
+  });
 
-      return dbCart;
-    }),
-  );
+  const totalItemsCount = combinedData.length;
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+
+  const startIndex = (page - 1) * limit;
+  const paginatedData = combinedData.slice(startIndex, startIndex + limit);
+
+  const meta = {
+    page,
+    limit,
+    total: totalItemsCount,
+    totalPage: Math.ceil(totalItemsCount / limit),
+  };
 
   return {
     messageKey: 'FETCH_ALL_SUCCESS' as const,
     meta,
-    data: combinedData,
+    data: paginatedData,
   };
 };
 

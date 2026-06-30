@@ -74,6 +74,10 @@ export const RedisService = {
     return result === 1;
   },
 
+  async keys(pattern: string): Promise<string[]> {
+    return await redis.keys(pattern);
+  },
+
   publish: async (channel: string, message: unknown) => {
     const data =
       typeof message === 'object' ? JSON.stringify(message) : String(message);

@@ -107,12 +107,17 @@ const getAllCart = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
     req.query,
   );
+
+  const formattedData = result?.data.map((item) => {
+    return formatCartResponse(item, req.lang);
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
