@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const formatVendorResponse = (
   vendor: any,
   lang: TLanguageCode = 'en',
@@ -17,10 +17,15 @@ const formatSingleVendor = (item: any, lang: TLanguageCode): any => {
   const itemObj = item.toObject?.() || item;
 
   if (itemObj.businessDetails?.businessType) {
-    const businessType = itemObj.businessDetails.businessType;
-    if (businessType && typeof businessType === 'object') {
+    const bType = itemObj.businessDetails.businessType;
+
+    if (bType && typeof bType === 'object' && bType.name) {
+      itemObj.businessDetails.businessTypeSlug = bType.slug || '';
       itemObj.businessDetails.businessType =
-        businessType[lang] || businessType['en'] || '';
+        bType.name[lang] || bType.name['en'] || '';
+    } else if (typeof bType === 'object' && bType._id) {
+      itemObj.businessDetails.businessType = '';
+      itemObj.businessDetails.businessTypeSlug = '';
     }
   }
 

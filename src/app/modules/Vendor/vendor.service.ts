@@ -74,10 +74,7 @@ const vendorUpdate = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
     }
 
-    payload.businessDetails!.businessType = {
-      en: businessCategory.name.en,
-      pt: businessCategory.name.pt,
-    } as any;
+    payload.businessDetails!.businessType = businessCategory._id;
     const isRestaurant = businessTypeSlug === 'restaurant';
 
     if (isRestaurant && !cuisineTypeSlug) {
@@ -125,7 +122,9 @@ const vendorUpdate = async (
     { userId: existingVendor.userId },
     { $set: flattenedPayload },
     { new: true, runValidators: true }, // Ensure new data adheres to schema rules
-  ).populate('cuisinesData');
+  )
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
 
   if (!updatedVendor) {
     throw new AppError(
@@ -376,7 +375,31 @@ const getAllVendors = async (
       status: currentUser?.status || 'UNKNOWN',
     });
   }
-  const vendors = new QueryBuilder(Vendor.find(), query)
+
+  const filter: any = {};
+
+  if (query.businessType) {
+    const businessTypeSlug = (query.businessType as string)
+      .trim()
+      .toLowerCase();
+
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
+
+    if (!businessCategory) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
+    }
+
+    if (businessCategory) {
+      filter['businessDetails.businessType'] = businessCategory._id;
+    }
+
+    delete query.businessType;
+    delete query['businessDetails.businessType'];
+  }
+
+  const vendors = new QueryBuilder(Vendor.find(filter), query)
     .search(VendorSearchableFields)
     .filter()
     .sort()
@@ -393,7 +416,9 @@ const getAllVendors = async (
     vendors.modelQuery = vendors.modelQuery.populate(option);
   });
 
-  vendors.modelQuery = vendors.modelQuery.populate('cuisinesData');
+  vendors.modelQuery = vendors.modelQuery
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
   const data = await vendors.modelQuery;

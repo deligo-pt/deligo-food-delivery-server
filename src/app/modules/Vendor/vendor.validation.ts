@@ -27,7 +27,6 @@ const vendorUpdateValidationSchema = z.object({
           businessName: z.string().optional(),
           businessType: z.string().optional(),
           restaurantCuisineType: z.array(z.string()).optional(),
-          businessLicenseNumber: z.string().optional(),
           NIF: z.string().optional(),
           totalBranches: z.number().optional(),
           openingHours: z.string().optional(),
