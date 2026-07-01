@@ -355,7 +355,7 @@ const getAllPoints = async (query: Record<string, unknown>) => {
   );
 
   if (!points) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Points not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'POINTS_NOT_FOUND');
   }
 
   const meta = await points.countTotal();

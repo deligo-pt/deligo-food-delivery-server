@@ -33,6 +33,7 @@ import { sosMessages } from '../modules/Sos/sos.messages';
 import { sponsorshipsMessages } from '../modules/Sponsorships/sponsorships.messages';
 import { supportMessages } from '../modules/Support/support.messages';
 import { taxMessages } from '../modules/Tax/tax.messages';
+import { testMessages } from '../modules/Test/test.messages';
 import { transactionMessages } from '../modules/Transaction/transaction.messages';
 import { uploadMessages } from '../modules/Upload/upload.messages';
 import { vendorMessages } from '../modules/Vendor/vendor.messages';
@@ -102,6 +103,7 @@ export const localizedMessages = {
   ...sponsorshipsMessages,
   ...supportMessages,
   ...taxMessages,
+  ...testMessages,
   ...transactionMessages,
   ...uploadMessages,
   ...vendorMessages,
