@@ -128,8 +128,7 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
       const sanitizedBody = req.body ? { ...req.body } : {};
       if (sanitizedBody.password) sanitizedBody.password = '********';
       if (sanitizedBody.oldPassword) sanitizedBody.oldPassword = '********';
-      const frontendUrl =
-        req.headers.host || req.headers.referer || req.headers.origin || null;
+      const frontendUrl = req.headers.origin || req.headers.referer || null;
 
       const serverErrorFallback = localizedMessages.UNKNOWN_SERVER_ERROR
         ? localizedMessages.UNKNOWN_SERVER_ERROR['en']
