@@ -50,7 +50,7 @@ const validateRestaurantStock = (
   payload: TProduct,
 ) => {
   const isRestaurant =
-    vendorCategoryExist?.name === BusinessCategoryName.RESTAURANT;
+    vendorCategoryExist?.name?.en === BusinessCategoryName.RESTAURANT;
 
   if (isRestaurant) {
     if (payload.stock && (payload.stock.quantity || 0) > 0) {
@@ -117,7 +117,8 @@ const handleVariations = (
   vendorCategory: any,
 ) => {
   if (!payload.variations?.length) return;
-  const isRestaurant = vendorCategory?.name === BusinessCategoryName.RESTAURANT;
+  const isRestaurant =
+    vendorCategory?.name?.en === BusinessCategoryName.RESTAURANT;
   let totalStock = 0;
   let minPrice = Infinity;
 

@@ -28,6 +28,7 @@ import customNanoId from '../../utils/customNanoId';
 import { orderQueue } from '../../BullMQ/Queue/order.queue';
 import { TMessageKey } from '../../errors/messages';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { BusinessCategoryName } from '../Category/category.interface';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -232,7 +233,8 @@ const updateOrderStatusByVendor = async (
     const vendor = order.vendorId as any;
 
     const isRestaurant =
-      vendor?.businessDetails?.businessType?.toUpperCase() === 'RESTAURANT';
+      vendor?.businessDetails?.businessType?.en ===
+      BusinessCategoryName.RESTAURANT;
 
     const shouldCheckStock = !isRestaurant;
     // ---------------------------------------------------------

@@ -27,7 +27,7 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
 
   const [vendorCategoryExist, category] = await Promise.all([
     BusinessCategory.findOne({
-      name: currentUser?.businessDetails?.businessType,
+      'name.en': currentUser?.businessDetails?.businessType?.en,
     }),
     ProductCategory.findById(payload.category),
   ]);
@@ -117,7 +117,8 @@ const manageProductVariations = async (
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
+    vendor?.businessDetails?.businessType?.en ===
+    BusinessCategoryName.RESTAURANT;
 
   const { name, options } = payload;
 
@@ -456,7 +457,8 @@ const removeProductVariations = async (
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
+    vendor?.businessDetails?.businessType?.en ===
+    BusinessCategoryName.RESTAURANT;
 
   const { name, labelToRemove } = payload;
   const normalizedName = name.trim();
@@ -564,7 +566,8 @@ const updateInventoryAndPricing = async (
 
   const vendor = product.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
+    vendor?.businessDetails?.businessType?.en ===
+    BusinessCategoryName.RESTAURANT;
 
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
     if (
