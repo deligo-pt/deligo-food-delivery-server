@@ -46,7 +46,7 @@ app.use('/api/v1', router);
 app.get('/', (req: Request, res: Response, next: NextFunction) => {
   res.status(httpStatus.OK).json({
     success: true,
-    message: 'Welcome to the DeliGo Food Delivery Server PT',
+    message: 'Welcome to the DeliGo Food Delivery Server PT test',
   });
 });
 
