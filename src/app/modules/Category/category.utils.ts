@@ -1,9 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
-import {
-  BusinessCategoryTranslation,
-  TBusinessCategoryName,
-} from './category.interface';
 
 export const formatBusinessCategoryResponse = (
   category: any,
@@ -12,23 +8,19 @@ export const formatBusinessCategoryResponse = (
   if (Array.isArray(category)) {
     return category.map((item) => {
       const itemObj = item.toObject?.() || item;
-      const translation =
-        BusinessCategoryTranslation[itemObj.name as TBusinessCategoryName];
 
       return {
         ...itemObj,
-        name: translation?.[lang] || translation?.['en'] || itemObj.name,
+        name: itemObj.name?.[lang] || itemObj.name?.['en'] || '',
       };
     });
   }
 
   const categoryObj = category.toObject?.() || category;
-  const translation =
-    BusinessCategoryTranslation[categoryObj.name as TBusinessCategoryName];
 
   return {
     ...categoryObj,
-    name: translation?.[lang] || translation?.['en'] || categoryObj.name,
+    name: categoryObj.name?.[lang] || categoryObj.name?.['en'] || '',
   };
 };
 
