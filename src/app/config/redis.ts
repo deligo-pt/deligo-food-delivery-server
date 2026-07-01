@@ -16,8 +16,17 @@ const subscriber = new Redis({
 });
 
 // Connection
-redis.on('connect', () => console.log('Redis Main Connected'));
-subscriber.on('connect', () => console.log('Redis Subscriber Connected'));
+redis.on(
+  'connect',
+  () =>
+    config.NODE_ENV === 'development' && console.log('Redis Main Connected'),
+);
+subscriber.on(
+  'connect',
+  () =>
+    config.NODE_ENV === 'development' &&
+    console.log('Redis Subscriber Connected'),
+);
 
 // Error handling
 redis.on('error', (err) => console.error('Redis Main Error:', err));
@@ -87,7 +96,6 @@ export const RedisService = {
   subscribe: async (channel: string, callback: (data: any) => void) => {
     subscriptions.set(channel, callback);
     await subscriber.subscribe(channel);
-    console.log(`Listening to channel: ${channel}`);
   },
 
   onKeyExpire: (
@@ -95,16 +103,18 @@ export const RedisService = {
     callback: (key: string) => void | Promise<void>,
   ) => {
     expirySubscriptions.set(keyPrefix, callback);
-    console.log(`Dynamic expiry handler registered for prefix: ${keyPrefix}`);
   },
 
   initKeySpaceNotification: async () => {
     await redis.config('SET', 'notify-keyspace-events', 'Ex');
 
     await subscriber.psubscribe('__keyevent@0__:expired');
-    console.log(
-      'Redis Keyspace Expiry Notifications Activated with Config SET',
-    );
+
+    if (config.NODE_ENV === 'development') {
+      console.log(
+        'Redis Keyspace Expiry Notifications Activated with Config SET',
+      );
+    }
   },
 };
 

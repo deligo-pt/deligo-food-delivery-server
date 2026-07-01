@@ -1,6 +1,4 @@
-import httpStatus from 'http-status';
 import mongoose from 'mongoose';
-import config from '../config';
 import { IngredientOrder } from '../modules/Ingredient-Order/ing-order.model';
 import { Ingredient } from '../modules/Ingredients/ingredients.model';
 
@@ -24,19 +22,8 @@ export const releaseAbandonedIngredientStockCron = async () => {
       .session(session);
 
     if (abandonedOrders.length === 0) {
-      if (config.NODE_ENV === 'development') {
-        console.log(
-          'Cron (Stock Release): No abandoned ingredient orders found.',
-        );
-      }
       await session.commitTransaction();
       return;
-    }
-
-    if (config.NODE_ENV === 'development') {
-      console.log(
-        `Cron (Stock Release): Found ${abandonedOrders.length} abandoned orders. Processing...`,
-      );
     }
 
     for (const order of abandonedOrders) {
@@ -57,12 +44,6 @@ export const releaseAbandonedIngredientStockCron = async () => {
     }
 
     await session.commitTransaction();
-
-    if (config.NODE_ENV === 'development') {
-      console.log(
-        'Cron (Stock Release): Successfully released stock and cleaned abandoned orders.',
-      );
-    }
   } catch (error) {
     await session.abortTransaction();
     console.error(
