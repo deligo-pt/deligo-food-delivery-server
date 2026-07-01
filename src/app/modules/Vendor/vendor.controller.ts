@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { VendorServices } from './vendor.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { formatVendorResponse } from './vendor.utils';
 
 // Vendor Update Controller
 const vendorUpdate = catchAsync(async (req, res) => {
@@ -20,11 +21,13 @@ const vendorUpdate = catchAsync(async (req, res) => {
     currentUser,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 //  vendor doc image upload controller
@@ -96,12 +99,14 @@ const getAllVendors = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -112,11 +117,13 @@ const getSingleVendor = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -143,11 +150,13 @@ const getSingleVendorForCustomer = catchAsync(async (req, res) => {
     req.params.vendorId,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 

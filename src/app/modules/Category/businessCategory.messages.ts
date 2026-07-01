@@ -3,6 +3,14 @@ export const businessCategoryMessages = {
     en: 'Business category already exists',
     pt: 'A categoria de negócio já existe',
   },
+  INVALID_BUSINESS_CATEGORY_NAME: {
+    en: 'Invalid Business Category name',
+    pt: 'Nome de categoria de negócio inválido',
+  },
+  ICON_IS_REQUIRED: {
+    en: 'Icon is required',
+    pt: 'O icone é obrigatório',
+  },
   NOT_FOUND: {
     en: 'Business category not found',
     pt: 'Categoria de negócio não encontrada',

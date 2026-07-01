@@ -11,18 +11,22 @@ export type TBusinessCategoryName =
 
 export const BusinessCategoryTranslation = {
   [BusinessCategoryName.RESTAURANT]: {
-    en: 'Restaurant',
-    pt: 'Restaurante',
+    en: 'RESTAURANT',
+    pt: 'RESTAURANTE',
   },
   [BusinessCategoryName.STORE]: {
-    en: 'Store',
-    pt: 'Loja',
+    en: 'STORE',
+    pt: 'LOJA',
   },
 } as const;
 
+export type TCreateBusinessCategoryInput = Omit<TBusinessCategory, 'name'> & {
+  name: TBusinessCategoryName;
+};
+
 export type TBusinessCategory = {
   _id?: Types.ObjectId;
-  name: TBusinessCategoryName;
+  name: TLocalizedText;
   slug: string;
   description?: string;
   icon: string;

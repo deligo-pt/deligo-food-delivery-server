@@ -17,11 +17,11 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { BusinessCategoryName } from '../Category/category.interface';
 import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
 import { TMessageKey } from '../../errors/messages';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { BusinessCategoryTranslation } from '../Category/category.interface';
 
 /**
  * Service to update vendor profile information.
@@ -59,39 +59,43 @@ const vendorUpdate = async (
     );
   }
 
-  const businessType = payload.businessDetails?.businessType;
-  const cuisineType = payload.businessDetails?.restaurantCuisineType;
+  const businessTypeSlug = payload.businessDetails
+    ?.businessType as unknown as string;
+  const cuisineTypeSlug = payload.businessDetails
+    ?.restaurantCuisineType as unknown as string[];
 
   // 5. Business Validation: Verify that the provided business type exists in the database
-  if (businessType) {
-    const exists = await BusinessCategory.findOne({
-      name: businessType,
-    });
+  if (businessTypeSlug) {
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
 
-    if (!exists) {
+    if (!businessCategory) {
       throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
     }
 
-    if (businessType === BusinessCategoryName.RESTAURANT && !cuisineType) {
+    payload.businessDetails!.businessType = {
+      en: businessCategory.name.en,
+      pt: businessCategory.name.pt,
+    } as any;
+    const isRestaurant = businessTypeSlug === 'restaurant';
+
+    if (isRestaurant && !cuisineTypeSlug) {
       throw new AppError(httpStatus.BAD_REQUEST, 'PLEASE_SELECT_CUISINE_TYPE');
     }
 
-    if (
-      businessType === BusinessCategoryName.RESTAURANT &&
-      cuisineType &&
-      !Array.isArray(cuisineType)
-    ) {
+    if (isRestaurant && cuisineTypeSlug && !Array.isArray(cuisineTypeSlug)) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'PLEASE_SELECT_AT_LEAST_ONE_CUISINE_TYPE',
       );
     }
 
-    if (cuisineType && cuisineType.length > 0) {
+    if (cuisineTypeSlug && cuisineTypeSlug.length > 0) {
       const cuisineTypeExists = await Cuisine.find({
-        'name.en': { $in: cuisineType },
+        slug: { $in: cuisineTypeSlug },
       });
-      if (cuisineTypeExists.length !== cuisineType.length) {
+      if (cuisineTypeExists.length !== cuisineTypeSlug.length) {
         throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_CUISINE_TYPE');
       }
     }
@@ -121,7 +125,7 @@ const vendorUpdate = async (
     { userId: existingVendor.userId },
     { $set: flattenedPayload },
     { new: true, runValidators: true }, // Ensure new data adheres to schema rules
-  );
+  ).populate('cuisinesData');
 
   if (!updatedVendor) {
     throw new AppError(
@@ -389,6 +393,8 @@ const getAllVendors = async (
     vendors.modelQuery = vendors.modelQuery.populate(option);
   });
 
+  vendors.modelQuery = vendors.modelQuery.populate('cuisinesData');
+
   const meta = await vendors.countTotal();
   const data = await vendors.modelQuery;
 
@@ -430,6 +436,8 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
     query = query.populate(option);
   });
 
+  query = query.populate('cuisinesData');
+
   const existingVendor = await query;
   if (!existingVendor) {
     throw new AppError(
@@ -450,6 +458,7 @@ const getAllVendorsForCustomer = async (
   currentUser: TCurrentUser,
   lang: TLanguageCode = 'en',
 ) => {
+  // 1. Initial check to ensure the customer exists
   const customerProfile = await Customer.findOne({
     userId: currentUser.userId,
     isDeleted: false,
@@ -462,6 +471,7 @@ const getAllVendorsForCustomer = async (
     );
   }
 
+  // 2. Location Resolution (Active Address or Session GPS Location)
   let lng: number | undefined;
   let lat: number | undefined;
   const activeAddress = customerProfile.deliveryAddresses?.find(
@@ -489,13 +499,16 @@ const getAllVendorsForCustomer = async (
     );
   }
 
+  // Get operational radius from global settings
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
   const radiusInKm = globalSettings.customerNearestVendorRadiusKm;
 
+  // Optimize vendor pool: Only include vendors who have active products
   const activeProductVendorIds = await Product.distinct('vendorId', {
     isDeleted: false,
   });
 
+  // 3. Base Query Filter Setup (Geospatial + Status Checks)
   const filter: any = {
     _id: { $in: activeProductVendorIds },
     status: 'APPROVED',
@@ -506,20 +519,44 @@ const getAllVendorsForCustomer = async (
           type: 'Point',
           coordinates: [lng, lat],
         },
-        $maxDistance: radiusInKm * 1000,
+        $maxDistance: radiusInKm * 1000, // Conversion to meters
       },
     },
   };
 
-  if (query.restaurantCuisineType) {
-    const cuisineInput = query.restaurantCuisineType as string;
+  const businessTypeInput = (query['businessDetails.businessType'] ||
+    query.businessType) as string;
 
-    filter['businessDetails.restaurantCuisineType'] = {
-      $regex: new RegExp(`^${cuisineInput.trim()}$`, 'i'),
-    };
+  if (businessTypeInput) {
+    const upperInput = businessTypeInput.trim().toUpperCase();
+
+    const translation =
+      BusinessCategoryTranslation[
+        upperInput as keyof typeof BusinessCategoryTranslation
+      ];
+
+    if (!translation) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
+    }
+
+    filter['businessDetails.businessType.en'] = translation.en;
+    filter['businessDetails.businessType.pt'] = translation.pt;
+
+    delete query['businessDetails.businessType'];
+    delete query.businessType;
+  }
+
+  if (query.restaurantCuisineType) {
+    const cuisineSlugInput = (query.restaurantCuisineType as string)
+      .trim()
+      .toLowerCase();
+
+    filter['businessDetails.restaurantCuisineType'] = cuisineSlugInput;
+
     delete query.restaurantCuisineType;
   }
 
+  // Product Category Filter Setup
   if (query.productCategory) {
     const categoryObjectId = new Types.ObjectId(
       query.productCategory as string,
@@ -565,9 +602,11 @@ const getAllVendorsForCustomer = async (
   }
   vendors.paginate().fields();
 
-  vendors.modelQuery = vendors.modelQuery.select(
-    'name userId businessDetails businessLocation documents rating currentSessionLocation',
-  );
+  vendors.modelQuery = vendors.modelQuery
+    .select(
+      'name userId businessDetails businessLocation documents rating currentSessionLocation',
+    )
+    .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
   const rawData = await vendors.modelQuery;
@@ -592,8 +631,10 @@ const getAllVendorsForCustomer = async (
     .lean();
 
   const data = rawData.map((vendor: any) => {
+    const vendorObj = vendor.toObject?.() || vendor;
+
     const thisVendorProducts = allActiveProducts.filter(
-      (p) => p.vendorId?.toString() === vendor._id.toString(),
+      (p) => p.vendorId?.toString() === vendorObj._id.toString(),
     );
 
     const thisVendorCategoryIds = [
@@ -617,23 +658,46 @@ const getAllVendorsForCustomer = async (
       };
     });
 
+    const rawBusinessType = vendorObj.businessDetails?.businessType;
+    const formattedBusinessType =
+      rawBusinessType && typeof rawBusinessType === 'object'
+        ? rawBusinessType[lang] || rawBusinessType['en'] || ''
+        : rawBusinessType || '';
+
+    let formattedCuisines: string[] = [];
+    if (
+      Array.isArray(vendorObj.cuisinesData) &&
+      vendorObj.cuisinesData.length > 0
+    ) {
+      formattedCuisines = vendorObj.cuisinesData.map(
+        (cuisine: any) => cuisine.name?.[lang] || cuisine.name?.['en'] || '',
+      );
+    } else if (
+      Array.isArray(vendorObj.businessDetails?.restaurantCuisineType)
+    ) {
+      formattedCuisines = vendorObj.businessDetails.restaurantCuisineType.map(
+        (c: string) =>
+          typeof c === 'string' ? c.charAt(0).toUpperCase() + c.slice(1) : c,
+      );
+    }
+
     return {
-      id: vendor._id,
-      userId: vendor.userId,
-      name: vendor.name,
+      id: vendorObj._id,
+      userId: vendorObj.userId,
+      name: vendorObj.name,
       businessDetails: {
-        businessName: vendor.businessDetails?.businessName,
-        businessType: vendor.businessDetails?.businessType,
-        restaurantCuisineType: vendor.businessDetails?.restaurantCuisineType,
-        openingHours: vendor.businessDetails?.openingHours,
-        closingHours: vendor.businessDetails?.closingHours,
-        closingDays: vendor.businessDetails?.closingDays,
-        isStoreOpen: vendor.businessDetails?.isStoreOpen,
+        businessName: vendorObj.businessDetails?.businessName,
+        businessType: formattedBusinessType,
+        restaurantCuisineType: formattedCuisines,
+        openingHours: vendorObj.businessDetails?.openingHours,
+        closingHours: vendorObj.businessDetails?.closingHours,
+        closingDays: vendorObj.businessDetails?.closingDays,
+        isStoreOpen: vendorObj.businessDetails?.isStoreOpen,
       },
-      businessLocation: vendor.businessLocation,
-      storePhoto: vendor.documents?.storePhoto || '',
-      rating: vendor.rating,
-      currentSessionLocation: vendor.currentSessionLocation,
+      businessLocation: vendorObj.businessLocation,
+      storePhoto: vendorObj.documents?.storePhoto || '',
+      rating: vendorObj.rating,
+      currentSessionLocation: vendorObj.currentSessionLocation,
       availableCategories: formattedCategories,
     };
   });
@@ -650,7 +714,9 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
   const existingVendor = await Vendor.findOne({
     userId: vendorId,
     isDeleted: false,
-  }).select('name userId email contactNumber businessDetails businessLocation');
+  })
+    .select('name userId email contactNumber businessDetails businessLocation')
+    .populate('cuisinesData');
   if (!existingVendor) {
     throw new AppError(
       httpStatus.NOT_FOUND,
@@ -713,12 +779,35 @@ const getAllVendorsForCustomerPublic = async (
     },
   };
 
-  if (query.restaurantCuisineType) {
-    const cuisineInput = query.restaurantCuisineType as string;
+  const businessTypeInput = (query['businessDetails.businessType'] ||
+    query.businessType) as string;
 
-    filter['businessDetails.restaurantCuisineType'] = {
-      $regex: new RegExp(`^${cuisineInput.trim()}$`, 'i'),
-    };
+  if (businessTypeInput) {
+    const upperInput = businessTypeInput.trim().toUpperCase();
+
+    const translation =
+      BusinessCategoryTranslation[
+        upperInput as keyof typeof BusinessCategoryTranslation
+      ];
+
+    if (!translation) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
+    }
+
+    filter['businessDetails.businessType.en'] = translation.en;
+    filter['businessDetails.businessType.pt'] = translation.pt;
+
+    delete query['businessDetails.businessType'];
+    delete query.businessType;
+  }
+
+  if (query.restaurantCuisineType) {
+    const cuisineSlugInput = (query.restaurantCuisineType as string)
+      .trim()
+      .toLowerCase();
+
+    filter['businessDetails.restaurantCuisineType'] = cuisineSlugInput;
+
     delete query.restaurantCuisineType;
   }
 
@@ -757,7 +846,6 @@ const getAllVendorsForCustomerPublic = async (
     delete query.productCategory;
   }
 
-  // ৫. QueryBuilder Execution
   const vendors = new QueryBuilder(Vendor.find(filter), query)
     .search(['businessDetails.businessName'])
     .filter()
@@ -765,9 +853,11 @@ const getAllVendorsForCustomerPublic = async (
     .paginate()
     .fields();
 
-  vendors.modelQuery = vendors.modelQuery.select(
-    'name userId businessDetails businessLocation documents rating currentSessionLocation',
-  );
+  vendors.modelQuery = vendors.modelQuery
+    .select(
+      'name userId businessDetails businessLocation documents rating currentSessionLocation',
+    )
+    .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
   const rawData = await vendors.modelQuery;
@@ -792,8 +882,10 @@ const getAllVendorsForCustomerPublic = async (
     .lean();
 
   const data = rawData.map((vendor: any) => {
+    const vendorObj = vendor.toObject?.() || vendor;
+
     const thisVendorProducts = allActiveProducts.filter(
-      (p) => p.vendorId?.toString() === vendor._id.toString(),
+      (p) => p.vendorId?.toString() === vendorObj._id.toString(),
     );
 
     const thisVendorCategoryIds = [
@@ -817,23 +909,46 @@ const getAllVendorsForCustomerPublic = async (
       };
     });
 
+    const rawBusinessType = vendorObj.businessDetails?.businessType;
+    const formattedBusinessType =
+      rawBusinessType && typeof rawBusinessType === 'object'
+        ? rawBusinessType[lang] || rawBusinessType['en'] || ''
+        : rawBusinessType || '';
+
+    let formattedCuisines: string[] = [];
+    if (
+      Array.isArray(vendorObj.cuisinesData) &&
+      vendorObj.cuisinesData.length > 0
+    ) {
+      formattedCuisines = vendorObj.cuisinesData.map(
+        (cuisine: any) => cuisine.name?.[lang] || cuisine.name?.['en'] || '',
+      );
+    } else if (
+      Array.isArray(vendorObj.businessDetails?.restaurantCuisineType)
+    ) {
+      formattedCuisines = vendorObj.businessDetails.restaurantCuisineType.map(
+        (c: string) =>
+          typeof c === 'string' ? c.charAt(0).toUpperCase() + c.slice(1) : c,
+      );
+    }
+
     return {
-      id: vendor._id,
-      userId: vendor.userId,
-      name: vendor.name,
+      id: vendorObj._id,
+      userId: vendorObj.userId,
+      name: vendorObj.name,
       businessDetails: {
-        businessName: vendor.businessDetails?.businessName,
-        businessType: vendor.businessDetails?.businessType,
-        restaurantCuisineType: vendor.businessDetails?.restaurantCuisineType,
-        openingHours: vendor.businessDetails?.openingHours,
-        closingHours: vendor.businessDetails?.closingHours,
-        closingDays: vendor.businessDetails?.closingDays,
-        isStoreOpen: vendor.businessDetails?.isStoreOpen,
+        businessName: vendorObj.businessDetails?.businessName,
+        businessType: formattedBusinessType,
+        restaurantCuisineType: formattedCuisines,
+        openingHours: vendorObj.businessDetails?.openingHours,
+        closingHours: vendorObj.businessDetails?.closingHours,
+        closingDays: vendorObj.businessDetails?.closingDays,
+        isStoreOpen: vendorObj.businessDetails?.isStoreOpen,
       },
-      businessLocation: vendor.businessLocation,
-      storePhoto: vendor.documents?.storePhoto || '',
-      rating: vendor.rating,
-      currentSessionLocation: vendor.currentSessionLocation,
+      businessLocation: vendorObj.businessLocation,
+      storePhoto: vendorObj.documents?.storePhoto || '',
+      rating: vendorObj.rating,
+      currentSessionLocation: vendorObj.currentSessionLocation,
       availableCategories: formattedCategories,
     };
   });
