@@ -4,6 +4,7 @@ import { Zone } from './zone.model';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { TMessageKey } from '../../errors/messages';
 
 // Check for overlapping zones
 const checkZoneOverlap = async (
@@ -13,7 +14,7 @@ const checkZoneOverlap = async (
   if (newZoneBoundary.type !== 'Polygon' || !newZoneBoundary.coordinates) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Invalid GeoJSON Polygon structure provided.',
+      'INVALID_GEOJSON_POLYGON_STRUCTURE',
     );
   }
 
@@ -47,25 +48,24 @@ const createZone = async (payload: TZone) => {
   // Check for Duplicate Zone ID
   const existingZoneById = await Zone.findOne({ zoneId: payload.zoneId });
   if (existingZoneById) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      `Zone ID '${payload.zoneId}' already exists.`,
-    );
+    throw new AppError(httpStatus.CONFLICT, 'ZONE_ID_ALREADY_EXISTS', {
+      zoneId: payload.zoneId,
+    });
   }
   // Check for Zone Overlap
   const overlappingZone = await checkZoneOverlap(payload.boundary);
 
   if (overlappingZone) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      `Zone overlap detected. The new boundary intersects with existing zone: ${overlappingZone.zoneName} (${overlappingZone.zoneId}).`,
-    );
+    throw new AppError(httpStatus.CONFLICT, 'ZONE_OVERLAP_DETECTED', {
+      zoneName: overlappingZone.zoneName,
+      zoneId: overlappingZone.zoneId,
+    });
   }
 
   // Create and Save the New Zone
   const newZone = await Zone.create(payload);
   return {
-    message: 'Zone created successfully',
+    messageKey: 'ZONE_CREATED_SUCCESS' as TMessageKey,
     data: newZone,
   };
 };
@@ -87,10 +87,10 @@ const getZoneByCoordinates = async (lng: number, lat: number) => {
   }).select('zoneId district zoneName minDeliveryFee maxDeliveryDistanceKm');
 
   if (!zone) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Zone not found.');
+    throw new AppError(httpStatus.NOT_FOUND, 'ZONE_NOT_FOUND');
   }
   return {
-    message: 'Zone found successfully',
+    messageKey: 'ZONE_FOUND_SUCCESS' as TMessageKey,
     data: zone,
   };
 };
@@ -107,7 +107,7 @@ const getAllZones = async (query: Record<string, unknown>) => {
   const meta = await zones.countTotal();
   const zoneData = await zones.modelQuery;
   return {
-    message: 'Zones retrieved successfully',
+    messageKey: 'ZONES_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data: zoneData,
   };
@@ -117,7 +117,7 @@ const getAllZones = async (query: Record<string, unknown>) => {
 const getSingleZone = async (id: string) => {
   const zone = await Zone.findOne({ zoneId: id });
   return {
-    message: 'Zone retrieved successfully',
+    messageKey: 'ZONE_RETRIEVED_SUCCESS' as TMessageKey,
     data: zone,
   };
 };
@@ -126,20 +126,19 @@ const getSingleZone = async (id: string) => {
 const updateZone = async (zoneId: string, payload: Partial<TZone>) => {
   const existingZone = await Zone.findOne({ zoneId });
   if (!existingZone) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `Zone with ID '${zoneId}' not found.`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'ZONE_WITH_ID_NOT_FOUND', {
+      zoneId,
+    });
   }
 
   if (payload.boundary) {
     const overlappingZone = await checkZoneOverlap(payload.boundary, zoneId);
 
     if (overlappingZone) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        `Zone update failed. New boundary intersects with existing zone: ${overlappingZone.zoneName} (${overlappingZone.zoneId}).`,
-      );
+      throw new AppError(httpStatus.CONFLICT, 'ZONE_UPDATE_OVERLAP_FAILED', {
+        zoneName: overlappingZone.zoneName,
+        zoneId: overlappingZone.zoneId,
+      });
     }
   }
   const updatedZone = await Zone.findOneAndUpdate(
@@ -151,12 +150,13 @@ const updateZone = async (zoneId: string, payload: Partial<TZone>) => {
   if (!updatedZone) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      `Failed to update zone ${zoneId}.`,
+      'FAILED_TO_UPDATE_ZONE',
+      { zoneId },
     );
   }
 
   return {
-    message: 'Zone updated successfully',
+    messageKey: 'ZONE_UPDATED_SUCCESS' as TMessageKey,
     data: updatedZone,
   };
 };
@@ -167,25 +167,23 @@ const toggleZoneStatus = async (zoneId: string, isOperational: boolean) => {
   if (!zone) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      `Zone with ID '${zoneId}' not found for status update.`,
+      'ZONE_WITH_ID_NOT_FOUND_FOR_STATUS_UPDATE',
+      { zoneId },
     );
   }
 
   if (zone.isOperational === isOperational) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Zone with ID '${zoneId}' is already ${
-        isOperational ? 'active' : 'inactive'
-      }.`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'ZONE_ALREADY_IN_STATUS', {
+      zoneId,
+      isOperational,
+    });
   }
 
   zone.isOperational = isOperational;
   await zone.save();
   return {
-    message: `Zone with ID '${zoneId}' has been ${
-      isOperational ? 'activated' : 'deactivated'
-    }.`,
+    messageKey: 'ZONE_STATUS_TOGGLED' as TMessageKey,
+    variables: { zoneId, isOperational },
     data: null,
   };
 };
@@ -195,19 +193,22 @@ const softDeleteZone = async (zoneId: string) => {
   if (!zone) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      `Zone with ID '${zoneId}' not found for deletion.`,
+      'ZONE_WITH_ID_NOT_FOUND_FOR_DELETION',
+      { zoneId },
     );
   }
   if (zone.isOperational) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Zone with ID '${zoneId}' is active. Cannot delete an active zone. Please deactivate it first.`,
+      'ZONE_ACTIVE_CANNOT_DELETE_DEACTIVATE_FIRST',
+      { zoneId },
     );
   }
   zone.isDeleted = true;
   await zone.save();
   return {
-    message: `Zone with ID '${zoneId}' has been deleted.`,
+    messageKey: 'ZONE_DELETED_SUCCESS' as TMessageKey,
+    variables: { zoneId },
     data: null,
   };
 };
@@ -218,18 +219,21 @@ const permanentDeleteZone = async (zoneId: string) => {
   if (!result) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      `Zone with ID '${zoneId}' not found for deletion.`,
+      'ZONE_WITH_ID_NOT_FOUND_FOR_DELETION',
+      { zoneId },
     );
   }
   if (!result.isDeleted) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Zone with ID '${zoneId}' is not soft deleted. Please soft delete it first before permanent deletion.`,
+      'ZONE_NOT_SOFT_DELETED_SOFT_DELETE_FIRST',
+      { zoneId },
     );
   }
   await Zone.deleteOne({ zoneId });
   return {
-    message: `Zone with ID '${zoneId}' has been permanently deleted.`,
+    messageKey: 'ZONE_PERMANENTLY_DELETED_SUCCESS' as TMessageKey,
+    variables: { zoneId },
     data: null,
   };
 };
