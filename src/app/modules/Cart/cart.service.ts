@@ -47,7 +47,7 @@ const addToCart = async (
   const existingVendor = await Vendor.findOne({
     _id: existingProduct.vendorId,
     isDeleted: false,
-  });
+  }).populate('businessDetails.businessType');
   if (
     !existingVendor ||
     existingVendor?.businessDetails?.isStoreOpen === false
@@ -56,7 +56,7 @@ const addToCart = async (
   }
 
   const isRestaurant =
-    existingVendor?.businessDetails?.businessType?.en ===
+    (existingVendor?.businessDetails?.businessType as any)?.name?.en ===
     BusinessCategoryName.RESTAURANT;
 
   let selectedPrice = existingProduct.pricing.price;
@@ -436,14 +436,16 @@ const updateCartItemQuantity = async (
   const vendor = await Vendor.findOne({
     _id: product.vendorId,
     isDeleted: false,
-  }).lean();
+  })
+    .populate('businessDetails.businessType')
+    .lean();
 
   if (!vendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
   const isRestaurant =
-    vendor?.businessDetails?.businessType?.en ===
+    (vendor?.businessDetails?.businessType as any)?.name?.en ===
     BusinessCategoryName.RESTAURANT;
   const shouldCheckStock = !isRestaurant;
 

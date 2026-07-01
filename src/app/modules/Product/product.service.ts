@@ -26,9 +26,7 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
   CreateProductUtils.validateBasePayload(payload);
 
   const [vendorCategoryExist, category] = await Promise.all([
-    BusinessCategory.findOne({
-      'name.en': currentUser?.businessDetails?.businessType?.en,
-    }),
+    BusinessCategory.findById(currentUser?.businessDetails?.businessType),
     ProductCategory.findById(payload.category),
   ]);
 
@@ -107,7 +105,13 @@ const manageProductVariations = async (
     productId,
     ...((currentUser.role === 'VENDOR' ||
       currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
-  }).populate('vendorId', 'businessDetails.businessType');
+  }).populate({
+    path: 'vendorId',
+    select: 'businessDetails',
+    populate: {
+      path: 'businessDetails.businessType',
+    },
+  });
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
@@ -117,7 +121,7 @@ const manageProductVariations = async (
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType?.en ===
+    vendor?.businessDetails?.businessType?.name?.en ===
     BusinessCategoryName.RESTAURANT;
 
   const { name, options } = payload;
@@ -447,7 +451,13 @@ const removeProductVariations = async (
     productId,
     ...((currentUser.role === 'VENDOR' ||
       currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
-  }).populate('vendorId', 'businessDetails.businessType');
+  }).populate({
+    path: 'vendorId',
+    select: 'businessDetails',
+    populate: {
+      path: 'businessDetails.businessType',
+    },
+  });
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
@@ -457,7 +467,7 @@ const removeProductVariations = async (
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType?.en ===
+    vendor?.businessDetails?.businessType?.name?.en ===
     BusinessCategoryName.RESTAURANT;
 
   const { name, labelToRemove } = payload;
@@ -555,18 +565,20 @@ const updateInventoryAndPricing = async (
   newPrice?: number,
   variationSku?: string,
 ) => {
-  const product = await Product.findOne({ productId }).populate(
-    'vendorId',
-    'businessDetails.businessType',
-  );
-
+  const product = await Product.findOne({ productId }).populate({
+    path: 'vendorId',
+    select: 'businessDetails',
+    populate: {
+      path: 'businessDetails.businessType',
+    },
+  });
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   const vendor = product.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType?.en ===
+    vendor?.businessDetails?.businessType?.name?.en ===
     BusinessCategoryName.RESTAURANT;
 
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {

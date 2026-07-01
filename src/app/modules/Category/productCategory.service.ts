@@ -123,15 +123,7 @@ const getAllProductCategories = async (
 
   // Additional filter for vendors: restrict to their business category
   if (isVendor) {
-    const businessCategory = await BusinessCategory.findOne({
-      name: currentUser?.businessDetails?.businessType,
-    })
-      .select('_id')
-      .lean();
-
-    if (businessCategory) {
-      query.businessCategoryId = businessCategory._id;
-    }
+    query.businessCategoryId = currentUser?.businessDetails?.businessType;
   }
 
   // Build and execute the query
@@ -202,9 +194,9 @@ const getSingleProductCategory = async (
 
   // Vendors can only access categories from their business type
   if (isVendor) {
-    const userBusinessCategory = await BusinessCategory.findOne({
-      name: currentUser?.businessDetails?.businessType,
-    })
+    const userBusinessCategory = await BusinessCategory.findById(
+      currentUser?.businessDetails?.businessType,
+    )
       .select('_id')
       .lean();
 
