@@ -7,10 +7,7 @@ export const restrictedItemsMessages = {
     en: 'Item added to restricted list successfully',
     pt: 'Item adicionado à lista de restritos com sucesso',
   },
-  RESTRICTED_ITEM_NOT_FOUND_WITH_EXCLAMATION: {
-    en: 'Restricted item not found!',
-    pt: 'Item restrito não encontrado!',
-  },
+
   ITEM_UPDATED_SUCCESS: {
     en: 'Item updated successfully',
     pt: 'Item atualizado com sucesso',
