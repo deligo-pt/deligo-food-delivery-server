@@ -392,6 +392,8 @@ const getAllVendors = async (
     vendors.modelQuery = vendors.modelQuery.populate(option);
   });
 
+  vendors.modelQuery = vendors.modelQuery.populate('cuisinesData');
+
   const meta = await vendors.countTotal();
   const data = await vendors.modelQuery;
 
@@ -432,6 +434,8 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   populateOptions.forEach((option) => {
     query = query.populate(option);
   });
+
+  query = query.populate('cuisinesData');
 
   const existingVendor = await query;
   if (!existingVendor) {
