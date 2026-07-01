@@ -714,7 +714,9 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
   const existingVendor = await Vendor.findOne({
     userId: vendorId,
     isDeleted: false,
-  }).select('name userId email contactNumber businessDetails businessLocation');
+  })
+    .select('name userId email contactNumber businessDetails businessLocation')
+    .populate('cuisinesData');
   if (!existingVendor) {
     throw new AppError(
       httpStatus.NOT_FOUND,

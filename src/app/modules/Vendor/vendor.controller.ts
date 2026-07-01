@@ -150,11 +150,13 @@ const getSingleVendorForCustomer = catchAsync(async (req, res) => {
     req.params.vendorId,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
