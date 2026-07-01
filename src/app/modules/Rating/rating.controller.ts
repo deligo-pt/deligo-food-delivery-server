@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { RatingServices } from './rating.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // create rating controller
 const createRating = catchAsync(async (req, res) => {
@@ -13,7 +14,7 @@ const createRating = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -27,7 +28,7 @@ const getAllRatings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -41,7 +42,7 @@ const getSingleRating = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -53,7 +54,7 @@ const getRatingSummary = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });

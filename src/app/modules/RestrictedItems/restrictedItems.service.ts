@@ -8,12 +8,12 @@ import { RestrictedItem } from './restrictedItems.model';
 const createRestrictedItem = async (payload: TRestrictedItem) => {
   const isExist = await RestrictedItem.findOne({ name: payload.name });
   if (isExist) {
-    throw new Error('This item is already in the restricted list!');
+    throw new AppError(httpStatus.CONFLICT, 'ITEM_ALREADY_RESTRICTED');
   }
 
   const result = await RestrictedItem.create(payload);
   return {
-    message: 'Item added to restricted list successfully',
+    messageKey: 'ITEM_ADDED_TO_RESTRICTED_LIST_SUCCESS',
     data: result,
   };
 };
@@ -28,11 +28,11 @@ const updateRestrictedItem = async (
   });
 
   if (!result) {
-    throw new Error('Restricted item not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'RESTRICTED_ITEM_NOT_FOUND');
   }
 
   return {
-    message: 'Item updated successfully',
+    messageKey: 'ITEM_UPDATED_SUCCESS',
     data: result,
   };
 };
@@ -41,14 +41,14 @@ const getAllRestrictedItems = async (query: Record<string, unknown>) => {
   const items = new QueryBuilder(RestrictedItem.find(), query);
 
   if (!items) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Restricted items not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'RESTRICTED_ITEMS_NOT_FOUND');
   }
 
   const meta = await items.countTotal();
   const data = await items.modelQuery;
 
   return {
-    message: 'Items retrieved successfully',
+    messageKey: 'ITEMS_RETRIEVED_SUCCESS',
     meta,
     data,
   };
@@ -57,10 +57,10 @@ const getAllRestrictedItems = async (query: Record<string, unknown>) => {
 const getSingleRestrictedItem = async (itemId: string) => {
   const result = await RestrictedItem.findById(itemId);
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'RESTRICTED_ITEM_NOT_FOUND');
   }
   return {
-    message: 'Item retrieved successfully',
+    messageKey: 'ITEM_RETRIEVED_SUCCESS',
     data: result,
   };
 };
@@ -82,10 +82,10 @@ const softDeleteRestrictedItem = async (itemId: string) => {
     },
   );
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'RESTRICTED_ITEM_NOT_FOUND');
   }
   return {
-    message: 'Item deleted successfully',
+    messageKey: 'ITEM_DELETED_SUCCESS',
     data: result,
   };
 };
@@ -96,10 +96,10 @@ const permanentDeleteRestrictedItem = async (itemId: string) => {
     isDeleted: true,
   });
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Restricted item not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'RESTRICTED_ITEM_NOT_FOUND');
   }
   return {
-    message: 'Item permanently deleted successfully',
+    messageKey: 'ITEM_PERMANENTLY_DELETED_SUCCESS',
     data: result,
   };
 };

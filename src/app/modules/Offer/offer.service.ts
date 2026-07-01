@@ -17,13 +17,15 @@ import {
 import { Order } from '../Order/order.model';
 import { flattenObject } from '../../utils/flattenObject';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // create offer service
 const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not authorized. Your account is ${currentUser.status}`,
+      'NOT_AUTHORIZED_WITH_ACCOUNT_STATUS',
+      { status: currentUser.status },
     );
   }
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
@@ -68,10 +70,7 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
       isDeleted: false,
     });
     if (existingCode) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        'An active offer with this code already exists',
-      );
+      throw new AppError(httpStatus.CONFLICT, 'OFFER_CODE_ALREADY_EXISTS');
     }
     payload.code = payload.code.toUpperCase();
   }
@@ -81,16 +80,14 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   // --------------------------------------------
   switch (payload.offerType) {
     case 'BOGO':
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'BOGO offers are temporarily disabled and cannot be created at this time.',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'BOGO_CREATE_DISABLED');
     case 'PERCENT':
     case 'FLAT':
       if (!payload.discountValue || payload.discountValue <= 0) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          `Valid discountValue is required for ${payload.offerType} offer`,
+          'VALID_DISCOUNT_VALUE_REQUIRED',
+          { offerType: payload.offerType },
         );
       }
       break;
@@ -112,7 +109,7 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
       break;
 
     default:
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid offer type');
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_OFFER_TYPE');
   }
 
   // --------------------------------------------
@@ -121,17 +118,11 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   const validFrom = new Date(payload.validFrom);
   const expiresAt = new Date(payload.expiresAt);
   if (expiresAt <= validFrom) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'End date must be after start date',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'END_DATE_AFTER_START_DATE');
   }
 
   if (expiresAt <= new Date()) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'End date cannot be in the past',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'END_DATE_CANNOT_BE_IN_PAST');
   }
 
   if (payload.isAutoApply) {
@@ -151,7 +142,7 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   });
 
   return {
-    message: 'Offer created successfully',
+    messageKey: 'OFFER_CREATED_SUCCESS' as TMessageKey,
     data: offer,
   };
 };
@@ -163,10 +154,9 @@ const updateOffer = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_WITH_STATUS', {
+      status: currentUser.status,
+    });
   }
 
   // --------------------------------------------------
@@ -174,7 +164,7 @@ const updateOffer = async (
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer || offer.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Offer not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
   }
 
   // --------------------------------------------------
@@ -182,10 +172,7 @@ const updateOffer = async (
   // --------------------------------------------------
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this offer',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_UPDATE_OFFER');
   }
 
   // --------------------------------------------------
@@ -194,7 +181,7 @@ const updateOffer = async (
   if (offer.expiresAt < new Date() && !payload.expiresAt) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Expired offer cannot be updated without extending the date',
+      'EXPIRED_OFFER_UPDATE_REQUIRES_DATE_EXTENSION',
     );
   }
 
@@ -217,10 +204,7 @@ const updateOffer = async (
   // }
 
   if (offerType === 'BOGO') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'BOGO offers are currently disabled. You cannot update or switch to BOGO type.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'BOGO_UPDATE_DISABLED');
   }
 
   const currentAutoApply = payload.isAutoApply ?? offer.isAutoApply;
@@ -235,11 +219,11 @@ const updateOffer = async (
         _id: { $ne: id },
       });
       if (duplicate)
-        throw new AppError(httpStatus.CONFLICT, 'Code already in use');
+        throw new AppError(httpStatus.CONFLICT, 'CODE_ALREADY_IN_USE');
     } else if (!offer.code) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Code is required for manual offers',
+        'CODE_REQUIRED_FOR_MANUAL_OFFERS',
       );
     }
   }
@@ -252,10 +236,7 @@ const updateOffer = async (
     : offer.expiresAt;
 
   if (expiresAt <= validFrom) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'End date must be after start date',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'END_DATE_AFTER_START_DATE');
   }
 
   if (payload.offerType && payload.offerType !== offer.offerType) {
@@ -268,10 +249,7 @@ const updateOffer = async (
 
   if (offerType === 'PERCENT' && payload.discountValue !== undefined) {
     if (payload.discountValue <= 0 || payload.discountValue > 100) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Percentage must be between 1-100',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'PERCENTAGE_RANGE_INVALID');
     }
   }
 
@@ -279,7 +257,7 @@ const updateOffer = async (
     if (payload.discountValue <= 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Flat discount must be positive',
+        'FLAT_DISCOUNT_MUST_BE_POSITIVE',
       );
     }
   }
@@ -303,7 +281,7 @@ const updateOffer = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Max usage cannot be less than current usage',
+      'MAX_USAGE_LESS_THAN_CURRENT_USAGE',
     );
   }
 
@@ -322,7 +300,7 @@ const updateOffer = async (
   );
 
   return {
-    message: 'Offer updated successfully',
+    messageKey: 'OFFER_UPDATED_SUCCESS' as TMessageKey,
     data: updatedOffer,
   };
 };
@@ -330,19 +308,18 @@ const updateOffer = async (
 // toggle offer status service
 const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status}. You cannot perform this action.`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_CANNOT_PERFORM_ACTION', {
+      status: currentUser.status,
+    });
   }
 
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Offer not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
   }
 
   if (offer.isDeleted) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Cannot toggle a deleted offer');
+    throw new AppError(httpStatus.BAD_REQUEST, 'CANNOT_TOGGLE_DELETED_OFFER');
   }
 
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
@@ -350,23 +327,19 @@ const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to change the status of this offer',
+      'NOT_AUTHORIZED_TO_CHANGE_OFFER_STATUS',
     );
   }
 
   if (!offer.isActive && offer.expiresAt < new Date()) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Cannot activate an expired offer. Please update the end date first.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'CANNOT_ACTIVATE_EXPIRED_OFFER');
   }
 
   offer.isActive = !offer.isActive;
   const updatedOffer = await offer.save();
   return {
-    message: `Offer ${
-      updatedOffer?.isActive ? 'activated' : 'deactivated'
-    } successfully`,
+    messageKey: 'OFFER_STATUS_TOGGLED_SUCCESS' as TMessageKey,
+    variables: { isActive: updatedOffer?.isActive },
     data: updatedOffer,
   };
 };
@@ -380,18 +353,18 @@ const validateAndApplyOffer = async (
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData)
-    throw new AppError(httpStatus.NOT_FOUND, 'Checkout session not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
 
   if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      "This checkout session doesn't belong to you",
+      'CHECKOUT_DOES_NOT_BELONG_TO_USER',
     );
   }
   if (checkoutData.isConvertedToOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Cannot apply offer to completed checkout',
+      'CANNOT_APPLY_OFFER_TO_COMPLETED_CHECKOUT',
     );
   }
 
@@ -411,7 +384,7 @@ const validateAndApplyOffer = async (
     ).lean();
 
     return {
-      message: 'Offer removed/invalid',
+      messageKey: 'OFFER_REMOVED_OR_INVALID' as TMessageKey,
       data: updatedCheckout,
     };
   }
@@ -432,7 +405,7 @@ const validateAndApplyOffer = async (
   ).lean();
 
   return {
-    message: 'Offer applied successfully',
+    messageKey: 'OFFER_APPLIED_SUCCESS' as TMessageKey,
     data: updatedCheckout,
   };
 };
@@ -444,7 +417,7 @@ const getAvailableOffersForCheckout = async (
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Checkout session not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
   }
 
   const { vendorId, orderCalculation, items } = checkoutData;
@@ -498,26 +471,29 @@ const getAvailableOffersForCheckout = async (
 
     const isEligible = isMinAmountMet && isUsageLimitMet && isProductMatched;
 
-    let message = 'Offer is applicable';
+    let message: TMessageKey = 'OFFER_IS_APPLICABLE';
+    let variables: Record<string, string | number | boolean> | undefined;
 
     if (!isProductMatched) {
-      message = 'This offer is not valid for the products in your cart';
+      message = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
     } else if (!isMinAmountMet) {
       const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
-      message = `Add €${diff} more to unlock this offer`;
+      message = 'ADD_MORE_TO_UNLOCK_OFFER';
+      variables = { amount: diff };
     } else if (!isUsageLimitMet) {
-      message = 'You have exceeded the usage limit for this offer';
+      message = 'OFFER_USAGE_LIMIT_EXCEEDED';
     }
 
     return {
       ...offer,
       isEligible,
       message,
+      variables,
     };
   });
 
   return {
-    message: 'Available offers fetched successfully',
+    messageKey: 'AVAILABLE_OFFERS_FETCHED_SUCCESS' as TMessageKey,
     data: availableOffers,
   };
 };
@@ -563,7 +539,7 @@ const getAllOffers = async (
   const meta = await offers.countTotal();
   const data = await offers.modelQuery;
   return {
-    message: 'Offers fetched successfully',
+    messageKey: 'OFFERS_FETCHED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -587,7 +563,7 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
 
   const offer = await Offer.findOne(query);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Offer not found or unavailable');
+    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND_OR_UNAVAILABLE');
   }
 
   if (
@@ -595,14 +571,11 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
     offer.vendorId?.toString() !== currentUser._id.toString() &&
     !offer.isGlobal
   ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to view this offer',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_VIEW_OFFER');
   }
 
   return {
-    message: 'Offer fetched successfully',
+    messageKey: 'OFFER_FETCHED_SUCCESS' as TMessageKey,
     data: offer,
   };
 };
@@ -610,10 +583,9 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
 // soft delete offer service
 const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_WITH_STATUS', {
+      status: currentUser.status,
+    });
   }
 
   // --------------------------------------------------
@@ -621,14 +593,14 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Offer not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
   }
 
   // --------------------------------------------------
   // Prevent duplicate delete
   // --------------------------------------------------
   if (offer.isDeleted) {
-    throw new AppError(httpStatus.CONFLICT, 'Offer is already deleted');
+    throw new AppError(httpStatus.CONFLICT, 'OFFER_ALREADY_DELETED');
   }
 
   // --------------------------------------------------
@@ -636,10 +608,7 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to delete this offer',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_DELETE_OFFER');
   }
 
   // --------------------------------------------------
@@ -648,7 +617,7 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   if (offer.isActive) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Active offer must be deactivated before deleting',
+      'ACTIVE_OFFER_MUST_BE_DEACTIVATED_BEFORE_DELETING',
     );
   }
 
@@ -660,17 +629,16 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   await offer.save();
 
   return {
-    message: 'Offer deleted successfully',
+    messageKey: 'OFFER_DELETED_SUCCESS' as TMessageKey,
   };
 };
 
 // permanent delete offer service
 const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_WITH_STATUS', {
+      status: currentUser.status,
+    });
   }
 
   // --------------------------------------------------
@@ -680,7 +648,7 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   if (!isAdmin) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only admin can permanently delete an offer',
+      'ONLY_ADMIN_CAN_PERMANENTLY_DELETE_OFFER',
     );
   }
 
@@ -689,7 +657,7 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Offer not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
   }
 
   // --------------------------------------------------
@@ -698,14 +666,14 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   if (!offer.isDeleted) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'Offer must be soft deleted before permanent delete',
+      'SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE',
     );
   }
 
   if (offer.isActive) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Active offer cannot be permanently deleted',
+      'ACTIVE_OFFER_CANNOT_BE_PERMANENTLY_DELETED',
     );
   }
 
@@ -715,7 +683,7 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   await Offer.findByIdAndDelete(id);
 
   return {
-    message: 'Offer permanently deleted successfully',
+    messageKey: 'OFFER_PERMANENTLY_DELETED_SUCCESS' as TMessageKey,
   };
 };
 export const OfferServices = {

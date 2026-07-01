@@ -2,13 +2,14 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { RestrictedItemService } from './restrictedItems.service';
 import sendResponse from '../../utils/sendResponse';
+import { TMessageKey } from '../../errors/messages';
 
 const createRestrictedItem = catchAsync(async (req, res) => {
   const result = await RestrictedItemService.createRestrictedItem(req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -21,7 +22,7 @@ const updateRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -31,7 +32,7 @@ const getAllRestrictedItems = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -44,7 +45,7 @@ const getSingleRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -56,7 +57,7 @@ const softDeleteRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -68,7 +69,7 @@ const permanentDeleteRestrictedItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });

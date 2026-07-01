@@ -3,20 +3,22 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { CartServices } from './cart.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatCartResponse } from './cart.utils';
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {
   const result = await CartServices.addToCart(
     req.body,
     req.user as TCurrentUser,
-    req.lang,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey,
+    data: formattedData,
   });
 });
 
@@ -29,11 +31,13 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
     req.lang,
     req.body.variationSku,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey,
+    data: formattedData,
   });
 });
 
@@ -42,13 +46,15 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateCartItemQuantity(
     req.user as TCurrentUser,
     req.body,
-    req.lang,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey,
+    data: formattedData,
   });
 });
 
@@ -62,7 +68,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -79,7 +85,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -90,7 +96,7 @@ const clearCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -101,12 +107,17 @@ const getAllCart = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
     req.query,
   );
+
+  const formattedData = result?.data.map((item) => {
+    return formatCartResponse(item, req.lang);
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -118,11 +129,13 @@ const viewCart = catchAsync(async (req, res) => {
     cartCustomerId,
   );
 
+  const formattedData = formatCartResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey,
+    data: formattedData,
   });
 });
 

@@ -11,31 +11,25 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import { roundTo2 } from '../../utils/mathProvider';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
-import redis, { RedisService } from '../../config/redis';
+import { RedisService } from '../../config/redis';
+import { formatCartResponse } from './cart.utils';
 
 // Add cart Service
 const addToCart = async (
   payload: TCartItemInput,
   currentUser: TCurrentUser,
-  lang: TLanguageCode,
 ) => {
   if (currentUser.role !== 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Only customers are allowed to perform this action',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CUSTOMER_ONLY_ACTION');
   }
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Your account is not approved yet.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_UNAPPROVED');
   }
 
   const customerId = currentUser._id;
   const inputItem = payload.items[0];
   if (!inputItem)
-    throw new AppError(httpStatus.BAD_REQUEST, 'No items provided');
+    throw new AppError(httpStatus.BAD_REQUEST, 'NO_ITEMS_PROVIDED');
 
   const { productId, variationSku } = inputItem;
   const quantity = Number(inputItem.quantity) || 1;
@@ -47,7 +41,7 @@ const addToCart = async (
   });
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   const existingVendor = await Vendor.findOne({
     _id: existingProduct.vendorId,
@@ -57,17 +51,14 @@ const addToCart = async (
     !existingVendor ||
     existingVendor?.businessDetails?.isStoreOpen === false
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Store is closed or unavailable',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'STORE_CLOSED_OR_UNAPPROVED');
   }
 
   const isRestaurant =
     existingVendor?.businessDetails?.businessType === 'RESTAURANT';
 
   let selectedPrice = existingProduct.pricing.price;
-  let selectedVariantLabel = '';
+  let selectedVariantLabel: any = null;
   let availableStock = existingProduct?.stock?.quantity ?? 0;
   let finalVariationSku = variationSku || null;
 
@@ -77,17 +68,14 @@ const addToCart = async (
 
   if (hasVariations) {
     if (!variationSku) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'This product has multiple variations. Please select a variation to proceed.',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'VARIATION_REQUIRED');
     }
     const targetOption = existingProduct.variations
       ?.flatMap((v: any) => v.options)
       .find((opt: any) => opt.sku === variationSku);
 
     if (!targetOption)
-      throw new AppError(httpStatus.NOT_FOUND, 'Invalid variation SKU');
+      throw new AppError(httpStatus.NOT_FOUND, 'INVALID_VARIATION_SKU');
 
     selectedPrice = targetOption.price;
     selectedVariantLabel = targetOption.label;
@@ -95,16 +83,13 @@ const addToCart = async (
     finalVariationSku = targetOption.sku;
   } else {
     if (variationSku) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'This product does not support variations. Please clear selection.',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'VARIATIONS_NOT_SUPPORTED');
     }
     finalVariationSku = null;
   }
 
   if (!isRestaurant && quantity > availableStock)
-    throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient stock');
+    throw new AppError(httpStatus.BAD_REQUEST, 'INSUFFICIENT_STOCK');
 
   const { discount = 0, taxRate = 0 } = existingProduct.pricing;
   const unitDiscountAmount = roundTo2((selectedPrice * discount) / 100);
@@ -113,18 +98,26 @@ const addToCart = async (
   const productLineTotal = roundTo2(priceAfterDiscount * quantity);
   const productTaxAmount = roundTo2((productLineTotal * taxRate) / 100);
 
-  const pName = existingProduct.name?.[lang] || existingProduct.name?.en || '';
+  const pNameEn = existingProduct.name?.en || '';
+  const pNamePt = existingProduct.name?.pt || pNameEn;
 
-  let finalItemName = pName;
+  const finalItemName = {
+    en: pNameEn,
+    pt: pNamePt,
+  };
+
   if (selectedVariantLabel) {
-    const vLabel =
+    const vLabelEn =
       typeof selectedVariantLabel === 'object'
-        ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+        ? selectedVariantLabel.en || ''
+        : selectedVariantLabel;
+    const vLabelPt =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel.pt || vLabelEn
         : selectedVariantLabel;
 
-    if (vLabel) {
-      finalItemName = `${pName} - ${vLabel}`;
-    }
+    if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+    if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
   }
 
   const newItem: any = {
@@ -198,7 +191,10 @@ const addToCart = async (
       if (!isRestaurant && finalQuantity > availableStock) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          `Insufficient stock. You already have ${currentItem.itemSummary.quantity} in cart.`,
+          'INSUFFICIENT_STOCK_WITH_QUANTITY',
+          {
+            quantity: currentItem.itemSummary.quantity,
+          },
         );
       }
 
@@ -253,7 +249,7 @@ const addToCart = async (
 
   await RedisService.set(expiryKey, '', 86400);
 
-  return { message: 'Product added to cart successfully', data: cart };
+  return { messageKey: 'ADD_TO_CART_SUCCESS' as const, data: cart };
 };
 
 // toggle cart item status service
@@ -264,10 +260,9 @@ const toggleCartItemStatus = async (
   variationSku?: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CART_UPDATE_RESTRICTED', {
+      status: currentUser.status,
+    });
   }
 
   const customerId = currentUser._id;
@@ -285,7 +280,7 @@ const toggleCartItemStatus = async (
   }
 
   if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
   }
 
   const itemToToggle = cart.items.find((i: any) => {
@@ -297,7 +292,7 @@ const toggleCartItemStatus = async (
   });
 
   if (!itemToToggle) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_IN_CART');
   }
 
   const willBeActive = !itemToToggle.isActive;
@@ -312,14 +307,16 @@ const toggleCartItemStatus = async (
     }).lean();
 
     if (!product) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'Product is no longer available',
-      );
+      throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_UNAVAILABLE');
     }
 
-    const pName = product.name?.[lang] || product.name?.en || '';
-    let finalItemName = pName;
+    const pNameEn = product.name?.en || '';
+    const pNamePt = product.name?.pt || pNameEn;
+
+    const finalItemName = {
+      en: pNameEn,
+      pt: pNamePt,
+    };
 
     const hasVariations =
       product?.stock?.hasVariations === true ||
@@ -331,14 +328,18 @@ const toggleCartItemStatus = async (
         .find((opt: any) => opt.sku === itemToToggle.variationSku);
 
       const selectedVariantLabel = targetOption?.label;
-      const vLabel =
+
+      const vLabelEn =
         typeof selectedVariantLabel === 'object'
-          ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+          ? selectedVariantLabel.en || ''
+          : selectedVariantLabel;
+      const vLabelPt =
+        typeof selectedVariantLabel === 'object'
+          ? selectedVariantLabel.pt || vLabelEn
           : selectedVariantLabel;
 
-      if (vLabel) {
-        finalItemName = `${pName} - ${vLabel}`;
-      }
+      if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+      if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
     }
 
     itemToToggle.name = finalItemName;
@@ -349,10 +350,7 @@ const toggleCartItemStatus = async (
       const activeVendorId = activeItems[0].vendorId;
 
       if (activeVendorId.toString() !== selectedVendorId) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'You can only select items from the same vendor',
-        );
+        throw new AppError(httpStatus.BAD_REQUEST, 'MULTIPLE_VENDORS_DENIED');
       }
     }
   }
@@ -368,7 +366,9 @@ const toggleCartItemStatus = async (
   await RedisService.set(expiryKey, '', 86400);
 
   return {
-    message: `Product ${willBeActive ? 'activated' : 'deactivated'} successfully`,
+    messageKey: willBeActive
+      ? ('TOGGLE_ITEM_ACTIVE_SUCCESS' as const)
+      : ('TOGGLE_ITEM_DEACTIVE_SUCCESS' as const),
     data: cart,
   };
 };
@@ -382,13 +382,11 @@ const updateCartItemQuantity = async (
     quantity: number;
     action: 'increment' | 'decrement';
   },
-  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CART_UPDATE_RESTRICTED', {
+      status: currentUser.status,
+    });
   }
 
   const { productId, variationSku, quantity, action } = payload;
@@ -407,7 +405,7 @@ const updateCartItemQuantity = async (
   }
 
   if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
   }
 
   const itemIndex = cart.items.findIndex((i: any) => {
@@ -418,7 +416,7 @@ const updateCartItemQuantity = async (
   });
 
   if (itemIndex === -1) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found in cart');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_IN_CART');
   }
 
   const targetItem = cart.items[itemIndex];
@@ -430,7 +428,7 @@ const updateCartItemQuantity = async (
   }).lean();
 
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product is no longer available');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_UNAVAILABLE');
   }
 
   const vendor = await Vendor.findOne({
@@ -439,7 +437,7 @@ const updateCartItemQuantity = async (
   }).lean();
 
   if (!vendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
   const isRestaurant = vendor?.businessDetails?.businessType === 'RESTAURANT';
@@ -461,21 +459,23 @@ const updateCartItemQuantity = async (
 
   if (action === 'increment') {
     if (shouldCheckStock && currentQty + quantity > availableStock) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Insufficient product stock');
+      throw new AppError(httpStatus.BAD_REQUEST, 'INSUFFICIENT_STOCK');
     }
     currentQty += quantity;
   } else if (action === 'decrement') {
     if (currentQty - quantity < 1) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Not allowed to decrement quantity below 1',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'DECREMENT_UNDER_MINIMUM');
     }
     currentQty -= quantity;
   }
 
-  const pName = product.name?.[lang] || product.name?.en || '';
-  let finalItemName = pName;
+  const pNameEn = product.name?.en || '';
+  const pNamePt = product.name?.pt || pNameEn;
+
+  const finalItemName = {
+    en: pNameEn,
+    pt: pNamePt,
+  };
 
   if (targetItem.variationSku && hasVariations) {
     const targetOption = product.variations
@@ -483,14 +483,17 @@ const updateCartItemQuantity = async (
       .find((opt: any) => opt.sku === targetItem.variationSku);
 
     const selectedVariantLabel = targetOption?.label;
-    const vLabel =
+    const vLabelEn =
       typeof selectedVariantLabel === 'object'
-        ? selectedVariantLabel[lang] || selectedVariantLabel['en'] || ''
+        ? selectedVariantLabel.en || ''
+        : selectedVariantLabel;
+    const vLabelPt =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel.pt || vLabelEn
         : selectedVariantLabel;
 
-    if (vLabel) {
-      finalItemName = `${pName} - ${vLabel}`;
-    }
+    if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+    if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
   }
 
   targetItem.name = finalItemName;
@@ -549,7 +552,7 @@ const updateCartItemQuantity = async (
   await RedisService.set(expiryKey, '', 86400);
 
   return {
-    message: 'Product quantity updated successfully',
+    messageKey: 'QUANTITY_UPDATE_SUCCESS' as const,
     data: cart,
   };
 };
@@ -566,10 +569,9 @@ const updateAddonQuantity = async (
   lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CART_UPDATE_RESTRICTED', {
+      status: currentUser.status,
+    });
   }
 
   const { productId, variationSku, optionSku, action } = payload;
@@ -587,7 +589,7 @@ const updateAddonQuantity = async (
     }
   }
 
-  if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+  if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
 
   const itemIndex = cart.items.findIndex((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
@@ -597,7 +599,7 @@ const updateAddonQuantity = async (
   });
 
   if (itemIndex === -1)
-    throw new AppError(httpStatus.NOT_FOUND, 'Item not found in cart');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_IN_CART');
 
   const targetItem = cart.items[itemIndex] as any;
   if (!targetItem.addons) {
@@ -613,7 +615,7 @@ const updateAddonQuantity = async (
     })
     .lean();
 
-  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   let addonData: any = null;
   let parentGroup: any = null;
@@ -622,11 +624,14 @@ const updateAddonQuantity = async (
     if (group.isActive && !group.isDeleted) {
       const option = group.options.find((opt: any) => opt.sku === optionSku);
       if (option && option.isActive) {
-        const addonNameObj = option.name as Record<string, string>;
-        const localizedAddonName =
-          addonNameObj[lang] || addonNameObj['en'] || '';
+        const addonNameEn = option.name?.en || '';
+        const addonNamePt = option.name?.pt || addonNameEn;
+
         addonData = {
-          name: localizedAddonName,
+          name: {
+            en: addonNameEn,
+            pt: addonNamePt,
+          },
           sku: option.sku,
           unitPrice: option.price,
           taxRate: option.tax?.taxRate || 0,
@@ -637,15 +642,15 @@ const updateAddonQuantity = async (
   });
 
   if (!addonData)
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Addon is inactive or unavailable',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'ADDON_UNAVAILABLE');
 
-  const nameObject = product.name as { en: string; pt: string };
-  const pName =
-    nameObject[lang as keyof typeof nameObject] || nameObject.en || '';
-  let finalItemName = pName;
+  const pNameEn = product.name?.en || '';
+  const pNamePt = product.name?.pt || pNameEn;
+
+  const finalItemName = {
+    en: pNameEn,
+    pt: pNamePt,
+  };
 
   const hasVariations =
     product?.stock?.hasVariations === true ||
@@ -658,25 +663,26 @@ const updateAddonQuantity = async (
 
     const selectedVariantLabel = targetOption?.label;
     if (selectedVariantLabel) {
-      const vLabel =
+      const vLabelEn =
         typeof selectedVariantLabel === 'object'
-          ? (selectedVariantLabel as Record<string, string>)[lang] ||
-            (selectedVariantLabel as Record<string, string>)['en'] ||
-            ''
+          ? (selectedVariantLabel as Record<string, string>).en || ''
+          : selectedVariantLabel;
+      const vLabelPt =
+        typeof selectedVariantLabel === 'object'
+          ? (selectedVariantLabel as Record<string, string>).pt || vLabelEn
           : selectedVariantLabel;
 
-      if (vLabel) {
-        finalItemName = `${pName} - ${vLabel}`;
-      }
+      if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+      if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
     }
   }
 
   targetItem.name = finalItemName;
 
   const selectedAddon = addonData as {
-    name: string;
+    name: any;
     sku?: string;
-    price: number;
+    unitPrice: number;
     taxRate: number;
   };
 
@@ -694,10 +700,10 @@ const updateAddonQuantity = async (
       const groupTitleObj = parentGroup.title as Record<string, string>;
       const localizedGroupTitle =
         groupTitleObj?.[lang] || groupTitleObj?.['en'] || 'this group';
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Maximum selection limit of ${parentGroup.maxSelectable} reached for ${localizedGroupTitle}`,
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'ADDON_LIMIT_REACHED', {
+        max: parentGroup.maxSelectable,
+        group: localizedGroupTitle,
+      });
     }
     if (existingAddonIndex > -1) {
       targetItem.addons[existingAddonIndex].quantity += 1;
@@ -715,7 +721,7 @@ const updateAddonQuantity = async (
     }
   } else if (action === 'decrement') {
     if (existingAddonIndex === -1) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Addon not found in your cart');
+      throw new AppError(httpStatus.NOT_FOUND, 'ADDON_NOT_IN_CART');
     }
 
     if (targetItem.addons[existingAddonIndex].quantity > 1) {
@@ -765,9 +771,11 @@ const updateAddonQuantity = async (
 
   await RedisService.set(expiryKey, '', 86400);
 
+  const formattedCart = formatCartResponse(cart, lang);
+
   return {
-    message: 'Product addon quantity updated successfully',
-    data: cart,
+    messageKey: 'ADDON_QUANTITY_UPDATE_SUCCESS' as const,
+    data: formattedCart,
   };
 };
 
@@ -777,10 +785,9 @@ const deleteCartItem = async (
   itemsToDelete: { productId: string; variationSku?: string }[],
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CART_UPDATE_RESTRICTED', {
+      status: currentUser.status,
+    });
   }
 
   const customerId = currentUser._id;
@@ -798,7 +805,7 @@ const deleteCartItem = async (
   }
 
   if (!cart || !cart.items || cart.items.length === 0) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart is empty or not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CART_EMPTY');
   }
 
   const initialLength = cart.items.length;
@@ -817,10 +824,7 @@ const deleteCartItem = async (
   });
 
   if (cart.items.length === initialLength) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Selected items were not found in your cart',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'REMOVE_ITEMS_NOT_FOUND');
   }
 
   if (cart.items.length === 0) {
@@ -830,7 +834,7 @@ const deleteCartItem = async (
     await Cart.deleteOne({ customerId });
 
     return {
-      message: 'Cart updated: Item(s) removed successfully',
+      messageKey: 'REMOVE_ITEMS_SUCCESS' as const,
       data: {
         customerId,
         items: [],
@@ -855,7 +859,7 @@ const deleteCartItem = async (
   await RedisService.set(expiryKey, '', 86400);
 
   return {
-    message: 'Cart updated: Item(s) removed successfully',
+    messageKey: 'REMOVE_ITEMS_SUCCESS' as const,
     data: cart,
   };
 };
@@ -863,10 +867,9 @@ const deleteCartItem = async (
 // clear cart Service
 const clearCart = async (currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to update cart. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CART_UPDATE_RESTRICTED', {
+      status: currentUser.status,
+    });
   }
 
   const customerId = currentUser._id;
@@ -879,7 +882,7 @@ const clearCart = async (currentUser: TCurrentUser) => {
   if (!cartExists) {
     const dbCart = await Cart.findOne({ customerId, isDeleted: false });
     if (!dbCart) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Cart not found for this user');
+      throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
     }
   }
 
@@ -889,7 +892,7 @@ const clearCart = async (currentUser: TCurrentUser) => {
   await Cart.deleteOne({ customerId });
 
   return {
-    message: 'Cart cleared successfully',
+    messageKey: 'CLEAR_CART_SUCCESS' as const,
     data: {
       customerId,
       items: [],
@@ -912,10 +915,25 @@ const getAllCart = async (
   query: Record<string, unknown>,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view cart. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CART_VIEW_RESTRICTED', {
+      status: currentUser.status,
+    });
+  }
+
+  const redisKeys = await RedisService.keys('cart:data:*');
+  const redisCarts: any[] = [];
+
+  if (redisKeys && redisKeys.length > 0) {
+    for (const key of redisKeys) {
+      const cartData = await RedisService.get<any>(key);
+      if (cartData && cartData.items && cartData.items.length > 0) {
+        redisCarts.push({
+          ...cartData,
+          createdAt: cartData.createdAt || new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
   }
 
   const cartQuery = new QueryBuilder(Cart.find({ isDeleted: false }), query)
@@ -932,48 +950,60 @@ const getAllCart = async (
     cartQuery.modelQuery = cartQuery.modelQuery.populate(option);
   });
 
-  const meta = await cartQuery.countTotal();
   const dbCarts = await cartQuery.modelQuery;
 
-  const combinedData = await Promise.all(
-    dbCarts.map(async (dbCart: any) => {
-      const customerIdStr = dbCart.customerId._id
-        ? dbCart.customerId._id.toString()
-        : dbCart.customerId.toString();
+  const formattedDbCarts = dbCarts.map((dbCart: any) => ({
+    ...(dbCart.toObject ? dbCart.toObject() : dbCart),
+    status: 'abandoned',
+  }));
 
-      const dataKey = `cart:data:${customerIdStr}`;
+  const combinedData = [...redisCarts];
 
-      const redisCart = await RedisService.get<any>(dataKey);
+  formattedDbCarts.forEach((dbCart) => {
+    const dbCustId =
+      dbCart.customerId?._id?.toString() || dbCart.customerId?.toString();
+    const isAlreadyInRedis = redisCarts.some((rc) => {
+      const redisCustId =
+        rc.customerId?._id?.toString() || rc.customerId?.toString();
+      return redisCustId === dbCustId;
+    });
 
-      if (redisCart) {
-        return {
-          ...redisCart,
-          _id: dbCart._id,
-          status: 'active',
-          customerId: dbCart.customerId,
-          createdAt: dbCart.createdAt,
-          updatedAt: new Date(),
-        };
-      }
+    if (!isAlreadyInRedis) {
+      combinedData.push(dbCart);
+    }
+  });
 
-      return dbCart;
-    }),
-  );
+  const totalItemsCount = combinedData.length;
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
 
-  return { message: 'Carts fetched successfully', meta, data: combinedData };
+  const startIndex = (page - 1) * limit;
+  const paginatedData = combinedData.slice(startIndex, startIndex + limit);
+
+  const meta = {
+    page,
+    limit,
+    total: totalItemsCount,
+    totalPage: Math.ceil(totalItemsCount / limit),
+  };
+
+  return {
+    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    meta,
+    data: paginatedData,
+  };
 };
 
 // view cart Service
 const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view cart. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CART_VIEW_RESTRICTED', {
+      status: currentUser.status,
+    });
   }
 
   if (currentUser.role !== 'CUSTOMER' && !cartCustomerId) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Customer id is required');
+    throw new AppError(httpStatus.BAD_REQUEST, 'CUSTOMER_ID_REQUIRED');
   }
 
   const targetCustomerId =
@@ -1007,7 +1037,7 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
   if (!cart && currentUser.role === 'CUSTOMER') {
     return {
-      message: 'Cart fetched successfully',
+      messageKey: 'FETCH_SINGLE_SUCCESS' as const,
       data: {
         customerId: targetCustomerId,
         items: [],
@@ -1025,11 +1055,11 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
   }
 
   if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cart not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
   }
 
   return {
-    message: 'Cart fetched successfully',
+    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
     data: cart,
   };
 };

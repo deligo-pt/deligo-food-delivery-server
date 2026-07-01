@@ -47,7 +47,7 @@ export const getIO = () => {
   if (!io) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Socket not initialized',
+      'SOCKET_NOT_INITIALIZED',
     );
   }
   return io;

@@ -67,44 +67,4 @@ export const agreementMessages = {
     en: 'The provided signature image format is invalid.',
     pt: 'O formato da imagem de assinatura fornecido é inválido.',
   },
-  ESTABLISHED_NAME_REQUIRED: {
-    en: 'Establishment name is required.',
-    pt: 'O nome do estabelecimento é obrigatório.',
-  },
-  VALIDATION_EMAIL_REQUIRED: {
-    en: 'Email address is required.',
-    pt: 'O endereço de e-mail é obrigatório.',
-  },
-  EMAIL_INVALID: {
-    en: 'Please enter a valid email address.',
-    pt: 'Por favor, insira um endereço de e-mail válido.',
-  },
-  CONTACT_REQUIRED: {
-    en: 'Contact number is required.',
-    pt: 'O número de contato é obrigatório.',
-  },
-  NIF_REQUIRED: {
-    en: 'NIF is required.',
-    pt: 'O NIF é obrigatório.',
-  },
-  OTP_REQUIRED: {
-    en: 'Verification code (OTP) is required.',
-    pt: 'O código de verificação (OTP) é obrigatório.',
-  },
-  AGENT_SIGNATURE_REQUIRED: {
-    en: 'Agent signature image is required.',
-    pt: 'A imagem da assinatura do agente é obrigatória.',
-  },
-  AGENT_SIGNATURE_INVALID: {
-    en: 'Agent signature must be a valid Base64 image.',
-    pt: 'A assinatura do agente deve ser uma imagem Base64 válida.',
-  },
-  ESTABLISHMENT_SIGNATURE_REQUIRED: {
-    en: 'Establishment signature image is required.',
-    pt: 'A imagem da assinatura do estabelecimento é obrigatória.',
-  },
-  ESTABLISHMENT_SIGNATURE_INVALID: {
-    en: 'Establishment signature must be a valid Base64 image.',
-    pt: 'A assinatura do estabelecimento deve ser uma imagem Base64 válida.',
-  },
 } as const;

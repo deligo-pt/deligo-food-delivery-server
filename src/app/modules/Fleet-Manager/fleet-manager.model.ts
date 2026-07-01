@@ -2,8 +2,6 @@
 import { Schema, model } from 'mongoose';
 import { TFleetManager } from './fleet-manager.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 
 const fleetManagerSchema = new Schema<TFleetManager>(

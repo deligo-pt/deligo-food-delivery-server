@@ -13,7 +13,7 @@ const confirmIngredientOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -27,7 +27,7 @@ const getMyIngredientOrders = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -41,7 +41,7 @@ const getAllIngredientOrdersForAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -54,7 +54,7 @@ const getSingleIngredientOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -73,7 +73,8 @@ const updateIngredientOrderStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

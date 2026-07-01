@@ -13,10 +13,7 @@ const createCuisine = async (payload: TCuisine, image: string | null) => {
   });
 
   if (exists) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'Cuisine already exists. Please choose a different name.',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'ALREADY_EXISTS');
   }
 
   payload.name.en = payload.name.en.toUpperCase();
@@ -30,12 +27,12 @@ const createCuisine = async (payload: TCuisine, image: string | null) => {
   if (image) {
     payload.imageUrl = image;
   } else {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Cuisine image is required');
+    throw new AppError(httpStatus.BAD_REQUEST, 'IMAGE_REQUIRED');
   }
 
   const cuisine = await Cuisine.create(payload);
   return {
-    message: 'Cuisine created successfully',
+    messageKey: 'CREATE_SUCCESS' as const,
     data: cuisine,
   };
 };
@@ -48,7 +45,7 @@ const updateCuisine = async (
 ) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   if (payload.name) {
@@ -74,7 +71,7 @@ const updateCuisine = async (
   ) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `Cuisine is already ${cuisine.isActive ? 'active' : 'inactive'}`,
+      cuisine.isActive ? 'ALREADY_ACTIVE' : 'ALREADY_INACTIVE',
     );
   }
 
@@ -92,7 +89,7 @@ const updateCuisine = async (
   await cuisine.save();
 
   return {
-    message: 'Cuisine updated successfully',
+    messageKey: 'UPDATE_SUCCESS' as const,
     data: cuisine,
   };
 };
@@ -124,7 +121,7 @@ const getAllCuisines = async (
   ]);
 
   return {
-    message: 'Cuisines fetched successfully',
+    messageKey: 'FETCH_ALL_SUCCESS' as const,
     meta,
     data,
   };
@@ -148,7 +145,7 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
   ]);
 
   return {
-    message: 'Cuisines fetched successfully',
+    messageKey: 'FETCH_ALL_SUCCESS' as const,
     meta,
     data,
   };
@@ -158,18 +155,18 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
 const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
 
   if (!isAdmin && (cuisine.isDeleted || !cuisine.isActive)) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   return {
-    message: 'Cuisine fetched successfully',
+    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
     data: cuisine,
   };
 };
@@ -178,15 +175,15 @@ const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
 const getSingleCuisinePublic = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   if (cuisine.isDeleted || !cuisine.isActive) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   return {
-    message: 'Cuisine fetched successfully',
+    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
     data: cuisine,
   };
 };
@@ -195,25 +192,22 @@ const getSingleCuisinePublic = async (id: string) => {
 const softDeleteCuisine = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   if (cuisine.isDeleted === true) {
-    throw new AppError(httpStatus.CONFLICT, 'Cuisine already soft deleted');
+    throw new AppError(httpStatus.CONFLICT, 'ALREADY_SOFT_DELETED');
   }
 
   if (cuisine.isActive) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'Cannot delete an active cuisine. Turn it off first.',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'CANNOT_DELETE_ACTIVE');
   }
 
   cuisine.isDeleted = true;
   await cuisine.save();
 
   return {
-    message: 'Cuisine soft deleted successfully',
+    messageKey: 'SOFT_DELETE_SUCCESS' as const,
   };
 };
 
@@ -221,14 +215,11 @@ const softDeleteCuisine = async (id: string) => {
 const permanentDeleteCuisine = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Cuisine not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
 
   if (cuisine.isDeleted === false) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'Please soft delete the cuisine first',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'SOFT_DELETE_FIRST');
   }
 
   // Final cleanup of the image resource from Cloudinary storage
@@ -243,7 +234,7 @@ const permanentDeleteCuisine = async (id: string) => {
 
   await Cuisine.findByIdAndDelete(id);
   return {
-    message: 'Cuisine permanently deleted successfully',
+    messageKey: 'PERMANENT_DELETE_SUCCESS' as const,
   };
 };
 

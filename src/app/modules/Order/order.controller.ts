@@ -4,18 +4,24 @@ import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
+import { TMessageKey } from '../../errors/messages';
+import { formatOrderResponse } from './order.utils';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderAfterRedUniqPayment(
     req.body,
     req.user as TCurrentUser,
+    req.lang,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -26,12 +32,16 @@ const getAllOrders = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = result?.data?.map((order) =>
+    formatOrderResponse(order, req.lang),
+  );
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -42,11 +52,13 @@ const getSingleOrder = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -58,11 +70,13 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
     req.body,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -72,11 +86,14 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
     req.params.orderId,
     req.user as TCurrentUser,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -88,11 +105,13 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
     req.body,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -103,11 +122,14 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
     req.body,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -133,11 +155,16 @@ const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getDeliveryPartnersDispatchOrder(
     req.user as TCurrentUser,
   );
+
+  const formattedData = result?.data?.map((order) =>
+    formatOrderResponse(order, req.lang),
+  );
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -146,11 +173,14 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getDeliveryPartnerCurrentOrder(
     req.user as TCurrentUser,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 

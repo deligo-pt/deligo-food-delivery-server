@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { GlobalSettingsService } from './globalSetting.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // create global settings controller
 const createGlobalSettings = catchAsync(async (req, res) => {
@@ -13,7 +14,7 @@ const createGlobalSettings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -27,7 +28,7 @@ const updateGlobalSettings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -40,7 +41,7 @@ const getGlobalSettingsForAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });

@@ -2,6 +2,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { ZoneService } from './zone.service';
+import { TMessageKey } from '../../errors/messages';
 
 // Create Zone Controller
 const createZoneController = catchAsync(async (req, res) => {
@@ -10,7 +11,7 @@ const createZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -24,7 +25,7 @@ const checkPointInZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -35,7 +36,7 @@ const getAllZonesController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -48,7 +49,7 @@ const getSingleZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -60,7 +61,7 @@ const updateZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -73,7 +74,8 @@ const toggleZoneStatusController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -85,7 +87,8 @@ const softDeleteZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -97,7 +100,8 @@ const permanentDeleteZoneController = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

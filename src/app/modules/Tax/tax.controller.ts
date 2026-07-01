@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { TaxService } from './tax.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatTaxResponse } from './tax.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // create tax controller
 const createTax = catchAsync(async (req, res) => {
@@ -11,7 +12,7 @@ const createTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -23,7 +24,7 @@ const updateTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -44,7 +45,7 @@ const getAllTaxes = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: formattedData,
   });
@@ -67,7 +68,7 @@ const getSingleTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -79,7 +80,7 @@ const softDeleteTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -91,7 +92,7 @@ const permanentDeleteTax = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });

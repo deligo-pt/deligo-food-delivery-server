@@ -2,7 +2,6 @@ import fs from 'fs-extra';
 import path from 'path';
 import Handlebars from 'handlebars';
 import puppeteer from 'puppeteer';
-import config from '../../config';
 
 type TAgreementPdfData = {
   establishmentName: string;

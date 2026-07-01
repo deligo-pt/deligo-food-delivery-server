@@ -10,14 +10,12 @@ import { TCheckoutPayload } from './checkout.interface';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoogleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
-import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { RedisService } from '../../config/redis';
 
 // Checkout Service
 const checkout = async (
   currentUser: TCurrentUser,
   payload: TCheckoutPayload,
-  lang: TLanguageCode,
 ) => {
   const customerId = currentUser._id.toString();
   let selectedItems = [];
@@ -32,16 +30,16 @@ const checkout = async (
     }
 
     if (!cart || !cart.items || cart.items.length === 0)
-      throw new AppError(httpStatus.BAD_REQUEST, 'Cart is empty');
+      throw new AppError(httpStatus.BAD_REQUEST, 'CART_EMPTY');
 
     selectedItems = cart.items.filter((i: any) => i.isActive === true);
     if (selectedItems.length === 0)
-      throw new AppError(httpStatus.BAD_REQUEST, 'No active items in cart');
+      throw new AppError(httpStatus.BAD_REQUEST, 'NO_ACTIVE_CART_ITEMS');
   } else {
     if (!payload.items || payload.items.length !== 1)
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Direct checkout supports 1 item',
+        'DIRECT_CHECKOUT_SINGLE_ITEM_ONLY',
       );
     selectedItems = payload.items;
   }
@@ -49,12 +47,12 @@ const checkout = async (
   const productIds = selectedItems.map((i: any) => i.productId.toString());
   const products = await Product.find({ _id: { $in: productIds } }).lean();
   if (products.length === 0)
-    throw new AppError(httpStatus.NOT_FOUND, 'Products not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCTS_NOT_FOUND');
 
   const vendorId = products[0].vendorId;
   const existingVendor = await Vendor.findById(vendorId).lean();
   if (!existingVendor || !existingVendor.businessDetails?.isStoreOpen) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Vendor is closed');
+    throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_CLOSED');
   }
 
   const activeAddress = currentUser?.deliveryAddresses?.find(
@@ -62,10 +60,7 @@ const checkout = async (
   );
 
   if (!activeAddress) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'No active delivery address found',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'NO_ACTIVE_DELIVERY_ADDRESS');
   }
 
   if (
@@ -74,15 +69,12 @@ const checkout = async (
     !activeAddress.city ||
     !activeAddress.street
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Your active delivery address info is incomplete. Please re-save your address.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'DELIVERY_ADDRESS_INCOMPLETE');
   }
 
   const vendorLocation = existingVendor.businessLocation;
   if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not found');
+    throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_LOCATION_NOT_FOUND');
   }
 
   const { latitude, longitude } = vendorLocation;
@@ -99,8 +91,6 @@ const checkout = async (
   const serviceCharge = globalSettings?.serviceCharge || 0;
 
   const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
-
-  console.log(distanceData);
 
   const deliveryChargeBase =
     distanceData.meters <= 1000
@@ -119,15 +109,25 @@ const checkout = async (
     const product = products.find(
       (p) => p._id.toString() === item.productId.toString(),
     );
-    if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
     let basePrice = product.pricing?.price || 0;
 
-    const productNameObj = product.name as Record<string, string>;
-    const localizedProductName =
-      productNameObj[lang] || productNameObj['en'] || '';
+    // --- ১. লোকালইজড নাম অবজেক্ট প্রিপারেশন (en, pt দুটাই থাকবে) ---
+    let finalItemNameObj = { en: '', pt: '' };
 
-    let selectedVariantLabel = '';
+    if (payload.useCart && item.name && typeof item.name === 'object') {
+      finalItemNameObj = {
+        en: item.name.en || '',
+        pt: item.name.pt || item.name.en || '',
+      };
+    } else {
+      finalItemNameObj = {
+        en: product.name?.en || '',
+        pt: product.name?.pt || product.name?.en || '',
+      };
+    }
+
     if (item.variationSku && product.variations?.length) {
       const selectedOption = product.variations
         .flatMap((v: any) => v.options || [])
@@ -136,13 +136,22 @@ const checkout = async (
       if (selectedOption) {
         basePrice = selectedOption.price;
 
-        const variantLabelObj = selectedOption.label;
-        selectedVariantLabel =
-          typeof variantLabelObj === 'object'
-            ? (variantLabelObj as Record<string, string>)[lang] ||
-              (variantLabelObj as Record<string, string>)['en'] ||
-              ''
-            : variantLabelObj;
+        // ডিরেক্ট চেকাউটের ক্ষেত্রে ভ্যারিয়েন্ট লেবেল অ্যাপেন্ড করা
+        if (!payload.useCart) {
+          const vLabelEn =
+            typeof selectedOption.label === 'object'
+              ? selectedOption.label.en || ''
+              : selectedOption.label;
+          const vLabelPt =
+            typeof selectedOption.label === 'object'
+              ? selectedOption.label.pt || vLabelEn
+              : selectedOption.label;
+
+          if (vLabelEn)
+            finalItemNameObj.en = `${finalItemNameObj.en} - ${vLabelEn}`;
+          if (vLabelPt)
+            finalItemNameObj.pt = `${finalItemNameObj.pt} - ${vLabelPt}`;
+        }
       }
     }
 
@@ -153,15 +162,26 @@ const checkout = async (
     );
     const priceAfterStoreDiscount = roundTo2(basePrice - storeDiscountUnit);
 
+    // --- ২. অ্যাড-অনের লোকালইজড নাম অবজেক্ট প্রসেসিং ---
     const processedAddons = (item.addons || []).map((a: any) => {
       const aPrice = Number(a.unitPrice) || 0;
       const aQty = Number(a.quantity) || 0;
       const aTaxRate = Number(a.taxRate) || 0;
       const addonLineNet = roundTo2(aPrice * aQty);
 
+      let finalAddonNameObj = { en: '', pt: '' };
+      if (a.name && typeof a.name === 'object') {
+        finalAddonNameObj = {
+          en: a.name.en || '',
+          pt: a.name.pt || a.name.en || '',
+        };
+      } else {
+        finalAddonNameObj = { en: a.name || '', pt: a.name || '' };
+      }
+
       return {
         optionId: a.optionId,
-        name: a.name,
+        name: finalAddonNameObj, // অবজেক্ট আকারে অ্যাসাইন হলো
         sku: a.sku,
         originalPrice: a.originalPrice,
         promoDiscountAmount: 0,
@@ -203,9 +223,7 @@ const checkout = async (
     return {
       productId: product._id,
       vendorId: product.vendorId,
-      name: selectedVariantLabel
-        ? `${localizedProductName} - ${selectedVariantLabel}`
-        : localizedProductName,
+      name: finalItemNameObj, // অবজেক্ট হিসেবে ডেটাবেজে যাবে
       image: product.images?.[0] || '',
       hasVariations: product?.stock?.hasVariations || false,
       variationSku: item.variationSku || null,
@@ -355,7 +373,7 @@ const checkout = async (
 
   const summary = await CheckoutSummary.create(finalSummaryData);
   return {
-    message: 'Checkout successfully',
+    messageKey: 'CHECKOUT_SUCCESS' as const,
     data: summary,
   };
 };
@@ -366,33 +384,29 @@ const getCheckoutSummary = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ORDER_VIEW_APPROVAL_REQUIRED', {
+      status: currentUser.status,
+    });
   }
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
   if (!summary) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
   }
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to view',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_TO_VIEW');
   }
 
   if (summary.isConvertedToOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order',
+      'CHECKOUT_SUMMARY_ALREADY_CONVERTED',
     );
   }
 
   return {
-    message: 'Checkout summary retrieved successfully',
+    messageKey: 'CHECKOUT_SUMMARY_RETRIEVED_SUCCESS' as const,
     data: summary,
   };
 };

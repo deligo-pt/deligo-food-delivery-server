@@ -13,7 +13,7 @@ const createIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -29,7 +29,7 @@ const updateIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -41,7 +41,7 @@ const getIngredientDetails = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -52,7 +52,7 @@ const getAllIngredients = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -65,7 +65,7 @@ const softDeleteIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -78,7 +78,7 @@ const permanentDeleteIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });

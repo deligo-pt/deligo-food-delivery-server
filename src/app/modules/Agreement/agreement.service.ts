@@ -41,10 +41,7 @@ const initiateAgreement = async (
     agreement.isEmailVerified &&
     blockedStatuses.includes(agreement.status)
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'An agreement already exists for this email.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'AGREEMENT_ALREADY_EXISTS');
   }
 
   // 4. If agreement exists but email is not verified,
@@ -71,10 +68,7 @@ const initiateAgreement = async (
 
   // At this point, agreement is guaranteed to exist
   if (!agreement) {
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to create agreement.',
-    );
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'CREATE_FAILED');
   }
 
   // 6. Generate OTP
@@ -103,7 +97,7 @@ const initiateAgreement = async (
 
   // 10. Return response
   return {
-    message: 'Verification code sent successfully.',
+    messageKey: 'VERIFICATION_CODE_SENT' as const,
     data: {
       agreementId: agreement._id,
       email: agreement.email,
@@ -122,10 +116,7 @@ const verifyAgreementOtp = async (
   const normalizedEmail = email.toLowerCase();
   // 1. Validate input
   if (!email || !otp) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Agreement Email and OTP are required',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'CREDENTIALS_REQUIRED');
   }
 
   const isSuperAdmin = ['SUPER_ADMIN'].includes(currentUser.role);
@@ -134,22 +125,19 @@ const verifyAgreementOtp = async (
   const agreement = await Agreement.findOne({ email: normalizedEmail });
 
   if (!agreement) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'AGREEMENT_NOT_FOUND');
   }
 
   if (
     !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to perform this action',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'ACTION_UNAUTHORIZED');
   }
 
   // 3. Check if already verified
   if (agreement.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Email is already verified');
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_ALREADY_VERIFIED');
   }
 
   // 4. Get OTP from Redis
@@ -158,7 +146,7 @@ const verifyAgreementOtp = async (
 
   // 5. Validate OTP
   if (!storedOtp || String(storedOtp) !== String(otp)) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OR_EXPIRED_OTP');
   }
 
   // 6. Remove OTP from Redis
@@ -200,7 +188,7 @@ const verifyAgreementOtp = async (
 
   // 10. Return response
   return {
-    message: 'Email verified and agreement generated successfully',
+    messageKey: 'VERIFY_AND_GENERATE_SUCCESS' as const,
     data: {
       agreementId: agreement._id,
       email: agreement.email,
@@ -215,7 +203,7 @@ const verifyAgreementOtp = async (
 const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
   // 1. Validate input
   if (!email) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Agreement Email is required');
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_REQUIRED');
   }
   const normalizedEmail = email.toLowerCase();
 
@@ -225,22 +213,19 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
   const agreement = await Agreement.findOne({ email: normalizedEmail });
 
   if (!agreement) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'AGREEMENT_NOT_FOUND');
   }
 
   if (
     !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to perform this action',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'ACTION_UNAUTHORIZED');
   }
 
   // 3. Prevent resend if already verified
   if (agreement.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Email is already verified');
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_ALREADY_VERIFIED');
   }
 
   // 4. Generate new OTP
@@ -270,7 +255,7 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
 
   // 8. Return response
   return {
-    message: 'OTP resent successfully. Please check your email.',
+    messageKey: 'OTP_RESEND_SUCCESS' as const,
     data: {
       agreementId: agreement._id,
       email: normalizedEmail,
@@ -291,31 +276,22 @@ const signAgreement = async (
   const agreement = await Agreement.findById(agreementId);
 
   if (!agreement) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'AGREEMENT_NOT_FOUND');
   }
 
   if (
     !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to perform this action',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'ACTION_UNAUTHORIZED');
   }
 
   if (agreement.status !== AGREEMENT_STATUS.DRAFT) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Agreement is not ready for signing',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_READY_FOR_SIGNING');
   }
 
   if (!agreement.isEmailVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please verify your email first',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_VERIFICATION_REQUIRED');
   }
 
   const localAgentSignaturePath = await saveSignatureImage(
@@ -388,7 +364,7 @@ const signAgreement = async (
   await agreement.save();
 
   return {
-    message: 'Agreement signed successfully',
+    messageKey: 'SIGN_SUCCESS' as const,
     data: {
       agreementId: agreement._id,
       signedPdfPath: agreement.signedPdfPath,
@@ -405,21 +381,18 @@ const getAgreementById = async (
   const agreement = await Agreement.findById(agreementId);
 
   if (!agreement) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Agreement not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'AGREEMENT_NOT_FOUND');
   }
 
   if (
     !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to view this agreement',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'ACTION_UNAUTHORIZED');
   }
 
   return {
-    message: 'Agreement retrieved successfully',
+    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
     data: agreement,
   };
 };
@@ -446,7 +419,7 @@ const getAllAgreements = async (
   ]);
 
   return {
-    message: 'Agreements retrieved successfully',
+    messageKey: 'FETCH_ALL_SUCCESS' as const,
     data,
     meta,
   };

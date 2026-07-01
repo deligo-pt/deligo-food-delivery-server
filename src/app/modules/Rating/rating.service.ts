@@ -34,13 +34,13 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
     if (exists) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'You have already submitted a rating for this category in this order.',
+        'ALREADY_SUBMITTED_RATING_FOR_CATEGORY_IN_ORDER',
       );
     }
 
     const existsOrder = await Order.findById(payload.orderId).session(session);
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
     }
 
     const reviewerModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
@@ -54,7 +54,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
       if (!existsOrder.items || existsOrder.items.length === 0) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'No products found in this order.',
+          'NO_PRODUCTS_FOUND_IN_ORDER',
         );
       }
 
@@ -84,7 +84,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
         if (!existsOrder.deliveryPartnerId) {
           throw new AppError(
             httpStatus.BAD_REQUEST,
-            'No delivery partner assigned to this order.',
+            'NO_DELIVERY_PARTNER_ASSIGNED_TO_ORDER',
           );
         }
         targetId = existsOrder.deliveryPartnerId.toString();
@@ -97,7 +97,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
       }
 
       if (!targetId || !targetModel) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Target for rating not found');
+        throw new AppError(httpStatus.NOT_FOUND, 'TARGET_FOR_RATING_NOT_FOUND');
       }
 
       payload.targetId = new mongoose.Types.ObjectId(targetId);
@@ -117,7 +117,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
     );
     await session.commitTransaction();
     return {
-      message: 'Rating created successfully',
+      messageKey: 'RATING_CREATED_SUCCESS',
       data: result,
     };
   } catch (err) {
@@ -177,7 +177,7 @@ const getAllRatings = async (
   const meta = await ratingQuery.countTotal();
 
   return {
-    message: 'Ratings fetched successfully',
+    messageKey: 'RATINGS_FETCHED_SUCCESS',
     meta,
     data,
   };
@@ -192,7 +192,7 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
     .populate('orderId', 'orderId');
 
   if (!rating) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Rating not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'RATING_NOT_FOUND');
   }
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -232,12 +232,12 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You do not have permission to view this rating detail',
+      'NO_PERMISSION_TO_VIEW_RATING_DETAIL',
     );
   }
 
   return {
-    message: 'Rating fetched successfully',
+    messageKey: 'RATING_FETCHED_SUCCESS',
     data: rating,
   };
 };
@@ -491,7 +491,7 @@ const getRatingSummary = async (currentUser: TCurrentUser) => {
   ]);
 
   return {
-    message: 'Ratings fetched successfully',
+    messageKey: 'RATING_FETCHED_SUCCESS',
     data: {
       summary: stats[0].overallStats[0] || {
         totalRatings: 0,

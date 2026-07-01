@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { TCheckoutSummary } from './checkout.interface';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
   {
@@ -24,14 +25,13 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           required: true,
           ref: 'Vendor',
         },
-        name: { type: String, required: true },
+        name: { type: localizedSchema },
         image: { type: String },
         hasVariations: { type: Boolean, required: true },
         variationSku: { type: String, default: null },
         addons: [
           {
-            optionId: { type: String },
-            name: { type: String },
+            name: { type: localizedSchema },
             sku: { type: String },
             originalPrice: { type: Number, required: true, min: 0 },
             promoDiscountAmount: { type: Number, required: true, min: 0 },

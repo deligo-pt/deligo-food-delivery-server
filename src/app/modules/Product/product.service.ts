@@ -33,11 +33,7 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
   ]);
 
   CreateProductUtils.validateRestaurantStock(vendorCategoryExist, payload);
-  CreateProductUtils.validateCategory(
-    vendorCategoryExist,
-    category,
-    currentUser.role,
-  );
+  CreateProductUtils.validateCategory(vendorCategoryExist, category);
 
   if (payload.addonGroups) {
     await CreateProductUtils.validateAddons(payload, currentUser._id);
@@ -60,7 +56,7 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
   const newProduct = await Product.create(payload);
 
   return {
-    message: 'Product created successfully',
+    messageKey: 'PRODUCT_CREATED_SUCCESS',
     data: newProduct,
   };
 };
@@ -96,7 +92,7 @@ const updateProduct = async (
   await UpdateProductUtils.syncStockStatus(updatedProduct, existingProduct);
 
   return {
-    message: 'Product updated successfully',
+    messageKey: 'PRODUCT_UPDATED_SUCCESS',
     data: updatedProduct,
   };
 };
@@ -114,10 +110,10 @@ const manageProductVariations = async (
   }).populate('vendorId', 'businessDetails.businessType');
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_NOT_APPROVED');
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
@@ -131,7 +127,7 @@ const manageProductVariations = async (
   if (!normalizedEnName || !normalizedPtName) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Both English and Portuguese variation names are required',
+      'VARIATION_NAMES_REQUIRED_BOTH_LANGUAGES',
     );
   }
   const productNamePart = cleanForSKU(
@@ -155,7 +151,7 @@ const manageProductVariations = async (
     if (!normalizedEnLabel || !normalizedPtLabel) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Variation options must have both English and Portuguese labels',
+        'VARIATION_OPTION_LABELS_REQUIRED_BOTH_LANGUAGES',
       );
     }
 
@@ -167,10 +163,9 @@ const manageProductVariations = async (
           o.label?.en?.toLowerCase() === normalizedEnLabel.toLowerCase(),
       );
       if (isOptionExists) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          `Option '${normalizedEnLabel}' already exists.`,
-        );
+        throw new AppError(httpStatus.BAD_REQUEST, 'OPTION_ALREADY_EXISTS', {
+          label: normalizedEnLabel,
+        });
       }
     }
 
@@ -185,14 +180,15 @@ const manageProductVariations = async (
     if (isSkuTaken) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `SKU ${generatedSku} is already in use.`,
+        'VARIATION_SKU_ALREADY_IN_USE',
+        { sku: generatedSku },
       );
     }
 
     if (isRestaurant && opt.stockQuantity) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Variation stock quantity is not allowed for Restaurants',
+        'VARIATION_STOCK_NOT_ALLOWED_FOR_RESTAURANTS',
       );
     }
 
@@ -263,7 +259,7 @@ const manageProductVariations = async (
 
   await existingProduct.save();
   return {
-    message: 'Product variations updated successfully',
+    messageKey: 'PRODUCT_VARIATIONS_UPDATED_SUCCESS',
     data: existingProduct,
   };
 };
@@ -287,7 +283,7 @@ const renameProductVariation = async (
   });
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   if (!existingProduct.variations) {
     existingProduct.variations = [];
@@ -300,10 +296,9 @@ const renameProductVariation = async (
   );
 
   if (variationIndex === -1)
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `Variation group '${oldName}' not found`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'VARIATION_GROUP_NOT_FOUND', {
+      name: oldName,
+    });
 
   if (newName && !oldLabel) {
     const normalizedNewEn = newName.en?.trim();
@@ -312,7 +307,7 @@ const renameProductVariation = async (
     if (!normalizedNewEn && !normalizedNewPt) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'At least one language translation (English or Portuguese) must be provided',
+        'AT_LEAST_ONE_VARIATION_NAME_TRANSLATION_REQUIRED',
       );
     }
 
@@ -326,7 +321,8 @@ const renameProductVariation = async (
         if (hasEnDuplicate) {
           throw new AppError(
             httpStatus.BAD_REQUEST,
-            `Another variation group named '${normalizedNewEn}' (English) already exists.`,
+            'VARIATION_GROUP_ENGLISH_DUPLICATE',
+            { name: normalizedNewEn },
           );
         }
       }
@@ -347,7 +343,8 @@ const renameProductVariation = async (
         if (hasPtDuplicate) {
           throw new AppError(
             httpStatus.BAD_REQUEST,
-            `Another variation group named '${normalizedNewPt}' (Portuguese) already exists.`,
+            'VARIATION_GROUP_PORTUGUESE_DUPLICATE',
+            { name: normalizedNewPt },
           );
         }
       }
@@ -362,7 +359,7 @@ const renameProductVariation = async (
     if (!normalizedNewEnLabel && !normalizedNewPtLabel) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'At least one option label translation (English or Portuguese) must be provided',
+        'AT_LEAST_ONE_OPTION_LABEL_TRANSLATION_REQUIRED',
       );
     }
     const optionIndex = existingProduct.variations[
@@ -374,7 +371,8 @@ const renameProductVariation = async (
     if (optionIndex === -1)
       throw new AppError(
         httpStatus.NOT_FOUND,
-        `Option '${oldLabel}' not found in variation group '${oldName}'`,
+        'VARIATION_OPTION_NOT_FOUND_IN_GROUP',
+        { label: oldLabel, group: oldName },
       );
 
     if (normalizedNewEnLabel) {
@@ -391,7 +389,8 @@ const renameProductVariation = async (
         if (hasEnLabelDuplicate) {
           throw new AppError(
             httpStatus.BAD_REQUEST,
-            `An option with label '${normalizedNewEnLabel}' (English) already exists in this group.`,
+            'OPTION_LABEL_ENGLISH_DUPLICATE_IN_GROUP',
+            { label: normalizedNewEnLabel },
           );
         }
       }
@@ -417,7 +416,8 @@ const renameProductVariation = async (
         if (hasPtLabelDuplicate) {
           throw new AppError(
             httpStatus.BAD_REQUEST,
-            `An option with label '${normalizedNewPtLabel}' (Portuguese) already exists in this group.`,
+            'OPTION_LABEL_PORTUGUESE_DUPLICATE_IN_GROUP',
+            { label: normalizedNewPtLabel },
           );
         }
       }
@@ -428,7 +428,7 @@ const renameProductVariation = async (
 
   await existingProduct.save();
   return {
-    message: 'Product variations renamed successfully',
+    messageKey: 'PRODUCT_VARIATIONS_RENAMED_SUCCESS',
     data: existingProduct,
   };
 };
@@ -449,10 +449,10 @@ const removeProductVariations = async (
   }).populate('vendorId', 'businessDetails.businessType');
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_NOT_APPROVED');
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
@@ -462,7 +462,7 @@ const removeProductVariations = async (
   const normalizedName = name.trim();
 
   if (!existingProduct.variations || existingProduct.variations.length === 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'No variations found to remove');
+    throw new AppError(httpStatus.BAD_REQUEST, 'NO_VARIATIONS_FOUND_TO_REMOVE');
   }
 
   const variationIndex = existingProduct.variations.findIndex(
@@ -470,10 +470,9 @@ const removeProductVariations = async (
   );
 
   if (variationIndex === -1) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `Variation group '${normalizedName}' not found`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'VARIATION_GROUP_NOT_FOUND', {
+      name: normalizedName,
+    });
   }
 
   if (labelToRemove) {
@@ -487,7 +486,8 @@ const removeProductVariations = async (
     if (optionIndex === -1) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        `Option '${labelToRemove}' not found in '${normalizedName}'`,
+        'OPTION_NOT_FOUND_IN_VARIATION',
+        { label: labelToRemove, name: normalizedName },
       );
     }
 
@@ -539,7 +539,7 @@ const removeProductVariations = async (
 
   await existingProduct.save();
   return {
-    message: 'Product variations removed successfully',
+    messageKey: 'PRODUCT_VARIATIONS_REMOVED_SUCCESS',
     data: existingProduct,
   };
 };
@@ -559,7 +559,7 @@ const updateInventoryAndPricing = async (
   );
 
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   const vendor = product.vendorId as any;
@@ -572,7 +572,7 @@ const updateInventoryAndPricing = async (
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to update this product',
+        'NOT_AUTHORIZED_TO_UPDATE_PRODUCT',
       );
     }
   }
@@ -584,14 +584,14 @@ const updateInventoryAndPricing = async (
   if (variationSku && !hasVariations) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'This product does not have any variations. Cannot update using variationSku.',
+      'PRODUCT_HAS_NO_VARIATIONS_FOR_SKU_UPDATE',
     );
   }
 
   if (!variationSku && hasVariations) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Variation SKU is required for this product.',
+      'VARIATION_SKU_REQUIRED_FOR_PRODUCT',
     );
   }
 
@@ -611,7 +611,8 @@ const updateInventoryAndPricing = async (
             ) {
               throw new AppError(
                 httpStatus.BAD_REQUEST,
-                `Insufficient stock. Available: ${opt.stockQuantity}`,
+                'INSUFFICIENT_STOCK_WITH_AVAILABLE',
+                { available: opt.stockQuantity || 0 },
               );
             }
             opt.stockQuantity = (opt.stockQuantity || 0) + netQuantityChange;
@@ -629,7 +630,7 @@ const updateInventoryAndPricing = async (
     });
 
     if (!variationFound)
-      throw new AppError(httpStatus.NOT_FOUND, 'Variation SKU not found');
+      throw new AppError(httpStatus.NOT_FOUND, 'VARIATION_SKU_NOT_FOUND');
 
     if (!isRestaurant && product.stock) {
       let totalStock = 0;
@@ -645,7 +646,7 @@ const updateInventoryAndPricing = async (
   } else {
     if (!isRestaurant && product.stock) {
       if (reduceQuantity > 0 && reduceQuantity > product.stock.quantity) {
-        throw new AppError(httpStatus.BAD_REQUEST, `Insufficient stock.`);
+        throw new AppError(httpStatus.BAD_REQUEST, 'INSUFFICIENT_STOCK');
       }
       product.stock.quantity += netQuantityChange;
       product.stock.totalAddedQuantity =
@@ -665,7 +666,7 @@ const updateInventoryAndPricing = async (
 
   await product.save();
   return {
-    message: 'Inventory and pricing updated successfully',
+    messageKey: 'INVENTORY_AND_PRICING_UPDATED_SUCCESS',
     data: product,
   };
 };
@@ -679,7 +680,7 @@ const approvedProduct = async (
   const existingProduct = await Product.findOne({ productId });
 
   if (!existingProduct) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   const { isApproved, remarks } = payload;
@@ -687,17 +688,16 @@ const approvedProduct = async (
   const currentStatus = existingProduct.isApproved ?? false;
 
   if (currentStatus === isApproved) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Product is already ${isApproved ? 'approved' : 'rejected'}`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'PRODUCT_ALREADY_IN_STATUS', {
+      status: isApproved ? 'approved' : 'rejected',
+    });
   }
 
   if (!isApproved) {
     if (!remarks || remarks.trim() === '') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Remarks are required when rejecting a product',
+        'REMARKS_REQUIRED_WHEN_REJECTING',
       );
     }
     existingProduct.remarks = remarks.trim();
@@ -711,7 +711,8 @@ const approvedProduct = async (
   await existingProduct.save();
 
   return {
-    message: `Product has been ${isApproved ? 'approved' : 'rejected'} successfully`,
+    messageKey: 'PRODUCT_APPROVAL_UPDATED_SUCCESS',
+    variables: { status: isApproved ? 'approved' : 'rejected' },
     data: {
       productId: existingProduct.productId,
       isApproved: existingProduct.isApproved,
@@ -730,13 +731,14 @@ const deleteProductImages = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete product images. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_DELETE_PRODUCT_IMAGES',
+      { status: currentUser.status },
     );
   }
 
   const product = await Product.findOne({ productId });
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   if (
@@ -745,7 +747,7 @@ const deleteProductImages = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You can only delete images of your own products',
+      'ONLY_OWN_PRODUCT_IMAGES_CAN_BE_DELETED',
     );
   }
 
@@ -754,7 +756,7 @@ const deleteProductImages = async (
   if (invalidImages.length > 0) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'The following images do not belong to this product.',
+      'IMAGES_DO_NOT_BELONG_TO_PRODUCT',
     );
   }
 
@@ -762,7 +764,7 @@ const deleteProductImages = async (
   if (remainingImagesCount < 1) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'A product must have at least one image remaining. You cannot delete all images.',
+      'AT_LEAST_ONE_IMAGE_MUST_REMAIN',
     );
   }
 
@@ -774,7 +776,7 @@ const deleteProductImages = async (
   await product.save();
 
   return {
-    message: 'Product images deleted successfully',
+    messageKey: 'PRODUCT_IMAGES_DELETED_SUCCESS',
     data: product,
   };
 };
@@ -786,10 +788,9 @@ const getAllProducts = async (
   lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_PRODUCTS', {
+      status: currentUser.status,
+    });
   }
   const role = currentUser.role;
 
@@ -828,7 +829,7 @@ const getAllProducts = async (
     localizeProductData(product, role, lang),
   );
   return {
-    message: 'Products retrieved successfully',
+    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
     meta,
     data: localizedData,
   };
@@ -868,7 +869,7 @@ const getAllProductsPublic = async (
     localizeProductData(product, 'CUSTOMER', lang),
   );
   return {
-    message: 'Products retrieved successfully',
+    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
     meta,
     data: localizedData,
   };
@@ -881,10 +882,9 @@ const getSingleProduct = async (
   lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_PRODUCTS', {
+      status: currentUser.status,
+    });
   }
 
   const role = currentUser.role;
@@ -909,7 +909,7 @@ const getSingleProduct = async (
   } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
     query = Product.findOne({ productId });
   } else {
-    throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized role access');
+    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_ROLE_ACCESS');
   }
 
   const populateOptions = getPopulateOptions(role, {
@@ -924,11 +924,11 @@ const getSingleProduct = async (
 
   const product = await query;
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   return {
-    message: 'Product retrieved successfully',
+    messageKey: 'PRODUCT_RETRIEVED_SUCCESS',
     data: localizeProductData(product, role, lang),
   };
 };
@@ -959,11 +959,11 @@ const getSingleProductPublic = async (
   const product = await productQuery;
 
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   return {
-    message: 'Product retrieved successfully',
+    messageKey: 'PRODUCT_RETRIEVED_SUCCESS',
     data: localizeProductData(product, role, lang),
   };
 };
@@ -974,28 +974,27 @@ const softDeleteProduct = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to delete a product. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_DELETE_PRODUCT', {
+      status: currentUser.status,
+    });
   }
 
   const product = await Product.findOne({ productId });
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
     if (currentUser._id.toString() !== product.vendorId.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to delete this product',
+        'NOT_AUTHORIZED_TO_DELETE_PRODUCT',
       );
     }
   }
 
   if (product.isDeleted) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Product is already deleted');
+    throw new AppError(httpStatus.BAD_REQUEST, 'PRODUCT_ALREADY_DELETED');
   }
 
   const activeOrderStatuses = [
@@ -1018,7 +1017,7 @@ const softDeleteProduct = async (
   if (hasActiveOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Cannot delete product. This product is currently tied to an active, ongoing order.',
+      'CANNOT_DELETE_PRODUCT_WITH_ACTIVE_ORDER',
     );
   }
   product.isDeleted = true;
@@ -1027,7 +1026,8 @@ const softDeleteProduct = async (
   const productName = product.name?.en || 'Product';
 
   return {
-    message: `${productName} has been deleted successfully`,
+    messageKey: 'PRODUCT_SOFT_DELETED_SUCCESS',
+    variables: { productName },
     data: null,
   };
 };
@@ -1040,26 +1040,27 @@ const permanentDeleteProduct = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to permanently delete a product. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_PERMANENTLY_DELETE_PRODUCT',
+      { status: currentUser.status },
     );
   }
 
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only admins can permanently delete products',
+      'ONLY_ADMINS_CAN_PERMANENTLY_DELETE_PRODUCTS',
     );
   }
 
   const product = await Product.findOne({ productId });
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   if (product.isDeleted === false) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Product must be soft deleted before permanent deletion',
+      'PRODUCT_SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE',
     );
   }
 
@@ -1068,7 +1069,8 @@ const permanentDeleteProduct = async (
   await product.deleteOne();
 
   return {
-    message: `${productName} has been permanently deleted successfully`,
+    messageKey: 'PRODUCT_PERMANENTLY_DELETED_SUCCESS',
+    variables: { productName },
     data: null,
   };
 };
@@ -1130,7 +1132,7 @@ const getOutOfStockAlerts = async (
   );
 
   return {
-    message: 'Products retrieved successfully',
+    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
     data: localizedData,
     meta: {
       page: Number(page),

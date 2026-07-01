@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import auth from '../../middlewares/auth';
-import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
 import validateRequest from '../../middlewares/validateRequest';
 import { IngredientValidation } from './ingredients.validation';
 import { IngredientsController } from './ingredients.controller';

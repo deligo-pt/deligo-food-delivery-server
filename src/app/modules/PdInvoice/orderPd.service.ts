@@ -3,9 +3,10 @@ import { getPdAccessToken } from './getPdAccessToken';
 import config from '../../config';
 import { Order } from '../Order/order.model';
 import { roundTo2 } from '../../utils/mathProvider';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const mapOrderToPdPayload = (order: any) => {
+const mapOrderToPdPayload = (order: any, lang: TLanguageCode = 'en') => {
   const details = order.items.flatMap((item: any) => {
     let productRef = item.variationSku || item.sku;
 
@@ -19,9 +20,14 @@ const mapOrderToPdPayload = (order: any) => {
     const taxRate = item.productPricing.taxRate || 0;
     const pdTaxId = taxRate === 13 ? 2 : taxRate === 23 ? 1 : 3;
 
+    const finalProductName =
+      item.name && typeof item.name === 'object'
+        ? item.name[lang] || item.name['pt'] || item.name['en'] || ''
+        : item.name || '';
+
     const mainItem = {
       product_reference: 'Food Items',
-      description: item.name,
+      description: finalProductName,
       quantity: Number(item.itemSummary.quantity),
       price: roundTo2(item.productPricing.unitPrice),
       tax_id: pdTaxId,
@@ -29,13 +35,20 @@ const mapOrderToPdPayload = (order: any) => {
 
     let addons: any[] = [];
     if (item.addons && item.addons.length > 0) {
-      addons = (item.addons || []).map((addon: any) => ({
-        product_reference: 'Add Ons',
-        description: addon.name,
-        quantity: Number(addon.quantity),
-        price: roundTo2(addon.unitPrice),
-        tax_id: pdTaxId,
-      }));
+      addons = (item.addons || []).map((addon: any) => {
+        const finalAddonName =
+          addon.name && typeof addon.name === 'object'
+            ? addon.name[lang] || addon.name['pt'] || addon.name['en'] || ''
+            : addon.name || '';
+
+        return {
+          product_reference: 'Add Ons',
+          description: finalAddonName,
+          quantity: Number(addon.quantity),
+          price: roundTo2(addon.unitPrice),
+          tax_id: pdTaxId,
+        };
+      });
     }
 
     return [mainItem, ...addons];
@@ -79,7 +92,7 @@ const mapOrderToPdPayload = (order: any) => {
   };
 };
 // syncOrderWithPd
-const syncOrderWithPd = async (orderId: string) => {
+const syncOrderWithPd = async (orderId: string, lang: TLanguageCode = 'en') => {
   const order = await Order.findById(orderId)
     .populate('items.productId')
     .populate('customerId');
@@ -88,7 +101,7 @@ const syncOrderWithPd = async (orderId: string) => {
 
   try {
     const pdToken = await getPdAccessToken();
-    const payload = mapOrderToPdPayload(order);
+    const payload = mapOrderToPdPayload(order, lang);
 
     const response = await axios.post(
       `${config.pastaDigital.api_url}/sales`,

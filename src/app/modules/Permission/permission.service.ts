@@ -5,15 +5,12 @@ import { TPermission } from './permission.interface';
 import { Permission } from './permission.model';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { Admin } from '../Admin/admin.model';
+import { TMessageKey } from '../../errors/messages';
 
 const createPermission = async (
   payload: TPermission,
   currentUser: TCurrentUser,
 ) => {
-  const isPermissionExist = await Permission.findOne({
-    action: payload.action,
-  });
-
   const checkDuplicate = await Permission.findOne({
     action: payload.action,
   });
@@ -22,20 +19,17 @@ const createPermission = async (
     if (checkDuplicate.isDeleted) {
       throw new AppError(
         httpStatus.CONFLICT,
-        'This permission action code was previously deleted. Please restore it instead of creating a duplicate.',
+        'PERMISSION_ACTION_PREVIOUSLY_DELETED',
       );
     }
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'This permission action code already exists and is active!',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'PERMISSION_ACTION_ALREADY_ACTIVE');
   }
 
   payload.createdBy = currentUser._id;
 
   const result = await Permission.create(payload);
   return {
-    message: 'Permission created successfully',
+    messageKey: 'PERMISSION_CREATED_SUCCESS' as TMessageKey,
     data: result,
   };
 };
@@ -49,7 +43,7 @@ const updatePermission = async (
   if (!permission || permission.isDeleted) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Target system permission not found!',
+      'TARGET_SYSTEM_PERMISSION_NOT_FOUND',
     );
   }
 
@@ -60,7 +54,7 @@ const updatePermission = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Security Alert: Core system defined permission action codes cannot be altered!',
+      'SYSTEM_PERMISSION_ACTION_IMMUTABLE',
     );
   }
 
@@ -72,7 +66,8 @@ const updatePermission = async (
     if (isActionTaken) {
       throw new AppError(
         httpStatus.CONFLICT,
-        `Conflict: Permission action code '${payload.action}' is already registered in another module!`,
+        'PERMISSION_ACTION_ALREADY_REGISTERED_IN_MODULE',
+        { action: payload.action },
       );
     }
   }
@@ -85,7 +80,7 @@ const updatePermission = async (
   });
 
   return {
-    message: 'Permission updated successfully',
+    messageKey: 'PERMISSION_UPDATED_SUCCESS' as TMessageKey,
     data: result,
   };
 };
@@ -105,7 +100,7 @@ const getAllPermissions = async (query: Record<string, unknown>) => {
   const data = await permissionQuery.modelQuery;
 
   return {
-    message: 'Permissions retrieved successfully',
+    messageKey: 'PERMISSIONS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -114,10 +109,10 @@ const getAllPermissions = async (query: Record<string, unknown>) => {
 const getSinglePermission = async (permissionId: string) => {
   const result = await Permission.findById(permissionId);
   if (!result || result.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'PERMISSION_NOT_FOUND');
   }
   return {
-    message: 'Permission details retrieved successfully',
+    messageKey: 'PERMISSION_DETAILS_RETRIEVED_SUCCESS' as TMessageKey,
     data: result,
   };
 };
@@ -126,23 +121,23 @@ const deletePermission = async (permissionId: string) => {
   const permission = await Permission.findById(permissionId);
 
   if (!permission || permission.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Permission not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'PERMISSION_NOT_FOUND');
   }
 
   if (permission.isSystemDefined) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Core system permissions cannot be deleted!',
+      'CORE_SYSTEM_PERMISSIONS_CANNOT_BE_DELETED',
     );
   }
 
-  const result = await Permission.findByIdAndUpdate(
+  await Permission.findByIdAndUpdate(
     permissionId,
     { isDeleted: true },
     { new: true },
   );
   return {
-    message: 'Permission soft-deleted successfully',
+    messageKey: 'PERMISSION_SOFT_DELETED_SUCCESS' as TMessageKey,
     data: null,
   };
 };
@@ -151,10 +146,7 @@ const validateIdsAndGetActionCodes = async (
   permissionIds: string[],
 ): Promise<string[]> => {
   if (!permissionIds || permissionIds.length === 0) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Permission IDs array cannot be empty!',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'PERMISSION_IDS_ARRAY_EMPTY');
   }
 
   const foundPermissions = await Permission.find({
@@ -165,7 +157,7 @@ const validateIdsAndGetActionCodes = async (
   if (foundPermissions.length !== permissionIds.length) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Security Alert: One or more provided Permission IDs are invalid or inactive!',
+      'INVALID_OR_INACTIVE_PERMISSION_IDS',
     );
   }
 
@@ -181,7 +173,7 @@ const assignPermissionsToAdmin = async (
     isDeleted: false,
   });
   if (!targetAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Target Admin account not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_ADMIN_NOT_FOUND');
   }
 
   const actionCodes = await validateIdsAndGetActionCodes(payload.permissionIds);
@@ -197,7 +189,7 @@ const assignPermissionsToAdmin = async (
   ).select('-password');
 
   return {
-    message: 'New permissions assigned to admin successfully',
+    messageKey: 'NEW_PERMISSIONS_ASSIGNED_SUCCESS' as TMessageKey,
     data: result,
   };
 };
@@ -212,7 +204,7 @@ const revokePermissionsFromAdmin = async (
     isDeleted: false,
   });
   if (!targetAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Target Admin account not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_ADMIN_NOT_FOUND');
   }
 
   const userCurrentPermissions = targetAdmin.permissions || [];
@@ -223,7 +215,8 @@ const revokePermissionsFromAdmin = async (
   if (missingActions.length > 0) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Revoke failed: The target admin does not currently have these permission(s): [${missingActions.join(', ')}]`,
+      'REVOKE_FAILED_MISSING_PERMISSIONS',
+      { missingActions: missingActions.join(', ') },
     );
   }
 
@@ -238,7 +231,7 @@ const revokePermissionsFromAdmin = async (
   ).select('-password');
 
   return {
-    message: 'Specified permissions revoked from admin successfully',
+    messageKey: 'SPECIFIED_PERMISSIONS_REVOKED_SUCCESS' as TMessageKey,
     data: result,
   };
 };

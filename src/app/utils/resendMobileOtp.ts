@@ -11,11 +11,11 @@ export const resendMobileOtp = async (id: string) => {
   if (!apiUrl || !apiKey || !appId) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Bulkgate configuration is missing'
+      'BULKGATE_CONFIGURATION_MISSING',
     );
   }
   if (!id || id.trim() === '') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid OTP request ID');
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_OTP_REQUEST_ID');
   }
 
   const payload = {
@@ -31,15 +31,16 @@ export const resendMobileOtp = async (id: string) => {
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        error?.response?.data?.message || 'Failed to resend OTP with Bulkgate'
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'BULKGATE_RESEND_OTP_FAILED', {
+        message: String(
+          error?.response?.data?.message ||
+            'Failed to resend OTP with Bulkgate',
+        ),
+      });
     } else {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Failed to resend OTP with Bulkgate'
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'BULKGATE_RESEND_OTP_FAILED', {
+        message: 'Failed to resend OTP with Bulkgate',
+      });
     }
   }
 };

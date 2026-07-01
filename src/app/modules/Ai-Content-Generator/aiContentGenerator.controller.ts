@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { AIContentGeneratorService } from './aiContentGenerator.service';
+import httpStatus from 'http-status';
 
 const generateProductDescription = catchAsync(
   async (req: Request, res: Response) => {
@@ -11,10 +12,10 @@ const generateProductDescription = catchAsync(
 
     sendResponse(res, {
       success: true,
-      statusCode: 200,
-      message: 'Product description generated successfully',
+      statusCode: httpStatus.OK,
+      messageKey: result?.messageKey,
       data: {
-        description: result,
+        description: result?.result,
       },
     });
   },

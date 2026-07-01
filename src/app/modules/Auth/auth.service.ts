@@ -43,15 +43,12 @@ const registerUser = async (payload: TRegisterUser) => {
   const currentRegisteringRole = role as TUserRole;
   const modelData = ROLE_COLLECTION_MAP[currentRegisteringRole];
   if (!modelData) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid registration path');
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_REG_PATH');
   }
 
   const mongooseModel = mongoose.model(modelData);
-
-  // Generate userId & OTP
   const userId = generateUserId(currentRegisteringRole);
   const { otp } = generateOtp();
-
   const formattedEmail = email.trim().toLowerCase();
 
   const existingUsersAnywhere = await AuthUser.find({
@@ -64,10 +61,10 @@ const registerUser = async (payload: TRegisterUser) => {
     );
 
     if (verifiedMainUser) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        `This email is already registered as an active ${verifiedMainUser.role}. You cannot register as a ${currentRegisteringRole}.`,
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'EMAIL_ALREADY_REGISTERED', {
+        role: verifiedMainUser.role as string,
+        targetRole: currentRegisteringRole as string,
+      });
     }
 
     const sameRoleVerifiedUser = existingUsersAnywhere.find(
@@ -75,10 +72,10 @@ const registerUser = async (payload: TRegisterUser) => {
     );
 
     if (sameRoleVerifiedUser) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        `${formattedEmail} is already registered and verified as ${currentRegisteringRole}.`,
-      );
+      throw new AppError(httpStatus.CONFLICT, 'EMAIL_ALREADY_VERIFIED', {
+        formattedEmail,
+        role: currentRegisteringRole as string,
+      });
     }
   }
 
@@ -116,13 +113,7 @@ const registerUser = async (payload: TRegisterUser) => {
     }
 
     const result = await mongooseModel.create(
-      [
-        {
-          email: formattedEmail,
-          userId,
-          role: currentRegisteringRole,
-        },
-      ],
+      [{ email: formattedEmail, userId, role: currentRegisteringRole }],
       { session },
     );
     createdUser = result[0];
@@ -153,10 +144,7 @@ const registerUser = async (payload: TRegisterUser) => {
     session.endSession();
     console.error('Registration Transaction Failed:', err);
     if (err?.code === 11000) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        'The email already exists for this role. Please use another email.',
-      );
+      throw new AppError(httpStatus.CONFLICT, 'EMAIL_CONFLICT_ROLE');
     }
     throw err;
   }
@@ -168,7 +156,8 @@ const registerUser = async (payload: TRegisterUser) => {
   ).catch((err) => console.error('Email sending failed:', err));
 
   return {
-    message: `${currentRegisteringRole} registered successfully. Check your email for OTP.`,
+    messageKey: 'REGISTRATION_SUCCESS' as const,
+    variables: { role: currentRegisteringRole as string },
     data: {
       userId,
       email: formattedEmail,
@@ -187,27 +176,22 @@ const onboardUser = async (
   const modelData = ROLE_COLLECTION_MAP[currentOnboardingRole];
 
   if (!modelData) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Invalid onboarding target role',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_ONBOARDING_ROLE');
   }
 
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status}. Only approved users can onboard others.`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ONBOARD_UNAPPROVED_USER', {
+      status: currentUser.status,
+    });
   }
 
   const allowedRoles =
     ROLE_ONBOARD_PERMISSIONS[currentOnboardingRole.toLowerCase()];
 
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You do not have permission to onboard a ${currentOnboardingRole.replace('-', ' ')}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ONBOARD_PERMISSION_DENIED', {
+      role: currentOnboardingRole.replace('-', ' '),
+    });
   }
 
   const mongooseModel = mongoose.model(modelData);
@@ -229,7 +213,11 @@ const onboardUser = async (
     if (verifiedMainUser) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        `This email is already registered as an active ${verifiedMainUser.role}. You cannot onboard them as a ${currentOnboardingRole}.`,
+        'EMAIL_ALREADY_REGISTERED_ONBOARD',
+        {
+          role: verifiedMainUser.role as string,
+          currentOnboardingRole: currentOnboardingRole as string,
+        },
       );
     }
 
@@ -238,10 +226,10 @@ const onboardUser = async (
     );
 
     if (sameRoleVerifiedUser) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        `${formattedEmail} is already registered and verified as ${currentOnboardingRole}.`,
-      );
+      throw new AppError(httpStatus.CONFLICT, 'EMAIL_ALREADY_VERIFIED', {
+        formattedEmail,
+        role: currentOnboardingRole as string,
+      });
     }
   }
 
@@ -325,10 +313,7 @@ const onboardUser = async (
     console.error('Onboarding Transaction Failed:', err);
 
     if (err?.code === 11000) {
-      throw new AppError(
-        httpStatus.CONFLICT,
-        'The email or user ID already exists for this role. Please use another email.',
-      );
+      throw new AppError(httpStatus.CONFLICT, 'EMAIL_CONFLICT_ONBOARD_ID');
     }
     throw err;
   } finally {
@@ -356,7 +341,11 @@ const onboardUser = async (
   ).catch((err) => console.error('Email sending failed:', err));
 
   return {
-    message: `${currentOnboardingRole} onboarded successfully. Verification email sent to ${formattedEmail}`,
+    messageKey: 'ONBOARD_SUCCESS' as const,
+    variables: {
+      role: currentOnboardingRole as string,
+      email: formattedEmail,
+    },
     data: {
       userId,
       email: formattedEmail,
@@ -378,10 +367,7 @@ const verifyOtp = async (payload: {
   const { role, email, contactNumber, otp, deviceDetails, forceLogin } =
     payload;
   if (!email && !contactNumber) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Email or contact number is required for OTP verification',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'CREDENTIAL_REQUIRED');
   }
 
   let userData: any = undefined;
@@ -401,10 +387,7 @@ const verifyOtp = async (payload: {
   }
 
   if (!userData) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'User not found. Please register.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_REGISTER');
   }
 
   const deviceLimit = ROLE_DEVICE_LIMITS[userData.role] || 3;
@@ -430,19 +413,19 @@ const verifyOtp = async (payload: {
 
     if (email === config.customer.test_customer_email) {
       if (otp !== config.customer.test_customer_otp) {
-        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OTP');
       } else {
         console.log('Email otp verification bypassed for test customer');
       }
     } else if (!storedOtp || String(storedOtp) !== String(otp)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+      throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OR_EXPIRED_OTP');
     }
 
     await RedisService.del(redisOtpKey);
   } else if (contactNumber) {
     if (contactNumber === config.customer.test_customer_contact_number) {
       if (otp !== config.customer.test_customer_contact_otp) {
-        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OTP');
       } else {
         console.log('Contact otp verification bypassed for test customer');
       }
@@ -453,7 +436,7 @@ const verifyOtp = async (payload: {
       );
 
       if (!res?.data?.verified) {
-        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OR_EXPIRED_OTP');
       }
     }
   }
@@ -535,9 +518,10 @@ const verifyOtp = async (payload: {
   );
 
   return {
-    message: email
-      ? `${userData.role} email verified successfully`
-      : 'Customer contact number verified successfully',
+    messageKey: email
+      ? ('VERIFY_EMAIL_SUCCESS' as const)
+      : ('VERIFY_CONTACT_SUCCESS' as const),
+    variables: email ? { role: userData.role as string } : undefined,
     accessToken,
     refreshToken,
   };
@@ -553,11 +537,13 @@ const resendOtp = async (payload: {
   if (!email?.trim() && !contactNumber?.trim()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Email or contact number is required to resend OTP',
+      'RESEND_OTP_CREDENTIAL_REQUIRED',
     );
   }
 
-  let successMessage = 'OTP resent successfully.';
+  let successMessageKey:
+    | 'RESEND_OTP_EMAIL_SUCCESS'
+    | 'RESEND_OTP_MOBILE_SUCCESS' = 'RESEND_OTP_EMAIL_SUCCESS';
 
   if (contactNumber) {
     const user = await AuthUser.findOne({
@@ -567,18 +553,12 @@ const resendOtp = async (payload: {
     });
 
     if (!user) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'User not found with this contact number. Please register first.',
-      );
+      throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_CONTACT');
     }
 
     const id = user.mobileOtpId;
     if (!id) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'No active OTP session found to resend. Please request a new login.',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'NO_ACTIVE_OTP_SESSION');
     }
 
     await resendMobileOtp(id as string);
@@ -586,8 +566,7 @@ const resendOtp = async (payload: {
     user.requiresOtpVerification = true;
     await user.save();
 
-    successMessage =
-      'OTP resent successfully to your mobile number. Please check your SMS.';
+    successMessageKey = 'RESEND_OTP_MOBILE_SUCCESS';
   }
 
   if (email) {
@@ -599,16 +578,13 @@ const resendOtp = async (payload: {
     }).populate('profileId', 'userId name');
 
     if (!user) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'User not found with this email address. Please register first.',
-      );
+      throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_EMAIL');
     }
 
     if (user.isEmailVerified) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Your email is already verified. Please proceed to login.',
+        'EMAIL_ALREADY_VERIFIED_LOGIN',
       );
     }
 
@@ -649,13 +625,12 @@ const resendOtp = async (payload: {
       }
     })();
 
-    successMessage =
-      'OTP resent successfully. Please check your email inbox or spam folder.';
+    successMessageKey = 'RESEND_OTP_EMAIL_SUCCESS';
   }
 
   return {
     success: true,
-    message: successMessage,
+    messageKey: successMessageKey,
   };
 };
 
@@ -669,32 +644,26 @@ const loginUser = async (
     role: { $ne: 'CUSTOMER' },
   });
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');
   }
 
   if (user?.isDeleted) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Your account is deleted. Please contact support.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'ACCOUNT_DELETED');
   }
 
   // checking if the user is blocked
   const userStatus = user?.status;
 
   if (userStatus === USER_STATUS.BLOCKED) {
-    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+    throw new AppError(httpStatus.FORBIDDEN, 'USER_BLOCKED');
   }
 
   if (!user?.isEmailVerified) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'This user is not verified. Please verify your email.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'USER_NOT_VERIFIED');
   }
 
   if (!payload.password) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Password  information missing');
+    throw new AppError(httpStatus.BAD_REQUEST, 'PASSWORD_MISSING');
   }
 
   //checking if the password is correct
@@ -704,7 +673,7 @@ const loginUser = async (
   );
 
   if (!isPasswordMatched) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'Password did not match');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'PASSWORD_NOT_MATCHED');
   }
 
   const deviceLimit = ROLE_DEVICE_LIMITS[user.role] || 3;
@@ -793,7 +762,8 @@ const loginUser = async (
   return {
     accessToken,
     refreshToken,
-    message: `${user?.role} logged in successfully!`,
+    messageKey: 'LOGIN_SUCCESS' as const,
+    variables: { role: user?.role as string },
   };
 };
 
@@ -802,10 +772,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
   const { email, contactNumber, referralCode } = payload;
 
   if (!email && !contactNumber) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Email or contact number is required',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'LOGIN_CREDENTIAL_REQUIRED');
   }
 
   const handleReferral = async (
@@ -836,10 +803,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       }).session(session);
 
       if (existingCustomer?.referredBy && referralCode) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'You have already been referred and cannot apply another referral code.',
-        );
+        throw new AppError(httpStatus.BAD_REQUEST, 'ALREADY_REFERRED');
       }
 
       const { otp } = generateOtp();
@@ -909,7 +873,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
         'Verify your email for DeliGo',
       ).catch((err) => console.error('Email send failed:', err));
 
-      return { message: 'OTP sent to your email. Please verify to login.' };
+      return { messageKey: 'OTP_SENT_EMAIL' as const };
     }
 
     if (contactNumber) {
@@ -919,10 +883,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       }).session(session);
 
       if (existingUser?.referredBy && referralCode) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'You have already been referred and cannot apply another referral code.',
-        );
+        throw new AppError(httpStatus.BAD_REQUEST, 'ALREADY_REFERRED');
       }
 
       const isTestNumber =
@@ -982,7 +943,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
       session.endSession();
 
       return {
-        message: 'OTP sent to your mobile number. Please verify to login.',
+        messageKey: 'OTP_SENT_MOBILE' as const,
       };
     }
   } catch (err) {
@@ -1003,14 +964,11 @@ const updateFcmToken = async (
   const { token, deviceId } = payload;
 
   if (!token || !deviceId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'FCM token and device ID are required',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'FCM_REQUIRED');
   }
 
   if (!currentUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');
   }
 
   const updatedUser = await AuthUser.findOneAndUpdate(
@@ -1026,14 +984,11 @@ const updateFcmToken = async (
   );
 
   if (!updatedUser) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Device not registered for this user',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'DEVICE_NOT_REGISTERED');
   }
 
   return {
-    message: 'FCM token synchronized successfully',
+    messageKey: 'FCM_SYNC_SUCCESS' as const,
   };
 };
 
@@ -1048,10 +1003,7 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
   );
 
   if (!currentDeviceSession) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'This device is not registered for this user. Please log in again.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'DEVICE_SESSION_NOT_FOUND');
   }
 
   await AuthUser.findOneAndUpdate(
@@ -1074,10 +1026,11 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
 
   return {
     success: true,
-    message:
+    messageKey:
       userRole === 'CUSTOMER'
-        ? 'Customer logged out and email verification reset'
-        : `${userRole} logged out successfully!`,
+        ? ('CUSTOMER_LOGOUT_SUCCESS' as const)
+        : ('USER_LOGOUT_SUCCESS' as const),
+    variables: userRole === 'CUSTOMER' ? undefined : { role: userRole },
   };
 };
 
@@ -1087,10 +1040,7 @@ const changePassword = async (
   payload: { oldPassword: string; newPassword: string },
 ) => {
   if (currentUser?.role === 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Customer no need to change password',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CUSTOMER_PASSWORD_CHANGE_DENIED');
   }
 
   // checking if the user is blocked
@@ -1103,14 +1053,16 @@ const changePassword = async (
   }).select('+password');
 
   if (!userExists) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');
   }
 
   if (
     userStatus === USER_STATUS.REJECTED ||
     userStatus === USER_STATUS.BLOCKED
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, `This user is ${userStatus}!`);
+    throw new AppError(httpStatus.FORBIDDEN, 'USER_STATUS_RESTRICTED', {
+      status: String(userStatus),
+    });
   }
 
   const isPasswordMatched = await AuthUser.isPasswordMatched(
@@ -1121,7 +1073,7 @@ const changePassword = async (
   //checking if the password is correct
 
   if (!isPasswordMatched)
-    throw new AppError(httpStatus.FORBIDDEN, 'Old password does not match');
+    throw new AppError(httpStatus.FORBIDDEN, 'OLD_PASSWORD_NOT_MATCHED');
 
   //hash new password
   const newHashedPassword = await bcryptjs.hash(
@@ -1141,7 +1093,7 @@ const changePassword = async (
   );
 
   return {
-    message: 'Password updated successfully!',
+    messageKey: 'PASSWORD_UPDATE_SUCCESS' as const,
   };
 };
 
@@ -1150,10 +1102,7 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
   const { email, role } = payload;
 
   if (role === 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Customers login via OTP/Contact, password reset is not required.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CUSTOMER_PASSWORD_RESET_DENIED');
   }
   const formattedEmail = email.trim().toLowerCase();
   const user = await AuthUser.findOne({
@@ -1165,18 +1114,18 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
   const populatedUser = user?.profileId as any;
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_FOR_RESET');
   }
 
   if (!user.isEmailVerified) {
-    throw new AppError(httpStatus.FORBIDDEN, 'You need to verify your email');
+    throw new AppError(httpStatus.FORBIDDEN, 'VERIFY_EMAIL_REQUIRED');
   }
 
   // checking if the user is blocked
   const userStatus = user?.status;
 
   if (userStatus === USER_STATUS.BLOCKED) {
-    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+    throw new AppError(httpStatus.FORBIDDEN, 'USER_BLOCKED');
   }
 
   const token = await user.createPasswordResetToken();
@@ -1223,11 +1172,14 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
       'Reset your password for DeliGo',
     );
   } catch (err: any) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, err.message);
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'SOMETHING_WENT_WRONG',
+    );
   }
 
   return {
-    message: 'Password reset link sent to your email address successfully',
+    messageKey: 'PASSWORD_RESET_LINK_SUCCESS' as const,
   };
 };
 
@@ -1242,10 +1194,7 @@ const resetPassword = async (payload: {
   const formattedEmail = email.trim().toLowerCase();
 
   if (role === 'CUSTOMER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Customers login via OTP/Contact, password reset is not required.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CUSTOMER_PASSWORD_RESET_DENIED');
   }
 
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
@@ -1254,10 +1203,7 @@ const resetPassword = async (payload: {
   const tokenData = await RedisService.get(redisKey);
 
   if (!tokenData) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Reset token is invalid or has expired.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'TOKEN_INVALID_OR_EXPIRED');
   }
 
   const parsedData = tokenData as {
@@ -1266,10 +1212,7 @@ const resetPassword = async (payload: {
     role: string;
   };
   if (parsedData.email !== formattedEmail || parsedData.role !== role) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Token does not match with this user or role.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'TOKEN_MISMATCH');
   }
 
   const user = await AuthUser.findOne({
@@ -1279,7 +1222,7 @@ const resetPassword = async (payload: {
   });
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_FOR_RESET');
   }
 
   if (
@@ -1288,7 +1231,10 @@ const resetPassword = async (payload: {
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `This user account is currently ${user.status.toLowerCase()} and cannot be modified.`,
+      'ACCOUNT_MODIFICATION_RESTRICTED',
+      {
+        status: user.status.toLowerCase(),
+      },
     );
   }
 
@@ -1308,8 +1254,7 @@ const resetPassword = async (payload: {
 
   return {
     success: true,
-    message:
-      'Password reset successfully! All other active sessions have been securely terminated.',
+    messageKey: 'PASSWORD_RESET_SUCCESS' as const,
   };
 };
 
@@ -1329,7 +1274,7 @@ const refreshToken = async (token: string) => {
   }).populate('profileId', 'userId name');
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_FOR_RESET');
   }
   const userProfile = user?.profileId as any;
 
@@ -1338,17 +1283,14 @@ const refreshToken = async (token: string) => {
   );
 
   if (!targetDeviceSession || targetDeviceSession.isLoggedIn === false) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'Your session has expired or you have logged out from this device. Please log in again.',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'SESSION_EXPIRED');
   }
 
   // checking if the user is blocked
   const userStatus = user?.status;
 
   if (userStatus === USER_STATUS.BLOCKED) {
-    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked!');
+    throw new AppError(httpStatus.FORBIDDEN, 'USER_BLOCKED');
   }
 
   if (
@@ -1358,7 +1300,7 @@ const refreshToken = async (token: string) => {
       iat as number,
     )
   ) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED');
   }
 
   const jwtPayload = {
@@ -1381,7 +1323,7 @@ const refreshToken = async (token: string) => {
   );
 
   return {
-    message: 'Access token retrieved successfully!',
+    messageKey: 'REFRESH_TOKEN_SUCCESS' as const,
     accessToken,
   };
 };
@@ -1390,32 +1332,26 @@ const refreshToken = async (token: string) => {
 const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   const authUser = await AuthUser.findOne({ userId });
   if (!authUser || authUser.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');
   }
 
   if (authUser?.status === 'SUBMITTED') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You have already submitted the approval request. Please wait for admin approval.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'ALREADY_SUBMITTED_APPROVAL');
   }
   if (authUser?.status === 'APPROVED') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Your account is already approved.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'ALREADY_APPROVED');
   }
 
   const modelName = ROLE_COLLECTION_MAP[authUser.role as TUserRole];
   if (!modelName) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping');
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_ROLE_MAPPING');
   }
 
   const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
   const submittedProfile = await TargetModel.findById(authUser.profileId);
 
   if (!submittedProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
   }
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -1430,21 +1366,21 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
       if (isFleetManager && !isOwner) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'You do not have permission to submit approval requests for this delivery partner.',
+          'SUBMIT_APPROVAL_PERMISSION_DENIED_FLEET',
         );
       }
 
       if (!isFleetManager && authUser.userId !== currentUser.userId) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'You can only submit approval requests for your own profile.',
+          'SUBMIT_APPROVAL_OWN_PROFILE_ONLY',
         );
       }
     } else {
       if (authUser.userId !== currentUser.userId) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'You do not have permission to initiate this approval request.',
+          'SUBMIT_APPROVAL_PERMISSION_DENIED',
         );
       }
     }
@@ -1486,7 +1422,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
     console.error('[Approval Submission Transaction Failed]:', error.message);
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to lock profile and submit approval request. Please try again.',
+      'APPROVAL_TRANSACTION_FAILED',
     );
   }
 
@@ -1546,7 +1482,8 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   })();
 
   return {
-    message: `${authUser?.role} submitted for approval successfully`,
+    messageKey: 'SUBMIT_APPROVAL_SUCCESS' as const,
+    variables: { role: authUser?.role as string },
   };
 };
 
@@ -1557,10 +1494,7 @@ const approvedOrRejectedUser = async (
   currentUser: TCurrentUser,
 ) => {
   if (userId === currentUser.userId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You cannot change your own status',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'CANNOT_CHANGE_OWN_STATUS');
   }
 
   const adminUser = await AuthUser.findOne({
@@ -1569,10 +1503,7 @@ const approvedOrRejectedUser = async (
   });
 
   if (!adminUser || !['ADMIN', 'SUPER_ADMIN'].includes(adminUser.role)) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Admin not found or unauthorized for this action',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ADMIN_NOT_FOUND_OR_UNAUTHORIZED');
   }
 
   const authUser = await AuthUser.findOne({
@@ -1581,39 +1512,37 @@ const approvedOrRejectedUser = async (
   });
 
   if (!authUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_USER_NOT_FOUND');
   }
 
   const role = authUser.role as TUserRole;
   const targetAuthStatus = payload.status;
 
   if (authUser.status === targetAuthStatus) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `User is already ${targetAuthStatus.toLowerCase()}`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'USER_ALREADY_IN_STATUS', {
+      status: targetAuthStatus.toLowerCase(),
+    });
   }
 
   if (
     (targetAuthStatus === 'REJECTED' || targetAuthStatus === 'BLOCKED') &&
     !payload.remarks?.trim()
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Remarks are required for ${targetAuthStatus.toLowerCase()}`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'REMARKS_REQUIRED', {
+      status: targetAuthStatus.toLowerCase(),
+    });
   }
 
   const modelName = ROLE_COLLECTION_MAP[role];
   if (!modelName) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping');
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_ROLE_MAPPING');
   }
 
   const TargetModel = mongoose.model(modelName) as unknown as Model<any>;
   const submittedProfile = await TargetModel.findById(authUser.profileId);
 
   if (!submittedProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User profile details not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
   }
 
   const finalRemarks =
@@ -1665,7 +1594,7 @@ const approvedOrRejectedUser = async (
     session.endSession();
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update user approval status due to transaction error',
+      'STATUS_UPDATE_TRANSACTION_FAILED',
     );
   }
 
@@ -1737,29 +1666,29 @@ const approvedOrRejectedUser = async (
 
   return {
     success: true,
-    message: `${role} account has been ${targetAuthStatus.toLowerCase()} successfully`,
+    messageKey: 'STATUS_UPDATE_SUCCESS' as const,
+    variables: {
+      role,
+      status: targetAuthStatus.toLowerCase(),
+    },
   };
 };
 
 // soft delete user service
 const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to delete a user. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'DELETE_UNAPPROVED_DENIED', {
+      status: currentUser.status,
+    });
   }
 
   const targetAuthUser = await AuthUser.findOne({ userId, isDeleted: false });
   if (!targetAuthUser) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'User not found or already deleted!',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_OR_DELETED');
   }
 
   if (targetAuthUser.role === USER_ROLE.SUPER_ADMIN) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
+    throw new AppError(httpStatus.FORBIDDEN, 'CANNOT_DELETE_SUPER_ADMIN');
   }
 
   const nonAdminRoles = [
@@ -1772,10 +1701,7 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
 
   if (nonAdminRoles.includes(currentUser.role)) {
     if (currentUser.userId !== targetAuthUser.userId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to delete this user account!',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'DELETE_PERMISSION_DENIED');
     }
   }
 
@@ -1795,10 +1721,7 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
           currentUser._id.toString() &&
         currentUser.userId !== targetAuthUser.userId
       ) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          'You can only delete delivery partners registered under your fleet management!',
-        );
+        throw new AppError(httpStatus.FORBIDDEN, 'DELETE_FLEET_PARTNER_DENIED');
       }
     }
   }
@@ -1828,13 +1751,14 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
     session.endSession();
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to execute soft delete due to transaction rollback',
+      'SOFT_DELETE_TRANSACTION_FAILED',
     );
   }
 
   return {
     success: true,
-    message: `${targetAuthUser.role} account and profile deleted successfully`,
+    messageKey: 'SOFT_DELETE_SUCCESS' as const,
+    variables: { role: targetAuthUser.role as string },
   };
 };
 
@@ -1846,26 +1770,21 @@ const permanentDeleteUser = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to perform permanent deletion. Your account is ${currentUser.status}`,
+      'PERMANENT_DELETE_UNAPPROVED_DENIED',
+      { status: currentUser.status },
     );
   }
 
   const targetAuthUser = await AuthUser.findOne({ userId });
   if (!targetAuthUser) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'User account not found or already permanently deleted!',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'PERMANENT_DELETE_NOT_FOUND');
   }
   if (targetAuthUser.role === USER_ROLE.SUPER_ADMIN) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete Super Admin user!');
+    throw new AppError(httpStatus.FORBIDDEN, 'CANNOT_DELETE_SUPER_ADMIN');
   }
 
   if (!targetAuthUser.isDeleted) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'User must be soft-deleted first before performing permanent deletion!',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'MUST_BE_SOFT_DELETED_FIRST');
   }
 
   const session = await mongoose.startSession();
@@ -1889,13 +1808,14 @@ const permanentDeleteUser = async (
     session.endSession();
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to execute permanent deletion due to transaction rollback',
+      'PERMANENT_DELETE_TRANSACTION_FAILED',
     );
   }
 
   return {
     success: true,
-    message: `${targetAuthUser.role} account and profile permanently purged from DeliGo systems.`,
+    messageKey: 'PERMANENT_DELETE_SUCCESS' as const,
+    variables: { role: targetAuthUser.role as string },
   };
 };
 

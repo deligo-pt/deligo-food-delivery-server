@@ -11,7 +11,7 @@ export const parseLanguage = (
 ) => {
   const acceptLang = req.headers['accept-language']?.toLowerCase();
 
-  const finalLang = SUPPORTED_LANGUAGES.includes(acceptLang as any)
+  const finalLang = SUPPORTED_LANGUAGES.includes(acceptLang as TLanguageCode)
     ? (acceptLang as TLanguageCode)
     : 'en';
 

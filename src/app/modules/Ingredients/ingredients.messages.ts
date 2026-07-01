@@ -39,10 +39,6 @@ export const ingredientsMessages = {
     en: 'Ingredient record soft deleted successfully.',
     pt: 'Exclusão lógica do registro do ingrediente realizada com sucesso.',
   },
-  INGREDIENT_NOT_FOUND_IN_DATABASE: {
-    en: 'Ingredient record could not be located in database systems.',
-    pt: 'O registro do ingrediente não pôde ser localizado nos sistemas de banco de dados.',
-  },
   SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE: {
     en: 'Data compliance policy requires a soft delete before execution of permanent purge operations.',
     pt: 'A política de conformidade de dados exige uma exclusão lógica antes da execução de operações de eliminação permanente.',

@@ -2,6 +2,7 @@ import { model, Schema } from 'mongoose';
 import { TOrder, TInvoiceSync } from './order.interface';
 import { ORDER_STATUS } from './order.constant';
 import { addressSchema } from '../../constant/GlobalModel/address.model';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const invoiceSyncSchema = new Schema<TInvoiceSync>(
   {
@@ -19,14 +20,13 @@ const orderItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
     vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor' },
-    name: { type: String, required: true },
+    name: { type: localizedSchema },
     image: { type: String },
     hasVariations: { type: Boolean, required: true },
     variationSku: { type: String, default: null },
     addons: [
       {
-        optionId: { type: String },
-        name: { type: String },
+        name: { type: localizedSchema },
         sku: { type: String },
         originalPrice: { type: Number },
         promoDiscountAmount: { type: Number, default: 0 },

@@ -33,10 +33,10 @@ const sendEmail = async (email: string, html: string, subject: string) => {
       html,
     });
   } catch (error) {
-    console.error('Nodemailer Error:', error);
+    void error;
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to send email',
+      'FAILED_TO_SEND_EMAIL',
     );
   }
 };
@@ -66,10 +66,13 @@ const createEmailContent = async (data: object, templateType: string) => {
     const template = Handlebars.compile(templateSource);
     return template(data);
   } catch (error) {
-    console.error('Template Generation Error:', (error as Error).message);
+    void error;
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      (error as Error).message,
+      'EMAIL_CONTENT_GENERATION_FAILED',
+      {
+        message: (error as Error).message,
+      },
     );
   }
 };

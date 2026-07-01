@@ -17,6 +17,7 @@ import customNanoId from '../../utils/customNanoId';
 import { Admin } from '../Admin/admin.model';
 import { GlobalSettings } from '../GlobalSetting/globalSetting.model';
 import { roundTo2 } from '../../utils/mathProvider';
+import { TMessageKey } from '../../errors/messages';
 
 // initiate payout service
 const initiateSettlement = async (
@@ -32,7 +33,7 @@ const initiateSettlement = async (
   const { user } = await findUserById({ userId: targetUserId });
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_USER_NOT_FOUND');
   }
   const userId = user?._id;
   const targetUserModel = ROLE_COLLECTION_MAP[user?.role as TUserRole];
@@ -42,7 +43,7 @@ const initiateSettlement = async (
       if (user?.role !== 'DELIVERY_PARTNER') {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'Fleet Managers can only settle with Delivery Partners.',
+          'FLEET_MANAGER_ONLY_SETTLE_DELIVERY_PARTNERS',
         );
       }
       const isHisRider =
@@ -52,7 +53,7 @@ const initiateSettlement = async (
       if (!isHisRider) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'You can only initiate settlement for your own delivery partners.',
+          'ONLY_OWN_DELIVERY_PARTNERS_SETTLEMENT',
         );
       }
     }
@@ -66,7 +67,7 @@ const initiateSettlement = async (
     if (!hasCompleteBankDetails) {
       const alertPayload = {
         title: 'Bank Details Incomplete',
-        body: `Settlement could not be initiated because your bank details are missing. Please update them.`,
+        body: 'Settlement could not be initiated because your bank details are missing. Please update them.',
       };
 
       NotificationService.sendToUser(
@@ -80,7 +81,7 @@ const initiateSettlement = async (
 
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Cannot initiate settlement. Delivery partner has incomplete bank details.',
+        'CANNOT_INITIATE_SETTLEMENT_INCOMPLETE_BANK_DETAILS',
       );
     }
 
@@ -92,7 +93,7 @@ const initiateSettlement = async (
     if (!wallet || wallet.totalUnpaidEarnings <= 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No unpaid earnings to settle.',
+        'NO_UNPAID_EARNINGS_TO_SETTLE',
       );
     }
 
@@ -145,7 +146,7 @@ const initiateSettlement = async (
     }
 
     return {
-      message: 'Settlement initiated successfully',
+      messageKey: 'SETTLEMENT_INITIATED_SUCCESS' as TMessageKey,
       data: payout,
     };
   } catch (error) {
@@ -179,17 +180,14 @@ const finalizeSettlement = async (
     if (!payout || payout.status !== 'PENDING') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Invalid payout session or already paid.',
+        'INVALID_PAYOUT_SESSION_OR_ALREADY_PAID',
       );
     }
 
     const user = payout.userId as any;
 
     if (!payoutProof) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Payout proof image is mandatory.',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'PAYOUT_PROOF_MANDATORY');
     }
 
     const amountToDeduct = payout.amount;
@@ -266,7 +264,10 @@ const finalizeSettlement = async (
       'PAYOUT',
     );
 
-    return { message: 'Settlement completed successfully.', data: result };
+    return {
+      messageKey: 'SETTLEMENT_COMPLETED_SUCCESS' as TMessageKey,
+      data: result,
+    };
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -365,7 +366,7 @@ const getAllPayouts = async (
   });
 
   return {
-    message: 'Payouts fetched successfully',
+    messageKey: 'PAYOUTS_FETCHED_SUCCESS' as TMessageKey,
     meta,
     data: result,
   };
@@ -383,7 +384,7 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
     .populate('senderId', 'name role profilePhoto');
 
   if (!payout) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Payout record not found.');
+    throw new AppError(httpStatus.NOT_FOUND, 'PAYOUT_RECORD_NOT_FOUND');
   }
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
@@ -394,7 +395,7 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
     if (!isOwner && !isSender) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to view this payout detail.',
+        'NO_PERMISSION_TO_VIEW_PAYOUT_DETAIL',
       );
     }
   }
@@ -424,7 +425,7 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    message: 'Payout fetched successfully',
+    messageKey: 'PAYOUT_FETCHED_SUCCESS' as TMessageKey,
     data: {
       ...payout.toObject(),
       payoutCategory,
@@ -522,7 +523,7 @@ const initiateAutomatedSettlement = async () => {
     await session.commitTransaction();
   } catch (error) {
     await session.abortTransaction();
-    console.error('Automated payout error:', error);
+    void error;
   } finally {
     session.endSession();
   }

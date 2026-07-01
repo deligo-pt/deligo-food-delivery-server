@@ -42,7 +42,7 @@ import { TGenerateProductDescriptionPayload } from './ai-content-generator.inter
 
 const generateProductDescription = async (
   payload: TGenerateProductDescriptionPayload,
-): Promise<string> => {
+) => {
   const {
     productName,
     productCategory,
@@ -78,7 +78,12 @@ Requirements:
     ],
   });
 
-  return response.text?.trim() || '';
+  const result = response.text?.trim() || '';
+
+  return {
+    messageKey: 'GENERATE_PRODUCT_DESCRIPTION_SUCCESS' as const,
+    result,
+  };
 };
 export const AIContentGeneratorService = {
   generateProductDescription,

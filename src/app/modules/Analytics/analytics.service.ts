@@ -142,7 +142,7 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
       : 'N/A';
 
   return {
-    message: 'Vendor sales analytics fetched successfully',
+    messageKey: 'VENDOR_SALES_FETCH_SUCCESS' as const,
     data: {
       totalSales,
       bestPerformingDay,
@@ -321,7 +321,7 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
   };
 
   return {
-    message: 'Customer insights fetched successfully',
+    messageKey: 'CUSTOMER_INSIGHTS_FETCH_SUCCESS' as const,
     data: {
       summaryCards: {
         totalCustomers: {
@@ -526,7 +526,7 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    message: 'Order trend insights fetched successfully',
+    messageKey: 'ORDER_TREND_FETCH_SUCCESS' as const,
     data: {
       summary: {
         totalOrders: currentCount,
@@ -682,7 +682,7 @@ const getTopSellingItemsAnalytics = async (currentUser: TCurrentUser) => {
     .slice(0, 4);
 
   return {
-    message: 'Top selling items analytics fetched successfully',
+    messageKey: 'TOP_SELLING_FETCH_SUCCESS' as const,
     data: {
       summary: {
         totalItemsSold,
@@ -699,10 +699,7 @@ const getAdminSalesReportAnalytics = async (
   const { timeframe, fromDate, toDate } = query;
 
   if (timeframe === 'custom' && !fromDate && !toDate) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please provide fromDate and toDate params for custom range',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'TIMEFRAME_CUSTOM_REQUIRED');
   }
 
   const { start, end, resolution, size } = getReportTimeframe(
@@ -779,7 +776,7 @@ const getAdminSalesReportAnalytics = async (
   });
 
   return {
-    message: 'Admin sales report analytics fetched successfully',
+    messageKey: 'ADMIN_SALES_REPORT_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalRevenue: roundTo2(stats.totalRevenue),
@@ -805,10 +802,7 @@ const getAdminOrderReportAnalytics = async (
   const { timeframe, fromDate, toDate } = query;
 
   if (timeframe === 'custom' && !fromDate && !toDate) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please provide fromDate and toDate params for custom range',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'TIMEFRAME_CUSTOM_REQUIRED');
   }
 
   const { start, end, resolution, size } = getReportTimeframe(
@@ -909,7 +903,7 @@ const getAdminOrderReportAnalytics = async (
   });
 
   return {
-    message: 'Admin order report analytics fetched successfully',
+    messageKey: 'ADMIN_ORDER_REPORT_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalRevenue: roundTo2(statsData.totalRevenue),
@@ -1030,7 +1024,7 @@ const getAdminCustomerReportAnalytics = async (
   }));
 
   return {
-    message: 'Admin customer report analytics fetched successfully',
+    messageKey: 'ADMIN_CUSTOMER_REPORT_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalCustomers: rawStats.totalCustomers || 0,
@@ -1129,7 +1123,7 @@ const getAdminVendorReportAnalytics = async (
   const blocked = getCount('BLOCKED');
 
   return {
-    message: 'Admin vendor report analytics fetched successfully',
+    messageKey: 'ADMIN_VENDOR_REPORT_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalVendors: approved + pending + submitted + rejected + blocked,
@@ -1244,7 +1238,7 @@ const getAdminFleetManagerReportAnalytics = async (
     analytics.statusStats.find((s: any) => s._id === status)?.count || 0;
 
   return {
-    message: 'Admin fleet manager report analytics fetched successfully',
+    messageKey: 'ADMIN_FLEET_REPORT_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalManagers: summary.totalManagers || 0,
@@ -1360,7 +1354,7 @@ const getAdminDeliveryPartnerReportAnalytics = async (
     analytics.vehicleStats.find((v: any) => v._id === type)?.count || 0;
 
   return {
-    message: 'Admin delivery partner report analytics fetched successfully',
+    messageKey: 'ADMIN_PARTNER_REPORT_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalPartners: summary.totalPartners || 0,
@@ -1484,7 +1478,7 @@ const getVendorSalesReportAnalytics = async (
   };
 
   return {
-    message: 'Vendor sales report analytics fetched successfully',
+    messageKey: 'VENDOR_SALES_FETCH_SUCCESS' as const,
     data: {
       stats,
       salesData: last7DaysData,
@@ -1716,7 +1710,7 @@ const getVendorCustomerReport = async (
   };
 
   return {
-    message: 'Vendor customer report fetched successfully',
+    messageKey: 'VENDOR_CUSTOMER_REPORT_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalCustomers: statsData.totalCustomers,
@@ -1989,7 +1983,7 @@ const getVendorTaxReport = async (
   };
 
   return {
-    message: 'Vendor Tax report fetched successfully',
+    messageKey: 'VENDOR_TAX_REPORT_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalSales: Number(stats.totalSales.toFixed(2)),
@@ -2192,7 +2186,7 @@ const getFleetManagerPerformanceAnalytics = async (
   });
 
   return {
-    message: 'Fleet manager performance analytics fetched successfully',
+    messageKey: 'FLEET_PERFORMANCE_FETCH_SUCCESS' as const,
     data: {
       fleetPerformance: result.fleetPerformance,
 
@@ -2244,7 +2238,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     .lean();
 
   if (!fleetManager) {
-    throw new Error('Fleet Manager not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND');
   }
 
   // Get Fleet Drivers
@@ -2338,7 +2332,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     }));
 
   return {
-    message: 'Single fleet manager performance analytics fetched successfully',
+    messageKey: 'SINGLE_FLEET_DETAILS_FETCH_SUCCESS' as const,
     data: {
       fleetPerformance,
       fleetWeeklyPerformance,
@@ -2351,7 +2345,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
 const getDeliveryPartnerPerformanceAnalytics = async (
   query: Record<string, unknown>,
 ): Promise<{
-  message: string;
+  messageKey: string;
   data: TPartnerPerformanceData;
   meta: TMeta;
 }> => {
@@ -2580,7 +2574,7 @@ const getDeliveryPartnerPerformanceAnalytics = async (
   };
 
   return {
-    message: 'Delivery partner performance analytics fetched successfully',
+    messageKey: 'PARTNER_PERFORMANCE_FETCH_SUCCESS' as const,
     data: response,
     meta: {
       page: Number(page),
@@ -2605,7 +2599,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
     .lean();
 
   if (!partner) {
-    throw new Error('Delivery partner not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
   }
 
   // Total Deliveries & Earnings
@@ -2696,8 +2690,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   }
 
   return {
-    message:
-      'Single delivery partner performance analytics fetched successfully',
+    messageKey: 'SINGLE_PARTNER_DETAILS_FETCH_SUCCESS' as const,
     data: {
       partnerPerformance,
       partnerMonthlyPerformance,
@@ -2843,7 +2836,7 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
   });
 
   return {
-    message: 'Admin platform earnings fetched successfully',
+    messageKey: 'PLATFORM_EARNINGS_FETCH_SUCCESS' as const,
     data: {
       stats: {
         totalRevenue,
@@ -3169,7 +3162,7 @@ const getAdminSalesAnalytics = async (query: any) => {
   }));
 
   return {
-    message: 'Admin vendor sales analytics fetched successfully',
+    messageKey: 'ADMIN_SALES_REPORT_FETCH_SUCCESS' as const,
     data: {
       summary: {
         totalOrders: current.orderCount,
@@ -3369,7 +3362,7 @@ const getAdminCustomerInsights = async (query: {
   );
 
   return {
-    message: 'Admin customer insights fetched successfully',
+    messageKey: 'ADMIN_CUSTOMER_REPORT_FETCH_SUCCESS' as const,
     data: {
       summary: {
         newCustomers,
@@ -3572,7 +3565,7 @@ const getTopVendors = async (query: {
   ]);
 
   return {
-    message: 'Top vendors fetched successfully',
+    messageKey: 'TOP_VENDORS_FETCH_SUCCESS' as const,
     data: {
       topSellingVendors: results.topSellingVendors || [],
       vendorPerformance: results.vendorPerformance || [],
@@ -3718,7 +3711,7 @@ const getPeakHourAnalytics = async (query: {
     .reduce((s, h) => s + h.orderCount, 0);
 
   return {
-    message: 'Peak hour fetched successfully',
+    messageKey: 'PEAK_HOUR_FETCH_SUCCESS' as const,
     data: {
       hourlyOrders: hourlyOrders.map(({ hour, orderCount }) => ({
         hour,
@@ -4014,7 +4007,7 @@ const getDeliveryInsights = async (query: {
   };
 
   return {
-    message: 'Delivery insights fetched successfully',
+    messageKey: 'DELIVERY_INSIGHTS_FETCH_SUCCESS' as const,
     data: {
       summary: {
         averageDeliveryTime: Number((summary.avgTime || 0).toFixed(1)),

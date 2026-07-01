@@ -7,6 +7,7 @@ import { TTransaction } from './transaction.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TOrderItemSnapshot } from '../../constant/GlobalInterface/order.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // get all transactions
 const getMyTransactions = async (
@@ -94,7 +95,7 @@ const getMyTransactions = async (
   });
 
   return {
-    message: 'Transactions fetched successfully',
+    messageKey: 'TRANSACTIONS_FETCHED_SUCCESS' as TMessageKey,
     data,
     meta,
   };
@@ -111,14 +112,14 @@ const getTransactionById = async (id: string) => {
   })) as TTransaction;
 
   if (!txn) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Transaction not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'TRANSACTION_NOT_FOUND');
   }
 
   const order = txn.orderId as any;
   const customer = order?.customerId;
 
   return {
-    message: 'Transactions fetched successfully',
+    messageKey: 'TRANSACTIONS_FETCHED_SUCCESS' as TMessageKey,
     data: {
       _id: txn._id.toString(),
       transactionId: txn.transactionId,

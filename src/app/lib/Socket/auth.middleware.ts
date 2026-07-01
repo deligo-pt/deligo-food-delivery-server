@@ -14,9 +14,7 @@ export const socketAuthMiddleware = (
     const token = socket.handshake.auth?.token;
 
     if (!token) {
-      return next(
-        new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!'),
-      );
+      return next(new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED'));
     }
 
     const decoded = jwt.verify(
@@ -27,6 +25,6 @@ export const socketAuthMiddleware = (
     socket.data.user = decoded;
     next();
   } catch {
-    next(new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!'));
+    next(new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED'));
   }
 };

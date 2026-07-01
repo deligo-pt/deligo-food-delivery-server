@@ -13,7 +13,6 @@ import {
 } from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
-import { Cart } from '../Cart/cart.model';
 import { Product } from '../Product/product.model';
 import mongoose from 'mongoose';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
@@ -27,6 +26,8 @@ import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
 import customNanoId from '../../utils/customNanoId';
 import { orderQueue } from '../../BullMQ/Queue/order.queue';
+import { TMessageKey } from '../../errors/messages';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -36,17 +37,18 @@ const createOrderAfterRedUniqPayment = async (
     deliveryNotes?: string;
   },
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   const { checkoutSummaryId, paymentToken, deliveryNotes } = payload;
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'Checkout summary not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
 
   if (!process.env.REDUNIQ_API_URL) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ API URL is not configured',
+      'REDUNIQ_API_URL_NOT_CONFIGURED',
     );
   }
 
@@ -65,21 +67,18 @@ const createOrderAfterRedUniqPayment = async (
   const paymentData = verifyRes.data;
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to view',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED_TO_VIEW');
   }
   if (summary.isConvertedToOrder) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Checkout summary already converted to order',
+      'CHECKOUT_SUMMARY_ALREADY_CONVERTED',
     );
   }
 
   const existingVendor = await Vendor.findById(summary.vendorId);
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
   if (
@@ -87,10 +86,7 @@ const createOrderAfterRedUniqPayment = async (
     !paymentData.transaction ||
     paymentData.transaction.status !== '4'
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Payment failed. Please try again.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_FAILED_TRY_AGAIN');
   }
 
   const transactionId = paymentData.transaction.id;
@@ -143,21 +139,6 @@ const createOrderAfterRedUniqPayment = async (
 
     await summary.save({ session });
 
-    await Cart.updateOne(
-      { customerId: summary.customerId },
-      {
-        $pull: {
-          items: {
-            productId: {
-              $in: summary.items.map((i) => i.productId.toString()),
-            },
-          },
-        },
-        $set: { discount: 0, totalItems: 0, totalPrice: 0 },
-      },
-      { session },
-    );
-
     await session.commitTransaction();
 
     await orderQueue.add('NEW_ORDER_POST_PROCESS', {
@@ -166,10 +147,16 @@ const createOrderAfterRedUniqPayment = async (
       vendorUserId: existingVendor.userId,
       orderDisplayId: order.orderId,
       grandTotal: order.payoutSummary.grandTotal,
+      lang: lang,
+      customerId: summary.customerId.toString(),
+      orderedItems: summary.items.map((i: any) => ({
+        productId: i.productId.toString(),
+        variationSku: i.variationSku || null,
+      })),
     });
 
     return {
-      message: 'Order created successfully',
+      messageKey: 'ORDER_CREATED_SUCCESS' as TMessageKey,
       data: order,
     };
   } catch (err) {
@@ -189,14 +176,15 @@ const updateOrderStatusByVendor = async (
   if (!currentUser || currentUser.role !== 'VENDOR') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to accept or reject orders.',
+      'NOT_AUTHORIZED_ACCEPT_REJECT_ORDERS',
     );
   }
 
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to accept or reject orders. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_ACCEPT_REJECT_ORDERS',
+      { status: currentUser.status },
     );
   }
 
@@ -214,7 +202,8 @@ const updateOrderStatusByVendor = async (
   if (!ALLOWED_VENDOR_ACTIONS.includes(action.type)) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not allowed to change order status to ${action.type}`,
+      'NOT_ALLOWED_TO_CHANGE_ORDER_STATUS',
+      { status: action.type },
     );
   }
 
@@ -237,7 +226,7 @@ const updateOrderStatusByVendor = async (
     ).populate('vendorId', '_id businessDetails');
 
     if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_WITH_DOT');
     }
 
     const vendor = order.vendorId as any;
@@ -252,7 +241,7 @@ const updateOrderStatusByVendor = async (
     if (!order.isPaid) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Only paid orders can be accepted or rejected.',
+        'ONLY_PAID_ORDER_CAN_ACCEPT_REJECT',
       );
     }
 
@@ -260,10 +249,9 @@ const updateOrderStatusByVendor = async (
     // Prevent duplicate status
     // ---------------------------------------------------------
     if (action.type === order.orderStatus) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Order is already ${action.type.toLowerCase()}.`,
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'ORDER_ALREADY_IN_STATUS', {
+        status: action.type,
+      });
     }
 
     // ---------------------------------------------------------
@@ -287,7 +275,8 @@ const updateOrderStatusByVendor = async (
     if (action.type === 'ACCEPTED' && order.orderStatus !== 'PENDING') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Order must be PENDING to be accepted. Current status is ${order.orderStatus}.`,
+        'ORDER_MUST_BE_PENDING_TO_ACCEPT',
+        { currentStatus: order.orderStatus },
       );
     }
 
@@ -300,7 +289,7 @@ const updateOrderStatusByVendor = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Order must be ASSIGNED before PREPARING`,
+        'ORDER_MUST_BE_ASSIGNED_BEFORE_PREPARING',
       );
     }
 
@@ -313,7 +302,7 @@ const updateOrderStatusByVendor = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Order must be PREPARING before READY_FOR_PICKUP`,
+        'ORDER_MUST_BE_PREPARING_BEFORE_READY_FOR_PICKUP',
       );
     }
 
@@ -326,14 +315,14 @@ const updateOrderStatusByVendor = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Order cannot be canceled or rejected at this stage',
+        'ORDER_CANNOT_BE_CANCELED_OR_REJECTED_AT_STAGE',
       );
     }
 
     if (currentUser._id.toString() !== vendor._id.toString()) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to accept or reject orders.',
+        'NOT_AUTHORIZED_ACCEPT_REJECT_ORDERS',
       );
     }
 
@@ -374,10 +363,7 @@ const updateOrderStatusByVendor = async (
           session,
         });
         if (stockResult.modifiedCount !== order.items.length) {
-          throw new AppError(
-            httpStatus.BAD_REQUEST,
-            'Stock check failed. One or more products are out of stock or inventory was insufficient.',
-          );
+          throw new AppError(httpStatus.BAD_REQUEST, 'STOCK_CHECK_FAILED');
         }
       }
 
@@ -431,10 +417,7 @@ const updateOrderStatusByVendor = async (
     // ---------------------------------------------------------
     if (action.type === 'CANCELED') {
       if (!action.reason) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Cancel reason is required.',
-        );
+        throw new AppError(httpStatus.BAD_REQUEST, 'CANCEL_REASON_REQUIRED');
       }
       order.cancelReason = action.reason;
       // --------------------------------------------------------
@@ -481,10 +464,7 @@ const updateOrderStatusByVendor = async (
     // ---------------------------------------------------------
     if (action.type === 'REJECTED') {
       if (!action.reason) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          'Reject reason is required.',
-        );
+        throw new AppError(httpStatus.BAD_REQUEST, 'REJECT_REASON_REQUIRED');
       }
       order.rejectReason = action.reason;
 
@@ -516,7 +496,8 @@ const updateOrderStatusByVendor = async (
     await session.commitTransaction();
     session.endSession();
     return {
-      message: `Order ${action.type.toLowerCase()} successfully`,
+      messageKey: 'ORDER_STATUS_UPDATED_SUCCESS_DYNAMIC' as TMessageKey,
+      variables: { status: action.type },
       data: order,
     };
   } catch (error) {
@@ -532,10 +513,9 @@ const broadcastOrderToPartners = async (
   currentUser: TCurrentUser,
 ) => {
   if (!currentUser || currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved. Status: ${currentUser?.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_WITH_STATUS', {
+      status: currentUser?.status,
+    });
   }
 
   // Vendor location check
@@ -543,7 +523,7 @@ const broadcastOrderToPartners = async (
   const longitude = loc?.[0];
   const latitude = loc?.[1];
   if (!loc || typeof longitude !== 'number' || typeof latitude !== 'number') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Vendor location not set.');
+    throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_LOCATION_NOT_SET');
   }
 
   const vendorCoordinates: [number, number] = [longitude, latitude];
@@ -561,7 +541,8 @@ const broadcastOrderToPartners = async (
   if (order?.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Order already dispatched to ${order.dispatchPartnerPool.length} delivery partners.`,
+      'ORDER_ALREADY_DISPATCHED_TO_PARTNERS',
+      { count: order.dispatchPartnerPool.length },
     );
   }
 
@@ -573,7 +554,7 @@ const broadcastOrderToPartners = async (
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Order not found or not accepted.',
+      'ORDER_NOT_FOUND_OR_NOT_ACCEPTED',
     );
   }
 
@@ -618,7 +599,7 @@ const broadcastOrderToPartners = async (
       { orderId },
       { $set: { orderStatus: ORDER_STATUS.AWAITING_PARTNER } },
     );
-    throw new AppError(httpStatus.BAD_REQUEST, 'No partner found.');
+    throw new AppError(httpStatus.BAD_REQUEST, 'NO_PARTNER_FOUND');
   }
 
   const partnerObjectIds = eligiblePartners.map((p) => p._id);
@@ -684,7 +665,8 @@ const broadcastOrderToPartners = async (
   }
 
   return {
-    message: `Order dispatched to ${partnerIds.length} delivery partners.`,
+    messageKey: 'ORDER_DISPATCHED_TO_PARTNERS' as TMessageKey,
+    variables: { count: partnerIds.length },
     data: orderDataForPopup,
   };
 };
@@ -699,7 +681,7 @@ const partnerAcceptsDispatchedOrder = async (
     currentUser.status !== 'APPROVED' ||
     currentUser.role !== 'DELIVERY_PARTNER'
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Partner not approved.');
+    throw new AppError(httpStatus.FORBIDDEN, 'PARTNER_NOT_APPROVED');
   }
 
   if (
@@ -708,7 +690,7 @@ const partnerAcceptsDispatchedOrder = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You already have an active order.',
+      'PARTNER_ALREADY_HAS_ACTIVE_ORDER',
     );
   }
 
@@ -723,7 +705,8 @@ const partnerAcceptsDispatchedOrder = async (
   try {
     await session.withTransaction(async () => {
       const order = await Order.findOne({ orderId }).session(session);
-      if (!order) throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+      if (!order)
+        throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_WITH_DOT');
 
       vendorUserId = (order.vendorId as any)?.userId;
       const isExpired =
@@ -750,7 +733,7 @@ const partnerAcceptsDispatchedOrder = async (
           currentUser.userId,
         );
         if (!isInPool)
-          throw new AppError(httpStatus.BAD_REQUEST, 'Not in pool.');
+          throw new AppError(httpStatus.BAD_REQUEST, 'NOT_IN_POOL');
 
         const isLastPartner = order.dispatchPartnerPool?.length === 1;
         await Order.updateOne(
@@ -799,7 +782,7 @@ const partnerAcceptsDispatchedOrder = async (
       if (!claimedOrder) {
         throw new AppError(
           httpStatus.CONFLICT,
-          'Order already claimed or expired.',
+          'ORDER_ALREADY_CLAIMED_OR_EXPIRED',
         );
       }
 
@@ -824,14 +807,14 @@ const partnerAcceptsDispatchedOrder = async (
       io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
-      return { data: null, message: 'Order request has expired.' };
+      return { data: null, messageKey: 'ORDER_REQUEST_EXPIRED' as TMessageKey };
     }
 
     if (isRejectAction) {
       io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
-      return { data: null, message: 'Order rejected.' };
+      return { data: null, messageKey: 'ORDER_REJECTED' as TMessageKey };
     }
 
     notifiedPartnerIds.forEach((id) => {
@@ -854,9 +837,7 @@ const partnerAcceptsDispatchedOrder = async (
       );
     }
 
-    return { data: resultData, message: 'Order accepted.' };
-  } catch (error) {
-    throw error;
+    return { data: resultData, messageKey: 'ORDER_ACCEPTED' as TMessageKey };
   } finally {
     session.endSession();
   }
@@ -874,7 +855,7 @@ const updateOrderStatusByDeliveryPartner = async (
 ) => {
   const { orderStatus, deliveryProofImage, reason } = payload;
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
-    throw new AppError(httpStatus.FORBIDDEN, 'Delivery Partner not found.');
+    throw new AppError(httpStatus.FORBIDDEN, 'DELIVERY_PARTNER_NOT_FOUND');
   }
 
   // VALID state transitions
@@ -888,22 +869,18 @@ const updateOrderStatusByDeliveryPartner = async (
   const requiredCurrentStatus = validTransitions[orderStatus];
 
   if (!requiredCurrentStatus) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You cannot change status to ${orderStatus}.`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'CANNOT_CHANGE_STATUS_TO', {
+      status: orderStatus,
+    });
   }
 
   // REASSIGNMENT needs a reason
   if (orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && !reason) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Reason is required.');
+    throw new AppError(httpStatus.BAD_REQUEST, 'REASON_REQUIRED');
   }
 
   if (orderStatus === ORDER_STATUS.DELIVERED && !deliveryProofImage) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Delivery proof image is required.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'DELIVERY_PROOF_IMAGE_REQUIRED');
   }
 
   const updatedOrder = await Order.findOneAndUpdate(
@@ -941,18 +918,21 @@ const updateOrderStatusByDeliveryPartner = async (
     }).select('orderStatus');
 
     if (!orderCheck) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order not found.');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_WITH_DOT');
     }
 
     if (orderCheck?.orderStatus === payload.orderStatus) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        `Order status is already ${payload.orderStatus}.`,
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'ORDER_STATUS_ALREADY', {
+        status: payload.orderStatus,
+      });
     }
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      `Order must be in ${requiredCurrentStatus} to transition to ${payload.orderStatus}.`,
+      'ORDER_MUST_BE_IN_TO_TRANSITION',
+      {
+        requiredStatus: requiredCurrentStatus,
+        targetStatus: payload.orderStatus,
+      },
     );
   }
 
@@ -964,7 +944,7 @@ const updateOrderStatusByDeliveryPartner = async (
     if (!partner) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'Delivery Partner not found for this order.',
+        'DELIVERY_PARTNER_NOT_FOUND_FOR_ORDER',
       );
     }
   }
@@ -977,7 +957,7 @@ const updateOrderStatusByDeliveryPartner = async (
   });
 
   return {
-    message: 'Order status updated successfully.',
+    messageKey: 'ORDER_STATUS_UPDATED_SUCCESS' as TMessageKey,
     data: updatedOrder,
   };
 };
@@ -988,10 +968,9 @@ const getAllOrders = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view orders. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_ORDERS', {
+      status: currentUser.status,
+    });
   }
 
   // -----------------------------
@@ -1032,7 +1011,7 @@ const getAllOrders = async (
       break;
 
     default:
-      throw new AppError(httpStatus.FORBIDDEN, 'Invalid user role');
+      throw new AppError(httpStatus.FORBIDDEN, 'INVALID_USER_ROLE');
   }
 
   // -----------------------------
@@ -1051,7 +1030,6 @@ const getAllOrders = async (
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
-    product: 'productId name',
   });
 
   populateOptions.forEach((option) => {
@@ -1062,7 +1040,7 @@ const getAllOrders = async (
   const data = await builder.modelQuery;
 
   return {
-    message: 'Orders retrieved successfully',
+    messageKey: 'ORDERS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -1071,10 +1049,9 @@ const getAllOrders = async (
 // get single order for customer service
 const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view the order. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_ORDER', {
+      status: currentUser.status,
+    });
   }
 
   const userId = currentUser._id;
@@ -1104,7 +1081,7 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
     default:
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'Invalid role or permission denied',
+        'INVALID_ROLE_OR_PERMISSION_DENIED',
       );
   }
 
@@ -1119,7 +1096,6 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
-    product: 'productId name',
   });
 
   populateOptions.forEach((option) => {
@@ -1129,11 +1105,11 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
   const order = await query;
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
   }
 
   return {
-    message: 'Order retrieved successfully',
+    messageKey: 'ORDER_RETRIEVED_SUCCESS' as TMessageKey,
     data: order,
   };
 };
@@ -1148,11 +1124,12 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
   if (!orders || orders.length === 0) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'No dispatch orders found for this partner',
+      'NO_DISPATCH_ORDERS_FOUND_FOR_PARTNER',
     );
   }
   return {
-    message: 'Delivery partner dispatch order fetched successfully',
+    messageKey:
+      'DELIVERY_PARTNER_DISPATCH_ORDER_FETCHED_SUCCESS' as TMessageKey,
     data: orders,
   };
 };
@@ -1162,11 +1139,11 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only delivery partners can access their current order.',
+      'ONLY_DELIVERY_PARTNERS_CAN_ACCESS_CURRENT_ORDER',
     );
   }
   if (currentUser.operationalData?.currentOrderId === null) {
-    throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
+    throw new AppError(httpStatus.NOT_FOUND, 'NO_ORDER_FOUND_FOR_PARTNER');
   }
   const order = await Order.findOne({
     _id: currentUser.operationalData?.currentOrderId,
@@ -1180,10 +1157,10 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
     .sort({ createdAt: -1 });
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'No order found for this partner');
+    throw new AppError(httpStatus.NOT_FOUND, 'NO_ORDER_FOUND_FOR_PARTNER');
   }
   return {
-    message: 'Delivery partner current order fetched successfully',
+    messageKey: 'DELIVERY_PARTNER_CURRENT_ORDER_FETCHED_SUCCESS' as TMessageKey,
     data: order,
   };
 };

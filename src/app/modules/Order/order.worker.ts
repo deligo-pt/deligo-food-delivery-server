@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Job } from 'bullmq';
 import mongoose from 'mongoose';
 import { Order } from '../../modules/Order/order.model';
@@ -13,12 +14,23 @@ import { Vendor } from '../../modules/Vendor/vendor.model';
 import { NotificationService } from '../../modules/Notification/notification.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { OrderPdService } from '../PdInvoice/orderPd.service';
+import { recalculateCartTotals } from '../Cart/cart.constant';
+import { RedisService } from '../../config/redis';
+import { Cart } from '../Cart/cart.model';
 
 export const processNewOrderPostProcess = async (job: Job) => {
-  const { orderId, vendorUserId, orderDisplayId, grandTotal } = job.data;
+  const {
+    orderId,
+    vendorUserId,
+    orderDisplayId,
+    grandTotal,
+    lang = 'en',
+    customerId,
+    orderedItems,
+  } = job.data;
 
   try {
-    await OrderPdService.syncOrderWithPd(orderId);
+    await OrderPdService.syncOrderWithPd(orderId, lang);
 
     if (vendorUserId) {
       await NotificationService.sendToUser(
@@ -29,6 +41,58 @@ export const processNewOrderPostProcess = async (job: Job) => {
         'order_notification',
         'ORDER',
       );
+    }
+
+    if (customerId && orderedItems && orderedItems.length > 0) {
+      const cartDataKey = `cart:data:${customerId}`;
+
+      const redisCart = await RedisService.get<any>(cartDataKey);
+      if (redisCart && redisCart.items) {
+        redisCart.items = redisCart.items.filter((cartItem: any) => {
+          const isOrdered = orderedItems.some(
+            (ordered: any) =>
+              ordered.productId === cartItem.productId.toString() &&
+              ordered.variationSku === (cartItem.variationSku || null),
+          );
+          return !isOrdered;
+        });
+
+        if (redisCart.items.length === 0) {
+          await RedisService.del(cartDataKey);
+          await RedisService.del(`cart:expiry:${customerId}`);
+        } else {
+          await recalculateCartTotals(redisCart);
+          redisCart.totalItems = redisCart.items.length;
+          await RedisService.set(cartDataKey, redisCart, 259200);
+        }
+      }
+
+      const dbCart = await Cart.findOne({ customerId });
+      if (dbCart && dbCart.items) {
+        dbCart.items = dbCart.items.filter((cartItem: any) => {
+          const isOrdered = orderedItems.some(
+            (ordered: any) =>
+              ordered.productId === cartItem.productId.toString() &&
+              ordered.variationSku === (cartItem.variationSku || null),
+          );
+          return !isOrdered;
+        });
+
+        if (dbCart.items.length === 0) {
+          dbCart.totalItems = 0;
+          dbCart.cartCalculation = {
+            totalOriginalPrice: 0,
+            totalProductDiscount: 0,
+            taxableAmount: 0,
+            totalTaxAmount: 0,
+            grandTotal: 0,
+          };
+        } else {
+          await recalculateCartTotals(dbCart);
+          dbCart.totalItems = dbCart.items.length;
+        }
+        await dbCart.save();
+      }
     }
   } catch (error) {
     console.error(

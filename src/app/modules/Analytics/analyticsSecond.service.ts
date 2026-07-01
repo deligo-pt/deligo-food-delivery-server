@@ -155,7 +155,7 @@ const getAdminDashboardAnalytics = async () => {
     .select('name rating completedDeliveries');
 
   return {
-    message: 'Admin dashboard analytics fetched successfully',
+    messageKey: 'FETCH_ADMIN_DASHBOARD_SUCCESS' as const,
     data: {
       counts: {
         customers,
@@ -357,7 +357,7 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
   // Final Response
   // --------------------------------------------------
   return {
-    message: 'Vendor dashboard analytics fetched successfully',
+    messageKey: 'FETCH_VENDOR_DASHBOARD_SUCCESS' as const,
     data: {
       products: {
         total: products.length,
@@ -465,7 +465,7 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    message: 'Fleet dashboard analytics fetched successfully',
+    messageKey: 'FETCH_FLEET_DASHBOARD_SUCCESS' as const,
     data: {
       cards: {
         totalPartners,
@@ -604,7 +604,7 @@ const getPartnerPerformanceAnalytics = async (
       : 0;
 
   return {
-    message: 'Partner performance analytics fetched successfully',
+    messageKey: 'FETCH_PARTNER_PERFORMANCE_SUCCESS' as const,
     data: {
       cards: {
         topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
@@ -715,7 +715,7 @@ const getDeliveryPartnerEarningAnalytics = async (
   };
 
   return {
-    message: 'Delivery partner earning analytics fetched successfully',
+    messageKey: 'FETCH_RIDER_EARNINGS_SUCCESS' as const,
     data: {
       daily: roundTo2(report.dailyEarnings),
       weekly: roundTo2(report.weeklyEarnings),
@@ -833,7 +833,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
   const netEarnings = totalRevenue - totalRiderPayable;
 
   return {
-    message: 'Fleet manager earning analytics fetched successfully',
+    messageKey: 'FETCH_FLEET_EARNINGS_SUCCESS' as const,
     data: {
       overview: {
         totalRevenue: totalRevenue,
@@ -1036,7 +1036,7 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
   }));
 
   return {
-    message: 'Vendor earnings analytics fetched successfully',
+    messageKey: 'FETCH_VENDOR_EARNINGS_SUCCESS' as const,
     data: {
       topCard: {
         totalEarnings: roundTo2(earnings.totalIncome),
@@ -1136,7 +1136,7 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
   const total = finalResult[0]?.totalCount[0]?.count || 0;
 
   return {
-    message: 'All customers analytics fetched successfully',
+    messageKey: 'FETCH_CUSTOMER_ANALYTICS_SUCCESS' as const,
     meta: {
       page: pageNumber,
       limit: limitNumber,
@@ -1351,7 +1351,7 @@ const getVendorPerformanceAnalytics = async (
   const total = data.totalCount[0]?.count || 0;
 
   return {
-    message: 'Vendor performance analytics fetched successfully',
+    messageKey: 'FETCH_VENDOR_PERFORMANCE_SUCCESS' as const,
     data: {
       vendorPerformance: data.vendorPerformance,
       vendorPerformanceStat: data.vendorPerformanceStat[0] || {},
@@ -1373,10 +1373,7 @@ const getSingleVendorPerformanceDetails = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to access this resource',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ANALYTICS_ACCESS_DENIED');
   }
 
   const vendor = await Vendor.findOne({
@@ -1385,7 +1382,7 @@ const getSingleVendorPerformanceDetails = async (
   });
 
   if (!vendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
   const vendorObjectId = vendor._id;
@@ -1486,7 +1483,7 @@ const getSingleVendorPerformanceDetails = async (
   const topRatedItems = results[0]?.topRatedItems || [];
 
   return {
-    message: 'Single vendor performance details fetched successfully',
+    messageKey: 'FETCH_SINGLE_VENDOR_PERFORMANCE_SUCCESS' as const,
     data: {
       vendorPerformance: {
         _id: vendor._id,
@@ -1642,7 +1639,7 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
   });
 
   return {
-    message: 'Offer analytics for admin fetched successfully',
+    messageKey: 'FETCH_OFFER_ANALYTICS_SUCCESS' as const,
     data: {
       stats: {
         totalOffers: stats.totalOffers,
@@ -1796,7 +1793,7 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
   ];
 
   return {
-    message: 'Tax report analytics for vendor fetched successfully',
+    messageKey: 'FETCH_TAX_ANALYTICS_SUCCESS' as const,
     data: {
       stats: {
         totalSales: roundTo2(stats.totalSales),

@@ -11,7 +11,7 @@ export const sendMobileOtp = async (phone: string, country?: string) => {
   if (!apiUrl || !apiKey || !appId) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Bulkgate configuration is missing',
+      'BULKGATE_CONFIGURATION_MISSING',
     );
   }
 
@@ -36,9 +36,15 @@ export const sendMobileOtp = async (phone: string, country?: string) => {
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new AppError(httpStatus.BAD_REQUEST, error.response?.data?.error);
+      throw new AppError(httpStatus.BAD_REQUEST, 'BULKGATE_OTP_SEND_FAILED', {
+        error: String(
+          error.response?.data?.error || 'Bulkgate OTP send failed',
+        ),
+      });
     } else {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Bulkgate OTP send failed');
+      throw new AppError(httpStatus.BAD_REQUEST, 'BULKGATE_OTP_SEND_FAILED', {
+        error: 'Bulkgate OTP send failed',
+      });
     }
   }
 };

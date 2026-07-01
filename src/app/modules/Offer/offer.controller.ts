@@ -4,6 +4,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import { OfferServices } from './offer.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatOfferResponse } from './offer.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // create offer controller
 const createOffer = catchAsync(async (req, res) => {
@@ -14,7 +15,7 @@ const createOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -30,7 +31,7 @@ const updateOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -45,7 +46,8 @@ const toggleOfferStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -62,7 +64,7 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -86,7 +88,7 @@ const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -107,7 +109,7 @@ const getAllOffers = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: formattedData,
   });
@@ -129,7 +131,7 @@ const getSingleOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -144,7 +146,7 @@ const softDeleteOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -159,7 +161,7 @@ const permanentDeleteOffer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

@@ -22,10 +22,9 @@ export const calculateGoogleRoadDistance = async (
     const response = await axios.get(url);
     const data = response.data;
     if (data.status !== 'OK') {
-      throw new AppError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        `Google API Error: ${data.status}`,
-      );
+      throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'GOOGLE_API_ERROR', {
+        status: String(data.status),
+      });
     }
 
     const element = data.rows[0].elements[0];
@@ -44,7 +43,7 @@ export const calculateGoogleRoadDistance = async (
       text: element.distance.text,
     };
   } catch (error) {
-    console.error('Distance calculation error:', error);
+    void error;
     return { km: 0, meters: 0, durationMinutes: 0, text: 'Error' };
   }
 };

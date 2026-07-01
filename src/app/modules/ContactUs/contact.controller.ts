@@ -9,7 +9,7 @@ const createContact = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });

@@ -16,7 +16,7 @@ const createProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -32,7 +32,7 @@ const updateProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: result?.data,
   });
 });
@@ -56,7 +56,7 @@ const getAllProductCategories = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     meta: result?.meta,
     data: formattedData,
   });
@@ -72,7 +72,7 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     meta: result?.meta,
     data: formattedData,
   });
@@ -97,7 +97,7 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: formattedData,
   });
 });
@@ -112,7 +112,7 @@ const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: formattedData,
   });
 });
@@ -125,7 +125,7 @@ const softDeleteProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
@@ -138,7 +138,7 @@ const permanentDeleteProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey,
     data: null,
   });
 });
