@@ -125,6 +125,7 @@ const getAllVendorsForCustomer = catchAsync(async (req, res) => {
   const result = await VendorServices.getAllVendorsForCustomer(
     req.query,
     req.user as TCurrentUser,
+    req.lang,
   );
 
   sendResponse(res, {

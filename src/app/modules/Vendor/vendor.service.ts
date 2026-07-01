@@ -21,6 +21,7 @@ import { BusinessCategoryName } from '../Category/category.interface';
 import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
 import { TMessageKey } from '../../errors/messages';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 /**
  * Service to update vendor profile information.
@@ -447,6 +448,7 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
 const getAllVendorsForCustomer = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   const customerProfile = await Customer.findOne({
     userId: currentUser.userId,
@@ -602,6 +604,19 @@ const getAllVendorsForCustomer = async (
       thisVendorCategoryIds.includes(cat._id.toString()),
     );
 
+    const formattedCategories = populatedCategories.map((cat: any) => {
+      const categoryName =
+        cat.name && typeof cat.name === 'object'
+          ? cat.name[lang] || cat.name['en'] || ''
+          : cat.name || '';
+
+      return {
+        _id: cat._id,
+        name: categoryName,
+        icon: cat.icon,
+      };
+    });
+
     return {
       id: vendor._id,
       userId: vendor.userId,
@@ -619,7 +634,7 @@ const getAllVendorsForCustomer = async (
       storePhoto: vendor.documents?.storePhoto || '',
       rating: vendor.rating,
       currentSessionLocation: vendor.currentSessionLocation,
-      availableCategories: populatedCategories,
+      availableCategories: formattedCategories,
     };
   });
 
