@@ -21,6 +21,7 @@ import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
 import { TMessageKey } from '../../errors/messages';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { BusinessCategoryTranslation } from '../Category/category.interface';
 
 /**
  * Service to update vendor profile information.
@@ -457,6 +458,7 @@ const getAllVendorsForCustomer = async (
   currentUser: TCurrentUser,
   lang: TLanguageCode = 'en',
 ) => {
+  // 1. Initial check to ensure the customer exists
   const customerProfile = await Customer.findOne({
     userId: currentUser.userId,
     isDeleted: false,
@@ -469,6 +471,7 @@ const getAllVendorsForCustomer = async (
     );
   }
 
+  // 2. Location Resolution (Active Address or Session GPS Location)
   let lng: number | undefined;
   let lat: number | undefined;
   const activeAddress = customerProfile.deliveryAddresses?.find(
@@ -496,13 +499,16 @@ const getAllVendorsForCustomer = async (
     );
   }
 
+  // Get operational radius from global settings
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
   const radiusInKm = globalSettings.customerNearestVendorRadiusKm;
 
+  // Optimize vendor pool: Only include vendors who have active products
   const activeProductVendorIds = await Product.distinct('vendorId', {
     isDeleted: false,
   });
 
+  // 3. Base Query Filter Setup (Geospatial + Status Checks)
   const filter: any = {
     _id: { $in: activeProductVendorIds },
     status: 'APPROVED',
@@ -513,20 +519,44 @@ const getAllVendorsForCustomer = async (
           type: 'Point',
           coordinates: [lng, lat],
         },
-        $maxDistance: radiusInKm * 1000,
+        $maxDistance: radiusInKm * 1000, // Conversion to meters
       },
     },
   };
 
-  if (query.restaurantCuisineType) {
-    const cuisineInput = query.restaurantCuisineType as string;
+  const businessTypeInput = (query['businessDetails.businessType'] ||
+    query.businessType) as string;
 
-    filter['businessDetails.restaurantCuisineType'] = {
-      $regex: new RegExp(`^${cuisineInput.trim()}$`, 'i'),
-    };
+  if (businessTypeInput) {
+    const upperInput = businessTypeInput.trim().toUpperCase();
+
+    const translation =
+      BusinessCategoryTranslation[
+        upperInput as keyof typeof BusinessCategoryTranslation
+      ];
+
+    if (!translation) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
+    }
+
+    filter['businessDetails.businessType.en'] = translation.en;
+    filter['businessDetails.businessType.pt'] = translation.pt;
+
+    delete query['businessDetails.businessType'];
+    delete query.businessType;
+  }
+
+  if (query.restaurantCuisineType) {
+    const cuisineSlugInput = (query.restaurantCuisineType as string)
+      .trim()
+      .toLowerCase();
+
+    filter['businessDetails.restaurantCuisineType'] = cuisineSlugInput;
+
     delete query.restaurantCuisineType;
   }
 
+  // Product Category Filter Setup
   if (query.productCategory) {
     const categoryObjectId = new Types.ObjectId(
       query.productCategory as string,
@@ -572,9 +602,11 @@ const getAllVendorsForCustomer = async (
   }
   vendors.paginate().fields();
 
-  vendors.modelQuery = vendors.modelQuery.select(
-    'name userId businessDetails businessLocation documents rating currentSessionLocation',
-  );
+  vendors.modelQuery = vendors.modelQuery
+    .select(
+      'name userId businessDetails businessLocation documents rating currentSessionLocation',
+    )
+    .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
   const rawData = await vendors.modelQuery;
@@ -599,8 +631,10 @@ const getAllVendorsForCustomer = async (
     .lean();
 
   const data = rawData.map((vendor: any) => {
+    const vendorObj = vendor.toObject?.() || vendor;
+
     const thisVendorProducts = allActiveProducts.filter(
-      (p) => p.vendorId?.toString() === vendor._id.toString(),
+      (p) => p.vendorId?.toString() === vendorObj._id.toString(),
     );
 
     const thisVendorCategoryIds = [
@@ -624,23 +658,46 @@ const getAllVendorsForCustomer = async (
       };
     });
 
+    const rawBusinessType = vendorObj.businessDetails?.businessType;
+    const formattedBusinessType =
+      rawBusinessType && typeof rawBusinessType === 'object'
+        ? rawBusinessType[lang] || rawBusinessType['en'] || ''
+        : rawBusinessType || '';
+
+    let formattedCuisines: string[] = [];
+    if (
+      Array.isArray(vendorObj.cuisinesData) &&
+      vendorObj.cuisinesData.length > 0
+    ) {
+      formattedCuisines = vendorObj.cuisinesData.map(
+        (cuisine: any) => cuisine.name?.[lang] || cuisine.name?.['en'] || '',
+      );
+    } else if (
+      Array.isArray(vendorObj.businessDetails?.restaurantCuisineType)
+    ) {
+      formattedCuisines = vendorObj.businessDetails.restaurantCuisineType.map(
+        (c: string) =>
+          typeof c === 'string' ? c.charAt(0).toUpperCase() + c.slice(1) : c,
+      );
+    }
+
     return {
-      id: vendor._id,
-      userId: vendor.userId,
-      name: vendor.name,
+      id: vendorObj._id,
+      userId: vendorObj.userId,
+      name: vendorObj.name,
       businessDetails: {
-        businessName: vendor.businessDetails?.businessName,
-        businessType: vendor.businessDetails?.businessType,
-        restaurantCuisineType: vendor.businessDetails?.restaurantCuisineType,
-        openingHours: vendor.businessDetails?.openingHours,
-        closingHours: vendor.businessDetails?.closingHours,
-        closingDays: vendor.businessDetails?.closingDays,
-        isStoreOpen: vendor.businessDetails?.isStoreOpen,
+        businessName: vendorObj.businessDetails?.businessName,
+        businessType: formattedBusinessType,
+        restaurantCuisineType: formattedCuisines,
+        openingHours: vendorObj.businessDetails?.openingHours,
+        closingHours: vendorObj.businessDetails?.closingHours,
+        closingDays: vendorObj.businessDetails?.closingDays,
+        isStoreOpen: vendorObj.businessDetails?.isStoreOpen,
       },
-      businessLocation: vendor.businessLocation,
-      storePhoto: vendor.documents?.storePhoto || '',
-      rating: vendor.rating,
-      currentSessionLocation: vendor.currentSessionLocation,
+      businessLocation: vendorObj.businessLocation,
+      storePhoto: vendorObj.documents?.storePhoto || '',
+      rating: vendorObj.rating,
+      currentSessionLocation: vendorObj.currentSessionLocation,
       availableCategories: formattedCategories,
     };
   });
