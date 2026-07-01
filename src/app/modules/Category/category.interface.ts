@@ -11,12 +11,12 @@ export type TBusinessCategoryName =
 
 export const BusinessCategoryTranslation = {
   [BusinessCategoryName.RESTAURANT]: {
-    en: 'Restaurant',
-    pt: 'Restaurante',
+    en: 'RESTAURANT',
+    pt: 'RESTAURANTE',
   },
   [BusinessCategoryName.STORE]: {
-    en: 'Store',
-    pt: 'Loja',
+    en: 'STORE',
+    pt: 'LOJA',
   },
 } as const;
 

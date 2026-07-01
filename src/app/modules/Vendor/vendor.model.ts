@@ -3,6 +3,7 @@ import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const vendorSchema = new Schema<TVendor>(
   {
@@ -13,6 +14,7 @@ const vendorSchema = new Schema<TVendor>(
       type: String,
       required: true,
       unique: true,
+      index: true,
     },
     registeredBy: {
       id: {
@@ -75,7 +77,7 @@ const vendorSchema = new Schema<TVendor>(
     // -------------------------------------------------------
     businessDetails: {
       businessName: { type: String, default: '' },
-      businessType: { type: String, default: '' },
+      businessType: { type: localizedSchema },
       restaurantCuisineType: {
         type: [String],
       },
@@ -173,5 +175,17 @@ vendorSchema.index({
   'businessLocation.latitude': 1,
   'businessLocation.longitude': 1,
 });
+
+// -------------------------------------------------------
+// Virtual Populate for Cuisines
+// -------------------------------------------------------
+vendorSchema.virtual('cuisinesData', {
+  ref: 'Cuisine',
+  localField: 'businessDetails.restaurantCuisineType',
+  foreignField: 'slug',
+});
+
+vendorSchema.set('toObject', { virtuals: true });
+vendorSchema.set('toJSON', { virtuals: true });
 
 export const Vendor = model<TVendor>('Vendor', vendorSchema);

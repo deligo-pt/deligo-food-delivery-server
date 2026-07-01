@@ -17,7 +17,6 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { BusinessCategoryName } from '../Category/category.interface';
 import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
 import { TMessageKey } from '../../errors/messages';
@@ -59,39 +58,43 @@ const vendorUpdate = async (
     );
   }
 
-  const businessType = payload.businessDetails?.businessType;
-  const cuisineType = payload.businessDetails?.restaurantCuisineType;
+  const businessTypeSlug = payload.businessDetails
+    ?.businessType as unknown as string;
+  const cuisineTypeSlug = payload.businessDetails
+    ?.restaurantCuisineType as unknown as string[];
 
   // 5. Business Validation: Verify that the provided business type exists in the database
-  if (businessType) {
-    const exists = await BusinessCategory.findOne({
-      name: businessType,
-    });
+  if (businessTypeSlug) {
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
 
-    if (!exists) {
+    if (!businessCategory) {
       throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
     }
 
-    if (businessType === BusinessCategoryName.RESTAURANT && !cuisineType) {
+    payload.businessDetails!.businessType = {
+      en: businessCategory.name.en,
+      pt: businessCategory.name.pt,
+    } as any;
+    const isRestaurant = businessTypeSlug === 'restaurant';
+
+    if (isRestaurant && !cuisineTypeSlug) {
       throw new AppError(httpStatus.BAD_REQUEST, 'PLEASE_SELECT_CUISINE_TYPE');
     }
 
-    if (
-      businessType === BusinessCategoryName.RESTAURANT &&
-      cuisineType &&
-      !Array.isArray(cuisineType)
-    ) {
+    if (isRestaurant && cuisineTypeSlug && !Array.isArray(cuisineTypeSlug)) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'PLEASE_SELECT_AT_LEAST_ONE_CUISINE_TYPE',
       );
     }
 
-    if (cuisineType && cuisineType.length > 0) {
+    if (cuisineTypeSlug && cuisineTypeSlug.length > 0) {
       const cuisineTypeExists = await Cuisine.find({
-        'name.en': { $in: cuisineType },
+        slug: { $in: cuisineTypeSlug },
       });
-      if (cuisineTypeExists.length !== cuisineType.length) {
+      if (cuisineTypeExists.length !== cuisineTypeSlug.length) {
         throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_CUISINE_TYPE');
       }
     }
@@ -121,7 +124,7 @@ const vendorUpdate = async (
     { userId: existingVendor.userId },
     { $set: flattenedPayload },
     { new: true, runValidators: true }, // Ensure new data adheres to schema rules
-  );
+  ).populate('cuisinesData');
 
   if (!updatedVendor) {
     throw new AppError(
