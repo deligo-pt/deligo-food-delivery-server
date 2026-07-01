@@ -666,6 +666,7 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
 
 const getAllVendorsForCustomerPublic = async (
   query: Record<string, unknown>,
+  lang: TLanguageCode = 'en',
 ) => {
   const reqLatitude = query.latitude;
   const reqLongitude = query.longitude;
@@ -803,6 +804,19 @@ const getAllVendorsForCustomerPublic = async (
       thisVendorCategoryIds.includes(cat._id.toString()),
     );
 
+    const formattedCategories = populatedCategories.map((cat: any) => {
+      const categoryName =
+        cat.name && typeof cat.name === 'object'
+          ? cat.name[lang] || cat.name['en'] || ''
+          : cat.name || '';
+
+      return {
+        _id: cat._id,
+        name: categoryName,
+        icon: cat.icon,
+      };
+    });
+
     return {
       id: vendor._id,
       userId: vendor.userId,
@@ -820,7 +834,7 @@ const getAllVendorsForCustomerPublic = async (
       storePhoto: vendor.documents?.storePhoto || '',
       rating: vendor.rating,
       currentSessionLocation: vendor.currentSessionLocation,
-      availableCategories: populatedCategories,
+      availableCategories: formattedCategories,
     };
   });
 

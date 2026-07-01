@@ -152,7 +152,10 @@ const getSingleVendorForCustomer = catchAsync(async (req, res) => {
 });
 
 const getAllVendorsForCustomerPublic = catchAsync(async (req, res) => {
-  const result = await VendorServices.getAllVendorsForCustomerPublic(req.query);
+  const result = await VendorServices.getAllVendorsForCustomerPublic(
+    req.query,
+    req.lang,
+  );
 
   sendResponse(res, {
     success: true,
