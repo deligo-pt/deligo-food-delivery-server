@@ -462,6 +462,7 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   });
 
   query = query.populate('cuisinesData');
+  query = query.populate('businessDetails.businessType');
 
   const existingVendor = await query;
   if (!existingVendor) {
