@@ -13,17 +13,16 @@ export const uploadLocalFileToCloudinary = async (
     const stats = await fs.stat(localFilePath).catch(() => null);
 
     if (!stats) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        `File not found at path: ${localFilePath}`,
-      );
+      throw new AppError(httpStatus.NOT_FOUND, 'FILE_NOT_FOUND_AT_PATH', {
+        localFilePath,
+      });
     }
 
     if (stats.size === 0) {
       await fs.unlink(localFilePath).catch(() => {});
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Empty file cannot be uploaded to Cloudinary',
+        'EMPTY_FILE_CANNOT_BE_UPLOADED_TO_CLOUDINARY',
       );
     }
 
@@ -37,14 +36,15 @@ export const uploadLocalFileToCloudinary = async (
     await fs.unlink(localFilePath).catch(() => {});
 
     return result.secure_url;
-  } catch (error: any) {
+  } catch (error: unknown) {
     await fs.unlink(localFilePath).catch(() => {});
+    void error;
 
-    console.error('Cloudinary Upload Failed:', error.message || error);
-
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      error.message || 'File upload failed',
-    );
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'FILE_UPLOAD_FAILED', {
+      message:
+        error instanceof Error
+          ? error.message
+          : String(error || 'File upload failed'),
+    });
   }
 };

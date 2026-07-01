@@ -11,7 +11,7 @@ export const verifyMobileOtp = async (id: string, otp: string) => {
   if (!apiUrl || !apiKey || !appId) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Bulkgate configuration is missing'
+      'BULKGATE_CONFIGURATION_MISSING',
     );
   }
 
@@ -31,15 +31,16 @@ export const verifyMobileOtp = async (id: string, otp: string) => {
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        error?.response?.data?.message || 'Failed to verify OTP with Bulkgate'
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'BULKGATE_VERIFY_OTP_FAILED', {
+        message: String(
+          error?.response?.data?.message ||
+            'Failed to verify OTP with Bulkgate',
+        ),
+      });
     } else {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Failed to verify OTP with Bulkgate'
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'BULKGATE_VERIFY_OTP_FAILED', {
+        message: 'Failed to verify OTP with Bulkgate',
+      });
     }
   }
 };
