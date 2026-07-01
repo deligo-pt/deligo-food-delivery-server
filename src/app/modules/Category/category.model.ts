@@ -11,10 +11,7 @@ export const BusinessCategoryNameEnum = ['RESTAURANT', 'STORE'] as const;
 const businessCategorySchema = new Schema<TBusinessCategory>(
   {
     name: {
-      type: String,
-      enum: BusinessCategoryNameEnum,
-      required: true,
-      unique: true,
+      type: localizedSchema,
     },
     slug: { type: String, required: true, unique: true },
     description: { type: String },
@@ -60,6 +57,7 @@ const cuisineSchema = new Schema<TCuisine>(
   { timestamps: true },
 );
 
+businessCategorySchema.index({ 'name.en': 1, 'name.pt': 1 }, { unique: true });
 productCategorySchema.index({ isActive: 1, isDeleted: 1 });
 productCategorySchema.index({ 'name.en': 1 }, { unique: true });
 cuisineSchema.index({ 'name.en': 1 }, { unique: true });

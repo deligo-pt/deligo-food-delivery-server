@@ -20,9 +20,13 @@ export const BusinessCategoryTranslation = {
   },
 } as const;
 
+export type TCreateBusinessCategoryInput = Omit<TBusinessCategory, 'name'> & {
+  name: TBusinessCategoryName;
+};
+
 export type TBusinessCategory = {
   _id?: Types.ObjectId;
-  name: TBusinessCategoryName;
+  name: TLocalizedText;
   slug: string;
   description?: string;
   icon: string;

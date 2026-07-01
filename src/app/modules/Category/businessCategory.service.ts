@@ -1,28 +1,52 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { BusinessCategory } from './category.model';
-import { TBusinessCategory } from './category.interface';
+import {
+  BusinessCategoryTranslation,
+  TCreateBusinessCategoryInput,
+} from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 //  Create Business Category
 const createBusinessCategory = async (
-  payload: TBusinessCategory,
+  payload: TCreateBusinessCategoryInput,
   icon: string | null,
 ) => {
-  const exists = await BusinessCategory.findOne({ name: payload.name });
+  const translation = BusinessCategoryTranslation[payload.name];
+
+  if (!translation) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'INVALID_BUSINESS_CATEGORY_NAME',
+    );
+  }
+
+  const exists = await BusinessCategory.findOne({ 'name.en': translation.en });
   if (exists) {
     throw new AppError(httpStatus.CONFLICT, 'ALREADY_EXISTS');
   }
 
-  // generate slug
-  payload.slug = payload.name
+  const slug = translation.en
     .toLowerCase()
     .replace(/[^\w ]+/g, '')
     .replace(/ +/g, '-');
 
-  const category = await BusinessCategory.create({ ...payload, icon });
+  const categoryData = {
+    ...payload,
+    name: translation,
+    slug,
+    icon,
+  };
+
+  if (!icon) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'ICON_IS_REQUIRED');
+  }
+
+  const category = await BusinessCategory.create(categoryData);
+
   return {
     messageKey: 'CREATE_SUCCESS' as const,
     data: category,
@@ -32,20 +56,35 @@ const createBusinessCategory = async (
 //  Update Business Category
 const updateBusinessCategory = async (
   id: string,
-  payload: Partial<TBusinessCategory>,
+  payload: Partial<TCreateBusinessCategoryInput>,
   icon: string | null,
 ) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
   }
-  if (payload.name)
-    payload.slug = payload.name
+
+  if (payload.name) {
+    const translation = BusinessCategoryTranslation[payload.name];
+    if (!translation) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'INVALID_BUSINESS_CATEGORY_NAME',
+      );
+    }
+
+    payload.name = translation as any;
+
+    payload.slug = translation.en
       .toLowerCase()
       .replace(/[^\w ]+/g, '')
       .replace(/ +/g, '-');
+  }
 
-  if (payload?.isActive === category.isActive) {
+  if (
+    payload?.isActive !== undefined &&
+    payload.isActive === category.isActive
+  ) {
     throw new AppError(
       httpStatus.CONFLICT,
       category.isActive ? 'ALREADY_ACTIVE' : 'ALREADY_INACTIVE',
@@ -56,16 +95,15 @@ const updateBusinessCategory = async (
     if (category.icon) {
       const oldIcon = category.icon;
       deleteSingleImageFromCloudinary(oldIcon).catch((error) => {
-        console.error(error);
+        console.error('Failed to delete old icon from Cloudinary:', error);
       });
     }
-  }
-  if (icon) {
     category.icon = icon;
   }
 
   Object.assign(category, payload);
   await category.save();
+
   return {
     messageKey: 'UPDATE_SUCCESS' as const,
     data: category,
