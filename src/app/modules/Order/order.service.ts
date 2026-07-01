@@ -224,7 +224,13 @@ const updateOrderStatusByVendor = async (
       },
       null,
       { session },
-    ).populate('vendorId', '_id businessDetails');
+    ).populate({
+      path: 'vendorId',
+      select: '_id businessDetails businessLocation',
+      populate: {
+        path: 'businessDetails.businessType',
+      },
+    });
 
     if (!order) {
       throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_WITH_DOT');
@@ -233,7 +239,7 @@ const updateOrderStatusByVendor = async (
     const vendor = order.vendorId as any;
 
     const isRestaurant =
-      vendor?.businessDetails?.businessType?.en ===
+      vendor?.businessDetails?.businessType?.name?.en ===
       BusinessCategoryName.RESTAURANT;
 
     const shouldCheckStock = !isRestaurant;

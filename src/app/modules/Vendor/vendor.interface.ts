@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { TGeoJSONPoint } from '../../constant/GlobalInterface/location.interface';
-import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 // export type TVendorSchedule = {
 //   day: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
@@ -57,9 +56,8 @@ export type TVendor = {
   // --------------------------------------------------------
   businessDetails?: {
     businessName: string;
-    businessType: TLocalizedText;
+    businessType: mongoose.Types.ObjectId;
     restaurantCuisineType?: string[]; // NEW: Cuisine type for restaurant vendors
-    businessLicenseNumber?: string;
     NIF?: string;
     totalBranches: number;
 

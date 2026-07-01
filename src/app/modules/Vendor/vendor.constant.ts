@@ -5,7 +5,5 @@ export const VendorSearchableFields = [
   'name.lastName',
   'businessLocation.city',
   'businessDetails.businessName',
-  'businessDetails.businessType',
-  'businessDetails.businessLicenseNumber',
   'businessDetails.NIF',
 ];

@@ -3,7 +3,6 @@ import { Schema, model } from 'mongoose';
 import { TVendor } from './vendor.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
-import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const vendorSchema = new Schema<TVendor>(
   {
@@ -77,11 +76,10 @@ const vendorSchema = new Schema<TVendor>(
     // -------------------------------------------------------
     businessDetails: {
       businessName: { type: String, default: '' },
-      businessType: { type: localizedSchema },
+      businessType: { type: Schema.Types.ObjectId, ref: 'BusinessCategory' },
       restaurantCuisineType: {
         type: [String],
       },
-      businessLicenseNumber: { type: String, default: '' },
       NIF: { type: String, default: '' },
       totalBranches: { type: Number, default: 1 },
 

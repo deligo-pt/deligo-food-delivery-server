@@ -21,7 +21,6 @@ import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
 import { TMessageKey } from '../../errors/messages';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
-import { BusinessCategoryTranslation } from '../Category/category.interface';
 
 /**
  * Service to update vendor profile information.
@@ -74,10 +73,7 @@ const vendorUpdate = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
     }
 
-    payload.businessDetails!.businessType = {
-      en: businessCategory.name.en,
-      pt: businessCategory.name.pt,
-    } as any;
+    payload.businessDetails!.businessType = businessCategory._id;
     const isRestaurant = businessTypeSlug === 'restaurant';
 
     if (isRestaurant && !cuisineTypeSlug) {
@@ -125,7 +121,9 @@ const vendorUpdate = async (
     { userId: existingVendor.userId },
     { $set: flattenedPayload },
     { new: true, runValidators: true }, // Ensure new data adheres to schema rules
-  ).populate('cuisinesData');
+  )
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
 
   if (!updatedVendor) {
     throw new AppError(
@@ -376,7 +374,31 @@ const getAllVendors = async (
       status: currentUser?.status || 'UNKNOWN',
     });
   }
-  const vendors = new QueryBuilder(Vendor.find(), query)
+
+  const filter: any = {};
+
+  if (query.businessType) {
+    const businessTypeSlug = (query.businessType as string)
+      .trim()
+      .toLowerCase();
+
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
+
+    if (!businessCategory) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
+    }
+
+    if (businessCategory) {
+      filter['businessDetails.businessType'] = businessCategory._id;
+    }
+
+    delete query.businessType;
+    delete query['businessDetails.businessType'];
+  }
+
+  const vendors = new QueryBuilder(Vendor.find(filter), query)
     .search(VendorSearchableFields)
     .filter()
     .sort()
@@ -393,7 +415,9 @@ const getAllVendors = async (
     vendors.modelQuery = vendors.modelQuery.populate(option);
   });
 
-  vendors.modelQuery = vendors.modelQuery.populate('cuisinesData');
+  vendors.modelQuery = vendors.modelQuery
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
   const data = await vendors.modelQuery;
@@ -437,6 +461,7 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   });
 
   query = query.populate('cuisinesData');
+  query = query.populate('businessDetails.businessType');
 
   const existingVendor = await query;
   if (!existingVendor) {
@@ -528,19 +553,17 @@ const getAllVendorsForCustomer = async (
     query.businessType) as string;
 
   if (businessTypeInput) {
-    const upperInput = businessTypeInput.trim().toUpperCase();
+    const businessTypeSlug = businessTypeInput.trim().toLowerCase();
 
-    const translation =
-      BusinessCategoryTranslation[
-        upperInput as keyof typeof BusinessCategoryTranslation
-      ];
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
 
-    if (!translation) {
+    if (!businessCategory) {
       throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
     }
 
-    filter['businessDetails.businessType.en'] = translation.en;
-    filter['businessDetails.businessType.pt'] = translation.pt;
+    filter['businessDetails.businessType'] = businessCategory._id;
 
     delete query['businessDetails.businessType'];
     delete query.businessType;
@@ -606,6 +629,7 @@ const getAllVendorsForCustomer = async (
     .select(
       'name userId businessDetails businessLocation documents rating currentSessionLocation',
     )
+    .populate('businessDetails.businessType')
     .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
@@ -659,10 +683,16 @@ const getAllVendorsForCustomer = async (
     });
 
     const rawBusinessType = vendorObj.businessDetails?.businessType;
-    const formattedBusinessType =
-      rawBusinessType && typeof rawBusinessType === 'object'
-        ? rawBusinessType[lang] || rawBusinessType['en'] || ''
-        : rawBusinessType || '';
+    let formattedBusinessType = '';
+
+    if (
+      rawBusinessType &&
+      typeof rawBusinessType === 'object' &&
+      rawBusinessType.name
+    ) {
+      formattedBusinessType =
+        rawBusinessType.name[lang] || rawBusinessType.name['en'] || '';
+    }
 
     let formattedCuisines: string[] = [];
     if (
@@ -687,7 +717,7 @@ const getAllVendorsForCustomer = async (
       name: vendorObj.name,
       businessDetails: {
         businessName: vendorObj.businessDetails?.businessName,
-        businessType: formattedBusinessType,
+        businessType: formattedBusinessType, // 👈 Localized String
         restaurantCuisineType: formattedCuisines,
         openingHours: vendorObj.businessDetails?.openingHours,
         closingHours: vendorObj.businessDetails?.closingHours,
@@ -716,6 +746,7 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
     isDeleted: false,
   })
     .select('name userId email contactNumber businessDetails businessLocation')
+    .populate('businessDetails.businessType')
     .populate('cuisinesData');
   if (!existingVendor) {
     throw new AppError(
@@ -783,19 +814,17 @@ const getAllVendorsForCustomerPublic = async (
     query.businessType) as string;
 
   if (businessTypeInput) {
-    const upperInput = businessTypeInput.trim().toUpperCase();
+    const businessTypeSlug = businessTypeInput.trim().toLowerCase();
 
-    const translation =
-      BusinessCategoryTranslation[
-        upperInput as keyof typeof BusinessCategoryTranslation
-      ];
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
 
-    if (!translation) {
+    if (!businessCategory) {
       throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
     }
 
-    filter['businessDetails.businessType.en'] = translation.en;
-    filter['businessDetails.businessType.pt'] = translation.pt;
+    filter['businessDetails.businessType'] = businessCategory._id;
 
     delete query['businessDetails.businessType'];
     delete query.businessType;
@@ -857,6 +886,7 @@ const getAllVendorsForCustomerPublic = async (
     .select(
       'name userId businessDetails businessLocation documents rating currentSessionLocation',
     )
+    .populate('businessDetails.businessType')
     .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
@@ -910,10 +940,16 @@ const getAllVendorsForCustomerPublic = async (
     });
 
     const rawBusinessType = vendorObj.businessDetails?.businessType;
-    const formattedBusinessType =
-      rawBusinessType && typeof rawBusinessType === 'object'
-        ? rawBusinessType[lang] || rawBusinessType['en'] || ''
-        : rawBusinessType || '';
+    let formattedBusinessType = '';
+
+    if (
+      rawBusinessType &&
+      typeof rawBusinessType === 'object' &&
+      rawBusinessType.name
+    ) {
+      formattedBusinessType =
+        rawBusinessType.name[lang] || rawBusinessType.name['en'] || '';
+    }
 
     let formattedCuisines: string[] = [];
     if (
