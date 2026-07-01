@@ -414,8 +414,6 @@ const verifyOtp = async (payload: {
     if (email === config.customer.test_customer_email) {
       if (otp !== config.customer.test_customer_otp) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OTP');
-      } else {
-        console.log('Email otp verification bypassed for test customer');
       }
     } else if (!storedOtp || String(storedOtp) !== String(otp)) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OR_EXPIRED_OTP');
@@ -426,8 +424,6 @@ const verifyOtp = async (payload: {
     if (contactNumber === config.customer.test_customer_contact_number) {
       if (otp !== config.customer.test_customer_contact_otp) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OTP');
-      } else {
-        console.log('Contact otp verification bypassed for test customer');
       }
     } else {
       const res = await verifyMobileOtp(

@@ -2,7 +2,6 @@
 import { Order } from '../modules/Order/order.model';
 import { getIO } from '../lib/Socket';
 import { Vendor } from '../modules/Vendor/vendor.model';
-import config from '../config';
 export const handleOrderExpiryCron = async () => {
   try {
     const now = new Date();
@@ -46,12 +45,6 @@ export const handleOrderExpiryCron = async () => {
             orderId: order.orderId,
             message: 'No delivery partner accepted the order in time.',
           });
-        }
-
-        if (config.NODE_ENV === 'development') {
-          console.log(
-            `Cron: Order ${order.orderId} reset and vendor notified.`,
-          );
         }
       }
     }

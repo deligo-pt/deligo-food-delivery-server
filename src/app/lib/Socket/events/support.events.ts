@@ -31,7 +31,6 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
   socket.on('join-conversation', ({ ticketId }: { ticketId: string }) => {
     if (!ticketId) return;
     socket.join(ticketId);
-    console.log(`User ${userId} joined ticket: ${ticketId}`);
   });
 
   /**

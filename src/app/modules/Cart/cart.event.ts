@@ -5,8 +5,6 @@ import { Cart } from './cart.model';
 export const initCartEventListener = () => {
   RedisService.onKeyExpire('cart:expiry:', async (expiredKey: string) => {
     try {
-      console.log(`[Redis Expiry Triggered] Key: ${expiredKey}`);
-
       const customerId = expiredKey.split(':')[2];
       if (!customerId) {
         console.error('[Cart Event Error] Customer ID could not be extracted');
@@ -30,13 +28,7 @@ export const initCartEventListener = () => {
         );
 
         if (updatedCart) {
-          console.log(
-            `[Mongoose Success] Cart saved to DB for Customer: ${customerId}`,
-          );
           await RedisService.del(dataKey);
-          console.log(
-            `[Cart Event Cleanup] Redis data key cleared for customer: ${customerId}`,
-          );
         }
       } else {
         console.warn(

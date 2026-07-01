@@ -386,7 +386,6 @@ export const processOrderPostUpdate = async (job: Job) => {
         'ORDER',
       );
     }
-    console.log(`[Worker] Successfully processed order: ${orderDisplayId}`);
   } catch (error) {
     await session.abortTransaction();
     console.error(`[Worker] Failed to process order ${orderDisplayId}:`, error);

@@ -126,10 +126,6 @@ const distributeReferralBonus = async (
       if (!order) throw new Error('Order data missing');
 
       if (order.payoutSummary.grandTotal < milestone.minOrderAmountPerFriend) {
-        console.log(
-          `Condition failed: €${order.payoutSummary.grandTotal} < €${milestone.minOrderAmountPerFriend}`,
-        );
-
         referral.status = 'COMPLETED';
         referral.isRewardDistributed = false;
         referral.remarks = 'Milestone reached but min order amount not met';
