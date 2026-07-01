@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { TUserRole, USER_STATUS } from '../GlobalConstant/user.constant';
 import { TDeliveryAddress } from './address.interface';
+import { TLocalizedText } from './language.interface';
 
 export type TCurrentUser = {
   _id: mongoose.Types.ObjectId;
@@ -25,7 +26,7 @@ export type TCurrentUser = {
   };
   businessDetails?: {
     businessName: string;
-    businessType: string;
+    businessType: TLocalizedText;
     isStoreOpen: boolean;
     storeClosedAt?: Date;
   };

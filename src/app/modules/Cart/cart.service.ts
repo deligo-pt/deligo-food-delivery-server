@@ -13,6 +13,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { RedisService } from '../../config/redis';
 import { formatCartResponse } from './cart.utils';
+import { BusinessCategoryName } from '../Category/category.interface';
 
 // Add cart Service
 const addToCart = async (
@@ -55,7 +56,8 @@ const addToCart = async (
   }
 
   const isRestaurant =
-    existingVendor?.businessDetails?.businessType === 'RESTAURANT';
+    existingVendor?.businessDetails?.businessType?.en ===
+    BusinessCategoryName.RESTAURANT;
 
   let selectedPrice = existingProduct.pricing.price;
   let selectedVariantLabel: any = null;
@@ -440,7 +442,9 @@ const updateCartItemQuantity = async (
     throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
-  const isRestaurant = vendor?.businessDetails?.businessType === 'RESTAURANT';
+  const isRestaurant =
+    vendor?.businessDetails?.businessType?.en ===
+    BusinessCategoryName.RESTAURANT;
   const shouldCheckStock = !isRestaurant;
 
   let availableStock = product?.stock?.quantity ?? 0;
