@@ -20,6 +20,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
+import { TMessageKey } from '../../errors/messages';
 
 /**
  * Service to update vendor profile information.
@@ -35,7 +36,7 @@ const vendorUpdate = async (
   const existingVendor = await Vendor.findOne({ userId: id });
 
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found.');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND_WITH_DOT');
   }
 
   // 2. Define access control: Admins/Super Admins or the Account Owner (Vendor/Sub-Vendor)
@@ -46,17 +47,14 @@ const vendorUpdate = async (
 
   // 3. Authorization: Block unauthorized users from modifying the vendor profile
   if (!isStaff && !isOwner) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
   }
 
   // 4. Update-Lock: Prevent changes if the profile is locked, unless bypassed by an Admin
   if (existingVendor.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Vendor update is locked. Please contact support.',
+      'VENDOR_UPDATE_LOCKED_CONTACT_SUPPORT',
     );
   }
 
@@ -70,14 +68,11 @@ const vendorUpdate = async (
     });
 
     if (!exists) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid business type.');
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
     }
 
     if (businessType === BusinessCategoryName.RESTAURANT && !cuisineType) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Please select a cuisine type.',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'PLEASE_SELECT_CUISINE_TYPE');
     }
 
     if (
@@ -87,7 +82,7 @@ const vendorUpdate = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Please select at least one cuisine type.',
+        'PLEASE_SELECT_AT_LEAST_ONE_CUISINE_TYPE',
       );
     }
 
@@ -96,7 +91,7 @@ const vendorUpdate = async (
         'name.en': { $in: cuisineType },
       });
       if (cuisineTypeExists.length !== cuisineType.length) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Invalid cuisine type.');
+        throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_CUISINE_TYPE');
       }
     }
   }
@@ -130,12 +125,12 @@ const vendorUpdate = async (
   if (!updatedVendor) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update vendor.',
+      'FAILED_TO_UPDATE_VENDOR',
     );
   }
 
   return {
-    message: 'Vendor updated successfully',
+    messageKey: 'VENDOR_UPDATED_SUCCESS' as TMessageKey,
     data: updatedVendor,
   };
 };
@@ -152,7 +147,7 @@ const vendorDocImageUpload = async (
   // 1. Check if the vendor exists in the database
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
   const { docImageTitle, docImageUrls } = payload;
@@ -165,17 +160,14 @@ const vendorDocImageUpload = async (
 
   // 3. Authorization: Only Admins or the Account Owner can perform this action
   if (!isStaff && !isOwner) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
   }
 
   // 4. Protection: Block updates if the profile is locked (Admins can bypass this lock)
   if (existingVendor.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Vendor update is locked. Please contact support.',
+      'VENDOR_UPDATE_LOCKED_CONTACT_SUPPORT',
     );
   }
 
@@ -191,7 +183,12 @@ const vendorDocImageUpload = async (
     if (uniqueImages.length > 3) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Maximum 3 images are allowed for ${payload.docImageTitle}. You already have ${previousImages.length} and trying to add ${docImageUrls.length}.`,
+        'MAXIMUM_IMAGES_ALLOWED_FOR_DOCUMENT',
+        {
+          title: payload.docImageTitle,
+          existing: previousImages.length,
+          adding: docImageUrls.length,
+        },
       );
     }
     // Spread existing documents to prevent accidental data loss
@@ -210,7 +207,7 @@ const vendorDocImageUpload = async (
   }
 
   return {
-    message: 'Vendor document image updated successfully',
+    messageKey: 'VENDOR_DOCUMENT_IMAGE_UPDATED_SUCCESS' as TMessageKey,
     data: existingVendor.documents,
   };
 };
@@ -224,20 +221,17 @@ const deleteVendorDocument = async (
   const { docImageTitle, imageUrl } = payload;
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor)
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
 
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner = currentUser.userId === existingVendor.userId;
   if (!isStaff && !isOwner)
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
 
   if (existingVendor.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Profile is locked. Contact support.',
+      'PROFILE_LOCKED_CONTACT_SUPPORT',
     );
   }
 
@@ -245,12 +239,12 @@ const deleteVendorDocument = async (
   if (!Array.isArray(docArray) || !docArray.includes(imageUrl)) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Image not found in this document category',
+      'IMAGE_NOT_FOUND_IN_DOCUMENT_CATEGORY',
     );
   }
 
   await deleteSingleImageFromCloudinary(imageUrl).catch((err) => {
-    console.error('Cloudinary deletion failed:', err);
+    void err;
   });
 
   existingVendor.documents = {
@@ -265,7 +259,7 @@ const deleteVendorDocument = async (
   await existingVendor.save();
 
   return {
-    message: 'Vendor document image deleted successfully',
+    messageKey: 'VENDOR_DOCUMENT_IMAGE_DELETED_SUCCESS' as TMessageKey,
     data: existingVendor.documents,
   };
 };
@@ -279,14 +273,15 @@ const updateVendorLiveLocation = async (
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to update live location. Your account status is: ${currentUser?.status}`,
+      'NOT_APPROVED_TO_UPDATE_LIVE_LOCATION',
+      { status: currentUser?.status || 'UNKNOWN' },
     );
   }
 
   if (currentUser?.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to update live location!',
+      'NOT_AUTHORIZED_TO_UPDATE_LIVE_LOCATION',
     );
   }
 
@@ -301,10 +296,7 @@ const updateVendorLiveLocation = async (
   } = payload;
 
   if (geoAccuracy !== undefined && geoAccuracy > 100) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Geo accuracy should be less than 100',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'GEO_ACCURACY_LESS_THAN_100');
   }
 
   const updateData: Record<string, any> = {
@@ -337,13 +329,13 @@ const updateVendorLiveLocation = async (
   if (!updatedVendor) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Vendor not found or update failed.',
+      'VENDOR_NOT_FOUND_OR_UPDATE_FAILED',
     );
   }
 
   return {
     success: true,
-    message: 'Live location updated successfully',
+    messageKey: 'LIVE_LOCATION_UPDATED_SUCCESS' as TMessageKey,
     data: updatedVendor.currentSessionLocation,
   };
 };
@@ -351,10 +343,9 @@ const updateVendorLiveLocation = async (
 // toggle vendor store open/close service
 const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `You are not approved to toggle store open/close. Your account is ${currentUser?.status}`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPROVED_TO_TOGGLE_STORE', {
+      status: currentUser?.status || 'UNKNOWN',
+    });
   }
 
   currentUser.businessDetails!.isStoreOpen =
@@ -362,9 +353,10 @@ const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
   currentUser.businessDetails!.storeClosedAt = new Date();
   await (currentUser as any).save();
   return {
-    message: `Store is ${
-      currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
-    }`,
+    messageKey: 'STORE_STATUS_MESSAGE' as TMessageKey,
+    variables: {
+      isOpen: !!currentUser?.businessDetails?.isStoreOpen,
+    },
     data: null,
   };
 };
@@ -375,10 +367,9 @@ const getAllVendors = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view vendors. Your account is ${currentUser?.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_VENDORS', {
+      status: currentUser?.status || 'UNKNOWN',
+    });
   }
   const vendors = new QueryBuilder(Vendor.find(), query)
     .search(VendorSearchableFields)
@@ -401,7 +392,7 @@ const getAllVendors = async (
   const data = await vendors.modelQuery;
 
   return {
-    message: 'Vendors Retrieved Successfully',
+    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -412,7 +403,7 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to access this vendor!',
+      'NOT_AUTHORIZED_TO_ACCESS_VENDOR',
     );
   }
 
@@ -440,11 +431,14 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
 
   const existingVendor = await query;
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'VENDOR_NOT_FOUND_WITH_EXCLAMATION',
+    );
   }
 
   return {
-    message: 'Vendor Retrieved Successfully',
+    messageKey: 'VENDOR_RETRIEVED_SUCCESS' as TMessageKey,
     data: existingVendor,
   };
 };
@@ -462,7 +456,7 @@ const getAllVendorsForCustomer = async (
   if (!customerProfile) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Customer profile not found. Please set up your profile first.',
+      'CUSTOMER_PROFILE_NOT_FOUND_SETUP_FIRST',
     );
   }
 
@@ -489,7 +483,7 @@ const getAllVendorsForCustomer = async (
   if (lng == null || lat == null) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Location required. Please select a delivery address or enable GPS to find nearby restaurants.',
+      'LOCATION_REQUIRED_SELECT_ADDRESS_OR_ENABLE_GPS',
     );
   }
 
@@ -537,7 +531,7 @@ const getAllVendorsForCustomer = async (
 
     if (matchingVendorIds.length === 0) {
       return {
-        message: 'Vendors Retrieved Successfully',
+        messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
         meta: {
           total: 0,
           page: 1,
@@ -630,7 +624,7 @@ const getAllVendorsForCustomer = async (
   });
 
   return {
-    message: 'Vendors Retrieved Successfully',
+    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -643,11 +637,14 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
     isDeleted: false,
   }).select('name userId email contactNumber businessDetails businessLocation');
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'VENDOR_NOT_FOUND_WITH_EXCLAMATION',
+    );
   }
 
   return {
-    message: 'Vendor Retrieved Successfully',
+    messageKey: 'VENDOR_RETRIEVED_SUCCESS' as TMessageKey,
     data: existingVendor,
   };
 };
@@ -672,7 +669,7 @@ const getAllVendorsForCustomerPublic = async (
   if (lng == null || lat == null || isNaN(lng) || isNaN(lat)) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Location coordinates (latitude and longitude) are strictly required to find nearby restaurants.',
+      'LOCATION_COORDINATES_REQUIRED_FOR_NEARBY_RESTAURANTS',
     );
   }
 
@@ -722,7 +719,7 @@ const getAllVendorsForCustomerPublic = async (
 
     if (matchingVendorIds.length === 0) {
       return {
-        message: 'Vendors Retrieved Successfully',
+        messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
         meta: {
           total: 0,
           page: 1,
@@ -813,7 +810,7 @@ const getAllVendorsForCustomerPublic = async (
   });
 
   return {
-    message: 'Vendors Retrieved Successfully',
+    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };

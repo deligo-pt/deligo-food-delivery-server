@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { UploadService } from './upload.service';
 import { TImageFile } from '../../interfaces/image.interface';
+import { TMessageKey } from '../../errors/messages';
 
 const uploadFiles = catchAsync(async (req, res) => {
   const files = req.files as TImageFile[];
@@ -12,7 +13,7 @@ const uploadFiles = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
