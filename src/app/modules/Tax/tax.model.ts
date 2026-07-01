@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Schema, model } from 'mongoose';
 import { TTax } from './tax.interface';
 import { localizedSchema } from '../../constant/GlobalModel/language.model';
