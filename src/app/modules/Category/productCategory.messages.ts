@@ -1,50 +1,50 @@
 export const productCategoryMessages = {
   INVALID_BUSINESS_CATEGORY: {
-    en: 'Invalid Business Category reference',
-    pt: 'Referência de categoria de negócio inválida',
+    en: 'The selected business category reference is invalid.',
+    pt: 'A referência de categoria de negócio selecionada é inválida.',
   },
   ALREADY_EXISTS: {
-    en: 'Product category already exists',
-    pt: 'A categoria de produto já existe',
+    en: 'This product category already exists.',
+    pt: 'Esta categoria de produto já existe.',
   },
   PRODUCT_CATEGORY_NOT_FOUND: {
-    en: 'Product category not found',
-    pt: 'Categoria de produto não encontrada',
+    en: 'The requested product category could not be found.',
+    pt: 'A categoria de produto solicitada não pôde ser encontrada.',
   },
   ALREADY_ACTIVE: {
-    en: 'Product category is already active',
-    pt: 'A categoria de produto já está ativa',
+    en: 'This product category is already active.',
+    pt: 'Esta categoria de produto já está ativa.',
   },
   ALREADY_INACTIVE: {
-    en: 'Product category is already inactive',
-    pt: 'A categoria de produto já está inativa',
+    en: 'This product category is already inactive.',
+    pt: 'Esta categoria de produto já está inativa.',
   },
   ALREADY_DELETED: {
-    en: 'Product category already deleted',
-    pt: 'A categoria de produto já foi excluída',
+    en: 'This product category has already been removed.',
+    pt: 'Esta categoria de produto já foi removida.',
   },
   ACTIVE_CANNOT_DELETE: {
-    en: 'Product category is active, cannot delete',
-    pt: 'A categoria de produto está ativa, não é possível excluí-la',
+    en: 'An active category cannot be deleted. Please deactivate it first.',
+    pt: 'Uma categoria ativa não pode ser excluída. Por favor, desative-a primeiro.',
   },
   SOFT_DELETE_FIRST: {
-    en: 'Please soft delete first',
-    pt: 'Por favor, realize a exclusão lógica primeiro',
+    en: 'This item must be deactivated before performing a permanent deletion.',
+    pt: 'Este item deve ser desativado antes de realizar a exclusão permanente.',
   },
   CREATE_SUCCESS: {
-    en: 'Product category created successfully',
-    pt: 'Categoria de produto criada com sucesso',
+    en: 'Product category created successfully.',
+    pt: 'Categoria de produto criada com sucesso.',
   },
   PRODUCT_CATEGORY_UPDATE_SUCCESS: {
-    en: 'Product category updated successfully',
-    pt: 'Categoria de produto atualizada com sucesso',
+    en: 'Product category details updated successfully.',
+    pt: 'Detalhes da categoria de produto atualizados com sucesso.',
   },
   SOFT_DELETE_SUCCESS: {
-    en: 'Product category deleted successfully',
-    pt: 'Categoria de produto excluída com sucesso',
+    en: 'Product category removed successfully.',
+    pt: 'Categoria de produto removida com sucesso.',
   },
   PERMANENT_DELETE_SUCCESS: {
-    en: 'Product category permanently deleted successfully',
-    pt: 'Categoria de produto excluída permanentemente com sucesso',
+    en: 'Product category permanently purged from the system.',
+    pt: 'Categoria de produto eliminada permanentemente do sistema.',
   },
 } as const;
