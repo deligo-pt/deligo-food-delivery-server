@@ -48,7 +48,7 @@ const updateProductCategory = async (
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }
 
   if (payload.name) {
@@ -101,7 +101,7 @@ const updateProductCategory = async (
   await category.save();
 
   return {
-    messageKey: 'UPDATE_SUCCESS' as const,
+    messageKey: 'PRODUCT_CATEGORY_UPDATE_SUCCESS' as const,
     data: category,
   };
 };
@@ -180,7 +180,7 @@ const getSingleProductCategory = async (
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }
 
   const { role } = currentUser;
@@ -189,7 +189,7 @@ const getSingleProductCategory = async (
 
   // Non-admin users cannot access deleted or inactive categories
   if (!isAdmin && (category.isDeleted || !category.isActive)) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }
 
   // Vendors can only access categories from their business type
@@ -204,7 +204,7 @@ const getSingleProductCategory = async (
       !userBusinessCategory ||
       String(category.businessCategoryId) !== String(userBusinessCategory._id)
     ) {
-      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
     }
   }
 
@@ -218,11 +218,11 @@ const getSingleProductCategory = async (
 const getSingleProductCategoryPublic = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }
 
   if (category.isDeleted || !category.isActive) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }
 
   return {
@@ -235,7 +235,7 @@ const getSingleProductCategoryPublic = async (id: string) => {
 const softDeleteProductCategory = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }
 
   if (category.isDeleted === true) {
@@ -256,7 +256,7 @@ const softDeleteProductCategory = async (id: string) => {
 const permanentDeleteProductCategory = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }
 
   if (category.isDeleted === false) {

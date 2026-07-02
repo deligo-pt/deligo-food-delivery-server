@@ -7,7 +7,7 @@ export const cuisineCategoryMessages = {
     en: 'Cuisine image is required',
     pt: 'A imagem da culinária é obrigatória',
   },
-  NOT_FOUND: {
+  CUISINE_NOT_FOUND: {
     en: 'Cuisine not found',
     pt: 'Culinária não encontrada',
   },
@@ -35,7 +35,7 @@ export const cuisineCategoryMessages = {
     en: 'Cuisine created successfully',
     pt: 'Culinária criada com sucesso',
   },
-  UPDATE_SUCCESS: {
+  CUISINE_UPDATE_SUCCESS: {
     en: 'Cuisine updated successfully',
     pt: 'Culinária atualizada com sucesso',
   },

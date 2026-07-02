@@ -27,7 +27,7 @@ export const addonMessages = {
     en: 'Addon group not found or you do not have permission to modify it.',
     pt: 'Grupo de adicionais não encontrado ou você não tem permissão para modificá-lo.',
   },
-  UPDATE_SUCCESS: {
+  ADDON_GROUP_UPDATE_SUCCESS: {
     en: 'Addon group details updated successfully.',
     pt: 'Detalhes do grupo de adicionais atualizados com sucesso.',
   },

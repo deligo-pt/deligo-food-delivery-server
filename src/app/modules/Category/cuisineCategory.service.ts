@@ -45,7 +45,7 @@ const updateCuisine = async (
 ) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   if (payload.name) {
@@ -89,7 +89,7 @@ const updateCuisine = async (
   await cuisine.save();
 
   return {
-    messageKey: 'UPDATE_SUCCESS' as const,
+    messageKey: 'CUISINE_UPDATE_SUCCESS' as const,
     data: cuisine,
   };
 };
@@ -155,14 +155,14 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
 const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
 
   if (!isAdmin && (cuisine.isDeleted || !cuisine.isActive)) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   return {
@@ -175,11 +175,11 @@ const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
 const getSingleCuisinePublic = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   if (cuisine.isDeleted || !cuisine.isActive) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   return {
@@ -192,7 +192,7 @@ const getSingleCuisinePublic = async (id: string) => {
 const softDeleteCuisine = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   if (cuisine.isDeleted === true) {
@@ -215,7 +215,7 @@ const softDeleteCuisine = async (id: string) => {
 const permanentDeleteCuisine = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   if (cuisine.isDeleted === false) {

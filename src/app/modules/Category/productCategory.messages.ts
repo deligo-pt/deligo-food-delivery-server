@@ -7,7 +7,7 @@ export const productCategoryMessages = {
     en: 'Product category already exists',
     pt: 'A categoria de produto já existe',
   },
-  NOT_FOUND: {
+  PRODUCT_CATEGORY_NOT_FOUND: {
     en: 'Product category not found',
     pt: 'Categoria de produto não encontrada',
   },
@@ -35,7 +35,7 @@ export const productCategoryMessages = {
     en: 'Product category created successfully',
     pt: 'Categoria de produto criada com sucesso',
   },
-  UPDATE_SUCCESS: {
+  PRODUCT_CATEGORY_UPDATE_SUCCESS: {
     en: 'Product category updated successfully',
     pt: 'Categoria de produto atualizada com sucesso',
   },

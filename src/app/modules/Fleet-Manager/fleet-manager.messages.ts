@@ -27,7 +27,7 @@ export const fleetManagerMessages = {
     en: 'An error occurred. Failed to execute fleet manager profile update.',
     pt: 'Ocorreu um erro. Falha ao executar a atualização do perfil do gestor de frota.',
   },
-  UPDATE_SUCCESS: {
+  FLEET_MANAGER_UPDATE_SUCCESS: {
     en: 'Fleet manager profile updated successfully.',
     pt: 'Perfil do gestor de frota atualizado com sucesso.',
   },

@@ -100,7 +100,7 @@ const fleetManagerUpdate = async (
   }
 
   return {
-    messageKey: 'UPDATE_SUCCESS' as TMessageKey,
+    messageKey: 'FLEET_MANAGER_UPDATE_SUCCESS' as TMessageKey,
     data: updatedFleetManager,
   };
 };

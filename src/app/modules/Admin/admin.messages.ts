@@ -23,7 +23,7 @@ export const adminMessages = {
     en: "We couldn't update the profile details. Please try again.",
     pt: 'Não foi possível atualizar os detalhes do perfil. Por favor, tente novamente.',
   },
-  UPDATE_SUCCESS: {
+  ADMIN_UPDATE_SUCCESS: {
     en: 'Admin profile updated successfully.',
     pt: 'Perfil do administrador atualizado com sucesso.',
   },

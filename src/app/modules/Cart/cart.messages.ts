@@ -1,180 +1,153 @@
 export const cartMessages = {
   // --- Service Success Messages ---
   ADD_TO_CART_SUCCESS: {
-    en: 'Product added to cart successfully.',
-    pt: 'Produto adicionado ao carrinho com sucesso.',
+    en: 'Item added to your cart!',
+    pt: 'Item adicionado ao seu carrinho!',
   },
   TOGGLE_ITEM_ACTIVE_SUCCESS: {
-    en: 'Product activated successfully.',
-    pt: 'Produto ativado com sucesso.',
+    en: 'Item activated successfully.',
+    pt: 'Item ativado com sucesso.',
   },
   TOGGLE_ITEM_DEACTIVE_SUCCESS: {
-    en: 'Product deactivated successfully.',
-    pt: 'Produto desativado com sucesso.',
+    en: 'Item deactivated successfully.',
+    pt: 'Item desativado com sucesso.',
   },
   QUANTITY_UPDATE_SUCCESS: {
-    en: 'Product quantity updated successfully.',
-    pt: 'Quantidade do produto atualizada com sucesso.',
+    en: 'Cart quantity updated.',
+    pt: 'Quantidade do carrinho atualizada.',
   },
   ADDON_QUANTITY_UPDATE_SUCCESS: {
-    en: 'Product addon quantity updated successfully.',
-    pt: 'Quantidade do adicional do produto atualizada com sucesso.',
+    en: 'Addon quantity updated.',
+    pt: 'Quantidade do adicional atualizada.',
   },
   REMOVE_ITEMS_SUCCESS: {
-    en: 'Cart updated: Item(s) removed successfully.',
-    pt: 'Carrinho atualizado: Item(ns) removido(s) com sucesso.',
+    en: 'Item removed from your cart.',
+    pt: 'Item removido do seu carrinho.',
   },
   CLEAR_CART_SUCCESS: {
-    en: 'Cart cleared successfully.',
-    pt: 'Carrinho limpo com sucesso.',
+    en: 'Your cart has been cleared.',
+    pt: 'Seu carrinho foi limpo.',
   },
   FETCH_ALL_SUCCESS: {
-    en: 'Carts fetched successfully.',
-    pt: 'Carrinhos recuperados com sucesso.',
+    en: 'Cart details loaded successfully.',
+    pt: 'Detalhes do carrinho carregados com sucesso.',
   },
   FETCH_SINGLE_SUCCESS: {
-    en: 'Cart fetched successfully.',
-    pt: 'Carrinho recuperado com sucesso.',
+    en: 'Cart loaded successfully.',
+    pt: 'Carrinho carregado com sucesso.',
   },
 
   // --- Service Error Messages ---
   CUSTOMER_ONLY_ACTION: {
-    en: 'Only customers are allowed to perform this action.',
-    pt: 'Apenas clientes têm permissão para realizar esta ação.',
+    en: 'Please log in as a customer to perform this action.',
+    pt: 'Por favor, faça login como cliente para realizar esta ação.',
   },
   ACCOUNT_UNAPPROVED: {
-    en: 'Your account is not approved yet.',
-    pt: 'Sua conta ainda não está aprovada.',
+    en: 'Your account is under review. You can order once approved.',
+    pt: 'Sua conta está em análise. Você poderá fazer pedidos assim que for aprovada.',
   },
   NO_ITEMS_PROVIDED: {
-    en: 'No items provided.',
-    pt: 'Nenhum item fornecido.',
+    en: 'No items selected.',
+    pt: 'Nenhum item selecionado.',
   },
   PRODUCT_NOT_FOUND: {
-    en: 'Product not found.',
-    pt: 'Produto não encontrado.',
+    en: 'This item could not be found.',
+    pt: 'Este item não pôde ser encontrado.',
   },
   STORE_CLOSED_OR_UNAPPROVED: {
-    en: 'This merchant partner is currently unavailable or unapproved.',
-    pt: 'Este parceiro comercial está indisponível ou não aprovado no momento.',
+    en: 'This restaurant is temporarily unavailable.',
+    pt: 'Este restaurante está temporariamente indisponível.',
   },
   TAX_RECORD_NOT_FOUND: {
-    en: 'One or more assigned tax records were not found.',
-    pt: 'Um ou mais registros de impostos atribuídos não foram encontrados.',
+    en: 'Tax profile configuration missing.',
+    pt: 'Configuração do perfil de impostos ausente.',
   },
   TAX_RECORD_INVALID: {
-    en: 'One or more tax records are invalid or deleted.',
-    pt: 'Um ou mais registros de impostos são inválidos ou foram excluídos.',
+    en: 'Invalid tax profile data.',
+    pt: 'Dados de perfil de impostos inválidos.',
   },
   VARIATION_REQUIRED: {
-    en: 'This product has multiple variations. Please select a variation to proceed.',
-    pt: 'Este produto possui múltiplas variações. Por favor, selecione uma variação para prosseguir.',
+    en: 'Please select an option or size to proceed.',
+    pt: 'Por favor, selecione uma opção ou tamanho para prosseguir.',
   },
   INVALID_VARIATION_SKU: {
-    en: 'Invalid variation SKU.',
-    pt: 'SKU de variação inválido.',
+    en: 'The selected item variation is invalid.',
+    pt: 'A variação do item selecionado é inválida.',
   },
   VARIATIONS_NOT_SUPPORTED: {
-    en: 'This product does not support variations. Please clear selection.',
-    pt: 'Este produto não suporta variações. Por favor, limpe a seleção.',
+    en: 'This item does not have multiple options.',
+    pt: 'Este item não possui múltiplas opções.',
   },
   INSUFFICIENT_STOCK: {
-    en: 'Insufficient stock availability for this item.',
-    pt: 'Disponibilidade de estoque insuficiente para este item.',
+    en: 'Sorry, this item is out of stock.',
+    pt: 'Desculpe, este item está esgotado.',
   },
   INSUFFICIENT_STOCK_WITH_QUANTITY: {
     en: (vars: { quantity: number }) =>
-      `Insufficient stock. You already have ${vars.quantity} in cart.`,
+      `Not enough stock available. You already have ${vars.quantity} in your cart.`,
     pt: (vars: { quantity: number }) =>
       `Estoque insuficiente. Você já possui ${vars.quantity} no carrinho.`,
   },
   CART_NOT_FOUND: {
-    en: 'Cart not found.',
-    pt: 'Carrinho não encontrado.',
+    en: 'Your cart could not be found.',
+    pt: 'Seu carrinho não pôde ser encontrado.',
   },
   PRODUCT_NOT_IN_CART: {
-    en: 'Product not found in cart.',
-    pt: 'Produto não encontrado no carrinho.',
+    en: 'This item is not in your cart.',
+    pt: 'Este item não está no seu carrinho.',
   },
   PRODUCT_UNAVAILABLE: {
-    en: 'Product is no longer available.',
-    pt: 'O produto não está mais disponível.',
+    en: 'This item is no longer available.',
+    pt: 'Este item não está mais disponível.',
   },
   VENDOR_NOT_FOUND: {
-    en: 'Vendor not found.',
-    pt: 'Fornecedor não encontrado.',
+    en: 'Restaurant profile could not be found.',
+    pt: 'O perfil do restaurante não pôde ser encontrado.',
   },
   MULTIPLE_VENDORS_DENIED: {
-    en: 'You can only select items from the same vendor.',
-    pt: 'Você só pode selecionar itens do mesmo fornecedor.',
+    en: 'You can only order from one restaurant at a time. Please clear your cart first.',
+    pt: 'Você só pode fazer pedidos de um restaurante por vez. Por favor, limpe seu carrinho primeiro.',
   },
   DECREMENT_UNDER_MINIMUM: {
-    en: 'Not allowed to decrement quantity below 1.',
-    pt: 'Não é permitido diminuir a quantidade para menos de 1.',
+    en: 'Quantity cannot be less than 1. Remove the item instead.',
+    pt: 'A quantidade não pode ser menor que 1. Se desejar, remova o item.',
   },
   ADDON_UNAVAILABLE: {
-    en: 'Addon is inactive or unavailable.',
-    pt: 'O adicional está inativo ou indisponível.',
+    en: 'This extra addon is currently unavailable.',
+    pt: 'Este adicional extra está indisponível no momento.',
   },
   ADDON_NOT_IN_CART: {
-    en: 'Addon not found in your cart.',
-    pt: 'Adicional não encontrado no seu carrinho.',
+    en: 'This addon is not in your cart.',
+    pt: 'Este adicional não está no seu carrinho.',
   },
   ADDON_LIMIT_REACHED: {
     en: (vars: { max: number; group: string }) =>
-      `Maximum selection limit of ${vars.max} reached for ${vars.group}.`,
+      `You can select a maximum of ${vars.max} items for ${vars.group}.`,
     pt: (vars: { max: number; group: string }) =>
-      `Limite máximo de seleção de ${vars.max} atingido para ${vars.group}.`,
+      `Você pode selecionar no máximo ${vars.max} itens para ${vars.group}.`,
   },
   REMOVE_ITEMS_NOT_FOUND: {
-    en: 'Selected items were not found in your cart.',
+    en: 'The selected items were not found in your cart.',
     pt: 'Os itens selecionados não foram encontrados no seu carrinho.',
   },
   CART_EMPTY: {
-    en: 'Cart is empty or not found.',
-    pt: 'O carrinho está vazio ou não foi encontrado.',
+    en: 'Your cart is empty.',
+    pt: 'Seu carrinho está vazio.',
   },
   CUSTOMER_ID_REQUIRED: {
-    en: 'Customer id is required.',
-    pt: 'O ID do cliente é obrigatório.',
+    en: 'Customer identification is required.',
+    pt: 'A identificação do cliente é obrigatória.',
   },
   CART_UPDATE_RESTRICTED: {
     en: (vars: { status: string }) =>
-      `You are not approved to update cart. Your account is ${vars.status}`,
+      `Cart updates restricted. Your account status is: ${vars.status}`,
     pt: (vars: { status: string }) =>
-      `Você não está aprovado para atualizar o carrinho. Sua conta está ${vars.status}`,
+      `Atualizações do carrinho restritas. O status da sua conta é: ${vars.status}`,
   },
   CART_VIEW_RESTRICTED: {
     en: (vars: { status: string }) =>
-      `You are not approved to view cart. Your account is ${vars.status}`,
+      `Access denied. Your account status is: ${vars.status}`,
     pt: (vars: { status: string }) =>
-      `Você não está aprovado para visualizar o carrinho. Sua conta está ${vars.status}`,
-  },
-} as const;
-
-export const cartZodErrors = {
-  VALIDATION_PRODUCT_ID_REQUIRED: {
-    en: 'Product ID is required.',
-    pt: 'O ID do produto é obrigatório.',
-  },
-  VALIDATION_QUANTITY_MIN: {
-    en: 'Quantity must be at least 1.',
-    pt: 'A quantidade deve ser pelo menos 1.',
-  },
-  VALIDATION_SKU_STRING: {
-    en: 'Variation SKU must be a string.',
-    pt: 'O SKU de variação deve ser uma string.',
-  },
-  VALIDATION_ACTION_REQUIRED: {
-    en: 'Action is required.',
-    pt: 'A ação é obrigatória.',
-  },
-  VALIDATION_ADDON_SKU_REQUIRED: {
-    en: 'Add-on option SKU is required.',
-    pt: 'O SKU da opção de adicional é obrigatório.',
-  },
-  VALIDATION_DELETE_MIN: {
-    en: 'At least one item must be provided to delete.',
-    pt: 'Pelo menos um item deve ser fornecido para exclusão.',
+      `Acesso negado. O status da sua conta é: ${vars.status}`,
   },
 } as const;

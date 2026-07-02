@@ -166,7 +166,7 @@ const updateAddonGroup = async (
   }
 
   return {
-    messageKey: 'UPDATE_SUCCESS' as const,
+    messageKey: 'ADDON_GROUP_UPDATE_SUCCESS' as const,
     data: result,
   };
 };
