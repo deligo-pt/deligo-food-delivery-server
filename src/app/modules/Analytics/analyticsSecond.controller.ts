@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { AnalyticsSecondServices } from './analyticsSecond.service';
+import { TMessageKey } from '../../errors/messages';
 
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Umayer) -----------------------
@@ -14,7 +15,7 @@ const getAdminDashboardAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -27,7 +28,7 @@ const getVendorDashboardAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -40,7 +41,7 @@ const getFleetDashboardAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -54,7 +55,7 @@ const getPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -68,7 +69,7 @@ const getDeliveryPartnerEarningAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -81,7 +82,7 @@ const getFleetManagerEarningAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -94,7 +95,7 @@ const getVendorEarningsAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -107,7 +108,7 @@ const getAllCustomerAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -121,7 +122,7 @@ const getVendorPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -138,7 +139,7 @@ const getSingleVendorPerformanceDetails = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -151,7 +152,7 @@ const getOfferAnalyticsForAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -163,7 +164,7 @@ const getTaxReportAnalyticsForVendor = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });

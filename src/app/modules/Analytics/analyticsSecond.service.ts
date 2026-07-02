@@ -155,7 +155,7 @@ const getAdminDashboardAnalytics = async () => {
     .select('name rating completedDeliveries');
 
   return {
-    messageKey: 'FETCH_ADMIN_DASHBOARD_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       counts: {
         customers,
@@ -357,7 +357,7 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
   // Final Response
   // --------------------------------------------------
   return {
-    messageKey: 'FETCH_VENDOR_DASHBOARD_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       products: {
         total: products.length,
@@ -465,7 +465,7 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'FETCH_FLEET_DASHBOARD_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       cards: {
         totalPartners,
@@ -604,7 +604,7 @@ const getPartnerPerformanceAnalytics = async (
       : 0;
 
   return {
-    messageKey: 'FETCH_PARTNER_PERFORMANCE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       cards: {
         topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
@@ -715,7 +715,7 @@ const getDeliveryPartnerEarningAnalytics = async (
   };
 
   return {
-    messageKey: 'FETCH_RIDER_EARNINGS_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       daily: roundTo2(report.dailyEarnings),
       weekly: roundTo2(report.weeklyEarnings),
@@ -833,7 +833,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
   const netEarnings = totalRevenue - totalRiderPayable;
 
   return {
-    messageKey: 'FETCH_FLEET_EARNINGS_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       overview: {
         totalRevenue: totalRevenue,
@@ -1036,7 +1036,7 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
   }));
 
   return {
-    messageKey: 'FETCH_VENDOR_EARNINGS_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       topCard: {
         totalEarnings: roundTo2(earnings.totalIncome),
@@ -1136,7 +1136,7 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
   const total = finalResult[0]?.totalCount[0]?.count || 0;
 
   return {
-    messageKey: 'FETCH_CUSTOMER_ANALYTICS_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     meta: {
       page: pageNumber,
       limit: limitNumber,
@@ -1351,7 +1351,7 @@ const getVendorPerformanceAnalytics = async (
   const total = data.totalCount[0]?.count || 0;
 
   return {
-    messageKey: 'FETCH_VENDOR_PERFORMANCE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       vendorPerformance: data.vendorPerformance,
       vendorPerformanceStat: data.vendorPerformanceStat[0] || {},
@@ -1483,7 +1483,7 @@ const getSingleVendorPerformanceDetails = async (
   const topRatedItems = results[0]?.topRatedItems || [];
 
   return {
-    messageKey: 'FETCH_SINGLE_VENDOR_PERFORMANCE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       vendorPerformance: {
         _id: vendor._id,
@@ -1639,7 +1639,7 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
   });
 
   return {
-    messageKey: 'FETCH_OFFER_ANALYTICS_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       stats: {
         totalOffers: stats.totalOffers,
@@ -1793,7 +1793,7 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
   ];
 
   return {
-    messageKey: 'FETCH_TAX_ANALYTICS_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: {
       stats: {
         totalSales: roundTo2(stats.totalSales),

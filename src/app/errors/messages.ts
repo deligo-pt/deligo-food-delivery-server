@@ -65,6 +65,11 @@ const globalCommonMessages = {
     pt: 'Solicitação de upload inválida. Verifique o anexo e tente novamente.',
   },
 
+  DATA_LOAD_SUCCESS: {
+    en: 'Data loaded successfully.',
+    pt: 'Dados carregados com sucesso.',
+  },
+
   // --- BULKGATE / OTP ERRORS ---
   BULKGATE_CONFIGURATION_MISSING: {
     en: 'SMS service is temporarily unavailable. Please try another method.',
