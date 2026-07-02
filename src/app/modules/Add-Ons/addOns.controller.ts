@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { AddOnsServices } from './addOns.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatAddonGroupResponse } from './addOns.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // create addon group controller
 const createAddonGroup = catchAsync(async (req, res) => {
@@ -14,7 +15,7 @@ const createAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -30,7 +31,7 @@ const updateAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -46,7 +47,7 @@ const addOptionToGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -63,7 +64,7 @@ const toggleOptionStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -80,7 +81,7 @@ const deleteOptionFromGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -101,7 +102,7 @@ const getAllAddonGroups = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result.meta,
     data: formattedData,
   });
@@ -126,7 +127,7 @@ const getSingleAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -141,7 +142,7 @@ const softDeleteAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

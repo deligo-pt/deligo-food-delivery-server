@@ -5,6 +5,7 @@ import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { CuisineService } from './cuisineCategory.service';
 import { formatCuisineResponse } from './category.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // Create Cuisine Controller
 const createCuisine = catchAsync(async (req, res) => {
@@ -16,7 +17,7 @@ const createCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -32,7 +33,7 @@ const updateCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -53,7 +54,7 @@ const getAllCuisines = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: formattedData,
   });
@@ -66,7 +67,7 @@ const getAllCuisinesPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: formattedData,
   });
@@ -87,7 +88,7 @@ const getSingleCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -99,7 +100,7 @@ const getSingleCuisinePublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -110,7 +111,7 @@ const softDeleteCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -121,7 +122,7 @@ const permanentDeleteCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

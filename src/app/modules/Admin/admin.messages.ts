@@ -31,16 +31,8 @@ export const adminMessages = {
     en: 'Administrative document uploaded and updated successfully.',
     pt: 'Documento administrativo enviado e atualizado com sucesso.',
   },
-  FETCH_ALL_SUCCESS: {
-    en: 'Administrator records loaded successfully.',
-    pt: 'Registros de administradores carregados com sucesso.',
-  },
   ACCESS_UNAUTHORIZED: {
     en: 'Access denied. You lack the required clearance to view this profile.',
     pt: 'Acesso negado. Você não possui a autorização necessária para visualizar este perfil.',
-  },
-  FETCH_SINGLE_SUCCESS: {
-    en: 'Admin profile details loaded successfully.',
-    pt: 'Detalhes do perfil do administrador carregados com sucesso.',
   },
 } as const;

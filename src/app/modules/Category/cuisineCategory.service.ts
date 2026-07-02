@@ -32,7 +32,7 @@ const createCuisine = async (payload: TCuisine, image: string | null) => {
 
   const cuisine = await Cuisine.create(payload);
   return {
-    messageKey: 'CREATE_SUCCESS' as const,
+    messageKey: 'CREATE_SUCCESS',
     data: cuisine,
   };
 };
@@ -89,7 +89,7 @@ const updateCuisine = async (
   await cuisine.save();
 
   return {
-    messageKey: 'CUISINE_UPDATE_SUCCESS' as const,
+    messageKey: 'CUISINE_UPDATE_SUCCESS',
     data: cuisine,
   };
 };
@@ -121,7 +121,7 @@ const getAllCuisines = async (
   ]);
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     meta,
     data,
   };
@@ -145,7 +145,7 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
   ]);
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     meta,
     data,
   };
@@ -166,7 +166,7 @@ const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: cuisine,
   };
 };
@@ -183,7 +183,7 @@ const getSingleCuisinePublic = async (id: string) => {
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: cuisine,
   };
 };
@@ -207,7 +207,7 @@ const softDeleteCuisine = async (id: string) => {
   await cuisine.save();
 
   return {
-    messageKey: 'SOFT_DELETE_SUCCESS' as const,
+    messageKey: 'SOFT_DELETE_SUCCESS',
   };
 };
 
@@ -234,7 +234,7 @@ const permanentDeleteCuisine = async (id: string) => {
 
   await Cuisine.findByIdAndDelete(id);
   return {
-    messageKey: 'PERMANENT_DELETE_SUCCESS' as const,
+    messageKey: 'PERMANENT_DELETE_SUCCESS',
   };
 };
 

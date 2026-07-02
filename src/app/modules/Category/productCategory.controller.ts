@@ -5,6 +5,7 @@ import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { ProductCategoryService } from './productCategory.service';
 import { formatProductCategoryResponse } from './category.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // Create Product Category Controllers
 const createProductCategory = catchAsync(async (req, res) => {
@@ -16,7 +17,7 @@ const createProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -32,7 +33,7 @@ const updateProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -56,7 +57,7 @@ const getAllProductCategories = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: formattedData,
   });
@@ -72,7 +73,7 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: formattedData,
   });
@@ -97,7 +98,7 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -112,7 +113,7 @@ const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -125,7 +126,7 @@ const softDeleteProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -138,7 +139,7 @@ const permanentDeleteProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

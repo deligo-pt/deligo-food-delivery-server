@@ -55,14 +55,6 @@ export const agreementMessages = {
     en: 'Agreement signed and submitted successfully!',
     pt: 'Contrato assinado e enviado com sucesso!',
   },
-  FETCH_SINGLE_SUCCESS: {
-    en: 'Agreement details loaded successfully.',
-    pt: 'Detalhes do contrato carregados com sucesso.',
-  },
-  FETCH_ALL_SUCCESS: {
-    en: 'Agreements loaded successfully.',
-    pt: 'Contratos carregados com sucesso.',
-  },
   INVALID_SIGNATURE_FORMAT: {
     en: 'Invalid signature image format. Please upload a valid image file.',
     pt: 'Formato de imagem de assinatura inválido. Envie um arquivo de imagem válido.',

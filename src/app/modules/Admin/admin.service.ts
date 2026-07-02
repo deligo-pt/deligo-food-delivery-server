@@ -85,7 +85,7 @@ const updateAdmin = async (
   }
 
   return {
-    messageKey: 'ADMIN_UPDATE_SUCCESS' as const,
+    messageKey: 'ADMIN_UPDATE_SUCCESS',
     data: updatedAdmin,
   };
 };
@@ -133,7 +133,7 @@ const adminDocImageUpload = async (
   }
 
   return {
-    messageKey: 'DOCUMENT_UPLOAD_SUCCESS' as const,
+    messageKey: 'DOCUMENT_UPLOAD_SUCCESS',
     data: existingAdmin,
   };
 };
@@ -150,7 +150,7 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
   const data = await admins.modelQuery;
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     meta,
     data,
   };
@@ -175,7 +175,7 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: existingAdmin,
   };
 };

@@ -35,7 +35,7 @@ const createProductCategory = async (
 
   const category = await ProductCategory.create(payload);
   return {
-    messageKey: 'CREATE_SUCCESS' as const,
+    messageKey: 'CREATE_SUCCESS',
     data: category,
   };
 };
@@ -101,7 +101,7 @@ const updateProductCategory = async (
   await category.save();
 
   return {
-    messageKey: 'PRODUCT_CATEGORY_UPDATE_SUCCESS' as const,
+    messageKey: 'PRODUCT_CATEGORY_UPDATE_SUCCESS',
     data: category,
   };
 };
@@ -140,7 +140,7 @@ const getAllProductCategories = async (
   ]);
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     meta,
     data,
   };
@@ -167,7 +167,7 @@ const getAllProductCategoriesPublic = async (
   ]);
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     meta,
     data,
   };
@@ -209,7 +209,7 @@ const getSingleProductCategory = async (
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: category,
   };
 };
@@ -226,7 +226,7 @@ const getSingleProductCategoryPublic = async (id: string) => {
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: category,
   };
 };
@@ -249,7 +249,7 @@ const softDeleteProductCategory = async (id: string) => {
   category.isDeleted = true;
   await category.save();
   return {
-    messageKey: 'SOFT_DELETE_SUCCESS' as const,
+    messageKey: 'SOFT_DELETE_SUCCESS',
   };
 };
 // Permanent Delete Product Category
@@ -265,7 +265,7 @@ const permanentDeleteProductCategory = async (id: string) => {
 
   await ProductCategory.findByIdAndDelete(id);
   return {
-    messageKey: 'PERMANENT_DELETE_SUCCESS' as const,
+    messageKey: 'PERMANENT_DELETE_SUCCESS',
   };
 };
 

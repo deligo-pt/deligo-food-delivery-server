@@ -48,7 +48,7 @@ const createBusinessCategory = async (
   const category = await BusinessCategory.create(categoryData);
 
   return {
-    messageKey: 'CREATE_SUCCESS' as const,
+    messageKey: 'CREATE_SUCCESS',
     data: category,
   };
 };
@@ -105,7 +105,7 @@ const updateBusinessCategory = async (
   await category.save();
 
   return {
-    messageKey: 'BUSINESS_CATEGORY_UPDATE_SUCCESS' as const,
+    messageKey: 'BUSINESS_CATEGORY_UPDATE_SUCCESS',
     data: category,
   };
 };
@@ -133,7 +133,7 @@ const getAllBusinessCategories = async (
   ]);
 
   return {
-    messageKey: 'DATA_LOAD_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     meta,
     data,
   };
@@ -158,7 +158,7 @@ const getAllBusinessCategoriesPublic = async (
     businessCategories.modelQuery,
   ]);
   return {
-    messageKey: 'DATA_LOAD_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     meta,
     data,
   };
@@ -182,7 +182,7 @@ const getSingleBusinessCategory = async (
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: category,
   };
 };
@@ -199,7 +199,7 @@ const getSingleBusinessCategoryPublic = async (id: string) => {
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
     data: category,
   };
 };
@@ -220,7 +220,7 @@ const softDeleteBusinessCategory = async (id: string) => {
   category.isDeleted = true;
   await category.save();
   return {
-    messageKey: 'SOFT_DELETE_SUCCESS' as const,
+    messageKey: 'SOFT_DELETE_SUCCESS',
   };
 };
 
@@ -236,7 +236,7 @@ const permanentDeleteBusinessCategory = async (id: string) => {
 
   await BusinessCategory.findByIdAndDelete(id);
   return {
-    messageKey: 'PERMANENT_DELETE_SUCCESS' as const,
+    messageKey: 'PERMANENT_DELETE_SUCCESS',
   };
 };
 

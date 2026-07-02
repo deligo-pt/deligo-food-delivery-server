@@ -65,14 +65,6 @@ export const addonMessages = {
     en: 'Option removed from the addon group successfully.',
     pt: 'Opção removida do grupo de adicionais com sucesso.',
   },
-  FETCH_ALL_SUCCESS: {
-    en: 'Addon groups loaded successfully.',
-    pt: 'Grupos de adicionais carregados com sucesso.',
-  },
-  FETCH_SINGLE_SUCCESS: {
-    en: 'Addon group details loaded successfully.',
-    pt: 'Detalhes do grupo de adicionais carregados com sucesso.',
-  },
   DELETE_NOT_FOUND_OR_UNAUTHORIZED: {
     en: 'Action denied or the addon group has already been deleted.',
     pt: 'Ação negada ou o grupo de adicionais já foi excluído.',

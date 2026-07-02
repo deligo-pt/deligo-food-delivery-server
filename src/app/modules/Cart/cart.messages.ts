@@ -28,14 +28,6 @@ export const cartMessages = {
     en: 'Your cart has been cleared.',
     pt: 'Seu carrinho foi limpo.',
   },
-  FETCH_ALL_SUCCESS: {
-    en: 'Cart details loaded successfully.',
-    pt: 'Detalhes do carrinho carregados com sucesso.',
-  },
-  FETCH_SINGLE_SUCCESS: {
-    en: 'Cart loaded successfully.',
-    pt: 'Carrinho carregado com sucesso.',
-  },
 
   // --- Service Error Messages ---
   CUSTOMER_ONLY_ACTION: {

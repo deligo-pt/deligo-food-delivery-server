@@ -39,14 +39,6 @@ export const productCategoryMessages = {
     en: 'Product category updated successfully',
     pt: 'Categoria de produto atualizada com sucesso',
   },
-  FETCH_ALL_SUCCESS: {
-    en: 'Product categories fetched successfully',
-    pt: 'Categorias de produtos recuperadas com sucesso',
-  },
-  FETCH_SINGLE_SUCCESS: {
-    en: 'Product category fetched successfully',
-    pt: 'Categoria de produto recuperada com sucesso',
-  },
   SOFT_DELETE_SUCCESS: {
     en: 'Product category deleted successfully',
     pt: 'Categoria de produto excluída com sucesso',
