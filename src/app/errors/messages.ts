@@ -200,7 +200,7 @@ export const localizedMessages = {
   ...checkoutMessages,
   ...contactMessages,
   ...customerMessages,
-  ...deliveryPartnerMessages,
+  ...deliveryPartnerMessages, // eto toko done
   ...fleetManagerMessages,
   ...globalSettingMessages,
   ...ingredientOrderMessages,

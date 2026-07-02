@@ -4,61 +4,61 @@ export const checkoutMessages = {
     pt: 'Seu carrinho está vazio. Por favor, adicione itens antes de prosseguir para o checkout.',
   },
   NO_ACTIVE_CART_ITEMS: {
-    en: 'There are no active items selected in your cart for checkout.',
-    pt: 'Não há itens ativos selecionados em seu carrinho para o checkout.',
+    en: 'Please select at least one active item to checkout.',
+    pt: 'Por favor, selecione pelo menos um item ativo para o checkout.',
   },
   DIRECT_CHECKOUT_SINGLE_ITEM_ONLY: {
-    en: 'Direct checkout option is restricted to a single item purchase only.',
-    pt: 'A opção de checkout direto é restrita à compra de apenas um único item.',
+    en: 'Direct checkout is restricted to a single item only.',
+    pt: 'O checkout direto é restrito a apenas um único item.',
   },
   PRODUCTS_NOT_FOUND: {
-    en: 'One or more products in your checkout request could not be located.',
-    pt: 'Um ou mais produtos em sua solicitação de checkout não puderam ser localizados.',
+    en: 'One or more items in your cart are no longer available.',
+    pt: 'Um ou mais itens no seu carrinho não estão mais disponíveis.',
   },
   PRODUCT_NOT_FOUND: {
-    en: 'The requested product could not be located in our system.',
-    pt: 'O produto solicitado não pôde ser localizado em nosso sistema.',
+    en: 'This item could not be found.',
+    pt: 'Este item não pôde ser encontrado.',
   },
   VENDOR_CLOSED: {
-    en: 'This store partner is currently closed and not accepting checkout orders.',
-    pt: 'Este parceiro comercial está fechado no momento e não está aceitando pedidos de checkout.',
+    en: 'This restaurant is currently closed and not accepting orders.',
+    pt: 'Este restaurante está fechado no momento e não está aceitando pedidos.',
   },
   NO_ACTIVE_DELIVERY_ADDRESS: {
-    en: 'No active delivery address associated with your profile was found.',
-    pt: 'Nenhum endereço de entrega ativo associado ao seu perfil foi encontrado.',
+    en: 'Please add a delivery address to complete your order.',
+    pt: 'Por favor, adicione um endereço de entrega para concluir seu pedido.',
   },
   DELIVERY_ADDRESS_INCOMPLETE: {
-    en: 'Your active delivery address information is incomplete. Please re-save your address details.',
-    pt: 'As informações do seu endereço de entrega ativo estão incompletas. Por favor, salve novamente os detalhes do seu endereço.',
+    en: 'Your delivery address is incomplete. Please update your address details.',
+    pt: 'Seu endereço de entrega está incompleto. Por favor, atualize os detalhes do seu endereço.',
   },
   VENDOR_LOCATION_NOT_FOUND: {
-    en: 'The geographical location coordinates for this store partner could not be found.',
-    pt: 'As coordenadas de localização geográfica deste parceiro comercial não puderam ser encontradas.',
+    en: 'Could not calculate delivery route. Restaurant location is missing.',
+    pt: 'Não foi possível calcular a rota de entrega. A localização do restaurante está ausente.',
   },
   CHECKOUT_SUCCESS: {
-    en: 'Checkout session finalized and processed successfully.',
-    pt: 'Sessão de checkout finalizada e processada com sucesso.',
+    en: 'Order placed successfully!',
+    pt: 'Pedido feito com sucesso!',
   },
   ORDER_VIEW_APPROVAL_REQUIRED: {
     en: (vars: { status: string }) =>
-      `You are not approved to view this order transaction. Your account status is currently ${vars.status.toLowerCase()}.`,
+      `Access denied. Your account status is currently ${vars.status.toLowerCase()}.`,
     pt: (vars: { status: string }) =>
-      `Você não está aprovado para visualizar esta transação de pedido. O status atual da sua conta é ${vars.status.toLowerCase()}.`,
+      `Acesso negado. O status atual da sua conta é ${vars.status.toLowerCase()}.`,
   },
   CHECKOUT_SUMMARY_NOT_FOUND: {
-    en: 'The requested checkout summary record could not be found.',
-    pt: 'O registro de resumo de checkout solicitado não pôde ser encontrado.',
+    en: 'Checkout details could not be found.',
+    pt: 'Os detalhes do checkout não foram encontrados.',
   },
   UNAUTHORIZED_TO_VIEW: {
-    en: 'Access denied. You lack the sufficient system privileges required to view this resource.',
-    pt: 'Acesso negado. Você não possui os privilégios de sistema suficientes necessários para visualizar este recurso.',
+    en: 'You do not have permission to view this checkout session.',
+    pt: 'Você não tem permissão para visualizar esta sessão de checkout.',
   },
   CHECKOUT_SUMMARY_ALREADY_CONVERTED: {
-    en: 'This checkout summary instance has already been processed and converted into a permanent order.',
-    pt: 'Este resumo de checkout já foi processado e convertido em um pedido permanente.',
+    en: 'This checkout has already been processed into an order.',
+    pt: 'Este checkout já foi processado em um pedido.',
   },
   CHECKOUT_SUMMARY_RETRIEVED_SUCCESS: {
-    en: 'Checkout session metrics and pricing breakdown summary retrieved successfully.',
-    pt: 'Métricas de sessão de checkout e resumo de detalhamento de preços recuperados com sucesso.',
+    en: 'Checkout summary loaded successfully.',
+    pt: 'Resumo do checkout carregado com sucesso.',
   },
 } as const;
