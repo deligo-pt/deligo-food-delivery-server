@@ -156,6 +156,7 @@ const getAdminDashboardAnalytics = async () => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Admin Dashboard Analytics' },
     data: {
       counts: {
         customers,
@@ -358,6 +359,7 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
   // --------------------------------------------------
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Vendor Dashboard Analytics' },
     data: {
       products: {
         total: products.length,
@@ -466,6 +468,7 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet Dashboard Analytics' },
     data: {
       cards: {
         totalPartners,
@@ -605,6 +608,7 @@ const getPartnerPerformanceAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Partners Performance Analytics' },
     data: {
       cards: {
         topPartnerDeliveries: topPartnerAggregation[0]?.count || 0,
@@ -716,6 +720,7 @@ const getDeliveryPartnerEarningAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery Partner Earnings Analytics' },
     data: {
       daily: roundTo2(report.dailyEarnings),
       weekly: roundTo2(report.weeklyEarnings),
@@ -834,6 +839,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet Manager Earnings Analytics' },
     data: {
       overview: {
         totalRevenue: totalRevenue,
@@ -1037,6 +1043,7 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Vendor earnings analytics' },
     data: {
       topCard: {
         totalEarnings: roundTo2(earnings.totalIncome),
@@ -1137,6 +1144,7 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Customer analytics', isPlural: true },
     meta: {
       page: pageNumber,
       limit: limitNumber,
@@ -1352,6 +1360,7 @@ const getVendorPerformanceAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Vendors performance', isPlural: true },
     data: {
       vendorPerformance: data.vendorPerformance,
       vendorPerformanceStat: data.vendorPerformanceStat[0] || {},
@@ -1484,6 +1493,7 @@ const getSingleVendorPerformanceDetails = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Vendor performance' },
     data: {
       vendorPerformance: {
         _id: vendor._id,
@@ -1640,6 +1650,7 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Offers', isPlural: true },
     data: {
       stats: {
         totalOffers: stats.totalOffers,
@@ -1794,6 +1805,7 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Tax Report', isPlural: false },
     data: {
       stats: {
         totalSales: roundTo2(stats.totalSales),
