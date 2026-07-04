@@ -1,77 +1,77 @@
 export const pointsMessages = {
   POINTS_ALREADY_GRANTED_FOR_ORDER: {
-    en: 'Points already granted for this order',
-    pt: 'Os pontos já foram atribuídos para este pedido',
+    en: 'Points have already been added for this order.',
+    pt: 'Os pontos já foram atribuídos para este pedido.',
   },
   ORDER_NOT_FOUND: {
-    en: 'Order not found.',
-    pt: 'Pedido não encontrado.',
+    en: 'The requested order could not be found.',
+    pt: 'O pedido solicitado não foi encontrado.',
   },
   ORDER_NOT_FOUND_SPECIFIED: {
-    en: 'The specified order was not found.',
+    en: 'The specified order could not be found.',
     pt: 'O pedido especificado não foi encontrado.',
   },
   UNAUTHORIZED_ORDER_NOT_BELONG_TO_USER: {
-    en: 'Unauthorized: This order does not belong to the specified user.',
-    pt: 'Não autorizado: Este pedido não pertence ao usuário especificado.',
+    en: 'Access denied. This order belongs to another profile.',
+    pt: 'Acesso negado. Este pedido pertence a outro perfil.',
   },
   UNAUTHORIZED_NOT_ASSIGNED_DELIVERY_PARTNER: {
-    en: 'Unauthorized: You are not the assigned delivery partner for this order.',
-    pt: 'Não autorizado: Você não é o parceiro de entrega atribuído a este pedido.',
+    en: 'Access denied. You are not the assigned delivery partner for this order.',
+    pt: 'Acesso negado. Você não é o parceiro de entrega atribuído a este pedido.',
   },
   POINTS_ONLY_FOR_DELIVERED_ORDER: {
     en: (vars: { status: string }) =>
-      `Points can only be earned for DELIVERED orders. Current status: ${vars.status}`,
+      `Points can only be earned for DELIVERED orders. Current status: ${vars.status}.`,
     pt: (vars: { status: string }) =>
-      `Os pontos só podem ser acumulados para pedidos ENTREGUES. Status atual: ${vars.status}`,
+      `Os pontos só podem ser acumulados para pedidos ENTREGUES. Status atual: ${vars.status}.`,
   },
   POINTS_CANNOT_BE_GRANTED_ORDER_STATUS: {
     en: (vars: { status: string }) =>
-      `Points cannot be granted. Order status is ${vars.status}, but it must be DELIVERED.`,
+      `Points cannot be granted. Order status must be DELIVERED. Current status: ${vars.status}.`,
     pt: (vars: { status: string }) =>
-      `Os pontos não podem ser atribuídos. O status do pedido é ${vars.status}, mas deve ser ENTREGUE.`,
+      `Os pontos não podem ser atribuídos. O status do pedido deve ser ENTREGUE. Status atual: ${vars.status}.`,
   },
   GLOBAL_SETTINGS_NOT_RETRIEVED: {
-    en: 'Global settings could not be retrieved.',
-    pt: 'Não foi possível recuperar as configurações globais.',
+    en: 'Global system configuration settings could not be found.',
+    pt: 'Não foi possível recuperar as configurações globais do sistema.',
   },
   ORDER_POINTS_ADDED_SUCCESS: {
-    en: 'Order points added successfully',
-    pt: 'Pontos do pedido adicionados com sucesso',
+    en: 'Order points added successfully!',
+    pt: 'Pontos do pedido adicionados com sucesso!',
   },
   DELIVERY_POINTS_ADDED_SUCCESS: {
-    en: 'Delivery points added successfully',
-    pt: 'Pontos de entrega adicionados com sucesso',
+    en: 'Delivery reward points added successfully!',
+    pt: 'Pontos de recompensa de entrega adicionados com sucesso!',
   },
   INSUFFICIENT_POINTS_BALANCE: {
-    en: 'Insufficient points balance. Transaction declined to prevent negative balance.',
-    pt: 'Saldo de pontos insuficiente. Transação recusada para evitar saldo negativo.',
+    en: 'Insufficient points balance.',
+    pt: 'Saldo de pontos insuficiente.',
   },
   POINTS_FETCHED_SUCCESS: {
-    en: 'Points fetched successfully',
-    pt: 'Pontos recuperados com sucesso',
+    en: 'Points balance loaded successfully.',
+    pt: 'Saldo de pontos carregado com sucesso.',
   },
   POINTS_NOT_FOUND: {
-    en: 'Points not found',
-    pt: 'Pontos não encontrados',
+    en: 'Points details could not be found.',
+    pt: 'Pontos não encontrados.',
   },
   POINTS_LOG_BACKUP_LOGGING_FAILED: {
-    en: 'PointsLog backup logging failed:',
-    pt: 'Falha no registro de backup do histórico de pontos:',
+    en: 'Failed to save points backup history.',
+    pt: 'Falha no registro de backup do histórico de pontos.',
   },
   CRITICAL_FAILED_TO_LOG_LOYALTY_ERROR: {
-    en: 'Critical: Failed to log loyalty error to database:',
-    pt: 'Crítico: Falha ao registrar erro de fidelidade no banco de dados:',
+    en: 'System error: Failed to log loyalty details.',
+    pt: 'Erro do sistema: Falha ao registrar detalhes de fidelidade.',
   },
   FAILED_PREFIX: {
-    en: (vars: { error: string }) => `FAILED: ${vars.error}`,
-    pt: (vars: { error: string }) => `FALHOU: ${vars.error}`,
+    en: (vars: { error: string }) => `Failed: ${vars.error}`,
+    pt: (vars: { error: string }) => `Falhou: ${vars.error}`,
   },
   ORDER_POINTS_EARNED_DESCRIPTION: {
     en: (vars: { points: number; amount: number }) =>
-      `Earned ${vars.points} points for order €${vars.amount}`,
+      `Earned ${vars.points} points for order value of ${vars.amount}`,
     pt: (vars: { points: number; amount: number }) =>
-      `Ganhou ${vars.points} pontos pelo pedido de €${vars.amount}`,
+      `Ganhou ${vars.points} pontos pelo valor do pedido de ${vars.amount}`,
   },
   DELIVERY_BONUS_DESCRIPTION: {
     en: (vars: { points: number; orderId: string }) =>
