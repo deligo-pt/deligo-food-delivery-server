@@ -43,10 +43,7 @@ export const ingredientOrderMessages = {
     en: 'Access denied. You do not have permission to change this order status.',
     pt: 'Acesso negado. Você não tem permissão para alterar o status deste pedido.',
   },
-  ORDER_NOT_FOUND: {
-    en: 'The specified order could not be found.',
-    pt: 'O pedido especificado não pôde ser encontrado.',
-  },
+
   CANNOT_UPDATE_UNPAID_ORDER: {
     en: 'Action restricted. Cannot update the status of an unpaid order.',
     pt: 'Ação restrita. Não é possível atualizar o status de um pedido não pago.',

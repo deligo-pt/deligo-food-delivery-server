@@ -3,10 +3,7 @@ export const ratingMessages = {
     en: 'You have already submitted a rating for this item in this order.',
     pt: 'Você já enviou uma avaliação para este item neste pedido.',
   },
-  ORDER_NOT_FOUND: {
-    en: 'The requested order could not be found.',
-    pt: 'O pedido solicitado não pôde ser encontrado.',
-  },
+
   NO_PRODUCTS_FOUND_IN_ORDER: {
     en: 'No items were found in this order.',
     pt: 'Nenhum produto encontrado neste pedido.',

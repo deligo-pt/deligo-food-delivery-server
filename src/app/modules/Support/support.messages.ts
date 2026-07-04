@@ -4,10 +4,6 @@ export const supportMessages = {
     en: 'No active ticket found for this user. Support agents cannot initialize new tickets.',
     pt: 'Nenhum ticket ativo encontrado para este usuário. Os agentes de suporte não podem iniciar novos tickets.',
   },
-  ORDER_NOT_FOUND: {
-    en: 'The requested order could not be found.',
-    pt: 'O pedido solicitado não pôde ser encontrado.',
-  },
   NOT_AUTHORIZED_FOR_ORDER_SUPPORT_TICKET: {
     en: 'You do not have permission to create a support ticket for this order.',
     pt: 'Você não tem permissão para criar um ticket de suporte para este pedido.',
