@@ -357,6 +357,7 @@ const getAllAddonGroups = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Addon Groups', isPlural: true },
     meta,
     data,
   };
@@ -380,6 +381,7 @@ const getSingleAddonGroup = async (id: string, currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Addon Group' },
     data: result,
   };
 };

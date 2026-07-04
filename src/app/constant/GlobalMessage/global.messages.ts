@@ -24,8 +24,18 @@ export const globalCommonMessages = {
   },
 
   DATA_LOAD_SUCCESS: {
-    en: 'Data loaded successfully.',
-    pt: 'Dados carregados com sucesso.',
+    en: (vars?: { entity?: string; isPlural?: boolean }) => {
+      if (!vars?.entity) return 'Data loaded successfully.';
+      return vars.isPlural
+        ? `${vars.entity} list loaded successfully.`
+        : `${vars.entity} details loaded successfully.`;
+    },
+    pt: (vars?: { entity?: string; isPlural?: boolean }) => {
+      if (!vars?.entity) return 'Dados carregados com sucesso.';
+      return vars.isPlural
+        ? `Lista de ${vars.entity.toLowerCase()} carregada com sucesso.`
+        : `Detalhes do ${vars.entity.toLowerCase()} carregados com sucesso.`;
+    },
   },
 
   // --- BULKGATE / OTP ERRORS ---
@@ -144,8 +154,7 @@ export const globalCommonMessages = {
   // --- REUSABLE GENERIC TEMPLATES (COMPAT MODE) ---
   COMMON_NOT_FOUND: {
     en: (vars: { entity: string }) => `${vars.entity} could not be found.`,
-    pt: (vars: { entity: string }) =>
-      `${vars.entity} nao pode ser encontrado.`,
+    pt: (vars: { entity: string }) => `${vars.entity} nao pode ser encontrado.`,
   },
   COMMON_ACTION_SUCCESS: {
     en: (vars: { entity: string; action: string }) =>
@@ -155,8 +164,7 @@ export const globalCommonMessages = {
   },
   COMMON_RETRIEVED_SUCCESS: {
     en: (vars: { entity: string }) => `${vars.entity} loaded successfully.`,
-    pt: (vars: { entity: string }) =>
-      `${vars.entity} carregado com sucesso.`,
+    pt: (vars: { entity: string }) => `${vars.entity} carregado com sucesso.`,
   },
   COMMON_LIST_RETRIEVED_SUCCESS: {
     en: (vars: { entityPlural: string }) =>
@@ -182,8 +190,7 @@ export const globalCommonMessages = {
   },
   COMMON_UPDATED_SUCCESS: {
     en: (vars: { entity: string }) => `${vars.entity} updated successfully.`,
-    pt: (vars: { entity: string }) =>
-      `${vars.entity} atualizado com sucesso.`,
+    pt: (vars: { entity: string }) => `${vars.entity} atualizado com sucesso.`,
   },
   COMMON_SOFT_DELETED_SUCCESS: {
     en: (vars: { entity: string }) => `${vars.entity} removed successfully.`,
