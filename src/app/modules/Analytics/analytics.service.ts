@@ -144,6 +144,7 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Sales Analytics' },
     data: {
       totalSales,
       bestPerformingDay,
@@ -323,6 +324,7 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Customer insights' },
     data: {
       summaryCards: {
         totalCustomers: {
@@ -528,6 +530,7 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Order Trend Insights' },
     data: {
       summary: {
         totalOrders: currentCount,
@@ -684,6 +687,7 @@ const getTopSellingItemsAnalytics = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Top Selling Items' },
     data: {
       summary: {
         totalItemsSold,
@@ -778,6 +782,7 @@ const getAdminSalesReportAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Sales Report' },
     data: {
       stats: {
         totalRevenue: roundTo2(stats.totalRevenue),
@@ -905,6 +910,7 @@ const getAdminOrderReportAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Order Report' },
     data: {
       stats: {
         totalRevenue: roundTo2(statsData.totalRevenue),
@@ -1026,6 +1032,7 @@ const getAdminCustomerReportAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Customer Report' },
     data: {
       stats: {
         totalCustomers: rawStats.totalCustomers || 0,
@@ -1125,6 +1132,7 @@ const getAdminVendorReportAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Vendor Report' },
     data: {
       stats: {
         totalVendors: approved + pending + submitted + rejected + blocked,
@@ -1240,6 +1248,7 @@ const getAdminFleetManagerReportAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet Manager Report' },
     data: {
       stats: {
         totalManagers: summary.totalManagers || 0,
@@ -1356,6 +1365,7 @@ const getAdminDeliveryPartnerReportAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery Partner Report' },
     data: {
       stats: {
         totalPartners: summary.totalPartners || 0,
@@ -1480,6 +1490,7 @@ const getVendorSalesReportAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Vendor Sales Report' },
     data: {
       stats,
       salesData: last7DaysData,
@@ -1712,6 +1723,7 @@ const getVendorCustomerReport = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Customers' },
     data: {
       stats: {
         totalCustomers: statsData.totalCustomers,
@@ -1985,6 +1997,7 @@ const getVendorTaxReport = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Vendor tax report' },
     data: {
       stats: {
         totalSales: Number(stats.totalSales.toFixed(2)),
@@ -2188,6 +2201,7 @@ const getFleetManagerPerformanceAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet performance', isPlural: true },
     data: {
       fleetPerformance: result.fleetPerformance,
 
@@ -2334,6 +2348,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet Performance' },
     data: {
       fleetPerformance,
       fleetWeeklyPerformance,
@@ -2347,6 +2362,7 @@ const getDeliveryPartnerPerformanceAnalytics = async (
   query: Record<string, unknown>,
 ): Promise<{
   messageKey: TMessageKey;
+  variables?: Record<string, string | number | boolean>;
   data: TPartnerPerformanceData;
   meta: TMeta;
 }> => {
@@ -2576,6 +2592,7 @@ const getDeliveryPartnerPerformanceAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery Partner Performance', isPlural: true },
     data: response,
     meta: {
       page: Number(page),
@@ -2692,6 +2709,7 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery Partner Performance' },
     data: {
       partnerPerformance,
       partnerMonthlyPerformance,
@@ -2838,6 +2856,7 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Platform Earnings' },
     data: {
       stats: {
         totalRevenue,
@@ -3164,6 +3183,7 @@ const getAdminSalesAnalytics = async (query: any) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Admin sales analytics' },
     data: {
       summary: {
         totalOrders: current.orderCount,
@@ -3364,6 +3384,7 @@ const getAdminCustomerInsights = async (query: {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Customer insights' },
     data: {
       summary: {
         newCustomers,
@@ -3567,6 +3588,7 @@ const getTopVendors = async (query: {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Top vendors', isPlural: true },
     data: {
       topSellingVendors: results.topSellingVendors || [],
       vendorPerformance: results.vendorPerformance || [],
@@ -3713,6 +3735,7 @@ const getPeakHourAnalytics = async (query: {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Peak Hour Analytics' },
     data: {
       hourlyOrders: hourlyOrders.map(({ hour, orderCount }) => ({
         hour,
@@ -4009,6 +4032,7 @@ const getDeliveryInsights = async (query: {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery insights' },
     data: {
       summary: {
         averageDeliveryTime: Number((summary.avgTime || 0).toFixed(1)),

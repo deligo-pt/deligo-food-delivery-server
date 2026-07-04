@@ -55,6 +55,7 @@ export interface DailyRevenueFacet {
 
 export interface SalesAnalyticsResponse {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     stats: {
       totalRevenue: number;
@@ -74,6 +75,7 @@ export interface SalesAnalyticsResponse {
 
 export interface OrderReportAnalyticsResponse {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     stats: {
       totalRevenue: number;
@@ -129,6 +131,7 @@ export interface OrderReportAnalyticsResponse {
 
 export type TVendorSalesReport = {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     stats: {
       totalSales: number;
@@ -192,6 +195,7 @@ export type TTopFleetPerformers = {
 
 export type TFleetPerformanceData = {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     fleetPerformance: TFleetManagerPerformance[];
     fleetPerformanceStat: TFleetPerformanceStat;
@@ -261,6 +265,7 @@ export type TPartnerPerformanceData = {
 
 export type TPartnerPerformanceDetailsData = {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     partnerPerformance: TDeliveryPartnerPerformance;
     partnerMonthlyPerformance: TPartnerMonthlyPerformance[];
@@ -295,6 +300,7 @@ export type TVendorRatingDistribution = {
 };
 export type TVendorInsights = {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     topSellingVendors: TTopSellingVendor[];
 
@@ -344,6 +350,7 @@ export type TRejectedDeliveryReason = {
 };
 export type TDeliveryInsights = {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     summary: TDeliverySummary;
 
@@ -388,6 +395,7 @@ export type THourlyOrders = {
 };
 export type TCustomerInsights = {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     summary: TCustomerSummary;
 
@@ -431,6 +439,7 @@ export type TRiderDemandGap = {
 // MAIN RESPONSE TYPE
 export type TPeakHoursInsights = {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     hourlyOrders: THourlyOrders[];
 
@@ -447,6 +456,7 @@ export type TPeakHoursInsights = {
 // vendor tax report
 export type TTaxReport = {
   messageKey: string;
+  variables?: Record<string, string | number | boolean>;
   data: {
     stats: {
       totalSales: number;
