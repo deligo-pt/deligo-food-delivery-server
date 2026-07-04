@@ -25,9 +25,39 @@ const getMyProfile = async (currentUser: TCurrentUser) => {
       status: currentUser.status,
     });
   }
+
+  const modelName = ROLE_COLLECTION_MAP[currentUser.role];
+
+  const model = mongoose.model(modelName);
+
+  if (!model) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_USER_ROLE_MAPPING');
+  }
+
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+
+  let profile;
+  if (!isVendor) {
+    profile = await model.findOne({
+      userId: currentUser.userId,
+      isDeleted: false,
+    });
+  }
+
+  if (isVendor) {
+    profile = await model
+      .findOne({ userId: currentUser.userId, isDeleted: false })
+      .populate('businessDetails.businessType')
+      .populate('cuisinesData');
+  }
+
+  if (!profile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
+  }
+
   return {
     messageKey: 'MY_PROFILE_RETRIEVED_SUCCESS' as TMessageKey,
-    data: currentUser,
+    data: profile,
   };
 };
 

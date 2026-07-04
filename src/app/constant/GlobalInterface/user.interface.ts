@@ -6,7 +6,6 @@ import { TLocalizedText } from './language.interface';
 export type TCurrentUser = {
   _id: mongoose.Types.ObjectId;
   userId: string;
-  moloniCustomerId?: number;
   name: {
     firstName: string;
     lastName: string;
