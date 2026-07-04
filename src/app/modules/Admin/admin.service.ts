@@ -151,6 +151,7 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Admins', isPlural: true },
     meta,
     data,
   };
@@ -176,6 +177,7 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Admin' },
     data: existingAdmin,
   };
 };
