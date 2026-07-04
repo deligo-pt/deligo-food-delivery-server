@@ -1,14 +1,17 @@
 export const testMessages = {
+  // --- Unique FCM & Notification Test Messages ---
   FCM_TOKEN_REQUIRED: {
-    en: 'FCM Token is required',
-    pt: 'O token FCM é obrigatório',
+    en: 'FCM verification token is required.',
+    pt: 'O token de verificação FCM é obrigatório.',
   },
   FCM_FAILED: {
-    en: (vars: { error: string }) => `FCM Failed: ${vars.error}`,
-    pt: (vars: { error: string }) => `Falha no FCM: ${vars.error}`,
+    en: (vars: { error: string }) =>
+      `Push notification test failed: ${vars.error}`,
+    pt: (vars: { error: string }) =>
+      `Falha no teste de notificação push: ${vars.error}`,
   },
   NOTIFICATION_SENT_SUCCESS: {
-    en: 'Notification sent successfully',
-    pt: 'Notificação enviada com sucesso',
+    en: 'Test push notification sent successfully.',
+    pt: 'Notificação push de teste enviada com sucesso.',
   },
 } as const;

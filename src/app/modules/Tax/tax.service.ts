@@ -171,9 +171,7 @@ const getAllTaxes = async (query: Record<string, unknown>) => {
 const getSingleTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_WITH_ID_NOT_FOUND', {
-      taxId,
-    });
+    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_NOT_FOUND');
   }
   return {
     messageKey: 'TAX_RETRIEVED_SUCCESS' as TMessageKey,
@@ -185,9 +183,7 @@ const getSingleTax = async (taxId: string) => {
 const softDeleteTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_WITH_ID_NOT_FOUND', {
-      taxId,
-    });
+    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_NOT_FOUND');
   }
   if (result.isActive) {
     throw new AppError(
@@ -209,9 +205,7 @@ const softDeleteTax = async (taxId: string) => {
 const permanentDeleteTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_WITH_ID_NOT_FOUND', {
-      taxId,
-    });
+    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORDS_NOT_FOUND');
   }
 
   if (!result.isDeleted) {
