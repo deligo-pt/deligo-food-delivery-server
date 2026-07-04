@@ -393,6 +393,7 @@ const getAgreementById = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Agreement' },
     data: agreement,
   };
 };
@@ -420,6 +421,7 @@ const getAllAgreements = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Agreements', isPlural: true },
     data,
     meta,
   };
