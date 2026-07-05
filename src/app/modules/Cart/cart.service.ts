@@ -995,6 +995,7 @@ const getAllCart = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Carts', isPlural: true },
     meta,
     data: paginatedData,
   };
@@ -1044,6 +1045,7 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
   if (!cart && currentUser.role === 'CUSTOMER') {
     return {
       messageKey: 'DATA_LOAD_SUCCESS',
+      variables: { entity: 'Cart' },
       data: {
         customerId: targetCustomerId,
         items: [],
@@ -1066,6 +1068,7 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cart' },
     data: cart,
   };
 };
