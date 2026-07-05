@@ -157,14 +157,6 @@ export const offerMessages = {
     en: 'You have reached the usage limit for this promo code.',
     pt: 'Você atingiu o limite de uso deste cupom.',
   },
-  AVAILABLE_OFFERS_FETCHED_SUCCESS: {
-    en: 'Available offers loaded successfully.',
-    pt: 'Ofertas disponíveis carregadas com sucesso.',
-  },
-  OFFERS_FETCHED_SUCCESS: {
-    en: 'Offers list loaded successfully.',
-    pt: 'Lista de ofertas carregada com sucesso.',
-  },
   OFFER_NOT_FOUND_OR_UNAVAILABLE: {
     en: 'Offer not found or currently unavailable.',
     pt: 'Oferta não encontrada ou indisponível no momento.',
@@ -172,10 +164,6 @@ export const offerMessages = {
   NOT_AUTHORIZED_TO_VIEW_OFFER: {
     en: 'You do not have permission to view this offer.',
     pt: 'Você não tem permissão para visualizar esta oferta.',
-  },
-  OFFER_FETCHED_SUCCESS: {
-    en: 'Offer details loaded successfully.',
-    pt: 'Detalhes da oferta carregados com sucesso.',
   },
   OFFER_ALREADY_DELETED: {
     en: 'This offer has already been deleted.',
