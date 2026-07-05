@@ -18,7 +18,7 @@ import { fleetManagerMessages } from '../modules/Fleet-Manager/fleet-manager.mes
 import { globalSettingMessages } from '../modules/GlobalSetting/globalSetting.messages';
 import { ingredientOrderMessages } from '../modules/Ingredient-Order/ing-order.messages';
 import { ingredientsMessages } from '../modules/Ingredients/ingredients.messages';
-import { notificationMessages } from '../modules/Notification/notificationMessages';
+import { notificationMessages } from '../modules/Notification/notification.messages';
 import { offerMessages } from '../modules/Offer/offer.messages';
 import { orderMessages } from '../modules/Order/order.messages';
 import { paymentMessages } from '../modules/Payment/payment.messages';

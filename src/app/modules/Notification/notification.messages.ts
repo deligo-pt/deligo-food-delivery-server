@@ -15,14 +15,6 @@ export const notificationMessages = {
     en: 'All notifications marked as read.',
     pt: 'Todas as notificações foram marcadas como lidas.',
   },
-  NOTIFICATIONS_RETRIEVED_SUCCESS: {
-    en: 'Notifications loaded successfully.',
-    pt: 'Notificações carregadas com sucesso.',
-  },
-  ALL_NOTIFICATIONS_RETRIEVED_SUCCESS: {
-    en: 'All notifications loaded successfully.',
-    pt: 'Todas as notificações carregadas com sucesso.',
-  },
   NOTIFICATION_NOT_FOUND_OR_ACCESS_DENIED: {
     en: 'Notification not found or access denied.',
     pt: 'Notificação não encontrada ou acesso negado.',
