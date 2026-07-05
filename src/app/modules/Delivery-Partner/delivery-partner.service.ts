@@ -301,7 +301,8 @@ const getAllDeliveryPartnersFromDB = async (
   const data = await deliveryPartners.modelQuery;
 
   return {
-    messageKey: 'DELIVERY_PARTNERS_RETRIEVED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery Partners', isPlural: true },
     meta,
     data,
   };
@@ -351,7 +352,8 @@ const getSingleDeliveryPartnerFromDB = async (
   }
 
   return {
-    messageKey: 'DELIVERY_PARTNER_RETRIEVED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery Partner' },
     data: existingDeliveryPartner,
   };
 };

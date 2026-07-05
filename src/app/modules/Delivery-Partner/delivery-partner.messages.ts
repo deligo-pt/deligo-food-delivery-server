@@ -85,16 +85,9 @@ export const deliveryPartnerMessages = {
     en: 'Verification document uploaded successfully.',
     pt: 'Documento de verificação enviado com sucesso.',
   },
-  DELIVERY_PARTNERS_RETRIEVED_SUCCESS: {
-    en: 'Delivery partners list loaded successfully.',
-    pt: 'Lista de parceiros de entrega carregada com sucesso.',
-  },
+
   ACCESS_DELIVERY_PARTNER_UNAUTHORIZED: {
     en: 'Access denied. You do not have permission to view this partner profile.',
     pt: 'Acesso negado. Você não tem permissão para visualizar este perfil de parceiro.',
-  },
-  DELIVERY_PARTNER_RETRIEVED_SUCCESS: {
-    en: 'Delivery partner details loaded successfully.',
-    pt: 'Detalhes do parceiro de entrega carregados com sucesso.',
   },
 } as const;
