@@ -32,7 +32,7 @@ const createCuisine = async (payload: TCuisine, image: string | null) => {
 
   const cuisine = await Cuisine.create(payload);
   return {
-    messageKey: 'CREATE_SUCCESS' as const,
+    messageKey: 'CREATE_SUCCESS',
     data: cuisine,
   };
 };
@@ -45,7 +45,7 @@ const updateCuisine = async (
 ) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   if (payload.name) {
@@ -89,7 +89,7 @@ const updateCuisine = async (
   await cuisine.save();
 
   return {
-    messageKey: 'UPDATE_SUCCESS' as const,
+    messageKey: 'CUISINE_UPDATE_SUCCESS',
     data: cuisine,
   };
 };
@@ -121,7 +121,8 @@ const getAllCuisines = async (
   ]);
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cuisines', isPlural: true },
     meta,
     data,
   };
@@ -145,7 +146,8 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
   ]);
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cuisines', isPlural: true },
     meta,
     data,
   };
@@ -155,18 +157,19 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
 const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   const { role } = currentUser;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
 
   if (!isAdmin && (cuisine.isDeleted || !cuisine.isActive)) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cuisine' },
     data: cuisine,
   };
 };
@@ -175,15 +178,16 @@ const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
 const getSingleCuisinePublic = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   if (cuisine.isDeleted || !cuisine.isActive) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cuisine' },
     data: cuisine,
   };
 };
@@ -192,7 +196,7 @@ const getSingleCuisinePublic = async (id: string) => {
 const softDeleteCuisine = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   if (cuisine.isDeleted === true) {
@@ -207,7 +211,7 @@ const softDeleteCuisine = async (id: string) => {
   await cuisine.save();
 
   return {
-    messageKey: 'SOFT_DELETE_SUCCESS' as const,
+    messageKey: 'SOFT_DELETE_SUCCESS',
   };
 };
 
@@ -215,7 +219,7 @@ const softDeleteCuisine = async (id: string) => {
 const permanentDeleteCuisine = async (id: string) => {
   const cuisine = await Cuisine.findById(id);
   if (!cuisine) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'CUISINE_NOT_FOUND');
   }
 
   if (cuisine.isDeleted === false) {
@@ -234,7 +238,7 @@ const permanentDeleteCuisine = async (id: string) => {
 
   await Cuisine.findByIdAndDelete(id);
   return {
-    messageKey: 'PERMANENT_DELETE_SUCCESS' as const,
+    messageKey: 'PERMANENT_DELETE_SUCCESS',
   };
 };
 

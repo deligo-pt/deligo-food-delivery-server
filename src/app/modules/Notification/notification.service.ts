@@ -12,7 +12,6 @@ import {
 } from './notification.interface';
 import { EmailHelper } from '../../utils/emailSender';
 import { AuthUser } from '../AuthUser/authUser.model';
-import { TMessageKey } from '../../errors/messages';
 
 //  Helper: Save Notification Log
 const logNotification = async ({
@@ -213,7 +212,7 @@ const markAsRead = async (id: string, currentUser: TCurrentUser) => {
   await notification.save();
 
   return {
-    messageKey: 'MARKED_AS_READ_SUCCESS' as TMessageKey,
+    messageKey: 'MARKED_AS_READ_SUCCESS',
     data: null,
   };
 };
@@ -225,7 +224,7 @@ const markAllAsRead = async (currentUser: TCurrentUser) => {
     { isRead: true },
   );
   return {
-    messageKey: 'MARK_ALL_AS_READ_SUCCESS' as TMessageKey,
+    messageKey: 'MARK_ALL_AS_READ_SUCCESS',
     data: null,
   };
 };
@@ -248,7 +247,8 @@ const getMyNotifications = async (
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
   return {
-    messageKey: 'NOTIFICATIONS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Notifications', isPlural: true },
     meta,
     data,
   };
@@ -273,7 +273,8 @@ const getAllNotifications = async (
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
   return {
-    messageKey: 'ALL_NOTIFICATIONS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Notifications', isPlural: true },
     meta,
     data,
   };
@@ -316,7 +317,7 @@ const softDeleteSingleNotification = async (
   await notification.save();
 
   return {
-    messageKey: 'NOTIFICATION_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'NOTIFICATION_DELETED_SUCCESS',
   };
 };
 
@@ -350,7 +351,7 @@ const softDeleteMultipleNotifications = async (
   });
 
   return {
-    messageKey: 'NOTIFICATIONS_DELETED_COUNT_SUCCESS' as TMessageKey,
+    messageKey: 'NOTIFICATIONS_DELETED_COUNT_SUCCESS',
     variables: { count: result.modifiedCount },
   };
 };
@@ -377,7 +378,7 @@ const softDeleteAllNotifications = async (currentUser: TCurrentUser) => {
   });
 
   return {
-    messageKey: 'NOTIFICATIONS_DELETED_COUNT_SUCCESS' as TMessageKey,
+    messageKey: 'NOTIFICATIONS_DELETED_COUNT_SUCCESS',
     variables: { count: result.modifiedCount },
   };
 };
@@ -415,7 +416,7 @@ const permanentDeleteSingleNotification = async (
   await Notification.deleteOne({ _id: id });
 
   return {
-    messageKey: 'NOTIFICATION_PERMANENT_DELETE_SUCCESS' as TMessageKey,
+    messageKey: 'NOTIFICATION_PERMANENT_DELETE_SUCCESS',
   };
 };
 
@@ -451,7 +452,7 @@ const permanentDeleteMultipleNotifications = async (
   }
 
   return {
-    messageKey: 'NOTIFICATIONS_PERMANENT_DELETED_COUNT_SUCCESS' as TMessageKey,
+    messageKey: 'NOTIFICATIONS_PERMANENT_DELETED_COUNT_SUCCESS',
     variables: { count: result.deletedCount },
   };
 };
@@ -477,7 +478,7 @@ const permanentDeleteAllNotifications = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'NOTIFICATIONS_PERMANENT_DELETED_COUNT_SUCCESS' as TMessageKey,
+    messageKey: 'NOTIFICATIONS_PERMANENT_DELETED_COUNT_SUCCESS',
     variables: { count: result.deletedCount },
   };
 };
@@ -589,7 +590,7 @@ const sendBroadcastNotification = async (
 
   return {
     success: true,
-    messageKey: 'BROADCAST_PROCESSING_STARTED' as TMessageKey,
+    messageKey: 'BROADCAST_PROCESSING_STARTED',
   };
 };
 

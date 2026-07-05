@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AnalyticsServices } from './analytics.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Morshed) -----------------------
@@ -15,7 +16,8 @@ const getVendorSalesAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'VENDOR_SALES_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -28,7 +30,8 @@ const getCustomerInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'CUSTOMER_INSIGHTS_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -41,7 +44,8 @@ const getOrderTrendInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'ORDER_TREND_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -54,7 +58,8 @@ const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'TOP_SELLING_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -66,7 +71,8 @@ const getAdminSalesReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'ADMIN_SALES_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -79,7 +85,8 @@ const getAdminOrderReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'ADMIN_ORDER_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -97,7 +104,8 @@ const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'ADMIN_CUSTOMER_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -115,7 +123,8 @@ const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'ADMIN_VENDOR_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -133,7 +142,8 @@ const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'ADMIN_FLEET_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -150,7 +160,8 @@ const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'ADMIN_PARTNER_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -164,7 +175,8 @@ const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'VENDOR_SALES_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -179,7 +191,8 @@ const getVendorCustomerReport = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'VENDOR_CUSTOMER_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -193,7 +206,8 @@ const getVendorTaxReport = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'VENDOR_TAX_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -207,7 +221,9 @@ const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'FLEET_PERFORMANCE_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
     data: result?.data,
   });
 });
@@ -224,7 +240,8 @@ const getSingleFleetPerformanceDetailsAnalytics = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      messageKey: 'SINGLE_FLEET_DETAILS_FETCH_SUCCESS',
+      messageKey: result?.messageKey as TMessageKey,
+      variables: result?.variables,
       data: result?.data,
     });
   },
@@ -239,7 +256,8 @@ const getDeliveryPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'PARTNER_PERFORMANCE_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -257,7 +275,8 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      messageKey: 'SINGLE_PARTNER_DETAILS_FETCH_SUCCESS',
+      messageKey: result?.messageKey as TMessageKey,
+      variables: result?.variables,
       data: result?.data,
     });
   },
@@ -270,7 +289,8 @@ const getPlatformEarnings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'PLATFORM_EARNINGS_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -283,7 +303,8 @@ const getAdminSalesAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'ADMIN_SALES_REPORT_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -295,7 +316,8 @@ const getAdminCustomerInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'CUSTOMER_INSIGHTS_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -307,7 +329,8 @@ const getTopVendors = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'TOP_VENDORS_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -319,7 +342,8 @@ const getPeakHourAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'PEAK_HOUR_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -331,7 +355,8 @@ const getDeliveryInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: 'DELIVERY_INSIGHTS_FETCH_SUCCESS',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

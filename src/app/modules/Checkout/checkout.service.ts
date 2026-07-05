@@ -113,7 +113,6 @@ const checkout = async (
 
     let basePrice = product.pricing?.price || 0;
 
-    // --- ১. লোকালইজড নাম অবজেক্ট প্রিপারেশন (en, pt দুটাই থাকবে) ---
     let finalItemNameObj = { en: '', pt: '' };
 
     if (payload.useCart && item.name && typeof item.name === 'object') {
@@ -136,7 +135,6 @@ const checkout = async (
       if (selectedOption) {
         basePrice = selectedOption.price;
 
-        // ডিরেক্ট চেকাউটের ক্ষেত্রে ভ্যারিয়েন্ট লেবেল অ্যাপেন্ড করা
         if (!payload.useCart) {
           const vLabelEn =
             typeof selectedOption.label === 'object'
@@ -162,7 +160,6 @@ const checkout = async (
     );
     const priceAfterStoreDiscount = roundTo2(basePrice - storeDiscountUnit);
 
-    // --- ২. অ্যাড-অনের লোকালইজড নাম অবজেক্ট প্রসেসিং ---
     const processedAddons = (item.addons || []).map((a: any) => {
       const aPrice = Number(a.unitPrice) || 0;
       const aQty = Number(a.quantity) || 0;
@@ -181,7 +178,7 @@ const checkout = async (
 
       return {
         optionId: a.optionId,
-        name: finalAddonNameObj, // অবজেক্ট আকারে অ্যাসাইন হলো
+        name: finalAddonNameObj,
         sku: a.sku,
         originalPrice: a.originalPrice,
         promoDiscountAmount: 0,
@@ -223,7 +220,7 @@ const checkout = async (
     return {
       productId: product._id,
       vendorId: product.vendorId,
-      name: finalItemNameObj, // অবজেক্ট হিসেবে ডেটাবেজে যাবে
+      name: finalItemNameObj,
       image: product.images?.[0] || '',
       hasVariations: product?.stock?.hasVariations || false,
       variationSku: item.variationSku || null,
@@ -373,7 +370,7 @@ const checkout = async (
 
   const summary = await CheckoutSummary.create(finalSummaryData);
   return {
-    messageKey: 'CHECKOUT_SUCCESS' as const,
+    messageKey: 'CHECKOUT_SUCCESS',
     data: summary,
   };
 };
@@ -406,7 +403,8 @@ const getCheckoutSummary = async (
   }
 
   return {
-    messageKey: 'CHECKOUT_SUMMARY_RETRIEVED_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Checkout Summary' },
     data: summary,
   };
 };

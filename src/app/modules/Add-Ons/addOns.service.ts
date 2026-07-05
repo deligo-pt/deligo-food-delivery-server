@@ -70,7 +70,7 @@ const createAddonGroup = async (
   );
 
   return {
-    messageKey: 'CREATE_SUCCESS' as const,
+    messageKey: 'CREATE_SUCCESS',
     data: result,
   };
 };
@@ -166,7 +166,7 @@ const updateAddonGroup = async (
   }
 
   return {
-    messageKey: 'UPDATE_SUCCESS' as const,
+    messageKey: 'ADDON_GROUP_UPDATE_SUCCESS',
     data: result,
   };
 };
@@ -238,7 +238,7 @@ const addOptionToAddonGroup = async (
   ).populate('options.tax', 'taxName taxCode taxRate');
 
   return {
-    messageKey: 'ADD_OPTION_SUCCESS' as const,
+    messageKey: 'ADD_OPTION_SUCCESS',
     data: result,
   };
 };
@@ -287,7 +287,7 @@ const toggleOptionStatus = async (
   ).populate('options.tax', 'taxName taxCode taxRate');
 
   return {
-    messageKey: 'TOGGLE_OPTION_SUCCESS' as const,
+    messageKey: 'TOGGLE_OPTION_SUCCESS',
     variables: { status: newStatus ? 'active' : 'inactive' },
     data: result,
   };
@@ -324,7 +324,7 @@ const deleteOptionFromAddonGroup = async (
   }
 
   return {
-    messageKey: 'DELETE_OPTION_SUCCESS' as const,
+    messageKey: 'DELETE_OPTION_SUCCESS',
     data: result,
   };
 };
@@ -356,7 +356,8 @@ const getAllAddonGroups = async (
   ]);
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Addon Groups', isPlural: true },
     meta,
     data,
   };
@@ -379,7 +380,8 @@ const getSingleAddonGroup = async (id: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Addon Group' },
     data: result,
   };
 };
@@ -406,7 +408,7 @@ const softDeleteAddonGroup = async (id: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'DELETE_SUCCESS' as const,
+    messageKey: 'DELETE_SUCCESS',
   };
 };
 export const AddOnsServices = {

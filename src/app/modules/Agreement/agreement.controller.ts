@@ -3,6 +3,7 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 const initiateAgreement = catchAsync(async (req, res) => {
   const payload = req.body;
@@ -13,7 +14,7 @@ const initiateAgreement = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -26,7 +27,7 @@ const verifyAgreementOtp = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -39,7 +40,7 @@ const resendAgreementOtp = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -54,7 +55,7 @@ const signAgreement = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -67,7 +68,8 @@ const getAgreementById = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -80,7 +82,8 @@ const getAllAgreements = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });

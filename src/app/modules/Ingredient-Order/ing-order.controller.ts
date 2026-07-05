@@ -3,6 +3,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { IngredientOrderService } from './ing-order.service';
+import { TMessageKey } from '../../errors/messages';
 
 const confirmIngredientOrder = catchAsync(async (req, res) => {
   const result = await IngredientOrderService.confirmIngredientOrder(
@@ -13,7 +14,7 @@ const confirmIngredientOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -27,7 +28,8 @@ const getMyIngredientOrders = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -41,7 +43,8 @@ const getAllIngredientOrdersForAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -54,7 +57,8 @@ const getSingleIngredientOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -73,7 +77,7 @@ const updateIngredientOrderStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     variables: result?.variables,
     data: result?.data,
   });

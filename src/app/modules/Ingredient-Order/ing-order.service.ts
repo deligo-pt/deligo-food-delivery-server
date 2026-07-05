@@ -13,7 +13,6 @@ import { Vendor } from '../Vendor/vendor.model';
 import { searchableFields } from './ing-order.constant';
 import { formatDateTime } from '../../utils/formatDateTime';
 import customNanoId from '../../utils/customNanoId';
-import { TMessageKey } from '../../errors/messages';
 
 // confirm ingredient order after reduniq payment success
 const confirmIngredientOrder = async (
@@ -118,7 +117,7 @@ const confirmIngredientOrder = async (
     );
 
     return {
-      messageKey: 'INGREDIENT_ORDER_CONFIRMED_SUCCESS' as TMessageKey,
+      messageKey: 'INGREDIENT_ORDER_CONFIRMED_SUCCESS',
       data: existingOrder,
     };
   } catch (err: unknown) {
@@ -127,7 +126,7 @@ const confirmIngredientOrder = async (
     }
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'INGREDIENT_ORDER_CONFIRMATION_FAILED' as TMessageKey,
+      'INGREDIENT_ORDER_CONFIRMATION_FAILED',
     );
   } finally {
     session.endSession();
@@ -164,7 +163,8 @@ const getMyIngredientOrders = async (
   const meta = await ingredientOrderQuery.countTotal();
 
   return {
-    messageKey: 'INGREDIENT_ORDERS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Ingredient Orders', isPlural: true },
     meta,
     data: result,
   };
@@ -195,7 +195,8 @@ const getAllIngredientOrdersForAdmin = async (
   const meta = await ingredientOrderQuery.countTotal();
 
   return {
-    messageKey: 'ALL_INGREDIENT_ORDERS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Ingredient Orders', isPlural: true },
     meta,
     data: result,
   };
@@ -236,7 +237,8 @@ const getSingleIngredientOrder = async (orderId: string) => {
   ];
 
   return {
-    messageKey: 'ORDER_DETAILS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Ingredient Order' },
     data: {
       ...order,
       timeline,
@@ -315,7 +317,7 @@ const updateIngredientOrderStatus = async (
   ).setOptions({ skipFilter: true });
 
   return {
-    messageKey: 'ORDER_STATUS_UPDATED' as TMessageKey,
+    messageKey: 'ORDER_STATUS_UPDATED',
     variables: { status },
     data: result,
   };

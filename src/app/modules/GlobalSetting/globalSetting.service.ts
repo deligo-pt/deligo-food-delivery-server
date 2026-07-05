@@ -5,7 +5,6 @@ import { TGlobalSettings } from './globalSetting.interface';
 import { GlobalSettings } from './globalSetting.model';
 import { ClientSession } from 'mongoose';
 import { flattenObject } from '../../utils/flattenObject';
-import { TMessageKey } from '../../errors/messages';
 
 // create global settings service
 const createGlobalSettings = async (
@@ -76,7 +75,7 @@ const createGlobalSettings = async (
   const settings = await GlobalSettings.create(payload);
 
   return {
-    messageKey: 'SETTINGS_CREATED_SUCCESS' as TMessageKey,
+    messageKey: 'SETTINGS_CREATED_SUCCESS',
     data: settings,
   };
 };
@@ -170,7 +169,7 @@ const updateGlobalSettings = async (
 
   if (Object.keys(payload).length === 0) {
     return {
-      messageKey: 'SETTINGS_UPDATED_SUCCESS' as TMessageKey,
+      messageKey: 'SETTINGS_UPDATED_SUCCESS',
       data: existingSettings,
     };
   }
@@ -196,7 +195,7 @@ const updateGlobalSettings = async (
   );
 
   return {
-    messageKey: 'SETTINGS_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'SETTINGS_UPDATED_SUCCESS',
     data: updatedSettings,
   };
 };
@@ -222,7 +221,8 @@ const getGlobalSettingsForAdmin = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'SETTINGS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Global Settings' },
     data: settings,
   };
 };

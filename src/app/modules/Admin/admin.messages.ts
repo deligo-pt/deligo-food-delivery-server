@@ -1,46 +1,38 @@
 export const adminMessages = {
   ADMIN_NOT_FOUND: {
-    en: 'Admin profile not found.',
-    pt: 'Perfil do administrador não encontrado.',
+    en: 'Admin profile could not be found.',
+    pt: 'Perfil do administrador não pôde ser encontrado.',
   },
   EMAIL_UNVERIFIED: {
-    en: 'Please verify your email address before proceeding.',
-    pt: 'Por favor, verifique seu endereço de e-mail antes de prosseguir.',
+    en: 'Please verify your email address to unlock all administrative features.',
+    pt: 'Por favor, verifique seu endereço de e-mail para desbloquear todos os recursos administrativos.',
   },
   UPDATE_LOCKED: {
-    en: 'Admin profile updates are currently locked. Please contact support.',
-    pt: 'As atualizações de perfil do administrador estão bloqueadas no momento. Por favor, entre em contato com o suporte.',
+    en: 'Profile modifications are temporarily locked. Please contact system support.',
+    pt: 'As modificações de perfil estão temporariamente bloqueadas. Por favor, entre em contato com o suporte do sistema.',
   },
   INVALID_GEO_ACCURACY: {
-    en: 'Geographic accuracy must be less than or equal to 100 meters.',
-    pt: 'A precisão geográfica deve ser menor ou igual a 100 metros.',
+    en: 'Location accuracy must be within 100 meters to proceed.',
+    pt: 'A precisão da localização deve ser de até 100 metros para prosseguir.',
   },
   UPDATE_UNAUTHORIZED: {
-    en: 'You do not have permission to update this admin account.',
-    pt: 'Você não tem permissão para atualizar esta conta de administrador.',
+    en: 'Access denied. You do not have permission to modify this administrator account.',
+    pt: 'Acesso negado. Você não tem permissão para modificar esta conta de administrador.',
   },
   UPDATE_FAILED: {
-    en: 'Failed to update admin profile details.',
-    pt: 'Falha ao atualizar os detalhes do perfil do administrador.',
+    en: "We couldn't update the profile details. Please try again.",
+    pt: 'Não foi possível atualizar os detalhes do perfil. Por favor, tente novamente.',
   },
-  UPDATE_SUCCESS: {
+  ADMIN_UPDATE_SUCCESS: {
     en: 'Admin profile updated successfully.',
     pt: 'Perfil do administrador atualizado com sucesso.',
   },
   DOCUMENT_UPLOAD_SUCCESS: {
-    en: 'Admin document updated successfully.',
-    pt: 'Documento do administrador atualizado com sucesso.',
-  },
-  FETCH_ALL_SUCCESS: {
-    en: 'Admins fetched successfully.',
-    pt: 'Administradores recuperados com sucesso.',
+    en: 'Administrative document uploaded and updated successfully.',
+    pt: 'Documento administrativo enviado e atualizado com sucesso.',
   },
   ACCESS_UNAUTHORIZED: {
-    en: 'You do not have permission to access this admin profile.',
-    pt: 'Você não tem permissão para acessar este perfil de administrador.',
-  },
-  FETCH_SINGLE_SUCCESS: {
-    en: 'Admin profile fetched successfully.',
-    pt: 'Perfil do administrador recuperado com sucesso.',
+    en: 'Access denied. You lack the required clearance to view this profile.',
+    pt: 'Acesso negado. Você não possui a autorização necessária para visualizar este perfil.',
   },
 } as const;

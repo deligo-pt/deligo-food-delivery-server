@@ -97,7 +97,7 @@ const initiateAgreement = async (
 
   // 10. Return response
   return {
-    messageKey: 'VERIFICATION_CODE_SENT' as const,
+    messageKey: 'VERIFICATION_CODE_SENT',
     data: {
       agreementId: agreement._id,
       email: agreement.email,
@@ -188,7 +188,7 @@ const verifyAgreementOtp = async (
 
   // 10. Return response
   return {
-    messageKey: 'VERIFY_AND_GENERATE_SUCCESS' as const,
+    messageKey: 'VERIFY_AND_GENERATE_SUCCESS',
     data: {
       agreementId: agreement._id,
       email: agreement.email,
@@ -255,7 +255,7 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
 
   // 8. Return response
   return {
-    messageKey: 'OTP_RESEND_SUCCESS' as const,
+    messageKey: 'OTP_RESEND_SUCCESS',
     data: {
       agreementId: agreement._id,
       email: normalizedEmail,
@@ -364,7 +364,7 @@ const signAgreement = async (
   await agreement.save();
 
   return {
-    messageKey: 'SIGN_SUCCESS' as const,
+    messageKey: 'SIGN_SUCCESS',
     data: {
       agreementId: agreement._id,
       signedPdfPath: agreement.signedPdfPath,
@@ -392,7 +392,8 @@ const getAgreementById = async (
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Agreement' },
     data: agreement,
   };
 };
@@ -419,7 +420,8 @@ const getAllAgreements = async (
   ]);
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Agreements', isPlural: true },
     data,
     meta,
   };

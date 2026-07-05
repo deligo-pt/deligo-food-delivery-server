@@ -1,58 +1,51 @@
 export const cuisineCategoryMessages = {
   ALREADY_EXISTS: {
-    en: 'Cuisine already exists. Please choose a different name.',
+    en: 'This cuisine already exists. Please choose a different name.',
     pt: 'Esta culinária já existe. Por favor, escolha um nome diferente.',
   },
   IMAGE_REQUIRED: {
-    en: 'Cuisine image is required',
-    pt: 'A imagem da culinária é obrigatória',
+    en: 'An image file is required for this cuisine.',
+    pt: 'Uma imagem é obrigatória para esta culinária.',
   },
-  NOT_FOUND: {
-    en: 'Cuisine not found',
-    pt: 'Culinária não encontrada',
+  CUISINE_NOT_FOUND: {
+    en: 'The requested cuisine could not be found.',
+    pt: 'A culinária solicitada não pôde ser encontrada.',
   },
   ALREADY_ACTIVE: {
-    en: 'Cuisine is already active',
-    pt: 'A culinária já está ativa',
+    en: 'This cuisine is already active.',
+    pt: 'Esta culinária já está ativa.',
   },
   ALREADY_INACTIVE: {
-    en: 'Cuisine is already inactive',
-    pt: 'A culinária já está inativa',
+    en: 'This cuisine is already inactive.',
+    pt: 'Esta culinária já está inativa.',
   },
   ALREADY_SOFT_DELETED: {
-    en: 'Cuisine already soft deleted',
-    pt: 'A culinária já foi excluída logicamente',
+    en: 'This cuisine has already been deactivated.',
+    pt: 'Esta culinária já foi desativada.',
   },
   CANNOT_DELETE_ACTIVE: {
-    en: 'Cannot delete an active cuisine. Turn it off first.',
-    pt: 'Não é possível excluir uma culinária ativa. Desative-a primeiro.',
+    en: 'An active cuisine cannot be deleted. Please deactivate it first.',
+    pt: 'Não é possível excluir uma culinária ativa. Por favor, desative-a primeiro.',
   },
   SOFT_DELETE_FIRST: {
-    en: 'Please soft delete the cuisine first',
-    pt: 'Por favor, realize a exclusão lógica da culinária primeiro',
+    en: 'This item must be deactivated before performing a permanent deletion.',
+    pt: 'Este item deve ser desativado antes de realizar a exclusão permanente.',
   },
   CREATE_SUCCESS: {
-    en: 'Cuisine created successfully',
-    pt: 'Culinária criada com sucesso',
+    en: 'Cuisine created successfully.',
+    pt: 'Culinária criada com sucesso.',
   },
-  UPDATE_SUCCESS: {
-    en: 'Cuisine updated successfully',
-    pt: 'Culinária atualizada com sucesso',
+  CUISINE_UPDATE_SUCCESS: {
+    en: 'Cuisine details updated successfully.',
+    pt: 'Detalhes da culinária atualizados com sucesso.',
   },
-  FETCH_ALL_SUCCESS: {
-    en: 'Cuisines fetched successfully',
-    pt: 'Culinárias recuperadas com sucesso',
-  },
-  FETCH_SINGLE_SUCCESS: {
-    en: 'Cuisine fetched successfully',
-    pt: 'Culinária recuperada com sucesso',
-  },
+
   SOFT_DELETE_SUCCESS: {
-    en: 'Cuisine soft deleted successfully',
-    pt: 'Culinária excluída logicamente com sucesso',
+    en: 'Cuisine removed successfully.',
+    pt: 'Culinária removida com sucesso.',
   },
   PERMANENT_DELETE_SUCCESS: {
-    en: 'Cuisine permanently deleted successfully',
-    pt: 'Culinária excluída permanentemente com sucesso',
+    en: 'Cuisine permanently purged from the system.',
+    pt: 'Culinária eliminada permanentemente do sistema.',
   },
 } as const;

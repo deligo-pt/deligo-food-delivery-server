@@ -142,7 +142,7 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   });
 
   return {
-    messageKey: 'OFFER_CREATED_SUCCESS' as TMessageKey,
+    messageKey: 'OFFER_CREATED_SUCCESS',
     data: offer,
   };
 };
@@ -300,7 +300,7 @@ const updateOffer = async (
   );
 
   return {
-    messageKey: 'OFFER_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'OFFER_UPDATED_SUCCESS',
     data: updatedOffer,
   };
 };
@@ -338,7 +338,7 @@ const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
   offer.isActive = !offer.isActive;
   const updatedOffer = await offer.save();
   return {
-    messageKey: 'OFFER_STATUS_TOGGLED_SUCCESS' as TMessageKey,
+    messageKey: 'OFFER_STATUS_TOGGLED_SUCCESS',
     variables: { isActive: updatedOffer?.isActive },
     data: updatedOffer,
   };
@@ -384,7 +384,7 @@ const validateAndApplyOffer = async (
     ).lean();
 
     return {
-      messageKey: 'OFFER_REMOVED_OR_INVALID' as TMessageKey,
+      messageKey: 'OFFER_REMOVED_OR_INVALID',
       data: updatedCheckout,
     };
   }
@@ -405,7 +405,7 @@ const validateAndApplyOffer = async (
   ).lean();
 
   return {
-    messageKey: 'OFFER_APPLIED_SUCCESS' as TMessageKey,
+    messageKey: 'OFFER_APPLIED_SUCCESS',
     data: updatedCheckout,
   };
 };
@@ -493,7 +493,8 @@ const getAvailableOffersForCheckout = async (
   });
 
   return {
-    messageKey: 'AVAILABLE_OFFERS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Available Offers', isPlural: true },
     data: availableOffers,
   };
 };
@@ -539,7 +540,8 @@ const getAllOffers = async (
   const meta = await offers.countTotal();
   const data = await offers.modelQuery;
   return {
-    messageKey: 'OFFERS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Offers', isPlural: true },
     meta,
     data,
   };
@@ -575,7 +577,8 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'OFFER_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Offer' },
     data: offer,
   };
 };
@@ -629,7 +632,7 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   await offer.save();
 
   return {
-    messageKey: 'OFFER_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'OFFER_DELETED_SUCCESS',
   };
 };
 
@@ -683,7 +686,7 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   await Offer.findByIdAndDelete(id);
 
   return {
-    messageKey: 'OFFER_PERMANENTLY_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'OFFER_PERMANENTLY_DELETED_SUCCESS',
   };
 };
 export const OfferServices = {

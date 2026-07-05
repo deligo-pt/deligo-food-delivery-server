@@ -1,6 +1,7 @@
 export const uploadMessages = {
+  // --- Unique Media Upload Success Messages ---
   FILES_UPLOADED_TO_CLOUDINARY_SUCCESS: {
-    en: 'Files uploaded to Cloudinary successfully',
-    pt: 'Arquivos carregados para o Cloudinary com sucesso',
+    en: 'Media files uploaded successfully.',
+    pt: 'Arquivos de mídia carregados com sucesso.',
   },
 } as const;

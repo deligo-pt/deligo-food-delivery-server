@@ -157,7 +157,6 @@ const registerUser = async (payload: TRegisterUser) => {
 
   return {
     messageKey: 'REGISTRATION_SUCCESS' as const,
-    variables: { role: currentRegisteringRole as string },
     data: {
       userId,
       email: formattedEmail,
@@ -759,7 +758,6 @@ const loginUser = async (
     accessToken,
     refreshToken,
     messageKey: 'LOGIN_SUCCESS' as const,
-    variables: { role: user?.role as string },
   };
 };
 
@@ -1026,7 +1024,6 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
       userRole === 'CUSTOMER'
         ? ('CUSTOMER_LOGOUT_SUCCESS' as const)
         : ('USER_LOGOUT_SUCCESS' as const),
-    variables: userRole === 'CUSTOMER' ? undefined : { role: userRole },
   };
 };
 

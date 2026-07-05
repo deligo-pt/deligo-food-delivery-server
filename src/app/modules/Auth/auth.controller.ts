@@ -13,7 +13,6 @@ const registerUser = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
-    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -86,7 +85,6 @@ const loginUser = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
-    variables: result?.variables,
     data: {
       accessToken,
       refreshToken,
@@ -133,7 +131,6 @@ const logoutUser = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey,
-    variables: result?.variables,
     data: null,
   });
 });

@@ -1,22 +1,23 @@
 export const walletMessages = {
+  // --- Global Mappings Block (To be handled by globalCommonMessages) ---
   WALLETS_RETRIEVED_SUCCESS: {
-    en: 'Wallets retrieved successfully',
-    pt: 'Carteiras recuperadas com sucesso',
+    en: 'Wallets loaded successfully.',
+    pt: 'Carteiras carregadas com sucesso.',
   },
   WALLET_NOT_FOUND: {
-    en: 'Wallet not found',
-    pt: 'Carteira não encontrada',
+    en: 'Wallet details could not be found.',
+    pt: 'Carteira não encontrada.',
   },
   NO_PERMISSION_TO_VIEW_WALLET: {
-    en: 'You do not have permission to view this wallet',
-    pt: 'Você não tem permissão para visualizar esta carteira',
+    en: 'Access denied. You do not have permission to view this wallet.',
+    pt: 'Você não tem permissão para visualizar esta carteira.',
   },
   WALLET_RETRIEVED_SUCCESS: {
-    en: 'Wallet retrieved successfully',
-    pt: 'Carteira recuperada com sucesso',
+    en: 'Wallet details loaded successfully.',
+    pt: 'Carteira recuperada com sucesso.',
   },
   WALLET_NOT_FOUND_FOR_USER: {
-    en: 'Wallet not found for this user',
-    pt: 'Carteira não encontrada para este usuário',
+    en: 'No wallet is currently linked to this user.',
+    pt: 'Carteira não encontrada para este usuário.',
   },
 } as const;

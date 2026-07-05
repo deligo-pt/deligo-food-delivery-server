@@ -251,7 +251,7 @@ const addToCart = async (
 
   await RedisService.set(expiryKey, '', 86400);
 
-  return { messageKey: 'ADD_TO_CART_SUCCESS' as const, data: cart };
+  return { messageKey: 'ADD_TO_CART_SUCCESS', data: cart };
 };
 
 // toggle cart item status service
@@ -369,8 +369,8 @@ const toggleCartItemStatus = async (
 
   return {
     messageKey: willBeActive
-      ? ('TOGGLE_ITEM_ACTIVE_SUCCESS' as const)
-      : ('TOGGLE_ITEM_DEACTIVE_SUCCESS' as const),
+      ? 'TOGGLE_ITEM_ACTIVE_SUCCESS'
+      : 'TOGGLE_ITEM_DEACTIVE_SUCCESS',
     data: cart,
   };
 };
@@ -558,7 +558,7 @@ const updateCartItemQuantity = async (
   await RedisService.set(expiryKey, '', 86400);
 
   return {
-    messageKey: 'QUANTITY_UPDATE_SUCCESS' as const,
+    messageKey: 'QUANTITY_UPDATE_SUCCESS',
     data: cart,
   };
 };
@@ -780,7 +780,7 @@ const updateAddonQuantity = async (
   const formattedCart = formatCartResponse(cart, lang);
 
   return {
-    messageKey: 'ADDON_QUANTITY_UPDATE_SUCCESS' as const,
+    messageKey: 'ADDON_QUANTITY_UPDATE_SUCCESS',
     data: formattedCart,
   };
 };
@@ -840,7 +840,7 @@ const deleteCartItem = async (
     await Cart.deleteOne({ customerId });
 
     return {
-      messageKey: 'REMOVE_ITEMS_SUCCESS' as const,
+      messageKey: 'REMOVE_ITEMS_SUCCESS',
       data: {
         customerId,
         items: [],
@@ -865,7 +865,7 @@ const deleteCartItem = async (
   await RedisService.set(expiryKey, '', 86400);
 
   return {
-    messageKey: 'REMOVE_ITEMS_SUCCESS' as const,
+    messageKey: 'REMOVE_ITEMS_SUCCESS',
     data: cart,
   };
 };
@@ -898,7 +898,7 @@ const clearCart = async (currentUser: TCurrentUser) => {
   await Cart.deleteOne({ customerId });
 
   return {
-    messageKey: 'CLEAR_CART_SUCCESS' as const,
+    messageKey: 'CLEAR_CART_SUCCESS',
     data: {
       customerId,
       items: [],
@@ -994,7 +994,8 @@ const getAllCart = async (
   };
 
   return {
-    messageKey: 'FETCH_ALL_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Carts', isPlural: true },
     meta,
     data: paginatedData,
   };
@@ -1043,7 +1044,8 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
   if (!cart && currentUser.role === 'CUSTOMER') {
     return {
-      messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+      messageKey: 'DATA_LOAD_SUCCESS',
+      variables: { entity: 'Cart' },
       data: {
         customerId: targetCustomerId,
         items: [],
@@ -1065,7 +1067,8 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
   }
 
   return {
-    messageKey: 'FETCH_SINGLE_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cart' },
     data: cart,
   };
 };

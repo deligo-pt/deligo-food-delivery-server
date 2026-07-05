@@ -26,7 +26,6 @@ import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
 import customNanoId from '../../utils/customNanoId';
 import { orderQueue } from '../../BullMQ/Queue/order.queue';
-import { TMessageKey } from '../../errors/messages';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { BusinessCategoryName } from '../Category/category.interface';
 
@@ -157,7 +156,7 @@ const createOrderAfterRedUniqPayment = async (
     });
 
     return {
-      messageKey: 'ORDER_CREATED_SUCCESS' as TMessageKey,
+      messageKey: 'ORDER_CREATED_SUCCESS',
       data: order,
     };
   } catch (err) {
@@ -504,7 +503,7 @@ const updateOrderStatusByVendor = async (
     await session.commitTransaction();
     session.endSession();
     return {
-      messageKey: 'ORDER_STATUS_UPDATED_SUCCESS_DYNAMIC' as TMessageKey,
+      messageKey: 'ORDER_STATUS_UPDATED_SUCCESS_DYNAMIC',
       variables: { status: action.type },
       data: order,
     };
@@ -673,7 +672,7 @@ const broadcastOrderToPartners = async (
   }
 
   return {
-    messageKey: 'ORDER_DISPATCHED_TO_PARTNERS' as TMessageKey,
+    messageKey: 'ORDER_DISPATCHED_TO_PARTNERS',
     variables: { count: partnerIds.length },
     data: orderDataForPopup,
   };
@@ -815,14 +814,14 @@ const partnerAcceptsDispatchedOrder = async (
       io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
-      return { data: null, messageKey: 'ORDER_REQUEST_EXPIRED' as TMessageKey };
+      return { data: null, messageKey: 'ORDER_REQUEST_EXPIRED' };
     }
 
     if (isRejectAction) {
       io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
-      return { data: null, messageKey: 'ORDER_REJECTED' as TMessageKey };
+      return { data: null, messageKey: 'ORDER_REJECTED' };
     }
 
     notifiedPartnerIds.forEach((id) => {
@@ -845,7 +844,7 @@ const partnerAcceptsDispatchedOrder = async (
       );
     }
 
-    return { data: resultData, messageKey: 'ORDER_ACCEPTED' as TMessageKey };
+    return { data: resultData, messageKey: 'ORDER_ACCEPTED' };
   } finally {
     session.endSession();
   }
@@ -965,7 +964,7 @@ const updateOrderStatusByDeliveryPartner = async (
   });
 
   return {
-    messageKey: 'ORDER_STATUS_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'ORDER_STATUS_UPDATED_SUCCESS',
     data: updatedOrder,
   };
 };
@@ -1048,7 +1047,7 @@ const getAllOrders = async (
   const data = await builder.modelQuery;
 
   return {
-    messageKey: 'ORDERS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'ORDERS_RETRIEVED_SUCCESS',
     meta,
     data,
   };
@@ -1117,7 +1116,7 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'ORDER_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'ORDER_RETRIEVED_SUCCESS',
     data: order,
   };
 };
@@ -1136,8 +1135,7 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
     );
   }
   return {
-    messageKey:
-      'DELIVERY_PARTNER_DISPATCH_ORDER_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'DELIVERY_PARTNER_DISPATCH_ORDER_FETCHED_SUCCESS',
     data: orders,
   };
 };
@@ -1168,7 +1166,7 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'NO_ORDER_FOUND_FOR_PARTNER');
   }
   return {
-    messageKey: 'DELIVERY_PARTNER_CURRENT_ORDER_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'DELIVERY_PARTNER_CURRENT_ORDER_FETCHED_SUCCESS',
     data: order,
   };
 };

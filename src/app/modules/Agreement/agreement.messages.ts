@@ -1,70 +1,62 @@
 export const agreementMessages = {
   AGREEMENT_ALREADY_EXISTS: {
-    en: 'An active commercial agreement has already been initialized for this email address.',
-    pt: 'Um contrato comercial ativo já foi inicializado para este endereço de e-mail.',
+    en: 'An active commercial agreement has already been set up for this email.',
+    pt: 'Um contrato comercial ativo já foi configurado para este e-mail.',
   },
   CREATE_FAILED: {
-    en: 'Failed to create the commercial agreement record.',
-    pt: 'Falha ao criar o registro do contrato comercial.',
+    en: "We couldn't create the commercial agreement. Please try again.",
+    pt: 'Não foi possível criar o contrato comercial. Por favor, tente novamente.',
   },
   VERIFICATION_CODE_SENT: {
-    en: 'Verification code sent successfully.',
-    pt: 'Código de verificação enviado com sucesso.',
+    en: 'A verification code has been sent successfully.',
+    pt: 'Um código de verificação foi enviado com sucesso.',
   },
   CREDENTIALS_REQUIRED: {
-    en: 'Agreement email address and verification OTP are required.',
-    pt: 'O endereço de e-mail do contrato e o OTP de verificação são obrigatórios.',
+    en: 'Please enter both the agreement email and the verification OTP.',
+    pt: 'Por favor, insira o e-mail do contrato e o OTP de verificação.',
   },
   AGREEMENT_NOT_FOUND: {
-    en: 'Commercial agreement record not found.',
-    pt: 'Registro de contrato comercial não encontrado.',
+    en: 'The requested commercial agreement could not be found.',
+    pt: 'O contrato comercial solicitado não pôde ser encontrado.',
   },
   ACTION_UNAUTHORIZED: {
-    en: 'You do not have permission to perform operations on this agreement.',
-    pt: 'Você não tem permissão para realizar operações neste contrato.',
+    en: 'Access denied. You do not have permission to manage this agreement.',
+    pt: 'Acesso negado. Você não tem permissão para gerenciar este contrato.',
   },
   EMAIL_ALREADY_VERIFIED: {
     en: 'This email address has already been verified.',
     pt: 'Este endereço de e-mail já foi verificado.',
   },
   INVALID_OR_EXPIRED_OTP: {
-    en: 'The provided verification code is invalid or has expired.',
-    pt: 'O código de verificação fornecido é inválido ou expirou.',
+    en: 'The code is invalid or has expired. Please request a new one.',
+    pt: 'O código é inválido ou expirou. Por favor, solicite um novo.',
   },
   VERIFY_AND_GENERATE_SUCCESS: {
-    en: 'Email verified and agreement generated successfully.',
-    pt: 'E-mail verificado e contrato gerado com sucesso.',
+    en: 'Email verified and agreement generated successfully!',
+    pt: 'E-mail verificado e contrato gerado com sucesso!',
   },
   EMAIL_REQUIRED: {
-    en: 'Agreement email address is required.',
-    pt: 'O endereço de e-mail do contrato é obrigatório.',
+    en: 'Please enter the agreement email address.',
+    pt: 'Por favor, insira o endereço de e-mail do contrato.',
   },
   OTP_RESEND_SUCCESS: {
-    en: 'Verification code resent successfully. Please check your inbox.',
-    pt: 'Código de verificação reenviado com sucesso. Por favor, verifique sua caixa de entrada.',
+    en: 'A new code has been sent. Please check your inbox or spam folder.',
+    pt: 'Um novo código foi enviado. Verifique sua caixa de entrada ou spam.',
   },
   NOT_READY_FOR_SIGNING: {
-    en: 'The agreement status is not eligible for signing.',
-    pt: 'O status do contrato não está elegível para assinatura.',
+    en: 'This agreement is not currently eligible for signing.',
+    pt: 'Este contrato não está elegível para assinatura no momento.',
   },
   EMAIL_VERIFICATION_REQUIRED: {
-    en: 'Please complete email verification before signing the document.',
-    pt: 'Por favor, conclua a verificação de e-mail antes de assinar o documento.',
+    en: 'Please verify your email address before signing the document.',
+    pt: 'Por favor, verifique seu endereço de e-mail antes de assinar o documento.',
   },
   SIGN_SUCCESS: {
-    en: 'Agreement signed and dispatched successfully.',
-    pt: 'Contrato assinado e enviado com sucesso.',
-  },
-  FETCH_SINGLE_SUCCESS: {
-    en: 'Agreement retrieved successfully.',
-    pt: 'Contrato recuperado com sucesso.',
-  },
-  FETCH_ALL_SUCCESS: {
-    en: 'Agreements retrieved successfully.',
-    pt: 'Contratos recuperados com sucesso.',
+    en: 'Agreement signed and submitted successfully!',
+    pt: 'Contrato assinado e enviado com sucesso!',
   },
   INVALID_SIGNATURE_FORMAT: {
-    en: 'The provided signature image format is invalid.',
-    pt: 'O formato da imagem de assinatura fornecido é inválido.',
+    en: 'Invalid signature image format. Please upload a valid image file.',
+    pt: 'Formato de imagem de assinatura inválido. Envie um arquivo de imagem válido.',
   },
 } as const;

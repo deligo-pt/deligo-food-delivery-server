@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { CartServices } from './cart.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatCartResponse } from './cart.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {
@@ -17,7 +18,7 @@ const addToCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -36,7 +37,7 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -53,7 +54,7 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -68,7 +69,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -85,7 +86,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -96,7 +97,7 @@ const clearCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -115,7 +116,8 @@ const getAllCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: formattedData,
   });
@@ -134,7 +136,8 @@ const viewCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });

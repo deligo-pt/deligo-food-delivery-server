@@ -9,7 +9,6 @@ import { TIngredients } from './ingredients.interface';
 import customNanoId from '../../utils/customNanoId';
 import { Tax } from '../Tax/tax.model';
 import { flattenObject } from '../../utils/flattenObject';
-import { TMessageKey } from '../../errors/messages';
 
 const createIngredient = async (
   payload: TIngredients,
@@ -59,7 +58,7 @@ const createIngredient = async (
   const newIngredient = await Ingredient.create(payload);
 
   return {
-    messageKey: 'INGREDIENT_CREATED_SUCCESS' as TMessageKey,
+    messageKey: 'INGREDIENT_CREATED_SUCCESS',
     data: newIngredient,
   };
 };
@@ -114,7 +113,7 @@ const updateIngredient = async (
   );
 
   return {
-    messageKey: 'INGREDIENT_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'INGREDIENT_UPDATED_SUCCESS',
     data: updatedIngredient,
   };
 };
@@ -125,7 +124,8 @@ const getIngredientDetails = async (sku: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
   }
   return {
-    messageKey: 'INGREDIENT_DETAILS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Ingredient' },
     data: result,
   };
 };
@@ -145,7 +145,8 @@ const getAllIngredients = async (query: Record<string, unknown>) => {
   const meta = await ingredientQuery.countTotal();
 
   return {
-    messageKey: 'INGREDIENTS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Ingredients', isPlural: true },
     meta,
     data: result,
   };
@@ -173,7 +174,7 @@ const softDeleteIngredient = async (ingredientId: string) => {
   );
 
   return {
-    messageKey: 'INGREDIENT_SOFT_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'INGREDIENT_SOFT_DELETED_SUCCESS',
     data: null,
   };
 };
@@ -203,7 +204,7 @@ const permanentDeleteIngredient = async (ingredientId: string) => {
   const result = await Ingredient.findByIdAndDelete(ingredientId);
 
   return {
-    messageKey: 'INGREDIENT_PERMANENTLY_REMOVED_SUCCESS' as TMessageKey,
+    messageKey: 'INGREDIENT_PERMANENTLY_REMOVED_SUCCESS',
     data: result,
   };
 };
