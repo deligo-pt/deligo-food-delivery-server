@@ -137,10 +137,6 @@ export const customerMessages = {
     pt: (vars: { status: string }) =>
       `Acesso negado. O status da sua conta (${vars.status.toLowerCase()}) restringe a visualização de listas de clientes.`,
   },
-  CUSTOMERS_RETRIEVED_SUCCESS: {
-    en: 'Customer list loaded successfully.',
-    pt: 'Lista de clientes carregada com sucesso.',
-  },
   VIEW_CUSTOMER_INFO_FORBIDDEN: {
     en: (vars: { status: string }) =>
       `Access denied. Your account status (${vars.status.toLowerCase()}) restricts viewing this information.`,
@@ -154,9 +150,5 @@ export const customerMessages = {
   REQUESTED_CUSTOMER_NOT_FOUND: {
     en: 'The requested customer profile could not be found.',
     pt: 'O perfil do cliente solicitado não pôde ser encontrado.',
-  },
-  CUSTOMER_RETRIEVED_SUCCESS: {
-    en: 'Customer profile loaded successfully.',
-    pt: 'Perfil do cliente carregado com sucesso.',
   },
 } as const;

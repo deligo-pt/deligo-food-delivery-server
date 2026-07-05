@@ -77,7 +77,7 @@ const updateCustomer = async (
   );
 
   return {
-    messageKey: 'CUSTOMER_UPDATED_SUCCESS' as const,
+    messageKey: 'CUSTOMER_UPDATED_SUCCESS',
     data: updated,
   };
 };
@@ -205,7 +205,7 @@ const updateCustomerLiveLocation = async (
 
   return {
     success: true,
-    messageKey: 'LIVE_LOCATION_UPDATED_SUCCESS' as const,
+    messageKey: 'LIVE_LOCATION_UPDATED_SUCCESS',
     data: {
       currentSessionLocation: updatedCustomer.currentSessionLocation,
       deliveryAddresses: updatedCustomer.deliveryAddresses,
@@ -333,7 +333,7 @@ const addDeliveryAddress = async (
     { runValidators: true, new: true },
   );
   return {
-    messageKey: 'DELIVERY_ADDRESS_ADDED_SUCCESS' as const,
+    messageKey: 'DELIVERY_ADDRESS_ADDED_SUCCESS',
     data: newDeliveryAddress,
   };
 };
@@ -439,7 +439,7 @@ const updateDeliveryAddress = async (
   );
 
   return {
-    messageKey: 'DELIVERY_ADDRESS_UPDATED_SUCCESS' as const,
+    messageKey: 'DELIVERY_ADDRESS_UPDATED_SUCCESS',
     data: updatedCustomer?.deliveryAddresses?.find(
       (addr: any) => addr._id?.toString() === addressId,
     ),
@@ -500,7 +500,7 @@ const toggleDeliveryAddressStatus = async (
 
   return {
     success: true,
-    messageKey: 'DELIVERY_ADDRESS_CHANGED_SUCCESS' as const,
+    messageKey: 'DELIVERY_ADDRESS_CHANGED_SUCCESS',
     data: selectedActiveAddress,
   };
 };
@@ -546,7 +546,7 @@ const deleteDeliveryAddress = async (
   );
 
   return {
-    messageKey: 'DELIVERY_ADDRESS_DELETED_SUCCESS' as const,
+    messageKey: 'DELIVERY_ADDRESS_DELETED_SUCCESS',
     data: null,
   };
 };
@@ -583,7 +583,8 @@ const getAllCustomersFromDB = async (
   const data = await customers.modelQuery;
 
   return {
-    messageKey: 'CUSTOMERS_RETRIEVED_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Customers', isPlural: true },
     meta,
     data,
   };
@@ -636,7 +637,8 @@ const getSingleCustomerFromDB = async (
   }
 
   return {
-    messageKey: 'CUSTOMER_RETRIEVED_SUCCESS' as const,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Customer' },
     data,
   };
 };
