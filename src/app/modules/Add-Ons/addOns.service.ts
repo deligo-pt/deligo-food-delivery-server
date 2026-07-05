@@ -39,7 +39,10 @@ const createAddonGroup = async (
       });
 
       if (existingTaxesCount !== taxIds.length) {
-        throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORDS_NOT_FOUND');
+        throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+          entity: 'Taxes',
+          isOneOrMore: true,
+        });
       }
     }
   }

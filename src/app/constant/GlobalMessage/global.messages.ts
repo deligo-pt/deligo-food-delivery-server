@@ -38,6 +38,35 @@ export const globalCommonMessages = {
     },
   },
 
+  NOT_FOUND_MESSAGE: {
+    en: (vars?: {
+      entity?: string;
+      isPlural?: boolean;
+      isOneOrMore?: boolean;
+    }) => {
+      if (!vars?.entity) return 'The requested resource could not be found.';
+      if (vars.isOneOrMore)
+        return `One or more assigned ${vars.entity.toLowerCase()} could not be found.`;
+
+      return vars.isPlural
+        ? `No ${vars.entity} were found.`
+        : `${vars.entity} could not be found.`;
+    },
+    pt: (vars?: {
+      entity?: string;
+      isPlural?: boolean;
+      isOneOrMore?: boolean;
+    }) => {
+      if (!vars?.entity) return 'O recurso solicitado não pôde ser encontrado.';
+      if (vars.isOneOrMore)
+        return `Um ou mais ${vars.entity.toLowerCase()} atribuídos não foram encontrados.`;
+
+      return vars.isPlural
+        ? `Nenhum ${vars.entity.toLowerCase()} foi encontrado.`
+        : `${vars.entity} não pôde ser encontrado.`;
+    },
+  },
+
   // --- BULKGATE / OTP ERRORS ---
   BULKGATE_CONFIGURATION_MISSING: {
     en: 'SMS service is temporarily unavailable. Please try another method.',
