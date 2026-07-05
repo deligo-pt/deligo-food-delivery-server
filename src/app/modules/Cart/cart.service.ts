@@ -93,8 +93,19 @@ const addToCart = async (
   if (!isRestaurant && quantity > availableStock)
     throw new AppError(httpStatus.BAD_REQUEST, 'INSUFFICIENT_STOCK');
 
-  const { discount = 0, taxRate = 0 } = existingProduct.pricing;
-  const unitDiscountAmount = roundTo2((selectedPrice * discount) / 100);
+  const {
+    discount = 0,
+    discountType = 'PERCENTAGE',
+    taxRate = 0,
+  } = existingProduct.pricing;
+
+  let unitDiscountAmount = 0;
+  if (discountType === 'FLAT') {
+    unitDiscountAmount = roundTo2(discount);
+  } else {
+    unitDiscountAmount = roundTo2((selectedPrice * discount) / 100);
+  }
+
   const priceAfterDiscount = roundTo2(selectedPrice - unitDiscountAmount);
 
   const productLineTotal = roundTo2(priceAfterDiscount * quantity);
@@ -143,11 +154,11 @@ const addToCart = async (
     },
     itemSummary: {
       quantity,
-      totalBeforeTax: productLineTotal,
+      totalBeforeTax: roundTo2(productLineTotal - productTaxAmount),
       totalTaxAmount: productTaxAmount,
       totalPromoDiscount: 0,
       totalProductDiscount: roundTo2(unitDiscountAmount * quantity),
-      grandTotal: roundTo2(productLineTotal + productTaxAmount),
+      grandTotal: productLineTotal,
     },
   };
 
@@ -222,14 +233,14 @@ const addToCart = async (
       );
 
       currentItem.itemSummary.totalBeforeTax = roundTo2(
-        newProductLineTotal + existingAddonsNet,
+        newProductLineTotal - newProductTax + existingAddonsNet,
       );
       currentItem.itemSummary.totalTaxAmount = roundTo2(
         newProductTax + existingAddonsTax,
       );
+
       currentItem.itemSummary.grandTotal = roundTo2(
-        currentItem.itemSummary.totalBeforeTax +
-          currentItem.itemSummary.totalTaxAmount,
+        newProductLineTotal + existingAddonsNet + existingAddonsTax,
       );
     } else {
       const activeItem = cart.items.find((i: any) => i.isActive === true);
