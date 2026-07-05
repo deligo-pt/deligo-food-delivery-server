@@ -57,6 +57,11 @@ const productSchema = new Schema<TProduct>(
         },
       },
       discount: { type: Number, default: 0 },
+      discountType: {
+        type: String,
+        enum: ['PERCENTAGE', 'FIXED'],
+        default: 'PERCENTAGE',
+      },
       taxId: {
         type: Schema.Types.ObjectId,
         ref: 'Tax',
@@ -101,39 +106,48 @@ const productSchema = new Schema<TProduct>(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
+    id: false,
   },
 );
 
-const getNetPriceAfterDiscount = (price: number, discount: number) => {
-  const discountedPrice = roundTo2((price * discount) / 100);
-  const discountedBase = roundTo2(price - discountedPrice);
-  return roundTo2(discountedBase);
-};
+productSchema.virtual('pricing.finalPrice').get(function () {
+  const vendorPrice = this.pricing?.price || 0;
+  const discountVal = this.pricing?.discount || 0;
+  const discountType = this.pricing?.discountType || 'PERCENTAGE';
 
-productSchema.virtual('pricing.discountedBasePrice').get(function () {
-  const price = this.pricing?.price || 0;
-  const discountPercent = this.pricing?.discount || 0;
-  const discountedPrice = roundTo2((price * discountPercent) / 100);
-  const discountedBase = roundTo2(price - discountedPrice);
-  return roundTo2(discountedBase);
+  let discountAmount = 0;
+  if (discountType === 'PERCENTAGE') {
+    discountAmount = roundTo2((vendorPrice * discountVal) / 100);
+  } else {
+    discountAmount = discountVal;
+  }
+
+  return roundTo2(vendorPrice - discountAmount);
+});
+
+productSchema.virtual('pricing.discountAmount').get(function () {
+  const vendorPrice = this.pricing?.price || 0;
+  const discountVal = this.pricing?.discount || 0;
+  const discountType = this.pricing?.discountType || 'PERCENTAGE';
+
+  if (discountType === 'PERCENTAGE') {
+    return roundTo2((vendorPrice * discountVal) / 100);
+  }
+  return roundTo2(discountVal);
 });
 
 productSchema.virtual('pricing.taxAmount').get(function () {
-  const netPriceAfterDiscount = getNetPriceAfterDiscount(
-    this.pricing.price,
-    this.pricing.discount || 0,
-  );
-  const tax = roundTo2(netPriceAfterDiscount * (this.pricing.taxRate / 100));
-  return tax;
+  const finalPrice = this.get('pricing.finalPrice');
+  const taxRate = this.pricing?.taxRate || 0; // ২৩
+
+  return roundTo2(finalPrice * (taxRate / 100));
 });
 
-productSchema.virtual('pricing.finalPrice').get(function () {
-  const netPriceAfterDiscount = getNetPriceAfterDiscount(
-    this.pricing.price,
-    this.pricing.discount || 0,
-  );
-  const tax = roundTo2(netPriceAfterDiscount * (this.pricing.taxRate / 100));
-  return roundTo2(netPriceAfterDiscount + tax);
+productSchema.virtual('pricing.basePrice').get(function () {
+  const finalPrice = this.get('pricing.finalPrice');
+  const taxAmount = this.get('pricing.taxAmount');
+
+  return roundTo2(finalPrice - taxAmount);
 });
 
 export const Product = model<TProduct>('Product', productSchema);
