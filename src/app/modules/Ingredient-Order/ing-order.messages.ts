@@ -19,6 +19,12 @@ export const ingredientOrderMessages = {
     en: 'Ingredient order has been successfully confirmed.',
     pt: 'O pedido de ingredientes foi confirmado com sucesso.',
   },
+
+  INGREDIENT_ORDER_CONFIRMATION_FAILED: {
+    en: 'Failed to confirm the order. Please try again.',
+    pt: 'Falha ao confirmar o pedido. Tente novamente.',
+  },
+
   FAILED_CONFIRM_ORDER: {
     en: 'Could not confirm the order due to a system error. Please try again.',
     pt: 'Não foi possível confirmar o pedido devido a um erro do sistema. Tente novamente.',
@@ -27,18 +33,7 @@ export const ingredientOrderMessages = {
     en: 'The requested merchant profile could not be found.',
     pt: 'O perfil do fornecedor solicitado não pôde ser encontrado.',
   },
-  INGREDIENT_ORDERS_RETRIEVED_SUCCESS: {
-    en: 'Ingredient order history loaded successfully.',
-    pt: 'Histórico de pedidos de ingredientes carregado com sucesso.',
-  },
-  ALL_INGREDIENT_ORDERS_RETRIEVED_SUCCESS: {
-    en: 'All ingredient orders loaded successfully.',
-    pt: 'Todos os pedidos de ingredientes carregados com sucesso.',
-  },
-  ORDER_DETAILS_RETRIEVED_SUCCESS: {
-    en: 'Order details loaded successfully.',
-    pt: 'Detalhes do pedido carregados com sucesso.',
-  },
+
   UNAUTHORIZED_UPDATE_ORDER_STATUS: {
     en: 'Access denied. You do not have permission to change this order status.',
     pt: 'Acesso negado. Você não tem permissão para alterar o status deste pedido.',
