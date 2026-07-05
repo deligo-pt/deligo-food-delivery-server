@@ -23,14 +23,6 @@ export const ingredientsMessages = {
     en: 'Ingredient details updated successfully.',
     pt: 'Detalhes do ingrediente atualizados com sucesso.',
   },
-  INGREDIENT_DETAILS_RETRIEVED_SUCCESS: {
-    en: 'Ingredient details loaded successfully.',
-    pt: 'Detalhes do ingrediente carregados com sucesso.',
-  },
-  INGREDIENTS_RETRIEVED_SUCCESS: {
-    en: 'Ingredients list loaded successfully.',
-    pt: 'Lista de ingredientes carregada com sucesso.',
-  },
   INGREDIENT_NOT_FOUND_OR_ALREADY_DELETED: {
     en: 'Ingredient not found or has already been deleted.',
     pt: 'Ingrediente não encontrado ou já foi excluído.',
