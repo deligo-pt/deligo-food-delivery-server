@@ -141,6 +141,7 @@ const getAllProductCategories = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Product Categories', isPlural: true },
     meta,
     data,
   };
@@ -168,6 +169,7 @@ const getAllProductCategoriesPublic = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Product Categories', isPlural: true },
     meta,
     data,
   };
@@ -210,6 +212,7 @@ const getSingleProductCategory = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Product Category' },
     data: category,
   };
 };
@@ -227,6 +230,7 @@ const getSingleProductCategoryPublic = async (id: string) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Product Category' },
     data: category,
   };
 };

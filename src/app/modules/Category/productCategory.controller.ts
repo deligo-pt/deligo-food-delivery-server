@@ -58,6 +58,7 @@ const getAllProductCategories = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: formattedData,
   });
@@ -74,6 +75,7 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: formattedData,
   });
@@ -99,6 +101,7 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -114,6 +117,7 @@ const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
