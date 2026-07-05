@@ -4,6 +4,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import { CheckoutServices } from './checkout.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatCheckoutResponse } from './checkout.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // checkout Controller
 const checkout = catchAsync(async (req, res) => {
@@ -17,7 +18,7 @@ const checkout = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -34,7 +35,8 @@ const getCheckoutSummary = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    messageKey: result?.messageKey,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });

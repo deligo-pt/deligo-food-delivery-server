@@ -57,8 +57,4 @@ export const checkoutMessages = {
     en: 'This checkout has already been processed into an order.',
     pt: 'Este checkout já foi processado em um pedido.',
   },
-  CHECKOUT_SUMMARY_RETRIEVED_SUCCESS: {
-    en: 'Checkout summary loaded successfully.',
-    pt: 'Resumo do checkout carregado com sucesso.',
-  },
 } as const;
