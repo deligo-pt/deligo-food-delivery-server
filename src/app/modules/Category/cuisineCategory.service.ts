@@ -122,6 +122,7 @@ const getAllCuisines = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cuisines', isPlural: true },
     meta,
     data,
   };
@@ -146,6 +147,7 @@ const getAllCuisinesPublic = async (query: Record<string, unknown>) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cuisines', isPlural: true },
     meta,
     data,
   };
@@ -167,6 +169,7 @@ const getSingleCuisine = async (id: string, currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cuisine' },
     data: cuisine,
   };
 };
@@ -184,6 +187,7 @@ const getSingleCuisinePublic = async (id: string) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Cuisine' },
     data: cuisine,
   };
 };
