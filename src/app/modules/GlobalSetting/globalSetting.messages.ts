@@ -57,8 +57,4 @@ export const globalSettingMessages = {
     en: 'Global configuration settings could not be found.',
     pt: 'Configurações globais de configuração não puderam ser encontradas.',
   },
-  SETTINGS_FETCHED_SUCCESS: {
-    en: 'Global platform settings loaded successfully.',
-    pt: 'Configurações globais da plataforma carregadas com sucesso.',
-  },
 } as const;
