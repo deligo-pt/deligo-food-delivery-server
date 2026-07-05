@@ -134,6 +134,7 @@ const getAllBusinessCategories = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Business Categories', isPlural: true },
     meta,
     data,
   };
@@ -159,6 +160,7 @@ const getAllBusinessCategoriesPublic = async (
   ]);
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Business Categories', isPlural: true },
     meta,
     data,
   };
@@ -183,6 +185,7 @@ const getSingleBusinessCategory = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Business Category' },
     data: category,
   };
 };
@@ -200,6 +203,7 @@ const getSingleBusinessCategoryPublic = async (id: string) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Business Category' },
     data: category,
   };
 };
