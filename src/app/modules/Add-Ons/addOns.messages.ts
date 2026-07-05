@@ -7,10 +7,6 @@ export const addonMessages = {
     en: 'An addon group with this title already exists. Please use a different name.',
     pt: 'Um grupo de adicionais com este título já existe. Por favor, use um nome diferente.',
   },
-  TAX_RECORDS_NOT_FOUND: {
-    en: 'One or more assigned tax profiles could not be found.',
-    pt: 'Um ou mais perfis de impostos atribuídos não foram encontrados.',
-  },
   CREATE_SUCCESS: {
     en: 'Addon group created successfully.',
     pt: 'Grupo de adicionais criado com sucesso.',
@@ -18,10 +14,6 @@ export const addonMessages = {
   TAX_RECORDS_INVALID: {
     en: 'The selected tax profiles are invalid or have been removed.',
     pt: 'Os perfis de impostos selecionados são inválidos ou foram removidos.',
-  },
-  GROUP_NOT_FOUND: {
-    en: 'The requested addon group could not be found.',
-    pt: 'O grupo de adicionais solicitado não pôde ser encontrado.',
   },
   UPDATE_NOT_FOUND_OR_UNAUTHORIZED: {
     en: 'Addon group not found or you do not have permission to modify it.',
@@ -46,10 +38,6 @@ export const addonMessages = {
   GROUP_OR_OPTION_NOT_FOUND: {
     en: 'The addon group or the selected option could not be found.',
     pt: 'O grupo de adicionais ou a opção selecionada não pôde ser encontrado.',
-  },
-  OPTION_NOT_FOUND: {
-    en: 'The selected option could not be found.',
-    pt: 'A opção selecionada não pôde ser encontrada.',
   },
   TOGGLE_OPTION_SUCCESS: {
     en: (vars: { status: string }) =>

@@ -121,7 +121,9 @@ const updateAddonGroup = async (
   if (payload.options && payload.options.length > 0) {
     const currentGroup = await AddonGroup.findById(id);
     if (!currentGroup) {
-      throw new AppError(httpStatus.NOT_FOUND, 'GROUP_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'addon group',
+      });
     }
 
     const groupTitleEnglish =
@@ -205,7 +207,9 @@ const addOptionToAddonGroup = async (
     isDeleted: false,
   });
   if (!group) {
-    throw new AppError(httpStatus.NOT_FOUND, 'GROUP_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'addon group',
+    });
   }
 
   const isDuplicate = group.options.some((opt) => {
@@ -270,7 +274,9 @@ const toggleOptionStatus = async (
   const currentOption = group.options.find((opt: any) => opt.sku === optionSku);
 
   if (!currentOption) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OPTION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'option',
+    });
   }
 
   const newStatus = !currentOption.isActive;
@@ -379,7 +385,9 @@ const getSingleAddonGroup = async (id: string, currentUser: TCurrentUser) => {
     .lean();
 
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'GROUP_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Addon Group',
+    });
   }
 
   return {
