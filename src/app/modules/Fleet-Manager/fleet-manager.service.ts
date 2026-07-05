@@ -11,7 +11,6 @@ import {
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { AuthUser } from '../AuthUser/authUser.model';
-import { TMessageKey } from '../../errors/messages';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -100,7 +99,7 @@ const fleetManagerUpdate = async (
   }
 
   return {
-    messageKey: 'FLEET_MANAGER_UPDATE_SUCCESS' as TMessageKey,
+    messageKey: 'FLEET_MANAGER_UPDATE_SUCCESS',
     data: updatedFleetManager,
   };
 };
@@ -167,7 +166,7 @@ const fleetManagerDocImageUpload = async (
   }
 
   return {
-    messageKey: 'DOC_IMAGE_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'DOC_IMAGE_UPDATED_SUCCESS',
     existingFleetManager,
   };
 };
@@ -221,7 +220,7 @@ const deleteFleetManagerDocument = async (
   await existingFleetManager.save();
 
   return {
-    messageKey: 'DOC_IMAGE_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'DOC_IMAGE_DELETED_SUCCESS',
     data: existingFleetManager.documents,
   };
 };
@@ -237,7 +236,8 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 
   const data = await fleetManagers.modelQuery;
   return {
-    messageKey: 'FLEET_MANAGERS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet Managers', isPlural: true },
     meta,
     data,
   };
@@ -273,7 +273,8 @@ const getSingleFleetManagerFromDB = async (
   }
 
   return {
-    messageKey: 'FLEET_MANAGER_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet Manager' },
     data: existingFleetManager,
   };
 };

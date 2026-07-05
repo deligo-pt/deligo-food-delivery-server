@@ -69,10 +69,6 @@ export const fleetManagerMessages = {
     en: 'Document image removed successfully.',
     pt: 'Imagem do documento removida com sucesso.',
   },
-  FLEET_MANAGERS_RETRIEVED_SUCCESS: {
-    en: 'Fleet managers list loaded successfully.',
-    pt: 'Lista de gestores de frota carregada com sucesso.',
-  },
   ACCESS_FLEET_MANAGER_UNAUTHORIZED_BANG: {
     en: 'Access denied. You do not have permission to view this fleet manager profile.',
     pt: 'Acesso negado. Você não tem permissão para visualizar este perfil de gestor de frota.',
@@ -80,9 +76,5 @@ export const fleetManagerMessages = {
   FLEET_MANAGER_NOT_FOUND_BANG: {
     en: 'Fleet manager profile could not be located.',
     pt: 'O perfil do gestor de frota não pôde ser localizado.',
-  },
-  FLEET_MANAGER_RETRIEVED_SUCCESS: {
-    en: 'Fleet manager details loaded successfully.',
-    pt: 'Detalhes do gestor de frota carregados com sucesso.',
   },
 } as const;

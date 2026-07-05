@@ -63,6 +63,7 @@ const getAllFleetManagers = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -79,6 +80,7 @@ const getSingleFleetManager = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
