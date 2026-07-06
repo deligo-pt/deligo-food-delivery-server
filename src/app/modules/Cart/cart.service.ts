@@ -233,14 +233,16 @@ const addToCart = async (
       );
 
       currentItem.itemSummary.totalBeforeTax = roundTo2(
-        newProductLineTotal - newProductTax + existingAddonsNet,
+        newProductLineTotal -
+          newProductTax +
+          (existingAddonsNet - existingAddonsTax),
       );
       currentItem.itemSummary.totalTaxAmount = roundTo2(
         newProductTax + existingAddonsTax,
       );
 
       currentItem.itemSummary.grandTotal = roundTo2(
-        newProductLineTotal + existingAddonsNet + existingAddonsTax,
+        newProductLineTotal + existingAddonsNet,
       );
     } else {
       const activeItem = cart.items.find((i: any) => i.isActive === true);
@@ -523,11 +525,10 @@ const updateCartItemQuantity = async (
     targetItem.addons.forEach((addon: any) => {
       const price = Number(addon.unitPrice) || Number(addon.price) || 0;
       const singleItemAddonQty = Number(addon.quantity) || 1;
+      const rate = Number(addon.taxRate) || 0;
 
       const addonSubtotal = roundTo2(price * singleItemAddonQty * currentQty);
-      const addonTaxValue = roundTo2(
-        addonSubtotal * ((Number(addon.taxRate) || 0) / 100),
-      );
+      const addonTaxValue = roundTo2(addonSubtotal * (rate / 100));
 
       addon.lineTotal = addonSubtotal;
       addon.taxAmount = addonTaxValue;
@@ -549,15 +550,17 @@ const updateCartItemQuantity = async (
   targetItem.itemSummary.totalProductDiscount = roundTo2(
     productDiscountAmount * currentQty,
   );
+
   targetItem.itemSummary.totalBeforeTax = roundTo2(
-    mainProductLineTotal + totalAddonsPrice,
+    mainProductLineTotal - mainProductTax + (totalAddonsPrice - totalAddonsTax),
   );
+
   targetItem.itemSummary.totalTaxAmount = roundTo2(
     mainProductTax + totalAddonsTax,
   );
+
   targetItem.itemSummary.grandTotal = roundTo2(
-    targetItem.itemSummary.totalBeforeTax +
-      targetItem.itemSummary.totalTaxAmount,
+    mainProductLineTotal + totalAddonsPrice,
   );
 
   await recalculateCartTotals(cart);
@@ -770,15 +773,14 @@ const updateAddonQuantity = async (
   const mainProductTax = targetItem.productPricing.taxAmount;
 
   targetItem.itemSummary.totalBeforeTax = roundTo2(
-    mainProductNet + totalAddonsNet,
+    mainProductNet - mainProductTax + (totalAddonsNet - totalAddonsTax),
   );
+
   targetItem.itemSummary.totalTaxAmount = roundTo2(
     mainProductTax + totalAddonsTax,
   );
-  targetItem.itemSummary.grandTotal = roundTo2(
-    targetItem.itemSummary.totalBeforeTax +
-      targetItem.itemSummary.totalTaxAmount,
-  );
+
+  targetItem.itemSummary.grandTotal = roundTo2(mainProductNet + totalAddonsNet);
 
   await recalculateCartTotals(cart);
 
