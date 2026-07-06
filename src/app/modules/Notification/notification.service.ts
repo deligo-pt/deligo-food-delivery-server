@@ -69,12 +69,17 @@ const sendPushSafely = async (
           errMsg.includes('not a valid FCM registration token') ||
           errMsg.includes('SenderId mismatch')
         ) {
+          if (!token || token.trim() === '') return;
+
           await AuthUser.updateOne(
             { 'loginDevices.fcmToken': token },
             {
-              $pull: {
-                loginDevices: { fcmToken: token },
+              $set: {
+                'loginDevices.$[elem].fcmToken': '',
               },
+            },
+            {
+              arrayFilters: [{ 'elem.fcmToken': token }],
             },
           );
         }

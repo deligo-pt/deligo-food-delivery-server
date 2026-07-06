@@ -84,6 +84,8 @@ function auth(...args: any[]) {
       role,
     });
 
+    console.log(authUser);
+
     if (!authUser) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'USER_NOT_FOUND');
     }
@@ -99,10 +101,12 @@ function auth(...args: any[]) {
       throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_BLOCKED');
     }
 
-    //7. Session Validation (Fixed TypeScript Error & Removed Duplication 🚀)
+    //7. Session Validation (Fixed TypeScript Error & Removed Duplication)
     const currentDeviceSession = authUser.loginDevices?.find(
       (device: any) => device.deviceId === deviceId,
     );
+
+    console.log(currentDeviceSession);
 
     if (!currentDeviceSession || currentDeviceSession.isLoggedIn === false) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'DEVICE_LOGGED_OUT');

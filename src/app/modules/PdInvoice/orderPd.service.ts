@@ -36,6 +36,8 @@ const mapOrderToPdPayload = (order: any, lang: TLanguageCode = 'en') => {
     let addons: any[] = [];
     if (item.addons && item.addons.length > 0) {
       addons = (item.addons || []).map((addon: any) => {
+        const addonRate = addon.taxRate || 0;
+        const addonTaxId = addonRate === 13 ? 2 : addonRate === 23 ? 1 : 3;
         const finalAddonName =
           addon.name && typeof addon.name === 'object'
             ? addon.name[lang] || addon.name['pt'] || addon.name['en'] || ''
@@ -46,7 +48,7 @@ const mapOrderToPdPayload = (order: any, lang: TLanguageCode = 'en') => {
           description: finalAddonName,
           quantity: Number(addon.quantity),
           price: roundTo2(addon.unitPrice),
-          tax_id: pdTaxId,
+          tax_id: addonTaxId,
         };
       });
     }

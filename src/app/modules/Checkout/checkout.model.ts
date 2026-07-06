@@ -50,7 +50,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
             productDiscountAmount: { type: Number, required: true, min: 0 },
             discountType: {
               type: String,
-              enum: ['PERCENTAGE', 'FIXED'],
+              enum: ['PERCENTAGE', 'FLAT'],
               required: true,
             },
             priceAfterProductDiscount: { type: Number, required: true, min: 0 },

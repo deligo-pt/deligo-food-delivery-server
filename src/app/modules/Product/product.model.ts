@@ -59,7 +59,7 @@ const productSchema = new Schema<TProduct>(
       discount: { type: Number, default: 0 },
       discountType: {
         type: String,
-        enum: ['PERCENTAGE', 'FIXED'],
+        enum: ['PERCENTAGE', 'FLAT'],
         default: 'PERCENTAGE',
       },
       taxId: {
