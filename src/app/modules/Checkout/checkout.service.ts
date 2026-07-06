@@ -22,7 +22,6 @@ const checkout = async (
 
   if (payload.useCart) {
     const dataKey = `cart:data:${customerId}`;
-
     let cart = await RedisService.get<any>(dataKey);
 
     if (!cart) {
@@ -96,10 +95,10 @@ const checkout = async (
     distanceData.meters <= 1000
       ? BASE_FIXED_DELIVERY_CHARGE || 0
       : roundTo2(distanceData.km * (globalSettings?.deliveryChargePerKm || 0));
-  const deliveryGrossRaw = deliveryChargeBase * (1 + deliveryVatRate / 100);
 
-  const totalDeliveryCharge = roundTo2(deliveryGrossRaw);
-  const deliveryVat = roundTo2(totalDeliveryCharge - deliveryChargeBase);
+  const totalDeliveryCharge = roundTo2(deliveryChargeBase);
+  const deliveryVat = roundTo2(totalDeliveryCharge * (deliveryVatRate / 100));
+  const deliveryChargeWithoutTax = roundTo2(totalDeliveryCharge - deliveryVat);
 
   const PLATFORM_COMMISSION_RATE =
     globalSettings?.platformCommissionPercent || 0;
@@ -112,7 +111,6 @@ const checkout = async (
     if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
     let basePrice = product.pricing?.price || 0;
-
     let finalItemNameObj = { en: '', pt: '' };
 
     if (payload.useCart && item.name && typeof item.name === 'object') {
@@ -155,16 +153,25 @@ const checkout = async (
 
     const qty = item.itemSummary?.quantity || item.quantity || 1;
 
-    const storeDiscountUnit = roundTo2(
-      basePrice * ((product.pricing?.discount || 0) / 100),
-    );
+    const discount = product.pricing?.discount || 0;
+    const discountType = product.pricing?.discountType || 'PERCENTAGE';
+
+    let storeDiscountUnit = 0;
+    if (discountType.toUpperCase() === 'FLAT') {
+      storeDiscountUnit = roundTo2(discount);
+    } else {
+      storeDiscountUnit = roundTo2((basePrice * discount) / 100);
+    }
+
     const priceAfterStoreDiscount = roundTo2(basePrice - storeDiscountUnit);
 
     const processedAddons = (item.addons || []).map((a: any) => {
       const aPrice = Number(a.unitPrice) || 0;
       const aQty = Number(a.quantity) || 0;
       const aTaxRate = Number(a.taxRate) || 0;
-      const addonLineNet = roundTo2(aPrice * aQty);
+
+      const addonLineTotal = roundTo2(aPrice * aQty);
+      const addonTaxAmount = roundTo2(addonLineTotal * (aTaxRate / 100));
 
       let finalAddonNameObj = { en: '', pt: '' };
       if (a.name && typeof a.name === 'object') {
@@ -184,9 +191,9 @@ const checkout = async (
         promoDiscountAmount: 0,
         unitPrice: a.unitPrice,
         quantity: a.quantity,
-        lineTotal: addonLineNet,
-        taxRate: a.taxRate || 0,
-        taxAmount: roundTo2(addonLineNet * (aTaxRate / 100)),
+        lineTotal: addonLineTotal,
+        taxRate: aTaxRate,
+        taxAmount: addonTaxAmount,
       };
     });
 
@@ -199,22 +206,21 @@ const checkout = async (
       0,
     );
 
-    const productLineNet = roundTo2(priceAfterStoreDiscount * qty);
+    const productLineTotal = roundTo2(priceAfterStoreDiscount * qty);
     const productTaxRate = product.pricing?.taxRate || 0;
-    const productTaxAmount = roundTo2(productLineNet * (productTaxRate / 100));
-
-    const itemTotalBeforeTax = roundTo2(productLineNet + totalAddonsLineTotal);
-    const itemTotalTax = roundTo2(productTaxAmount + totalAddonsTax);
-
-    const commAmt = roundTo2(
-      itemTotalBeforeTax * (PLATFORM_COMMISSION_RATE / 100),
+    const productTaxAmount = roundTo2(
+      productLineTotal * (productTaxRate / 100),
     );
+
+    const itemGrandTotal = roundTo2(productLineTotal + totalAddonsLineTotal);
+    const itemTotalTax = roundTo2(productTaxAmount + totalAddonsTax);
+    const itemTotalBeforeTax = roundTo2(itemGrandTotal - itemTotalTax);
+
+    const commAmt = roundTo2(itemGrandTotal * (PLATFORM_COMMISSION_RATE / 100));
     const commVat = roundTo2(commAmt * (COMMISSION_VAT_RATE / 100));
 
     const totalVendorDeduction = roundTo2(commAmt + commVat);
-    const vendorNetEarnings = roundTo2(
-      itemTotalBeforeTax + itemTotalTax - totalVendorDeduction,
-    );
+    const vendorNetEarnings = roundTo2(itemGrandTotal - totalVendorDeduction);
     const vendorEarningsWithoutTax = roundTo2(vendorNetEarnings - itemTotalTax);
 
     return {
@@ -228,10 +234,11 @@ const checkout = async (
       productPricing: {
         originalPrice: basePrice,
         productDiscountAmount: storeDiscountUnit,
+        discountType: discountType.toUpperCase(),
         priceAfterProductDiscount: priceAfterStoreDiscount,
         promoDiscountAmount: 0,
         unitPrice: priceAfterStoreDiscount,
-        lineTotal: productLineNet,
+        lineTotal: productLineTotal,
         taxRate: productTaxRate,
         taxAmount: productTaxAmount,
       },
@@ -241,7 +248,7 @@ const checkout = async (
         totalTaxAmount: itemTotalTax,
         totalPromoDiscount: 0,
         totalProductDiscount: roundTo2(storeDiscountUnit * qty),
-        grandTotal: roundTo2(itemTotalBeforeTax + itemTotalTax),
+        grandTotal: itemGrandTotal,
       },
       commission: {
         deliGoCommissionRate: PLATFORM_COMMISSION_RATE,
@@ -266,8 +273,9 @@ const checkout = async (
     (sum: number, i: any) => sum + i.itemSummary.totalProductDiscount,
     0,
   );
-  const taxableAmount = orderItems.reduce(
-    (sum: number, i: any) => sum + i.itemSummary.totalBeforeTax,
+
+  const totalItemsGrandTotal = orderItems.reduce(
+    (sum: number, i: any) => sum + i.itemSummary.grandTotal,
     0,
   );
   const totalTaxAmount = roundTo2(
@@ -287,12 +295,12 @@ const checkout = async (
   );
 
   const fleetFee = roundTo2(
-    deliveryChargeBase *
+    totalDeliveryCharge *
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
 
   const vendorNetPayout = roundTo2(
-    taxableAmount + totalTaxAmount - (totalCommAmt + totalCommVat),
+    totalItemsGrandTotal - (totalCommAmt + totalCommVat),
   );
   const vendorEarningsWithoutTax = roundTo2(vendorNetPayout - totalTaxAmount);
 
@@ -300,7 +308,7 @@ const checkout = async (
   const riderEarningsWithoutTax = roundTo2(riderNetEarnings - deliveryVat);
 
   const finalGrandTotal = roundTo2(
-    taxableAmount + totalTaxAmount + totalDeliveryCharge + serviceCharge,
+    totalItemsGrandTotal + totalDeliveryCharge + serviceCharge,
   );
 
   const finalSummaryData = {
@@ -317,15 +325,15 @@ const checkout = async (
       totalOriginalPrice: roundTo2(totalOriginalPrice),
       totalProductDiscount: roundTo2(totalProductDiscount),
       totalOfferDiscount: 0,
-      taxableAmount: roundTo2(taxableAmount),
+      taxableAmount: roundTo2(totalItemsGrandTotal),
       totalTaxAmount: roundTo2(totalTaxAmount),
       serviceCharge: roundTo2(serviceCharge),
     },
     delivery: {
-      charge: deliveryChargeBase,
+      charge: deliveryChargeWithoutTax,
       vatRate: globalSettings?.deliveryVatRate || 0,
-      vatAmount: roundTo2(deliveryGrossRaw - deliveryChargeBase),
-      totalDeliveryCharge: roundTo2(deliveryGrossRaw),
+      vatAmount: deliveryVat,
+      totalDeliveryCharge: totalDeliveryCharge,
       distance: roundTo2(distanceData.km),
       estimatedTime: distanceData.durationMinutes,
     },
