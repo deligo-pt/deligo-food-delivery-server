@@ -36,6 +36,7 @@ export type TOrderItemSnapshot = {
   productPricing: {
     originalPrice: number;
     productDiscountAmount: number;
+    discountType: 'PERCENTAGE' | 'FLAT';
     priceAfterProductDiscount: number;
     promoDiscountAmount: number;
     unitPrice: number;

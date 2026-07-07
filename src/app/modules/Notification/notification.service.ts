@@ -51,10 +51,11 @@ const sendPushSafely = async (
     channelId?: 'order_notification' | 'default';
   },
 ) => {
-  if (!tokens.length) return;
+  const validTokens = tokens.filter((token) => token && token.trim() !== '');
+  if (!validTokens.length) return;
 
   await Promise.allSettled(
-    tokens.map((token) =>
+    validTokens.map((token) =>
       sendPushNotification(token, payload).catch(async (err) => {
         const errCode = err?.errorInfo?.code || err?.code;
         const errMsg = err?.message || '';
@@ -69,11 +70,15 @@ const sendPushSafely = async (
           errMsg.includes('not a valid FCM registration token') ||
           errMsg.includes('SenderId mismatch')
         ) {
+          if (!token || token.trim() === '') return;
+
           await AuthUser.updateOne(
-            { 'loginDevices.fcmToken': token },
             {
-              $pull: {
-                loginDevices: { fcmToken: token },
+              'loginDevices.fcmToken': token,
+            },
+            {
+              $set: {
+                'loginDevices.$.fcmToken': '',
               },
             },
           );
@@ -101,13 +106,20 @@ const sendToUser = (
 
       if (!user) return;
 
+      // const deviceTokens =
+      //   user.loginDevices
+      //     ?.filter((device: any) => {
+      //       if (user.role === 'CUSTOMER') {
+      //         return !!device.fcmToken;
+      //       }
+      //       return device.isLoggedIn === true && device.fcmToken;
+      //     })
+      //     .map((device: any) => device.fcmToken) || [];
+
       const deviceTokens =
         user.loginDevices
           ?.filter((device: any) => {
-            if (user.role === 'CUSTOMER') {
-              return !!device.fcmToken;
-            }
-            return device.isLoggedIn === true && device.fcmToken;
+            return device.fcmToken && device.fcmToken.trim() !== '';
           })
           .map((device: any) => device.fcmToken) || [];
 
@@ -158,19 +170,27 @@ const sendToRole = (
         role: { $in: roles },
         loginDevices: {
           $elemMatch: {
-            isLoggedIn: true,
+            // isLoggedIn: true,
             fcmToken: { $exists: true, $ne: '' },
           },
         },
       });
 
       for (const user of users) {
+        // const deviceTokens =
+        //   user.loginDevices
+        //     ?.filter(
+        //       (device: any) => device.isLoggedIn === true && device.fcmToken,
+        //     )
+        //     .map((device: any) => device.fcmToken) || [];
+
         const deviceTokens =
           user.loginDevices
             ?.filter(
-              (device: any) => device.isLoggedIn === true && device.fcmToken,
+              (device: any) => device.fcmToken && device.fcmToken.trim() !== '',
             )
             .map((device: any) => device.fcmToken) || [];
+
         const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
 
         if (uniqueTokens.length > 0) {

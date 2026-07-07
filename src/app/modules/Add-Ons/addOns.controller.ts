@@ -94,9 +94,9 @@ const getAllAddonGroups = catchAsync(async (req, res) => {
 
   let formattedData;
   if (role === 'CUSTOMER') {
-    formattedData = formatAddonGroupResponse(result.data, req.lang);
+    formattedData = formatAddonGroupResponse(result?.data, req.lang);
   } else {
-    formattedData = result.data;
+    formattedData = result?.data;
   }
 
   sendResponse(res, {

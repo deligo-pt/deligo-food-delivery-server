@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { getPdAccessToken } from './getPdAccessToken';
 import config from '../../config';
@@ -5,7 +6,6 @@ import { Order } from '../Order/order.model';
 import { roundTo2 } from '../../utils/mathProvider';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const mapOrderToPdPayload = (order: any, lang: TLanguageCode = 'en') => {
   const details = order.items.flatMap((item: any) => {
     let productRef = item.variationSku || item.sku;
@@ -25,17 +25,21 @@ const mapOrderToPdPayload = (order: any, lang: TLanguageCode = 'en') => {
         ? item.name[lang] || item.name['pt'] || item.name['en'] || ''
         : item.name || '';
 
+    const productPricing = item.productPricing?.unitPrice;
+
     const mainItem = {
       product_reference: 'Food Items',
       description: finalProductName,
       quantity: Number(item.itemSummary.quantity),
-      price: roundTo2(item.productPricing.unitPrice),
+      price: roundTo2(productPricing),
       tax_id: pdTaxId,
     };
 
     let addons: any[] = [];
     if (item.addons && item.addons.length > 0) {
       addons = (item.addons || []).map((addon: any) => {
+        const addonRate = addon.taxRate || 0;
+        const addonTaxId = addonRate === 13 ? 2 : addonRate === 23 ? 1 : 3;
         const finalAddonName =
           addon.name && typeof addon.name === 'object'
             ? addon.name[lang] || addon.name['pt'] || addon.name['en'] || ''
@@ -46,7 +50,7 @@ const mapOrderToPdPayload = (order: any, lang: TLanguageCode = 'en') => {
           description: finalAddonName,
           quantity: Number(addon.quantity),
           price: roundTo2(addon.unitPrice),
-          tax_id: pdTaxId,
+          tax_id: addonTaxId,
         };
       });
     }
@@ -55,12 +59,15 @@ const mapOrderToPdPayload = (order: any, lang: TLanguageCode = 'en') => {
   });
 
   if ((order.delivery.charge ?? 0) > 0) {
-    const deliveryGrossPrice = order.delivery.charge;
+    const deliveryGrossPrice = order.delivery.totalDeliveryCharge;
+    const deliveryTaxRate = order.delivery.taxRate;
+    const deliveryTaxId =
+      deliveryTaxRate === 13 ? 2 : deliveryTaxRate === 23 ? 1 : 3;
     details.push({
       product_reference: 'DELIVERY',
       quantity: 1,
       price: roundTo2(deliveryGrossPrice),
-      tax_id: 1,
+      tax_id: deliveryTaxId,
     });
   }
 
@@ -84,7 +91,7 @@ const mapOrderToPdPayload = (order: any, lang: TLanguageCode = 'en') => {
     terminal_id: 1,
     transaction_document: 'FS',
     transaction_serial: 'A',
-    tax_included: false,
+    tax_included: true,
     details: details,
     payments: payments,
     send_email: true,
