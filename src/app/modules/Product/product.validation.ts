@@ -42,6 +42,7 @@ const createProductValidationSchema = z.object({
         .object({
           price: z.number().min(0, 'Price must be non-negative').optional(),
           discount: z.number().min(0).max(100).default(0),
+          discountType: z.enum(['PERCENTAGE', 'FLAT']).default('PERCENTAGE'),
           taxId: z.string({ required_error: 'Tax ID is required' }),
           currency: z.string().default('EUR'),
         })
@@ -105,6 +106,7 @@ const updateProductValidationSchema = z.object({
         .object({
           price: z.number().min(0).optional(),
           discount: z.number().min(0).max(100).optional(),
+          discountType: z.enum(['PERCENTAGE', 'FLAT']).optional(),
           taxId: z.string().optional(),
           currency: z.string().optional(),
         })

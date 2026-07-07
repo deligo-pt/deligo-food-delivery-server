@@ -42,6 +42,7 @@ const orderItemSchema = new Schema(
     productPricing: {
       originalPrice: { type: Number, required: true },
       productDiscountAmount: { type: Number, default: 0 },
+      discountType: { type: String, enum: ['PERCENTAGE', 'FLAT'] },
       priceAfterProductDiscount: { type: Number, required: true },
       promoDiscountAmount: { type: Number, default: 0 },
       unitPrice: { type: Number, required: true },

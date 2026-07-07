@@ -99,7 +99,7 @@ function auth(...args: any[]) {
       throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_BLOCKED');
     }
 
-    //7. Session Validation (Fixed TypeScript Error & Removed Duplication 🚀)
+    //7. Session Validation (Fixed TypeScript Error & Removed Duplication)
     const currentDeviceSession = authUser.loginDevices?.find(
       (device: any) => device.deviceId === deviceId,
     );

@@ -37,6 +37,7 @@ export type TProduct = {
   pricing: {
     price: number;
     discount: number;
+    discountType: 'PERCENTAGE' | 'FLAT';
     taxId: mongoose.Types.ObjectId;
     taxRate: number;
     currency: string;

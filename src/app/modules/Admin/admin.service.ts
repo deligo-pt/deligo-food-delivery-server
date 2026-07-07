@@ -23,7 +23,9 @@ const updateAdmin = async (
   );
 
   if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ADMIN_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Admin',
+    });
   }
 
   const adminProfile = existingAdmin?.profileId as any;
@@ -100,7 +102,9 @@ const adminDocImageUpload = async (
   const existingAdmin = await Admin.findOne({ userId: adminId });
 
   if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ADMIN_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Admin',
+    });
   }
 
   if (currentUser.role === 'ADMIN' && existingAdmin.isUpdateLocked) {
@@ -172,7 +176,9 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
   const existingAdmin = await Admin.findOne({ userId: adminId });
 
   if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ADMIN_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Admin',
+    });
   }
 
   return {

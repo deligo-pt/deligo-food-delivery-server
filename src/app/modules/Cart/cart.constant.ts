@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { roundTo2 } from '../../utils/mathProvider';
 import { TCart } from './cart.interface';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export const recalculateCartTotals = async (cart: TCart) => {
   const activeItems = cart.items.filter((i: any) => i.isActive === true);
 
@@ -25,7 +25,8 @@ export const recalculateCartTotals = async (cart: TCart) => {
       acc.totalOriginalPrice +=
         (productPricing.originalPrice || 0) * (itemSummary.quantity || 0);
       acc.totalProductDiscount += itemSummary.totalProductDiscount || 0;
-      acc.taxableAmount += itemSummary.totalBeforeTax || 0;
+
+      acc.taxableAmount += itemSummary.grandTotal || 0;
       acc.totalTaxAmount += itemSummary.totalTaxAmount || 0;
 
       return acc;
@@ -46,7 +47,7 @@ export const recalculateCartTotals = async (cart: TCart) => {
     totalProductDiscount: roundTo2(totals.totalProductDiscount),
     taxableAmount: roundTo2(totals.taxableAmount),
     totalTaxAmount: roundTo2(totals.totalTaxAmount),
-    grandTotal: roundTo2(totals.taxableAmount + totals.totalTaxAmount),
+    grandTotal: roundTo2(totals.taxableAmount),
   };
 
   return cart;

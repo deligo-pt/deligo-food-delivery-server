@@ -205,7 +205,9 @@ const softDeleteTax = async (taxId: string) => {
 const permanentDeleteTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORDS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'tax',
+    });
   }
 
   if (!result.isDeleted) {

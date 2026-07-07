@@ -1,8 +1,4 @@
 export const adminMessages = {
-  ADMIN_NOT_FOUND: {
-    en: 'Admin profile could not be found.',
-    pt: 'Perfil do administrador não pôde ser encontrado.',
-  },
   EMAIL_UNVERIFIED: {
     en: 'Please verify your email address to unlock all administrative features.',
     pt: 'Por favor, verifique seu endereço de e-mail para desbloquear todos os recursos administrativos.',
