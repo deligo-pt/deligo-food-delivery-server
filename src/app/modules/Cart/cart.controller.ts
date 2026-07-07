@@ -129,6 +129,7 @@ const viewCart = catchAsync(async (req, res) => {
   const result = await CartServices.viewCart(
     req.user as TCurrentUser,
     cartCustomerId,
+    req.lang,
   );
 
   const formattedData = formatCartResponse(result?.data, req.lang);

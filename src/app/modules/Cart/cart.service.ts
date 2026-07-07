@@ -14,6 +14,7 @@ import { TLanguageCode } from '../../constant/GlobalInterface/language.interface
 import { RedisService } from '../../config/redis';
 import { formatCartResponse } from './cart.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
+import { BusinessCategory } from '../Category/category.model';
 
 // Add cart Service
 const addToCart = async (
@@ -1015,7 +1016,11 @@ const getAllCart = async (
 };
 
 // view cart Service
-const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
+const viewCart = async (
+  currentUser: TCurrentUser,
+  cartCustomerId?: string,
+  lang: TLanguageCode = 'en',
+) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(httpStatus.FORBIDDEN, 'CART_VIEW_RESTRICTED', {
       status: currentUser.status,
@@ -1033,23 +1038,26 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
   const dataKey = `cart:data:${customerIdStr}`;
 
   let cart = await RedisService.get<any>(dataKey);
+  let isFromCache = true;
 
   if (!cart) {
-    let dbQuery = Cart.findOne({
+    isFromCache = false;
+    const dbCart = await Cart.findOne({
       customerId: targetCustomerId,
       isDeleted: false,
-    });
+    })
+      .populate({
+        path: 'items.vendorId',
+        select:
+          'rating businessDetails.businessName businessDetails.businessType documents.storePhoto',
+        populate: {
+          path: 'businessDetails.businessType',
+          model: 'BusinessCategory',
+          select: 'name',
+        },
+      })
+      .lean();
 
-    const populateOptions = getPopulateOptions(currentUser.role, {
-      customer: 'name',
-      itemVendor: 'name userId',
-    });
-
-    populateOptions.forEach((option) => {
-      dbQuery = dbQuery.populate(option);
-    });
-
-    const dbCart = await dbQuery.lean();
     if (dbCart) {
       cart = dbCart;
     }
@@ -1077,6 +1085,96 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
   if (!cart) {
     throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+  }
+
+  if (cart.items && cart.items.length > 0) {
+    if (isFromCache) {
+      const vendorIds = [
+        ...new Set(cart.items.map((item: any) => item.vendorId?.toString())),
+      ].filter(Boolean);
+
+      if (vendorIds.length > 0) {
+        const vendors = await Vendor.find({ _id: { $in: vendorIds } })
+          .select(
+            'rating businessDetails.businessName businessDetails.businessType documents.storePhoto',
+          )
+          .lean();
+
+        const businessTypeIds = [
+          ...new Set(
+            vendors
+              .map((v: any) => v.businessDetails?.businessType?.toString())
+              .filter(Boolean),
+          ),
+        ];
+
+        let businessTypeMap = new Map();
+        if (businessTypeIds.length > 0) {
+          const businessTypes = await BusinessCategory.find({
+            _id: { $in: businessTypeIds },
+          })
+            .select('name')
+            .lean();
+
+          businessTypeMap = new Map(
+            businessTypes.map((b) => [b._id.toString(), b]),
+          );
+        }
+
+        const populatedVendors = vendors.map((vendor: any) => {
+          const bTypeId = vendor.businessDetails?.businessType?.toString();
+          let formattedBusinessTypeName = '';
+
+          if (bTypeId && businessTypeMap.has(bTypeId)) {
+            const bTypeData = businessTypeMap.get(bTypeId);
+            formattedBusinessTypeName =
+              bTypeData.name?.[lang] || bTypeData.name?.['en'] || '';
+          }
+
+          return {
+            ...vendor,
+            businessDetails: {
+              ...vendor.businessDetails,
+              businessType: formattedBusinessTypeName,
+            },
+          };
+        });
+
+        const vendorMap = new Map(
+          populatedVendors.map((v) => [v._id.toString(), v]),
+        );
+
+        cart.items = cart.items.map((item: any) => {
+          if (item.vendorId) {
+            const fullVendorInfo = vendorMap.get(item.vendorId.toString());
+            return { ...item, vendorId: fullVendorInfo || item.vendorId };
+          }
+          return item;
+        });
+      }
+    } else {
+      cart.items = cart.items.map((item: any) => {
+        if (item.vendorId && typeof item.vendorId === 'object') {
+          const vendor = item.vendorId;
+          const bTypeData = vendor.businessDetails?.businessType;
+
+          let formattedBusinessTypeName = '';
+          if (bTypeData && typeof bTypeData === 'object') {
+            formattedBusinessTypeName =
+              bTypeData.name?.[lang] || bTypeData.name?.['en'] || '';
+          }
+
+          item.vendorId = {
+            ...vendor,
+            businessDetails: {
+              ...vendor.businessDetails,
+              businessType: formattedBusinessTypeName,
+            },
+          };
+        }
+        return item;
+      });
+    }
   }
 
   return {

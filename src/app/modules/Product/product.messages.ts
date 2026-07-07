@@ -9,12 +9,12 @@ export const productMessages = {
     pt: 'O preço é obrigatório quando não há variações.',
   },
   CATEGORY_NOT_FOUND: {
-    en: 'The requested category could not be found.',
-    pt: 'A categoria solicitada não pôde ser encontrada.',
+    en: 'The requested product category could not be found.',
+    pt: 'A categoria de produto solicitada não pôde ser encontrada.',
   },
   CATEGORY_NOT_UNDER_BUSINESS_TYPE: {
-    en: 'This category does not belong to your business type.',
-    pt: 'A categoria não pertence ao seu tipo de negócio.',
+    en: 'This product category does not belong to your business type.',
+    pt: 'A categoria de produto não pertence ao seu tipo de negócio.',
   },
   STOCK_MANAGEMENT_NOT_ALLOWED_FOR_RESTAURANTS: {
     en: 'Stock management is not available for restaurant accounts.',

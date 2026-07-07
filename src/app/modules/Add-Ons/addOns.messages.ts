@@ -1,6 +1,6 @@
 export const addonMessages = {
   VENDOR_NOT_APPROVED: {
-    en: 'Your merchant account is under review. You can manage addons once approved.',
+    en: 'Your vendor account is under review. You can manage addons once approved.',
     pt: 'Sua conta de fornecedor está em análise. Você poderá gerenciar adicionais assim que for aprovada.',
   },
   GROUP_ALREADY_EXISTS: {

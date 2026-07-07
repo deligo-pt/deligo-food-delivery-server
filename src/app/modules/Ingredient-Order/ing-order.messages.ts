@@ -30,7 +30,7 @@ export const ingredientOrderMessages = {
     pt: 'Não foi possível confirmar o pedido devido a um erro do sistema. Tente novamente.',
   },
   VENDOR_NOT_FOUND: {
-    en: 'The requested merchant profile could not be found.',
+    en: 'The requested vendor profile could not be found.',
     pt: 'O perfil do fornecedor solicitado não pôde ser encontrado.',
   },
 
