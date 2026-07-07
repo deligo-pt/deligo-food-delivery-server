@@ -52,7 +52,7 @@ export const paymentMessages = {
     pt: 'A validação do pedido falhou. Seu carrinho não pode estar vazio.',
   },
   VENDOR_NOT_FOUND: {
-    en: 'The requested merchant profile could not be found.',
+    en: 'The requested vendor profile could not be found.',
     pt: 'O perfil do fornecedor solicitado não pôde ser encontrado.',
   },
   INGREDIENT_NOT_FOUND: {

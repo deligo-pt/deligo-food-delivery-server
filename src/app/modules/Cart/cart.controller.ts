@@ -107,6 +107,7 @@ const getAllCart = catchAsync(async (req, res) => {
   const result = await CartServices.getAllCart(
     req.user as TCurrentUser,
     req.query,
+    req.lang,
   );
 
   const formattedData = result?.data.map((item) => {
@@ -129,6 +130,7 @@ const viewCart = catchAsync(async (req, res) => {
   const result = await CartServices.viewCart(
     req.user as TCurrentUser,
     cartCustomerId,
+    req.lang,
   );
 
   const formattedData = formatCartResponse(result?.data, req.lang);

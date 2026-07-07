@@ -1,8 +1,8 @@
 export const vendorMessages = {
   // --- Unique Validation & Business Logic Errors ---
   VENDOR_UPDATE_LOCKED_CONTACT_SUPPORT: {
-    en: 'Merchant profile configuration is locked. Please contact support.',
-    pt: 'A atualização do comerciante está bloqueada. Por favor, entre em contato com o suporte.',
+    en: 'Vendor profile configuration is locked. Please contact support.',
+    pt: 'A atualização do perfil do fornecedor está bloqueada. Por favor, entre em contato com o suporte.',
   },
   INVALID_BUSINESS_TYPE: {
     en: 'Invalid business type selected.',
@@ -21,8 +21,8 @@ export const vendorMessages = {
     pt: 'Tipo de cozinha inválido selecionado.',
   },
   FAILED_TO_UPDATE_VENDOR: {
-    en: 'Failed to update merchant profile.',
-    pt: 'Falha ao atualizar o perfil do comerciante.',
+    en: 'Failed to update vendor profile.',
+    pt: 'Falha ao atualizar o perfil do fornecedor.',
   },
   MAXIMUM_IMAGES_ALLOWED_FOR_DOCUMENT: {
     en: (vars: { title: string; existing: number; adding: number }) =>
@@ -57,16 +57,16 @@ export const vendorMessages = {
 
   // --- Unique Lifecycle Success & State Messages ---
   VENDOR_UPDATED_SUCCESS: {
-    en: 'Merchant profile updated successfully.',
-    pt: 'Comerciante atualizado com sucesso.',
+    en: 'Vendor profile updated successfully.',
+    pt: 'Perfil do fornecedor atualizado com sucesso.',
   },
   VENDOR_DOCUMENT_IMAGE_UPDATED_SUCCESS: {
-    en: 'Merchant document image updated successfully.',
-    pt: 'Imagem do documento do comerciante atualizada com sucesso.',
+    en: 'Vendor document image updated successfully.',
+    pt: 'Imagem do documento do fornecedor atualizada com sucesso.',
   },
   VENDOR_DOCUMENT_IMAGE_DELETED_SUCCESS: {
-    en: 'Merchant document image deleted successfully.',
-    pt: 'Imagem do documento do comerciante excluída com sucesso.',
+    en: 'Vendor document image deleted successfully.',
+    pt: 'Imagem do documento do fornecedor excluída com sucesso.',
   },
   LIVE_LOCATION_UPDATED_SUCCESS: {
     en: 'Live location coordinates updated successfully.',
@@ -81,13 +81,13 @@ export const vendorMessages = {
 
   // --- Global Mappings Block (To be handled by globalCommonMessages) ---
   VENDOR_NOT_FOUND_WITH_DOT: {
-    en: 'Merchant profile not found.',
-    pt: 'Comerciante não encontrado.',
+    en: 'Vendor profile not found.',
+    pt: 'Fornecedor não encontrado.',
   },
   NOT_AUTHORIZED_FOR_ACTION: { en: 'Access denied.', pt: 'Acesso negado.' },
   VENDOR_NOT_FOUND: {
-    en: 'Merchant profile not found.',
-    pt: 'Comerciante não encontrado.',
+    en: 'Vendor profile not found.',
+    pt: 'Fornecedor não encontrado.',
   },
   NOT_APPROVED_TO_UPDATE_LIVE_LOCATION: {
     en: 'Access denied.',
@@ -98,26 +98,26 @@ export const vendorMessages = {
     pt: 'Acesso negado.',
   },
   VENDOR_NOT_FOUND_OR_UPDATE_FAILED: {
-    en: 'Merchant profile not found or update failed.',
-    pt: 'Comerciante não encontrado ou falha na atualização.',
+    en: 'Vendor profile not found or update failed.',
+    pt: 'Fornecedor não encontrado ou falha na atualização.',
   },
   NOT_APPROVED_TO_TOGGLE_STORE: { en: 'Access denied.', pt: 'Acesso negado.' },
   NOT_APPROVED_TO_VIEW_VENDORS: { en: 'Access denied.', pt: 'Acesso negado.' },
   VENDORS_RETRIEVED_SUCCESS: {
-    en: 'Merchants loaded successfully.',
-    pt: 'Comerciantes carregados com sucesso.',
+    en: 'Vendors loaded successfully.',
+    pt: 'Fornecedores carregados com sucesso.',
   },
   NOT_AUTHORIZED_TO_ACCESS_VENDOR: {
     en: 'Access denied.',
     pt: 'Acesso negado.',
   },
   VENDOR_NOT_FOUND_WITH_EXCLAMATION: {
-    en: 'Merchant profile not found.',
-    pt: 'Comerciante não encontrado.',
+    en: 'Vendor profile not found.',
+    pt: 'Fornecedor não encontrado.',
   },
   VENDOR_RETRIEVED_SUCCESS: {
-    en: 'Merchant details loaded successfully.',
-    pt: 'Comerciante carregado com sucesso.',
+    en: 'Vendor details loaded successfully.',
+    pt: 'Detalhes do fornecedor carregados com sucesso.',
   },
   CUSTOMER_PROFILE_NOT_FOUND_SETUP_FIRST: {
     en: 'Profile not found. Please set up your account first.',
