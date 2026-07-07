@@ -933,6 +933,7 @@ const clearCart = async (currentUser: TCurrentUser) => {
 const getAllCart = async (
   currentUser: TCurrentUser,
   query: Record<string, unknown>,
+  lang: TLanguageCode = 'en',
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(httpStatus.FORBIDDEN, 'CART_VIEW_RESTRICTED', {
@@ -941,7 +942,7 @@ const getAllCart = async (
   }
 
   const redisKeys = await RedisService.keys('cart:data:*');
-  const redisCarts: any[] = [];
+  let redisCarts: any[] = [];
 
   if (redisKeys && redisKeys.length > 0) {
     for (const key of redisKeys) {
@@ -953,6 +954,77 @@ const getAllCart = async (
           updatedAt: new Date(),
         });
       }
+    }
+
+    const allRedisVendorIds = redisCarts.reduce((acc: string[], cart: any) => {
+      const ids = cart.items
+        .map((item: any) => item.vendorId?.toString())
+        .filter(Boolean);
+      return [...acc, ...ids];
+    }, []);
+    const uniqueRedisVendorIds = [...new Set(allRedisVendorIds)];
+
+    if (uniqueRedisVendorIds.length > 0) {
+      const vendors = await Vendor.find({ _id: { $in: uniqueRedisVendorIds } })
+        .select(
+          'rating businessDetails.businessName businessDetails.businessType documents.storePhoto',
+        )
+        .lean();
+
+      const businessTypeIds = [
+        ...new Set(
+          vendors
+            .map((v: any) => v.businessDetails?.businessType?.toString())
+            .filter(Boolean),
+        ),
+      ];
+
+      let businessTypeMap = new Map();
+      if (businessTypeIds.length > 0) {
+        const businessTypes = await BusinessCategory.find({
+          _id: { $in: businessTypeIds },
+        })
+          .select('name')
+          .lean();
+        businessTypeMap = new Map(
+          businessTypes.map((b) => [b._id.toString(), b]),
+        );
+      }
+
+      const vendorMap = new Map(
+        vendors.map((vendor: any) => {
+          const bTypeId = vendor.businessDetails?.businessType?.toString();
+          let formattedBusinessTypeName = '';
+
+          if (bTypeId && businessTypeMap.has(bTypeId)) {
+            const bTypeData = businessTypeMap.get(bTypeId);
+            formattedBusinessTypeName =
+              bTypeData.name?.[lang] || bTypeData.name?.['en'] || '';
+          }
+
+          return [
+            vendor._id.toString(),
+            {
+              ...vendor,
+              businessDetails: {
+                ...vendor.businessDetails,
+                businessType: formattedBusinessTypeName,
+              },
+            },
+          ];
+        }),
+      );
+
+      redisCarts = redisCarts.map((cart) => {
+        cart.items = cart.items.map((item: any) => {
+          if (item.vendorId) {
+            const fullVendorInfo = vendorMap.get(item.vendorId.toString());
+            return { ...item, vendorId: fullVendorInfo || item.vendorId };
+          }
+          return item;
+        });
+        return cart;
+      });
     }
   }
 
@@ -970,12 +1042,51 @@ const getAllCart = async (
     cartQuery.modelQuery = cartQuery.modelQuery.populate(option);
   });
 
+  cartQuery.modelQuery = cartQuery.modelQuery.populate({
+    path: 'items.vendorId',
+    select:
+      'rating businessDetails.businessName businessDetails.businessType documents.storePhoto',
+    populate: {
+      path: 'businessDetails.businessType',
+      model: 'BusinessCategory',
+      select: 'name',
+    },
+  });
+
   const dbCarts = await cartQuery.modelQuery;
 
-  const formattedDbCarts = dbCarts.map((dbCart: any) => ({
-    ...(dbCart.toObject ? dbCart.toObject() : dbCart),
-    status: 'abandoned',
-  }));
+  const formattedDbCarts = dbCarts.map((dbCart: any) => {
+    const cartObj = dbCart.toObject ? dbCart.toObject() : dbCart;
+
+    if (cartObj.items && cartObj.items.length > 0) {
+      cartObj.items = cartObj.items.map((item: any) => {
+        if (item.vendorId && typeof item.vendorId === 'object') {
+          const vendor = item.vendorId;
+          const bTypeData = vendor.businessDetails?.businessType;
+
+          let formattedBusinessTypeName = '';
+          if (bTypeData && typeof bTypeData === 'object') {
+            formattedBusinessTypeName =
+              bTypeData.name?.[lang] || bTypeData.name?.['en'] || '';
+          }
+
+          item.vendorId = {
+            ...vendor,
+            businessDetails: {
+              ...vendor.businessDetails,
+              businessType: formattedBusinessTypeName,
+            },
+          };
+        }
+        return item;
+      });
+    }
+
+    return {
+      ...cartObj,
+      status: 'abandoned',
+    };
+  });
 
   const combinedData = [...redisCarts];
 

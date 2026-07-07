@@ -107,6 +107,7 @@ const getAllCart = catchAsync(async (req, res) => {
   const result = await CartServices.getAllCart(
     req.user as TCurrentUser,
     req.query,
+    req.lang,
   );
 
   const formattedData = result?.data.map((item) => {
