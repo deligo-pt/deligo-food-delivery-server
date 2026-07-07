@@ -61,9 +61,10 @@ const prepareUpdateData = async (
   }
 
   if (payload.pricing) {
-    const { taxId, currency, discount, price } = payload.pricing;
+    const { taxId, currency, discount, price, discountType } = payload.pricing;
     if (price !== undefined) modifiedData['pricing.price'] = price;
     if (currency) modifiedData['pricing.currency'] = currency;
+    if (discountType) modifiedData['pricing.discountType'] = discountType;
     if (discount !== undefined) modifiedData['pricing.discount'] = discount;
 
     if (taxId) {

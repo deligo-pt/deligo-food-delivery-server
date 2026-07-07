@@ -122,7 +122,7 @@ productSchema.virtual('pricing.finalPrice').get(function () {
     discountAmount = discountVal;
   }
 
-  return roundTo2(vendorPrice - discountAmount);
+  return roundTo2(Math.max(0, vendorPrice - discountAmount));
 });
 
 productSchema.virtual('pricing.discountAmount').get(function () {
@@ -130,22 +130,26 @@ productSchema.virtual('pricing.discountAmount').get(function () {
   const discountVal = this.pricing?.discount || 0;
   const discountType = this.pricing?.discountType || 'PERCENTAGE';
 
+  let computedDiscount = 0;
   if (discountType === 'PERCENTAGE') {
-    return roundTo2((vendorPrice * discountVal) / 100);
+    computedDiscount = roundTo2((vendorPrice * discountVal) / 100);
+  } else {
+    computedDiscount = discountVal;
   }
-  return roundTo2(discountVal);
+
+  return roundTo2(Math.min(vendorPrice, computedDiscount));
 });
 
 productSchema.virtual('pricing.taxAmount').get(function () {
-  const finalPrice = this.get('pricing.finalPrice');
+  const finalPrice = this.get('pricing.finalPrice') || 0;
   const taxRate = this.pricing?.taxRate || 0;
 
   return roundTo2(finalPrice * (taxRate / 100));
 });
 
 productSchema.virtual('pricing.basePrice').get(function () {
-  const finalPrice = this.get('pricing.finalPrice');
-  const taxAmount = this.get('pricing.taxAmount');
+  const finalPrice = this.get('pricing.finalPrice') || 0;
+  const taxAmount = this.get('pricing.taxAmount') || 0;
 
   return roundTo2(finalPrice - taxAmount);
 });
