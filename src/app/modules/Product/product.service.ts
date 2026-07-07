@@ -1133,7 +1133,7 @@ const getOutOfStockAlerts = async (
       'name sku stock variations vendorId category images createdAt updatedAt',
     )
     .populate('vendorId', 'userId businessDetails')
-    .populate('productCategory', 'name')
+    .populate('category', 'name')
     .sort(sortBy as string)
     .skip(skip)
     .limit(Number(limit))
