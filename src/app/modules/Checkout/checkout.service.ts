@@ -86,7 +86,10 @@ const checkout = async (
   );
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
-  const deliveryVatRate = globalSettings?.deliveryVatRate || 0;
+  const deliveryVatRate =
+    globalSettings?.deliveryVatRate === 0
+      ? 23
+      : (globalSettings?.deliveryVatRate ?? 23);
   const serviceCharge = globalSettings?.serviceCharge || 0;
 
   const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
@@ -96,9 +99,14 @@ const checkout = async (
       ? BASE_FIXED_DELIVERY_CHARGE || 0
       : roundTo2(distanceData.km * (globalSettings?.deliveryChargePerKm || 0));
 
-  const totalDeliveryCharge = roundTo2(deliveryChargeBase);
-  const deliveryVat = roundTo2(totalDeliveryCharge * (deliveryVatRate / 100));
-  const deliveryChargeWithoutTax = roundTo2(totalDeliveryCharge - deliveryVat);
+  console.log(
+    deliveryChargeBase,
+    distanceData.km,
+    globalSettings?.deliveryChargePerKm,
+  );
+
+  const deliveryVat = roundTo2((deliveryChargeBase * deliveryVatRate) / 100);
+  const totalDeliveryCharge = roundTo2(deliveryChargeBase + deliveryVat);
 
   const PLATFORM_COMMISSION_RATE =
     globalSettings?.platformCommissionPercent || 0;
@@ -330,8 +338,8 @@ const checkout = async (
       serviceCharge: roundTo2(serviceCharge),
     },
     delivery: {
-      charge: deliveryChargeWithoutTax,
-      vatRate: globalSettings?.deliveryVatRate || 0,
+      charge: deliveryChargeBase,
+      vatRate: deliveryVatRate,
       vatAmount: deliveryVat,
       totalDeliveryCharge: totalDeliveryCharge,
       distance: roundTo2(distanceData.km),

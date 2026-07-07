@@ -138,7 +138,7 @@ productSchema.virtual('pricing.discountAmount').get(function () {
 
 productSchema.virtual('pricing.taxAmount').get(function () {
   const finalPrice = this.get('pricing.finalPrice');
-  const taxRate = this.pricing?.taxRate || 0; // ২৩
+  const taxRate = this.pricing?.taxRate || 0;
 
   return roundTo2(finalPrice * (taxRate / 100));
 });

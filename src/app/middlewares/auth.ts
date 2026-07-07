@@ -84,8 +84,6 @@ function auth(...args: any[]) {
       role,
     });
 
-    console.log(authUser);
-
     if (!authUser) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'USER_NOT_FOUND');
     }
@@ -105,8 +103,6 @@ function auth(...args: any[]) {
     const currentDeviceSession = authUser.loginDevices?.find(
       (device: any) => device.deviceId === deviceId,
     );
-
-    console.log(currentDeviceSession);
 
     if (!currentDeviceSession || currentDeviceSession.isLoggedIn === false) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'DEVICE_LOGGED_OUT');
