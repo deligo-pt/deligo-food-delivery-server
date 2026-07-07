@@ -709,7 +709,7 @@ const viewCart = async (currentUser: TCurrentUser, cartCustomerId?: string) => {
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     customer: 'name',
-    itemVendor: 'name userId',
+    itemVendor: 'name userId documents.storePhoto rating',
   });
   populateOptions.forEach((option) => {
     query = query.populate(option);
