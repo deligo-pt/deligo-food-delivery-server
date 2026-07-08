@@ -123,6 +123,7 @@ const orderSchema = new Schema<TOrder>(
         vatAmount: { type: Number, required: true },
         totalDeduction: { type: Number, required: true },
         earnedServiceCharge: { type: Number, required: true },
+        deliveryVatAmount: { type: Number, required: true },
       },
       fleet: {
         rate: { type: Number, required: true },
@@ -134,8 +135,6 @@ const orderSchema = new Schema<TOrder>(
         vendorNetPayout: { type: Number, required: true },
       },
       rider: {
-        earningsWithoutTax: { type: Number, required: true },
-        payableTax: { type: Number, required: true },
         riderNetEarnings: { type: Number, required: true },
       },
     },

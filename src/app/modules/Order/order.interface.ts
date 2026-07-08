@@ -59,6 +59,7 @@ export type TOrder = {
       vatAmount: number;
       totalDeduction: number;
       earnedServiceCharge: number;
+      deliveryVatAmount: number;
     };
     fleet: {
       rate: number;
@@ -71,8 +72,6 @@ export type TOrder = {
       vendorNetPayout: number;
     };
     rider: {
-      earningsWithoutTax: number;
-      payableTax: number;
       riderNetEarnings: number;
     };
   };

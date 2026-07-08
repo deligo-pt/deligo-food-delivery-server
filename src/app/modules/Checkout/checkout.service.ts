@@ -20,10 +20,13 @@ const checkout = async (
   const customerId = currentUser._id.toString();
   let selectedItems = [];
 
+  // Checkout can be created either from the saved cart or from a single
+  // direct-purchase item sent in the request payload.
   if (payload.useCart) {
     const dataKey = `cart:data:${customerId}`;
     let cart = await RedisService.get<any>(dataKey);
 
+    // Fall back to MongoDB when the cart is not present in Redis.
     if (!cart) {
       cart = await Cart.findOne({ customerId, isDeleted: false }).lean();
     }
@@ -43,17 +46,23 @@ const checkout = async (
     selectedItems = payload.items;
   }
 
+  // Load all referenced products once so item-level calculations can reuse
+  // the same product snapshots.
   const productIds = selectedItems.map((i: any) => i.productId.toString());
   const products = await Product.find({ _id: { $in: productIds } }).lean();
   if (products.length === 0)
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCTS_NOT_FOUND');
 
+  // Checkout is limited to one vendor because delivery, payout, and summary
+  // calculations are built around a single store.
   const vendorId = products[0].vendorId;
   const existingVendor = await Vendor.findById(vendorId).lean();
   if (!existingVendor || !existingVendor.businessDetails?.isStoreOpen) {
     throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_CLOSED');
   }
 
+  // The active delivery address is used both for validation and for road
+  // distance calculation against the vendor location.
   const activeAddress = currentUser?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
   );
@@ -78,6 +87,8 @@ const checkout = async (
 
   const { latitude, longitude } = vendorLocation;
 
+  // Google road distance is used instead of straight-line distance so the
+  // delivery charge and ETA reflect actual travel.
   const distanceData = await calculateGoogleRoadDistance(
     longitude,
     latitude,
@@ -94,16 +105,12 @@ const checkout = async (
 
   const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
 
+  // Deliveries within 1 km use the fixed base charge. Longer trips use the
+  // configured per-kilometer rate.
   const deliveryChargeBase =
     distanceData.meters <= 1000
       ? BASE_FIXED_DELIVERY_CHARGE || 0
       : roundTo2(distanceData.km * (globalSettings?.deliveryChargePerKm || 0));
-
-  console.log(
-    deliveryChargeBase,
-    distanceData.km,
-    globalSettings?.deliveryChargePerKm,
-  );
 
   const deliveryVat = roundTo2((deliveryChargeBase * deliveryVatRate) / 100);
   const totalDeliveryCharge = roundTo2(deliveryChargeBase + deliveryVat);
@@ -112,6 +119,8 @@ const checkout = async (
     globalSettings?.platformCommissionPercent || 0;
   const COMMISSION_VAT_RATE = globalSettings?.platformCommissionVatRate || 0;
 
+  // Convert each selected item into the normalized checkout snapshot that will
+  // later be reused by order creation.
   const orderItems = selectedItems.map((item: any) => {
     const product = products.find(
       (p) => p._id.toString() === item.productId.toString(),
@@ -133,6 +142,8 @@ const checkout = async (
       };
     }
 
+    // When a variation SKU is selected, its price overrides the base product
+    // price and its label is appended for direct checkout names.
     if (item.variationSku && product.variations?.length) {
       const selectedOption = product.variations
         .flatMap((v: any) => v.options || [])
@@ -164,6 +175,8 @@ const checkout = async (
     const discount = product.pricing?.discount || 0;
     const discountType = product.pricing?.discountType || 'PERCENTAGE';
 
+    // Store discount is calculated per unit first, then multiplied by quantity
+    // inside the summary totals.
     let storeDiscountUnit = 0;
     if (discountType.toUpperCase() === 'FLAT') {
       storeDiscountUnit = roundTo2(discount);
@@ -173,6 +186,8 @@ const checkout = async (
 
     const priceAfterStoreDiscount = roundTo2(basePrice - storeDiscountUnit);
 
+    // Add-ons already carry their own price, quantity, and tax metadata in the
+    // cart/request payload, so this step only normalizes totals and names.
     const processedAddons = (item.addons || []).map((a: any) => {
       const aPrice = Number(a.unitPrice) || 0;
       const aQty = Number(a.quantity) || 0;
@@ -205,6 +220,8 @@ const checkout = async (
       };
     });
 
+    // Item grand total combines the discounted product total with all add-ons.
+    // Commission and vendor earnings are then derived from that same amount.
     const totalAddonsLineTotal = processedAddons.reduce(
       (sum: number, a: any) => sum + a.lineTotal,
       0,
@@ -272,6 +289,8 @@ const checkout = async (
     };
   });
 
+  // Aggregate item-level amounts into one checkout-level summary for payment,
+  // vendor payout, and rider payout screens.
   const totalOriginalPrice = orderItems.reduce(
     (sum: number, i: any) =>
       sum + i.productPricing.originalPrice * i.itemSummary.quantity,
@@ -282,7 +301,7 @@ const checkout = async (
     0,
   );
 
-  const totalItemsGrandTotal = orderItems.reduce(
+  const totalItemsSubTotal = orderItems.reduce(
     (sum: number, i: any) => sum + i.itemSummary.grandTotal,
     0,
   );
@@ -303,22 +322,23 @@ const checkout = async (
   );
 
   const fleetFee = roundTo2(
-    totalDeliveryCharge *
+    deliveryChargeBase *
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
 
   const vendorNetPayout = roundTo2(
-    totalItemsGrandTotal - (totalCommAmt + totalCommVat),
+    totalItemsSubTotal - (totalCommAmt + totalCommVat),
   );
   const vendorEarningsWithoutTax = roundTo2(vendorNetPayout - totalTaxAmount);
 
-  const riderNetEarnings = roundTo2(totalDeliveryCharge - fleetFee);
-  const riderEarningsWithoutTax = roundTo2(riderNetEarnings - deliveryVat);
+  const riderNetEarnings = roundTo2(deliveryChargeBase - fleetFee);
 
   const finalGrandTotal = roundTo2(
-    totalItemsGrandTotal + totalDeliveryCharge + serviceCharge,
+    totalItemsSubTotal + totalDeliveryCharge + serviceCharge,
   );
 
+  // This document is a pre-order snapshot. Existing unfinished summaries for
+  // the same customer and vendor are replaced so only the latest one remains.
   const finalSummaryData = {
     customerId,
     vendorId,
@@ -333,9 +353,10 @@ const checkout = async (
       totalOriginalPrice: roundTo2(totalOriginalPrice),
       totalProductDiscount: roundTo2(totalProductDiscount),
       totalOfferDiscount: 0,
-      taxableAmount: roundTo2(totalItemsGrandTotal),
+      itemSubtotal: roundTo2(totalItemsSubTotal),
       totalTaxAmount: roundTo2(totalTaxAmount),
       serviceCharge: roundTo2(serviceCharge),
+      totalOrderAmount: roundTo2(totalItemsSubTotal + serviceCharge),
     },
     delivery: {
       charge: deliveryChargeBase,
@@ -353,6 +374,7 @@ const checkout = async (
         vatAmount: roundTo2(totalCommVat),
         totalDeduction: roundTo2(totalCommAmt + totalCommVat),
         earnedServiceCharge: roundTo2(serviceCharge),
+        deliveryVatAmount: roundTo2(deliveryVat),
       },
       fleet: {
         rate: globalSettings?.fleetManagerCommissionPercent || 0,
@@ -364,8 +386,6 @@ const checkout = async (
         vendorNetPayout,
       },
       rider: {
-        earningsWithoutTax: riderEarningsWithoutTax,
-        payableTax: deliveryVat,
         riderNetEarnings,
       },
     },
@@ -396,6 +416,8 @@ const getCheckoutSummary = async (
   checkoutSummaryId: string,
   currentUser: TCurrentUser,
 ) => {
+  // Only approved users can view a pending checkout summary before it is
+  // converted into an order.
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(httpStatus.FORBIDDEN, 'ORDER_VIEW_APPROVAL_REQUIRED', {
       status: currentUser.status,

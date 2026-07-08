@@ -59,9 +59,10 @@ export type TCheckoutSummary = {
     totalOriginalPrice: number;
     totalProductDiscount: number;
     totalOfferDiscount: number;
-    taxableAmount: number;
+    itemSubtotal: number;
     totalTaxAmount: number;
     serviceCharge: number;
+    totalOrderAmount: number;
   };
 
   delivery: {
@@ -81,6 +82,7 @@ export type TCheckoutSummary = {
       vatAmount: number;
       totalDeduction: number;
       earnedServiceCharge: number;
+      deliveryVatAmount: number;
     };
     fleet: {
       rate: number;
@@ -92,8 +94,6 @@ export type TCheckoutSummary = {
       vendorNetPayout: number;
     };
     rider: {
-      earningsWithoutTax: number;
-      payableTax: number;
       riderNetEarnings: number;
     };
   };

@@ -99,9 +99,10 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         totalOriginalPrice: { type: Number, required: true },
         totalProductDiscount: { type: Number, default: 0 },
         totalOfferDiscount: { type: Number, default: 0 },
-        taxableAmount: { type: Number, required: true },
+        itemSubtotal: { type: Number, required: true },
         totalTaxAmount: { type: Number, required: true },
         serviceCharge: { type: Number, required: true },
+        totalOrderAmount: { type: Number, required: true },
       },
       _id: false,
     },
@@ -127,6 +128,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           vatAmount: { type: Number, required: true },
           totalDeduction: { type: Number, required: true },
           earnedServiceCharge: { type: Number, required: true },
+          deliveryVatAmount: { type: Number, required: true },
         },
         fleet: {
           rate: { type: Number, required: true },
@@ -138,8 +140,6 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           vendorNetPayout: { type: Number, required: true },
         },
         rider: {
-          earningsWithoutTax: { type: Number, required: true },
-          payableTax: { type: Number, required: true },
           riderNetEarnings: { type: Number, required: true },
         },
       },
