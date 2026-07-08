@@ -42,23 +42,6 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
   });
 });
 
-// update cart item Controller
-const updateCartItemQuantity = catchAsync(async (req, res) => {
-  const result = await CartServices.updateCartItemQuantity(
-    req.user as TCurrentUser,
-    req.body,
-  );
-
-  const formattedData = formatCartResponse(result?.data, req.lang);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    messageKey: result?.messageKey as TMessageKey,
-    data: formattedData,
-  });
-});
-
 // update add on quantity Controller
 const updateAddonQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateAddonQuantity(
@@ -147,7 +130,6 @@ const viewCart = catchAsync(async (req, res) => {
 export const CartControllers = {
   addToCart,
   toggleCartItemStatus,
-  updateCartItemQuantity,
   updateAddonQuantity,
   deleteCartItem,
   clearCart,

@@ -22,14 +22,6 @@ router.patch(
   CartControllers.toggleCartItemStatus,
 );
 
-// update cart item quantity
-router.patch(
-  '/update-quantity',
-  auth('CUSTOMER'),
-  validateRequest(CartValidation.updateCartItemQuantityValidationSchema),
-  CartControllers.updateCartItemQuantity,
-);
-
 // update addon quantity
 router.patch(
   '/update-addon-quantity',

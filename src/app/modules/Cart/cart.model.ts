@@ -7,7 +7,6 @@ const cartAddonSchema = new Schema(
     name: { type: localizedSchema, required: true },
     sku: { type: String, required: true },
     originalPrice: { type: Number, required: true },
-    promoDiscountAmount: { type: Number, default: 0 },
     unitPrice: { type: Number, required: true },
     quantity: { type: Number, required: true },
     lineTotal: { type: Number, required: true },
@@ -38,8 +37,6 @@ const cartItemSchema = new Schema(
           enum: ['PERCENTAGE', 'FLAT'],
           default: 'PERCENTAGE',
         },
-        priceAfterProductDiscount: { type: Number, required: true },
-        promoDiscountAmount: { type: Number, default: 0 },
         unitPrice: { type: Number, required: true },
         lineTotal: { type: Number, required: true },
         taxRate: { type: Number, default: 0 },
@@ -51,9 +48,7 @@ const cartItemSchema = new Schema(
     itemSummary: {
       type: {
         quantity: { type: Number, required: true, min: 1 },
-        totalBeforeTax: { type: Number, required: true },
         totalTaxAmount: { type: Number, required: true },
-        totalPromoDiscount: { type: Number, default: 0 },
         totalProductDiscount: { type: Number, default: 0 },
         grandTotal: { type: Number, required: true },
       },
@@ -78,7 +73,6 @@ const cartSchema = new Schema<TCart>(
       type: {
         totalOriginalPrice: { type: Number, default: 0 },
         totalProductDiscount: { type: Number, default: 0 },
-        taxableAmount: { type: Number, default: 0 },
         totalTaxAmount: { type: Number, default: 0 },
         grandTotal: { type: Number, default: 0 },
       },
@@ -87,7 +81,7 @@ const cartSchema = new Schema<TCart>(
 
     status: {
       type: String,
-      enum: ['abandoned'],
+      enum: ['active', 'abandoned'],
     },
     isDeleted: { type: Boolean, default: false },
   },

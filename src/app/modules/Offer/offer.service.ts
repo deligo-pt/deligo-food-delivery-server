@@ -422,7 +422,7 @@ const getAvailableOffersForCheckout = async (
 
   const { vendorId, orderCalculation, items } = checkoutData;
   const cartTotal =
-    orderCalculation.taxableAmount + (orderCalculation.totalOfferDiscount || 0);
+    orderCalculation.itemSubtotal + (orderCalculation.totalOfferDiscount || 0);
   const now = new Date();
 
   const baseQuery = {
