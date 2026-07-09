@@ -12,6 +12,7 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { RedisService } from '../../config/redis';
+import { formatCartResponse } from './cart.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { BusinessCategory } from '../Category/category.model';
 
@@ -264,7 +265,7 @@ const addToCart = async (
     { upsert: true },
   ).catch((err) => console.error('Background DB Sync Failed:', err));
 
-  return { messageKey: 'ADD_TO_CART_SUCCESS' };
+  return { messageKey: 'ADD_TO_CART_SUCCESS', data: cart };
 };
 
 // toggle cart item status service
@@ -441,6 +442,7 @@ const toggleCartItemStatus = async (
     messageKey: willBeActive
       ? 'TOGGLE_ITEM_ACTIVE_SUCCESS'
       : 'TOGGLE_ITEM_DEACTIVE_SUCCESS',
+    data: cart,
   };
 };
 
@@ -684,8 +686,14 @@ const updateAddonQuantity = async (
     { upsert: true },
   ).catch((err) => console.error('Background DB Sync Failed:', err));
 
+  const formattedCart =
+    typeof formatCartResponse === 'function'
+      ? formatCartResponse(cart, lang)
+      : cart;
+
   return {
     messageKey: 'ADDON_QUANTITY_UPDATE_SUCCESS',
+    data: formattedCart,
   };
 };
 
@@ -819,7 +827,6 @@ const clearCart = async (currentUser: TCurrentUser) => {
       cartCalculation: {
         totalOriginalPrice: 0,
         totalProductDiscount: 0,
-        taxableAmount: 0,
         totalTaxAmount: 0,
         grandTotal: 0,
       },

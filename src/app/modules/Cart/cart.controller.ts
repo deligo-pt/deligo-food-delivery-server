@@ -5,6 +5,9 @@ import { CartServices } from './cart.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatCartResponse } from './cart.utils';
 import { TMessageKey } from '../../errors/messages';
+import config from '../../config';
+
+const node_env = config.NODE_ENV;
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {
@@ -13,11 +16,13 @@ const addToCart = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = formatCartResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: null,
+    data: node_env === 'development' ? 'undefined' : formattedData,
   });
 });
 
@@ -31,11 +36,12 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
     req.body.variationSku,
   );
 
+  const formattedData = formatCartResponse(result?.data, req.lang);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: null,
+    data: node_env === 'development' ? formattedData : undefined,
   });
 });
 
@@ -50,7 +56,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: null,
+    data: node_env === 'development' ? result?.data : undefined,
   });
 });
 
@@ -67,7 +73,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: node_env === 'production' ? undefined : result?.data,
   });
 });
 
@@ -78,7 +84,7 @@ const clearCart = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: node_env === 'development' ? result?.data : undefined,
   });
 });
 
