@@ -287,12 +287,11 @@ const checkout = async (
       vendor: {
         vendorEarningsWithoutTax,
         payableTax: itemTotalTax,
-        vendorNetEarnings, // Matches schema required validation
+        vendorNetEarnings,
       },
     };
   });
 
-  // FIXED: Aggregates both Product and Addon Base original prices
   const totalOriginalPrice = orderItems.reduce((sum: number, i: any) => {
     const productOriginalTotal =
       i.productPricing.originalPrice * i.itemSummary.quantity;
@@ -428,7 +427,7 @@ const getCheckoutSummary = async (
       status: currentUser.status,
     });
   }
-  const summary = await CheckoutSummary.findById(checkoutSummaryId);
+  const summary = await CheckoutSummary.findById(checkoutSummaryId).lean();
 
   if (!summary) {
     throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
