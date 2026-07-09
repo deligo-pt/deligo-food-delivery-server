@@ -60,6 +60,7 @@ export type TCart = {
     grandTotal: number;
   };
   status?: 'active' | 'abandoned';
+  isNotified?: boolean;
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;

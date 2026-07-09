@@ -83,6 +83,7 @@ const cartSchema = new Schema<TCart>(
       type: String,
       enum: ['active', 'abandoned'],
     },
+    isNotified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },

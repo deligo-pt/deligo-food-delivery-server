@@ -29,20 +29,6 @@ const toggleCartItemStatusValidationSchema = z.object({
     .strict(),
 });
 
-// update cart quantity validation
-const updateCartItemQuantityValidationSchema = z.object({
-  body: z
-    .object({
-      productId: z.string({ required_error: 'Product ID is required' }),
-      variationSku: z.string().optional(),
-      quantity: z.number().min(1, 'Quantity must be at least 1').optional(),
-      action: z.enum(['increment', 'decrement'], {
-        required_error: 'Action is required',
-      }),
-    })
-    .strict(),
-});
-
 const updateAddonQuantityValidationSchema = z.object({
   body: z
     .object({
@@ -53,8 +39,9 @@ const updateAddonQuantityValidationSchema = z.object({
       optionSku: z.string({
         required_error: 'Add-on option SKU is required',
       }),
-      action: z.enum(['increment', 'decrement'], {
-        required_error: 'Action is required',
+      quantity: z.number({
+        required_error: 'Quantity is required',
+        invalid_type_error: 'Quantity must be a number',
       }),
     })
     .strict(),
@@ -79,7 +66,6 @@ const deleteCartItemValidationSchema = z.object({
 export const CartValidation = {
   addToCartValidationSchema,
   toggleCartItemStatusValidationSchema,
-  updateCartItemQuantityValidationSchema,
   updateAddonQuantityValidationSchema,
   deleteCartItemValidationSchema,
 };

@@ -18,13 +18,22 @@ export const recalculateCartTotals = async (cart: TCart) => {
 
   const totals = activeItems.reduce(
     (acc, item) => {
-      const { itemSummary, productPricing } = item;
+      const { itemSummary, productPricing, addons } = item;
 
       acc.totalItems += itemSummary.quantity || 0;
-      acc.totalOriginalPrice +=
-        (productPricing.originalPrice || 0) * (itemSummary.quantity || 0);
-      acc.totalProductDiscount += itemSummary.totalProductDiscount || 0;
 
+      let itemOriginalPriceSum =
+        (productPricing.originalPrice || 0) * (itemSummary.quantity || 0);
+
+      if (addons && addons.length > 0) {
+        addons.forEach((addon: any) => {
+          itemOriginalPriceSum +=
+            (addon.originalPrice || 0) * (addon.quantity || 0);
+        });
+      }
+
+      acc.totalOriginalPrice += itemOriginalPriceSum;
+      acc.totalProductDiscount += itemSummary.totalProductDiscount || 0;
       acc.grandTotal += itemSummary.grandTotal || 0;
       acc.totalTaxAmount += itemSummary.totalTaxAmount || 0;
 

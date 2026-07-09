@@ -13,13 +13,11 @@ const addToCart = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
-  const formattedData = formatCartResponse(result?.data, req.lang);
-
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: formattedData,
+    data: null,
   });
 });
 
@@ -33,12 +31,11 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
     req.body.variationSku,
   );
 
-  const formattedData = formatCartResponse(result?.data, req.lang);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: formattedData,
+    data: null,
   });
 });
 
@@ -53,7 +50,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: null,
   });
 });
 

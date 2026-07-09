@@ -12,7 +12,6 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { RedisService } from '../../config/redis';
-import { formatCartResponse } from './cart.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { BusinessCategory } from '../Category/category.model';
 
@@ -253,17 +252,19 @@ const addToCart = async (
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
 
-  await Cart.updateOne(
+  Cart.updateOne(
     { customerId },
     {
       items: cart.items,
       cartCalculation: cart.cartCalculation,
       totalItems: cart.totalItems,
+      status: 'active',
+      isNotified: false,
     },
     { upsert: true },
-  );
+  ).catch((err) => console.error('Background DB Sync Failed:', err));
 
-  return { messageKey: 'ADD_TO_CART_SUCCESS', data: cart };
+  return { messageKey: 'ADD_TO_CART_SUCCESS' };
 };
 
 // toggle cart item status service
@@ -424,20 +425,22 @@ const toggleCartItemStatus = async (
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
 
-  await Cart.updateOne(
+  Cart.updateOne(
     { customerId },
     {
       items: cart.items,
       cartCalculation: cart.cartCalculation,
       totalItems: cart.totalItems,
+      status: 'active',
+      isNotified: false,
     },
-  );
+    { upsert: true },
+  ).catch((err) => console.error('Background DB Sync Failed:', err));
 
   return {
     messageKey: willBeActive
       ? 'TOGGLE_ITEM_ACTIVE_SUCCESS'
       : 'TOGGLE_ITEM_DEACTIVE_SUCCESS',
-    data: cart,
   };
 };
 
@@ -448,7 +451,7 @@ const updateAddonQuantity = async (
     productId: string;
     variationSku?: string;
     optionSku: string;
-    action: 'increment' | 'decrement';
+    quantity: number;
   },
   lang: TLanguageCode,
 ) => {
@@ -458,7 +461,10 @@ const updateAddonQuantity = async (
     });
   }
 
-  const { productId, variationSku, optionSku, action } = payload;
+  const { productId, variationSku, optionSku, quantity } = payload;
+
+  const inputQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
+
   const customerId = currentUser._id;
   const customerIdStr = customerId.toString();
   const dataKey = `cart:data:${customerIdStr}`;
@@ -501,6 +507,67 @@ const updateAddonQuantity = async (
 
   if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
+  let selectedPrice = product.pricing.price;
+  let selectedVariantLabel: any = null;
+  const hasVariations =
+    product?.stock?.hasVariations === true ||
+    (product?.variations && product.variations.length > 0);
+
+  if (targetItem.variationSku && hasVariations) {
+    const targetOption = product.variations
+      ?.flatMap((v: any) => v.options)
+      .find((opt: any) => opt.sku === targetItem.variationSku);
+
+    if (targetOption) {
+      selectedPrice = targetOption.price;
+      selectedVariantLabel = targetOption.label;
+    }
+  }
+
+  const {
+    discount = 0,
+    discountType = 'PERCENTAGE',
+    taxRate = 0,
+  } = product.pricing;
+  const unitDiscountAmount =
+    discountType === 'FLAT'
+      ? roundTo2(discount)
+      : roundTo2((selectedPrice * discount) / 100);
+  const priceAfterDiscount = roundTo2(selectedPrice - unitDiscountAmount);
+
+  const productLineTotal = roundTo2(
+    priceAfterDiscount * targetItem.itemSummary.quantity,
+  );
+  const productTaxAmount = roundTo2(
+    (productLineTotal * taxRate) / (100 + taxRate),
+  );
+
+  targetItem.productPricing.originalPrice = roundTo2(selectedPrice);
+  targetItem.productPricing.productDiscountAmount = unitDiscountAmount;
+  targetItem.productPricing.discountType = discountType;
+  targetItem.productPricing.unitPrice = priceAfterDiscount;
+  targetItem.productPricing.lineTotal = productLineTotal;
+  targetItem.productPricing.taxRate = taxRate;
+  targetItem.productPricing.taxAmount = productTaxAmount;
+
+  const pNameEn = product.name?.en || '';
+  const pNamePt = product.name?.pt || pNameEn;
+  const finalItemName = { en: pNameEn, pt: pNamePt };
+
+  if (selectedVariantLabel) {
+    const vLabelEn =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel.en || ''
+        : selectedVariantLabel;
+    const vLabelPt =
+      typeof selectedVariantLabel === 'object'
+        ? selectedVariantLabel.pt || vLabelEn
+        : selectedVariantLabel;
+    if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
+    if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
+  }
+  targetItem.name = finalItemName;
+
   let addonData: any = null;
   let parentGroup: any = null;
 
@@ -508,13 +575,10 @@ const updateAddonQuantity = async (
     if (group.isActive && !group.isDeleted) {
       const option = group.options.find((opt: any) => opt.sku === optionSku);
       if (option && option.isActive) {
-        const addonNameEn = option.name?.en || '';
-        const addonNamePt = option.name?.pt || addonNameEn;
-
         addonData = {
           name: {
-            en: addonNameEn,
-            pt: addonNamePt,
+            en: option.name?.en || '',
+            pt: option.name?.pt || option.name?.en || '',
           },
           sku: option.sku,
           unitPrice: option.price,
@@ -528,59 +592,20 @@ const updateAddonQuantity = async (
   if (!addonData)
     throw new AppError(httpStatus.BAD_REQUEST, 'ADDON_UNAVAILABLE');
 
-  const pNameEn = product.name?.en || '';
-  const pNamePt = product.name?.pt || pNameEn;
-
-  const finalItemName = {
-    en: pNameEn,
-    pt: pNamePt,
-  };
-
-  const hasVariations =
-    product?.stock?.hasVariations === true ||
-    (product?.variations && product.variations.length > 0);
-
-  if (targetItem.variationSku && hasVariations) {
-    const targetOption = product.variations
-      ?.flatMap((v: any) => v.options)
-      .find((opt: any) => opt.sku === targetItem.variationSku);
-
-    const selectedVariantLabel = targetOption?.label;
-    if (selectedVariantLabel) {
-      const vLabelEn =
-        typeof selectedVariantLabel === 'object'
-          ? (selectedVariantLabel as Record<string, string>).en || ''
-          : selectedVariantLabel;
-      const vLabelPt =
-        typeof selectedVariantLabel === 'object'
-          ? (selectedVariantLabel as Record<string, string>).pt || vLabelEn
-          : selectedVariantLabel;
-
-      if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
-      if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
-    }
-  }
-
-  targetItem.name = finalItemName;
-
-  const selectedAddon = addonData as {
-    name: any;
-    sku?: string;
-    unitPrice: number;
-    taxRate: number;
-  };
-
   const existingAddonIndex = targetItem.addons.findIndex(
-    (a: any) => a.sku === selectedAddon.sku,
+    (a: any) => a.sku === addonData.sku,
   );
 
-  if (action === 'increment') {
-    const groupOptionSkuS = parentGroup.options.map((o: any) => o.sku);
-    const currentGroupSelectionCount = targetItem.addons
-      .filter((a: any) => groupOptionSkuS.includes(a.sku))
+  if (inputQuantity > 0) {
+    const groupOptionSkus = parentGroup.options.map((o: any) => o.sku);
+
+    const otherAddonsSelectionCount = targetItem.addons
+      .filter(
+        (a: any) => a.sku !== addonData.sku && groupOptionSkus.includes(a.sku),
+      )
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
 
-    if (currentGroupSelectionCount >= parentGroup.maxSelectable) {
+    if (otherAddonsSelectionCount + inputQuantity > parentGroup.maxSelectable) {
       const groupTitleObj = parentGroup.title as Record<string, string>;
       const localizedGroupTitle =
         groupTitleObj?.[lang] || groupTitleObj?.['en'] || 'this group';
@@ -589,28 +614,23 @@ const updateAddonQuantity = async (
         group: localizedGroupTitle,
       });
     }
+
     if (existingAddonIndex > -1) {
-      targetItem.addons[existingAddonIndex].quantity += 1;
+      targetItem.addons[existingAddonIndex].quantity = inputQuantity;
     } else {
-      const taxAmount = roundTo2(
-        addonData.unitPrice * (addonData.taxRate / 100),
+      const initialTaxAmount = roundTo2(
+        (addonData.unitPrice * addonData.taxRate) / (100 + addonData.taxRate),
       );
       targetItem.addons.push({
         ...addonData,
         originalPrice: addonData.unitPrice,
-        quantity: 1,
+        quantity: inputQuantity,
         lineTotal: addonData.unitPrice,
-        taxAmount: taxAmount,
+        taxAmount: initialTaxAmount,
       });
     }
-  } else if (action === 'decrement') {
-    if (existingAddonIndex === -1) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ADDON_NOT_IN_CART');
-    }
-
-    if (targetItem.addons[existingAddonIndex].quantity > 1) {
-      targetItem.addons[existingAddonIndex].quantity -= 1;
-    } else {
+  } else {
+    if (existingAddonIndex > -1) {
       targetItem.addons.splice(existingAddonIndex, 1);
     }
   }
@@ -624,7 +644,9 @@ const updateAddonQuantity = async (
     const aTaxRate = Number(addon.taxRate) || 0;
 
     const addonLineTotal = roundTo2(aUnitPrice * aQty);
-    const addonTaxAmount = roundTo2(addonLineTotal * (aTaxRate / 100));
+    const addonTaxAmount = roundTo2(
+      (addonLineTotal * aTaxRate) / (100 + aTaxRate),
+    );
 
     addon.lineTotal = addonLineTotal;
     addon.taxAmount = addonTaxAmount;
@@ -636,29 +658,34 @@ const updateAddonQuantity = async (
   const mainProductNet = targetItem.productPricing.lineTotal;
   const mainProductTax = targetItem.productPricing.taxAmount;
 
-  targetItem.itemSummary.totalBeforeTax = roundTo2(
-    mainProductNet - mainProductTax + (totalAddonsNet - totalAddonsTax),
-  );
-
   targetItem.itemSummary.totalTaxAmount = roundTo2(
     mainProductTax + totalAddonsTax,
   );
-
+  targetItem.itemSummary.totalProductDiscount = roundTo2(
+    unitDiscountAmount * targetItem.itemSummary.quantity,
+  );
   targetItem.itemSummary.grandTotal = roundTo2(mainProductNet + totalAddonsNet);
 
   await recalculateCartTotals(cart);
-
   cart.totalItems = cart.items.length;
 
   await RedisService.set(dataKey, cart, 259200);
-
   await RedisService.set(expiryKey, '', 86400);
 
-  const formattedCart = formatCartResponse(cart, lang);
+  Cart.updateOne(
+    { customerId },
+    {
+      items: cart.items,
+      cartCalculation: cart.cartCalculation,
+      totalItems: cart.totalItems,
+      status: 'active',
+      isNotified: false,
+    },
+    { upsert: true },
+  ).catch((err) => console.error('Background DB Sync Failed:', err));
 
   return {
     messageKey: 'ADDON_QUANTITY_UPDATE_SUCCESS',
-    data: formattedCart,
   };
 };
 
