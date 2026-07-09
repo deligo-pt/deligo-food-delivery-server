@@ -34,7 +34,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
             name: { type: localizedSchema },
             sku: { type: String },
             originalPrice: { type: Number, required: true, min: 0 },
-            promoDiscountAmount: { type: Number, required: true, min: 0 },
+            promoDiscountAmount: { type: Number, default: 0 },
             unitPrice: { type: Number, required: true, min: 0 },
             quantity: { type: Number, required: true, min: 1 },
             lineTotal: { type: Number, required: true, min: 0 },
@@ -54,7 +54,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
               required: true,
             },
             priceAfterProductDiscount: { type: Number, required: true, min: 0 },
-            promoDiscountAmount: { type: Number, required: true, min: 0 },
+            promoDiscountAmount: { type: Number, default: 0 },
             unitPrice: { type: Number, required: true, min: 0 },
             lineTotal: { type: Number, required: true, min: 0 },
             taxRate: { type: Number, required: true, min: 0 },
@@ -66,9 +66,8 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         itemSummary: {
           type: {
             quantity: { type: Number, required: true },
-            totalBeforeTax: { type: Number, required: true },
             totalTaxAmount: { type: Number, required: true },
-            totalPromoDiscount: { type: Number, required: true },
+            totalPromoDiscount: { type: Number, default: 0 },
             totalProductDiscount: { type: Number, required: true },
             grandTotal: { type: Number, required: true },
           },
@@ -99,10 +98,9 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         totalOriginalPrice: { type: Number, required: true },
         totalProductDiscount: { type: Number, default: 0 },
         totalOfferDiscount: { type: Number, default: 0 },
-        itemSubtotal: { type: Number, required: true },
         totalTaxAmount: { type: Number, required: true },
+        itemsSubtotal: { type: Number, required: true },
         serviceCharge: { type: Number, required: true },
-        totalOrderAmount: { type: Number, required: true },
       },
       _id: false,
     },
@@ -114,7 +112,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         vatAmount: { type: Number, required: true },
         totalDeliveryCharge: { type: Number, required: true },
         distance: { type: Number, required: true },
-        estimatedTime: { type: Number },
+        estimatedTime: { type: Number, required: true },
       },
       _id: false,
     },
@@ -203,7 +201,9 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
   },
   { timestamps: true },
 );
+
 CheckoutSummarySchema.index({ customerId: 1, isConvertedToOrder: 1 });
+
 export const CheckoutSummary = model<TCheckoutSummary>(
   'CheckoutSummary',
   CheckoutSummarySchema,

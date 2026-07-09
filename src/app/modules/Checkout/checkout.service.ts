@@ -194,7 +194,9 @@ const checkout = async (
       const aTaxRate = Number(a.taxRate) || 0;
 
       const addonLineTotal = roundTo2(aPrice * aQty);
-      const addonTaxAmount = roundTo2(addonLineTotal * (aTaxRate / 100));
+      const addonTaxAmount = roundTo2(
+        (addonLineTotal * aTaxRate) / (100 + aTaxRate),
+      );
 
       let finalAddonNameObj = { en: '', pt: '' };
       if (a.name && typeof a.name === 'object') {
@@ -207,7 +209,6 @@ const checkout = async (
       }
 
       return {
-        optionId: a.optionId,
         name: finalAddonNameObj,
         sku: a.sku,
         originalPrice: a.originalPrice,
@@ -221,7 +222,6 @@ const checkout = async (
     });
 
     // Item grand total combines the discounted product total with all add-ons.
-    // Commission and vendor earnings are then derived from that same amount.
     const totalAddonsLineTotal = processedAddons.reduce(
       (sum: number, a: any) => sum + a.lineTotal,
       0,
@@ -233,15 +233,19 @@ const checkout = async (
 
     const productLineTotal = roundTo2(priceAfterStoreDiscount * qty);
     const productTaxRate = product.pricing?.taxRate || 0;
+
     const productTaxAmount = roundTo2(
-      productLineTotal * (productTaxRate / 100),
+      (productLineTotal * productTaxRate) / (100 + productTaxRate),
     );
 
     const itemGrandTotal = roundTo2(productLineTotal + totalAddonsLineTotal);
     const itemTotalTax = roundTo2(productTaxAmount + totalAddonsTax);
-    const itemTotalBeforeTax = roundTo2(itemGrandTotal - itemTotalTax);
 
-    const commAmt = roundTo2(itemGrandTotal * (PLATFORM_COMMISSION_RATE / 100));
+    // DeliGo Commission calculated from Net Price (Original Price minus Discount minus Tax)
+    const priceWithoutTax = roundTo2(itemGrandTotal - itemTotalTax);
+    const commAmt = roundTo2(
+      priceWithoutTax * (PLATFORM_COMMISSION_RATE / 100),
+    );
     const commVat = roundTo2(commAmt * (COMMISSION_VAT_RATE / 100));
 
     const totalVendorDeduction = roundTo2(commAmt + commVat);
@@ -269,7 +273,6 @@ const checkout = async (
       },
       itemSummary: {
         quantity: qty,
-        totalBeforeTax: itemTotalBeforeTax,
         totalTaxAmount: itemTotalTax,
         totalPromoDiscount: 0,
         totalProductDiscount: roundTo2(storeDiscountUnit * qty),
@@ -284,18 +287,22 @@ const checkout = async (
       vendor: {
         vendorEarningsWithoutTax,
         payableTax: itemTotalTax,
-        vendorNetEarnings,
+        vendorNetEarnings, // Matches schema required validation
       },
     };
   });
 
-  // Aggregate item-level amounts into one checkout-level summary for payment,
-  // vendor payout, and rider payout screens.
-  const totalOriginalPrice = orderItems.reduce(
-    (sum: number, i: any) =>
-      sum + i.productPricing.originalPrice * i.itemSummary.quantity,
-    0,
-  );
+  // FIXED: Aggregates both Product and Addon Base original prices
+  const totalOriginalPrice = orderItems.reduce((sum: number, i: any) => {
+    const productOriginalTotal =
+      i.productPricing.originalPrice * i.itemSummary.quantity;
+    const addonsOriginalTotal = i.addons.reduce(
+      (aSum: number, a: any) => aSum + a.originalPrice * a.quantity,
+      0,
+    );
+    return sum + productOriginalTotal + addonsOriginalTotal;
+  }, 0);
+
   const totalProductDiscount = orderItems.reduce(
     (sum: number, i: any) => sum + i.itemSummary.totalProductDiscount,
     0,
@@ -353,10 +360,9 @@ const checkout = async (
       totalOriginalPrice: roundTo2(totalOriginalPrice),
       totalProductDiscount: roundTo2(totalProductDiscount),
       totalOfferDiscount: 0,
-      itemSubtotal: roundTo2(totalItemsSubTotal),
       totalTaxAmount: roundTo2(totalTaxAmount),
+      itemsSubtotal: roundTo2(totalItemsSubTotal),
       serviceCharge: roundTo2(serviceCharge),
-      totalOrderAmount: roundTo2(totalItemsSubTotal + serviceCharge),
     },
     delivery: {
       charge: deliveryChargeBase,
@@ -410,7 +416,6 @@ const checkout = async (
     data: summary,
   };
 };
-
 // get checkout summary
 const getCheckoutSummary = async (
   checkoutSummaryId: string,

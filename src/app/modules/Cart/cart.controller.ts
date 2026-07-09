@@ -22,7 +22,7 @@ const addToCart = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: node_env === 'development' ? 'undefined' : formattedData,
+    data: node_env === 'development' ? formattedData : null,
   });
 });
 
@@ -41,7 +41,7 @@ const toggleCartItemStatus = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: node_env === 'development' ? formattedData : undefined,
+    data: node_env === 'development' ? formattedData : null,
   });
 });
 
@@ -56,7 +56,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: node_env === 'development' ? result?.data : undefined,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 
@@ -73,7 +73,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: node_env === 'production' ? undefined : result?.data,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 
@@ -84,7 +84,7 @@ const clearCart = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: node_env === 'development' ? result?.data : undefined,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 

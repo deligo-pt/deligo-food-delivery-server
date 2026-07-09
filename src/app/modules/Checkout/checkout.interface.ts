@@ -23,15 +23,6 @@ export type TAppliedOfferSnapshot = {
   };
 };
 
-export type TCheckoutItem = {
-  productId: mongoose.Types.ObjectId;
-  quantity: number;
-  price: number;
-  subtotal: number;
-  vendorId: mongoose.Types.ObjectId;
-  estimatedDeliveryTime?: string;
-};
-
 export type TCheckoutAddress = {
   street?: string;
   city?: string;
@@ -59,10 +50,9 @@ export type TCheckoutSummary = {
     totalOriginalPrice: number;
     totalProductDiscount: number;
     totalOfferDiscount: number;
-    itemSubtotal: number;
     totalTaxAmount: number;
+    itemsSubtotal: number;
     serviceCharge: number;
-    totalOrderAmount: number;
   };
 
   delivery: {
@@ -125,7 +115,7 @@ export type TCheckoutPayload = {
     variationName?: string;
     variationSku?: string;
     addons?: {
-      optionId: string;
+      optionSku: string;
       quantity: number;
     }[];
     price?: number;
