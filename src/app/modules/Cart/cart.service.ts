@@ -723,7 +723,6 @@ const deleteCartItem = async (
   cart.items = cart.items.filter((cartItem: any) => {
     const isTargetedForDeletion = itemsToDelete.some((target) => {
       const isSameProduct = target.productId === cartItem.productId.toString();
-
       const inputSku = target.variationSku || null;
       const dbSku = cartItem.variationSku || null;
 
@@ -752,7 +751,6 @@ const deleteCartItem = async (
         cartCalculation: {
           totalOriginalPrice: 0,
           totalProductDiscount: 0,
-          taxableAmount: 0,
           totalTaxAmount: 0,
           grandTotal: 0,
         },
@@ -762,11 +760,22 @@ const deleteCartItem = async (
   }
 
   await recalculateCartTotals(cart);
-
   cart.totalItems = cart.items.length;
 
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
+
+  Cart.updateOne(
+    { customerId },
+    {
+      items: cart.items,
+      cartCalculation: cart.cartCalculation,
+      totalItems: cart.totalItems,
+      status: 'active',
+      isNotified: false,
+    },
+    { upsert: true },
+  ).catch((err) => console.error('Background DB Sync Failed:', err));
 
   return {
     messageKey: 'REMOVE_ITEMS_SUCCESS',
