@@ -49,6 +49,7 @@ const addToCart = async (
     _id: existingProduct.vendorId,
     isDeleted: false,
   }).populate('businessDetails.businessType');
+
   if (
     !existingVendor ||
     existingVendor?.businessDetails?.isStoreOpen === false
@@ -217,6 +218,11 @@ const addToCart = async (
           0,
         ) || 0;
 
+      currentItem.productPricing.originalPrice = roundTo2(selectedPrice);
+      currentItem.productPricing.productDiscountAmount = unitDiscountAmount;
+      currentItem.productPricing.discountType = discountType;
+      currentItem.productPricing.unitPrice = priceAfterDiscount;
+
       currentItem.itemSummary.quantity = inputQuantity;
       currentItem.productPricing.lineTotal = newProductLineTotal;
       currentItem.productPricing.taxAmount = newProductTax;
@@ -246,6 +252,16 @@ const addToCart = async (
 
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
+
+  await Cart.updateOne(
+    { customerId },
+    {
+      items: cart.items,
+      cartCalculation: cart.cartCalculation,
+      totalItems: cart.totalItems,
+    },
+    { upsert: true },
+  );
 
   return { messageKey: 'ADD_TO_CART_SUCCESS', data: cart };
 };
@@ -310,12 +326,10 @@ const toggleCartItemStatus = async (
 
     const pNameEn = product.name?.en || '';
     const pNamePt = product.name?.pt || pNameEn;
+    const finalItemName = { en: pNameEn, pt: pNamePt };
 
-    const finalItemName = {
-      en: pNameEn,
-      pt: pNamePt,
-    };
-
+    let selectedPrice = product.pricing.price;
+    let selectedVariantLabel: any = null;
     const hasVariations =
       product?.stock?.hasVariations === true ||
       (product?.variations && product.variations.length > 0);
@@ -325,7 +339,10 @@ const toggleCartItemStatus = async (
         ?.flatMap((v: any) => v.options)
         .find((opt: any) => opt.sku === itemToToggle.variationSku);
 
-      const selectedVariantLabel = targetOption?.label;
+      if (targetOption) {
+        selectedPrice = targetOption.price;
+        selectedVariantLabel = targetOption.label;
+      }
 
       const vLabelEn =
         typeof selectedVariantLabel === 'object'
@@ -342,11 +359,57 @@ const toggleCartItemStatus = async (
 
     itemToToggle.name = finalItemName;
 
-    const activeItems = cart.items.filter((i: any) => i.isActive === true);
+    const {
+      discount = 0,
+      discountType = 'PERCENTAGE',
+      taxRate = 0,
+    } = product.pricing;
 
+    const unitDiscountAmount =
+      discountType === 'FLAT'
+        ? roundTo2(discount)
+        : roundTo2((selectedPrice * discount) / 100);
+    const priceAfterDiscount = roundTo2(selectedPrice - unitDiscountAmount);
+
+    const productLineTotal = roundTo2(
+      priceAfterDiscount * itemToToggle.itemSummary.quantity,
+    );
+    const productTaxAmount = roundTo2(
+      (productLineTotal * taxRate) / (100 + taxRate),
+    );
+
+    const existingAddonsNet =
+      itemToToggle.addons?.reduce(
+        (sum: number, a: any) => sum + (a.lineTotal || 0),
+        0,
+      ) || 0;
+    const existingAddonsTax =
+      itemToToggle.addons?.reduce(
+        (sum: number, a: any) => sum + (a.taxAmount || 0),
+        0,
+      ) || 0;
+
+    itemToToggle.productPricing.originalPrice = roundTo2(selectedPrice);
+    itemToToggle.productPricing.productDiscountAmount = unitDiscountAmount;
+    itemToToggle.productPricing.discountType = discountType;
+    itemToToggle.productPricing.unitPrice = priceAfterDiscount;
+    itemToToggle.productPricing.lineTotal = productLineTotal;
+    itemToToggle.productPricing.taxRate = taxRate;
+    itemToToggle.productPricing.taxAmount = productTaxAmount;
+
+    itemToToggle.itemSummary.totalTaxAmount = roundTo2(
+      productTaxAmount + existingAddonsTax,
+    );
+    itemToToggle.itemSummary.totalProductDiscount = roundTo2(
+      unitDiscountAmount * itemToToggle.itemSummary.quantity,
+    );
+    itemToToggle.itemSummary.grandTotal = roundTo2(
+      productLineTotal + existingAddonsNet,
+    );
+
+    const activeItems = cart.items.filter((i: any) => i.isActive === true);
     if (activeItems.length > 0) {
       const activeVendorId = activeItems[0].vendorId;
-
       if (activeVendorId.toString() !== selectedVendorId) {
         throw new AppError(httpStatus.BAD_REQUEST, 'MULTIPLE_VENDORS_DENIED');
       }
@@ -356,12 +419,19 @@ const toggleCartItemStatus = async (
   itemToToggle.isActive = willBeActive;
 
   await recalculateCartTotals(cart);
-
   cart.totalItems = cart.items.length;
 
   await RedisService.set(dataKey, cart, 259200);
-
   await RedisService.set(expiryKey, '', 86400);
+
+  await Cart.updateOne(
+    { customerId },
+    {
+      items: cart.items,
+      cartCalculation: cart.cartCalculation,
+      totalItems: cart.totalItems,
+    },
+  );
 
   return {
     messageKey: willBeActive
@@ -741,6 +811,11 @@ const getAllCart = async (
     for (const key of redisKeys) {
       const cartData = await RedisService.get<any>(key);
       if (cartData && cartData.items && cartData.items.length > 0) {
+        if (cartData.cartCalculation) {
+          delete cartData.cartCalculation.taxableAmount;
+          delete cartData.cartCalculation.subtotal;
+        }
+
         redisCarts.push({
           ...cartData,
           createdAt: cartData.createdAt || new Date(),
@@ -851,6 +926,11 @@ const getAllCart = async (
   const formattedDbCarts = dbCarts.map((dbCart: any) => {
     const cartObj = dbCart.toObject ? dbCart.toObject() : dbCart;
 
+    if (cartObj.cartCalculation) {
+      delete cartObj.cartCalculation.taxableAmount;
+      delete cartObj.cartCalculation.subtotal;
+    }
+
     if (cartObj.items && cartObj.items.length > 0) {
       cartObj.items = cartObj.items.map((item: any) => {
         if (item.vendorId && typeof item.vendorId === 'object') {
@@ -877,7 +957,7 @@ const getAllCart = async (
 
     return {
       ...cartObj,
-      status: 'abandoned',
+      status: cartObj.status || 'abandoned',
     };
   });
 
@@ -978,7 +1058,6 @@ const viewCart = async (
         cartCalculation: {
           totalOriginalPrice: 0,
           totalProductDiscount: 0,
-          taxableAmount: 0,
           totalTaxAmount: 0,
           grandTotal: 0,
         },
@@ -992,6 +1071,88 @@ const viewCart = async (
   }
 
   if (cart.items && cart.items.length > 0) {
+    let isCartDirty = false;
+
+    for (const item of cart.items) {
+      const freshProduct = await Product.findOne({
+        _id: item.productId,
+        isDeleted: false,
+        isApproved: true,
+      }).lean();
+
+      if (!freshProduct) {
+        if (item.isActive !== false) {
+          item.isActive = false;
+          isCartDirty = true;
+        }
+        continue;
+      }
+
+      let currentPrice = freshProduct.pricing.price;
+      if (item.hasVariations && item.variationSku) {
+        const variant = freshProduct.variations
+          ?.flatMap((v: any) => v.options)
+          .find((opt: any) => opt.sku === item.variationSku);
+        if (variant) currentPrice = variant.price;
+      }
+
+      const currentDiscount = freshProduct.pricing.discount || 0;
+      const currentDiscountType =
+        freshProduct.pricing.discountType || 'PERCENTAGE';
+      const currentTaxRate = freshProduct.pricing.taxRate || 0;
+
+      if (
+        item.productPricing.originalPrice !== currentPrice ||
+        item.productPricing.taxRate !== currentTaxRate ||
+        item.productPricing.discountType !== currentDiscountType ||
+        item.productPricing.productDiscountAmount !==
+          (currentDiscountType === 'FLAT'
+            ? currentDiscount
+            : (currentPrice * currentDiscount) / 100)
+      ) {
+        const unitDiscountAmount =
+          currentDiscountType === 'FLAT'
+            ? roundTo2(currentDiscount)
+            : roundTo2((currentPrice * currentDiscount) / 100);
+
+        const priceAfterDiscount = roundTo2(currentPrice - unitDiscountAmount);
+        const productLineTotal = roundTo2(
+          priceAfterDiscount * item.itemSummary.quantity,
+        );
+        const productTaxAmount = roundTo2(
+          (productLineTotal * currentTaxRate) / (100 + currentTaxRate),
+        );
+
+        item.productPricing.originalPrice = roundTo2(currentPrice);
+        item.productPricing.productDiscountAmount = unitDiscountAmount;
+        item.productPricing.discountType = currentDiscountType;
+        item.productPricing.unitPrice = priceAfterDiscount;
+        item.productPricing.lineTotal = productLineTotal;
+        item.productPricing.taxAmount = productTaxAmount;
+
+        item.itemSummary.totalTaxAmount = productTaxAmount;
+        item.itemSummary.totalProductDiscount = roundTo2(
+          unitDiscountAmount * item.itemSummary.quantity,
+        );
+        item.itemSummary.grandTotal = productLineTotal;
+
+        isCartDirty = true;
+      }
+    }
+
+    if (isCartDirty) {
+      await recalculateCartTotals(cart);
+      await RedisService.set(dataKey, cart, 259200);
+      await Cart.updateOne(
+        { customerId: targetCustomerId },
+        {
+          items: cart.items,
+          cartCalculation: cart.cartCalculation,
+          totalItems: cart.items.length,
+        },
+      );
+    }
+
     if (isFromCache) {
       const vendorIds = [
         ...new Set(cart.items.map((item: any) => item.vendorId?.toString())),
@@ -1019,7 +1180,6 @@ const viewCart = async (
           })
             .select('name')
             .lean();
-
           businessTypeMap = new Map(
             businessTypes.map((b) => [b._id.toString(), b]),
           );
