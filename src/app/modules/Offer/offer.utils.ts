@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
@@ -10,6 +11,7 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { localizedMessages } from '../../errors/messages';
 
 export const validateAndApplyOffer = async (
   checkoutId: string,
@@ -247,7 +249,6 @@ export const rebuildCheckoutSummary = async (
   let distributedDiscountSum = 0;
 
   const updatedItems = items.map((item: any, index: number) => {
-    // Aligned with the verified schema keys
     const itemOriginalGrandTotal = item.itemSummary.grandTotal;
     let lineOfferDiscount = 0;
 
@@ -260,7 +261,6 @@ export const rebuildCheckoutSummary = async (
       distributedDiscountSum + lineOfferDiscount,
     );
 
-    // Calculate new pro-rata distributed grand total for the item
     const newItemGrandTotal = roundTo2(
       itemOriginalGrandTotal - lineOfferDiscount,
     );
@@ -269,7 +269,7 @@ export const rebuildCheckoutSummary = async (
         ? lineOfferDiscount / itemOriginalGrandTotal
         : 0;
 
-    // Distribute discount down to addons using strict INCLUSIVE tax formula
+    // Distribute discount to addons using strict INCLUSIVE tax formula
     const updatedAddons = item.addons.map((addon: any) => {
       const addonPromoDisc = roundTo2(
         addon.lineTotal * itemInternalDiscountRatio,
@@ -298,7 +298,7 @@ export const rebuildCheckoutSummary = async (
       0,
     );
 
-    // Derived product financial breakdown
+    // Derived product core pricing mechanics
     const newProductLineTotal = roundTo2(
       newItemGrandTotal - newAddonsLineTotalSum,
     );
@@ -311,10 +311,10 @@ export const rebuildCheckoutSummary = async (
     );
 
     const newItemTotalTax = roundTo2(newProductTaxAmount + newAddonsTaxSum);
-
     const itemNetPriceWithoutTax = roundTo2(
       newItemGrandTotal - newItemTotalTax,
     );
+
     const itemComm = roundTo2(
       itemNetPriceWithoutTax * (item.commission.deliGoCommissionRate / 100),
     );
@@ -358,37 +358,64 @@ export const rebuildCheckoutSummary = async (
   });
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
-  const serviceCharge = checkoutData.orderCalculation.serviceCharge || 0;
 
-  const finalGlobalTaxAmount = updatedItems.reduce(
-    (sum: any, i: any) => sum + i.itemSummary.totalTaxAmount,
-    0,
+  // Service Charge Calculation Layer (Portugal 23% IVA Compliance Injection)
+  const serviceCharge = checkoutData.orderCalculation.serviceCharge || 0;
+  const serviceChargeVatRate = 23;
+  const serviceChargeVatAmount = roundTo2(
+    (serviceCharge * serviceChargeVatRate) / 100,
   );
-  const finalItemsSubTotal = updatedItems.reduce(
-    (sum: any, i: any) => sum + i.itemSummary.grandTotal,
-    0,
+
+  const finalGlobalTaxAmount = roundTo2(
+    updatedItems.reduce(
+      (sum: number, i: any) => sum + i.itemSummary.totalTaxAmount,
+      0,
+    ),
+  );
+  const finalItemsSubTotal = roundTo2(
+    updatedItems.reduce(
+      (sum: number, i: any) => sum + i.itemSummary.grandTotal,
+      0,
+    ),
   );
 
   const deliveryVatRate = (globalSettings?.deliveryVatRate || 23) / 100;
   const deliveryVat = roundTo2(finalDeliveryChargeNet * deliveryVatRate);
   const totalDeliveryCharge = roundTo2(finalDeliveryChargeNet + deliveryVat);
 
-  const totalCommAmt = updatedItems.reduce(
-    (sum: any, i: any) => sum + i.commission.deliGoCommissionAmount,
-    0,
+  const totalCommAmt = roundTo2(
+    updatedItems.reduce(
+      (sum: number, i: any) => sum + i.commission.deliGoCommissionAmount,
+      0,
+    ),
   );
-  const totalCommVat = updatedItems.reduce(
-    (sum: any, i: any) => sum + i.commission.deliGoCommissionVatAmount,
-    0,
+  const totalCommVat = roundTo2(
+    updatedItems.reduce(
+      (sum: number, i: any) => sum + i.commission.deliGoCommissionVatAmount,
+      0,
+    ),
   );
   const totalDeduction = roundTo2(totalCommAmt + totalCommVat);
 
+  // Grand total injection with inclusive service charge taxes
   const grandTotal = roundTo2(
-    finalItemsSubTotal + totalDeliveryCharge + serviceCharge,
+    finalItemsSubTotal +
+      totalDeliveryCharge +
+      serviceCharge +
+      serviceChargeVatAmount,
   );
   const fleetFee = roundTo2(
     finalDeliveryChargeNet *
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
+  );
+
+  // Treasury Core Aggregations Re-alignment
+  const totalPlatformNetRevenue = roundTo2(totalCommAmt + serviceCharge);
+  const totalPlatformPayableTax = roundTo2(
+    totalCommVat + serviceChargeVatAmount + deliveryVat,
+  );
+  const totalPlatformGrossHolding = roundTo2(
+    totalPlatformNetRevenue + totalPlatformPayableTax,
   );
 
   const flattenedTitle =
@@ -400,9 +427,11 @@ export const rebuildCheckoutSummary = async (
     items: updatedItems,
     orderCalculation: {
       ...checkoutData.orderCalculation,
-      totalTaxAmount: roundTo2(finalGlobalTaxAmount),
+      totalTaxAmount: finalGlobalTaxAmount,
       itemsSubtotal: finalItemsSubTotal,
       totalOfferDiscount,
+      serviceChargeVatRate,
+      serviceChargeVatAmount,
     },
     delivery: {
       ...checkoutData.delivery,
@@ -418,7 +447,11 @@ export const rebuildCheckoutSummary = async (
         vatAmount: totalCommVat,
         totalDeduction,
         earnedServiceCharge: serviceCharge,
+        serviceChargeVatAmount,
         deliveryVatAmount: deliveryVat,
+        totalPlatformNetRevenue,
+        totalPlatformPayableTax,
+        totalPlatformGrossHolding,
       },
       fleet: {
         rate: globalSettings?.fleetManagerCommissionPercent || 0,
@@ -428,7 +461,7 @@ export const rebuildCheckoutSummary = async (
         earningsWithoutTax: roundTo2(
           finalItemsSubTotal - finalGlobalTaxAmount - totalDeduction,
         ),
-        payableTax: roundTo2(finalGlobalTaxAmount),
+        payableTax: finalGlobalTaxAmount,
         vendorNetPayout: roundTo2(finalItemsSubTotal - totalDeduction),
       },
       rider: {
@@ -442,7 +475,8 @@ export const rebuildCheckoutSummary = async (
             promoId: offer._id,
             title: flattenedTitle,
             code: offer.code,
-            offerType: offer.offerType,
+            promoType: offer.offerType === 'NONE' ? 'NONE' : 'OFFER',
+            discountType: offer.offerType,
             discountValue: offer.discountValue,
             maxDiscountAmount: offer.maxDiscountAmount,
             bogoSnapshot,
@@ -456,27 +490,93 @@ export const calculateOfferRemoval = async (
   checkoutData: any,
   lang: TLanguageCode = 'en',
 ) => {
+  // To completely heal offer removal, we reset the offer values to baseline original snapshots
   const cleanItems = checkoutData.items.map((item: any) => {
-    // Reverts back to baseline original state pricing snapshots securely
+    // Re-verify and rebuild base item pricing structures by wiping out promo fields safely
+    const originalProductLineTotal = roundTo2(
+      item.productPricing.priceAfterProductDiscount * item.itemSummary.quantity,
+    );
+    const originalProductTax = roundTo2(
+      (originalProductLineTotal * item.productPricing.taxRate) /
+        (100 + item.productPricing.taxRate),
+    );
+
+    const cleanAddons = item.addons.map((addon: any) => {
+      const originalAddonLineTotal = roundTo2(
+        addon.originalPrice * addon.quantity,
+      );
+      const originalAddonTax = roundTo2(
+        (originalAddonLineTotal * addon.taxRate) / (100 + addon.taxRate),
+      );
+      return {
+        ...addon,
+        promoDiscountAmount: 0,
+        unitPrice: addon.originalPrice,
+        lineTotal: originalAddonLineTotal,
+        taxAmount: originalAddonTax,
+      };
+    });
+
+    const cleanAddonsLineTotalSum = cleanAddons.reduce(
+      (sum: number, a: any) => sum + a.lineTotal,
+      0,
+    );
+    const cleanAddonsTaxSum = cleanAddons.reduce(
+      (sum: number, a: any) => sum + a.taxAmount,
+      0,
+    );
     const originalItemGrandTotal = roundTo2(
-      (item.productPricing.originalPrice -
-        item.productPricing.productDiscountAmount) *
-        item.itemSummary.quantity +
-        item.addons.reduce(
-          (sum: number, a: any) => sum + a.originalPrice * a.quantity,
-          0,
-        ),
+      originalProductLineTotal + cleanAddonsLineTotalSum,
+    );
+    const originalItemTotalTax = roundTo2(
+      originalProductTax + cleanAddonsTaxSum,
+    );
+
+    const itemNetPriceWithoutTax = roundTo2(
+      originalItemGrandTotal - originalItemTotalTax,
+    );
+    const itemComm = roundTo2(
+      itemNetPriceWithoutTax * (item.commission.deliGoCommissionRate / 100),
+    );
+    const itemCommVat = roundTo2(
+      itemComm * (item.commission.deliGoCommissionVatRate / 100),
     );
 
     return {
       ...item,
+      addons: cleanAddons,
+      productPricing: {
+        ...item.productPricing,
+        promoDiscountAmount: 0,
+        lineTotal: originalProductLineTotal,
+        unitPrice: item.productPricing.priceAfterProductDiscount,
+        taxAmount: originalProductTax,
+      },
       itemSummary: {
         ...item.itemSummary,
-        grandTotal: originalItemGrandTotal,
         totalPromoDiscount: 0,
+        totalTaxAmount: originalItemTotalTax,
+        grandTotal: originalItemGrandTotal,
+      },
+      commission: {
+        ...item.commission,
+        deliGoCommissionAmount: itemComm,
+        deliGoCommissionVatAmount: itemCommVat,
+      },
+      vendor: {
+        vendorEarningsWithoutTax: roundTo2(
+          itemNetPriceWithoutTax - (itemComm + itemCommVat),
+        ),
+        payableTax: originalItemTotalTax,
+        vendorNetEarnings: roundTo2(
+          originalItemGrandTotal - (itemComm + itemCommVat),
+        ),
       },
     };
   });
+
+  // Re-fetch default original baseline charges
+  const originalDeliveryCharge = checkoutData.delivery.charge;
 
   const cleanCheckoutData = {
     ...checkoutData,
@@ -485,15 +585,20 @@ export const calculateOfferRemoval = async (
       ...checkoutData.orderCalculation,
       totalOfferDiscount: 0,
     },
+    delivery: {
+      ...checkoutData.delivery,
+      charge: originalDeliveryCharge,
+    },
   };
 
   const zeroDiscountData = {
     totalOfferDiscount: 0,
-    finalDeliveryChargeNet: checkoutData.delivery.charge,
+    finalDeliveryChargeNet: originalDeliveryCharge,
     bogoSnapshot: null,
   };
 
   const dummyOffer = { _id: null, title: '', code: '', offerType: 'NONE' };
+
   return await rebuildCheckoutSummary(
     cleanCheckoutData,
     dummyOffer,
@@ -504,15 +609,42 @@ export const calculateOfferRemoval = async (
 
 export const formatOfferResponse = (
   offerData: any,
-  lang: TLanguageCode = 'en',
+  lang: 'en' | 'pt' = 'en',
 ) => {
   const formatSingleOffer = (item: any) => {
-    const itemObj = item.toObject?.() || item;
+    const itemObj = item.toObject?.() || { ...item };
+
+    const mKey = itemObj.messageKey || 'OFFER_IS_APPLICABLE';
+    let finalItemMessage = mKey;
+
+    // Strict validation inside the global translation dictionary
+    if (mKey && localizedMessages && mKey in localizedMessages) {
+      const target = (localizedMessages as any)[mKey];
+      const msgTemplate = target[lang] || target['en'];
+
+      finalItemMessage =
+        typeof msgTemplate === 'function'
+          ? (msgTemplate as any)(itemObj.variables || {})
+          : (msgTemplate as string);
+    }
+
+    // Extracting out properties that we don't want to leak to the client payload
+    const { messageKey, variables, ...cleanedOffer } = itemObj;
+
     return {
-      ...itemObj,
-      title: itemObj.title?.[lang] || itemObj.title?.['en'] || '',
+      ...cleanedOffer,
+      title:
+        cleanedOffer.title?.[lang] ||
+        cleanedOffer.title?.['en'] ||
+        cleanedOffer.title ||
+        '',
       description:
-        itemObj.description?.[lang] || itemObj.description?.['en'] || '',
+        cleanedOffer.description?.[lang] ||
+        cleanedOffer.description?.['en'] ||
+        cleanedOffer.description ||
+        '',
+      isEligible: cleanedOffer.isEligible ?? true,
+      message: finalItemMessage,
     };
   };
 

@@ -468,7 +468,6 @@ const getAvailableOffersForCheckout = async (
 
     const isProductMatched = hasApplicableProducts
       ? items.some((item: any) => {
-          // OPTIMIZED: Strict flat reference mapping based on your final checkout item schema
           const cartProductId = item.productId ? item.productId.toString() : '';
 
           return offer?.applicableProducts?.some(
@@ -482,24 +481,23 @@ const getAvailableOffersForCheckout = async (
 
     const isEligible = isMinAmountMet && isUsageLimitMet && isProductMatched;
 
-    let message: TMessageKey = 'OFFER_IS_APPLICABLE';
+    let messageKey: TMessageKey = 'OFFER_IS_APPLICABLE';
     let variables: Record<string, string | number | boolean> | undefined;
 
     if (!isProductMatched) {
-      message = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
+      messageKey = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
     } else if (!isMinAmountMet) {
-      // Wrapper standard applied with roundTo2 for Portugal financial safety
       const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
-      message = 'ADD_MORE_TO_UNLOCK_OFFER';
+      messageKey = 'ADD_MORE_TO_UNLOCK_OFFER';
       variables = { amount: diff };
     } else if (!isUsageLimitMet) {
-      message = 'OFFER_USAGE_LIMIT_EXCEEDED';
+      messageKey = 'OFFER_USAGE_LIMIT_EXCEEDED';
     }
 
     return {
       ...offer,
       isEligible,
-      message,
+      messageKey,
       variables,
     };
   });
