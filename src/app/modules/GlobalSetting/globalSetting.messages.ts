@@ -13,10 +13,7 @@ export const globalSettingMessages = {
     en: 'Platform commission rate must be a value between 0% and 100%.',
     pt: 'A taxa de comissão da plataforma deve ser um valor entre 0% e 100%.',
   },
-  MAX_DISCOUNT_RANGE_INVALID: {
-    en: 'Maximum campaign discount percentage must be between 0% and 100%.',
-    pt: 'O percentual máximo de desconto da campanha deve estar entre 0% e 100%.',
-  },
+
   DELIVERY_PARTNER_COMMISSION_RANGE_INVALID: {
     en: 'Delivery partner commission rate must be configured between 0% and 100%.',
     pt: 'A taxa de comissão do parceiro de entrega deve ser configurada entre 0% e 100%.',
@@ -36,10 +33,6 @@ export const globalSettingMessages = {
   PAYOUT_DAYS_REQUIRED_FOR_AUTOGENERATE: {
     en: 'Please specify at least one payout day when auto-generation is active.',
     pt: 'Por favor, especifique pelo menos um dia de pagamento quando a geração automática estiver ativa.',
-  },
-  FREE_DELIVERY_NEGATIVE_INVALID: {
-    en: 'Free delivery order threshold amount cannot be negative.',
-    pt: 'O valor mínimo de pedido para entrega gratuita não pode ser negativo.',
   },
   MAINTENANCE_DEFAULT_MESSAGE: {
     en: 'The system is currently undergoing scheduled maintenance. Please check back shortly.',
