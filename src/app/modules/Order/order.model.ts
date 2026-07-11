@@ -92,6 +92,7 @@ const orderSchema = new Schema<TOrder>(
     items: { type: [orderItemSchema], required: true },
 
     totalItems: { type: Number, required: true },
+    totalQuantity: { type: Number, required: true },
 
     orderCalculation: {
       totalOriginalPrice: { type: Number, required: true },
@@ -100,6 +101,8 @@ const orderSchema = new Schema<TOrder>(
       totalTaxAmount: { type: Number, required: true },
       itemsSubtotal: { type: Number, required: true },
       serviceCharge: { type: Number, required: true },
+      serviceChargeVatRate: { type: Number, default: 23 },
+      serviceChargeVatAmount: { type: Number, default: 0 },
     },
 
     delivery: {
@@ -121,7 +124,12 @@ const orderSchema = new Schema<TOrder>(
         vatAmount: { type: Number, required: true },
         totalDeduction: { type: Number, required: true },
         earnedServiceCharge: { type: Number, required: true },
+        serviceChargeVatAmount: { type: Number, required: true },
         deliveryVatAmount: { type: Number, required: true },
+
+        totalPlatformNetRevenue: { type: Number, required: true }, // base commission + base service charge
+        totalPlatformPayableTax: { type: Number, required: true }, // commission vat + service charge vat + delivery vat
+        totalPlatformGrossHolding: { type: Number, required: true }, // central cash reserve pool before merchant split
       },
       fleet: {
         rate: { type: Number, required: true },

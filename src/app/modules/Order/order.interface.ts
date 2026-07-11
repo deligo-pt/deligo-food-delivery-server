@@ -19,7 +19,7 @@ export type TInvoiceSync = {
 export type TOrder = {
   _id?: mongoose.Types.ObjectId;
   // Relationships
-  orderId: string;
+  orderId: string; // Readable Business Order ID (e.g., DG-10293)
 
   customerId: mongoose.Types.ObjectId;
   vendorId: mongoose.Types.ObjectId;
@@ -29,6 +29,7 @@ export type TOrder = {
   // Items Snapshot
   items: TOrderItemSnapshot[];
   totalItems: number;
+  totalQuantity: number; // 🚨 UPDATED: Added to match final recalculateCartTotals engine
 
   orderCalculation: {
     totalOriginalPrice: number;
@@ -37,6 +38,8 @@ export type TOrder = {
     totalTaxAmount: number;
     itemsSubtotal: number;
     serviceCharge: number;
+    serviceChargeVatRate: number; // 🚨 UPDATED: Added for Strict Portugal IVA Compliance (23)
+    serviceChargeVatAmount: number; // 🚨 UPDATED: Added for Platform fee VAT storage
   };
 
   delivery: {
@@ -58,7 +61,12 @@ export type TOrder = {
       vatAmount: number;
       totalDeduction: number;
       earnedServiceCharge: number;
+      serviceChargeVatAmount: number;
       deliveryVatAmount: number;
+
+      totalPlatformNetRevenue: number; // Base Commission + Base Service Charge
+      totalPlatformPayableTax: number; // Commission VAT + Service Charge VAT + Delivery VAT
+      totalPlatformGrossHolding: number; // Total platform cash reserves held prior to merchant clearance updates
     };
     fleet: {
       rate: number;
@@ -76,12 +84,12 @@ export type TOrder = {
 
   offer: {
     isApplied: boolean;
-    offerApplied?: TAppliedOfferSnapshot;
+    offerApplied?: TAppliedOfferSnapshot | null;
   };
 
   paymentMethod: TPaymentMethod;
   paymentStatus: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
-  transactionId?: string;
+  transactionId?: string | null;
   isPaid: boolean;
 
   // Address & Location
