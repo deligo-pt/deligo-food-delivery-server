@@ -16,17 +16,12 @@ export type TGlobalSettings = {
   delivery: {
     baseCharge: number;
     chargePerKm: number;
-    minCharge: number;
-    maxCharge: number;
-    freeAbove: number;
-    maxDistanceKm: number;
     vatRate: number;
   };
 
   ingredientsOrder: {
     deliveryChargeInsideLisbon: number;
     deliveryChargeOutsideLisbon: number;
-    vatRate: number;
   };
 
   // --------------------------------------------------
@@ -36,23 +31,16 @@ export type TGlobalSettings = {
     platformPercent: number;
     platformVatRate: number;
     fleetManagerPercent: number;
-    deliveryPartnerPercent: number;
-    vendorVatPercent: number;
     serviceCharge: number;
   };
 
   // Order Rules & Automation
   order: {
-    minAmount: number;
-    maxAmount: number;
-    maxItemsPerOrder: number;
     nearestVendorRadiusKm: number;
-    autoCancelUnacceptedMinutes: number;
-    autoMarkDeliveredMinutes: number;
     cancelTimeLimitMinutes: number;
   };
 
-  //   Rewards
+  // Loyalty & Rewards
   rewards: {
     customerPointsPerEuro: number;
     riderPointsPerDelivery: number;
@@ -60,20 +48,6 @@ export type TGlobalSettings = {
     newRiderWelcomeBonus: number;
     pointsExpiryDays: number;
     customerReferralMilestones: TReferralMilestone[];
-  };
-
-  // Security & System State
-  system: {
-    isPlatformLive: boolean;
-    maintenanceMessage: string;
-    isOfferEnabled: boolean;
-    maxDiscountPercent: number;
-    refundProcessingDays: number;
-    otp: {
-      enabled: boolean;
-      length?: number;
-      expiryMinutes: number;
-    };
   };
 
   // --------------------------------------------------
