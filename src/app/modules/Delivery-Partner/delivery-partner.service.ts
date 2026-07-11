@@ -288,6 +288,7 @@ const getAllDeliveryPartnersFromDB = async (
     .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
+    registeredByWithModel: 'name userId role',
     approvedBy: 'name userId role',
     rejectedBy: 'name userId role',
     blockedBy: 'name userId role',

@@ -27,6 +27,7 @@ type PopulateInput = {
   reviewerId?: string;
   targetId?: string;
   orderId?: string;
+  registeredByWithModel?: string;
 };
 
 export const getPopulateOptions = (
@@ -76,5 +77,8 @@ export const getPopulateOptions = (
     'targetId',
     isAdmin || ['VENDOR', 'SUB_VENDOR', 'FLEET_MANAGER'].includes(role),
   );
+
+  addOption('registeredByWithModel', 'registeredBy.id', isAdmin);
+
   return options;
 };
