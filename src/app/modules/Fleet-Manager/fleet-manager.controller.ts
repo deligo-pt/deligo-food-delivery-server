@@ -74,6 +74,7 @@ const getSingleFleetManager = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.getSingleFleetManagerFromDB(
     req.params.fleetManagerId,
     req.user as TCurrentUser,
+    req.query,
   );
 
   sendResponse(res, {
@@ -81,6 +82,7 @@ const getSingleFleetManager = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
     variables: result?.variables,
+    meta: result?.meta,
     data: result?.data,
   });
 });
