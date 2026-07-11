@@ -42,25 +42,6 @@ const createGlobalSettings = async (
     );
   }
 
-  if (
-    payload.system?.maxDiscountPercent !== undefined &&
-    (payload.system?.maxDiscountPercent < 0 ||
-      payload.system?.maxDiscountPercent > 100)
-  ) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'MAX_DISCOUNT_RANGE_INVALID');
-  }
-
-  if (
-    payload.commission?.deliveryPartnerPercent !== undefined &&
-    (payload.commission?.deliveryPartnerPercent < 0 ||
-      payload.commission?.deliveryPartnerPercent > 100)
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'DELIVERY_PARTNER_COMMISSION_RANGE_INVALID',
-    );
-  }
-
   // --------------------------------------------------
   // Meta info
   // --------------------------------------------------
@@ -134,37 +115,6 @@ const updateGlobalSettings = async (
       httpStatus.BAD_REQUEST,
       'PLATFORM_COMMISSION_RANGE_INVALID',
     );
-  }
-
-  if (
-    payload.system?.maxDiscountPercent !== undefined &&
-    (payload.system?.maxDiscountPercent < 0 ||
-      payload.system?.maxDiscountPercent > 100)
-  ) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'MAX_DISCOUNT_RANGE_INVALID');
-  }
-
-  if (
-    payload.delivery?.freeAbove !== undefined &&
-    payload.delivery?.freeAbove < 0
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'FREE_DELIVERY_NEGATIVE_INVALID',
-    );
-  }
-
-  // --------------------------------------------------
-  // Maintenance mode sanity
-  // --------------------------------------------------
-  if (
-    payload.system?.isPlatformLive === false &&
-    !payload.system?.maintenanceMessage &&
-    !existingSettings.system?.maintenanceMessage
-  ) {
-    payload.system = payload.system || {};
-    payload.system.maintenanceMessage =
-      'The system is currently undergoing scheduled infrastructure maintenance. Please check back shortly.';
   }
 
   if (Object.keys(payload).length === 0) {
