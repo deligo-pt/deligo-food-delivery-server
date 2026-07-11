@@ -102,6 +102,8 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
         totalTaxAmount: { type: Number, required: true },
         itemsSubtotal: { type: Number, required: true },
         serviceCharge: { type: Number, required: true },
+        serviceChargeVatRate: { type: Number, default: 23 },
+        serviceChargeVatAmount: { type: Number, default: 0 },
       },
       _id: false,
     },
@@ -126,8 +128,14 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           amount: { type: Number, required: true },
           vatAmount: { type: Number, required: true },
           totalDeduction: { type: Number, required: true },
-          earnedServiceCharge: { type: Number, required: true },
-          deliveryVatAmount: { type: Number, required: true },
+          earnedServiceCharge: { type: Number, required: true }, // Base Platform fee collected
+          serviceChargeVatAmount: { type: Number, required: true }, // VAT on Platform fee (23%)
+
+          deliveryVatAmount: { type: Number, required: true }, // VAT on Delivery (Rider base stays with rider)
+
+          totalPlatformNetRevenue: { type: Number, required: true }, // base commission + base service charge
+          totalPlatformPayableTax: { type: Number, required: true }, // commission vat + service charge vat + delivery vat
+          totalPlatformGrossHolding: { type: Number, required: true }, // total money kept by deligo before tax payout
         },
         fleet: {
           rate: { type: Number, required: true },

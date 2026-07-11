@@ -40,8 +40,8 @@ export type TCheckoutAddress = {
 export type TCheckoutSummary = {
   customerId: mongoose.Types.ObjectId;
   vendorId: mongoose.Types.ObjectId;
-  customerEmail?: string; // will check is it need?
-  contactNumber?: string; // will check is it need?
+  customerEmail?: string;
+  contactNumber?: string;
 
   items: TOrderItemSnapshot[];
   totalItems: number;
@@ -54,6 +54,8 @@ export type TCheckoutSummary = {
     totalTaxAmount: number;
     itemsSubtotal: number;
     serviceCharge: number;
+    serviceChargeVatRate: number;
+    serviceChargeVatAmount: number;
   };
 
   delivery: {
@@ -73,7 +75,12 @@ export type TCheckoutSummary = {
       vatAmount: number;
       totalDeduction: number;
       earnedServiceCharge: number;
+      serviceChargeVatAmount: number;
       deliveryVatAmount: number;
+
+      totalPlatformNetRevenue: number;
+      totalPlatformPayableTax: number;
+      totalPlatformGrossHolding: number;
     };
     fleet: {
       rate: number;
@@ -98,10 +105,10 @@ export type TCheckoutSummary = {
 
   paymentMethod?: TPaymentMethod;
   paymentStatus?: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
-  transactionId?: string; // Stripe PaymentIntent ID
+  transactionId?: string;
 
   isConvertedToOrder?: boolean;
-  orderId?: mongoose.Types.ObjectId; // Linked Order ID
+  orderId?: mongoose.Types.ObjectId;
 
   createdAt?: Date;
   updatedAt?: Date;

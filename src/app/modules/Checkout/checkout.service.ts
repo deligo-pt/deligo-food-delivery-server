@@ -18,60 +18,55 @@ const checkout = async (
   payload: TCheckoutPayload,
 ) => {
   const customerId = currentUser._id.toString();
-  let selectedItems = [];
+  let selectedItems: any[] = [];
 
-  // Checkout can be created either from the saved cart or from a single
-  // direct-purchase item sent in the request payload.
+  // 1. Cart Fetching and Validation
   if (payload.useCart) {
     const dataKey = `cart:data:${customerId}`;
     let cart = await RedisService.get<any>(dataKey);
 
-    // Fall back to MongoDB when the cart is not present in Redis.
     if (!cart) {
       cart = await Cart.findOne({ customerId, isDeleted: false }).lean();
     }
 
-    if (!cart || !cart.items || cart.items.length === 0)
+    if (!cart || !cart.items || cart.items.length === 0) {
       throw new AppError(httpStatus.BAD_REQUEST, 'CART_EMPTY');
+    }
 
     selectedItems = cart.items.filter((i: any) => i.isActive === true);
-    if (selectedItems.length === 0)
+    if (selectedItems.length === 0) {
       throw new AppError(httpStatus.BAD_REQUEST, 'NO_ACTIVE_CART_ITEMS');
+    }
   } else {
-    if (!payload.items || payload.items.length !== 1)
+    if (!payload.items || payload.items.length !== 1) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'DIRECT_CHECKOUT_SINGLE_ITEM_ONLY',
       );
+    }
     selectedItems = payload.items;
   }
 
-  // Load all referenced products once so item-level calculations can reuse
-  // the same product snapshots.
+  // 2. Fetch and Validate Products
   const productIds = selectedItems.map((i: any) => i.productId.toString());
   const products = await Product.find({ _id: { $in: productIds } }).lean();
-  if (products.length === 0)
+  if (products.length === 0) {
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCTS_NOT_FOUND');
+  }
 
-  // Checkout is limited to one vendor because delivery, payout, and summary
-  // calculations are built around a single store.
   const vendorId = products[0].vendorId;
   const existingVendor = await Vendor.findById(vendorId).lean();
   if (!existingVendor || !existingVendor.businessDetails?.isStoreOpen) {
     throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_CLOSED');
   }
 
-  // The active delivery address is used both for validation and for road
-  // distance calculation against the vendor location.
+  // 3. Address & Spatial Logistics
   const activeAddress = currentUser?.deliveryAddresses?.find(
     (i: any) => i.isActive === true,
   );
 
-  if (!activeAddress) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'NO_ACTIVE_DELIVERY_ADDRESS');
-  }
-
   if (
+    !activeAddress ||
     !activeAddress.latitude ||
     !activeAddress.longitude ||
     !activeAddress.city ||
@@ -85,32 +80,35 @@ const checkout = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_LOCATION_NOT_FOUND');
   }
 
-  const { latitude, longitude } = vendorLocation;
-
-  // Google road distance is used instead of straight-line distance so the
-  // delivery charge and ETA reflect actual travel.
   const distanceData = await calculateGoogleRoadDistance(
-    longitude,
-    latitude,
-    activeAddress.longitude || 0,
-    activeAddress.latitude || 0,
+    vendorLocation.longitude,
+    vendorLocation.latitude,
+    activeAddress.longitude,
+    activeAddress.latitude,
   );
 
+  // Defensive Type Casting for spatial API payloads
+  const distanceMeters = Number(distanceData.meters) || 0;
+  const distanceKm = Number(distanceData.km) || 0;
+
+  // 4. Configuration & Global Rates
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
+
   const deliveryVatRate =
     globalSettings?.deliveryVatRate === 0
       ? 23
       : (globalSettings?.deliveryVatRate ?? 23);
   const serviceCharge = globalSettings?.serviceCharge || 0;
+  const serviceChargeVatRate = 23; // Strict Platform Rules for Portugal IVA
+  const serviceChargeVatAmount = roundTo2(
+    (serviceCharge * serviceChargeVatRate) / 100,
+  );
 
   const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
-
-  // Deliveries within 1 km use the fixed base charge. Longer trips use the
-  // configured per-kilometer rate.
   const deliveryChargeBase =
-    distanceData.meters <= 1000
-      ? BASE_FIXED_DELIVERY_CHARGE || 0
-      : roundTo2(distanceData.km * (globalSettings?.deliveryChargePerKm || 0));
+    distanceMeters <= 1000
+      ? BASE_FIXED_DELIVERY_CHARGE
+      : roundTo2(distanceKm * (globalSettings?.deliveryChargePerKm || 0));
 
   const deliveryVat = roundTo2((deliveryChargeBase * deliveryVatRate) / 100);
   const totalDeliveryCharge = roundTo2(deliveryChargeBase + deliveryVat);
@@ -119,8 +117,7 @@ const checkout = async (
     globalSettings?.platformCommissionPercent || 0;
   const COMMISSION_VAT_RATE = globalSettings?.platformCommissionVatRate || 0;
 
-  // Convert each selected item into the normalized checkout snapshot that will
-  // later be reused by order creation.
+  // 5. Line Item Transformation Core Engine
   const orderItems = selectedItems.map((item: any) => {
     const product = products.find(
       (p) => p._id.toString() === item.productId.toString(),
@@ -142,8 +139,6 @@ const checkout = async (
       };
     }
 
-    // When a variation SKU is selected, its price overrides the base product
-    // price and its label is appended for direct checkout names.
     if (item.variationSku && product.variations?.length) {
       const selectedOption = product.variations
         .flatMap((v: any) => v.options || [])
@@ -151,7 +146,6 @@ const checkout = async (
 
       if (selectedOption) {
         basePrice = selectedOption.price;
-
         if (!payload.useCart) {
           const vLabelEn =
             typeof selectedOption.label === 'object'
@@ -161,7 +155,6 @@ const checkout = async (
             typeof selectedOption.label === 'object'
               ? selectedOption.label.pt || vLabelEn
               : selectedOption.label;
-
           if (vLabelEn)
             finalItemNameObj.en = `${finalItemNameObj.en} - ${vLabelEn}`;
           if (vLabelPt)
@@ -171,12 +164,9 @@ const checkout = async (
     }
 
     const qty = item.itemSummary?.quantity || item.quantity || 1;
-
     const discount = product.pricing?.discount || 0;
     const discountType = product.pricing?.discountType || 'PERCENTAGE';
 
-    // Store discount is calculated per unit first, then multiplied by quantity
-    // inside the summary totals.
     let storeDiscountUnit = 0;
     if (discountType.toUpperCase() === 'FLAT') {
       storeDiscountUnit = roundTo2(discount);
@@ -186,8 +176,6 @@ const checkout = async (
 
     const priceAfterStoreDiscount = roundTo2(basePrice - storeDiscountUnit);
 
-    // Add-ons already carry their own price, quantity, and tax metadata in the
-    // cart/request payload, so this step only normalizes totals and names.
     const processedAddons = (item.addons || []).map((a: any) => {
       const aPrice = Number(a.unitPrice) || 0;
       const aQty = Number(a.quantity) || 0;
@@ -221,7 +209,6 @@ const checkout = async (
       };
     });
 
-    // Item grand total combines the discounted product total with all add-ons.
     const totalAddonsLineTotal = processedAddons.reduce(
       (sum: number, a: any) => sum + a.lineTotal,
       0,
@@ -233,7 +220,6 @@ const checkout = async (
 
     const productLineTotal = roundTo2(priceAfterStoreDiscount * qty);
     const productTaxRate = product.pricing?.taxRate || 0;
-
     const productTaxAmount = roundTo2(
       (productLineTotal * productTaxRate) / (100 + productTaxRate),
     );
@@ -241,7 +227,7 @@ const checkout = async (
     const itemGrandTotal = roundTo2(productLineTotal + totalAddonsLineTotal);
     const itemTotalTax = roundTo2(productTaxAmount + totalAddonsTax);
 
-    // DeliGo Commission calculated from Net Price (Original Price minus Discount minus Tax)
+    // DeliGo Commission Split calculations per item
     const priceWithoutTax = roundTo2(itemGrandTotal - itemTotalTax);
     const commAmt = roundTo2(
       priceWithoutTax * (PLATFORM_COMMISSION_RATE / 100),
@@ -292,7 +278,8 @@ const checkout = async (
     };
   });
 
-  const totalOriginalPrice = orderItems.reduce((sum: number, i: any) => {
+  // 6. Global Mathematical Accumulation
+  const rawOriginalPrice = orderItems.reduce((sum: number, i: any) => {
     const productOriginalTotal =
       i.productPricing.originalPrice * i.itemSummary.quantity;
     const addonsOriginalTotal = i.addons.reduce(
@@ -301,15 +288,19 @@ const checkout = async (
     );
     return sum + productOriginalTotal + addonsOriginalTotal;
   }, 0);
+  const totalOriginalPrice = roundTo2(rawOriginalPrice);
 
-  const totalProductDiscount = orderItems.reduce(
-    (sum: number, i: any) => sum + i.itemSummary.totalProductDiscount,
-    0,
+  const totalProductDiscount = roundTo2(
+    orderItems.reduce(
+      (sum: number, i: any) => sum + i.itemSummary.totalProductDiscount,
+      0,
+    ),
   );
-
-  const totalItemsSubTotal = orderItems.reduce(
-    (sum: number, i: any) => sum + i.itemSummary.grandTotal,
-    0,
+  const totalItemsSubTotal = roundTo2(
+    orderItems.reduce(
+      (sum: number, i: any) => sum + i.itemSummary.grandTotal,
+      0,
+    ),
   );
   const totalTaxAmount = roundTo2(
     orderItems.reduce(
@@ -318,13 +309,17 @@ const checkout = async (
     ),
   );
 
-  const totalCommAmt = orderItems.reduce(
-    (sum: number, i: any) => sum + i.commission.deliGoCommissionAmount,
-    0,
+  const totalCommAmt = roundTo2(
+    orderItems.reduce(
+      (sum: number, i: any) => sum + i.commission.deliGoCommissionAmount,
+      0,
+    ),
   );
-  const totalCommVat = orderItems.reduce(
-    (sum: number, i: any) => sum + i.commission.deliGoCommissionVatAmount,
-    0,
+  const totalCommVat = roundTo2(
+    orderItems.reduce(
+      (sum: number, i: any) => sum + i.commission.deliGoCommissionVatAmount,
+      0,
+    ),
   );
 
   const fleetFee = roundTo2(
@@ -332,56 +327,74 @@ const checkout = async (
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
 
+  // Payout Splits calculations matching the defined Mongoose Schema structure
   const vendorNetPayout = roundTo2(
     totalItemsSubTotal - (totalCommAmt + totalCommVat),
   );
   const vendorEarningsWithoutTax = roundTo2(vendorNetPayout - totalTaxAmount);
-
   const riderNetEarnings = roundTo2(deliveryChargeBase - fleetFee);
 
+  // Grand Total Calculation including Platform Service Charge + Its VAT
   const finalGrandTotal = roundTo2(
-    totalItemsSubTotal + totalDeliveryCharge + serviceCharge,
+    totalItemsSubTotal +
+      totalDeliveryCharge +
+      serviceCharge +
+      serviceChargeVatAmount,
   );
 
-  // This document is a pre-order snapshot. Existing unfinished summaries for
-  // the same customer and vendor are replaced so only the latest one remains.
+  // 7. Core Treasury Financial Ledgers Alignment (Portugal Law Compliance)
+  const totalPlatformNetRevenue = roundTo2(totalCommAmt + serviceCharge);
+  const totalPlatformPayableTax = roundTo2(
+    totalCommVat + serviceChargeVatAmount + deliveryVat,
+  );
+  const totalPlatformGrossHolding = roundTo2(
+    totalPlatformNetRevenue + totalPlatformPayableTax,
+  );
+  const totalDeduction = roundTo2(totalCommAmt + totalCommVat);
+
   const finalSummaryData = {
     customerId,
     vendorId,
     customerEmail: currentUser?.email || '',
     contactNumber: currentUser?.contactNumber || '',
     items: orderItems,
-
     totalItems: orderItems.length,
     totalQuantity: orderItems.reduce(
       (s: number, i: any) => s + i.itemSummary.quantity,
       0,
     ),
+
     orderCalculation: {
-      totalOriginalPrice: roundTo2(totalOriginalPrice),
-      totalProductDiscount: roundTo2(totalProductDiscount),
+      totalOriginalPrice,
+      totalProductDiscount,
       totalOfferDiscount: 0,
-      totalTaxAmount: roundTo2(totalTaxAmount),
-      itemsSubtotal: roundTo2(totalItemsSubTotal),
+      totalTaxAmount,
+      itemsSubtotal: totalItemsSubTotal,
       serviceCharge: roundTo2(serviceCharge),
+      serviceChargeVatRate,
+      serviceChargeVatAmount,
     },
     delivery: {
       charge: deliveryChargeBase,
       vatRate: deliveryVatRate,
       vatAmount: deliveryVat,
-      totalDeliveryCharge: totalDeliveryCharge,
-      distance: roundTo2(distanceData.km),
-      estimatedTime: distanceData.durationMinutes,
+      totalDeliveryCharge,
+      distance: roundTo2(distanceKm),
+      estimatedTime: Number(distanceData.durationMinutes) || 0,
     },
     payoutSummary: {
       grandTotal: finalGrandTotal,
       deliGoCommission: {
         rate: PLATFORM_COMMISSION_RATE,
-        amount: roundTo2(totalCommAmt),
-        vatAmount: roundTo2(totalCommVat),
-        totalDeduction: roundTo2(totalCommAmt + totalCommVat), // eta thik korte hobe , wallet adjust korte hobe?
+        amount: totalCommAmt,
+        vatAmount: totalCommVat,
+        totalDeduction,
         earnedServiceCharge: roundTo2(serviceCharge),
-        deliveryVatAmount: roundTo2(deliveryVat),
+        serviceChargeVatAmount,
+        deliveryVatAmount: deliveryVat,
+        totalPlatformNetRevenue,
+        totalPlatformPayableTax,
+        totalPlatformGrossHolding,
       },
       fleet: {
         rate: globalSettings?.fleetManagerCommissionPercent || 0,
@@ -389,7 +402,7 @@ const checkout = async (
       },
       vendor: {
         earningsWithoutTax: vendorEarningsWithoutTax,
-        payableTax: roundTo2(totalTaxAmount),
+        payableTax: totalTaxAmount,
         vendorNetPayout,
       },
       rider: {
@@ -405,6 +418,7 @@ const checkout = async (
     isConvertedToOrder: false,
   };
 
+  // 8. Atomic database updates
   await CheckoutSummary.deleteMany({
     customerId,
     vendorId,
@@ -412,6 +426,7 @@ const checkout = async (
   });
 
   const summary = await CheckoutSummary.create(finalSummaryData);
+
   return {
     messageKey: 'CHECKOUT_SUCCESS',
     data: summary,
