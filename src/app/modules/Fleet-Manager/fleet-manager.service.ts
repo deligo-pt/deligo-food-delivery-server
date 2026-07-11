@@ -11,6 +11,7 @@ import {
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -247,6 +248,7 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
   currentUser: TCurrentUser,
+  query: Record<string, unknown>,
 ) => {
   const userId = currentUser?.userId;
   if (currentUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
@@ -272,10 +274,26 @@ const getSingleFleetManagerFromDB = async (
     throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND_BANG');
   }
 
+  const baseQuery = DeliveryPartner.find({
+    'registeredBy.id': existingFleetManager._id,
+    isDeleted: false,
+  }).select('name profilePhoto email userId -_id');
+
+  const deliveryPartnerQuery = new QueryBuilder(baseQuery, query)
+    .search(['name', 'email'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const deliveryPartners = await deliveryPartnerQuery.modelQuery;
+  const meta = await deliveryPartnerQuery.countTotal();
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Fleet Manager' },
-    data: existingFleetManager,
+    data: { existingFleetManager, deliveryPartners },
+    meta,
   };
 };
 
