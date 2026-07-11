@@ -351,7 +351,9 @@ const checkout = async (
     customerEmail: currentUser?.email || '',
     contactNumber: currentUser?.contactNumber || '',
     items: orderItems,
-    totalItems: orderItems.reduce(
+
+    totalItems: orderItems.length,
+    totalQuantity: orderItems.reduce(
       (s: number, i: any) => s + i.itemSummary.quantity,
       0,
     ),

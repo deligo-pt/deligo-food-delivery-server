@@ -45,6 +45,7 @@ export type TCheckoutSummary = {
 
   items: TOrderItemSnapshot[];
   totalItems: number;
+  totalQuantity: number;
 
   orderCalculation: {
     totalOriginalPrice: number;

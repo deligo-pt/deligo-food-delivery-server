@@ -92,6 +92,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     ],
 
     totalItems: { type: Number, required: true },
+    totalQuantity: { type: Number, required: true },
 
     orderCalculation: {
       type: {

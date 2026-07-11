@@ -249,7 +249,6 @@ const addToCart = async (
   }
 
   await recalculateCartTotals(cart);
-  cart.totalItems = cart.items.length;
 
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
@@ -423,7 +422,6 @@ const toggleCartItemStatus = async (
   itemToToggle.isActive = willBeActive;
 
   await recalculateCartTotals(cart);
-  cart.totalItems = cart.items.length;
 
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
@@ -434,6 +432,7 @@ const toggleCartItemStatus = async (
       items: cart.items,
       cartCalculation: cart.cartCalculation,
       totalItems: cart.totalItems,
+      totalQuantity: cart.totalQuantity,
       status: 'active',
       isNotified: false,
     },
@@ -671,7 +670,6 @@ const updateAddonQuantity = async (
   targetItem.itemSummary.grandTotal = roundTo2(mainProductNet + totalAddonsNet);
 
   await recalculateCartTotals(cart);
-  cart.totalItems = cart.items.length;
 
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
@@ -682,6 +680,7 @@ const updateAddonQuantity = async (
       items: cart.items,
       cartCalculation: cart.cartCalculation,
       totalItems: cart.totalItems,
+      totalQuantity: cart.totalQuantity,
       status: 'active',
       isNotified: false,
     },
@@ -758,6 +757,7 @@ const deleteCartItem = async (
         customerId,
         items: [],
         totalItems: 0,
+        totalQuantity: 0,
         cartCalculation: {
           totalOriginalPrice: 0,
           totalProductDiscount: 0,
@@ -770,7 +770,6 @@ const deleteCartItem = async (
   }
 
   await recalculateCartTotals(cart);
-  cart.totalItems = cart.items.length;
 
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
@@ -781,6 +780,7 @@ const deleteCartItem = async (
       items: cart.items,
       cartCalculation: cart.cartCalculation,
       totalItems: cart.totalItems,
+      totalQuantity: cart.totalQuantity,
       status: 'active',
       isNotified: false,
     },
@@ -826,6 +826,7 @@ const clearCart = async (currentUser: TCurrentUser) => {
       customerId,
       items: [],
       totalItems: 0,
+      totalQuantity: 0,
       cartCalculation: {
         totalOriginalPrice: 0,
         totalProductDiscount: 0,
@@ -1100,6 +1101,7 @@ const viewCart = async (
         customerId: targetCustomerId,
         items: [],
         totalItems: 0,
+        totalQuantity: 0,
         cartCalculation: {
           totalOriginalPrice: 0,
           totalProductDiscount: 0,
@@ -1193,7 +1195,8 @@ const viewCart = async (
         {
           items: cart.items,
           cartCalculation: cart.cartCalculation,
-          totalItems: cart.items.length,
+          totalItems: cart.totalItems,
+          totalQuantity: cart.totalQuantity,
         },
       );
     }
