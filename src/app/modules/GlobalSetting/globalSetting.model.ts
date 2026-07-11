@@ -49,8 +49,6 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
       platformPercent: { type: Number, required: true, default: 0 },
       platformVatRate: { type: Number, required: true, default: 0 },
       fleetManagerPercent: { type: Number, required: true, default: 0 },
-      deliveryPartnerPercent: { type: Number, required: true, default: 0 },
-      vendorVatPercent: { type: Number, required: true, default: 0 },
       serviceCharge: { type: Number, required: true, default: 0 },
     },
 
@@ -58,12 +56,7 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
     // Order Rules & Automation
     // --------------------------------------------------
     order: {
-      minAmount: { type: Number, default: 0 },
-      maxAmount: { type: Number, default: 0 },
-      maxItemsPerOrder: { type: Number, default: 0 },
       nearestVendorRadiusKm: { type: Number, default: 0 },
-      autoCancelUnacceptedMinutes: { type: Number, default: 0 },
-      autoMarkDeliveredMinutes: { type: Number, default: 0 },
       cancelTimeLimitMinutes: { type: Number, default: 0 },
     },
 
@@ -94,22 +87,6 @@ const GlobalSettingsSchema = new Schema<TGlobalSettings>(
       customerReferralMilestones: {
         type: [ReferralMilestoneSchema],
         default: [],
-      },
-    },
-
-    // --------------------------------------------------
-    // Security & System State
-    // --------------------------------------------------
-    system: {
-      isPlatformLive: { type: Boolean, default: true },
-      maintenanceMessage: { type: String, default: '' },
-      isOfferEnabled: { type: Boolean, default: false },
-      maxDiscountPercent: { type: Number, default: 0 },
-      refundProcessingDays: { type: Number, default: 0 },
-      otp: {
-        enabled: { type: Boolean, default: false },
-        length: { type: Number, default: 4 },
-        expiryMinutes: { type: Number, default: 0 },
       },
     },
 
