@@ -23,20 +23,19 @@ export type TOrder = {
 
   customerId: mongoose.Types.ObjectId;
   vendorId: mongoose.Types.ObjectId;
-  deliveryPartnerId?: mongoose.Types.ObjectId; // assigned after vendor accepts
+  deliveryPartnerId?: mongoose.Types.ObjectId;
   deliveryPartnerCancelReason?: string;
 
-  // Items
+  // Items Snapshot
   items: TOrderItemSnapshot[];
-
   totalItems: number;
 
   orderCalculation: {
     totalOriginalPrice: number;
     totalProductDiscount: number;
     totalOfferDiscount: number;
-    taxableAmount: number;
     totalTaxAmount: number;
+    itemsSubtotal: number;
     serviceCharge: number;
   };
 
@@ -65,7 +64,6 @@ export type TOrder = {
       rate: number;
       fee: number;
     };
-
     vendor: {
       earningsWithoutTax: number;
       payableTax: number;
@@ -82,7 +80,7 @@ export type TOrder = {
   };
 
   paymentMethod: TPaymentMethod;
-  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentStatus: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
   transactionId?: string;
   isPaid: boolean;
 
@@ -90,24 +88,23 @@ export type TOrder = {
   deliveryAddress: TAddress;
   pickupAddress?: TAddress;
 
-  // OTP Verification
+  // Metadata
   remarks?: string;
 
-  // Order Lifecycle
+  // Order Lifecycle Management
   orderStatus: OrderStatus;
   cancelReason?: string;
   rejectReason?: string;
 
   dispatchPartnerPool?: string[];
   dispatchExpiresAt?: Date;
-  // Delivery Details
+
+  // Delivery Timestamps
   pickedUpAt?: Date;
   deliveredAt?: Date;
   preparationTime?: number;
 
   isRated?: boolean;
-
-  // Status Tracking
   isDeleted: boolean;
 
   invoiceSync?: TInvoiceSync;

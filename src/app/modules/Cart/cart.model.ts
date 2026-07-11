@@ -68,6 +68,7 @@ const cartSchema = new Schema<TCart>(
     items: { type: [cartItemSchema], required: true, default: [] },
 
     totalItems: { type: Number, default: 0 },
+    totalQuantity: { type: Number, default: 0 },
 
     cartCalculation: {
       type: {

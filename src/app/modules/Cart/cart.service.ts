@@ -174,6 +174,7 @@ const addToCart = async (
       customerId: customerId,
       items: [newItem],
       totalItems: 1,
+      totalQuantity: inputQuantity,
       cartCalculation: {
         totalOriginalPrice: 0,
         totalProductDiscount: 0,
@@ -259,6 +260,7 @@ const addToCart = async (
       items: cart.items,
       cartCalculation: cart.cartCalculation,
       totalItems: cart.totalItems,
+      totalQuantity: cart.totalQuantity,
       status: 'active',
       isNotified: false,
     },

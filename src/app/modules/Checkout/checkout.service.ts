@@ -377,7 +377,7 @@ const checkout = async (
         rate: PLATFORM_COMMISSION_RATE,
         amount: roundTo2(totalCommAmt),
         vatAmount: roundTo2(totalCommVat),
-        totalDeduction: roundTo2(totalCommAmt + totalCommVat),
+        totalDeduction: roundTo2(totalCommAmt + totalCommVat), // eta thik korte hobe , wallet adjust korte hobe?
         earnedServiceCharge: roundTo2(serviceCharge),
         deliveryVatAmount: roundTo2(deliveryVat),
       },

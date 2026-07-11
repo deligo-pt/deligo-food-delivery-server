@@ -52,6 +52,7 @@ export type TCart = {
   customerId: mongoose.Types.ObjectId;
   items: TCartItem[];
   totalItems: number;
+  totalQuantity: number;
   cartCalculation: {
     totalOriginalPrice: number;
     totalProductDiscount: number;

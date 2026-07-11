@@ -20,7 +20,7 @@ const walletSchema = new Schema<TWallet>(
     userModel: {
       type: String,
       required: true,
-      enum: ['Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'],
+      enum: ['Admin', 'Customer', 'Vendor', 'FleetManager', 'DeliveryPartner'],
     },
     lastSettlementDate: {
       type: Date,
@@ -53,5 +53,7 @@ const walletSchema = new Schema<TWallet>(
     timestamps: true,
   },
 );
+
+walletSchema.index({ userId: 1, userModel: 1 });
 
 export const Wallet = model<TWallet>('Wallet', walletSchema);

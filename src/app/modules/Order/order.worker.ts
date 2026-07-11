@@ -83,7 +83,6 @@ export const processNewOrderPostProcess = async (job: Job) => {
           dbCart.cartCalculation = {
             totalOriginalPrice: 0,
             totalProductDiscount: 0,
-            taxableAmount: 0,
             totalTaxAmount: 0,
             grandTotal: 0,
           };
@@ -142,13 +141,12 @@ export const processOrderPostUpdate = async (job: Job) => {
         payoutSummary?.vendor?.earningsWithoutTax || 0;
       const vendorPayableTax = payoutSummary?.vendor?.payableTax || 0;
       const vendorNetPayout = payoutSummary?.vendor?.vendorNetPayout || 0;
-      const riderEarningsBeforeTax =
-        payoutSummary?.rider?.earningsWithoutTax || 0;
-      const riderPayableTax = payoutSummary?.rider?.payableTax || 0;
       const riderNetEarnings = payoutSummary?.rider?.riderNetEarnings || 0;
-      const totalDeliveryCharge = delivery?.totalDeliveryCharge || 0;
+      const deliveryBaseCharge = delivery?.charge || 0;
       const deliGoCommission = payoutSummary?.deliGoCommission?.amount || 0;
       const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
+      const deliveryVatAmount =
+        payoutSummary?.deliGoCommission?.deliveryVatAmount || 0;
       const deliGoCommissionNet =
         payoutSummary?.deliGoCommission?.totalDeduction || 0;
       const earnedServiceCharge =
@@ -162,7 +160,7 @@ export const processOrderPostUpdate = async (job: Job) => {
         roundTo2(deliGoCommissionNet + earnedServiceCharge) || 0;
       const riderEarningAmount = isManagedByFleet
         ? riderNetEarnings
-        : totalDeliveryCharge;
+        : deliveryBaseCharge;
 
       // --- Vendor Wallet Update ---
       await Wallet.findOneAndUpdate(
@@ -185,8 +183,6 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidTax: roundTo2(riderPayableTax) || 0,
-            totalTax: roundTo2(riderPayableTax) || 0,
             totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
             totalEarnings: roundTo2(riderEarningAmount) || 0,
           },
@@ -203,8 +199,8 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidTax: roundTo2(commissionVat) || 0,
-            totalTax: roundTo2(commissionVat) || 0,
+            totalUnpaidTax: roundTo2(commissionVat + deliveryVatAmount) || 0,
+            totalTax: roundTo2(commissionVat + deliveryVatAmount) || 0,
             totalEarnings: roundTo2(totalPlatformEarnings) || 0,
           },
         },
@@ -218,10 +214,10 @@ export const processOrderPostUpdate = async (job: Job) => {
           {
             $setOnInsert: { walletId: `WAL-F-${customNanoId(8)}` },
             $inc: {
-              totalUnpaidEarnings: totalDeliveryCharge || 0,
+              totalUnpaidEarnings: deliveryBaseCharge || 0,
               totalRiderPayable: riderNetEarnings || 0,
               totalFleetEarnings: payoutSummary.fleet.fee || 0,
-              totalEarnings: totalDeliveryCharge || 0,
+              totalEarnings: deliveryBaseCharge || 0,
             },
           },
           { session, upsert: true },
@@ -248,8 +244,7 @@ export const processOrderPostUpdate = async (job: Job) => {
           orderId: orderDbId,
           userId: partner._id,
           userModel: 'DeliveryPartner',
-          baseAmount: roundTo2(riderEarningsBeforeTax),
-          taxAmount: roundTo2(riderPayableTax),
+          baseAmount: roundTo2(riderEarningAmount),
           totalAmount: roundTo2(riderEarningAmount),
           type: 'DELIVERY_PARTNER_EARNING',
           status: 'SUCCESS',
@@ -279,9 +274,9 @@ export const processOrderPostUpdate = async (job: Job) => {
           orderId: orderDbId,
           userId: fleetManagerId,
           userModel: 'FleetManager',
-          baseAmount: roundTo2(totalDeliveryCharge),
+          baseAmount: roundTo2(deliveryBaseCharge),
           taxAmount: 0,
-          totalAmount: roundTo2(totalDeliveryCharge),
+          totalAmount: roundTo2(deliveryBaseCharge),
           type: 'FLEET_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
@@ -344,7 +339,7 @@ export const processOrderPostUpdate = async (job: Job) => {
     const notificationPayload = {
       title: `Order is now ${orderStatus}`,
       body: `${
-        orderStatus === 'PICKED_UP' // TODO: Notify Customer
+        orderStatus === 'PICKED_UP'
           ? `Your order ${orderDisplayId} is now PICKED_UP.`
           : orderStatus === 'ON_THE_WAY'
             ? `Your order ${orderDisplayId} is now ON_THE_WAY.`
@@ -389,7 +384,7 @@ export const processOrderPostUpdate = async (job: Job) => {
   } catch (error) {
     await session.abortTransaction();
     console.error(`[Worker] Failed to process order ${orderDisplayId}:`, error);
-    throw error; // BullMQ will retry based on config
+    throw error;
   } finally {
     session.endSession();
   }
