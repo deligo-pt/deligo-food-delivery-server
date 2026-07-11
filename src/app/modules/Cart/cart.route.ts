@@ -16,7 +16,7 @@ router.post(
 
 // toggle cart item status
 router.patch(
-  '/toggle-item-status/:productId',
+  '/toggle-item-status',
   auth('CUSTOMER'),
   validateRequest(CartValidation.toggleCartItemStatusValidationSchema),
   CartControllers.toggleCartItemStatus,

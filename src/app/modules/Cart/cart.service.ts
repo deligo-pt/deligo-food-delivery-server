@@ -12,7 +12,7 @@ import { roundTo2 } from '../../utils/mathProvider';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { RedisService } from '../../config/redis';
-import { formatCartResponse } from './cart.utils';
+import { formatCartResponse, refreshItemPricingAndTotals } from './cart.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { BusinessCategory } from '../Category/category.model';
 
@@ -272,9 +272,12 @@ const addToCart = async (
 // toggle cart item status service
 const toggleCartItemStatus = async (
   currentUser: TCurrentUser,
-  productId: string,
-  lang: TLanguageCode,
-  variationSku?: string,
+  payload: {
+    toggleMode: 'ITEM_LEVEL' | 'VENDOR_BULK';
+    vendorId?: string;
+    productIds?: string[];
+    variationSku?: string[];
+  },
 ) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(httpStatus.FORBIDDEN, 'CART_UPDATE_RESTRICTED', {
@@ -282,150 +285,110 @@ const toggleCartItemStatus = async (
     });
   }
 
+  const { toggleMode, vendorId, productIds, variationSku } = payload;
+
   const customerId = currentUser._id;
   const customerIdStr = customerId.toString();
   const dataKey = `cart:data:${customerIdStr}`;
   const expiryKey = `cart:expiry:${customerIdStr}`;
 
   let cart = await RedisService.get<any>(dataKey);
-
   if (!cart) {
     const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
-    if (dbCart) {
-      cart = dbCart;
-    }
+    if (dbCart) cart = dbCart;
   }
 
-  if (!cart) {
+  if (!cart || !cart.items || cart.items.length === 0) {
     throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
   }
 
-  const itemToToggle = cart.items.find((i: any) => {
-    const isSameProduct = i.productId.toString() === productId.toString();
-    const currentItemSku = i.variationSku || null;
-    const inputSku = variationSku || null;
+  let isFinalStateActive = false;
 
-    return isSameProduct && currentItemSku === inputSku;
-  });
+  if (toggleMode === 'VENDOR_BULK') {
+    if (!vendorId)
+      throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_ID_REQUIRED_FOR_BULK');
 
-  if (!itemToToggle) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_IN_CART');
-  }
+    const targetVendorIdStr = vendorId.toString();
+    const hasVendorItems = cart.items.some(
+      (i: any) => i.vendorId.toString() === targetVendorIdStr,
+    );
+    if (!hasVendorItems)
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'NO_ITEMS_FOUND_FOR_THIS_VENDOR',
+      );
 
-  const willBeActive = !itemToToggle.isActive;
+    const anyActive = cart.items.some(
+      (i: any) => i.vendorId.toString() === targetVendorIdStr && i.isActive,
+    );
+    const determineActiveState = !anyActive;
+    isFinalStateActive = determineActiveState;
 
-  if (willBeActive) {
-    const selectedVendorId = itemToToggle.vendorId.toString();
-
-    const product = await Product.findOne({
-      _id: itemToToggle.productId,
-      isDeleted: false,
-      isApproved: true,
-    }).lean();
-
-    if (!product) {
-      throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_UNAVAILABLE');
+    if (determineActiveState) {
+      cart.items.forEach((item: any) => {
+        if (item.vendorId.toString() !== targetVendorIdStr) {
+          item.isActive = false;
+        }
+      });
     }
 
-    const pNameEn = product.name?.en || '';
-    const pNamePt = product.name?.pt || pNameEn;
-    const finalItemName = { en: pNameEn, pt: pNamePt };
-
-    let selectedPrice = product.pricing.price;
-    let selectedVariantLabel: any = null;
-    const hasVariations =
-      product?.stock?.hasVariations === true ||
-      (product?.variations && product.variations.length > 0);
-
-    if (itemToToggle.variationSku && hasVariations) {
-      const targetOption = product.variations
-        ?.flatMap((v: any) => v.options)
-        .find((opt: any) => opt.sku === itemToToggle.variationSku);
-
-      if (targetOption) {
-        selectedPrice = targetOption.price;
-        selectedVariantLabel = targetOption.label;
-      }
-
-      const vLabelEn =
-        typeof selectedVariantLabel === 'object'
-          ? selectedVariantLabel.en || ''
-          : selectedVariantLabel;
-      const vLabelPt =
-        typeof selectedVariantLabel === 'object'
-          ? selectedVariantLabel.pt || vLabelEn
-          : selectedVariantLabel;
-
-      if (vLabelEn) finalItemName.en = `${pNameEn} - ${vLabelEn}`;
-      if (vLabelPt) finalItemName.pt = `${pNamePt} - ${vLabelPt}`;
-    }
-
-    itemToToggle.name = finalItemName;
-
-    const {
-      discount = 0,
-      discountType = 'PERCENTAGE',
-      taxRate = 0,
-    } = product.pricing;
-
-    const unitDiscountAmount =
-      discountType === 'FLAT'
-        ? roundTo2(discount)
-        : roundTo2((selectedPrice * discount) / 100);
-    const priceAfterDiscount = roundTo2(selectedPrice - unitDiscountAmount);
-
-    const productLineTotal = roundTo2(
-      priceAfterDiscount * itemToToggle.itemSummary.quantity,
-    );
-    const productTaxAmount = roundTo2(
-      (productLineTotal * taxRate) / (100 + taxRate),
-    );
-
-    const existingAddonsNet =
-      itemToToggle.addons?.reduce(
-        (sum: number, a: any) => sum + (a.lineTotal || 0),
-        0,
-      ) || 0;
-    const existingAddonsTax =
-      itemToToggle.addons?.reduce(
-        (sum: number, a: any) => sum + (a.taxAmount || 0),
-        0,
-      ) || 0;
-
-    itemToToggle.productPricing.originalPrice = roundTo2(selectedPrice);
-    itemToToggle.productPricing.productDiscountAmount = unitDiscountAmount;
-    itemToToggle.productPricing.discountType = discountType;
-    itemToToggle.productPricing.unitPrice = priceAfterDiscount;
-    itemToToggle.productPricing.lineTotal = productLineTotal;
-    itemToToggle.productPricing.taxRate = taxRate;
-    itemToToggle.productPricing.taxAmount = productTaxAmount;
-
-    itemToToggle.itemSummary.totalTaxAmount = roundTo2(
-      productTaxAmount + existingAddonsTax,
-    );
-    itemToToggle.itemSummary.totalProductDiscount = roundTo2(
-      unitDiscountAmount * itemToToggle.itemSummary.quantity,
-    );
-    itemToToggle.itemSummary.grandTotal = roundTo2(
-      productLineTotal + existingAddonsNet,
-    );
-
-    const activeItems = cart.items.filter((i: any) => i.isActive === true);
-    if (activeItems.length > 0) {
-      const activeVendorId = activeItems[0].vendorId;
-      if (activeVendorId.toString() !== selectedVendorId) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'MULTIPLE_VENDORS_DENIED');
+    for (const item of cart.items) {
+      if (item.vendorId.toString() === targetVendorIdStr) {
+        if (determineActiveState) {
+          await refreshItemPricingAndTotals(item);
+        }
+        item.isActive = determineActiveState;
       }
     }
-  }
+  } else if (toggleMode === 'ITEM_LEVEL') {
+    let itemsToToggle: any[] = [];
 
-  itemToToggle.isActive = willBeActive;
+    if (Array.isArray(productIds) && productIds.length > 0) {
+      const stringProductIds = productIds.map((id) => id.toString());
+      itemsToToggle = cart.items.filter(
+        (i: any) =>
+          stringProductIds.includes(i.productId.toString()) && !i.variationSku,
+      );
+    } else if (Array.isArray(variationSku) && variationSku.length > 0) {
+      itemsToToggle = cart.items.filter(
+        (i: any) => i.variationSku && variationSku.includes(i.variationSku),
+      );
+    }
+
+    if (itemsToToggle.length === 0) {
+      throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_IN_CART');
+    }
+
+    const willBeActive = !itemsToToggle[0].isActive;
+    isFinalStateActive = willBeActive;
+
+    if (willBeActive) {
+      const selectedVendorId = itemsToToggle[0].vendorId.toString();
+
+      const activeItems = cart.items.filter((i: any) => i.isActive === true);
+      if (activeItems.length > 0) {
+        const activeVendorId = activeItems[0].vendorId;
+        if (activeVendorId.toString() !== selectedVendorId) {
+          throw new AppError(httpStatus.BAD_REQUEST, 'MULTIPLE_VENDORS_DENIED');
+        }
+      }
+
+      for (const item of itemsToToggle) {
+        await refreshItemPricingAndTotals(item);
+      }
+    }
+
+    itemsToToggle.forEach((item: any) => {
+      item.isActive = willBeActive;
+    });
+  }
 
   await recalculateCartTotals(cart);
 
   await RedisService.set(dataKey, cart, 259200);
   await RedisService.set(expiryKey, '', 86400);
 
+  // Background Database Async Sync Pipeline
   Cart.updateOne(
     { customerId },
     {
@@ -440,7 +403,7 @@ const toggleCartItemStatus = async (
   ).catch((err) => console.error('Background DB Sync Failed:', err));
 
   return {
-    messageKey: willBeActive
+    messageKey: isFinalStateActive
       ? 'TOGGLE_ITEM_ACTIVE_SUCCESS'
       : 'TOGGLE_ITEM_DEACTIVE_SUCCESS',
     data: cart,

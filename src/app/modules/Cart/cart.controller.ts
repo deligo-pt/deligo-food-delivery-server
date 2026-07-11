@@ -28,12 +28,9 @@ const addToCart = catchAsync(async (req, res) => {
 
 // toggle cart item status Controller
 const toggleCartItemStatus = catchAsync(async (req, res) => {
-  const { productId } = req.params;
   const result = await CartServices.toggleCartItemStatus(
     req.user as TCurrentUser,
-    productId,
-    req.lang,
-    req.body.variationSku,
+    req.body,
   );
 
   const formattedData = formatCartResponse(result?.data, req.lang);

@@ -20,11 +20,14 @@ const addToCartValidationSchema = z.object({
 const toggleCartItemStatusValidationSchema = z.object({
   body: z
     .object({
-      variationSku: z
-        .string({
-          invalid_type_error: 'Variation SKU must be a string',
-        })
-        .optional(),
+      toggleMode: z.enum(['ITEM_LEVEL', 'VENDOR_BULK'], {
+        required_error: 'Toggle mode is required',
+        invalid_type_error:
+          'Toggle mode must be either ITEM_LEVEL or VENDOR_BULK',
+      }),
+      vendorId: z.string().optional(),
+      productIds: z.array(z.string()).optional(),
+      variationSku: z.array(z.string()).optional(),
     })
     .strict(),
 });
