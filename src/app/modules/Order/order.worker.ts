@@ -182,31 +182,36 @@ export const processOrderPostUpdate = async (job: Job) => {
         session,
       );
 
-      const { payoutSummary, delivery } = updatedOrder;
+      const { payoutSummary } = updatedOrder;
+
       const vendorEarningsBeforeTax =
         payoutSummary?.vendor?.earningsWithoutTax || 0;
       const vendorPayableTax = payoutSummary?.vendor?.payableTax || 0;
       const vendorNetPayout = payoutSummary?.vendor?.vendorNetPayout || 0;
+
       const riderNetEarnings = payoutSummary?.rider?.riderNetEarnings || 0;
-      const deliveryBaseCharge = delivery?.charge || 0;
+      const fleetFee = payoutSummary?.fleet?.fee || 0;
+
       const deliGoCommission = payoutSummary?.deliGoCommission?.amount || 0;
       const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
       const deliveryVatAmount =
         payoutSummary?.deliGoCommission?.deliveryVatAmount || 0;
-      const deliGoCommissionNet =
-        payoutSummary?.deliGoCommission?.totalDeduction || 0;
+      const serviceChargeVatAmount =
+        payoutSummary?.deliGoCommission?.serviceChargeVatAmount || 0;
       const earnedServiceCharge =
         payoutSummary?.deliGoCommission?.earnedServiceCharge || 0;
+
+      const totalPlatformNetRevenue =
+        payoutSummary?.deliGoCommission?.totalPlatformNetRevenue || 0;
+      const totalPlatformPayableTax =
+        payoutSummary?.deliGoCommission?.totalPlatformPayableTax || 0;
+      const totalPlatformGrossHolding =
+        payoutSummary?.deliGoCommission?.totalPlatformGrossHolding || 0;
+
       const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
       const fleetManagerId = isManagedByFleet
         ? partner?.registeredBy?.id
         : null;
-
-      const totalPlatformEarnings =
-        roundTo2(deliGoCommissionNet + earnedServiceCharge) || 0;
-      const riderEarningAmount = isManagedByFleet
-        ? riderNetEarnings
-        : deliveryBaseCharge;
 
       // --- Vendor Wallet Update ---
       await Wallet.findOneAndUpdate(
@@ -214,10 +219,10 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           $setOnInsert: { walletId: `WAL-V-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidTax: roundTo2(vendorPayableTax) || 0,
-            totalTax: roundTo2(vendorPayableTax) || 0,
-            totalUnpaidEarnings: roundTo2(vendorNetPayout) || 0,
-            totalEarnings: roundTo2(vendorNetPayout) || 0,
+            totalUnpaidTax: roundTo2(vendorPayableTax),
+            totalTax: roundTo2(vendorPayableTax),
+            totalUnpaidEarnings: roundTo2(vendorNetPayout),
+            totalEarnings: roundTo2(vendorNetPayout),
           },
         },
         { session, upsert: true },
@@ -229,8 +234,8 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
-            totalEarnings: roundTo2(riderEarningAmount) || 0,
+            totalUnpaidEarnings: roundTo2(riderNetEarnings),
+            totalEarnings: roundTo2(riderNetEarnings),
           },
         },
         { session, upsert: true },
@@ -239,39 +244,46 @@ export const processOrderPostUpdate = async (job: Job) => {
       const SYSTEM_ADMIN = await Admin.findOne({ role: 'SUPER_ADMIN' })
         .select('_id')
         .lean();
-      // Admin Wallet
+
+      // --- Admin Central Wallet Update ---
       await Wallet.findOneAndUpdate(
         { userId: SYSTEM_ADMIN?._id, userModel: 'Admin' },
         {
           $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidTax: roundTo2(commissionVat + deliveryVatAmount) || 0,
-            totalTax: roundTo2(commissionVat + deliveryVatAmount) || 0,
-            totalEarnings: roundTo2(totalPlatformEarnings) || 0,
+            totalUnpaidTax: roundTo2(totalPlatformPayableTax),
+            totalTax: roundTo2(totalPlatformPayableTax),
+            totalEarnings: roundTo2(totalPlatformNetRevenue),
+            totalPlatformGrossHolding: roundTo2(totalPlatformGrossHolding),
+            totalPlatformNetRevenue: roundTo2(totalPlatformNetRevenue),
           },
         },
         { session, upsert: true },
       );
 
-      // Fleet Manager Wallet (If applicable)
+      // --- Fleet Manager Wallet Update (If applicable) ---
       if (isManagedByFleet && fleetManagerId) {
         await Wallet.findOneAndUpdate(
           { userId: fleetManagerId, userModel: 'FleetManager' },
           {
             $setOnInsert: { walletId: `WAL-F-${customNanoId(8)}` },
             $inc: {
-              totalUnpaidEarnings: deliveryBaseCharge || 0,
+              totalUnpaidEarnings: riderNetEarnings || 0,
               totalRiderPayable: riderNetEarnings || 0,
-              totalFleetEarnings: payoutSummary.fleet.fee || 0,
-              totalEarnings: deliveryBaseCharge || 0,
+              totalFleetEarnings: fleetFee || 0,
+              totalEarnings: (riderNetEarnings || 0) + (fleetFee || 0),
             },
           },
           { session, upsert: true },
         );
       }
 
-      // --- Transaction Records ---
-      const transactionsToCreate = [
+      // --- Transaction Records Generation (1:1 with updated Schema and Enum types) ---
+      const totalAdminTax = roundTo2(
+        commissionVat + deliveryVatAmount + serviceChargeVatAmount,
+      );
+
+      const transactionsToCreate: any[] = [
         {
           transactionId: `TXN-V-${orderDisplayId}`,
           orderId: orderDbId,
@@ -290,27 +302,54 @@ export const processOrderPostUpdate = async (job: Job) => {
           orderId: orderDbId,
           userId: partner._id,
           userModel: 'DeliveryPartner',
-          baseAmount: roundTo2(riderEarningAmount),
-          totalAmount: roundTo2(riderEarningAmount),
+          baseAmount: roundTo2(riderNetEarnings),
+          taxAmount: 0,
+          totalAmount: roundTo2(riderNetEarnings),
           type: 'DELIVERY_PARTNER_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
           remarks: isManagedByFleet
-            ? 'Fleet Managed Earning'
-            : 'Direct Earning',
+            ? 'Fleet Managed Rider Earning'
+            : 'Direct Rider Earning',
         },
         {
-          transactionId: `TXN-DELIGO-${orderDisplayId}`,
+          transactionId: `TXN-COMM-${orderDisplayId}`,
           orderId: orderDbId,
           userId: SYSTEM_ADMIN?._id,
           userModel: 'Admin',
           baseAmount: roundTo2(deliGoCommission),
           taxAmount: roundTo2(commissionVat),
-          totalAmount: roundTo2(totalPlatformEarnings),
+          totalAmount: roundTo2(deliGoCommission + commissionVat),
           type: 'PLATFORM_COMMISSION',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
-          remarks: `Commission from Order: ${orderDisplayId}`,
+          remarks: `Base Commission Split for Order: ${orderDisplayId}`,
+        },
+        {
+          transactionId: `TXN-SC-${orderDisplayId}`,
+          orderId: orderDbId,
+          userId: SYSTEM_ADMIN?._id,
+          userModel: 'Admin',
+          baseAmount: roundTo2(earnedServiceCharge),
+          taxAmount: roundTo2(serviceChargeVatAmount),
+          totalAmount: roundTo2(earnedServiceCharge + serviceChargeVatAmount),
+          type: 'PLATFORM_SERVICE_CHARGE',
+          status: 'SUCCESS',
+          paymentMethod: 'WALLET',
+          remarks: `Service Charge Collection for Order: ${orderDisplayId}`,
+        },
+        {
+          transactionId: `TXN-TAX-${orderDisplayId}`,
+          orderId: orderDbId,
+          userId: SYSTEM_ADMIN?._id,
+          userModel: 'Admin',
+          baseAmount: 0,
+          taxAmount: totalAdminTax,
+          totalAmount: totalAdminTax,
+          type: 'PLATFORM_TAX_COLLECTION',
+          status: 'SUCCESS',
+          paymentMethod: 'WALLET',
+          remarks: `Centralized VAT Reserve Holding for Order: ${orderDisplayId}`,
         },
       ];
 
@@ -320,13 +359,13 @@ export const processOrderPostUpdate = async (job: Job) => {
           orderId: orderDbId,
           userId: fleetManagerId,
           userModel: 'FleetManager',
-          baseAmount: roundTo2(deliveryBaseCharge),
+          baseAmount: roundTo2(fleetFee),
           taxAmount: 0,
-          totalAmount: roundTo2(deliveryBaseCharge),
+          totalAmount: roundTo2(fleetFee),
           type: 'FLEET_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
-          remarks: `Managed Revenue for Order: ${orderDisplayId}`,
+          remarks: `Fleet Manager Commission for Order: ${orderDisplayId}`,
         });
       }
 
@@ -354,9 +393,7 @@ export const processOrderPostUpdate = async (job: Job) => {
             'operationalData.totalDeliveryMinutes': durationMinutes,
           },
         },
-        {
-          session,
-        },
+        { session },
       );
     } else if (orderStatus === 'REASSIGNMENT_NEEDED') {
       await DeliveryPartner.updateOne(
@@ -390,8 +427,8 @@ export const processOrderPostUpdate = async (job: Job) => {
           : orderStatus === 'ON_THE_WAY'
             ? `Your order ${orderDisplayId} is now ON_THE_WAY.`
             : orderStatus === 'DELIVERED'
-              ? `Your order ${orderDisplayId} is  DELIVERED. Please leave a review.`
-              : `Your order ${orderDisplayId} is  ${orderStatus}.`
+              ? `Your order ${orderDisplayId} is DELIVERED. Please leave a review.`
+              : `Your order ${orderDisplayId} is ${orderStatus}.`
       } `,
       data: {
         orderId: orderDisplayId,

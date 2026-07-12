@@ -25,7 +25,9 @@ export type TTransaction = {
     | 'DELIVERY_PARTNER_SETTLEMENT'
     | 'PLATFORM_COMMISSION'
     | 'INGREDIENT_PURCHASE'
-    | 'REFERRAL_BONUS';
+    | 'REFERRAL_BONUS'
+    | 'PLATFORM_TAX_COLLECTION'
+    | 'PLATFORM_SERVICE_CHARGE';
 
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
   paymentMethod:

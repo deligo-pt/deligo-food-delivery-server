@@ -14,6 +14,10 @@ export type TWallet = {
   totalTax: number;
   totalUnpaidEarnings: number;
   totalEarnings: number;
+
+  totalPlatformGrossHolding?: number;
+  totalPlatformNetRevenue?: number;
+
   totalRiderPayable: number;
   totalFleetEarnings: number;
 
