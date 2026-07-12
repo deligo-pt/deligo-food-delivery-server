@@ -29,7 +29,7 @@ export type TOrder = {
   // Items Snapshot
   items: TOrderItemSnapshot[];
   totalItems: number;
-  totalQuantity: number; // 🚨 UPDATED: Added to match final recalculateCartTotals engine
+  totalQuantity: number;
 
   orderCalculation: {
     totalOriginalPrice: number;
@@ -38,8 +38,8 @@ export type TOrder = {
     totalTaxAmount: number;
     itemsSubtotal: number;
     serviceCharge: number;
-    serviceChargeVatRate: number; // 🚨 UPDATED: Added for Strict Portugal IVA Compliance (23)
-    serviceChargeVatAmount: number; // 🚨 UPDATED: Added for Platform fee VAT storage
+    serviceChargeVatRate: number;
+    serviceChargeVatAmount: number;
   };
 
   delivery: {

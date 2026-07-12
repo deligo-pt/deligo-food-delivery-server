@@ -41,6 +41,7 @@ const createOrderAfterRedUniqPayment = async (
 ) => {
   const { checkoutSummaryId, paymentToken, deliveryNotes } = payload;
 
+  // 1. Fetch Snapshot inside transactional boundaries safely
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
     throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
@@ -61,7 +62,7 @@ const createOrderAfterRedUniqPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
-  // 1. External RedUniq Gateway Verification Bridge
+  // 2. External RedUniq Gateway Verification Bridge
   const verifyPayload = {
     method: 'getResult',
     api: {
@@ -87,21 +88,24 @@ const createOrderAfterRedUniqPayment = async (
 
   const transactionId = paymentData.transaction.id;
 
-  // 2. Transaction Scope Initialization (Atomic Guard)
+  // 3. Transaction Scope Initialization (Atomic Guard)
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // Aligned 1:1 human-readable sequential Order Identification string
+    // Re-bind document instance to current transactional session state to prevent locking leaks
+    summary.$session(session);
+
     const uniqueOrderId = customNanoId(10);
 
-    // Map checkout snapshot variables tightly to our updated TOrder compliance
+    // Build standard structure mapping 1:1 with updated TOrder interface & Order schema
     const orderData = {
       orderId: `ORD-${uniqueOrderId}`,
       customerId: summary.customerId,
       vendorId: summary.vendorId,
       items: summary.items,
       totalItems: summary.totalItems,
+      totalQuantity: summary.totalQuantity,
       orderCalculation: {
         totalOriginalPrice: summary.orderCalculation.totalOriginalPrice,
         totalProductDiscount: summary.orderCalculation.totalProductDiscount,
@@ -109,6 +113,10 @@ const createOrderAfterRedUniqPayment = async (
         totalTaxAmount: summary.orderCalculation.totalTaxAmount,
         itemsSubtotal: summary.orderCalculation.itemsSubtotal,
         serviceCharge: summary.orderCalculation.serviceCharge,
+        serviceChargeVatRate:
+          (summary.orderCalculation as any).serviceChargeVatRate ?? 23,
+        serviceChargeVatAmount:
+          (summary.orderCalculation as any).serviceChargeVatAmount ?? 0,
       },
       delivery: {
         charge: summary.delivery.charge,
@@ -121,7 +129,7 @@ const createOrderAfterRedUniqPayment = async (
       },
       payoutSummary: {
         grandTotal: summary.payoutSummary.grandTotal,
-        deliGoCommission: summary.payoutSummary.deliGoCommission,
+        deliGoCommission: summary.payoutSummary.deliGoCommission, // Automatically carries the 3 treasury ledger additions
         fleet: summary.payoutSummary.fleet,
         vendor: summary.payoutSummary.vendor,
         rider: summary.payoutSummary.rider,
@@ -168,7 +176,13 @@ const createOrderAfterRedUniqPayment = async (
 
     await session.commitTransaction();
 
-    // 3. Queue downstream asynchronously for microservice distribution
+    // Preparation of ordered items metadata extraction for downstream async queues
+    const orderedItemsPayload = summary.items.map((i: any) => ({
+      productId: i.productId.toString(),
+      variationSku: i.variationSku || null,
+    }));
+
+    // 4. Queue downstream asynchronously for microservice distribution
     await orderQueue.add('NEW_ORDER_POST_PROCESS', {
       orderId: order._id.toString(),
       vendorId: existingVendor._id.toString(),
@@ -177,6 +191,7 @@ const createOrderAfterRedUniqPayment = async (
       grandTotal: order.payoutSummary.grandTotal,
       lang: lang,
       customerId: summary.customerId.toString(),
+      orderedItems: orderedItemsPayload,
     });
 
     return {

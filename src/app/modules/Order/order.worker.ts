@@ -17,6 +17,7 @@ import { OrderPdService } from '../PdInvoice/orderPd.service';
 import { recalculateCartTotals } from '../Cart/cart.constant';
 import { RedisService } from '../../config/redis';
 import { Cart } from '../Cart/cart.model';
+import { sendInvoiceEmailWithAttachment } from './order.invoice';
 
 export const processNewOrderPostProcess = async (job: Job) => {
   const {
@@ -30,8 +31,39 @@ export const processNewOrderPostProcess = async (job: Job) => {
   } = job.data;
 
   try {
+    // 1. Certified Gateway Synchronization Strategy (Pasta Digital Engine)
     await OrderPdService.syncOrderWithPd(orderId, lang);
 
+    // 2. Email Transmission Layer (Attached PDF & Premium Card HTML)
+    try {
+      const freshOrder = await Order.findById(orderId).populate({
+        path: 'customerId',
+        select: 'name email NIF',
+      });
+
+      if (freshOrder && freshOrder.invoiceSync?.isSynced) {
+        const customer = freshOrder.customerId as any;
+        const targetEmail = customer?.email;
+
+        if (targetEmail) {
+          console.log(
+            `[Worker] Dispatching certified invoice email for Order ID: ${orderId}`,
+          );
+          await sendInvoiceEmailWithAttachment(freshOrder, targetEmail);
+        } else {
+          console.warn(
+            `[Worker] Customer email not found for ID: ${freshOrder.customerId}. Skipping email.`,
+          );
+        }
+      }
+    } catch (emailError) {
+      console.error(
+        `[Worker] Non-blocking invoice mailer error for order ${orderId}:`,
+        emailError,
+      );
+    }
+
+    // 3. Push Notification Broadcast Layer
     if (vendorUserId) {
       await NotificationService.sendToUser(
         vendorUserId,
@@ -43,9 +75,11 @@ export const processNewOrderPostProcess = async (job: Job) => {
       );
     }
 
+    // 4. Cache Clearing and Cart Auto-Healing Extraction
     if (customerId && orderedItems && orderedItems.length > 0) {
       const cartDataKey = `cart:data:${customerId}`;
 
+      // A. Redis Cache Extraction
       const redisCart = await RedisService.get<any>(cartDataKey);
       if (redisCart && redisCart.items) {
         redisCart.items = redisCart.items.filter((cartItem: any) => {
@@ -63,10 +97,16 @@ export const processNewOrderPostProcess = async (job: Job) => {
         } else {
           await recalculateCartTotals(redisCart);
           redisCart.totalItems = redisCart.items.length;
+          redisCart.totalQuantity = redisCart.items.reduce(
+            (acc: number, item: any) =>
+              acc + (item.itemSummary?.quantity || item.quantity || 1),
+            0,
+          );
           await RedisService.set(cartDataKey, redisCart, 259200);
         }
       }
 
+      // B. MongoDB Mongoose Persistent Baseline Extraction
       const dbCart = await Cart.findOne({ customerId });
       if (dbCart && dbCart.items) {
         dbCart.items = dbCart.items.filter((cartItem: any) => {
@@ -80,6 +120,7 @@ export const processNewOrderPostProcess = async (job: Job) => {
 
         if (dbCart.items.length === 0) {
           dbCart.totalItems = 0;
+          dbCart.totalQuantity = 0;
           dbCart.cartCalculation = {
             totalOriginalPrice: 0,
             totalProductDiscount: 0,
@@ -89,6 +130,11 @@ export const processNewOrderPostProcess = async (job: Job) => {
         } else {
           await recalculateCartTotals(dbCart);
           dbCart.totalItems = dbCart.items.length;
+          dbCart.totalQuantity = dbCart.items.reduce(
+            (acc: number, item: any) =>
+              acc + (item.itemSummary?.quantity || item.quantity || 1),
+            0,
+          );
         }
         await dbCart.save();
       }
