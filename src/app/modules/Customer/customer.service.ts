@@ -63,6 +63,63 @@ const updateCustomer = async (
     payload.referralCode = newReferralCode;
   }
 
+  if (payload.address) {
+    if (
+      payload.address.geoAccuracy !== undefined &&
+      payload.address.geoAccuracy > 100
+    ) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'LOW_LOCATION_ACCURACY');
+    }
+
+    const existingPrimaryAddress = customerProfile.deliveryAddresses?.find(
+      (addr: any) => addr.addressType === 'PRIMARY',
+    );
+
+    const mergedPrimaryAddress = {
+      ...(existingPrimaryAddress?.toObject?.() || existingPrimaryAddress || {}),
+      ...(customerProfile.address?.toObject?.() ||
+        customerProfile.address ||
+        {}),
+      ...payload.address,
+      addressType: 'PRIMARY',
+      isActive: true,
+    };
+
+    const updatedExistingAddresses = (
+      customerProfile.deliveryAddresses || []
+    ).map((addr: any) => {
+      const plainAddress = addr.toObject?.() || addr;
+
+      if (plainAddress.addressType === 'PRIMARY') {
+        return mergedPrimaryAddress;
+      }
+
+      return {
+        ...plainAddress,
+        isActive: false,
+      };
+    });
+
+    payload.deliveryAddresses = existingPrimaryAddress
+      ? updatedExistingAddresses
+      : [...updatedExistingAddresses, mergedPrimaryAddress];
+
+    if (
+      mergedPrimaryAddress.longitude !== undefined &&
+      mergedPrimaryAddress.latitude !== undefined
+    ) {
+      payload.currentSessionLocation = {
+        type: 'Point',
+        coordinates: [
+          mergedPrimaryAddress.longitude,
+          mergedPrimaryAddress.latitude,
+        ],
+        geoAccuracy: mergedPrimaryAddress.geoAccuracy ?? 0,
+        lastLocationUpdate: new Date(),
+      } as any;
+    }
+  }
+
   const finalUpdatePayload = flattenObject(payload);
 
   // ----------------------------------------------------------------------

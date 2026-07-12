@@ -84,6 +84,14 @@ export const cartMessages = {
     en: 'Your cart could not be found.',
     pt: 'Seu carrinho não pôde ser encontrado.',
   },
+  VENDOR_ID_REQUIRED_FOR_BULK: {
+    en: 'Vendor ID is required for bulk toggle.',
+    pt: 'O ID do fornecedor é necessário para alternância em massa.',
+  },
+  NO_ITEMS_FOUND_FOR_THIS_VENDOR: {
+    en: 'No items found for this restaurant in your cart.',
+    pt: 'Nenhum item encontrado para este restaurante no seu carrinho.',
+  },
   PRODUCT_NOT_IN_CART: {
     en: 'This item is not in your cart.',
     pt: 'Este item não está no seu carrinho.',

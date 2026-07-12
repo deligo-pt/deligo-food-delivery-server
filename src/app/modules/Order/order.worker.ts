@@ -17,6 +17,7 @@ import { OrderPdService } from '../PdInvoice/orderPd.service';
 import { recalculateCartTotals } from '../Cart/cart.constant';
 import { RedisService } from '../../config/redis';
 import { Cart } from '../Cart/cart.model';
+import { sendInvoiceEmailWithAttachment } from './order.invoice';
 
 export const processNewOrderPostProcess = async (job: Job) => {
   const {
@@ -30,8 +31,39 @@ export const processNewOrderPostProcess = async (job: Job) => {
   } = job.data;
 
   try {
+    // 1. Certified Gateway Synchronization Strategy (Pasta Digital Engine)
     await OrderPdService.syncOrderWithPd(orderId, lang);
 
+    // 2. Email Transmission Layer (Attached PDF & Premium Card HTML)
+    try {
+      const freshOrder = await Order.findById(orderId).populate({
+        path: 'customerId',
+        select: 'name email NIF',
+      });
+
+      if (freshOrder && freshOrder.invoiceSync?.isSynced) {
+        const customer = freshOrder.customerId as any;
+        const targetEmail = customer?.email;
+
+        if (targetEmail) {
+          console.log(
+            `[Worker] Dispatching certified invoice email for Order ID: ${orderId}`,
+          );
+          await sendInvoiceEmailWithAttachment(freshOrder, targetEmail);
+        } else {
+          console.warn(
+            `[Worker] Customer email not found for ID: ${freshOrder.customerId}. Skipping email.`,
+          );
+        }
+      }
+    } catch (emailError) {
+      console.error(
+        `[Worker] Non-blocking invoice mailer error for order ${orderId}:`,
+        emailError,
+      );
+    }
+
+    // 3. Push Notification Broadcast Layer
     if (vendorUserId) {
       await NotificationService.sendToUser(
         vendorUserId,
@@ -43,9 +75,11 @@ export const processNewOrderPostProcess = async (job: Job) => {
       );
     }
 
+    // 4. Cache Clearing and Cart Auto-Healing Extraction
     if (customerId && orderedItems && orderedItems.length > 0) {
       const cartDataKey = `cart:data:${customerId}`;
 
+      // A. Redis Cache Extraction
       const redisCart = await RedisService.get<any>(cartDataKey);
       if (redisCart && redisCart.items) {
         redisCart.items = redisCart.items.filter((cartItem: any) => {
@@ -63,10 +97,16 @@ export const processNewOrderPostProcess = async (job: Job) => {
         } else {
           await recalculateCartTotals(redisCart);
           redisCart.totalItems = redisCart.items.length;
+          redisCart.totalQuantity = redisCart.items.reduce(
+            (acc: number, item: any) =>
+              acc + (item.itemSummary?.quantity || item.quantity || 1),
+            0,
+          );
           await RedisService.set(cartDataKey, redisCart, 259200);
         }
       }
 
+      // B. MongoDB Mongoose Persistent Baseline Extraction
       const dbCart = await Cart.findOne({ customerId });
       if (dbCart && dbCart.items) {
         dbCart.items = dbCart.items.filter((cartItem: any) => {
@@ -80,16 +120,21 @@ export const processNewOrderPostProcess = async (job: Job) => {
 
         if (dbCart.items.length === 0) {
           dbCart.totalItems = 0;
+          dbCart.totalQuantity = 0;
           dbCart.cartCalculation = {
             totalOriginalPrice: 0,
             totalProductDiscount: 0,
-            taxableAmount: 0,
             totalTaxAmount: 0,
             grandTotal: 0,
           };
         } else {
           await recalculateCartTotals(dbCart);
           dbCart.totalItems = dbCart.items.length;
+          dbCart.totalQuantity = dbCart.items.reduce(
+            (acc: number, item: any) =>
+              acc + (item.itemSummary?.quantity || item.quantity || 1),
+            0,
+          );
         }
         await dbCart.save();
       }
@@ -142,13 +187,12 @@ export const processOrderPostUpdate = async (job: Job) => {
         payoutSummary?.vendor?.earningsWithoutTax || 0;
       const vendorPayableTax = payoutSummary?.vendor?.payableTax || 0;
       const vendorNetPayout = payoutSummary?.vendor?.vendorNetPayout || 0;
-      const riderEarningsBeforeTax =
-        payoutSummary?.rider?.earningsWithoutTax || 0;
-      const riderPayableTax = payoutSummary?.rider?.payableTax || 0;
       const riderNetEarnings = payoutSummary?.rider?.riderNetEarnings || 0;
-      const totalDeliveryCharge = delivery?.totalDeliveryCharge || 0;
+      const deliveryBaseCharge = delivery?.charge || 0;
       const deliGoCommission = payoutSummary?.deliGoCommission?.amount || 0;
       const commissionVat = payoutSummary?.deliGoCommission?.vatAmount || 0;
+      const deliveryVatAmount =
+        payoutSummary?.deliGoCommission?.deliveryVatAmount || 0;
       const deliGoCommissionNet =
         payoutSummary?.deliGoCommission?.totalDeduction || 0;
       const earnedServiceCharge =
@@ -162,7 +206,7 @@ export const processOrderPostUpdate = async (job: Job) => {
         roundTo2(deliGoCommissionNet + earnedServiceCharge) || 0;
       const riderEarningAmount = isManagedByFleet
         ? riderNetEarnings
-        : totalDeliveryCharge;
+        : deliveryBaseCharge;
 
       // --- Vendor Wallet Update ---
       await Wallet.findOneAndUpdate(
@@ -185,8 +229,6 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidTax: roundTo2(riderPayableTax) || 0,
-            totalTax: roundTo2(riderPayableTax) || 0,
             totalUnpaidEarnings: roundTo2(riderEarningAmount) || 0,
             totalEarnings: roundTo2(riderEarningAmount) || 0,
           },
@@ -203,8 +245,8 @@ export const processOrderPostUpdate = async (job: Job) => {
         {
           $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidTax: roundTo2(commissionVat) || 0,
-            totalTax: roundTo2(commissionVat) || 0,
+            totalUnpaidTax: roundTo2(commissionVat + deliveryVatAmount) || 0,
+            totalTax: roundTo2(commissionVat + deliveryVatAmount) || 0,
             totalEarnings: roundTo2(totalPlatformEarnings) || 0,
           },
         },
@@ -218,10 +260,10 @@ export const processOrderPostUpdate = async (job: Job) => {
           {
             $setOnInsert: { walletId: `WAL-F-${customNanoId(8)}` },
             $inc: {
-              totalUnpaidEarnings: totalDeliveryCharge || 0,
+              totalUnpaidEarnings: deliveryBaseCharge || 0,
               totalRiderPayable: riderNetEarnings || 0,
               totalFleetEarnings: payoutSummary.fleet.fee || 0,
-              totalEarnings: totalDeliveryCharge || 0,
+              totalEarnings: deliveryBaseCharge || 0,
             },
           },
           { session, upsert: true },
@@ -248,8 +290,7 @@ export const processOrderPostUpdate = async (job: Job) => {
           orderId: orderDbId,
           userId: partner._id,
           userModel: 'DeliveryPartner',
-          baseAmount: roundTo2(riderEarningsBeforeTax),
-          taxAmount: roundTo2(riderPayableTax),
+          baseAmount: roundTo2(riderEarningAmount),
           totalAmount: roundTo2(riderEarningAmount),
           type: 'DELIVERY_PARTNER_EARNING',
           status: 'SUCCESS',
@@ -279,9 +320,9 @@ export const processOrderPostUpdate = async (job: Job) => {
           orderId: orderDbId,
           userId: fleetManagerId,
           userModel: 'FleetManager',
-          baseAmount: roundTo2(totalDeliveryCharge),
+          baseAmount: roundTo2(deliveryBaseCharge),
           taxAmount: 0,
-          totalAmount: roundTo2(totalDeliveryCharge),
+          totalAmount: roundTo2(deliveryBaseCharge),
           type: 'FLEET_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
@@ -344,7 +385,7 @@ export const processOrderPostUpdate = async (job: Job) => {
     const notificationPayload = {
       title: `Order is now ${orderStatus}`,
       body: `${
-        orderStatus === 'PICKED_UP' // TODO: Notify Customer
+        orderStatus === 'PICKED_UP'
           ? `Your order ${orderDisplayId} is now PICKED_UP.`
           : orderStatus === 'ON_THE_WAY'
             ? `Your order ${orderDisplayId} is now ON_THE_WAY.`
@@ -389,7 +430,7 @@ export const processOrderPostUpdate = async (job: Job) => {
   } catch (error) {
     await session.abortTransaction();
     console.error(`[Worker] Failed to process order ${orderDisplayId}:`, error);
-    throw error; // BullMQ will retry based on config
+    throw error;
   } finally {
     session.endSession();
   }

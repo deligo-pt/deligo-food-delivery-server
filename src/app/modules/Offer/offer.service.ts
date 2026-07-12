@@ -420,11 +420,21 @@ const getAvailableOffersForCheckout = async (
     throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
   }
 
+  // SECURITY CHECK: Ensure the customer can only access their own checkout session offers
+  if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
+    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_TO_VIEW');
+  }
+
   const { vendorId, orderCalculation, items } = checkoutData;
+
+  // BUG FIXED: Swapped outdated 'itemSubtotal' with your verified schema field 'itemsSubtotal'
   const cartTotal =
-    orderCalculation.taxableAmount + (orderCalculation.totalOfferDiscount || 0);
+    (orderCalculation.itemsSubtotal || 0) +
+    (orderCalculation.totalOfferDiscount || 0);
+
   const now = new Date();
 
+  // Optimized base query for date-time matching
   const baseQuery = {
     isActive: true,
     isDeleted: false,
@@ -435,6 +445,7 @@ const getAvailableOffersForCheckout = async (
 
   const allOffers = await Offer.find(baseQuery).lean();
 
+  // Load all non-cancelled user orders to calculate previous promo usage
   const userOrders = await Order.find({
     customerId: currentUser._id,
     orderStatus: { $ne: 'CANCELLED' },
@@ -457,8 +468,7 @@ const getAvailableOffersForCheckout = async (
 
     const isProductMatched = hasApplicableProducts
       ? items.some((item: any) => {
-          const cartProductId =
-            item.productId?._id?.toString() || item.productId?.toString();
+          const cartProductId = item.productId ? item.productId.toString() : '';
 
           return offer?.applicableProducts?.some(
             (pId: any) => pId.toString() === cartProductId,
@@ -471,23 +481,23 @@ const getAvailableOffersForCheckout = async (
 
     const isEligible = isMinAmountMet && isUsageLimitMet && isProductMatched;
 
-    let message: TMessageKey = 'OFFER_IS_APPLICABLE';
+    let messageKey: TMessageKey = 'OFFER_IS_APPLICABLE';
     let variables: Record<string, string | number | boolean> | undefined;
 
     if (!isProductMatched) {
-      message = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
+      messageKey = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
     } else if (!isMinAmountMet) {
       const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
-      message = 'ADD_MORE_TO_UNLOCK_OFFER';
+      messageKey = 'ADD_MORE_TO_UNLOCK_OFFER';
       variables = { amount: diff };
     } else if (!isUsageLimitMet) {
-      message = 'OFFER_USAGE_LIMIT_EXCEEDED';
+      messageKey = 'OFFER_USAGE_LIMIT_EXCEEDED';
     }
 
     return {
       ...offer,
       isEligible,
-      message,
+      messageKey,
       variables,
     };
   });

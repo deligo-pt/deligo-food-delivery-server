@@ -5,6 +5,9 @@ import { CartServices } from './cart.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatCartResponse } from './cart.utils';
 import { TMessageKey } from '../../errors/messages';
+import config from '../../config';
+
+const node_env = config.NODE_ENV;
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {
@@ -19,43 +22,23 @@ const addToCart = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: formattedData,
+    data: node_env === 'development' ? formattedData : null,
   });
 });
 
 // toggle cart item status Controller
 const toggleCartItemStatus = catchAsync(async (req, res) => {
-  const { productId } = req.params;
   const result = await CartServices.toggleCartItemStatus(
-    req.user as TCurrentUser,
-    productId,
-    req.lang,
-    req.body.variationSku,
-  );
-
-  const formattedData = formatCartResponse(result?.data, req.lang);
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    messageKey: result?.messageKey as TMessageKey,
-    data: formattedData,
-  });
-});
-
-// update cart item Controller
-const updateCartItemQuantity = catchAsync(async (req, res) => {
-  const result = await CartServices.updateCartItemQuantity(
     req.user as TCurrentUser,
     req.body,
   );
 
   const formattedData = formatCartResponse(result?.data, req.lang);
-
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: formattedData,
+    data: node_env === 'development' ? formattedData : null,
   });
 });
 
@@ -70,7 +53,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 
@@ -87,7 +70,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 
@@ -98,7 +81,7 @@ const clearCart = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 
@@ -147,7 +130,6 @@ const viewCart = catchAsync(async (req, res) => {
 export const CartControllers = {
   addToCart,
   toggleCartItemStatus,
-  updateCartItemQuantity,
   updateAddonQuantity,
   deleteCartItem,
   clearCart,
