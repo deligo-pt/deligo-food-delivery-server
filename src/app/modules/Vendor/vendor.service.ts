@@ -351,10 +351,18 @@ const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
     });
   }
 
-  currentUser.businessDetails!.isStoreOpen =
-    !currentUser.businessDetails?.isStoreOpen;
-  currentUser.businessDetails!.storeClosedAt = new Date();
+  const nextStoreState = !currentUser.businessDetails?.isStoreOpen;
+
+  currentUser.businessDetails!.isStoreOpen = nextStoreState;
+
+  currentUser.businessDetails!.isManualControl = true;
+
+  currentUser.businessDetails!.storeClosedAt = nextStoreState
+    ? undefined
+    : new Date();
+
   await (currentUser as any).save();
+
   return {
     messageKey: 'STORE_STATUS_MESSAGE' as TMessageKey,
     variables: {
