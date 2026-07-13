@@ -16,6 +16,23 @@ export const vendorStoreOpenCloseCron = async (): Promise<void> => {
     });
     const currentTime = timeFormatter.format(new Date());
 
+    if (currentTime >= '00:00' && currentTime <= '00:05') {
+      const resetResult = await Vendor.updateMany(
+        {
+          isDeleted: false,
+          status: 'APPROVED',
+          'businessDetails.isManualControl': true,
+        },
+        { $set: { 'businessDetails.isManualControl': false } },
+      );
+
+      if (resetResult.modifiedCount > 0) {
+        console.log(
+          `Successfully reset ${resetResult.modifiedCount} vendors to Auto-Timing Mode.`,
+        );
+      }
+    }
+
     const vendors = await Vendor.find({ isDeleted: false, status: 'APPROVED' });
 
     for (const vendor of vendors) {
