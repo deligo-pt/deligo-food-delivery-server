@@ -27,6 +27,7 @@ export type TCurrentUser = {
     businessName: string;
     businessType: TLocalizedText;
     isStoreOpen: boolean;
+    isManualControl: boolean;
     storeClosedAt?: Date;
   };
   deliveryAddresses?: TDeliveryAddress[];
