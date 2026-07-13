@@ -3,9 +3,9 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
 import { TMessageKey } from '../../errors/messages';
 import { formatOrderResponse } from './order.utils';
+import { InvoiceService } from '../Invoice/invoice.service';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
@@ -137,7 +137,7 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
 
 // download invoice pdf from pasta digital controller
 const downloadInvoicePdfFromPd = catchAsync(async (req, res) => {
-  const base64Data = await InvoicePdService.downloadOrderInvoicePdf(
+  const base64Data = await InvoiceService.downloadOrderInvoicePdf(
     req.params.orderId,
   );
 

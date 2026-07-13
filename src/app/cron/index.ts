@@ -3,10 +3,12 @@ import { handleOrderExpiryCron } from './order.cron';
 import { handlePayoutAutomatedCron } from './payout.cron';
 import { releaseAbandonedIngredientStockCron } from './ingredientOrder.crone';
 import { Cart } from '../modules/Cart/cart.model';
+import { vendorStoreOpenCloseCron } from './vendorStore.crone';
 
 export const initAllCronJobs = () => {
   // Order Expiry cron
   cron.schedule('* * * * *', async () => {
+    await vendorStoreOpenCloseCron();
     await handleOrderExpiryCron();
   });
 

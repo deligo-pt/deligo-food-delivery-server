@@ -67,6 +67,7 @@ export type TVendor = {
 
     // Operational Status
     isStoreOpen: boolean; // Simple ON/OFF switch for the vendor
+    isManualControl: boolean;
     storeClosedAt?: Date;
 
     // Zone Association

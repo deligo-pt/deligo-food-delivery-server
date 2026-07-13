@@ -42,6 +42,16 @@ const walletSchema = new Schema<TWallet>(
       type: Number,
       default: 0,
     },
+
+    totalPlatformGrossHolding: {
+      type: Number,
+      default: 0,
+    },
+    totalPlatformNetRevenue: {
+      type: Number,
+      default: 0,
+    },
+
     totalRiderPayable: {
       type: Number,
     },
