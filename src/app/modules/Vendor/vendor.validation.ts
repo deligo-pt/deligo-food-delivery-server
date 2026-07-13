@@ -72,9 +72,10 @@ const vendorUpdateValidationSchema = z.object({
         .optional()
         .refine(
           (data) => {
+            if (!data) return true;
             if (
-              (data?.openingHours && !data?.closingHours) ||
-              (!data?.openingHours && data?.closingHours)
+              (data.openingHours && !data.closingHours) ||
+              (!data.openingHours && data.closingHours)
             ) {
               return false;
             }
@@ -88,9 +89,10 @@ const vendorUpdateValidationSchema = z.object({
         )
         .refine(
           (data) => {
+            if (!data) return true;
             if (
-              data?.openingHours &&
-              data?.closingHours &&
+              data.openingHours &&
+              data.closingHours &&
               data.openingHours === data.closingHours
             ) {
               return false;
