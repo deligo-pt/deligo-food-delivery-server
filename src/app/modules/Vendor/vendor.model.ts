@@ -90,6 +90,7 @@ const vendorSchema = new Schema<TVendor>(
 
       // Operational Status
       isStoreOpen: { type: Boolean, default: true },
+      isManualControl: { type: Boolean, default: false },
       storeClosedAt: { type: Date, default: null },
 
       // Association (Crucial for pricing/assignment)
