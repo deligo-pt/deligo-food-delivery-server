@@ -22,6 +22,7 @@ export default {
     payment: process.env.FRONTEND_PAYMENT_URL,
     test: process.env.FRONTEND_URL_TEST,
   },
+  backend_base_url: process.env.BACKEND_BASE_URL,
   bulkgate: {
     bulkgate_send_api_url: process.env.BULKGATE_SEND_API_URL,
     bulkgate_verify_api_url: process.env.BULKGATE_VERIFY_API_URL,

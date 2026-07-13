@@ -13,7 +13,7 @@ import { Customer } from '../../modules/Customer/customer.model';
 import { Vendor } from '../../modules/Vendor/vendor.model';
 import { NotificationService } from '../../modules/Notification/notification.service';
 import { roundTo2 } from '../../utils/mathProvider';
-import { OrderPdService } from '../PdInvoice/orderPd.service';
+import { OrderPdService } from '../Invoice/orderPd.service';
 import { recalculateCartTotals } from '../Cart/cart.constant';
 import { RedisService } from '../../config/redis';
 import { Cart } from '../Cart/cart.model';
@@ -36,10 +36,16 @@ export const processNewOrderPostProcess = async (job: Job) => {
 
     // 2. Email Transmission Layer (Attached PDF & Premium Card HTML)
     try {
-      const freshOrder = await Order.findById(orderId).populate({
-        path: 'customerId',
-        select: 'name email NIF',
-      });
+      const freshOrder = await Order.findById(orderId).populate([
+        {
+          path: 'customerId',
+          select: 'name email NIF',
+        },
+        {
+          path: 'vendorId',
+          select: 'businessDetails businessLocation',
+        },
+      ]);
 
       if (freshOrder && freshOrder.invoiceSync?.isSynced) {
         const customer = freshOrder.customerId as any;

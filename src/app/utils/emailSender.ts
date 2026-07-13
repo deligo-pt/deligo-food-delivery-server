@@ -80,4 +80,5 @@ const createEmailContent = async (data: object, templateType: string) => {
 export const EmailHelper = {
   sendEmail,
   createEmailContent,
+  transporter,
 };

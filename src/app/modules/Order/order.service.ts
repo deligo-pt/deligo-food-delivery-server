@@ -62,7 +62,6 @@ const createOrderAfterRedUniqPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
-  // 2. External RedUniq Gateway Verification Bridge
   const verifyPayload = {
     method: 'getResult',
     api: {
