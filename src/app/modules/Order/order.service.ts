@@ -14,7 +14,7 @@ import {
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Product } from '../Product/product.model';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { NotificationService } from '../Notification/notification.service';
 import { Customer } from '../Customer/customer.model';
@@ -1058,9 +1058,11 @@ const getAllOrders = async (
   const query: Record<string, unknown> = { ...incomingQuery };
 
   // Set default sorting if not explicitly provided in the query string
-  if (!query.sort) {
-    query.sort = '-createdAt'; // Latest orders show first on dashboards
+  if (!query.sortBy) {
+    query.sortBy = '-createdAt';
   }
+
+  const userObjectId = new Types.ObjectId(currentUser._id as unknown as string);
 
   // --------------------------------------------------------
   // Enforce Absolute Role-Based Isolation Filters
@@ -1068,20 +1070,20 @@ const getAllOrders = async (
   switch (currentUser.role) {
     case 'VENDOR':
     case 'SUB_VENDOR':
-      query.vendorId = currentUser._id.toString();
+      query.vendorId = userObjectId;
       break;
 
     case 'CUSTOMER':
-      query.customerId = currentUser._id.toString();
+      query.customerId = userObjectId;
       break;
 
     case 'DELIVERY_PARTNER':
-      query.deliveryPartnerId = currentUser._id.toString();
+      query.deliveryPartnerId = userObjectId;
       break;
 
     case 'FLEET_MANAGER': {
       const managedPartners = await DeliveryPartner.find({
-        'registeredBy.id': currentUser._id,
+        'registeredBy.id': userObjectId,
       })
         .select('_id')
         .lean();
