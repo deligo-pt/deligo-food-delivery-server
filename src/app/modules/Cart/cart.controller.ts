@@ -109,10 +109,9 @@ const getAllCart = catchAsync(async (req, res) => {
 
 // view cart Controller
 const viewCart = catchAsync(async (req, res) => {
-  const { cartCustomerId } = req.body;
   const result = await CartServices.viewCart(
     req.user as TCurrentUser,
-    cartCustomerId,
+    req.query,
     req.lang,
   );
 

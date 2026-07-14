@@ -48,6 +48,7 @@ router.get('/', auth('ADMIN', 'SUPER_ADMIN'), CartControllers.getAllCart);
 router.get(
   '/view-cart',
   auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
+  validateRequest(CartValidation.viewCartValidationSchema),
   CartControllers.viewCart,
 );
 
