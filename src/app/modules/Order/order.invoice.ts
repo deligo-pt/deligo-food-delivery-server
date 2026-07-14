@@ -72,14 +72,14 @@ export const sendInvoiceEmailWithAttachment = async (
       'order-invoice',
     );
 
-    await EmailHelper.transporter.sendMail({
-      from: `"DeliGo" <${config.sender_email}>`,
-      to: targetEmail,
-      subject: `O seu recibo do pedido #${orderIdStr}`,
-      html: htmlBody,
-    });
+    await EmailHelper.sendEmail(
+      targetEmail,
+      htmlBody,
+      `O seu recibo do pedido #${orderIdStr}`,
+      { shouldLog: false },
+    );
   } catch (error) {
-    console.error(`Failed executing sendInvoiceEmailWithoutAttachment:`, error);
+    void error;
     throw error;
   }
 };

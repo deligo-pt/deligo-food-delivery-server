@@ -16,6 +16,20 @@ import { formatCartResponse, refreshItemPricingAndTotals } from './cart.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { BusinessCategory } from '../Category/category.model';
 
+const getCartItemVendorId = (vendorId: any) => {
+  if (!vendorId) return null;
+
+  if (typeof vendorId === 'object') {
+    if (vendorId._id) {
+      return vendorId._id.toString();
+    }
+
+    return null;
+  }
+
+  return vendorId.toString();
+};
+
 // Add cart Service
 const addToCart = async (
   payload: TCartItemInput,
@@ -835,7 +849,7 @@ const getAllCart = async (
 
     const allRedisVendorIds = redisCarts.reduce((acc: string[], cart: any) => {
       const ids = cart.items
-        .map((item: any) => item.vendorId?.toString())
+        .map((item: any) => getCartItemVendorId(item.vendorId))
         .filter(Boolean);
       return [...acc, ...ids];
     }, []);
@@ -894,8 +908,10 @@ const getAllCart = async (
 
       redisCarts = redisCarts.map((cart) => {
         cart.items = cart.items.map((item: any) => {
-          if (item.vendorId) {
-            const fullVendorInfo = vendorMap.get(item.vendorId.toString());
+          const normalizedVendorId = getCartItemVendorId(item.vendorId);
+
+          if (normalizedVendorId) {
+            const fullVendorInfo = vendorMap.get(normalizedVendorId);
             return { ...item, vendorId: fullVendorInfo || item.vendorId };
           }
           return item;
@@ -1139,6 +1155,17 @@ const viewCart = async (
           (productLineTotal * currentTaxRate) / (100 + currentTaxRate),
         );
 
+        const existingAddonsNet =
+          item.addons?.reduce(
+            (sum: number, addon: any) => sum + (addon.lineTotal || 0),
+            0,
+          ) || 0;
+        const existingAddonsTax =
+          item.addons?.reduce(
+            (sum: number, addon: any) => sum + (addon.taxAmount || 0),
+            0,
+          ) || 0;
+
         item.productPricing.originalPrice = roundTo2(currentPrice);
         item.productPricing.productDiscountAmount = unitDiscountAmount;
         item.productPricing.discountType = currentDiscountType;
@@ -1146,11 +1173,15 @@ const viewCart = async (
         item.productPricing.lineTotal = productLineTotal;
         item.productPricing.taxAmount = productTaxAmount;
 
-        item.itemSummary.totalTaxAmount = productTaxAmount;
+        item.itemSummary.totalTaxAmount = roundTo2(
+          productTaxAmount + existingAddonsTax,
+        );
         item.itemSummary.totalProductDiscount = roundTo2(
           unitDiscountAmount * item.itemSummary.quantity,
         );
-        item.itemSummary.grandTotal = productLineTotal;
+        item.itemSummary.grandTotal = roundTo2(
+          productLineTotal + existingAddonsNet,
+        );
 
         isCartDirty = true;
       }
@@ -1172,7 +1203,9 @@ const viewCart = async (
 
     if (isFromCache) {
       const vendorIds = [
-        ...new Set(cart.items.map((item: any) => item.vendorId?.toString())),
+        ...new Set(
+          cart.items.map((item: any) => getCartItemVendorId(item.vendorId)),
+        ),
       ].filter(Boolean);
 
       if (vendorIds.length > 0) {
@@ -1226,8 +1259,10 @@ const viewCart = async (
         );
 
         cart.items = cart.items.map((item: any) => {
-          if (item.vendorId) {
-            const fullVendorInfo = vendorMap.get(item.vendorId.toString());
+          const normalizedVendorId = getCartItemVendorId(item.vendorId);
+
+          if (normalizedVendorId) {
+            const fullVendorInfo = vendorMap.get(normalizedVendorId);
             return { ...item, vendorId: fullVendorInfo || item.vendorId };
           }
           return item;
@@ -1262,10 +1297,7 @@ const viewCart = async (
 
   if (vendorId) {
     const filteredItems = cart.items.filter((item: any) => {
-      const itemVendorId =
-        typeof item.vendorId === 'object'
-          ? item.vendorId?._id?.toString()
-          : item.vendorId?.toString();
+      const itemVendorId = getCartItemVendorId(item.vendorId);
 
       return itemVendorId === vendorId;
     });
