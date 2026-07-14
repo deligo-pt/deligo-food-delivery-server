@@ -1011,7 +1011,7 @@ const getAllCart = async (
 // view cart Service
 const viewCart = async (
   currentUser: TCurrentUser,
-  cartCustomerId?: string,
+  query: Record<string, unknown>,
   lang: TLanguageCode = 'en',
 ) => {
   if (currentUser.status !== 'APPROVED') {
@@ -1020,12 +1020,17 @@ const viewCart = async (
     });
   }
 
-  if (currentUser.role !== 'CUSTOMER' && !cartCustomerId) {
+  const customerId =
+    typeof query.customerId === 'string' ? query.customerId : undefined;
+  const vendorId =
+    typeof query.vendorId === 'string' ? query.vendorId : undefined;
+
+  if (currentUser.role !== 'CUSTOMER' && !customerId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'CUSTOMER_ID_REQUIRED');
   }
 
   const targetCustomerId =
-    currentUser.role === 'CUSTOMER' ? currentUser._id : cartCustomerId!;
+    currentUser.role === 'CUSTOMER' ? currentUser._id : customerId!;
 
   const customerIdStr = targetCustomerId.toString();
   const dataKey = `cart:data:${customerIdStr}`;
@@ -1071,6 +1076,7 @@ const viewCart = async (
           totalTaxAmount: 0,
           grandTotal: 0,
         },
+        hasActiveItems: false,
         isDeleted: false,
       },
     };
@@ -1252,10 +1258,37 @@ const viewCart = async (
     }
   }
 
+  let responseCart = cart;
+
+  if (vendorId) {
+    const filteredItems = cart.items.filter((item: any) => {
+      const itemVendorId =
+        typeof item.vendorId === 'object'
+          ? item.vendorId?._id?.toString()
+          : item.vendorId?.toString();
+
+      return itemVendorId === vendorId;
+    });
+
+    responseCart = {
+      ...cart,
+      items: filteredItems,
+    };
+
+    await recalculateCartTotals(responseCart);
+  }
+
+  responseCart = {
+    ...responseCart,
+    hasActiveItems: responseCart.items.some(
+      (item: any) => item.isActive === true,
+    ),
+  };
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Cart' },
-    data: cart,
+    data: responseCart,
   };
 };
 

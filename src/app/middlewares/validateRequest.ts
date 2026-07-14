@@ -4,11 +4,23 @@ import { catchAsync } from '../utils/catchAsync';
 
 const validateRequest = (schema: AnyZodObject) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const parsedBody = await schema.parseAsync({
+    const parsedRequest = await schema.parseAsync({
       body: req.body,
+      query: req.query,
+      params: req.params,
     });
 
-    req.body = parsedBody.body;
+    if (parsedRequest.body) {
+      req.body = parsedRequest.body;
+    }
+
+    if (parsedRequest.query) {
+      req.query = parsedRequest.query;
+    }
+
+    if (parsedRequest.params) {
+      req.params = parsedRequest.params;
+    }
 
     next();
   });
