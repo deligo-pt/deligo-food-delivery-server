@@ -114,7 +114,15 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+      ],
     });
 
     const page = await browser.newPage();
@@ -134,10 +142,19 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
     };
   } catch (error) {
     if (browser) await browser.close();
-    throw new AppError(
+
+    console.error('Puppeteer Live Execution Failed:', error);
+
+    const cleanError = new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
       'PDF_GENERATION_FAILED',
     );
+
+    delete (cleanError as any).stack;
+    delete (cleanError as any).err;
+    delete (cleanError as any).errorSources;
+
+    throw cleanError;
   }
 };
 
