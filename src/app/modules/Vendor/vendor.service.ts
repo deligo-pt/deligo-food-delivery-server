@@ -15,7 +15,6 @@ import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
@@ -264,82 +263,6 @@ const deleteVendorDocument = async (
   return {
     messageKey: 'VENDOR_DOCUMENT_IMAGE_DELETED_SUCCESS' as TMessageKey,
     data: existingVendor.documents,
-  };
-};
-
-// vendor business location update service
-const updateVendorLiveLocation = async (
-  payload: TLiveLocationPayload,
-  currentUser: TCurrentUser,
-  vendorId: string,
-) => {
-  if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_APPROVED_TO_UPDATE_LIVE_LOCATION',
-      { status: currentUser?.status || 'UNKNOWN' },
-    );
-  }
-
-  if (currentUser?.userId !== vendorId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'NOT_AUTHORIZED_TO_UPDATE_LIVE_LOCATION',
-    );
-  }
-
-  const {
-    latitude,
-    longitude,
-    geoAccuracy,
-    heading,
-    speed,
-    isMocked,
-    timestamp,
-  } = payload;
-
-  if (geoAccuracy !== undefined && geoAccuracy > 100) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'GEO_ACCURACY_LESS_THAN_100');
-  }
-
-  const updateData: Record<string, any> = {
-    'currentSessionLocation.type': 'Point',
-    'currentSessionLocation.coordinates': [longitude, latitude],
-    'currentSessionLocation.lastLocationUpdate': timestamp
-      ? new Date(timestamp)
-      : new Date(),
-    // 'businessLocation.longitude': longitude,
-    // 'businessLocation.latitude': latitude,
-  };
-
-  if (geoAccuracy !== undefined)
-    updateData['currentSessionLocation.geoAccuracy'] = geoAccuracy;
-  if (heading !== undefined)
-    updateData['currentSessionLocation.heading'] = heading;
-  if (speed !== undefined) updateData['currentSessionLocation.speed'] = speed;
-  if (isMocked !== undefined)
-    updateData['currentSessionLocation.isMocked'] = isMocked;
-
-  const updatedVendor = await Vendor.findOneAndUpdate(
-    { userId: currentUser.userId },
-    { $set: updateData },
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
-
-  if (!updatedVendor) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'VENDOR_NOT_FOUND_OR_UPDATE_FAILED',
-    );
-  }
-
-  return {
-    success: true,
-    messageKey: 'LIVE_LOCATION_UPDATED_SUCCESS' as TMessageKey,
-    data: updatedVendor.currentSessionLocation,
   };
 };
 
@@ -1008,7 +931,6 @@ export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
   deleteVendorDocument,
-  updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,
   getSingleVendor,

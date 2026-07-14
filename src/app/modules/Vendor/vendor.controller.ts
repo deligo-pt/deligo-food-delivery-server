@@ -61,22 +61,6 @@ const deleteVendorDocument = catchAsync(async (req, res) => {
   });
 });
 
-// vendor live location update controller
-const updateVendorLiveLocation = catchAsync(async (req, res) => {
-  const result = await VendorServices.updateVendorLiveLocation(
-    req.body,
-    req.user as TCurrentUser,
-    req.params.vendorId,
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
-  });
-});
-
 // toggle vendor store open/close controller
 const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
   const result = await VendorServices.toggleVendorStoreOpenClose(
@@ -179,7 +163,6 @@ export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
   deleteVendorDocument,
-  updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,
   getSingleVendor,
