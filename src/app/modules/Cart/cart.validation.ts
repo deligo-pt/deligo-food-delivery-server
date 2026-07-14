@@ -1,16 +1,4 @@
-import mongoose from 'mongoose';
 import { z } from 'zod';
-
-const objectIdSchema = z
-  .string()
-  .refine((val) => mongoose.Types.ObjectId.isValid(val), {
-    message: 'Invalid ObjectId',
-  });
-
-const viewCartAllowedQueryFields: readonly string[] = [
-  'customerId',
-  'vendorId',
-];
 
 // Zod Validation Schema for cart
 const addToCartValidationSchema = z.object({
@@ -19,7 +7,7 @@ const addToCartValidationSchema = z.object({
       items: z.array(
         z
           .object({
-            productId: objectIdSchema,
+            productId: z.string({ required_error: 'Product ID is required' }),
             quantity: z.number().min(1, 'Quantity must be at least 1'),
             variationSku: z.string().optional(),
           })
@@ -37,8 +25,8 @@ const toggleCartItemStatusValidationSchema = z.object({
         invalid_type_error:
           'Toggle mode must be either ITEM_LEVEL or VENDOR_BULK',
       }),
-      vendorId: objectIdSchema.optional(),
-      productIds: z.array(objectIdSchema).optional(),
+      vendorId: z.string().optional(),
+      productIds: z.array(z.string()).optional(),
       variationSku: z.array(z.string()).optional(),
     })
     .strict(),
@@ -47,7 +35,9 @@ const toggleCartItemStatusValidationSchema = z.object({
 const updateAddonQuantityValidationSchema = z.object({
   body: z
     .object({
-      productId: objectIdSchema,
+      productId: z.string({
+        required_error: 'Product ID is required',
+      }),
       variationSku: z.string().optional(),
       optionSku: z.string({
         required_error: 'Add-on option SKU is required',
@@ -66,7 +56,9 @@ const deleteCartItemValidationSchema = z.object({
     .array(
       z
         .object({
-          productId: objectIdSchema,
+          productId: z.string({
+            required_error: 'Product ID is required',
+          }),
           variationSku: z.string().optional().nullable(),
         })
         .strict(),
@@ -74,35 +66,9 @@ const deleteCartItemValidationSchema = z.object({
     .min(1, 'At least one item must be provided to delete'),
 });
 
-const viewCartValidationSchema = z.object({
-  query: z
-    .object({
-      customerId: objectIdSchema.optional(),
-      vendorId: objectIdSchema.optional(),
-    })
-    .passthrough()
-    .superRefine((query, ctx) => {
-      const unknownKeys = Object.keys(query).filter(
-        (key) => !viewCartAllowedQueryFields.includes(key),
-      );
-
-      if (unknownKeys.length > 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Unrecognized key(s) in object: '${unknownKeys.join("', '")}'. Allowed query fields: ${viewCartAllowedQueryFields.join(', ')}`,
-        });
-      }
-    })
-    .transform((query) => ({
-      customerId: query.customerId,
-      vendorId: query.vendorId,
-    })),
-});
-
 export const CartValidation = {
   addToCartValidationSchema,
   toggleCartItemStatusValidationSchema,
   updateAddonQuantityValidationSchema,
   deleteCartItemValidationSchema,
-  viewCartValidationSchema,
 };
