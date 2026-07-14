@@ -30,14 +30,6 @@ router.delete(
   VendorControllers.deleteVendorDocument,
 );
 
-// Vendor business location update route
-// router.patch(
-//   '/:vendorId/liveLocation',
-//   auth('VENDOR', 'SUB_VENDOR'),
-//   validateRequest(LocationValidation.UpdateLiveLocationValidationSchema),
-//   VendorControllers.updateVendorLiveLocation,
-// );
-
 // Vendor toggle store open close route
 router.patch(
   '/toggle/store-open-close',
