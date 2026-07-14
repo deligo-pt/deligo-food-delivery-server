@@ -62,32 +62,30 @@ const createOrderAfterRedUniqPayment = async (
     throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
-  // const verifyPayload = {
-  //   method: 'getResult',
-  //   api: {
-  //     username: config.redUniq.username,
-  //     password: config.redUniq.password,
-  //   },
-  //   token: paymentToken,
-  // };
+  const verifyPayload = {
+    method: 'getResult',
+    api: {
+      username: config.redUniq.username,
+      password: config.redUniq.password,
+    },
+    token: paymentToken,
+  };
 
-  // const verifyRes = await axios.post(
-  //   config.redUniq.api_url as string,
-  //   verifyPayload,
-  // );
-  // const paymentData = verifyRes.data;
+  const verifyRes = await axios.post(
+    config.redUniq.api_url as string,
+    verifyPayload,
+  );
+  const paymentData = verifyRes.data;
 
-  // if (
-  //   !paymentData ||
-  //   !paymentData.transaction ||
-  //   paymentData.transaction.status !== '4'
-  // ) {
-  //   throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_FAILED_TRY_AGAIN');
-  // }
+  if (
+    !paymentData ||
+    !paymentData.transaction ||
+    paymentData.transaction.status !== '4'
+  ) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_FAILED_TRY_AGAIN');
+  }
 
-  // const transactionId = paymentData.transaction.id;
-  const transactionId =
-    Date.now().toString() + Math.floor(Math.random() * 1000).toString(); // Temporary unique transaction ID for testing
+  const transactionId = paymentData.transaction.id;
 
   // 3. Transaction Scope Initialization (Atomic Guard)
   const session = await mongoose.startSession();
