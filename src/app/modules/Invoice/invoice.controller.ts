@@ -7,13 +7,16 @@ const downloadInvoicePdf = catchAsync(async (req, res) => {
   const { pdfBuffer, customOrderId } =
     await InvoiceService.generateCustomInvoicePdfBuffer(orderId);
 
+  const safeBuffer = Buffer.from(pdfBuffer.buffer || pdfBuffer);
+
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(
     'Content-Disposition',
     `attachment; filename=Invoice_${customOrderId}.pdf`,
   );
+  res.setHeader('Content-Length', safeBuffer.length);
 
-  res.send(Buffer.from(pdfBuffer));
+  return res.end(safeBuffer);
 });
 
 export const InvoiceControllers = {

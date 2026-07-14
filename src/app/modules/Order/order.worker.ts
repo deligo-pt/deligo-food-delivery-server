@@ -19,6 +19,24 @@ import { RedisService } from '../../config/redis';
 import { Cart } from '../Cart/cart.model';
 import { sendInvoiceEmailWithAttachment } from './order.invoice';
 
+const normalizeWalletFields = async (
+  userId: mongoose.Types.ObjectId | string | null | undefined,
+  userModel: 'Admin' | 'Vendor' | 'DeliveryPartner' | 'FleetManager',
+  fields: string[],
+  session: mongoose.ClientSession,
+) => {
+  if (!userId || fields.length === 0) return;
+
+  const setStage = fields.reduce<Record<string, unknown>>((acc, field) => {
+    acc[field] = { $round: [{ $ifNull: [`$${field}`, 0] }, 2] };
+    return acc;
+  }, {});
+
+  await Wallet.updateOne({ userId, userModel }, [{ $set: setStage }], {
+    session,
+  });
+};
+
 export const processNewOrderPostProcess = async (job: Job) => {
   const {
     orderId,
@@ -234,6 +252,13 @@ export const processOrderPostUpdate = async (job: Job) => {
         { session, upsert: true },
       );
 
+      await normalizeWalletFields(
+        updatedOrder.vendorId,
+        'Vendor',
+        ['totalUnpaidTax', 'totalTax', 'totalUnpaidEarnings', 'totalEarnings'],
+        session,
+      );
+
       // --- Delivery Partner Wallet Update ---
       await Wallet.findOneAndUpdate(
         { userId: partner?._id, userModel: 'DeliveryPartner' },
@@ -245,6 +270,12 @@ export const processOrderPostUpdate = async (job: Job) => {
           },
         },
         { session, upsert: true },
+      );
+      await normalizeWalletFields(
+        partner?._id,
+        'DeliveryPartner',
+        ['totalUnpaidEarnings', 'totalEarnings'],
+        session,
       );
 
       const SYSTEM_ADMIN = await Admin.findOne({ role: 'SUPER_ADMIN' })
@@ -267,6 +298,19 @@ export const processOrderPostUpdate = async (job: Job) => {
         { session, upsert: true },
       );
 
+      await normalizeWalletFields(
+        SYSTEM_ADMIN?._id,
+        'Admin',
+        [
+          'totalUnpaidTax',
+          'totalTax',
+          'totalEarnings',
+          'totalPlatformGrossHolding',
+          'totalPlatformNetRevenue',
+        ],
+        session,
+      );
+
       // --- Fleet Manager Wallet Update (If applicable) ---
       if (isManagedByFleet && fleetManagerId) {
         await Wallet.findOneAndUpdate(
@@ -281,6 +325,17 @@ export const processOrderPostUpdate = async (job: Job) => {
             },
           },
           { session, upsert: true },
+        );
+        await normalizeWalletFields(
+          fleetManagerId,
+          'FleetManager',
+          [
+            'totalUnpaidEarnings',
+            'totalRiderPayable',
+            'totalFleetEarnings',
+            'totalEarnings',
+          ],
+          session,
         );
       }
 

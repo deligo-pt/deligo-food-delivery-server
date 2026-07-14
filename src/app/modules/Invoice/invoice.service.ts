@@ -111,6 +111,7 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
   const compiledHtml = Handlebars.compile(INVOICE_PDF_TEMPLATE)(contextData);
 
   let browser;
+  let page;
   try {
     browser = await puppeteer.launch({
       headless: true,
@@ -122,10 +123,16 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
         '--no-first-run',
         '--no-zygote',
         '--single-process',
+        '--disable-gpu',
+        '--disable-extensions',
+        '--disable-file-system',
       ],
     });
 
-    const page = await browser.newPage();
+    page = await browser.newPage();
+
+    await page.setJavaScriptEnabled(false);
+
     await page.setContent(compiledHtml, { waitUntil: 'networkidle0' });
 
     const pdfBuffer: Uint8Array = await page.pdf({
@@ -134,6 +141,7 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
       margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' },
     });
 
+    await page.close();
     await browser.close();
 
     return {
@@ -141,7 +149,20 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
       customOrderId: contextData.orderId,
     };
   } catch (error) {
-    if (browser) await browser.close();
+    if (page) {
+      try {
+        await page.close();
+      } catch (_) {
+        // Page already closed or non-existent, ignoring error safely
+      }
+    }
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (_) {
+        // Browser already closed, ignoring safely
+      }
+    }
 
     console.error('Puppeteer Live Execution Failed:', error);
 
