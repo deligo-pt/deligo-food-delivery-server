@@ -206,7 +206,6 @@ const finalizeSettlement = async (
 
     const amountToDeduct = roundTo2(payout.amount);
 
-    // 🚨 ATOMIC GUARD DEBIT: Safely filters and updates target balance in one step
     const updatedTargetWallet = await Wallet.findOneAndUpdate(
       {
         userId: payout.userId,
@@ -227,7 +226,6 @@ const finalizeSettlement = async (
       );
     }
 
-    // 🚨 ATOMIC TREASURY DEBIT: Deducts raw liquidity from the sender pool pool (Admin/Fleet Manager)
     const updatedSenderWallet = await Wallet.findOneAndUpdate(
       {
         userId: payout.senderId,
@@ -281,6 +279,7 @@ const finalizeSettlement = async (
     payout.remarks = payload.remarks || 'Weekly settlement completed';
     payout.payoutProof = payoutProof;
     payout.bankDetails = { ...user.bankDetails };
+    payout.paymentDate = new Date();
 
     const result = await payout.save({ session });
 
