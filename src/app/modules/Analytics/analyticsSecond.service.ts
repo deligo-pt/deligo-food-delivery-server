@@ -709,7 +709,7 @@ const getDeliveryPartnerEarningAnalytics = async (
   const wallet = await Wallet.findOne({
     userId: riderObjectId,
     userModel: 'DeliveryPartner',
-  }).select('totalUnpaidEarnings');
+  }).select('currentBalance');
 
   const report = earnings[0] || {
     totalEarnings: 0,
@@ -726,7 +726,7 @@ const getDeliveryPartnerEarningAnalytics = async (
       weekly: roundTo2(report.weeklyEarnings),
       monthly: roundTo2(report.monthlyEarnings),
       total: roundTo2(report.totalEarnings),
-      unpaid: roundTo2(wallet?.totalUnpaidEarnings || 0),
+      unpaid: roundTo2(wallet?.currentBalance || 0),
     },
   };
 };
@@ -819,7 +819,33 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
   const wallet = await Wallet.findOne({
     userId: fleetObjectId,
     userModel: 'FleetManager',
-  }).select('totalUnpaidEarnings totalRiderPayable totalEarnings');
+  }).select('currentBalance');
+
+  const fleetRiders = await DeliveryPartner.find({
+    'registeredBy.id': fleetObjectId,
+    'registeredBy.model': 'FleetManager',
+  })
+    .select('_id')
+    .lean();
+
+  const fleetRiderIds = fleetRiders.map((rider) => rider._id);
+
+  const riderPayableAggregate = await Wallet.aggregate([
+    {
+      $match: {
+        userId: { $in: fleetRiderIds },
+        userModel: 'DeliveryPartner',
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalPayable: { $sum: '$currentBalance' },
+      },
+    },
+  ]);
+
+  const totalRiderPayable = riderPayableAggregate[0]?.totalPayable || 0;
 
   const cardData = stats[0].cardStats[0] || {
     totalEarnings: 0,
@@ -833,21 +859,19 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
     year: item._id.year,
   }));
 
-  const totalRiderPayable = wallet?.totalRiderPayable || 0;
-  const totalRevenue = cardData.totalEarnings;
-  const netEarnings = totalRevenue - totalRiderPayable;
+  const pureFleetNetProfit = cardData.totalEarnings;
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Fleet Manager Earnings Analytics' },
     data: {
       overview: {
-        totalRevenue: totalRevenue,
-        riderPayable: totalRiderPayable,
-        netEarnings: roundTo2(netEarnings),
-        monthlyEarnings: cardData.monthlyEarnings,
-        weeklyEarnings: cardData.weeklyEarnings,
-        currentUnpaidBalance: wallet?.totalUnpaidEarnings || 0,
+        totalRevenue: roundTo2(pureFleetNetProfit + totalRiderPayable),
+        riderPayable: roundTo2(totalRiderPayable),
+        netEarnings: roundTo2(pureFleetNetProfit),
+        monthlyEarnings: roundTo2(cardData.monthlyEarnings),
+        weeklyEarnings: roundTo2(cardData.weeklyEarnings),
+        currentUnpaidBalance: roundTo2(wallet?.currentBalance || 0),
       },
       graph: graphData,
     },
@@ -876,7 +900,7 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
   sixMonthsAgo.setDate(1);
   sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  const [earningStats, orderStats, monthlyEarningsAgg, productStats] =
+  const [earningStats, orderStats, monthlyEarningsAgg, productStats, wallet] =
     await Promise.all([
       Transaction.aggregate([
         {
@@ -1001,6 +1025,13 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
           },
         },
       ]),
+
+      Wallet.findOne({
+        userId: vendorObjectId,
+        userModel: 'Vendor',
+      })
+        .select('currentBalance')
+        .lean(),
     ]);
 
   const earnings = earningStats[0] || {
@@ -1050,6 +1081,7 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
         orders: orders.totalOrders,
         completed: orders.completedOrders,
         pending: orders.pendingOrders,
+        currentUnpaidBalance: roundTo2(wallet?.currentBalance || 0),
       },
 
       earningsOverview: {

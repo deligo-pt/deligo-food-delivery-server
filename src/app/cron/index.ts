@@ -16,7 +16,7 @@ export const initAllCronJobs = () => {
     await releaseAbandonedIngredientStockCron();
   });
 
-  // Payout Automated Settlement Cron
+  // Payout Automated cron job for every day at 00:00 (midnight)
   cron.schedule('0 0 * * *', async () => {
     await handlePayoutAutomatedCron();
   });

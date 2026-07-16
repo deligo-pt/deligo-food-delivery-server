@@ -57,4 +57,12 @@ export const checkoutMessages = {
     en: 'This checkout has already been processed into an order.',
     pt: 'Este checkout já foi processado em um pedido.',
   },
+  VARIATION_NOT_FOUND: {
+    en: 'This variation could not be found.',
+    pt: 'Esta variação não pôde ser encontrada.',
+  },
+  VARIATION_SKU_REQUIRED: {
+    en: 'A variation SKU is required for this item.',
+    pt: 'Um SKU de variação é necessário para este item.',
+  },
 } as const;

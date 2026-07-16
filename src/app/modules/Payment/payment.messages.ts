@@ -1,8 +1,4 @@
 export const paymentMessages = {
-  SUMMARY_NOT_FOUND: {
-    en: 'Checkout details could not be found.',
-    pt: 'Os detalhes do checkout não foram encontrados.',
-  },
   CHECKOUT_SUMMARY_ALREADY_CONVERTED: {
     en: 'This checkout has already been processed into an order.',
     pt: 'Este checkout já foi processado em um pedido.',
