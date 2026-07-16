@@ -344,14 +344,13 @@ const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
   };
 };
 
-// validate and apply offer service
 const validateAndApplyOffer = async (
   checkoutId: string,
   offerIdentifier: string,
   currentUser: TCurrentUser,
   lang: TLanguageCode = 'en',
 ) => {
-  const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
+  let checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData)
     throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
 
@@ -368,6 +367,31 @@ const validateAndApplyOffer = async (
     );
   }
 
+  const inputCodeClean = offerIdentifier.trim().toUpperCase();
+  const alreadyAppliedCode = checkoutData.offer?.offerApplied?.code
+    ?.trim()
+    .toUpperCase();
+
+  // Anti-Duplicate Guard: Prevent consecutive calculation hits for the same token
+  if (checkoutData.offer?.isApplied && alreadyAppliedCode === inputCodeClean) {
+    return {
+      messageKey: 'OFFER_APPLIED_SUCCESS' as TMessageKey,
+      data: checkoutData,
+    };
+  }
+
+  // State Healing Engine: Rollback cart to pristine state if a different code is applied
+  if (checkoutData.offer?.isApplied) {
+    const freshCleanPayload = await calculateOfferRemoval(
+      checkoutData as any,
+      lang,
+    );
+    checkoutData = {
+      ...checkoutData,
+      ...freshCleanPayload,
+    } as any;
+  }
+
   const offer = await findAndValidateOffer(
     offerIdentifier,
     checkoutData,
@@ -375,22 +399,25 @@ const validateAndApplyOffer = async (
   );
 
   if (!offer) {
-    const resetPayload = await calculateOfferRemoval(checkoutData, lang);
+    const resetPayload = await calculateOfferRemoval(checkoutData as any, lang);
+
+    if (resetPayload.offer && resetPayload.offer.offerApplied === null) {
+      (resetPayload.offer as any).offerApplied = undefined;
+    }
 
     const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
       checkoutId,
-      { $set: resetPayload },
+      { $set: resetPayload as any },
       { new: true },
     ).lean();
 
     return {
-      messageKey: 'OFFER_REMOVED_OR_INVALID',
+      messageKey: 'OFFER_REMOVED_OR_INVALID' as TMessageKey,
       data: updatedCheckout,
     };
   }
 
   const discountData = calculateOfferDiscount(offer, checkoutData);
-
   const updatePayload = await rebuildCheckoutSummary(
     checkoutData,
     offer,
@@ -398,14 +425,18 @@ const validateAndApplyOffer = async (
     lang,
   );
 
+  if (updatePayload.offer && updatePayload.offer.offerApplied === null) {
+    (updatePayload.offer as any).offerApplied = undefined;
+  }
+
   const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
     checkoutId,
-    { $set: updatePayload },
+    { $set: updatePayload as any },
     { new: true, runValidators: true },
   ).lean();
 
   return {
-    messageKey: 'OFFER_APPLIED_SUCCESS',
+    messageKey: 'OFFER_APPLIED_SUCCESS' as TMessageKey,
     data: updatedCheckout,
   };
 };
