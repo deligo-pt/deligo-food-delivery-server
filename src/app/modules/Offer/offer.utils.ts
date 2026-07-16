@@ -12,74 +12,12 @@ import { TLanguageCode } from '../../constant/GlobalInterface/language.interface
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { localizedMessages } from '../../errors/messages';
-
-export const validateAndApplyOffer = async (
-  checkoutId: string,
-  offerIdentifier: string,
-  currentUser: TCurrentUser,
-  lang: TLanguageCode = 'en',
-) => {
-  const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
-  if (!checkoutData)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
-
-  if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'CHECKOUT_DOES_NOT_BELONG_TO_USER',
-    );
-  }
-  if (checkoutData.isConvertedToOrder) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'CANNOT_APPLY_OFFER_TO_COMPLETED_CHECKOUT',
-    );
-  }
-
-  const offer = await findAndValidateOffer(
-    offerIdentifier,
-    checkoutData,
-    currentUser,
-  );
-
-  if (!offer) {
-    const resetPayload = await calculateOfferRemoval(checkoutData, lang);
-    const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
-      checkoutId,
-      { $set: resetPayload },
-      { new: true },
-    ).lean();
-
-    return {
-      messageKey: 'OFFER_REMOVED_OR_INVALID',
-      data: updatedCheckout,
-    };
-  }
-
-  const discountData = calculateOfferDiscount(offer, checkoutData);
-  const updatePayload = await rebuildCheckoutSummary(
-    checkoutData,
-    offer,
-    discountData,
-    lang,
-  );
-
-  const updatedCheckout = await CheckoutSummary.findByIdAndUpdate(
-    checkoutId,
-    { $set: updatePayload },
-    { new: true, runValidators: true },
-  ).lean();
-
-  return {
-    messageKey: 'OFFER_APPLIED_SUCCESS',
-    data: updatedCheckout,
-  };
-};
+import { TCheckoutSummary } from '../Checkout/checkout.interface';
 
 export const findAndValidateOffer = async (
   offerIdentifier: string,
   checkoutData: any,
-  currentUser: any,
+  currentUser: TCurrentUser,
 ) => {
   if (!offerIdentifier || offerIdentifier.trim() === '') return null;
 
@@ -234,7 +172,7 @@ export const rebuildCheckoutSummary = async (
   offer: any,
   discountData: any,
   lang: TLanguageCode = 'en',
-) => {
+): Promise<Partial<TCheckoutSummary>> => {
   const { totalOfferDiscount, finalDeliveryChargeNet, bogoSnapshot } =
     discountData;
   const { items } = checkoutData;
@@ -269,7 +207,6 @@ export const rebuildCheckoutSummary = async (
         ? lineOfferDiscount / itemOriginalGrandTotal
         : 0;
 
-    // Distribute discount to addons using strict INCLUSIVE tax formula
     const updatedAddons = item.addons.map((addon: any) => {
       const addonPromoDisc = roundTo2(
         addon.lineTotal * itemInternalDiscountRatio,
@@ -298,7 +235,6 @@ export const rebuildCheckoutSummary = async (
       0,
     );
 
-    // Derived product core pricing mechanics
     const newProductLineTotal = roundTo2(
       newItemGrandTotal - newAddonsLineTotalSum,
     );
@@ -359,7 +295,6 @@ export const rebuildCheckoutSummary = async (
 
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
-  // Service Charge Calculation Layer (Portugal 23% IVA Compliance Injection)
   const serviceCharge = checkoutData.orderCalculation.serviceCharge || 0;
   const serviceChargeVatRate = 23;
   const serviceChargeVatAmount = roundTo2(
@@ -397,7 +332,6 @@ export const rebuildCheckoutSummary = async (
   );
   const totalDeduction = roundTo2(totalCommAmt + totalCommVat);
 
-  // Grand total injection with inclusive service charge taxes
   const grandTotal = roundTo2(
     finalItemsSubTotal +
       totalDeliveryCharge +
@@ -409,7 +343,6 @@ export const rebuildCheckoutSummary = async (
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
 
-  // Treasury Core Aggregations Re-alignment
   const totalPlatformNetRevenue = roundTo2(totalCommAmt + serviceCharge);
   const totalPlatformPayableTax = roundTo2(
     totalCommVat + serviceChargeVatAmount + deliveryVat,
@@ -458,10 +391,6 @@ export const rebuildCheckoutSummary = async (
         fee: fleetFee,
       },
       vendor: {
-        earningsWithoutTax: roundTo2(
-          finalItemsSubTotal - finalGlobalTaxAmount - totalDeduction,
-        ),
-        payableTax: finalGlobalTaxAmount,
         vendorNetPayout: roundTo2(finalItemsSubTotal - totalDeduction),
       },
       rider: {
@@ -479,20 +408,25 @@ export const rebuildCheckoutSummary = async (
             discountType: offer.offerType,
             discountValue: offer.discountValue,
             maxDiscountAmount: offer.maxDiscountAmount,
-            bogoSnapshot,
+            bogoSnapshot: bogoSnapshot
+              ? {
+                  buyQty: bogoSnapshot.buyQty,
+                  getQty: bogoSnapshot.getQty,
+                  productId: bogoSnapshot.productId,
+                  productName: bogoSnapshot.productName,
+                }
+              : undefined,
           }
-        : null,
+        : undefined,
     },
   };
 };
 
 export const calculateOfferRemoval = async (
-  checkoutData: any,
+  checkoutData: TCheckoutSummary,
   lang: TLanguageCode = 'en',
-) => {
-  // To completely heal offer removal, we reset the offer values to baseline original snapshots
+): Promise<Partial<TCheckoutSummary>> => {
   const cleanItems = checkoutData.items.map((item: any) => {
-    // Re-verify and rebuild base item pricing structures by wiping out promo fields safely
     const originalProductLineTotal = roundTo2(
       item.productPricing.priceAfterProductDiscount * item.itemSummary.quantity,
     );
@@ -575,7 +509,6 @@ export const calculateOfferRemoval = async (
     };
   });
 
-  // Re-fetch default original baseline charges
   const originalDeliveryCharge = checkoutData.delivery.charge;
 
   const cleanCheckoutData = {
@@ -597,7 +530,12 @@ export const calculateOfferRemoval = async (
     bogoSnapshot: null,
   };
 
-  const dummyOffer = { _id: null, title: '', code: '', offerType: 'NONE' };
+  const dummyOffer = {
+    _id: null,
+    title: '',
+    code: '',
+    offerType: 'NONE' as any,
+  };
 
   return await rebuildCheckoutSummary(
     cleanCheckoutData,
