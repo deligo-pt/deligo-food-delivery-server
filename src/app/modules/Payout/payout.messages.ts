@@ -99,4 +99,16 @@ export const payoutMessages = {
     en: 'Automated payout execution failed:',
     pt: 'Falha na execução do pagamento automatizado:',
   },
+  INSUFFICIENT_WALLET_BALANCE_FOR_FINALIZATION: {
+    en: 'Insufficient wallet balance to finalize this payout.',
+    pt: 'Saldo insuficiente na carteira para finalizar este pagamento.',
+  },
+  SENDER_TREASURY_POOL_INSUFFICIENT_FUNDS: {
+    en: 'The treasury pool of the sender does not have sufficient funds to process this payout.',
+    pt: 'O fundo do tesouro do remetente não tem fundos suficientes para processar este pagamento.',
+  },
+  EXISTING_PENDING_PAYOUT_SESSION_ACTIVE: {
+    en: 'There is already an existing pending payout session for this user. Please wait for it to be processed before initiating a new one.',
+    pt: 'Já existe uma sessão de pagamento pendente para este usuário. Por favor, aguarde que seja processada antes de iniciar uma nova.',
+  },
 } as const;

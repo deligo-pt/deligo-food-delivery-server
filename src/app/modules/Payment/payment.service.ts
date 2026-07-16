@@ -32,7 +32,8 @@ const createRedUniqPayment = async (
   paymentMethod: TPaymentMethod,
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
-  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'SUMMARY_NOT_FOUND');
+  if (!summary)
+    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
 
   if (summary.isConvertedToOrder) {
     throw new AppError(
@@ -138,7 +139,8 @@ const handlePaymentFailure = async (
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
-  if (!summary) throw new AppError(httpStatus.NOT_FOUND, 'SUMMARY_NOT_FOUND');
+  if (!summary)
+    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
     throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED_TO_VIEW');

@@ -10,16 +10,14 @@ export type TWallet = {
     | 'FleetManager'
     | 'DeliveryPartner';
   lastSettlementDate?: Date;
-  totalUnpaidTax: number;
-  totalTax: number;
-  totalUnpaidEarnings: number;
-  totalEarnings: number;
 
-  totalPlatformGrossHolding?: number;
-  totalPlatformNetRevenue?: number;
-
-  totalRiderPayable: number;
-  totalFleetEarnings: number;
+  // ==========================================================
+  // ৪টি ইউনিভার্সাল লেজার কলাম (মিনিমালিস্ট কোর)
+  // ==========================================================
+  currentBalance: number; // CURRENT WITHDRAWABLE / PAYABLE / REFUND BALANCE
+  lifetimeEarnings: number; // CUMULATIVE GROSS REVENUE / INFLOW
+  currentTaxLiability: number; // TAX CURRENTLY PENDING FOR AT DECLARATION
+  lifetimeTaxProcessed: number; // CUMULATIVE TAX PROCESSED SO FAR
 
   createdAt: Date;
   updatedAt: Date;

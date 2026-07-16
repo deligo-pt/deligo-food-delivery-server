@@ -127,7 +127,10 @@ const getAllProductCategories = async (
   }
 
   // Build and execute the query
-  const productCategories = new QueryBuilder(ProductCategory.find(), query)
+  const productCategories = new QueryBuilder(
+    ProductCategory.find().populate('businessCategoryId', 'name'),
+    query,
+  )
     .search(['name.en', 'name.pt', 'slug'])
     .filter()
     .sort()
@@ -155,7 +158,10 @@ const getAllProductCategoriesPublic = async (
   query.isDeleted = false;
 
   // Build and execute the query
-  const productCategories = new QueryBuilder(ProductCategory.find(), query)
+  const productCategories = new QueryBuilder(
+    ProductCategory.find().populate('businessCategoryId', 'name'),
+    query,
+  )
     .search(['name.en', 'name.pt', 'slug'])
     .filter()
     .sort()
@@ -180,7 +186,10 @@ const getSingleProductCategory = async (
   id: string,
   currentUser: TCurrentUser,
 ) => {
-  const category = await ProductCategory.findById(id);
+  const category = await ProductCategory.findById(id).populate(
+    'businessCategoryId',
+    'name',
+  );
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }
@@ -219,7 +228,10 @@ const getSingleProductCategory = async (
 
 //  get single product category public
 const getSingleProductCategoryPublic = async (id: string) => {
-  const category = await ProductCategory.findById(id);
+  const category = await ProductCategory.findById(id).populate(
+    'businessCategoryId',
+    'name',
+  );
   if (!category) {
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
   }

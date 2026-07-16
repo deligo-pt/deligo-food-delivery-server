@@ -19,6 +19,24 @@ import { RedisService } from '../../config/redis';
 import { Cart } from '../Cart/cart.model';
 import { sendInvoiceEmailWithAttachment } from './order.invoice';
 
+const normalizeWalletFields = async (
+  userId: mongoose.Types.ObjectId | string | null | undefined,
+  userModel: 'Admin' | 'Vendor' | 'DeliveryPartner' | 'FleetManager',
+  fields: string[],
+  session: mongoose.ClientSession,
+) => {
+  if (!userId || fields.length === 0) return;
+
+  const setStage = fields.reduce<Record<string, unknown>>((acc, field) => {
+    acc[field] = { $round: [{ $ifNull: [`$${field}`, 0] }, 2] };
+    return acc;
+  }, {});
+
+  await Wallet.updateOne({ userId, userModel }, [{ $set: setStage }], {
+    session,
+  });
+};
+
 export const processNewOrderPostProcess = async (job: Job) => {
   const {
     orderId,
@@ -190,11 +208,8 @@ export const processOrderPostUpdate = async (job: Job) => {
 
       const { payoutSummary } = updatedOrder;
 
-      const vendorEarningsBeforeTax =
-        payoutSummary?.vendor?.earningsWithoutTax || 0;
-      const vendorPayableTax = payoutSummary?.vendor?.payableTax || 0;
+      // Pure Agency Model Ledger Splits
       const vendorNetPayout = payoutSummary?.vendor?.vendorNetPayout || 0;
-
       const riderNetEarnings = payoutSummary?.rider?.riderNetEarnings || 0;
       const fleetFee = payoutSummary?.fleet?.fee || 0;
 
@@ -207,8 +222,10 @@ export const processOrderPostUpdate = async (job: Job) => {
       const earnedServiceCharge =
         payoutSummary?.deliGoCommission?.earnedServiceCharge || 0;
 
-      const totalPlatformNetRevenue =
-        payoutSummary?.deliGoCommission?.totalPlatformNetRevenue || 0;
+      // 4-Column Unified Platform Ledger Mapping
+      const purePlatformNetRevenue = roundTo2(
+        deliGoCommission + earnedServiceCharge,
+      );
       const totalPlatformPayableTax =
         payoutSummary?.deliGoCommission?.totalPlatformPayableTax || 0;
       const totalPlatformGrossHolding =
@@ -219,72 +236,109 @@ export const processOrderPostUpdate = async (job: Job) => {
         ? partner?.registeredBy?.id
         : null;
 
-      // --- Vendor Wallet Update ---
+      // --- Vendor Wallet Update (Vendor Earnings) ---
       await Wallet.findOneAndUpdate(
         { userId: updatedOrder.vendorId, userModel: 'Vendor' },
         {
           $setOnInsert: { walletId: `WAL-V-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidTax: roundTo2(vendorPayableTax),
-            totalTax: roundTo2(vendorPayableTax),
-            totalUnpaidEarnings: roundTo2(vendorNetPayout),
-            totalEarnings: roundTo2(vendorNetPayout),
+            currentBalance: roundTo2(vendorNetPayout),
+            lifetimeEarnings: roundTo2(vendorNetPayout),
           },
         },
         { session, upsert: true },
       );
 
-      // --- Delivery Partner Wallet Update ---
+      await normalizeWalletFields(
+        updatedOrder.vendorId,
+        'Vendor',
+        ['currentBalance', 'lifetimeEarnings'],
+        session,
+      );
+
+      // --- Delivery Partner Wallet Update (Rider Earnings) ---
       await Wallet.findOneAndUpdate(
         { userId: partner?._id, userModel: 'DeliveryPartner' },
         {
           $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidEarnings: roundTo2(riderNetEarnings),
-            totalEarnings: roundTo2(riderNetEarnings),
+            currentBalance: roundTo2(riderNetEarnings),
+            lifetimeEarnings: roundTo2(riderNetEarnings),
           },
         },
         { session, upsert: true },
+      );
+
+      await normalizeWalletFields(
+        partner?._id,
+        'DeliveryPartner',
+        ['currentBalance', 'lifetimeEarnings'],
+        session,
       );
 
       const SYSTEM_ADMIN = await Admin.findOne({ role: 'SUPER_ADMIN' })
         .select('_id')
         .lean();
 
-      // --- Admin Central Wallet Update ---
+      // --- Admin Ledger Reserve Cash Calculation ---
+      const totalOrderCashInflow = roundTo2(
+        vendorNetPayout +
+          riderNetEarnings +
+          fleetFee +
+          totalPlatformGrossHolding,
+      );
+
+      // --- Platform Admin Wallet Update (Centralized Tax & Commission) ---
       await Wallet.findOneAndUpdate(
         { userId: SYSTEM_ADMIN?._id, userModel: 'Admin' },
         {
           $setOnInsert: { walletId: `WAL-A-${customNanoId(8)}` },
           $inc: {
-            totalUnpaidTax: roundTo2(totalPlatformPayableTax),
-            totalTax: roundTo2(totalPlatformPayableTax),
-            totalEarnings: roundTo2(totalPlatformNetRevenue),
-            totalPlatformGrossHolding: roundTo2(totalPlatformGrossHolding),
-            totalPlatformNetRevenue: roundTo2(totalPlatformNetRevenue),
+            currentBalance: totalOrderCashInflow,
+            lifetimeEarnings: roundTo2(purePlatformNetRevenue),
+            currentTaxLiability: roundTo2(totalPlatformPayableTax),
+            lifetimeTaxProcessed: roundTo2(totalPlatformPayableTax),
           },
         },
         { session, upsert: true },
       );
 
-      // --- Fleet Manager Wallet Update (If applicable) ---
+      await normalizeWalletFields(
+        SYSTEM_ADMIN?._id,
+        'Admin',
+        [
+          'currentBalance',
+          'lifetimeEarnings',
+          'currentTaxLiability',
+          'lifetimeTaxProcessed',
+        ],
+        session,
+      );
+
+      // --- Fleet Manager Wallet Update (Fleet Earnings Pool) ---
       if (isManagedByFleet && fleetManagerId) {
+        const totalFleetReservesPool = roundTo2(fleetFee + riderNetEarnings);
         await Wallet.findOneAndUpdate(
           { userId: fleetManagerId, userModel: 'FleetManager' },
           {
             $setOnInsert: { walletId: `WAL-F-${customNanoId(8)}` },
             $inc: {
-              totalUnpaidEarnings: riderNetEarnings || 0,
-              totalRiderPayable: riderNetEarnings || 0,
-              totalFleetEarnings: fleetFee || 0,
-              totalEarnings: (riderNetEarnings || 0) + (fleetFee || 0),
+              currentBalance: totalFleetReservesPool,
+              lifetimeEarnings: roundTo2(fleetFee),
             },
           },
           { session, upsert: true },
         );
+
+        await normalizeWalletFields(
+          fleetManagerId,
+          'FleetManager',
+          ['currentBalance', 'lifetimeEarnings'],
+          session,
+        );
       }
 
-      // --- Transaction Records Generation (1:1 with updated Schema and Enum types) ---
+      // --- Transaction Records Generation (Double-Entry Log) ---
       const totalAdminTax = roundTo2(
         commissionVat + deliveryVatAmount + serviceChargeVatAmount,
       );
@@ -295,13 +349,13 @@ export const processOrderPostUpdate = async (job: Job) => {
           orderId: orderDbId,
           userId: updatedOrder.vendorId,
           userModel: 'Vendor',
-          baseAmount: roundTo2(vendorEarningsBeforeTax),
-          taxAmount: roundTo2(vendorPayableTax),
+          baseAmount: roundTo2(vendorNetPayout),
+          taxAmount: 0,
           totalAmount: roundTo2(vendorNetPayout),
           type: 'VENDOR_EARNING',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
-          remarks: `Earnings for Order: ${orderDisplayId}`,
+          remarks: `Gross Vendor Payout for Order: ${orderDisplayId}`,
         },
         {
           transactionId: `TXN-DP-${orderDisplayId}`,
@@ -355,7 +409,7 @@ export const processOrderPostUpdate = async (job: Job) => {
           type: 'PLATFORM_TAX_COLLECTION',
           status: 'SUCCESS',
           paymentMethod: 'WALLET',
-          remarks: `Centralized VAT Reserve Holding for Order: ${orderDisplayId}`,
+          remarks: `Centralized VAT Platform Holding for Order: ${orderDisplayId}`,
         },
       ];
 
@@ -419,7 +473,19 @@ export const processOrderPostUpdate = async (job: Job) => {
     }
 
     await session.commitTransaction();
+  } catch (error) {
+    await session.abortTransaction();
+    console.error(`[Worker] Failed to process order ${orderDisplayId}:`, error);
+    throw error;
+  } finally {
+    // 🚨 FIXED: Instantly terminates database sessions to free pool connection slots
+    session.endSession();
+  }
 
+  // =========================================================================
+  // Post-Transaction Triggers (Asynchronous Operations Outside Session Lock)
+  // =========================================================================
+  try {
     const customer = await Customer.findById(updatedOrder.customerId).lean();
     const customerId = customer?.userId;
     const vendor = await Vendor.findById(updatedOrder.vendorId).lean();
@@ -442,6 +508,7 @@ export const processOrderPostUpdate = async (job: Job) => {
         type: 'ORDER_STATUS',
       },
     };
+
     if (customerId) {
       NotificationService.sendToUser(
         customerId,
@@ -452,29 +519,30 @@ export const processOrderPostUpdate = async (job: Job) => {
         'ORDER',
       );
     }
+
     if (
       vendorId &&
       (orderStatus === 'ON_THE_WAY' || orderStatus === 'DELIVERED')
     ) {
       NotificationService.sendToUser(
-        vendorId!,
+        vendorId,
         notificationPayload.title,
         `${
           orderStatus === 'ON_THE_WAY'
             ? `Order ${orderDisplayId} is now ${orderStatus}`
-            : orderStatus === 'DELIVERED' &&
-              `Order ${orderDisplayId} is successfully ${orderStatus} by delivery partner`
+            : orderStatus === 'DELIVERED'
+              ? `Order ${orderDisplayId} is successfully DELIVERED by delivery partner`
+              : `Order ${orderDisplayId} status update`
         }`,
         notificationPayload.data,
         'default',
         'ORDER',
       );
     }
-  } catch (error) {
-    await session.abortTransaction();
-    console.error(`[Worker] Failed to process order ${orderDisplayId}:`, error);
-    throw error;
-  } finally {
-    session.endSession();
+  } catch (notifError) {
+    console.error(
+      `[Worker Notifications] Silent failure sending alerts for ${orderDisplayId}:`,
+      notifError,
+    );
   }
 };

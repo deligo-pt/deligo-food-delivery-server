@@ -1,8 +1,4 @@
 export const orderMessages = {
-  CHECKOUT_SUMMARY_NOT_FOUND: {
-    en: 'Checkout details could not be found.',
-    pt: 'Os detalhes do checkout não foram encontrados.',
-  },
   REDUNIQ_API_URL_NOT_CONFIGURED: {
     en: 'Payment gateway configuration missing.',
     pt: 'Configuração do gateway de pagamento ausente.',

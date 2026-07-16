@@ -87,7 +87,6 @@ const checkout = async (
     activeAddress.latitude,
   );
 
-  // Defensive Type Casting for spatial API payloads
   const distanceMeters = Number(distanceData.meters) || 0;
   const distanceKm = Number(distanceData.km) || 0;
 
@@ -144,23 +143,30 @@ const checkout = async (
         .flatMap((v: any) => v.options || [])
         .find((opt: any) => opt.sku === item.variationSku);
 
-      if (selectedOption) {
-        basePrice = selectedOption.price;
-        if (!payload.useCart) {
-          const vLabelEn =
-            typeof selectedOption.label === 'object'
-              ? selectedOption.label.en || ''
-              : selectedOption.label;
-          const vLabelPt =
-            typeof selectedOption.label === 'object'
-              ? selectedOption.label.pt || vLabelEn
-              : selectedOption.label;
-          if (vLabelEn)
-            finalItemNameObj.en = `${finalItemNameObj.en} - ${vLabelEn}`;
-          if (vLabelPt)
-            finalItemNameObj.pt = `${finalItemNameObj.pt} - ${vLabelPt}`;
-        }
+      if (!selectedOption) {
+        throw new AppError(httpStatus.BAD_REQUEST, 'VARIATION_NOT_FOUND');
       }
+
+      basePrice = selectedOption.price;
+      if (!payload.useCart) {
+        const vLabelEn =
+          typeof selectedOption.label === 'object'
+            ? selectedOption.label.en || ''
+            : selectedOption.label;
+        const vLabelPt =
+          typeof selectedOption.label === 'object'
+            ? selectedOption.label.pt || vLabelEn
+            : selectedOption.label;
+        if (vLabelEn)
+          finalItemNameObj.en = `${finalItemNameObj.en} - ${vLabelEn}`;
+        if (vLabelPt)
+          finalItemNameObj.pt = `${finalItemNameObj.pt} - ${vLabelPt}`;
+      }
+    } else if (
+      !payload.useCart &&
+      (product.stock?.hasVariations || product.variations?.length)
+    ) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'VARIATION_SKU_REQUIRED');
     }
 
     const qty = item.itemSummary?.quantity || item.quantity || 1;
@@ -227,7 +233,6 @@ const checkout = async (
     const itemGrandTotal = roundTo2(productLineTotal + totalAddonsLineTotal);
     const itemTotalTax = roundTo2(productTaxAmount + totalAddonsTax);
 
-    // DeliGo Commission Split calculations per item
     const priceWithoutTax = roundTo2(itemGrandTotal - itemTotalTax);
     const commAmt = roundTo2(
       priceWithoutTax * (PLATFORM_COMMISSION_RATE / 100),
@@ -236,7 +241,6 @@ const checkout = async (
 
     const totalVendorDeduction = roundTo2(commAmt + commVat);
     const vendorNetEarnings = roundTo2(itemGrandTotal - totalVendorDeduction);
-    const vendorEarningsWithoutTax = roundTo2(vendorNetEarnings - itemTotalTax);
 
     return {
       productId: product._id,
@@ -271,7 +275,7 @@ const checkout = async (
         deliGoCommissionVatAmount: commVat,
       },
       vendor: {
-        vendorEarningsWithoutTax,
+        vendorEarningsWithoutTax: roundTo2(vendorNetEarnings - itemTotalTax),
         payableTax: itemTotalTax,
         vendorNetEarnings,
       },
@@ -327,14 +331,11 @@ const checkout = async (
       ((globalSettings?.fleetManagerCommissionPercent || 0) / 100),
   );
 
-  // Payout Splits calculations matching the defined Mongoose Schema structure
   const vendorNetPayout = roundTo2(
     totalItemsSubTotal - (totalCommAmt + totalCommVat),
   );
-  const vendorEarningsWithoutTax = roundTo2(vendorNetPayout - totalTaxAmount);
   const riderNetEarnings = roundTo2(deliveryChargeBase - fleetFee);
 
-  // Grand Total Calculation including Platform Service Charge + Its VAT
   const finalGrandTotal = roundTo2(
     totalItemsSubTotal +
       totalDeliveryCharge +
@@ -342,7 +343,7 @@ const checkout = async (
       serviceChargeVatAmount,
   );
 
-  // 7. Core Treasury Financial Ledgers Alignment (Portugal Law Compliance)
+  // 7. Core Treasury Financial Ledgers Alignment (DeliGo Platform Tax Isolation)
   const totalPlatformNetRevenue = roundTo2(totalCommAmt + serviceCharge);
   const totalPlatformPayableTax = roundTo2(
     totalCommVat + serviceChargeVatAmount + deliveryVat,
@@ -401,8 +402,6 @@ const checkout = async (
         fee: fleetFee,
       },
       vendor: {
-        earningsWithoutTax: vendorEarningsWithoutTax,
-        payableTax: totalTaxAmount,
         vendorNetPayout,
       },
       rider: {

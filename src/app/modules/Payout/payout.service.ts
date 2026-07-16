@@ -85,19 +85,32 @@ const initiateSettlement = async (
       );
     }
 
+    // Anti-Spam Check: Ensure no parallel pending request exists for this user
+    const existingPendingPayout = await Payout.findOne({
+      userId,
+      status: 'PENDING',
+    }).session(session);
+
+    if (existingPendingPayout) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'EXISTING_PENDING_PAYOUT_SESSION_ACTIVE',
+      );
+    }
+
     const wallet = await Wallet.findOne({
       userId,
       userModel: targetUserModel,
     }).session(session);
 
-    if (!wallet || wallet.totalUnpaidEarnings <= 0) {
+    if (!wallet || wallet.currentBalance <= 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'NO_UNPAID_EARNINGS_TO_SETTLE',
       );
     }
 
-    const snapshotAmount = wallet.totalUnpaidEarnings;
+    const snapshotAmount = roundTo2(wallet.currentBalance);
     const uniquePayoutId = customNanoId(8);
 
     const [payout] = await Payout.create(
@@ -177,6 +190,7 @@ const finalizeSettlement = async (
     const payout = await Payout.findOne({ payoutId })
       .populate('userId', 'userId bankDetails name nif')
       .session(session);
+
     if (!payout || payout.status !== 'PENDING') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -190,16 +204,48 @@ const finalizeSettlement = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'PAYOUT_PROOF_MANDATORY');
     }
 
-    const amountToDeduct = payout.amount;
+    const amountToDeduct = roundTo2(payout.amount);
 
-    await Wallet.findOneAndUpdate(
-      { userId: payout.userId, userModel: payout.userModel },
+    // 🚨 ATOMIC GUARD DEBIT: Safely filters and updates target balance in one step
+    const updatedTargetWallet = await Wallet.findOneAndUpdate(
       {
-        $inc: { totalUnpaidEarnings: -amountToDeduct },
+        userId: payout.userId,
+        userModel: payout.userModel,
+        currentBalance: { $gte: amountToDeduct },
+      },
+      {
+        $inc: { currentBalance: -amountToDeduct },
         $set: { lastSettlementDate: new Date() },
       },
-      { session },
+      { session, new: true },
     );
+
+    if (!updatedTargetWallet) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'INSUFFICIENT_WALLET_BALANCE_FOR_FINALIZATION',
+      );
+    }
+
+    // 🚨 ATOMIC TREASURY DEBIT: Deducts raw liquidity from the sender pool pool (Admin/Fleet Manager)
+    const updatedSenderWallet = await Wallet.findOneAndUpdate(
+      {
+        userId: payout.senderId,
+        userModel: payout.senderModel,
+        currentBalance: { $gte: amountToDeduct },
+      },
+      {
+        $inc: { currentBalance: -amountToDeduct },
+      },
+      { session, new: true },
+    );
+
+    if (!updatedSenderWallet) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'SENDER_TREASURY_POOL_INSUFFICIENT_FUNDS',
+      );
+    }
 
     const settlementTypeMapper: Record<string, string> = {
       Vendor: 'VENDOR_SETTLEMENT',
@@ -207,17 +253,7 @@ const finalizeSettlement = async (
       FleetManager: 'FLEET_SETTLEMENT',
     };
 
-    if (
-      payout.userModel === 'DeliveryPartner' &&
-      payout.senderModel === 'FleetManager'
-    ) {
-      await Wallet.findOneAndUpdate(
-        { userId: payout.senderId, userModel: 'FleetManager' },
-        { $inc: { totalRiderPayable: -amountToDeduct } },
-        { session },
-      );
-    }
-
+    // Double-Entry System Transaction Log Generation
     await Transaction.create(
       [
         {
@@ -225,12 +261,15 @@ const finalizeSettlement = async (
           payoutId: payout._id,
           userId: payout.userId,
           userModel: payout.userModel,
+          baseAmount: amountToDeduct,
+          taxAmount: 0,
           totalAmount: amountToDeduct,
           type: settlementTypeMapper[payout.userModel],
           status: 'SUCCESS',
           paymentMethod: payout.paymentMethod,
-          remarks: payload.remarks || 'Weekly settlement completed',
-          processedBy: new mongoose.Types.ObjectId(processedBy),
+          remarks:
+            payload.remarks || 'Weekly bank settlement completed successfully',
+          processedBy: processedBy,
           processorModel: processorModel,
         },
       ],
@@ -242,19 +281,21 @@ const finalizeSettlement = async (
     payout.remarks = payload.remarks || 'Weekly settlement completed';
     payout.payoutProof = payoutProof;
     payout.bankDetails = { ...user.bankDetails };
+
     const result = await payout.save({ session });
 
     await session.commitTransaction();
 
     const NotificationPayload = {
       title: 'Settlement completed',
-      body: `Your settlement of ${amountToDeduct} has been processed successfully.`,
+      body: `Your bank settlement of €${amountToDeduct} has been processed successfully.`,
       data: {
         amount: String(result.amount),
         status: String(result.status),
         paymentMethod: String(result.paymentMethod),
       },
     };
+
     NotificationService.sendToUser(
       (result.userId as any).userId,
       NotificationPayload.title,
@@ -436,7 +477,6 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
 
 const initiateAutomatedSettlement = async () => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
     const settings = await GlobalSettings.findOne().lean();
@@ -446,32 +486,47 @@ const initiateAutomatedSettlement = async () => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() - (payoutWindowDays || 0));
 
+    session.startTransaction();
+
+    const activePendingUserIds = await Payout.find({ status: 'PENDING' })
+      .select('userId')
+      .session(session)
+      .lean()
+      .then((payouts) => payouts.map((p) => p.userId.toString()));
+
     const eligibleWallets = await Wallet.find({
-      totalUnpaidEarnings: { $gte: minPayoutAmount },
+      userId: { $nin: activePendingUserIds },
+      currentBalance: { $gte: minPayoutAmount },
       userModel: { $in: ['Vendor', 'FleetManager', 'DeliveryPartner'] },
     })
       .populate('userId', 'registeredBy bankDetails userId name')
       .session(session);
 
-    if (eligibleWallets.length === 0) return;
+    if (eligibleWallets.length === 0) {
+      await session.commitTransaction();
+      return;
+    }
 
-    const superAdmin = await Admin.findOne({ role: 'SUPER_ADMIN' });
+    const superAdmin = await Admin.findOne({ role: 'SUPER_ADMIN' }).session(
+      session,
+    );
 
     for (const wallet of eligibleWallets) {
       const user = wallet.userId as any;
 
       if (wallet.userModel === 'DeliveryPartner') {
-        if (user?.registeredBy?.role === 'FLEET_MANAGER') {
+        if (user?.registeredBy?.model === 'FleetManager') {
           continue;
         }
       }
+
       const hasCompleteBankDetails =
         user?.bankDetails?.bankName &&
         user?.bankDetails?.accountHolderName &&
         user?.bankDetails?.iban;
 
       if (!hasCompleteBankDetails) {
-        const formattedAmount = roundTo2(wallet.totalUnpaidEarnings);
+        const formattedAmount = roundTo2(wallet.currentBalance);
         const NotificationPayload = {
           title: 'Dados Bancários Incompletos',
           body: `Não conseguimos iniciar o seu pagamento de €${formattedAmount} porque os seus dados bancários estão incompletos. Por favor, atualize-os para receber os pagamentos.`,
@@ -489,15 +544,6 @@ const initiateAutomatedSettlement = async () => {
         continue;
       }
 
-      const existingPendingPayout = await Payout.findOne({
-        userId: wallet.userId,
-        status: 'PENDING',
-      }).session(session);
-
-      if (existingPendingPayout) {
-        continue;
-      }
-
       const uniquePayoutId = customNanoId(8);
 
       await Payout.create(
@@ -508,10 +554,9 @@ const initiateAutomatedSettlement = async () => {
             userModel: wallet.userModel,
             senderId: superAdmin?._id,
             senderModel: 'Admin',
-            amount: wallet.totalUnpaidEarnings,
+            amount: roundTo2(wallet.currentBalance),
             status: 'PENDING',
             paymentMethod: 'BANK_TRANSFER',
-
             startDate: wallet.lastSettlementDate || wallet.createdAt,
             endDate: endDate,
           },
@@ -522,8 +567,10 @@ const initiateAutomatedSettlement = async () => {
 
     await session.commitTransaction();
   } catch (error) {
-    await session.abortTransaction();
-    void error;
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.error('[Cron Worker] Automated Settlement System Failure: ', error);
   } finally {
     session.endSession();
   }
