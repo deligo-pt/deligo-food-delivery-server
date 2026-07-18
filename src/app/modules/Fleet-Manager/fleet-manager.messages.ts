@@ -77,4 +77,12 @@ export const fleetManagerMessages = {
     en: 'Fleet manager profile could not be located.',
     pt: 'O perfil do gestor de frota não pôde ser localizado.',
   },
+  LATITUDE_LONGITUDE_REQUIRED: {
+    en: 'Both latitude and longitude are required for nearest search.',
+    pt: 'Latitude e longitude são obrigatórias para a busca por proximidade.',
+  },
+  INVALID_LAT_LNG_COORDINATES: {
+    en: 'Invalid coordinates. Latitude must be between -90 and 90, and longitude between -180 and 180.',
+    pt: 'Coordenadas inválidas. A latitude deve estar entre -90 e 90 e a longitude entre -180 e 180.',
+  },
 } as const;

@@ -13,6 +13,8 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { FleetManager } from '../Fleet-Manager/fleet-manager.model';
+import mongoose from 'mongoose';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
@@ -359,6 +361,65 @@ const getSingleDeliveryPartnerFromDB = async (
   };
 };
 
+const assignDeliveryPartnerToFleetManager = async (
+  deliveryPartnerId: string,
+  fleetManagerId: string,
+) => {
+  const deliveryPartnerProfile = await DeliveryPartner.findOne({
+    userId: deliveryPartnerId,
+    role: 'DELIVERY_PARTNER',
+    isDeleted: false,
+  }).select('status registeredBy isDeleted');
+
+  if (!deliveryPartnerProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+  }
+
+  if (deliveryPartnerProfile.status === 'APPROVED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'DELIVERY_PARTNER_ALREADY_APPROVED',
+    );
+  }
+
+  const fleetManagerProfile = await FleetManager.findOne({
+    _id: fleetManagerId,
+    role: 'FLEET_MANAGER',
+    isDeleted: false,
+  }).select('_id status');
+
+  if (!fleetManagerProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND');
+  }
+
+  if (fleetManagerProfile.status !== 'APPROVED') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'FLEET_MANAGER_NOT_APPROVED');
+  }
+
+  if (!deliveryPartnerProfile || deliveryPartnerProfile.isDeleted) {
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+  }
+
+  if (deliveryPartnerProfile.registeredBy?.model === 'FleetManager') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'DELIVERY_PARTNER_ALREADY_ASSIGNED_TO_FLEET_MANAGER',
+    );
+  }
+
+  deliveryPartnerProfile.registeredBy = {
+    id: new mongoose.Types.ObjectId(fleetManagerProfile._id),
+    model: 'FleetManager',
+  };
+
+  await deliveryPartnerProfile.save();
+
+  return {
+    messageKey: 'UPDATED_SUCCESS',
+    data: deliveryPartnerProfile,
+  };
+};
+
 export const DeliveryPartnerServices = {
   updateDeliveryPartner,
   updateDeliveryPartnerLiveLocation,
@@ -366,4 +427,5 @@ export const DeliveryPartnerServices = {
   deliverPartnerDocImageUpload,
   getAllDeliveryPartnersFromDB,
   getSingleDeliveryPartnerFromDB,
+  assignDeliveryPartnerToFleetManager,
 };

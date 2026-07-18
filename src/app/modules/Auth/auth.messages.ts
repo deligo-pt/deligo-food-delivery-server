@@ -289,6 +289,10 @@ export const authMessages = {
     en: 'Profile details could not be found.',
     pt: 'Os detalhes do perfil não foram encontrados.',
   },
+  DELIVERY_PARTNER_FLEET_ASSIGNMENT_REQUIRED: {
+    en: 'Before approval, this delivery partner must be assigned under a fleet manager.',
+    pt: 'Antes da aprovação, este parceiro de entrega deve ser atribuído a um gestor de frota.',
+  },
   SUBMIT_APPROVAL_PERMISSION_DENIED_FLEET: {
     en: 'You do not have permission to manage approvals for this delivery partner.',
     pt: 'Você não tem permissão para gerenciar aprovações para este parceiro de entrega.',

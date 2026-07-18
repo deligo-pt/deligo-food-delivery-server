@@ -1660,6 +1660,17 @@ const approvedOrRejectedUser = async (
     throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
   }
 
+  if (
+    role === 'DELIVERY_PARTNER' &&
+    targetAuthStatus === 'APPROVED' &&
+    !submittedProfile.registeredBy?.id
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'DELIVERY_PARTNER_FLEET_ASSIGNMENT_REQUIRED',
+    );
+  }
+
   const finalRemarks =
     payload.remarks?.trim() ||
     (targetAuthStatus === 'APPROVED'
