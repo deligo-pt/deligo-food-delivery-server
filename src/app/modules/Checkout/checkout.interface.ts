@@ -87,6 +87,8 @@ export type TCheckoutSummary = {
       fee: number;
     };
     vendor: {
+      earningsWithoutTax: number;
+      payableTax: number;
       vendorNetPayout: number;
     };
     rider: {

@@ -391,6 +391,10 @@ export const rebuildCheckoutSummary = async (
         fee: fleetFee,
       },
       vendor: {
+        earningsWithoutTax: roundTo2(
+          finalItemsSubTotal - totalDeduction - finalGlobalTaxAmount,
+        ),
+        payableTax: finalGlobalTaxAmount,
         vendorNetPayout: roundTo2(finalItemsSubTotal - totalDeduction),
       },
       rider: {

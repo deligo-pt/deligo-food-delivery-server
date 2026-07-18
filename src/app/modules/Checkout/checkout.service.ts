@@ -402,6 +402,10 @@ const checkout = async (
         fee: fleetFee,
       },
       vendor: {
+        earningsWithoutTax: roundTo2(
+          totalItemsSubTotal - totalDeduction - totalTaxAmount,
+        ),
+        payableTax: totalTaxAmount,
         vendorNetPayout,
       },
       rider: {
