@@ -90,4 +90,16 @@ export const deliveryPartnerMessages = {
     en: 'Access denied. You do not have permission to view this partner profile.',
     pt: 'Acesso negado. Você não tem permissão para visualizar este perfil de parceiro.',
   },
+  DELIVERY_PARTNER_ALREADY_APPROVED: {
+    en: 'This delivery partner is already approved and cannot be reassigned through this flow.',
+    pt: 'Este parceiro de entrega já foi aprovado e não pode ser reatribuído por este fluxo.',
+  },
+  FLEET_MANAGER_NOT_APPROVED: {
+    en: 'Only approved fleet managers can be assigned.',
+    pt: 'Apenas gestores de frota aprovados podem ser atribuídos.',
+  },
+  DELIVERY_PARTNER_ALREADY_ASSIGNED_TO_FLEET_MANAGER: {
+    en: 'This delivery partner is already assigned under a fleet manager.',
+    pt: 'Este parceiro de entrega já está atribuído a um gestor de frota.',
+  },
 } as const;

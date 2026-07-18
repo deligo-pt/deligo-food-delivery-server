@@ -101,6 +101,21 @@ const getSingleDeliveryPartner = catchAsync(async (req, res) => {
   });
 });
 
+const assignDeliveryPartnerToFleetManager = catchAsync(async (req, res) => {
+  const result =
+    await DeliveryPartnerServices.assignDeliveryPartnerToFleetManager(
+      req.params.deliveryPartnerId,
+      req.body.fleetManagerId,
+    );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
+  });
+});
+
 export const DeliveryPartnerControllers = {
   updateDeliveryPartner,
   updateDeliveryPartnerLiveLocation,
@@ -108,4 +123,5 @@ export const DeliveryPartnerControllers = {
   changeDeliveryPartnerStatus,
   getAllDeliveryPartners,
   getSingleDeliveryPartner,
+  assignDeliveryPartnerToFleetManager,
 };
