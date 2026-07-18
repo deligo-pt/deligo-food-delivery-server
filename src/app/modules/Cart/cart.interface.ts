@@ -43,8 +43,12 @@ export type TCartItem = {
 export type TCartItemInput = {
   items: {
     productId: string;
-    quantity: number;
+    quantity?: number;
     variationSku?: string;
+    addons?: {
+      optionSku: string;
+      quantity: number;
+    }[];
   }[];
 };
 
