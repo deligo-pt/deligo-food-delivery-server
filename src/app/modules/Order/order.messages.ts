@@ -23,6 +23,10 @@ export const orderMessages = {
     en: 'Order placed successfully!',
     pt: 'Pedido feito com sucesso!',
   },
+  ORDER_REORDER_SUCCESS: {
+    en: 'Order items added to cart successfully.',
+    pt: 'Os itens do pedido foram adicionados ao carrinho com sucesso.',
+  },
   NOT_AUTHORIZED_ACCEPT_REJECT_ORDERS: {
     en: 'You do not have permission to accept or reject orders.',
     pt: 'Você não tem permissão para aceitar ou rejeitar pedidos.',

@@ -14,6 +14,7 @@ const addToCart = catchAsync(async (req, res) => {
   const result = await CartServices.addToCart(
     req.body,
     req.user as TCurrentUser,
+    req.lang,
   );
 
   const formattedData = formatCartResponse(result?.data, req.lang);

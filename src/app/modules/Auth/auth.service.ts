@@ -36,6 +36,7 @@ import {
   TLoginDevice,
 } from '../../constant/GlobalInterface/user.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { authQueue } from '../../BullMQ/Queue/auth.queue';
 
 // Register User [Vendor, Fleet Manager, Admin]
 const registerUser = async (payload: TRegisterUser) => {
@@ -389,6 +390,34 @@ const verifyOtp = async (payload: {
     throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_REGISTER');
   }
 
+  const enqueueOtpLoginHistory = (
+    status: 'SUCCESS' | 'FAILED',
+    failureReason?:
+      | 'INVALID_CREDENTIALS'
+      | 'LIMIT_EXCEEDED'
+      | 'INVALID_OTP'
+      | 'UNKNOWN',
+  ) => {
+    if (!userData?.email) {
+      return;
+    }
+
+    authQueue.add('CREATE_LOGIN_LOG', {
+      userId: userData._id,
+      email: userData.email,
+      userRole: userData.role,
+      ipAddress: deviceDetails?.ip || 'Unknown',
+      deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+      browser: deviceDetails?.deviceName || 'Unknown',
+      os: 'Unknown',
+      userAgent: deviceDetails?.userAgent || 'Unknown',
+      status,
+      failureReason,
+      sessionId: currentDeviceId,
+      loginAt: new Date(),
+    });
+  };
+
   const deviceLimit = ROLE_DEVICE_LIMITS[userData.role] || 3;
   const currentDeviceId = deviceDetails?.deviceId || 'unknown';
 
@@ -402,6 +431,7 @@ const verifyOtp = async (payload: {
 
   if (!isExisting && (loginDevices?.length || 0) >= deviceLimit) {
     if (!forceLogin) {
+      enqueueOtpLoginHistory('FAILED', 'LIMIT_EXCEEDED');
       throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
     }
   }
@@ -412,9 +442,11 @@ const verifyOtp = async (payload: {
 
     if (email === config.customer.test_customer_email) {
       if (otp !== config.customer.test_customer_otp) {
+        enqueueOtpLoginHistory('FAILED', 'INVALID_OTP');
         throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OTP');
       }
     } else if (!storedOtp || String(storedOtp) !== String(otp)) {
+      enqueueOtpLoginHistory('FAILED', 'INVALID_OTP');
       throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OR_EXPIRED_OTP');
     }
 
@@ -422,6 +454,7 @@ const verifyOtp = async (payload: {
   } else if (contactNumber) {
     if (contactNumber === config.customer.test_customer_contact_number) {
       if (otp !== config.customer.test_customer_contact_otp) {
+        enqueueOtpLoginHistory('FAILED', 'INVALID_OTP');
         throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OTP');
       }
     } else {
@@ -431,6 +464,7 @@ const verifyOtp = async (payload: {
       );
 
       if (!res?.data?.verified) {
+        enqueueOtpLoginHistory('FAILED', 'INVALID_OTP');
         throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OR_EXPIRED_OTP');
       }
     }
@@ -511,6 +545,8 @@ const verifyOtp = async (payload: {
     config.jwt.jwt_refresh_secret as string,
     config.jwt.jwt_refresh_expires_in as string,
   );
+
+  enqueueOtpLoginHistory('SUCCESS');
 
   return {
     messageKey: email
@@ -633,16 +669,41 @@ const resendOtp = async (payload: {
 const loginUser = async (
   payload: TLoginUser & { deviceDetails: TLoginDevice; forceLogin?: boolean },
 ) => {
+  const { deviceDetails } = payload;
   // checking if the user is exist
   const user = await AuthUser.findOne({
     email: payload?.email,
     role: { $ne: 'CUSTOMER' },
   });
   if (!user) {
+    authQueue.add('CREATE_LOGIN_LOG', {
+      email: payload?.email,
+      ipAddress: deviceDetails?.ip || 'Unknown',
+      deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+      browser: deviceDetails?.deviceName || 'Unknown',
+      os: 'Unknown',
+      userAgent: deviceDetails?.userAgent || 'Unknown',
+      status: 'FAILED',
+      failureReason: 'INVALID_CREDENTIALS',
+      loginAt: new Date(),
+    });
     throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');
   }
 
   if (user?.isDeleted) {
+    authQueue.add('CREATE_LOGIN_LOG', {
+      userId: user._id,
+      email: user.email,
+      userRole: user.role,
+      ipAddress: deviceDetails?.ip || 'Unknown',
+      deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+      browser: deviceDetails?.deviceName || 'Unknown',
+      os: 'Unknown',
+      userAgent: deviceDetails?.userAgent || 'Unknown',
+      status: 'FAILED',
+      failureReason: 'ACCOUNT_DELETED',
+      loginAt: new Date(),
+    });
     throw new AppError(httpStatus.NOT_FOUND, 'ACCOUNT_DELETED');
   }
 
@@ -650,6 +711,19 @@ const loginUser = async (
   const userStatus = user?.status;
 
   if (userStatus === USER_STATUS.BLOCKED) {
+    authQueue.add('CREATE_LOGIN_LOG', {
+      userId: user._id,
+      email: user.email,
+      userRole: user.role,
+      ipAddress: deviceDetails?.ip || 'Unknown',
+      deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+      browser: deviceDetails?.deviceName || 'Unknown',
+      os: 'Unknown',
+      userAgent: deviceDetails?.userAgent || 'Unknown',
+      status: 'FAILED',
+      failureReason: 'ACCOUNT_LOCKED',
+      loginAt: new Date(),
+    });
     throw new AppError(httpStatus.FORBIDDEN, 'USER_BLOCKED');
   }
 
@@ -668,12 +742,25 @@ const loginUser = async (
   );
 
   if (!isPasswordMatched) {
+    authQueue.add('CREATE_LOGIN_LOG', {
+      userId: user._id,
+      email: user.email,
+      userRole: user.role,
+      ipAddress: deviceDetails?.ip || 'Unknown',
+      deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+      browser: deviceDetails?.deviceName || 'Unknown',
+      os: 'Unknown',
+      userAgent: deviceDetails?.userAgent || 'Unknown',
+      status: 'FAILED',
+      failureReason: 'INVALID_CREDENTIALS',
+      loginAt: new Date(),
+    });
     throw new AppError(httpStatus.UNAUTHORIZED, 'PASSWORD_NOT_MATCHED');
   }
 
   const deviceLimit = ROLE_DEVICE_LIMITS[user.role] || 3;
   const { deviceId, fcmToken, deviceType, deviceName, userAgent, ip } =
-    payload.deviceDetails;
+    deviceDetails;
 
   const newDevice: TLoginDevice = {
     deviceId: deviceId || 'unknown',
@@ -706,6 +793,19 @@ const loginUser = async (
   } else {
     if (user.loginDevices?.length >= deviceLimit) {
       if (!payload.forceLogin) {
+        authQueue.add('CREATE_LOGIN_LOG', {
+          userId: user._id,
+          email: user.email,
+          userRole: user.role,
+          ipAddress: deviceDetails?.ip || 'Unknown',
+          deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+          browser: deviceDetails?.deviceName || 'Unknown',
+          os: 'Unknown',
+          userAgent: deviceDetails?.userAgent || 'Unknown',
+          status: 'FAILED',
+          failureReason: 'LIMIT_EXCEEDED',
+          loginAt: new Date(),
+        });
         throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
       }
 
@@ -753,6 +853,20 @@ const loginUser = async (
     config.jwt.jwt_refresh_secret as string,
     config.jwt.jwt_refresh_expires_in as string,
   );
+
+  authQueue.add('CREATE_LOGIN_LOG', {
+    userId: user._id,
+    email: user.email,
+    userRole: user.role,
+    ipAddress: deviceDetails?.ip || 'Unknown',
+    deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+    browser: deviceDetails?.deviceName || 'Unknown',
+    os: 'Unknown',
+    userAgent: deviceDetails?.userAgent || 'Unknown',
+    status: 'SUCCESS',
+    sessionId: newDevice.deviceId,
+    loginAt: new Date(),
+  });
 
   return {
     accessToken,
@@ -1015,6 +1129,14 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
       new: true,
     },
   );
+
+  authQueue.add('UPDATE_LOGOUT_LOG', {
+    userId: user?._id,
+    email: currentUser.email,
+    userRole: currentUser.role,
+    sessionId: deviceId,
+    logoutAt: new Date(),
+  });
 
   const userRole = currentUser?.role || 'User';
 

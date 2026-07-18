@@ -11,9 +11,6 @@ export type TWallet = {
     | 'DeliveryPartner';
   lastSettlementDate?: Date;
 
-  // ==========================================================
-  // ৪টি ইউনিভার্সাল লেজার কলাম (মিনিমালিস্ট কোর)
-  // ==========================================================
   currentBalance: number; // CURRENT WITHDRAWABLE / PAYABLE / REFUND BALANCE
   lifetimeEarnings: number; // CUMULATIVE GROSS REVENUE / INFLOW
   currentTaxLiability: number; // TAX CURRENTLY PENDING FOR AT DECLARATION

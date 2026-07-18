@@ -16,6 +16,121 @@ import { formatCartResponse, refreshItemPricingAndTotals } from './cart.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { BusinessCategory } from '../Category/category.model';
 
+const applyAddonSelectionsToCartItem = (
+  targetItem: any,
+  product: any,
+  addonSelections: { optionSku: string; quantity: number }[],
+  lang: TLanguageCode = 'en',
+) => {
+  if (!targetItem.addons) {
+    targetItem.addons = [];
+  }
+
+  const activeGroups = ((product.addonGroups as any[]) || []).filter(
+    (group) => group.isActive && !group.isDeleted,
+  );
+
+  const optionMetaBySku = new Map();
+
+  activeGroups.forEach((group) => {
+    group.options.forEach((option: any) => {
+      if (option.isActive) {
+        optionMetaBySku.set(option.sku, { group, option });
+      }
+    });
+  });
+
+  addonSelections.forEach((addon) => {
+    const optionMeta = optionMetaBySku.get(addon.optionSku);
+
+    if (!optionMeta) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'ADDON_UNAVAILABLE');
+    }
+
+    const quantity = Math.max(0, Math.floor(Number(addon.quantity) || 0));
+    const existingAddonIndex = targetItem.addons.findIndex(
+      (cartAddon: any) => cartAddon.sku === addon.optionSku,
+    );
+
+    if (quantity === 0) {
+      if (existingAddonIndex > -1) {
+        targetItem.addons.splice(existingAddonIndex, 1);
+      }
+      return;
+    }
+
+    const addonPayload = {
+      name: {
+        en: optionMeta.option.name?.en || '',
+        pt: optionMeta.option.name?.pt || optionMeta.option.name?.en || '',
+      },
+      sku: optionMeta.option.sku,
+      originalPrice: optionMeta.option.price,
+      unitPrice: optionMeta.option.price,
+      quantity,
+      lineTotal: optionMeta.option.price,
+      taxRate: optionMeta.option.tax?.taxRate || 0,
+      taxAmount: 0,
+    };
+
+    if (existingAddonIndex > -1) {
+      targetItem.addons[existingAddonIndex] = {
+        ...targetItem.addons[existingAddonIndex],
+        ...addonPayload,
+      };
+    } else {
+      targetItem.addons.push(addonPayload);
+    }
+  });
+
+  activeGroups.forEach((group) => {
+    const groupOptionSkus = group.options
+      .filter((option: any) => option.isActive)
+      .map((option: any) => option.sku);
+
+    const selectedCount = targetItem.addons
+      .filter((addon: any) => groupOptionSkus.includes(addon.sku))
+      .reduce((sum: number, addon: any) => sum + (addon.quantity || 0), 0);
+
+    if (selectedCount > group.maxSelectable) {
+      const groupTitleObj = group.title as Record<string, string>;
+      const localizedGroupTitle =
+        groupTitleObj?.[lang] || groupTitleObj?.['en'] || 'this group';
+
+      throw new AppError(httpStatus.BAD_REQUEST, 'ADDON_LIMIT_REACHED', {
+        max: group.maxSelectable,
+        group: localizedGroupTitle,
+      });
+    }
+  });
+
+  let totalAddonsNet = 0;
+  let totalAddonsTax = 0;
+
+  targetItem.addons.forEach((addon: any) => {
+    const addonLineTotal = roundTo2(
+      (Number(addon.unitPrice) || 0) * (Number(addon.quantity) || 0),
+    );
+    const addonTaxAmount = roundTo2(
+      (addonLineTotal * (Number(addon.taxRate) || 0)) /
+        (100 + (Number(addon.taxRate) || 0)),
+    );
+
+    addon.lineTotal = addonLineTotal;
+    addon.taxAmount = addonTaxAmount;
+
+    totalAddonsNet += addonLineTotal;
+    totalAddonsTax += addonTaxAmount;
+  });
+
+  targetItem.itemSummary.totalTaxAmount = roundTo2(
+    (targetItem.productPricing.taxAmount || 0) + totalAddonsTax,
+  );
+  targetItem.itemSummary.grandTotal = roundTo2(
+    (targetItem.productPricing.lineTotal || 0) + totalAddonsNet,
+  );
+};
+
 const getCartItemVendorId = (vendorId: any) => {
   if (!vendorId) return null;
 
@@ -34,6 +149,7 @@ const getCartItemVendorId = (vendorId: any) => {
 const addToCart = async (
   payload: TCartItemInput,
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   if (currentUser.role !== 'CUSTOMER') {
     throw new AppError(httpStatus.FORBIDDEN, 'CUSTOMER_ONLY_ACTION');
@@ -47,8 +163,21 @@ const addToCart = async (
   if (!inputItem)
     throw new AppError(httpStatus.BAD_REQUEST, 'NO_ITEMS_PROVIDED');
 
-  const { productId, variationSku } = inputItem;
-  const inputQuantity = Number(inputItem.quantity) || 1;
+  const { productId, variationSku, addons = [] } = inputItem;
+  const hasQuantityProvided = typeof inputItem.quantity === 'number';
+  const requestedQuantity = hasQuantityProvided
+    ? Number(inputItem.quantity)
+    : undefined;
+
+  if (
+    hasQuantityProvided &&
+    (!Number.isFinite(requestedQuantity) || (requestedQuantity as number) < 1)
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'QUANTITY_REQUIRED_FOR_NEW_ITEM',
+    );
+  }
 
   const existingProduct = await Product.findOne({
     _id: productId,
@@ -58,6 +187,15 @@ const addToCart = async (
 
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+
+  if (addons.length > 0) {
+    await existingProduct.populate({
+      path: 'addonGroups',
+      populate: {
+        path: 'options.tax',
+      },
+    });
+  }
 
   const existingVendor = await Vendor.findOne({
     _id: existingProduct.vendorId,
@@ -104,6 +242,36 @@ const addToCart = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'VARIATIONS_NOT_SUPPORTED');
     }
     finalVariationSku = null;
+  }
+
+  const customerIdStr = customerId.toString();
+  const dataKey = `cart:data:${customerIdStr}`;
+  const expiryKey = `cart:expiry:${customerIdStr}`;
+
+  let cart = await RedisService.get<any>(dataKey);
+  if (!cart) {
+    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
+    if (dbCart) cart = dbCart;
+  }
+
+  const itemIndex = cart
+    ? cart.items.findIndex(
+        (i: any) =>
+          i.productId.toString() === productId.toString() &&
+          (i.variationSku || null) === (finalVariationSku || null),
+      )
+    : -1;
+
+  const existingCartItem = itemIndex > -1 ? cart.items[itemIndex] : null;
+  const inputQuantity = hasQuantityProvided
+    ? (requestedQuantity as number)
+    : existingCartItem?.itemSummary?.quantity;
+
+  if (!inputQuantity) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'QUANTITY_REQUIRED_FOR_NEW_ITEM',
+    );
   }
 
   if (!isRestaurant && inputQuantity > availableStock)
@@ -173,14 +341,8 @@ const addToCart = async (
     },
   };
 
-  const customerIdStr = customerId.toString();
-  const dataKey = `cart:data:${customerIdStr}`;
-  const expiryKey = `cart:expiry:${customerIdStr}`;
-
-  let cart = await RedisService.get<any>(dataKey);
-  if (!cart) {
-    const dbCart = await Cart.findOne({ customerId, isDeleted: false }).lean();
-    if (dbCart) cart = dbCart;
+  if (addons.length > 0) {
+    applyAddonSelectionsToCartItem(newItem, existingProduct, addons, lang);
   }
 
   if (!cart) {
@@ -199,12 +361,6 @@ const addToCart = async (
       isDeleted: false,
     };
   } else {
-    const itemIndex = cart.items.findIndex(
-      (i: any) =>
-        i.productId.toString() === productId.toString() &&
-        (i.variationSku || null) === (finalVariationSku || null),
-    );
-
     if (itemIndex > -1) {
       const currentItem = cart.items[itemIndex];
       currentItem.name = finalItemName;
@@ -250,6 +406,15 @@ const addToCart = async (
       currentItem.itemSummary.grandTotal = roundTo2(
         newProductLineTotal + existingAddonsNet,
       );
+
+      if (addons.length > 0) {
+        applyAddonSelectionsToCartItem(
+          currentItem,
+          existingProduct,
+          addons,
+          lang,
+        );
+      }
     } else {
       const activeItem = cart.items.find((i: any) => i.isActive === true);
       if (

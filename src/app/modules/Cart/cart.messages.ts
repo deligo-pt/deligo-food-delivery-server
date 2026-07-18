@@ -42,6 +42,10 @@ export const cartMessages = {
     en: 'No items selected.',
     pt: 'Nenhum item selecionado.',
   },
+  QUANTITY_REQUIRED_FOR_NEW_ITEM: {
+    en: 'Quantity is required when adding a new item to cart.',
+    pt: 'A quantidade e obrigatoria ao adicionar um novo item ao carrinho.',
+  },
   PRODUCT_NOT_FOUND: {
     en: 'This item could not be found.',
     pt: 'Este item não pôde ser encontrado.',

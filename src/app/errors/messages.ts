@@ -19,6 +19,7 @@ import { globalSettingMessages } from '../modules/GlobalSetting/globalSetting.me
 import { ingredientOrderMessages } from '../modules/Ingredient-Order/ing-order.messages';
 import { ingredientsMessages } from '../modules/Ingredients/ingredients.messages';
 import { invoiceMessages } from '../modules/Invoice/invoice.message';
+import { loginHistoryMessages } from '../modules/LoginHistory/loginHistory.messages';
 import { notificationMessages } from '../modules/Notification/notification.messages';
 import { offerMessages } from '../modules/Offer/offer.messages';
 import { orderMessages } from '../modules/Order/order.messages';
@@ -63,6 +64,7 @@ export const localizedMessages = {
   ...globalSettingMessages,
   ...ingredientOrderMessages,
   ...ingredientsMessages,
+  ...loginHistoryMessages,
   ...notificationMessages,
   ...offerMessages, // eto toko done
   ...orderMessages,
