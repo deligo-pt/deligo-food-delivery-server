@@ -110,6 +110,30 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
         await calcAndUpdateDeliveryPartner(targetId, session);
       }
     }
+
+    const nextRatingStatus = {
+      isProductRated:
+        updateFields['ratingStatus.isProductRated'] ??
+        existsOrder.ratingStatus?.isProductRated ??
+        false,
+      isVendorRated:
+        updateFields['ratingStatus.isVendorRated'] ??
+        existsOrder.ratingStatus?.isVendorRated ??
+        false,
+      isDeliveryRated:
+        updateFields['ratingStatus.isDeliveryRated'] ??
+        existsOrder.ratingStatus?.isDeliveryRated ??
+        false,
+    };
+
+    if (
+      nextRatingStatus.isProductRated &&
+      nextRatingStatus.isVendorRated &&
+      nextRatingStatus.isDeliveryRated
+    ) {
+      updateFields.isRated = true;
+    }
+
     await Order.findByIdAndUpdate(
       payload.orderId,
       { $set: updateFields },
