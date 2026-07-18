@@ -73,6 +73,8 @@ export type TOrder = {
       fee: number;
     };
     vendor: {
+      earningsWithoutTax: number;
+      payableTax: number;
       vendorNetPayout: number;
     };
     rider: {

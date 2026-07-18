@@ -136,6 +136,8 @@ const orderSchema = new Schema<TOrder>(
         fee: { type: Number, required: true },
       },
       vendor: {
+        earningsWithoutTax: { type: Number, required: true },
+        payableTax: { type: Number, required: true },
         vendorNetPayout: { type: Number, required: true },
       },
       rider: {

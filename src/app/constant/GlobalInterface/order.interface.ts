@@ -60,8 +60,8 @@ export type TOrderItemSnapshot = {
   };
 
   vendor: {
-    vendorEarningsWithoutTax: number;
+    earningsWithoutTax: number;
     payableTax: number;
-    vendorNetEarnings: number;
+    vendorNetPayout: number;
   };
 };
