@@ -28,6 +28,7 @@ import { orderQueue } from '../../BullMQ/Queue/order.queue';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { BusinessCategoryName } from '../Category/category.interface';
 import customNanoId from '../../utils/customNanoId';
+import { CartServices } from '../Cart/cart.service';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -1314,6 +1315,53 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
   };
 };
 
+const reorderOrder = async (
+  orderId: string,
+  currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
+) => {
+  if (currentUser.role !== 'CUSTOMER') {
+    throw new AppError(httpStatus.FORBIDDEN, 'CUSTOMER_ONLY_ACTION');
+  }
+
+  const order = await Order.findOne({
+    orderId,
+    customerId: currentUser._id,
+    isDeleted: false,
+  }).lean();
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+  }
+
+  let cartResult: any = null;
+
+  for (const item of order.items || []) {
+    cartResult = await CartServices.addToCart(
+      {
+        items: [
+          {
+            productId: item.productId.toString(),
+            quantity: item.itemSummary.quantity,
+            variationSku: item.variationSku || undefined,
+            addons: (item.addons || []).map((addon) => ({
+              optionSku: addon.sku,
+              quantity: addon.quantity,
+            })),
+          },
+        ],
+      },
+      currentUser,
+      lang,
+    );
+  }
+
+  return {
+    messageKey: 'ORDER_REORDER_SUCCESS',
+    data: cartResult?.data || null,
+  };
+};
+
 export const OrderServices = {
   createOrderAfterRedUniqPayment,
   updateOrderStatusByVendor,
@@ -1324,4 +1372,5 @@ export const OrderServices = {
   getSingleOrder,
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
+  reorderOrder,
 };

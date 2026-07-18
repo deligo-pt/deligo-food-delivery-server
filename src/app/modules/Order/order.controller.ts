@@ -6,6 +6,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
 import { formatOrderResponse } from './order.utils';
 import { InvoiceService } from '../Invoice/invoice.service';
+import { formatCartResponse } from '../Cart/cart.utils';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
@@ -186,6 +187,23 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
   });
 });
 
+const reorderOrder = catchAsync(async (req, res) => {
+  const result = await OrderServices.reorderOrder(
+    req.params.orderId,
+    req.user as TCurrentUser,
+    req.lang,
+  );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
+  });
+});
+
 export const OrderControllers = {
   createOrderAfterRedUniqPayment,
   getAllOrders,
@@ -197,4 +215,5 @@ export const OrderControllers = {
   downloadInvoicePdfFromPd,
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
+  reorderOrder,
 };

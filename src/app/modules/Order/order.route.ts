@@ -13,6 +13,12 @@ router.post(
   OrderControllers.createOrderAfterRedUniqPayment,
 );
 
+router.post(
+  '/reorder/:orderId',
+  auth('CUSTOMER'),
+  OrderControllers.reorderOrder,
+);
+
 // download invoice pdf from pasta digital
 router.get(
   '/:orderId/download-invoice-pdf',
