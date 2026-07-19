@@ -37,6 +37,7 @@ import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
 import { getLocalStartOfPeriod } from '../../utils/dateTimeProvider';
+import { Wallet } from '../Wallet/wallet.model';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -1297,8 +1298,8 @@ const getAdminFleetManagerReportAnalytics = async (
 // admin fleet manager report analytics
 const getAdminDeliveryPartnerReportAnalytics = async (
   timeframe?: string,
-  fromDate?: string,
-  toDate?: string,
+  fromDate?: string | Date,
+  toDate?: string | Date,
 ) => {
   const { start, end, resolution, size } = getReportTimeframe(
     timeframe,
@@ -1306,74 +1307,81 @@ const getAdminDeliveryPartnerReportAnalytics = async (
     toDate,
   );
 
-  // 1. Generate the empty 0-value template
   const timelineMap = generateEmptyBuckets(start, end, resolution, size);
-
   const groupId = getGroupingPipeline(resolution, size, start);
-  const growthMatch: any = { isDeleted: false };
-  if (start) growthMatch.createdAt = { $gte: start, $lte: end };
 
-  const [analytics] = await DeliveryPartner.aggregate([
-    {
-      $facet: {
-        // TOP STATS
-        summary: [
-          { $match: { isDeleted: false } },
-          {
-            $group: {
-              _id: null,
-              totalPartners: { $sum: 1 },
-              approvedPartners: {
-                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
-              },
-              totalDeliveries: {
-                $sum: { $ifNull: ['$operationalData.totalDeliveries', 0] },
-              },
-            },
-          },
-          {
-            $lookup: {
-              from: 'wallets',
-              pipeline: [
-                { $match: { userModel: 'DeliveryPartner' } },
-                {
-                  $group: {
-                    _id: null,
-                    totalEarned: { $sum: '$totalEarnings' },
-                  },
+  const growthMatch: any = { isDeleted: false };
+  if (start) {
+    growthMatch.createdAt = { $gte: start, $lte: end };
+  }
+
+  const [analyticsResult, walletStats] = await Promise.all([
+    DeliveryPartner.aggregate([
+      {
+        $facet: {
+          summary: [
+            { $match: { isDeleted: false } },
+            {
+              $group: {
+                _id: null,
+                totalPartners: { $sum: 1 },
+                approvedPartners: {
+                  $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
                 },
-              ],
-              as: 'walletStats',
+                totalDeliveries: {
+                  $sum: { $ifNull: ['$operationalData.totalDeliveries', 0] },
+                },
+              },
             },
-          },
-        ],
-        // VENDOR GROWTHS OVER TIMEFRAME
-        growth: [
-          { $match: growthMatch },
-          { $group: { _id: groupId, count: { $sum: 1 } } },
-          {
-            $sort: {
-              '_id.year': 1,
-              '_id.month': 1,
-              '_id.day': 1,
-              '_id.bucket': 1,
+          ],
+
+          growth: [
+            { $match: growthMatch },
+            { $group: { _id: groupId, count: { $sum: 1 } } },
+            {
+              $sort: {
+                '_id.year': 1,
+                '_id.month': 1,
+                '_id.day': 1,
+                '_id.bucket': 1,
+              },
             },
-          },
-        ],
-        // VEHICLE DISTRIBUTION
-        vehicleStats: [
-          { $match: { isDeleted: false } },
-          { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
-        ],
+          ],
+
+          vehicleStats: [
+            { $match: { isDeleted: false } },
+            { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
+          ],
+        },
       },
-    },
+    ]),
+
+    Wallet.aggregate([
+      { $match: { userModel: 'DeliveryPartner' } },
+      {
+        $group: {
+          _id: null,
+          totalEarned: { $sum: '$lifetimeEarnings' },
+        },
+      },
+    ]),
   ]);
 
-  const summary = analytics.summary[0] || {};
+  const analytics = analyticsResult[0] || {
+    summary: [],
+    growth: [],
+    vehicleStats: [],
+  };
 
-  // 2. Merge DB results into our timelineMap
+  const summary = analytics.summary[0] || {
+    totalPartners: 0,
+    approvedPartners: 0,
+    totalDeliveries: 0,
+  };
+  const vehicleStatsList = analytics.vehicleStats || [];
+
   const partnerGrowths = mapGrowthToTimeline({
-    growth: analytics.growth,
+    growth: analytics.growth || [],
     timelineMap,
     start,
     end,
@@ -1381,11 +1389,13 @@ const getAdminDeliveryPartnerReportAnalytics = async (
     size,
   }).map((item) => ({
     time: item.time,
-    managers: item.value,
+    partners: item.value,
   }));
 
   const getVehicleCount = (type: string) =>
-    analytics.vehicleStats.find((v: any) => v._id === type)?.count || 0;
+    vehicleStatsList.find((v: any) => v._id === type)?.count || 0;
+
+  const totalEarnings = walletStats[0]?.totalEarned || 0;
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -1395,7 +1405,7 @@ const getAdminDeliveryPartnerReportAnalytics = async (
         totalPartners: summary.totalPartners || 0,
         approvedPartners: summary.approvedPartners || 0,
         totalDeliveries: summary.totalDeliveries || 0,
-        totalEarnings: summary.walletStats?.[0]?.totalEarned || 0,
+        totalEarnings: roundTo2(totalEarnings),
       },
 
       partnerGrowths,
