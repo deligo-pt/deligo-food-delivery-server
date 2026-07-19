@@ -928,26 +928,15 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
 // get vendor earnings analytics service
 const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
   const vendorObjectId = new mongoose.Types.ObjectId(currentUser._id);
-  const now = new Date();
 
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  const startOfToday = getLocalStartOfPeriod('today');
+  const startOfWeek = getLocalStartOfPeriod('week');
+  const startOfMonth = getLocalStartOfPeriod('month');
 
-  const dayOfWeek = now.getDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const sixMonthsAgo = new Date();
+  const sixMonthsAgo = getLocalStartOfPeriod('month');
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  const [earningStats, orderStats, monthlyEarningsAgg, productStats, wallet] =
+  const [transactionMetrics, orderStats, productStats, wallet] =
     await Promise.all([
       Transaction.aggregate([
         {
@@ -959,36 +948,55 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
           },
         },
         {
-          $group: {
-            _id: null,
-            totalIncome: { $sum: '$totalAmount' },
-            todayIncome: {
-              $sum: {
-                $cond: [
-                  { $gte: ['$createdAt', startOfToday] },
-                  '$totalAmount',
-                  0,
-                ],
+          $facet: {
+            earningStats: [
+              {
+                $group: {
+                  _id: null,
+                  totalIncome: { $sum: '$totalAmount' },
+                  todayIncome: {
+                    $sum: {
+                      $cond: [
+                        { $gte: ['$createdAt', startOfToday] },
+                        '$totalAmount',
+                        0,
+                      ],
+                    },
+                  },
+                  weekIncome: {
+                    $sum: {
+                      $cond: [
+                        { $gte: ['$createdAt', startOfWeek] },
+                        '$totalAmount',
+                        0,
+                      ],
+                    },
+                  },
+                  monthIncome: {
+                    $sum: {
+                      $cond: [
+                        { $gte: ['$createdAt', startOfMonth] },
+                        '$totalAmount',
+                        0,
+                      ],
+                    },
+                  },
+                },
               },
-            },
-            weekIncome: {
-              $sum: {
-                $cond: [
-                  { $gte: ['$createdAt', startOfWeek] },
-                  '$totalAmount',
-                  0,
-                ],
+            ],
+            monthlyEarningsAgg: [
+              { $match: { createdAt: { $gte: sixMonthsAgo } } },
+              {
+                $group: {
+                  _id: {
+                    year: { $year: '$createdAt' },
+                    month: { $month: '$createdAt' },
+                  },
+                  earnings: { $sum: '$totalAmount' },
+                },
               },
-            },
-            monthIncome: {
-              $sum: {
-                $cond: [
-                  { $gte: ['$createdAt', startOfMonth] },
-                  '$totalAmount',
-                  0,
-                ],
-              },
-            },
+              { $sort: { '_id.year': 1, '_id.month': 1 } },
+            ],
           },
         },
       ]),
@@ -1021,30 +1029,6 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
         },
       ]),
 
-      // MONTHLY EARNINGS (LAST 6 MONTHS)
-      Transaction.aggregate([
-        {
-          $match: {
-            userId: vendorObjectId,
-            userModel: 'Vendor',
-            status: 'SUCCESS',
-            type: 'VENDOR_EARNING',
-            createdAt: { $gte: sixMonthsAgo },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
-            },
-            earnings: { $sum: '$totalAmount' },
-          },
-        },
-        { $sort: { '_id.year': 1, '_id.month': 1 } },
-      ]),
-
-      // PRODUCT STATS
       Product.aggregate([
         {
           $match: {
@@ -1055,15 +1039,12 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
         {
           $group: {
             _id: null,
-
             total: { $sum: 1 },
-
             active: {
               $sum: {
                 $cond: [{ $eq: ['$meta.status', 'ACTIVE'] }, 1, 0],
               },
             },
-
             inactive: {
               $sum: {
                 $cond: [{ $eq: ['$meta.status', 'INACTIVE'] }, 1, 0],
@@ -1081,12 +1062,18 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
         .lean(),
     ]);
 
-  const earnings = earningStats[0] || {
+  const metrics = transactionMetrics[0] || {
+    earningStats: [],
+    monthlyEarningsAgg: [],
+  };
+
+  const earnings = metrics.earningStats[0] || {
     todayIncome: 0,
     weekIncome: 0,
     monthIncome: 0,
     totalIncome: 0,
   };
+
   const orders = orderStats[0] || {
     totalOrders: 0,
     completedOrders: 0,
@@ -1114,10 +1101,12 @@ const getVendorEarningsAnalytics = async (currentUser: TCurrentUser) => {
     'Dec',
   ];
 
-  const monthlyEarnings = monthlyEarningsAgg.map((item) => ({
-    name: MONTHS[item._id.month - 1],
-    earnings: roundTo2(item.earnings),
-  }));
+  const monthlyEarnings = (metrics.monthlyEarningsAgg || []).map(
+    (item: any) => ({
+      name: `${MONTHS[item._id.month - 1]} ${item._id.year}`,
+      earnings: roundTo2(item.earnings),
+    }),
+  );
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
