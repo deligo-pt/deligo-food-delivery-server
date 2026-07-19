@@ -831,6 +831,7 @@ const getAllProducts = async (
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
+    businessType: 'name slug',
   });
 
   populateOptions.forEach((option) => {
@@ -871,6 +872,7 @@ const getAllProductsPublic = async (
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
+    businessType: 'name slug',
   });
 
   populateOptions.forEach((option) => {
@@ -931,6 +933,7 @@ const getSingleProduct = async (
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
+    businessType: 'name slug',
   });
 
   populateOptions.forEach((option) => {
@@ -965,6 +968,7 @@ const getSingleProductPublic = async (
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
+    businessType: 'name slug',
   });
 
   populateOptions.forEach((option) => {
