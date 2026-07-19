@@ -1168,21 +1168,47 @@ const getAllCustomerAnalytics = async (query: Record<string, any>) => {
     {
       $lookup: {
         from: 'orders',
-        localField: '_id',
-        foreignField: 'customerId',
-        as: 'orderHistory',
+        let: { customerId: '$_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$customerId', '$$customerId'] } } },
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              spent: { $sum: '$payoutSummary.grandTotal' },
+              lastOrderDate: { $max: '$createdAt' },
+            },
+          },
+        ],
+        as: 'orderStats',
+      },
+    },
+    {
+      $unwind: {
+        path: '$orderStats',
+        preserveNullAndEmptyArrays: true,
       },
     },
     {
       $project: {
         customer: {
-          name: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
-          email: '$email',
-          profilePhoto: '$profilePhoto',
+          name: {
+            $trim: {
+              input: {
+                $concat: [
+                  { $ifNull: ['$name.firstName', ''] },
+                  ' ',
+                  { $ifNull: ['$name.lastName', ''] },
+                ],
+              },
+            },
+          },
+          email: { $ifNull: ['$email', 'N/A'] },
+          profilePhoto: { $ifNull: ['$profilePhoto', ''] },
         },
-        totalOrders: { $size: '$orderHistory' },
-        totalSpent: { $sum: '$orderHistory.payoutSummary.grandTotal' },
-        lastOrdered: { $max: '$orderHistory.createdAt' },
+        totalOrders: { $ifNull: ['$orderStats.count', 0] },
+        totalSpent: { $ifNull: ['$orderStats.spent', 0] },
+        lastOrdered: { $ifNull: ['$orderStats.lastOrderDate', null] },
         joinedAt: '$createdAt',
         status: '$status',
       },
