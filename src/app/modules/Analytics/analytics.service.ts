@@ -43,8 +43,6 @@ import { Wallet } from '../Wallet/wallet.model';
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
 // --------------------------------------------------------------------------------------
 
-const timezone = 'Europe/Lisbon';
-
 // get vendor sales analytics
 const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
@@ -3732,16 +3730,22 @@ const getTopVendors = async (query: {
   toDate?: string;
 }): Promise<TVendorInsights> => {
   const now = new Date();
+
+  const startOfToday = getLocalStartOfPeriod('today');
+
+  const getDaysAgo = (days: number) => {
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - days);
+    return d;
+  };
+
   const to = query.toDate ? new Date(query.toDate) : now;
-  const from = query.fromDate
-    ? new Date(query.fromDate)
-    : new Date(new Date().setDate(to.getDate() - 30));
+  const from = query.fromDate ? new Date(query.fromDate) : getDaysAgo(30);
 
   from.setHours(0, 0, 0, 0);
   to.setHours(23, 59, 59, 999);
 
-  const [results] = await Order.aggregate([
-    // We include all statuses here to calculate cancelRate accurately
+  const pipeline: PipelineStage[] = [
     {
       $match: {
         isDeleted: false,
@@ -3751,13 +3755,10 @@ const getTopVendors = async (query: {
     {
       $group: {
         _id: '$vendorId',
-        // Total orders regardless of status (for cancel rate)
         grandTotalOrders: { $sum: 1 },
-        // Cancelled orders
         cancelledOrders: {
           $sum: { $cond: [{ $eq: ['$orderStatus', 'CANCELED'] }, 1, 0] },
         },
-        // Revenue (Only from paid/delivered)
         revenue: {
           $sum: {
             $cond: [
@@ -3772,7 +3773,6 @@ const getTopVendors = async (query: {
             ],
           },
         },
-        // Prep Time (assuming prep time is stored in order or calculated)
         avgPrepTime: { $avg: '$preparationTime' },
       },
     },
@@ -3787,50 +3787,87 @@ const getTopVendors = async (query: {
     { $unwind: '$vendorInfo' },
     {
       $project: {
+        _id: 1,
         vendorId: '$vendorInfo.userId',
         vendorName: {
-          $concat: [
-            '$vendorInfo.name.firstName',
-            ' ',
-            '$vendorInfo.name.lastName',
-          ],
+          $cond: {
+            if: {
+              $and: [
+                { $eq: [{ $ifNull: ['$vendorInfo.name.firstName', ''] }, ''] },
+                { $eq: [{ $ifNull: ['$vendorInfo.name.lastName', ''] }, ''] },
+              ],
+            },
+            then: {
+              $ifNull: ['$vendorInfo.businessDetails.businessName', 'Vendor'],
+            },
+            else: {
+              $concat: [
+                '$vendorInfo.name.firstName',
+                ' ',
+                '$vendorInfo.name.lastName',
+              ],
+            },
+          },
         },
         totalOrders: '$grandTotalOrders',
         totalRevenue: { $round: ['$revenue', 2] },
         averageRating: { $ifNull: ['$vendorInfo.rating.average', 0] },
-        preparationTime: { $ifNull: [{ $round: ['$avgPrepTime', 0] }, 0] }, // Default 0 mins
+        preparationTime: { $ifNull: [{ $round: ['$avgPrepTime', 0] }, 0] },
+
         cancelRate: {
-          $round: [
-            {
-              $multiply: [
-                { $divide: ['$cancelledOrders', '$grandTotalOrders'] },
-                100,
-              ],
-            },
-            1,
-          ],
-        },
-        // Satisfaction Score: Weighted average of (1 - cancelRate) and Rating
-        satisfactionScore: {
-          $round: [
-            {
-              $add: [
-                { $multiply: ['$vendorInfo.rating.average', 10] }, // 4.5 -> 45
+          $cond: {
+            if: { $eq: ['$grandTotalOrders', 0] },
+            then: 0,
+            else: {
+              $round: [
                 {
                   $multiply: [
-                    {
-                      $subtract: [
-                        1,
-                        { $divide: ['$cancelledOrders', '$grandTotalOrders'] },
-                      ],
-                    },
-                    50,
+                    { $divide: ['$cancelledOrders', '$grandTotalOrders'] },
+                    100,
                   ],
-                }, // 0.9 -> 45
+                },
+                1,
               ],
             },
-            0,
-          ],
+          },
+        },
+
+        satisfactionScore: {
+          $cond: {
+            if: { $eq: ['$grandTotalOrders', 0] },
+            then: 0,
+            else: {
+              $round: [
+                {
+                  $add: [
+                    {
+                      $multiply: [
+                        { $ifNull: ['$vendorInfo.rating.average', 0] },
+                        10,
+                      ],
+                    },
+                    {
+                      $multiply: [
+                        {
+                          $subtract: [
+                            1,
+                            {
+                              $divide: [
+                                '$cancelledOrders',
+                                '$grandTotalOrders',
+                              ],
+                            },
+                          ],
+                        },
+                        50,
+                      ],
+                    },
+                  ],
+                },
+                0,
+              ],
+            },
+          },
         },
       },
     },
@@ -3857,14 +3894,36 @@ const getTopVendors = async (query: {
         ],
       },
     },
-  ]);
+  ];
+
+  const [rawResults] = await Order.aggregate(pipeline);
+
+  const results = rawResults || {
+    topSellingVendors: [],
+    vendorPerformance: [],
+    ratingDistribution: [],
+  };
+
+  const topSellingVendors = (results.topSellingVendors || []).map((v: any) => ({
+    ...v,
+    totalRevenue: roundTo2(v.totalRevenue),
+  }));
+
+  const vendorPerformance = (results.vendorPerformance || []).map(
+    (vp: any) => ({
+      ...vp,
+      totalRevenue: roundTo2(vp.totalRevenue),
+      cancelRate: Number(vp.cancelRate || 0),
+      satisfactionScore: Number(vp.satisfactionScore || 0),
+    }),
+  );
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Top vendors', isPlural: true },
     data: {
-      topSellingVendors: results.topSellingVendors || [],
-      vendorPerformance: results.vendorPerformance || [],
+      topSellingVendors,
+      vendorPerformance,
       ratingDistribution: results.ratingDistribution || [],
     },
   };
@@ -3875,32 +3934,44 @@ const getPeakHourAnalytics = async (query: {
   fromDate?: string;
   toDate?: string;
 }): Promise<TPeakHoursInsights> => {
+  const TZ = 'Europe/Lisbon';
   const now = new Date();
+
+  const startOfToday = getLocalStartOfPeriod('today');
+
+  const getDaysAgo = (days: number) => {
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - days);
+    return d;
+  };
+
   const to = query.toDate ? new Date(query.toDate) : now;
-  const from = query.fromDate
-    ? new Date(query.fromDate)
-    : new Date(new Date().setDate(to.getDate() - 7));
+  const from = query.fromDate ? new Date(query.fromDate) : getDaysAgo(7);
 
   from.setHours(0, 0, 0, 0);
   to.setHours(23, 59, 59, 999);
 
-  // 1. Get real efficiency: (Total Delivered Orders / Unique Rider-Hours)
   const [efficiencyData] = await Order.aggregate([
     {
       $match: {
         orderStatus: 'DELIVERED',
         isDeleted: false,
-        riderId: { $exists: true },
+        deliveryPartnerId: { $exists: true },
+        createdAt: { $gte: from, $lte: to },
       },
     },
     {
       $group: {
         _id: {
           date: {
-            $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone },
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$createdAt',
+              timezone: TZ,
+            },
           },
-          hour: { $hour: { date: '$createdAt', timezone } },
-          rider: '$riderId',
+          hour: { $hour: { date: '$createdAt', timezone: TZ } },
+          rider: '$deliveryPartnerId',
         },
         count: { $sum: 1 },
       },
@@ -3910,15 +3981,13 @@ const getPeakHourAnalytics = async (query: {
 
   const realEfficiency = efficiencyData?.avg || 1.5;
 
-  // 2. Fetch Online Riders count from DeliveryPartner model
   const onlineRidersCount = await DeliveryPartner.countDocuments({
     status: 'APPROVED',
     isDeleted: false,
     'operationalData.currentStatus': { $in: ['AVAILABLE', 'BUSY'] },
   });
 
-  // 3. Multi-faceted aggregation for performance
-  const [results] = await Order.aggregate([
+  const [rawResults] = await Order.aggregate([
     {
       $match: {
         isDeleted: false,
@@ -3930,9 +3999,9 @@ const getPeakHourAnalytics = async (query: {
         hourly: [
           {
             $group: {
-              _id: { $hour: { date: '$createdAt', timezone } },
+              _id: { $hour: { date: '$createdAt', timezone: TZ } },
               orderCount: { $sum: 1 },
-              activeRiderIds: { $addToSet: '$riderId' },
+              activeRiderIds: { $addToSet: '$deliveryPartnerId' },
             },
           },
           { $sort: { _id: 1 } },
@@ -3941,7 +4010,7 @@ const getPeakHourAnalytics = async (query: {
         dayWise: [
           {
             $group: {
-              _id: { $isoDayOfWeek: { date: '$createdAt', timezone } },
+              _id: { $isoDayOfWeek: { date: '$createdAt', timezone: TZ } },
               orderCount: { $sum: 1 },
             },
           },
@@ -3952,8 +4021,8 @@ const getPeakHourAnalytics = async (query: {
           {
             $group: {
               _id: {
-                day: { $isoDayOfWeek: { date: '$createdAt', timezone } },
-                hour: { $hour: { date: '$createdAt', timezone } },
+                day: { $isoDayOfWeek: { date: '$createdAt', timezone: TZ } },
+                hour: { $hour: { date: '$createdAt', timezone: TZ } },
               },
               orderCount: { $sum: 1 },
             },
@@ -3963,11 +4032,17 @@ const getPeakHourAnalytics = async (query: {
     },
   ]);
 
+  const results = rawResults || {
+    hourly: [],
+    dayWise: [],
+    heatmap: [],
+  };
+
   const DAYS_MAP = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  // 4. Map Hourly Data (Ensure 0-23 hours are represented)
+  // ৪. Map Hourly Data (Ensure 0-23 hours are represented)
   const hourlyOrders = Array.from({ length: 24 }, (_, hour) => {
-    const matched = results.hourly.find((h: any) => h._id === hour);
+    const matched = (results.hourly || []).find((h: any) => h._id === hour);
     return {
       hour,
       orderCount: matched?.orderCount || 0,
@@ -3975,12 +4050,10 @@ const getPeakHourAnalytics = async (query: {
     };
   });
 
-  // 5. Calculate Gap using real active riders vs total online pool
+  // ৫. Calculate Rider Demand Gap
   const riderDemandGap = hourlyOrders
     .filter((h) => h.orderCount > 0)
     .map((h) => {
-      // Logic: Use the count of riders who actually took orders,
-      // or fall back to 80% of current online pool as a capacity baseline
       const activeRiders = Math.max(
         h.activeRidersInHour,
         Math.floor(onlineRidersCount * 0.8),
@@ -3997,7 +4070,7 @@ const getPeakHourAnalytics = async (query: {
       };
     });
 
-  // 6. Meal Time Calculation (11-16 Lunch, 18-23 Dinner)
+  // ৬. Meal Time Calculation
   const total = hourlyOrders.reduce((sum, h) => sum + h.orderCount, 0) || 1;
   const lunch = hourlyOrders
     .filter((h) => h.hour >= 11 && h.hour <= 16)
@@ -4029,9 +4102,10 @@ const getPeakHourAnalytics = async (query: {
       dayWiseOrders: DAYS_MAP.map((day, i) => ({
         day,
         orderCount:
-          results.dayWise.find((d: any) => d._id === i + 1)?.orderCount || 0,
+          (results.dayWise || []).find((d: any) => d._id === i + 1)
+            ?.orderCount || 0,
       })),
-      heatmap: results.heatmap.map((item: any) => ({
+      heatmap: (results.heatmap || []).map((item: any) => ({
         day: DAYS_MAP[item._id.day - 1] || 'Unknown',
         hour: item._id.hour,
         orderCount: item.orderCount,
@@ -4046,10 +4120,18 @@ const getDeliveryInsights = async (query: {
   fromDate?: string;
   toDate?: string;
 }): Promise<TDeliveryInsights> => {
-  const to = query.toDate ? new Date(query.toDate) : new Date();
-  const from = query.fromDate
-    ? new Date(query.fromDate)
-    : new Date(new Date().setDate(to.getDate() - 30));
+  const now = new Date();
+
+  const startOfToday = getLocalStartOfPeriod('today');
+
+  const getDaysAgo = (days: number) => {
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - days);
+    return d;
+  };
+
+  const to = query.toDate ? new Date(query.toDate) : now;
+  const from = query.fromDate ? new Date(query.fromDate) : getDaysAgo(30);
 
   from.setHours(0, 0, 0, 0);
   to.setHours(23, 59, 59, 999);
@@ -4064,7 +4146,7 @@ const getDeliveryInsights = async (query: {
       },
       {
         $addFields: {
-          // 1. Calculate duration ONLY if both timestamps exist
+          // Duration Calculation ONLY if both timestamps exist
           actualMinutes: {
             $cond: [
               {
@@ -4091,14 +4173,14 @@ const getDeliveryInsights = async (query: {
             },
           },
           isRejected: {
-            $cond: [{ $in: ['$orderStatus', ['REJECTED', 'CANCELLED']] }, 1, 0],
+            $cond: [{ $in: ['$orderStatus', ['REJECTED', 'CANCELED']] }, 1, 0],
           },
           isSuccess: { $cond: [{ $eq: ['$orderStatus', 'DELIVERED'] }, 1, 0] },
         },
       },
       {
         $addFields: {
-          // 2. Late Logic: Success + Actual > Estimate (validating actualMinutes is not null)
+          // Late Logic: Success + Actual > Estimate
           isLate: {
             $cond: [
               {
@@ -4120,7 +4202,6 @@ const getDeliveryInsights = async (query: {
             {
               $group: {
                 _id: null,
-                // Average only orders that actually finished (exclude "Ready for Pickup")
                 avgTime: {
                   $avg: {
                     $cond: [
@@ -4137,12 +4218,13 @@ const getDeliveryInsights = async (query: {
               },
             },
           ],
+
           riderPerformance: [
             { $match: { deliveryPartnerId: { $ne: null } } },
             {
               $group: {
                 _id: '$deliveryPartnerId',
-                totalDeliveries: { $sum: 1 }, // Correctly counts ALL assigned orders
+                totalDeliveries: { $sum: 1 },
                 successfulDeliveries: { $sum: '$isSuccess' },
                 totalTime: { $sum: { $ifNull: ['$actualMinutes', 0] } },
               },
@@ -4160,11 +4242,26 @@ const getDeliveryInsights = async (query: {
               $project: {
                 riderId: { $ifNull: ['$rider.userId', 'N/A'] },
                 riderName: {
-                  $concat: [
-                    '$rider.name.firstName',
-                    ' ',
-                    '$rider.name.lastName',
-                  ],
+                  $cond: {
+                    if: {
+                      $and: [
+                        {
+                          $eq: [{ $ifNull: ['$rider.name.firstName', ''] }, ''],
+                        },
+                        {
+                          $eq: [{ $ifNull: ['$rider.name.lastName', ''] }, ''],
+                        },
+                      ],
+                    },
+                    then: { $ifNull: ['$rider.email', 'Delivery Rider'] },
+                    else: {
+                      $concat: [
+                        '$rider.name.firstName',
+                        ' ',
+                        '$rider.name.lastName',
+                      ],
+                    },
+                  },
                 },
                 totalDeliveries: 1,
                 successfulDeliveries: 1,
@@ -4183,8 +4280,8 @@ const getDeliveryInsights = async (query: {
               },
             },
           ],
+
           distanceTimeAnalysis: [
-            // Only use successful orders with valid distance and time > 0
             {
               $match: {
                 isSuccess: 1,
@@ -4194,7 +4291,7 @@ const getDeliveryInsights = async (query: {
             },
             {
               $group: {
-                _id: { $round: ['$delivery.distance', 0] }, // Group by nearest KM
+                _id: { $round: ['$delivery.distance', 0] },
                 avgTime: { $avg: '$actualMinutes' },
               },
             },
@@ -4207,6 +4304,7 @@ const getDeliveryInsights = async (query: {
             },
             { $sort: { distanceKm: 1 } },
           ],
+
           areaPerformance: [
             { $match: { isSuccess: 1, actualMinutes: { $gt: 0 } } },
             {
@@ -4224,15 +4322,22 @@ const getDeliveryInsights = async (query: {
                 area: '$_id',
                 averageTime: { $round: ['$avgTime', 1] },
                 latePercentage: {
-                  $round: [
-                    { $multiply: [{ $divide: ['$late', '$total'] }, 100] },
-                    1,
-                  ],
+                  $cond: {
+                    if: { $eq: ['$total', 0] },
+                    then: 0,
+                    else: {
+                      $round: [
+                        { $multiply: [{ $divide: ['$late', '$total'] }, 100] },
+                        1,
+                      ],
+                    },
+                  },
                 },
                 _id: 0,
               },
             },
           ],
+
           rejectedReasons: [
             { $match: { isRejected: 1 } },
             {
@@ -4260,13 +4365,24 @@ const getDeliveryInsights = async (query: {
         $match: {
           isDeleted: false,
           'operationalData.isWorking': true,
-          // "operationalData.lastActivityAt": { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }, // this will make only today's active riders
+          'operationalData.lastActivityAt': { $exists: true },
         },
       },
       {
         $project: {
           riderId: { $toString: '$userId' },
-          riderName: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
+          riderName: {
+            $cond: {
+              if: {
+                $and: [
+                  { $eq: [{ $ifNull: ['$name.firstName', ''] }, ''] },
+                  { $eq: [{ $ifNull: ['$name.lastName', ''] }, ''] },
+                ],
+              },
+              then: { $ifNull: ['$email', 'Delivery Rider'] },
+              else: { $concat: ['$name.firstName', ' ', '$name.lastName'] },
+            },
+          },
           idleTimeMinutes: {
             $round: [
               {
@@ -4303,6 +4419,16 @@ const getDeliveryInsights = async (query: {
     successOrders: 0,
   };
 
+  const formattedRejectedReasons = (facet.rejectedReasons || []).map(
+    (r: any) => ({
+      reason:
+        typeof r.reason === 'object'
+          ? r.reason.en || r.reason.pt || 'OTHER'
+          : r.reason || 'OTHER',
+      count: r.count,
+    }),
+  );
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Delivery insights' },
@@ -4324,11 +4450,11 @@ const getDeliveryInsights = async (query: {
               )
             : 0,
       },
-      riderPerformance: facet.riderPerformance,
-      distanceTimeAnalysis: facet.distanceTimeAnalysis,
-      areaPerformance: facet.areaPerformance,
-      riderIdleTime: riderIdle,
-      rejectedReasons: facet.rejectedReasons,
+      riderPerformance: facet.riderPerformance || [],
+      distanceTimeAnalysis: facet.distanceTimeAnalysis || [],
+      areaPerformance: facet.areaPerformance || [],
+      riderIdleTime: riderIdle || [],
+      rejectedReasons: formattedRejectedReasons,
     },
   };
 };
