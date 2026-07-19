@@ -204,49 +204,49 @@ const getAdminDashboardAnalytics = async () => {
 const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
-  // --------------------------------------------------
-  // Get Vendor Products
-  // --------------------------------------------------
   const products = await Product.find(
     { vendorId },
     '_id category rating meta.status images',
-  ).populate({
-    path: 'category',
-    select: 'name icon',
-  });
+  )
+    .populate({
+      path: 'category',
+      select: 'name icon',
+    })
+    .lean();
 
-  const productIds = products.map((p) => p._id);
+  const orderCountsResult = await Order.aggregate([
+    { $match: { vendorId, isDeleted: false } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        pending: {
+          $sum: { $cond: [{ $eq: ['$orderStatus', 'PENDING'] }, 1, 0] },
+        },
+        completed: {
+          $sum: { $cond: [{ $eq: ['$orderStatus', 'DELIVERED'] }, 1, 0] },
+        },
+        canceled: {
+          $sum: { $cond: [{ $eq: ['$orderStatus', 'CANCELED'] }, 1, 0] },
+        },
+      },
+    },
+  ]);
 
-  // --------------------------------------------------
-  // Order Counts
-  // --------------------------------------------------
-  const [totalOrders, pendingOrders, completedOrders, canceledOrders] =
-    await Promise.all([
-      Order.countDocuments({ vendorId }),
-      Order.countDocuments({ vendorId, orderStatus: 'PENDING' }),
-      Order.countDocuments({ vendorId, orderStatus: 'DELIVERED' }),
-      Order.countDocuments({ vendorId, orderStatus: 'CANCELED' }),
-    ]);
+  const orderStats = orderCountsResult[0] || {
+    total: 0,
+    pending: 0,
+    completed: 0,
+    canceled: 0,
+  };
+  const totalOrders = orderStats.total;
 
-  // --------------------------------------------------
-  // Popular Categories (Order-based – FIXED)
-  // --------------------------------------------------
   const popularCategories =
     totalOrders === 0
       ? []
       : await Order.aggregate([
-          // Vendor filter
-          {
-            $match: {
-              vendorId,
-              isDeleted: false,
-            },
-          },
-
-          // Unwind items
+          { $match: { vendorId, isDeleted: false } },
           { $unwind: '$items' },
-
-          // Join products to get category
           {
             $lookup: {
               from: 'products',
@@ -256,7 +256,6 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
             },
           },
           { $unwind: '$product' },
-
           {
             $lookup: {
               from: 'productcategories',
@@ -266,8 +265,6 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
             },
           },
           { $unwind: '$categoryDetails' },
-
-          // Count orders per category
           {
             $group: {
               _id: {
@@ -277,7 +274,6 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
               },
             },
           },
-
           {
             $group: {
               _id: '$_id.categoryId',
@@ -285,8 +281,6 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
               orderCount: { $sum: 1 },
             },
           },
-
-          // Calculate TOTAL of all category orders
           {
             $group: {
               _id: null,
@@ -299,8 +293,6 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
               },
             },
           },
-
-          // Calculate percentage (SUM = 100%)
           { $unwind: '$categories' },
           {
             $project: {
@@ -325,40 +317,45 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
               },
             },
           },
-
-          // Top category first
           { $sort: { percentage: -1 } },
         ]);
 
-  // --------------------------------------------------
-  // Recent Orders
-  // --------------------------------------------------
   const recentOrders = await Order.find({
     vendorId,
-    'items.productId': { $in: productIds },
+    isDeleted: false,
   })
     .sort({ createdAt: -1 })
     .limit(3)
     .populate('customerId', 'name')
-    .select('orderId orderStatus createdAt');
-
-  // --------------------------------------------------
-  // Top Rated Items
-  // --------------------------------------------------
+    .select('orderId orderStatus createdAt')
+    .lean();
 
   const topRatedItems = await Product.aggregate([
     {
       $match: {
-        vendorId: new Types.ObjectId(vendorId),
+        vendorId,
+        isDeleted: false,
         'rating.average': { $gte: 4 },
       },
     },
     {
       $lookup: {
         from: 'orders',
-        localField: '_id',
-        foreignField: 'items.productId',
-        as: 'orderData',
+        let: { productId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$vendorId', vendorId] },
+                  { $in: ['$$productId', '$items.productId'] },
+                ],
+              },
+            },
+          },
+          { $count: 'count' },
+        ],
+        as: 'orderCountData',
       },
     },
     {
@@ -368,30 +365,36 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
         name: 1,
         images: 1,
         rating: { average: '$rating.average' },
-        totalOrders: { $size: '$orderData' },
+        totalOrders: {
+          $ifNull: [{ $arrayElemAt: ['$orderCountData.count', 0] }, 0],
+        },
       },
     },
     { $sort: { 'rating.average': -1, totalOrders: -1 } },
     { $limit: 4 },
   ]);
 
-  // --------------------------------------------------
-  // Final Response
-  // --------------------------------------------------
+  const activeProductsCount = products.filter(
+    (p) => p.meta?.status === 'ACTIVE',
+  ).length;
+  const inactiveProductsCount = products.filter(
+    (p) => p.meta?.status === 'INACTIVE',
+  ).length;
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Vendor Dashboard Analytics' },
     data: {
       products: {
         total: products.length,
-        active: products.filter((p) => p.meta.status === 'ACTIVE').length,
-        inactive: products.filter((p) => p.meta.status === 'INACTIVE').length,
+        active: activeProductsCount,
+        inactive: inactiveProductsCount,
       },
       orders: {
-        total: totalOrders,
-        pending: pendingOrders,
-        completed: completedOrders,
-        canceled: canceledOrders,
+        total: orderStats.total,
+        pending: orderStats.pending,
+        completed: orderStats.completed,
+        canceled: orderStats.canceled,
       },
       popularCategories,
       recentOrders,
