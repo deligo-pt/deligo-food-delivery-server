@@ -3446,21 +3446,28 @@ const getAdminCustomerInsights = async (query: {
   fromDate?: string;
   toDate?: string;
 }): Promise<TCustomerInsights> => {
+  const TZ = 'Europe/Lisbon';
   const now = new Date();
+
+  const startOfToday = getLocalStartOfPeriod('today');
+
+  const getDaysAgo = (days: number) => {
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - days);
+    return d;
+  };
+
   const to = query.toDate ? new Date(query.toDate) : now;
-  const from = query.fromDate
-    ? new Date(query.fromDate)
-    : new Date(new Date().setDate(to.getDate() - 30));
+  const from = query.fromDate ? new Date(query.fromDate) : getDaysAgo(30);
 
   from.setHours(0, 0, 0, 0);
   to.setHours(23, 59, 59, 999);
 
-  // Time-frames for AU and Churn
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [facet] = await Order.aggregate([
+  const [rawFacetResult] = await Order.aggregate([
     { $match: { isDeleted: false } },
     {
       $facet: {
@@ -3480,7 +3487,6 @@ const getAdminCustomerInsights = async (query: {
               },
               firstOrderDate: { $min: '$createdAt' },
               lastOrderDate: { $max: '$createdAt' },
-              // Count orders specifically within the user-selected range
               ordersInSelectedRange: {
                 $sum: {
                   $cond: [
@@ -3498,19 +3504,10 @@ const getAdminCustomerInsights = async (query: {
             },
           },
           {
-            $lookup: {
-              from: 'customers',
-              localField: '_id',
-              foreignField: '_id',
-              as: 'userDetails',
-            },
-          },
-          {
-            $unwind: { path: '$userDetails', preserveNullAndEmptyArrays: true },
-          },
-          {
-            $addFields: {
-              /** NEW CUSTOMER: First order ever happened in this range */
+            $project: {
+              totalOrders: 1,
+              totalSpent: 1,
+              ordersInSelectedRange: 1,
               isNew: {
                 $cond: [
                   {
@@ -3523,17 +3520,24 @@ const getAdminCustomerInsights = async (query: {
                   0,
                 ],
               },
-              /** RETURNING CUSTOMER: Had orders before this range AND ordered again within this range */
               isReturning: {
-                $cond: [{ $gt: ['$totalOrders', 0] }, 1, 0],
+                $cond: [
+                  {
+                    $and: [
+                      { $lt: ['$firstOrderDate', from] },
+                      { $gt: ['$ordersInSelectedRange', 0] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
               },
-              /** CHURNED: Hasn't ordered in recent times */
               isChurned: {
                 $cond: [
                   {
                     $and: [
-                      { $gt: ['$totalOrders', 0] }, // had history
-                      { $eq: ['$ordersInRange', 0] }, // inactive now
+                      { $lt: ['$lastOrderDate', thirtyDaysAgo] },
+                      { $eq: ['$ordersInSelectedRange', 0] },
                     ],
                   },
                   1,
@@ -3543,15 +3547,19 @@ const getAdminCustomerInsights = async (query: {
             },
           },
         ],
+
+        // --- HOURLY DISTRIBUTION ---
         hourlyDistribution: [
           { $match: { createdAt: { $gte: from, $lte: to } } },
           {
             $group: {
-              _id: { $hour: { date: '$createdAt', timezone: 'Asia/Dhaka' } },
+              _id: { $hour: { date: '$createdAt', timezone: TZ } },
               count: { $sum: 1 },
             },
           },
         ],
+
+        // --- ACTIVE SNAPSHOTS (DAU / WAU / MAU) ---
         activeSnapshots: [
           {
             $group: {
@@ -3578,27 +3586,85 @@ const getAdminCustomerInsights = async (query: {
             },
           },
         ],
+
+        topSpenders: [
+          {
+            $group: {
+              _id: '$customerId',
+              totalOrders: { $sum: 1 },
+              totalSpent: {
+                $sum: {
+                  $cond: [
+                    { $eq: ['$isPaid', true] },
+                    '$payoutSummary.grandTotal',
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+          { $sort: { totalSpent: -1 } },
+          { $limit: 5 },
+          {
+            $lookup: {
+              from: 'customers',
+              localField: '_id',
+              foreignField: '_id',
+              as: 'userDetails',
+            },
+          },
+          {
+            $unwind: { path: '$userDetails', preserveNullAndEmptyArrays: true },
+          },
+        ],
       },
     },
   ]);
 
+  const facet = rawFacetResult || {
+    customerBase: [],
+    hourlyDistribution: [],
+    activeSnapshots: [],
+    topSpenders: [],
+  };
   const customerBase = facet.customerBase || [];
-  const active = facet.activeSnapshots[0] || { dau: 0, wau: 0, mau: 0 };
+  const active = facet.activeSnapshots?.[0] || { dau: 0, wau: 0, mau: 0 };
+  const topSpendersList = facet.topSpenders || [];
 
-  // Calculate Summary Stats
-  const newCustomers = customerBase.filter((c: any) => c.isNew === 1).length;
-  const returningCustomers = customerBase.filter(
-    (c: any) => c.isReturning > 0,
-  ).length;
-  const churnedCustomers = customerBase.filter(
-    (c: any) => c.isChurned === 1,
-  ).length;
+  // Summary Metrics Calculation
+  let newCustomers = 0;
+  let returningCustomers = 0;
+  let churnedCustomers = 0;
+  let totalLifetimeRevenue = 0;
 
-  // CLV should be based on Total Spent by all non-deleted customers
-  const totalLifetimeRevenue = customerBase.reduce(
-    (acc: number, c: any) => acc + c.totalSpent,
-    0,
-  );
+  customerBase.forEach((c: any) => {
+    if (c.isNew === 1) newCustomers++;
+    if (c.isReturning === 1) returningCustomers++;
+    if (c.isChurned === 1) churnedCustomers++;
+    totalLifetimeRevenue += c.totalSpent;
+  });
+
+  const totalUniqueUsers = customerBase.length;
+
+  const formatCustomerName = (userDetails: any) => {
+    if (!userDetails) return 'Anonymous';
+    const nameObj = userDetails.name;
+    if (nameObj && typeof nameObj === 'object') {
+      return (
+        `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim() ||
+        userDetails.email ||
+        'Anonymous'
+      );
+    }
+    return userDetails.name || userDetails.email || 'Anonymous';
+  };
+
+  const topCustomers = topSpendersList.map((c: any) => ({
+    customerId: c.userDetails?.userId || 'N/A',
+    name: formatCustomerName(c.userDetails),
+    totalSpent: roundTo2(c.totalSpent),
+    totalOrders: c.totalOrders,
+  }));
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -3608,14 +3674,12 @@ const getAdminCustomerInsights = async (query: {
         newCustomers,
         returningCustomers,
         churnRate:
-          customerBase.length > 0
-            ? Number(
-                ((churnedCustomers / customerBase.length) * 100).toFixed(2),
-              )
+          totalUniqueUsers > 0
+            ? roundTo2((churnedCustomers / totalUniqueUsers) * 100)
             : 0,
         averageCLV:
-          customerBase.length > 0
-            ? Math.round(totalLifetimeRevenue / customerBase.length)
+          totalUniqueUsers > 0
+            ? Math.round(totalLifetimeRevenue / totalUniqueUsers)
             : 0,
       },
       activeUsers: {
@@ -3623,17 +3687,7 @@ const getAdminCustomerInsights = async (query: {
         wau: active.wau,
         mau: active.mau,
       },
-      topCustomers: customerBase
-        .sort((a: any, b: any) => b.totalSpent - a.totalSpent)
-        .slice(0, 5)
-        .map((c: any) => ({
-          customerId: c.userDetails?.userId || 'N/A',
-          name: c.userDetails
-            ? `${c.userDetails.name?.firstName} ${c.userDetails.name?.lastName}`.trim()
-            : 'Anonymous',
-          totalSpent: Number(c.totalSpent.toFixed(2)),
-          totalOrders: c.totalOrders,
-        })),
+      topCustomers,
       orderFrequency: [
         {
           range: '1 order',
@@ -3665,7 +3719,8 @@ const getAdminCustomerInsights = async (query: {
       hourlyOrders: Array.from({ length: 24 }, (_, hour) => ({
         hour,
         orderCount:
-          facet.hourlyDistribution.find((h: any) => h._id === hour)?.count || 0,
+          (facet.hourlyDistribution || []).find((h: any) => h._id === hour)
+            ?.count || 0,
       })),
     },
   };
