@@ -847,7 +847,6 @@ const getAdminOrderReportAnalytics = async (
             },
           },
         ],
-        // orders by zone
         ordersByZone: [
           {
             $group: {
@@ -877,7 +876,11 @@ const getAdminOrderReportAnalytics = async (
           {
             $group: {
               _id: {
-                $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: '$createdAt',
+                  timezone: 'Europe/Lisbon',
+                },
               },
               revenue: { $sum: '$payoutSummary.grandTotal' },
             },
@@ -889,7 +892,9 @@ const getAdminOrderReportAnalytics = async (
             $group: {
               _id: {
                 zone: '$deliveryAddress.city',
-                hour: { $hour: '$createdAt' },
+                hour: {
+                  $hour: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+                },
               },
               orderCount: { $sum: 1 },
             },
@@ -900,9 +905,21 @@ const getAdminOrderReportAnalytics = async (
     },
   ]);
 
-  const statsData = result?.stats[0] ?? { totalRevenue: 0, totalOrders: 0 };
+  const analyticsData = result || {
+    stats: [],
+    ordersByZone: [],
+    ordersTrendRaw: [],
+    revenueTrend: [],
+    zoneHeatmap: [],
+  };
+
+  const statsData = analyticsData.stats[0] ?? {
+    totalRevenue: 0,
+    totalOrders: 0,
+  };
+
   const ordersTrend = mapGrowthToTimeline({
-    growth: result?.ordersTrendRaw ?? [],
+    growth: analyticsData.ordersTrendRaw ?? [],
     timelineMap,
     start,
     end,
@@ -923,20 +940,19 @@ const getAdminOrderReportAnalytics = async (
             : 0.0,
       },
 
-      ordersByZone: result?.ordersByZone ?? [],
+      ordersByZone: analyticsData.ordersByZone ?? [],
 
-      // New Requirement: Orders Trend based on timeframe
-      ordersTrend: ordersTrend.map((item) => ({
+      ordersTrend: (ordersTrend || []).map((item) => ({
         time: item.time,
         orders: item.value as number,
       })),
 
-      // Backward compatibility for charts
-      revenueTrend: (result?.revenueTrend ?? []).map((d: any) => ({
+      revenueTrend: (analyticsData.revenueTrend ?? []).map((d: any) => ({
         date: d._id,
         revenue: roundTo2(d.revenue),
       })),
-      zoneHeatmap: (result?.zoneHeatmap ?? []).map((h: any) => ({
+
+      zoneHeatmap: (analyticsData.zoneHeatmap ?? []).map((h: any) => ({
         zone: h._id.zone || 'Unknown',
         hour: h._id.hour,
         orderCount: h.orderCount,
@@ -958,70 +974,84 @@ const getAdminCustomerReportAnalytics = async (
   );
 
   const timelineMap = generateEmptyBuckets(start, end, resolution, size);
+
   const groupId = getGroupingPipeline(resolution, size, start);
 
-  // Build the dynamic match for growth
   const growthMatch: any = { isDeleted: false };
   if (start) {
     growthMatch.createdAt = { $gte: start, $lte: end };
   }
 
-  const [analytics] = await Customer.aggregate([
-    {
-      $facet: {
-        stats: [
-          { $match: { isDeleted: false } },
-          {
-            $group: {
-              _id: null,
-              totalCustomers: { $sum: 1 },
-              activeCustomers: {
-                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
+  const [customerAnalyticsResult, orderCount, totalCustomerSpentAgg] =
+    await Promise.all([
+      Customer.aggregate([
+        {
+          $facet: {
+            stats: [
+              { $match: { isDeleted: false } },
+              {
+                $group: {
+                  _id: null,
+                  totalCustomers: { $sum: 1 },
+                  activeCustomers: {
+                    $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
+                  },
+                },
               },
-            },
+            ],
+            growth: [
+              { $match: growthMatch },
+              { $group: { _id: groupId, count: { $sum: 1 } } },
+              {
+                $sort: {
+                  '_id.year': 1,
+                  '_id.month': 1,
+                  '_id.day': 1,
+                  '_id.bucket': 1,
+                },
+              },
+            ],
+            statusStats: [
+              { $match: { isDeleted: false } },
+              { $group: { _id: '$status', count: { $sum: 1 } } },
+            ],
           },
-          {
-            $lookup: {
-              from: 'orders',
-              pipeline: [{ $match: { isDeleted: false } }, { $count: 'count' }],
-              as: 'totalOrderCount',
-            },
-          },
-          {
-            $lookup: {
-              from: 'wallets',
-              pipeline: [
-                { $match: { userModel: 'Admin' } },
-                { $group: { _id: null, totalRev: { $sum: '$totalEarnings' } } },
-              ],
-              as: 'walletStats',
-            },
-          },
-        ],
-        growth: [
-          { $match: growthMatch },
-          { $group: { _id: groupId, count: { $sum: 1 } } },
-          {
-            $sort: {
-              '_id.year': 1,
-              '_id.month': 1,
-              '_id.day': 1,
-              '_id.bucket': 1,
-            },
-          },
-        ],
-        statusStats: [
-          { $match: { isDeleted: false } },
-          { $group: { _id: '$status', count: { $sum: 1 } } },
-        ],
-      },
-    },
-  ]);
+        },
+      ]),
 
-  const rawStats = analytics.stats[0] || {};
+      Order.countDocuments({ isDeleted: false }),
+
+      Order.aggregate([
+        {
+          $match: {
+            orderStatus: 'DELIVERED',
+            isPaid: true,
+            isDeleted: false,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSpent: { $sum: '$payoutSummary.grandTotal' },
+          },
+        },
+      ]),
+    ]);
+
+  const analytics = customerAnalyticsResult[0] || {
+    stats: [],
+    growth: [],
+    statusStats: [],
+  };
+
+  const rawStats = analytics.stats[0] || {
+    totalCustomers: 0,
+    activeCustomers: 0,
+  };
+  const statusStatsList = analytics.statusStats || [];
 
   const customerGrowth = mapGrowthToTimeline({
-    growth: analytics.growth,
+    growth: analytics.growth || [],
     timelineMap,
     start,
     end,
@@ -1032,6 +1062,8 @@ const getAdminCustomerReportAnalytics = async (
     value: item.value,
   }));
 
+  const totalSpent = totalCustomerSpentAgg[0]?.totalSpent || 0;
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Customer Report' },
@@ -1039,22 +1071,19 @@ const getAdminCustomerReportAnalytics = async (
       stats: {
         totalCustomers: rawStats.totalCustomers || 0,
         activeCustomers: rawStats.activeCustomers || 0,
-        totalSpent: rawStats.walletStats?.[0]?.totalRev || 0,
-        totalOrders: rawStats.totalOrderCount?.[0]?.count || 0,
+        totalSpent: roundTo2(totalSpent),
+        totalOrders: orderCount,
       },
 
       customerGrowth,
 
       statusDistribution: {
         active:
-          analytics.statusStats.find((s: any) => s._id === 'APPROVED')?.count ||
-          0,
+          statusStatsList.find((s: any) => s._id === 'APPROVED')?.count || 0,
         blocked:
-          analytics.statusStats.find((s: any) => s._id === 'BLOCKED')?.count ||
-          0,
+          statusStatsList.find((s: any) => s._id === 'BLOCKED')?.count || 0,
         pending:
-          analytics.statusStats.find((s: any) => s._id === 'PENDING')?.count ||
-          0,
+          statusStatsList.find((s: any) => s._id === 'PENDING')?.count || 0,
       },
     },
   };
