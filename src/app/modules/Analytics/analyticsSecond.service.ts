@@ -1562,7 +1562,7 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
   const orderFilter: any = {
     'offer.isApplied': true,
     isDeleted: false,
-    orderStatus: { $ne: 'CANCELLED' },
+    orderStatus: { $ne: 'CANCELED' },
   };
 
   if (currentUser?.role === 'VENDOR' && currentUser?._id) {
