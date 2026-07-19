@@ -2143,222 +2143,251 @@ const getVendorTaxReport = async (
 };
 
 // get fleet manager performance analytics
+
 const getFleetManagerPerformanceAnalytics = async (
   query: Record<string, unknown>,
 ): Promise<TFleetPerformanceData> => {
-  const now = new Date();
   const { page = 1, limit = 10 } = query;
   const skip = (Number(page) - 1) * Number(limit);
 
-  const startOfWeek = new Date();
-  startOfWeek.setDate(now.getDate() - 6);
-  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfToday = getLocalStartOfPeriod('today');
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfWeek.getDate() - 6);
 
-  const [result] = await FleetManager.aggregate([
-    {
-      $match: {
-        role: 'FLEET_MANAGER',
-        isDeleted: false,
-      },
-    },
-
-    // riders
-    {
-      $lookup: {
-        from: 'deliverypartners',
-        localField: '_id',
-        foreignField: 'registeredBy.id',
-        as: 'riders',
-      },
-    },
-
-    // orders
-    {
-      $lookup: {
-        from: 'orders',
-        let: { riderIds: '$riders._id' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $in: ['$deliveryPartnerId', '$$riderIds'] },
-                  { $eq: ['$orderStatus', 'DELIVERED'] },
-                  { $eq: ['$isDeleted', false] },
-                ],
-              },
-            },
+  const [tableAndTopResult, weeklyRawStats, globalLeaderboardStats] =
+    await Promise.all([
+      FleetManager.aggregate([
+        { $match: { role: 'FLEET_MANAGER', isDeleted: false } },
+        {
+          $lookup: {
+            from: 'deliverypartners',
+            localField: '_id',
+            foreignField: 'registeredBy.id',
+            as: 'riders',
           },
-        ],
-        as: 'orders',
-      },
-    },
-
-    // metrics
-    {
-      $addFields: {
-        totalDeliveries: { $size: '$orders' },
-        totalEarnings: { $sum: '$orders.payoutSummary.fleet.fee' },
-        fleetName: '$name',
-        fleetPhoto: '$profilePhoto',
-        ratingAvg: { $ifNull: ['$rating.average', 0] },
-      },
-    },
-
-    {
-      $facet: {
-        // Fleet Table
-        fleetPerformance: [
-          { $sort: { totalEarnings: -1 } },
-          { $skip: skip },
-          { $limit: Number(limit) },
-          {
-            $project: {
-              _id: 1,
-              profilePhoto: 1,
-              userId: 1,
-              email: 1,
-              status: 1,
-              name: 1,
-              address: 1,
-              totalDeliveries: 1,
-              totalEarnings: 1,
-            },
-          },
-        ],
-
-        // Stats
-        stats: [
-          {
-            $group: {
-              _id: null,
-
-              mostOrders: {
-                $max: {
-                  deliveries: '$totalDeliveries',
-                  name: '$fleetName',
-                  photo: '$fleetPhoto',
+        },
+        {
+          $lookup: {
+            from: 'orders',
+            let: { riderIds: '$riders._id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $in: ['$deliveryPartnerId', '$$riderIds'] },
+                      { $eq: ['$orderStatus', 'DELIVERED'] },
+                      { $eq: ['$isDeleted', false] },
+                    ],
+                  },
                 },
               },
-
-              highestEarnings: {
-                $max: {
-                  earnings: '$totalEarnings',
-                  name: '$fleetName',
-                  photo: '$fleetPhoto',
+            ],
+            as: 'orders',
+          },
+        },
+        {
+          $addFields: {
+            totalDeliveries: { $size: '$orders' },
+            totalEarnings: { $sum: '$orders.payoutSummary.fleet.fee' },
+            ratingAvg: { $ifNull: ['$rating.average', 0] },
+          },
+        },
+        {
+          $facet: {
+            fleetPerformance: [
+              { $sort: { totalEarnings: -1 } },
+              { $skip: skip },
+              { $limit: Number(limit) },
+              {
+                $project: {
+                  _id: 1,
+                  profilePhoto: 1,
+                  userId: 1,
+                  email: 1,
+                  status: 1,
+                  name: 1,
+                  address: 1,
+                  totalDeliveries: 1,
+                  totalEarnings: 1,
                 },
               },
-
-              highestRating: {
-                $max: {
+            ],
+            topFleetPerformers: [
+              { $sort: { ratingAvg: -1, totalEarnings: -1 } },
+              { $limit: 3 },
+              {
+                $project: {
+                  fleetName: '$name',
+                  fleetPhoto: '$profilePhoto',
                   rating: '$ratingAvg',
-                  name: '$fleetName',
-                  photo: '$fleetPhoto',
+                  totalEarnings: 1,
                 },
               },
-            },
+            ],
+            totalCount: [{ $count: 'count' }],
           },
-        ],
+        },
+      ]),
 
-        // Weekly Performance
-        weekly: [
-          { $unwind: '$orders' },
-
-          {
-            $match: {
-              'orders.createdAt': { $gte: startOfWeek },
-            },
+      Order.aggregate([
+        {
+          $match: {
+            orderStatus: 'DELIVERED',
+            isDeleted: false,
+            createdAt: { $gte: startOfWeek },
           },
+        },
+        {
+          $group: {
+            _id: {
+              $dayOfWeek: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+            },
+            totalOrders: { $sum: 1 },
+            totalEarnings: { $sum: '$payoutSummary.fleet.fee' },
+          },
+        },
+      ]),
 
-          {
-            $group: {
-              _id: {
-                $dayOfWeek: '$orders.createdAt',
+      FleetManager.aggregate([
+        { $match: { role: 'FLEET_MANAGER', isDeleted: false } },
+        {
+          $lookup: {
+            from: 'deliverypartners',
+            localField: '_id',
+            foreignField: 'registeredBy.id',
+            as: 'riders',
+          },
+        },
+        {
+          $lookup: {
+            from: 'orders',
+            let: { riderIds: '$riders._id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $in: ['$deliveryPartnerId', '$$riderIds'] },
+                      { $eq: ['$orderStatus', 'DELIVERED'] },
+                      { $eq: ['$isDeleted', false] },
+                    ],
+                  },
+                },
               },
-              totalOrders: { $sum: 1 },
-              totalEarnings: { $sum: '$orders.payoutSummary.fleet.fee' },
-            },
+            ],
+            as: 'orders',
           },
-        ],
-
-        // Top Fleets
-        topFleetPerformers: [
-          { $sort: { ratingAvg: -1, totalEarnings: -1 } },
-          { $limit: 3 },
-          {
-            $project: {
-              fleetName: '$name',
-              fleetPhoto: '$profilePhoto',
-              rating: '$ratingAvg',
-              totalEarnings: 1,
-            },
+        },
+        {
+          $project: {
+            name: 1,
+            profilePhoto: 1,
+            totalDeliveries: { $size: '$orders' },
+            totalEarnings: { $sum: '$orders.payoutSummary.fleet.fee' },
+            ratingAvg: { $ifNull: ['$rating.average', 0] },
           },
-        ],
+        },
+        {
+          $facet: {
+            mostOrders: [{ $sort: { totalDeliveries: -1 } }, { $limit: 1 }],
+            highestEarnings: [{ $sort: { totalEarnings: -1 } }, { $limit: 1 }],
+            highestRating: [{ $sort: { ratingAvg: -1 } }, { $limit: 1 }],
+          },
+        },
+      ]),
+    ]);
 
-        totalCount: [{ $count: 'count' }],
-      },
-    },
-  ]);
-
-  const stats = result.stats?.[0] || {};
+  const result = tableAndTopResult[0] || {
+    fleetPerformance: [],
+    topFleetPerformers: [],
+    totalCount: [],
+  };
+  const leaderboard = globalLeaderboardStats[0] || {
+    mostOrders: [],
+    highestEarnings: [],
+    highestRating: [],
+  };
 
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const weeklyMap = new Map();
-
-  result.weekly?.forEach((w: any) => {
-    weeklyMap.set(w._id, w);
-  });
+  const weeklyMap = new Map((weeklyRawStats || []).map((w: any) => [w._id, w]));
 
   const fleetWeeklyPerformance = days.map((day, index) => {
-    const mongoDay = index === 0 ? 1 : index + 1;
+    const mongoDay = index + 1;
     const data = weeklyMap.get(mongoDay);
 
     return {
       day,
       totalOrders: data?.totalOrders || 0,
-      totalEarnings: roundTo2(data?.totalEarnings) || 0,
+      totalEarnings: data ? roundTo2(data.totalEarnings) : 0,
     };
   });
+
+  const mostOrdersFleet = leaderboard.mostOrders?.[0];
+  const highestEarningsFleet = leaderboard.highestEarnings?.[0];
+  const highestRatingFleet = leaderboard.highestRating?.[0];
+
+  const formatName = (nameObj: any) => {
+    if (!nameObj) return '';
+    if (typeof nameObj === 'object')
+      return `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim();
+    return nameObj;
+  };
+
+  const formattedFleetPerformance = (result.fleetPerformance || []).map(
+    (f: any) => ({
+      ...f,
+      name: formatName(f.name),
+      totalEarnings: roundTo2(f.totalEarnings),
+    }),
+  );
+
+  const formattedTopFleetPerformers = (result.topFleetPerformers || []).map(
+    (t: any) => ({
+      ...t,
+      fleetName: formatName(t.fleetName),
+      totalEarnings: roundTo2(t.totalEarnings),
+    }),
+  );
+
+  const totalItems = result.totalCount?.[0]?.count || 0;
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Fleet performance', isPlural: true },
     data: {
-      fleetPerformance: result.fleetPerformance,
+      fleetPerformance: formattedFleetPerformance,
 
       fleetPerformanceStat: {
         mostOrders: {
-          fleetName: stats?.mostOrders?.name || '',
-          fleetPhoto: stats?.mostOrders?.photo || '',
-          ordersCount: stats?.mostOrders?.deliveries || 0,
+          fleetName: formatName(mostOrdersFleet?.name),
+          fleetPhoto: mostOrdersFleet?.profilePhoto || '',
+          ordersCount: mostOrdersFleet?.totalDeliveries || 0,
         },
-
         highestEarnings: {
-          fleetName: stats?.highestEarnings?.name || '',
-          fleetPhoto: stats?.highestEarnings?.photo || '',
-          earnings: roundTo2(stats?.highestEarnings?.earnings) || 0,
+          fleetName: formatName(highestEarningsFleet?.name),
+          fleetPhoto: highestEarningsFleet?.profilePhoto || '',
+          earnings: highestEarningsFleet
+            ? roundTo2(highestEarningsFleet.totalEarnings)
+            : 0,
         },
-
         highestRating: {
-          fleetName: stats?.highestRating?.name || '',
-          fleetPhoto: stats?.highestRating?.photo || '',
-          rating: stats?.highestRating?.rating || 0,
+          fleetName: formatName(highestRatingFleet?.name),
+          fleetPhoto: highestRatingFleet?.profilePhoto || '',
+          rating: highestRatingFleet?.ratingAvg || 0,
         },
       },
 
       fleetWeeklyPerformance,
 
-      topFleetPerformers: result.topFleetPerformers,
+      topFleetPerformers: formattedTopFleetPerformers,
     },
 
     meta: {
       page: Number(page),
       limit: Number(limit),
-      total: result.totalCount?.[0]?.count || 0,
-      totalPage: Math.ceil(
-        (result.totalCount?.[0]?.count || 0) / Number(limit),
-      ),
+      total: totalItems,
+      totalPage: Math.ceil(totalItems / Number(limit)),
     },
   };
 };
