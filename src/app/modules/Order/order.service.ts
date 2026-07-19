@@ -1123,6 +1123,7 @@ const getAllOrders = async (
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
+    product: 'productId name',
   });
 
   populateOptions.forEach((option) => {

@@ -28,6 +28,7 @@ type PopulateInput = {
   targetId?: string;
   orderId?: string;
   registeredByWithModel?: string;
+  businessType?: string;
 };
 
 export const getPopulateOptions = (
@@ -50,7 +51,23 @@ export const getPopulateOptions = (
     }
   };
   addOption('customer', 'customerId', role !== 'CUSTOMER');
-  addOption('vendor', 'vendorId', isAdmin || role === 'CUSTOMER');
+
+  if (fields.vendor && (isAdmin || role === 'CUSTOMER')) {
+    const vendorPopulate: PopulateOptions = {
+      path: 'vendorId',
+      select: fields.vendor,
+    };
+
+    if (fields.businessType && (isAdmin || role === 'CUSTOMER')) {
+      vendorPopulate.populate = {
+        path: 'businessDetails.businessType',
+        select: fields.businessType,
+      };
+    }
+
+    options.push(vendorPopulate);
+  }
+
   addOption('itemVendor', 'items.vendorId', isAdmin || role === 'CUSTOMER');
   addOption('deliveryPartner', 'deliveryPartnerId');
   addOption('fleetManager', 'fleetManagerId', isAdmin);
