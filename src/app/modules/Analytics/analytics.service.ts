@@ -2777,9 +2777,9 @@ const getDeliveryPartnerPerformanceAnalytics = async (
 const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
   partnerUserId: string,
 ): Promise<TPartnerPerformanceDetailsData> => {
-  const now = new Date();
+  const startOfPeriod = getLocalStartOfPeriod('month');
+  startOfPeriod.setMonth(startOfPeriod.getMonth() - 5);
 
-  // Find partner
   const partner = await DeliveryPartner.findOne({ userId: partnerUserId })
     .select(
       '_id profilePhoto userId email status name address operationalData rating',
@@ -2790,59 +2790,67 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
     throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
   }
 
-  // Total Deliveries & Earnings
-  const [stats] = await Order.aggregate([
-    {
-      $match: {
-        deliveryPartnerId: partner._id,
-        orderStatus: 'DELIVERED',
-        isDeleted: false,
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        totalDeliveries: { $sum: 1 },
-        totalEarnings: {
-          $sum: '$payoutSummary.rider.riderNetEarnings',
+  const formatName = (nameObj: any) => {
+    if (!nameObj) return 'N/A';
+    if (typeof nameObj === 'object') {
+      return (
+        `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim() || 'N/A'
+      );
+    }
+    return nameObj;
+  };
+
+  const [statsResult, monthlyRaw] = await Promise.all([
+    Order.aggregate([
+      {
+        $match: {
+          deliveryPartnerId: partner._id,
+          orderStatus: 'DELIVERED',
+          isDeleted: false,
         },
       },
-    },
+      {
+        $group: {
+          _id: null,
+          totalDeliveries: { $sum: 1 },
+          totalEarnings: { $sum: '$payoutSummary.rider.riderNetEarnings' },
+        },
+      },
+    ]),
+
+    Order.aggregate([
+      {
+        $match: {
+          deliveryPartnerId: partner._id,
+          orderStatus: 'DELIVERED',
+          isDeleted: false,
+          createdAt: { $gte: startOfPeriod },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: { date: '$createdAt', timezone: 'Europe/Lisbon' } },
+            month: {
+              $month: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+            },
+          },
+          totalOrders: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]),
   ]);
+
+  const stats = statsResult[0] || { totalDeliveries: 0, totalEarnings: 0 };
 
   const partnerPerformance: TDeliveryPartnerPerformance = {
     ...partner,
-    totalDeliveries: stats?.totalDeliveries || 0,
-    totalEarnings: roundTo2(stats?.totalEarnings || 0),
+    name: formatName(partner.name),
+    totalDeliveries: stats.totalDeliveries,
+    totalEarnings: roundTo2(stats.totalEarnings),
     rating: partner?.rating?.average || 0,
   };
-
-  // Last 6 Months Performance
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(now.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
-
-  const monthlyRaw = await Order.aggregate([
-    {
-      $match: {
-        deliveryPartnerId: partner._id,
-        orderStatus: 'DELIVERED',
-        isDeleted: false,
-        createdAt: { $gte: sixMonthsAgo },
-      },
-    },
-    {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-        },
-        totalOrders: { $sum: 1 },
-      },
-    },
-    { $sort: { '_id.year': 1, '_id.month': 1 } },
-  ]);
 
   const monthNames = [
     'Jan',
@@ -2858,17 +2866,18 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
     'Nov',
     'Dec',
   ];
-
   const partnerMonthlyPerformance: TPartnerMonthlyPerformance[] = [];
+  const referenceDate = getLocalStartOfPeriod('month');
 
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const d = new Date(referenceDate);
+    d.setMonth(d.getMonth() - i);
 
     const month = d.getMonth() + 1;
     const year = d.getFullYear();
 
-    const found = monthlyRaw.find(
-      (m) => m._id.month === month && m._id.year === year,
+    const found = (monthlyRaw || []).find(
+      (m: any) => m._id.month === month && m._id.year === year,
     );
 
     partnerMonthlyPerformance.push({
