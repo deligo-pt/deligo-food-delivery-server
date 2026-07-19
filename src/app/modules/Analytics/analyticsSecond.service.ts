@@ -785,128 +785,124 @@ const getDeliveryPartnerEarningAnalytics = async (
 // Fleet manager earning analytics service
 const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
   const fleetObjectId = new Types.ObjectId(currentUser._id);
-  const now = new Date();
 
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  const startOfToday = getLocalStartOfPeriod('today');
+  const startOfWeek = getLocalStartOfPeriod('week');
+  const startOfMonth = getLocalStartOfPeriod('month');
 
-  const dayOfWeek = now.getDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfGraphRange = new Date(startOfToday);
+  startOfGraphRange.setDate(startOfGraphRange.getDate() - 364);
 
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const stats = await Transaction.aggregate([
-    {
-      $match: {
-        userId: fleetObjectId,
-        userModel: 'FleetManager',
-        status: 'SUCCESS',
-        type: 'FLEET_EARNING',
+  const [stats, wallet, fleetRiders] = await Promise.all([
+    Transaction.aggregate([
+      {
+        $match: {
+          userId: fleetObjectId,
+          userModel: 'FleetManager',
+          status: 'SUCCESS',
+          type: 'FLEET_EARNING',
+        },
       },
-    },
-    {
-      $facet: {
-        cardStats: [
-          {
-            $group: {
-              _id: null,
-              totalEarnings: { $sum: '$totalAmount' },
-              monthlyEarnings: {
-                $sum: {
-                  $cond: [
-                    { $gte: ['$createdAt', startOfMonth] },
-                    '$totalAmount',
-                    0,
-                  ],
+      {
+        $facet: {
+          cardStats: [
+            {
+              $group: {
+                _id: null,
+                totalEarnings: { $sum: '$totalAmount' },
+                monthlyEarnings: {
+                  $sum: {
+                    $cond: [
+                      { $gte: ['$createdAt', startOfMonth] },
+                      '$totalAmount',
+                      0,
+                    ],
+                  },
                 },
-              },
-              weeklyEarnings: {
-                $sum: {
-                  $cond: [
-                    { $gte: ['$createdAt', startOfWeek] },
-                    '$totalAmount',
-                    0,
-                  ],
+                weeklyEarnings: {
+                  $sum: {
+                    $cond: [
+                      { $gte: ['$createdAt', startOfWeek] },
+                      '$totalAmount',
+                      0,
+                    ],
+                  },
                 },
               },
             },
-          },
-        ],
-        weeklyGraph: [
-          {
-            $match: {
-              createdAt: {
-                $gte: new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate() - 364,
-                ),
+          ],
+          weeklyGraph: [
+            {
+              $match: {
+                createdAt: { $gte: startOfGraphRange },
               },
             },
-          },
-          {
-            $project: {
-              totalAmount: 1,
-              weekNum: { $isoWeek: '$createdAt' },
-              yearNum: { $isoWeekYear: '$createdAt' },
+            {
+              $project: {
+                totalAmount: 1,
+                weekNum: { $isoWeek: '$createdAt' },
+                yearNum: { $isoWeekYear: '$createdAt' },
+              },
             },
-          },
-          {
-            $group: {
-              _id: { week: '$weekNum', year: '$yearNum' },
-              earnings: { $sum: '$totalAmount' },
+            {
+              $group: {
+                _id: { week: '$weekNum', year: '$yearNum' },
+                earnings: { $sum: '$totalAmount' },
+              },
             },
-          },
-          { $sort: { '_id.year': 1, '_id.week': 1 } },
-        ],
+            { $sort: { '_id.year': 1, '_id.week': 1 } },
+          ],
+        },
       },
-    },
+    ]),
+
+    Wallet.findOne({
+      userId: fleetObjectId,
+      userModel: 'FleetManager',
+    })
+      .select('currentBalance')
+      .lean(),
+
+    DeliveryPartner.find({
+      'registeredBy.id': fleetObjectId,
+      'registeredBy.model': 'FleetManager',
+      isDeleted: false,
+    })
+      .select('_id')
+      .lean(),
   ]);
-
-  const wallet = await Wallet.findOne({
-    userId: fleetObjectId,
-    userModel: 'FleetManager',
-  }).select('currentBalance');
-
-  const fleetRiders = await DeliveryPartner.find({
-    'registeredBy.id': fleetObjectId,
-    'registeredBy.model': 'FleetManager',
-  })
-    .select('_id')
-    .lean();
 
   const fleetRiderIds = fleetRiders.map((rider) => rider._id);
+  let totalRiderPayable = 0;
 
-  const riderPayableAggregate = await Wallet.aggregate([
-    {
-      $match: {
-        userId: { $in: fleetRiderIds },
-        userModel: 'DeliveryPartner',
+  if (fleetRiderIds.length > 0) {
+    const riderPayableAggregate = await Wallet.aggregate([
+      {
+        $match: {
+          userId: { $in: fleetRiderIds },
+          userModel: 'DeliveryPartner',
+        },
       },
-    },
-    {
-      $group: {
-        _id: null,
-        totalPayable: { $sum: '$currentBalance' },
+      {
+        $group: {
+          _id: null,
+          totalPayable: { $sum: '$currentBalance' },
+        },
       },
-    },
-  ]);
+    ]);
+    totalRiderPayable = riderPayableAggregate[0]?.totalPayable || 0;
+  }
 
-  const totalRiderPayable = riderPayableAggregate[0]?.totalPayable || 0;
-
-  const cardData = stats[0].cardStats[0] || {
+  const metrics = stats[0] || { cardStats: [], weeklyGraph: [] };
+  const cardData = metrics.cardStats[0] || {
     totalEarnings: 0,
     monthlyEarnings: 0,
     weeklyEarnings: 0,
   };
 
-  const graphData = stats[0].weeklyGraph.map((item: any) => ({
+  const graphData = (metrics.weeklyGraph || []).map((item: any) => ({
     week: `Week ${item._id.week}`,
-    earnings: item.earnings,
+    earnings: roundTo2(item.earnings),
     year: item._id.year,
   }));
 
