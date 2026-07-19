@@ -569,15 +569,15 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
 const getTopSellingItemsAnalytics = async (currentUser: TCurrentUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
-  const now = new Date();
+  const startOfToday = getLocalStartOfPeriod('today');
 
-  const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(now.getDate() - 7);
+  const sevenDaysAgo = new Date(startOfToday);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const fourteenDaysAgo = new Date(now);
-  fourteenDaysAgo.setDate(now.getDate() - 14);
+  const fourteenDaysAgo = new Date(startOfToday);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-  const [facet] = await Order.aggregate([
+  const [facetResult] = await Order.aggregate([
     {
       $match: {
         vendorId,
@@ -603,11 +603,7 @@ const getTopSellingItemsAnalytics = async (currentUser: TCurrentUser) => {
 
         // current period (0–7 days)
         currentPeriod: [
-          {
-            $match: {
-              createdAt: { $gte: sevenDaysAgo },
-            },
-          },
+          { $match: { createdAt: { $gte: sevenDaysAgo } } },
           { $unwind: '$items' },
           {
             $group: {
@@ -641,13 +637,19 @@ const getTopSellingItemsAnalytics = async (currentUser: TCurrentUser) => {
     },
   ]);
 
-  const totalItemsSold = facet?.totalItemsSold?.[0]?.total || 0;
+  const facet = facetResult || {
+    totalItemsSold: [],
+    currentPeriod: [],
+    previousPeriod: [],
+  };
+
+  const totalItemsSold = facet.totalItemsSold?.[0]?.total || 0;
 
   const previousMap = new Map(
-    (facet?.previousPeriod || []).map((p: any) => [String(p._id), p.sold]),
+    (facet.previousPeriod || []).map((p: any) => [String(p._id), p.sold]),
   );
 
-  const topItems = (facet?.currentPeriod || [])
+  const topItems = (facet.currentPeriod || [])
     .map((item: any) => {
       const previousSold = (previousMap.get(String(item._id)) as number) || 0;
 
@@ -670,7 +672,10 @@ const getTopSellingItemsAnalytics = async (currentUser: TCurrentUser) => {
 
       return {
         id: item._id,
-        name: item.name,
+        name:
+          typeof item.name === 'object'
+            ? item.name.en || item.name.pt || 'N/A'
+            : item.name || 'N/A',
         image: item.image || null,
         sold: item.sold,
         growthPercentage: Math.round(growthPercentage),
