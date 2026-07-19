@@ -1803,10 +1803,9 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
 // get tax report analytics for vendor
 const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
   const now = new Date();
-  const start = new Date();
-  start.setMonth(now.getMonth() - 5);
-  start.setDate(1);
-  start.setHours(0, 0, 0, 0);
+
+  const start = getLocalStartOfPeriod('month');
+  start.setMonth(start.getMonth() - 5);
 
   const vId = new mongoose.Types.ObjectId(currentUser._id);
 
@@ -1815,6 +1814,7 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
       $match: {
         vendorId: vId,
         orderStatus: 'DELIVERED',
+        isDeleted: false,
         createdAt: { $gte: start, $lte: now },
       },
     },
@@ -1840,7 +1840,7 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
               addonTax: {
                 $sum: {
                   $reduce: {
-                    input: '$items.addons',
+                    input: { $ifNull: ['$items.addons', []] },
                     initialValue: 0,
                     in: { $add: ['$$value', '$$this.taxAmount'] },
                   },
@@ -1864,7 +1864,7 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
                   ],
                   {
                     $map: {
-                      input: '$items.addons',
+                      input: { $ifNull: ['$items.addons', []] },
                       as: 'addon',
                       in: {
                         rate: '$$addon.taxRate',
@@ -1889,7 +1889,13 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
         revenueTrend: [
           {
             $group: {
-              _id: { $dateToString: { format: '%b', date: '$createdAt' } },
+              _id: {
+                $dateToString: {
+                  format: '%b',
+                  date: '$createdAt',
+                  timezone: 'Europe/Lisbon',
+                },
+              },
               revenue: { $sum: '$payoutSummary.vendor.earningsWithoutTax' },
               tax: { $sum: '$payoutSummary.vendor.payableTax' },
               sortDate: { $first: '$createdAt' },
@@ -1900,7 +1906,12 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
 
         addonTaxBreakdown: [
           { $unwind: '$items' },
-          { $unwind: '$items.addons' },
+          {
+            $unwind: {
+              path: '$items.addons',
+              preserveNullAndEmptyArrays: false,
+            },
+          },
           {
             $group: {
               _id: '$items.addons.name',
@@ -1925,16 +1936,22 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
   };
 
   const totalCalculatedTax =
-    contributionRaw.productTax + contributionRaw.addonTax || 1;
+    contributionRaw.productTax + contributionRaw.addonTax;
 
   const taxContribution = [
     {
       name: 'Product',
-      value: roundTo2((contributionRaw.productTax / totalCalculatedTax) * 100),
+      value:
+        totalCalculatedTax > 0
+          ? roundTo2((contributionRaw.productTax / totalCalculatedTax) * 100)
+          : 0,
     },
     {
       name: 'Addon',
-      value: roundTo2((contributionRaw.addonTax / totalCalculatedTax) * 100),
+      value:
+        totalCalculatedTax > 0
+          ? roundTo2((contributionRaw.addonTax / totalCalculatedTax) * 100)
+          : 0,
     },
   ];
 
