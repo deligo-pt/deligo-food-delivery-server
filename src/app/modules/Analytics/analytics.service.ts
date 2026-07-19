@@ -2395,9 +2395,10 @@ const getFleetManagerPerformanceAnalytics = async (
 const getSingleFleetPerformanceDetailsAnalytics = async (
   fleetManagerId: string,
 ) => {
-  const now = new Date();
+  const startOfToday = getLocalStartOfPeriod('today');
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfWeek.getDate() - 6);
 
-  // Fleet Manager
   const fleetManager = await FleetManager.findOne({ userId: fleetManagerId })
     .select('_id profilePhoto userId email status name address rating')
     .lean();
@@ -2415,73 +2416,80 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     .lean();
 
   const driverIds = drivers.map((d) => d._id);
-
   const totalDrivers = driverIds.length;
 
-  // Fleet Orders + Earnings
-  const [orderStats] = await Order.aggregate([
-    {
-      $match: {
-        deliveryPartnerId: { $in: driverIds },
-        orderStatus: 'DELIVERED',
-        isDeleted: false,
+  const formatName = (nameObj: any) => {
+    if (!nameObj) return 'N/A';
+    if (typeof nameObj === 'object') {
+      return (
+        `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim() || 'N/A'
+      );
+    }
+    return nameObj;
+  };
+
+  const [orderStats, weeklyRaw] = await Promise.all([
+    Order.aggregate([
+      {
+        $match: {
+          deliveryPartnerId: { $in: driverIds },
+          orderStatus: 'DELIVERED',
+          isDeleted: false,
+        },
       },
-    },
-    {
-      $group: {
-        _id: null,
-        totalDeliveries: { $sum: 1 },
-        totalEarnings: { $sum: '$payoutSummary.fleet.fee' },
+      {
+        $group: {
+          _id: null,
+          totalDeliveries: { $sum: 1 },
+          totalEarnings: { $sum: '$payoutSummary.fleet.fee' },
+        },
       },
-    },
+    ]),
+
+    Order.aggregate([
+      {
+        $match: {
+          deliveryPartnerId: { $in: driverIds },
+          orderStatus: 'DELIVERED',
+          isDeleted: false,
+          createdAt: { $gte: startOfWeek },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dayOfWeek: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+          },
+          totalOrders: { $sum: 1 },
+          totalEarnings: { $sum: '$payoutSummary.fleet.fee' },
+        },
+      },
+    ]),
   ]);
 
-  const stats = orderStats || { totalDeliveries: 0, totalEarnings: 0 };
+  const stats = orderStats[0] || { totalDeliveries: 0, totalEarnings: 0 };
 
-  // Fleet Performance
   const fleetPerformance = {
     ...fleetManager,
+    name: formatName(fleetManager.name),
     totalDrivers,
     totalDeliveries: stats.totalDeliveries,
     totalEarnings: roundTo2(stats.totalEarnings),
   };
 
-  // Weekly Performance (Last 7 days)
-  const startOfWeek = new Date();
-  startOfWeek.setDate(now.getDate() - 6);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const weeklyRaw = await Order.aggregate([
-    {
-      $match: {
-        deliveryPartnerId: { $in: driverIds },
-        orderStatus: 'DELIVERED',
-        isDeleted: false,
-        createdAt: { $gte: startOfWeek },
-      },
-    },
-    {
-      $group: {
-        _id: { $dayOfWeek: '$createdAt' },
-        totalOrders: { $sum: 1 },
-        totalEarnings: { $sum: '$payoutSummary.fleet.fee' },
-      },
-    },
-  ]);
-
+  // Weekly Performance mapping
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const weeklyMap = new Map();
-  weeklyRaw.forEach((w: any) => weeklyMap.set(w._id, w));
+  const weeklyMap = new Map((weeklyRaw || []).map((w: any) => [w._id, w]));
 
   const fleetWeeklyPerformance = days.map((day, index) => {
-    const mongoDay = index === 0 ? 1 : index + 1;
+    // MongoDB $dayOfWeek: ১ (Sun) থেকে ৭ (Sat) দেয়
+    const mongoDay = index + 1;
     const found = weeklyMap.get(mongoDay);
 
     return {
       day,
       totalOrders: found?.totalOrders || 0,
-      totalEarnings: roundTo2(found?.totalEarnings || 0),
+      totalEarnings: found ? roundTo2(found.totalEarnings) : 0,
     };
   });
 
@@ -2492,7 +2500,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     .map((driver) => ({
       _id: driver._id,
       userId: driver.userId,
-      name: driver.name,
+      name: formatName(driver.name),
       rating: driver.rating?.average || 0,
     }));
 
