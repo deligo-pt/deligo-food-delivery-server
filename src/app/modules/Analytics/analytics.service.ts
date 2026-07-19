@@ -1101,26 +1101,22 @@ const getAdminVendorReportAnalytics = async (
     toDate,
   );
 
-  // 1. Generate the exact timeline map with 0s
   const timelineMap = generateEmptyBuckets(start, end, resolution, size);
   const groupId = getGroupingPipeline(resolution, size, start);
 
-  // Growth match based on timeframe (or all if timeframe is null)
   const growthMatch: any = { isDeleted: false };
   if (start) {
     growthMatch.createdAt = { $gte: start, $lte: end };
   }
 
-  const [analytics] = await Vendor.aggregate([
+  const [analyticsResult] = await Vendor.aggregate([
     {
       $facet: {
-        // GLOBAL STATS & STATUS DISTRIBUTION
         statusStats: [
           { $match: { isDeleted: false } },
           { $group: { _id: '$status', count: { $sum: 1 } } },
         ],
 
-        // VENDOR GROWTH (Timeframe aware)
         growth: [
           { $match: growthMatch },
           { $group: { _id: groupId, count: { $sum: 1 } } },
@@ -1137,14 +1133,14 @@ const getAdminVendorReportAnalytics = async (
     },
   ]);
 
-  // Helper to find count by status
-  const getCount = (status: string) =>
-    analytics.statusStats.find((s: any) => s._id === status)?.count || 0;
+  const analytics = analyticsResult || { statusStats: [], growth: [] };
 
-  // Map Growth Labels (Reusing the logic from Customer Report)
-  // 2. Map MongoDB results into timelineMap (IMPORTANT FIX)
+  const getCount = (status: string) =>
+    (analytics.statusStats || []).find((s: any) => s._id === status)?.count ||
+    0;
+
   const vendorGrowths = mapGrowthToTimeline({
-    growth: analytics.growth,
+    growth: analytics.growth || [],
     timelineMap,
     start,
     end,
