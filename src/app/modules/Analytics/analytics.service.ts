@@ -383,14 +383,15 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
 const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
-  const now = new Date();
-  const fourteenDaysAgo = new Date();
-  fourteenDaysAgo.setDate(now.getDate() - 14);
+  const startOfToday = getLocalStartOfPeriod('today');
 
-  const twentyEightDaysAgo = new Date();
-  twentyEightDaysAgo.setDate(now.getDate() - 28);
+  const fourteenDaysAgo = new Date(startOfToday);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-  const [facet] = await Order.aggregate([
+  const twentyEightDaysAgo = new Date(startOfToday);
+  twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
+
+  const [facetResult] = await Order.aggregate([
     {
       $match: {
         vendorId,
@@ -402,24 +403,17 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
     },
     {
       $facet: {
-        // Daily volume chart (last 14 days)
         dailyVolume: [
           { $match: { createdAt: { $gte: fourteenDaysAgo } } },
           {
-            $project: {
-              dayIndex: {
-                $ceil: {
-                  $divide: [
-                    { $subtract: ['$createdAt', fourteenDaysAgo] },
-                    1000 * 60 * 60 * 24,
-                  ],
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: '$createdAt',
+                  timezone: 'Europe/Lisbon',
                 },
               },
-            },
-          },
-          {
-            $group: {
-              _id: '$dayIndex',
               orders: { $sum: 1 },
             },
           },
@@ -447,9 +441,7 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
           { $match: { createdAt: { $gte: fourteenDaysAgo } } },
           {
             $group: {
-              _id: {
-                $hour: { date: '$createdAt', timezone: 'Europe/Lisbon' },
-              },
+              _id: { $hour: { date: '$createdAt', timezone: 'Europe/Lisbon' } },
               count: { $sum: 1 },
             },
           },
@@ -457,12 +449,10 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
           { $limit: 4 },
         ],
 
-        // Category Growth (FIXED PART)
+        // Category Performance
         categoryPerformance: [
           { $match: { createdAt: { $gte: fourteenDaysAgo } } },
-
           { $unwind: '$items' },
-
           {
             $lookup: {
               from: 'products',
@@ -471,9 +461,7 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
               as: 'product',
             },
           },
-
           { $unwind: '$product' },
-
           {
             $lookup: {
               from: 'productcategories',
@@ -482,27 +470,32 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
               as: 'category',
             },
           },
-
           { $unwind: '$category' },
-
           {
             $group: {
               _id: '$category.name',
               count: { $sum: '$items.itemSummary.quantity' },
             },
           },
-
           { $sort: { count: -1 } },
         ],
       },
     },
   ]);
 
-  const currentCount =
-    facet.growthComparison.find((g: any) => g._id === 'current')?.count || 0;
+  const facet = facetResult || {
+    dailyVolume: [],
+    growthComparison: [],
+    peakTimes: [],
+    categoryPerformance: [],
+  };
 
+  const currentCount =
+    (facet.growthComparison || []).find((g: any) => g._id === 'current')
+      ?.count || 0;
   const previousCount =
-    facet.growthComparison.find((g: any) => g._id === 'previous')?.count || 0;
+    (facet.growthComparison || []).find((g: any) => g._id === 'previous')
+      ?.count || 0;
 
   let percentageChange = 0;
   let trend: 'up' | 'down' | 'neutral' = 'neutral';
@@ -515,6 +508,25 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
     trend = 'up';
   }
 
+  const dailyVolumeTrend = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - i);
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const found = (facet.dailyVolume || []).find((v: any) => v._id === dateStr);
+
+    dailyVolumeTrend.push({
+      day: `D${14 - i}`,
+      date: dateStr,
+      orders: found ? found.orders : 0,
+    });
+  }
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Order Trend Insights' },
@@ -525,16 +537,9 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
         trend,
       },
 
-      dailyVolume: Array.from({ length: 14 }, (_, i) => {
-        const found = facet.dailyVolume.find((d: any) => d._id === i + 1);
+      dailyVolume: dailyVolumeTrend,
 
-        return {
-          day: `D${i + 1}`,
-          orders: found ? found.orders : 0,
-        };
-      }),
-
-      peakOrderingTimes: facet.peakTimes.map((p: any) => ({
+      peakOrderingTimes: (facet.peakTimes || []).map((p: any) => ({
         time:
           p._id === 0
             ? '12 AM'
@@ -546,8 +551,11 @@ const getOrderTrendInsights = async (currentUser: TCurrentUser) => {
         orderCount: p.count,
       })),
 
-      categoryGrowth: facet.categoryPerformance.map((c: any) => ({
-        category: c._id || 'Other',
+      categoryGrowth: (facet.categoryPerformance || []).map((c: any) => ({
+        category:
+          typeof c._id === 'object'
+            ? c._id.en || c._id.pt || 'Other'
+            : c._id || 'Other',
         percentage:
           currentCount > 0
             ? `${((c.count / currentCount) * 100).toFixed(0)}%`
