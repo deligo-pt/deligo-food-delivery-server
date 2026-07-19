@@ -1425,14 +1425,13 @@ const getAdminDeliveryPartnerReportAnalytics = async (
 const getVendorSalesReportAnalytics = async (
   user: TCurrentUser,
 ): Promise<TVendorSalesReport> => {
-  const vendorId = user._id;
+  const vendorId = new Types.ObjectId(user._id);
 
-  const today = new Date();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(today.getDate() - 6);
-  sevenDaysAgo.setHours(0, 0, 0, 0);
+  const startOfToday = getLocalStartOfPeriod('today');
+  const sevenDaysAgo = new Date(startOfToday);
+  sevenDaysAgo.setDate(startOfToday.getDate() - 6);
 
-  const [analytics] = await Order.aggregate([
+  const [analyticsResult] = await Order.aggregate([
     {
       $match: {
         vendorId: vendorId,
@@ -1441,7 +1440,7 @@ const getVendorSalesReportAnalytics = async (
     },
     {
       $facet: {
-        // --- SUMMARY STATS (Top Cards) ---
+        // --- SUMMARY STATS (Lifetime) ---
         stats: [
           {
             $group: {
@@ -1476,42 +1475,43 @@ const getVendorSalesReportAnalytics = async (
 
         // --- SALES OVERVIEW (Last 7 Days) ---
         salesOverview: [
-          {
-            $match: {
-              createdAt: { $gte: sevenDaysAgo },
-            },
-          },
+          { $match: { createdAt: { $gte: sevenDaysAgo } } },
           {
             $group: {
-              _id: { $dayOfWeek: '$createdAt' },
+              _id: {
+                $dayOfWeek: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+              },
               sales: { $sum: '$orderCalculation.totalOriginalPrice' },
               orders: { $sum: 1 },
-              date: { $first: '$createdAt' },
             },
           },
-          { $sort: { date: 1 } },
+          { $sort: { _id: 1 } },
         ],
       },
     },
   ]);
 
-  // 2. Prepare the 7-day name mapping
+  const analytics = analyticsResult || { stats: [], salesOverview: [] };
+
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // 3. Ensure all 7 days are represented
+  // 3. Ensure all 7 days are represented (Refactored for safety)
   const last7DaysData = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date();
-    d.setDate(today.getDate() - (6 - i));
+    const d = new Date(startOfToday);
+    d.setDate(startOfToday.getDate() - (6 - i));
     const dayName = dayNames[d.getDay()];
 
-    const dayData = analytics.salesOverview.find((item: any) => {
-      return item._id === d.getDay() + 1;
-    });
+    // MongoDB এর $dayOfWeek ১ (Sun) থেকে ৭ (Sat) দেয়
+    const mongoDayOfWeek = d.getDay() + 1;
+
+    const dayData = (analytics.salesOverview || []).find(
+      (item: any) => item._id === mongoDayOfWeek,
+    );
 
     last7DaysData.push({
       name: dayName,
-      sales: dayData ? Math.round(dayData.sales * 100) / 100 : 0,
+      sales: dayData ? roundTo2(dayData.sales) : 0,
       orders: dayData ? dayData.orders : 0,
     });
   }
@@ -1526,7 +1526,11 @@ const getVendorSalesReportAnalytics = async (
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Vendor Sales Report' },
     data: {
-      stats,
+      stats: {
+        totalSales: roundTo2(stats.totalSales),
+        totalOrders: stats.totalOrders,
+        avgOrderValue: roundTo2(stats.avgOrderValue),
+      },
       salesData: last7DaysData,
     },
   };
@@ -2054,7 +2058,7 @@ const getVendorTaxReport = async (
   };
 };
 
-// get fleet manager performane analytics
+// get fleet manager performance analytics
 const getFleetManagerPerformanceAnalytics = async (
   query: Record<string, unknown>,
 ): Promise<TFleetPerformanceData> => {
