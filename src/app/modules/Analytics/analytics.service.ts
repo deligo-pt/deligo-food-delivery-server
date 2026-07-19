@@ -36,6 +36,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { getLocalStartOfPeriod } from '../../utils/dateTimeProvider';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -47,9 +48,8 @@ const timezone = 'Europe/Lisbon';
 const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
-  const sevenDaysAgo = new Date();
+  const sevenDaysAgo = getLocalStartOfPeriod('today');
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  sevenDaysAgo.setHours(0, 0, 0, 0);
 
   const [result] = await Order.aggregate([
     {
@@ -63,7 +63,6 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
     },
     {
       $facet: {
-        // Weekly sales
         weeklySales: [
           {
             $group: {
@@ -110,24 +109,23 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
   ]);
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
   const weeklyTrend = dayNames.map((day) => ({
     day,
     total: 0,
   }));
 
-  let totalSales = 0;
-
-  if (result?.totalSales?.length) {
-    totalSales = roundTo2(result.totalSales[0].total);
-  }
-
-  if (result?.weeklySales?.length) {
+  if (result?.weeklySales) {
     result.weeklySales.forEach((item: any) => {
       const index = item._id - 1;
-      weeklyTrend[index].total = roundTo2(item.total);
+      if (weeklyTrend[index]) {
+        weeklyTrend[index].total = roundTo2(item.total);
+      }
     });
   }
+
+  const totalSales = result?.totalSales?.[0]?.total
+    ? roundTo2(result.totalSales[0].total)
+    : 0;
 
   // Best & slowest day
   const nonZeroDays = weeklyTrend.filter((d) => d.total > 0);
@@ -150,12 +148,14 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
       bestPerformingDay,
       slowestDay,
       weeklyTrend,
-      topSellingItems:
-        result?.topItems?.map((item: any) => ({
-          id: item._id,
-          name: item.name,
-          sold: item.sold,
-        })) || [],
+      topSellingItems: (result?.topItems || []).map((item: any) => ({
+        id: item._id,
+        name:
+          typeof item.name === 'object'
+            ? item.name.en || item.name.pt || 'N/A'
+            : item.name,
+        sold: item.sold,
+      })),
     },
   };
 };
