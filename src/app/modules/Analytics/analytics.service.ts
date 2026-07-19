@@ -1740,7 +1740,6 @@ const getVendorCustomerReport = async (
     monthlyGrowth: [],
   };
 
-  // ২. Prepare Monthly Chart Data (Timezone safe iteration)
   const monthNames = [
     'Jan',
     'Feb',
@@ -1856,21 +1855,17 @@ const getVendorTaxReport = async (
   currentUser: TCurrentUser,
 ): Promise<TTaxReport> => {
   const vendorId = new mongoose.Types.ObjectId(currentUser._id);
-  const now = new Date();
 
-  // Calculate date for 6 months ago (start of the month)
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
+  const startOfPeriod = getLocalStartOfPeriod('month');
+  startOfPeriod.setMonth(startOfPeriod.getMonth() - 5);
 
-  const [report] = await Order.aggregate([
+  const [reportResult] = await Order.aggregate([
     {
       $match: {
         vendorId,
         isPaid: true,
         isDeleted: false,
-        createdAt: { $gte: sixMonthsAgo },
+        createdAt: { $gte: startOfPeriod },
       },
     },
     {
@@ -1906,7 +1901,9 @@ const getVendorTaxReport = async (
                   $reduce: {
                     input: '$items.addons',
                     initialValue: 0,
-                    in: { $add: ['$$value', '$$this.taxAmount'] },
+                    in: {
+                      $add: ['$$value', { $ifNull: ['$$this.taxAmount', 0] }],
+                    },
                   },
                 },
               },
@@ -1960,22 +1957,19 @@ const getVendorTaxReport = async (
         // 3. Tax by Category (Bar Chart)
         taxByCategory: [
           { $unwind: '$items' },
-          // Collect all taxes (product tax + all addon taxes)
           {
             $project: {
               allTaxes: {
                 $concatArrays: [
-                  // Product tax
                   [
                     {
                       rate: '$items.productPricing.taxRate',
                       amount: '$items.productPricing.taxAmount',
                     },
                   ],
-                  // Addon taxes
                   {
                     $map: {
-                      input: '$items.addons',
+                      input: { $ifNull: ['$items.addons', []] },
                       as: 'addon',
                       in: {
                         rate: '$$addon.taxRate',
@@ -1987,18 +1981,13 @@ const getVendorTaxReport = async (
               },
             },
           },
-
           { $unwind: '$allTaxes' },
-
-          // Group by tax rate and sum the amount
           {
             $group: {
               _id: '$allTaxes.rate',
               totalTaxAmount: { $sum: '$allTaxes.amount' },
             },
           },
-
-          // Calculate total tax across all rates (for percentage)
           {
             $group: {
               _id: null,
@@ -2006,15 +1995,10 @@ const getVendorTaxReport = async (
               grandTotalTax: { $sum: '$totalTaxAmount' },
             },
           },
-
           { $unwind: '$taxes' },
-
-          // Final projection with name, value, and percentage
           {
             $project: {
-              name: {
-                $concat: [{ $toString: '$taxes.rate' }, '%'],
-              },
+              name: { $concat: [{ $toString: '$taxes.rate' }, '%'] },
               value: '$taxes.amount',
               percentage: {
                 $cond: {
@@ -2031,7 +2015,6 @@ const getVendorTaxReport = async (
               _id: 0,
             },
           },
-
           { $sort: { name: 1 } },
         ],
 
@@ -2040,8 +2023,12 @@ const getVendorTaxReport = async (
           {
             $group: {
               _id: {
-                month: { $month: '$createdAt' },
-                year: { $year: '$createdAt' },
+                month: {
+                  $month: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+                },
+                year: {
+                  $year: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+                },
               },
               revenue: { $sum: '$payoutSummary.vendor.earningsWithoutTax' },
               tax: { $sum: '$payoutSummary.vendor.payableTax' },
@@ -2055,7 +2042,7 @@ const getVendorTaxReport = async (
           { $unwind: '$items.addons' },
           {
             $group: {
-              _id: '$items.addons.name',
+              _id: '$items.addons.name', // Localized Object ({en, pt}) অথবা String
               tax: { $sum: '$items.addons.taxAmount' },
             },
           },
@@ -2067,7 +2054,15 @@ const getVendorTaxReport = async (
     },
   ]);
 
-  // --- 6 Month Continuity Logic (Matches your Vibe) ---
+  const report = reportResult || {
+    stats: [],
+    taxContribution: [],
+    taxByCategory: [],
+    monthlyRaw: [],
+    addonTax: [],
+  };
+
+  // --- 6 Month Continuity Logic (Timezone safe iteration) ---
   const monthNames = [
     'Jan',
     'Feb',
@@ -2083,40 +2078,55 @@ const getVendorTaxReport = async (
     'Dec',
   ];
   const revenueData = [];
+  const referenceDate = getLocalStartOfPeriod('month');
 
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const d = new Date(referenceDate);
+    d.setMonth(d.getMonth() - i);
     const m = d.getMonth();
     const y = d.getFullYear();
 
-    const found = report?.monthlyRaw?.find(
+    const found = (report.monthlyRaw || []).find(
       (item: any) => item._id.month === m + 1 && item._id.year === y,
     );
 
     revenueData.push({
       name: monthNames[m],
-      revenue: found ? Number(found.revenue.toFixed(2)) : 0,
-      tax: found ? Number(found.tax.toFixed(2)) : 0,
+      revenue: found ? roundTo2(found.revenue) : 0,
+      tax: found ? roundTo2(found.tax) : 0,
     });
   }
 
-  // Format final return
-  const stats = report?.stats?.[0] || {
+  const stats = report.stats?.[0] || {
     totalSales: 0,
     totalTax: 0,
     netRevenue: 0,
   };
+
+  const formattedTaxByCategory = (report.taxByCategory || []).map((c: any) => ({
+    name: c.name,
+    value: roundTo2(c.value),
+    percentage: Number(c.percentage.toFixed(1)),
+  }));
+
+  const formattedAddonTax = (report.addonTax || []).map((a: any) => ({
+    name:
+      typeof a.name === 'object'
+        ? a.name.en || a.name.pt || 'Other Addon'
+        : a.name || 'Other Addon',
+    tax: roundTo2(a.tax),
+  }));
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Vendor tax report' },
     data: {
       stats: {
-        totalSales: Number(stats.totalSales.toFixed(2)),
-        totalTax: Number(stats.totalTax.toFixed(2)),
-        netRevenue: Number(stats.netRevenue.toFixed(2)),
+        totalSales: roundTo2(stats.totalSales),
+        totalTax: roundTo2(stats.totalTax),
+        netRevenue: roundTo2(stats.netRevenue),
       },
-      taxContribution: report.taxContribution.length
+      taxContribution: report.taxContribution?.length
         ? report.taxContribution.map((c: any) => ({
             name: c.name,
             value: Number(c.value.toFixed(1)),
@@ -2125,9 +2135,9 @@ const getVendorTaxReport = async (
             { name: 'Product', value: 0 },
             { name: 'Addon', value: 0 },
           ],
-      taxByCategory: report.taxByCategory,
+      taxByCategory: formattedTaxByCategory,
       revenueData,
-      addonTax: report.addonTax,
+      addonTax: formattedAddonTax,
     },
   };
 };
