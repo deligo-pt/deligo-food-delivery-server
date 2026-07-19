@@ -1542,16 +1542,11 @@ const getVendorCustomerReport = async (
   query: Record<string, unknown>,
 ) => {
   const vendorId = new mongoose.Types.ObjectId(user._id);
-  const now = new Date();
 
-  // Calculate date for 6 months ago
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
+  const startOfPeriod = getLocalStartOfPeriod('month');
+  startOfPeriod.setMonth(startOfPeriod.getMonth() - 5);
 
-  // 1. Aggregation for Stats and Monthly Growth
-  const [reportData] = await Order.aggregate([
+  const [reportDataResult] = await Order.aggregate([
     {
       $match: {
         vendorId,
@@ -1561,15 +1556,21 @@ const getVendorCustomerReport = async (
     },
     {
       $facet: {
-        // --- Summary Stats ---
-        stats: [
+        // --- Total Customers Count ---
+        totalCountStats: [
+          { $group: { _id: '$customerId' } },
+          { $group: { _id: null, totalCustomers: { $sum: 1 } } },
+        ],
+
+        highestSpenderStats: [
           {
             $group: {
               _id: '$customerId',
               totalSpent: { $sum: '$payoutSummary.grandTotal' },
-              orderCount: { $sum: 1 },
             },
           },
+          { $sort: { totalSpent: -1 } },
+          { $limit: 1 },
           {
             $lookup: {
               from: 'customers',
@@ -1580,48 +1581,125 @@ const getVendorCustomerReport = async (
           },
           { $unwind: '$customer' },
           {
-            $group: {
-              _id: null,
-              totalCustomers: { $sum: 1 },
-              allCustomers: {
-                $push: {
-                  name: {
+            $project: {
+              name: {
+                $cond: {
+                  if: {
+                    $or: [
+                      { $eq: [{ $type: '$customer.name' }, 'missing'] },
+                      {
+                        $and: [
+                          {
+                            $eq: [
+                              {
+                                $trim: {
+                                  input: {
+                                    $ifNull: ['$customer.name.firstName', ''],
+                                  },
+                                },
+                              },
+                              '',
+                            ],
+                          },
+                          {
+                            $eq: [
+                              {
+                                $trim: {
+                                  input: {
+                                    $ifNull: ['$customer.name.lastName', ''],
+                                  },
+                                },
+                              },
+                              '',
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  then: {
+                    $ifNull: [
+                      '$customer.email',
+                      { $ifNull: ['$customer.userId', 'Guest User'] },
+                    ],
+                  },
+                  else: {
                     $concat: [
                       '$customer.name.firstName',
                       ' ',
                       '$customer.name.lastName',
                     ],
                   },
-                  totalSpent: '$totalSpent',
-                  orderCount: '$orderCount',
                 },
               },
             },
           },
+        ],
+
+        mostOrdersStats: [
+          { $group: { _id: '$customerId', orderCount: { $sum: 1 } } },
+          { $sort: { orderCount: -1 } },
+          { $limit: 1 },
+          {
+            $lookup: {
+              from: 'customers',
+              localField: '_id',
+              foreignField: '_id',
+              as: 'customer',
+            },
+          },
+          { $unwind: '$customer' },
           {
             $project: {
-              totalCustomers: 1,
-              highestSpender: {
-                $arrayElemAt: [
-                  {
-                    $sortArray: {
-                      input: '$allCustomers',
-                      sortBy: { totalSpent: -1 },
-                    },
+              name: {
+                $cond: {
+                  if: {
+                    $or: [
+                      { $eq: [{ $type: '$customer.name' }, 'missing'] },
+                      {
+                        $and: [
+                          {
+                            $eq: [
+                              {
+                                $trim: {
+                                  input: {
+                                    $ifNull: ['$customer.name.firstName', ''],
+                                  },
+                                },
+                              },
+                              '',
+                            ],
+                          },
+                          {
+                            $eq: [
+                              {
+                                $trim: {
+                                  input: {
+                                    $ifNull: ['$customer.name.lastName', ''],
+                                  },
+                                },
+                              },
+                              '',
+                            ],
+                          },
+                        ],
+                      },
+                    ],
                   },
-                  0,
-                ],
-              },
-              mostOrders: {
-                $arrayElemAt: [
-                  {
-                    $sortArray: {
-                      input: '$allCustomers',
-                      sortBy: { orderCount: -1 },
-                    },
+                  then: {
+                    $ifNull: [
+                      '$customer.email',
+                      { $ifNull: ['$customer.userId', 'Guest User'] },
+                    ],
                   },
-                  0,
-                ],
+                  else: {
+                    $concat: [
+                      '$customer.name.firstName',
+                      ' ',
+                      '$customer.name.lastName',
+                    ],
+                  },
+                },
               },
             },
           },
@@ -1629,41 +1707,40 @@ const getVendorCustomerReport = async (
 
         // --- Monthly Customer Growth (Last 6 Months) ---
         monthlyGrowth: [
-          {
-            $match: {
-              createdAt: { $gte: sixMonthsAgo },
-            },
-          },
+          { $match: { createdAt: { $gte: startOfPeriod } } },
           {
             $group: {
               _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
+                year: {
+                  $year: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+                },
+                month: {
+                  $month: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+                },
                 customer: '$customerId',
               },
             },
           },
           {
             $group: {
-              _id: {
-                year: '$_id.year',
-                month: '$_id.month',
-              },
+              _id: { year: '$_id.year', month: '$_id.month' },
               uniqueCustomers: { $sum: 1 },
             },
           },
-          {
-            $sort: {
-              '_id.year': 1,
-              '_id.month': 1,
-            },
-          },
+          { $sort: { '_id.year': 1, '_id.month': 1 } },
         ],
       },
     },
   ]);
 
-  // 2. Prepare Monthly Chart Data
+  const reportData = reportDataResult || {
+    totalCountStats: [],
+    highestSpenderStats: [],
+    mostOrdersStats: [],
+    monthlyGrowth: [],
+  };
+
+  // ২. Prepare Monthly Chart Data (Timezone safe iteration)
   const monthNames = [
     'Jan',
     'Feb',
@@ -1678,16 +1755,17 @@ const getVendorCustomerReport = async (
     'Nov',
     'Dec',
   ];
-
   const monthlyCustomers = [];
+  const referenceDate = getLocalStartOfPeriod('month');
 
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const d = new Date(referenceDate);
+    d.setMonth(d.getMonth() - i);
 
     const m = d.getMonth();
     const y = d.getFullYear();
 
-    const found = reportData?.monthlyGrowth?.find(
+    const found = (reportData.monthlyGrowth || []).find(
       (item: any) => item._id.month === m + 1 && item._id.year === y,
     );
 
@@ -1708,7 +1786,7 @@ const getVendorCustomerReport = async (
     _id: { $in: customerIds },
   };
 
-  // customer table
+  // Customer pagination table using QueryBuilder
   const builder = new QueryBuilder(Customer.find(), customerQuery)
     .search(['name.firstName', 'name.lastName', 'contactNumber'])
     .filter()
@@ -1719,14 +1797,13 @@ const getVendorCustomerReport = async (
   const meta = await builder.countTotal();
   const customers = await builder.modelQuery;
 
-  // Get Order Stats per Customer
+  // Get Order Stats per Page Customer
   const stats = await Order.aggregate([
     {
       $match: {
         vendorId,
-        customerId: {
-          $in: customers.map((c) => c._id),
-        },
+        customerId: { $in: customers.map((c) => c._id) },
+        isDeleted: false,
       },
     },
     {
@@ -1743,30 +1820,27 @@ const getVendorCustomerReport = async (
 
   const customerTable = customers.map((customer: any) => {
     const stat = statsMap.get(customer._id.toString());
-
     return {
       ...customer.toObject(),
       orderCount: stat?.orderCount || 0,
-      totalSpent: stat?.totalSpent || 0,
+      totalSpent: roundTo2(stat?.totalSpent || 0),
       lastOrder: stat?.lastOrder || null,
     };
   });
 
-  // stats formatting
-  const statsData = reportData?.stats?.[0] || {
-    totalCustomers: 0,
-    highestSpender: { name: 'N/A' },
-    mostOrders: { name: 'N/A' },
-  };
+  const totalCustomersCount =
+    reportData.totalCountStats?.[0]?.totalCustomers || 0;
+  const highestSpenderName = reportData.highestSpenderStats?.[0]?.name || 'N/A';
+  const mostOrdersName = reportData.mostOrdersStats?.[0]?.name || 'N/A';
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Customers' },
     data: {
       stats: {
-        totalCustomers: statsData.totalCustomers,
-        highestSpender: statsData.highestSpender?.name || 'N/A',
-        mostOrders: statsData.mostOrders?.name || 'N/A',
+        totalCustomers: totalCustomersCount,
+        highestSpender: highestSpenderName,
+        mostOrders: mostOrdersName,
       },
       monthlyCustomers,
       customers: {
