@@ -29,21 +29,38 @@ const getAdminDashboardAnalytics = async () => {
     fleetManagers,
     deliveryPartners,
     totalProducts,
-    totalOrders,
-    pendingOrders,
-    completedOrders,
-    canceledOrders,
+    orderCountsResult,
   ] = await Promise.all([
     Customer.countDocuments(),
     Vendor.countDocuments(),
     FleetManager.countDocuments(),
     DeliveryPartner.countDocuments(),
     Product.countDocuments({ isDeleted: false }),
-    Order.countDocuments(),
-    Order.countDocuments({ orderStatus: 'PENDING' }),
-    Order.countDocuments({ orderStatus: 'DELIVERED' }),
-    Order.countDocuments({ orderStatus: 'CANCELED' }),
+    Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$orderStatus', 'PENDING'] }, 1, 0] },
+          },
+          completed: {
+            $sum: { $cond: [{ $eq: ['$orderStatus', 'DELIVERED'] }, 1, 0] },
+          },
+          canceled: {
+            $sum: { $cond: [{ $eq: ['$orderStatus', 'CANCELED'] }, 1, 0] },
+          },
+        },
+      },
+    ]),
   ]);
+
+  const orderStats = orderCountsResult[0] || {
+    total: 0,
+    pending: 0,
+    completed: 0,
+    canceled: 0,
+  };
 
   const popularCategories = await Order.aggregate([
     { $unwind: '$items' },
@@ -55,7 +72,7 @@ const getAdminDashboardAnalytics = async () => {
         as: 'product',
       },
     },
-    { $unwind: '$product' },
+    { $unwind: { path: '$product', preserveNullAndEmptyArrays: false } },
     {
       $lookup: {
         from: 'productcategories',
@@ -64,7 +81,9 @@ const getAdminDashboardAnalytics = async () => {
         as: 'categoryDetails',
       },
     },
-    { $unwind: '$categoryDetails' },
+    {
+      $unwind: { path: '$categoryDetails', preserveNullAndEmptyArrays: false },
+    },
     {
       $group: {
         _id: '$categoryDetails._id',
@@ -111,7 +130,8 @@ const getAdminDashboardAnalytics = async () => {
     .sort({ createdAt: -1 })
     .limit(3)
     .populate('customerId', 'name')
-    .select('orderId orderStatus createdAt');
+    .select('orderId orderStatus createdAt')
+    .lean();
 
   const topRatedItems = await Product.aggregate([
     {
@@ -120,16 +140,17 @@ const getAdminDashboardAnalytics = async () => {
         'rating.average': { $gte: 4 },
       },
     },
-
     {
       $lookup: {
         from: 'orders',
-        localField: '_id',
-        foreignField: 'items.productId',
-        as: 'orderData',
+        let: { productId: '$_id' },
+        pipeline: [
+          { $match: { $expr: { $in: ['$$productId', '$items.productId'] } } },
+          { $count: 'count' },
+        ],
+        as: 'orderCountData',
       },
     },
-
     {
       $project: {
         _id: 1,
@@ -137,21 +158,22 @@ const getAdminDashboardAnalytics = async () => {
         name: 1,
         images: 1,
         rating: { average: '$rating.average' },
-        totalOrders: { $size: '$orderData' },
+        totalOrders: {
+          $ifNull: [{ $arrayElemAt: ['$orderCountData.count', 0] }, 0],
+        },
       },
     },
-
     { $sort: { 'rating.average': -1, totalOrders: -1 } },
-
     { $limit: 4 },
   ]);
 
   const topRatedDeliveryPartners = await DeliveryPartner.find({
-    rating: { $gte: 4 },
+    'rating.average': { $gte: 4 },
   })
-    .sort({ rating: -1 })
+    .sort({ 'rating.average': -1 })
     .limit(5)
-    .select('name rating completedDeliveries');
+    .select('name rating completedDeliveries')
+    .lean();
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -165,10 +187,10 @@ const getAdminDashboardAnalytics = async () => {
         totalProducts,
       },
       orders: {
-        total: totalOrders,
-        pending: pendingOrders,
-        completed: completedOrders,
-        canceled: canceledOrders,
+        total: orderStats.total,
+        pending: orderStats.pending,
+        completed: orderStats.completed,
+        canceled: orderStats.canceled,
       },
       popularCategories,
       recentOrders,
