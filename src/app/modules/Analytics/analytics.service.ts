@@ -3104,35 +3104,35 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
 
 // get admin vendor sales analytics
 const getAdminSalesAnalytics = async (query: any) => {
-  // DATE HANDLING
+  const TZ = 'Europe/Lisbon';
+
+  const startOfToday = getLocalStartOfPeriod('today');
+
   const getDaysAgo = (days: number) => {
-    const d = new Date();
+    const d = new Date(startOfToday);
     d.setDate(d.getDate() - days);
-    d.setHours(0, 0, 0, 0);
     return d;
   };
 
   const from = query.fromDate ? new Date(query.fromDate) : getDaysAgo(30);
   const to = query.toDate ? new Date(query.toDate) : new Date();
+
   to.setHours(23, 59, 59, 999);
 
-  // Previous period (for growth)
   const diffMs = to.getTime() - from.getTime();
   const previousFrom = new Date(from.getTime() - diffMs);
 
-  // AGGREGATION
   const pipeline: PipelineStage[] = [
     {
+      $match: {
+        isDeleted: false,
+        createdAt: { $gte: previousFrom, $lte: to },
+      },
+    },
+    {
       $facet: {
-        // SUMMARY
+        // --- SUMMARY (Current vs Previous) ---
         summary: [
-          {
-            $match: {
-              isDeleted: false,
-              isPaid: true,
-              // createdAt: { $gte: previousFrom, $lte: to },
-            },
-          },
           {
             $group: {
               _id: {
@@ -3143,6 +3143,7 @@ const getAdminSalesAnalytics = async (query: any) => {
                         $and: [
                           { $gte: ['$createdAt', from] },
                           { $lte: ['$createdAt', to] },
+                          { $eq: ['$isPaid', true] },
                         ],
                       },
                       then: 'current',
@@ -3152,6 +3153,7 @@ const getAdminSalesAnalytics = async (query: any) => {
                         $and: [
                           { $gte: ['$createdAt', previousFrom] },
                           { $lt: ['$createdAt', from] },
+                          { $eq: ['$isPaid', true] },
                         ],
                       },
                       then: 'previous',
@@ -3166,18 +3168,13 @@ const getAdminSalesAnalytics = async (query: any) => {
               orderCount: { $sum: 1 },
             },
           },
-          {
-            $match: {
-              _id: { $in: ['current', 'previous'] },
-            },
-          },
+          { $match: { _id: { $in: ['current', 'previous'] } } },
         ],
 
-        // DAILY (last 7 days)
+        // --- DAILY TREND (Last 7 Days) ---
         daily: [
           {
             $match: {
-              isDeleted: false,
               isPaid: true,
               createdAt: {
                 $gte: new Date(to.getTime() - 6 * 86400000),
@@ -3191,22 +3188,20 @@ const getAdminSalesAnalytics = async (query: any) => {
                 $dateToString: {
                   format: '%Y-%m-%d',
                   date: '$createdAt',
+                  timezone: TZ,
                 },
               },
               orders: { $sum: 1 },
-              revenue: {
-                $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] },
-              },
+              revenue: { $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] } },
             },
           },
           { $sort: { _id: 1 } },
         ],
 
-        // WEEKLY
+        // --- WEEKLY TREND ---
         weekly: [
           {
             $match: {
-              isDeleted: false,
               isPaid: true,
               createdAt: { $gte: from, $lte: to },
             },
@@ -3214,26 +3209,20 @@ const getAdminSalesAnalytics = async (query: any) => {
           {
             $group: {
               _id: {
-                $dateTrunc: {
-                  date: '$createdAt',
-                  unit: 'week',
-                },
+                $dateTrunc: { date: '$createdAt', unit: 'week', timezone: TZ },
               },
               orders: { $sum: 1 },
-              revenue: {
-                $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] },
-              },
+              revenue: { $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] } },
             },
           },
           { $sort: { _id: 1 } },
           { $limit: 4 },
         ],
 
-        // MONTHLY
+        // --- MONTHLY TREND ---
         monthly: [
           {
             $match: {
-              isDeleted: false,
               isPaid: true,
               createdAt: { $gte: from, $lte: to },
             },
@@ -3241,27 +3230,20 @@ const getAdminSalesAnalytics = async (query: any) => {
           {
             $group: {
               _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
+                year: { $year: { date: '$createdAt', timezone: TZ } },
+                month: { $month: { date: '$createdAt', timezone: TZ } },
               },
               orders: { $sum: 1 },
-              revenue: {
-                $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] },
-              },
+              revenue: { $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] } },
             },
           },
           { $sort: { '_id.year': 1, '_id.month': 1 } },
           { $limit: 6 },
         ],
 
-        // STATUS
+        // --- STATUS DISTRIBUTION ---
         statusDistribution: [
-          {
-            $match: {
-              isDeleted: false,
-              createdAt: { $gte: from, $lte: to },
-            },
-          },
+          { $match: { createdAt: { $gte: from, $lte: to } } },
           {
             $group: {
               _id: '$orderStatus',
@@ -3270,11 +3252,10 @@ const getAdminSalesAnalytics = async (query: any) => {
           },
         ],
 
-        // PAYMENT
+        // --- PAYMENT SPLIT ---
         paymentSplit: [
           {
             $match: {
-              isDeleted: false,
               isPaid: true,
               createdAt: { $gte: from, $lte: to },
             },
@@ -3283,18 +3264,15 @@ const getAdminSalesAnalytics = async (query: any) => {
             $group: {
               _id: '$paymentMethod',
               count: { $sum: 1 },
-              revenue: {
-                $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] },
-              },
+              revenue: { $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] } },
             },
           },
         ],
 
-        // LOCATION
+        // --- REVENUE BY LOCATION ---
         revenueByLocation: [
           {
             $match: {
-              isDeleted: false,
               isPaid: true,
               createdAt: { $gte: from, $lte: to },
             },
@@ -3302,20 +3280,17 @@ const getAdminSalesAnalytics = async (query: any) => {
           {
             $group: {
               _id: '$deliveryAddress.city',
-              revenue: {
-                $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] },
-              },
+              revenue: { $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] } },
             },
           },
           { $sort: { revenue: -1 } },
           { $limit: 5 },
         ],
 
-        // VENDOR
+        // --- REVENUE BY VENDOR ---
         revenueByVendor: [
           {
             $match: {
-              isDeleted: false,
               isPaid: true,
               createdAt: { $gte: from, $lte: to },
             },
@@ -3323,9 +3298,7 @@ const getAdminSalesAnalytics = async (query: any) => {
           {
             $group: {
               _id: '$vendorId',
-              revenue: {
-                $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] },
-              },
+              revenue: { $sum: { $ifNull: ['$payoutSummary.grandTotal', 0] } },
             },
           },
           { $sort: { revenue: -1 } },
@@ -3349,18 +3322,26 @@ const getAdminSalesAnalytics = async (query: any) => {
     },
   ];
 
-  const [result] = await Order.aggregate(pipeline);
+  const [rawResult] = await Order.aggregate(pipeline);
 
-  // TRANSFORM
-  const current = result.summary.find((s: any) => s._id === 'current') || {
-    totalRevenue: 0,
-    orderCount: 0,
+  const result = rawResult || {
+    summary: [],
+    daily: [],
+    weekly: [],
+    monthly: [],
+    statusDistribution: [],
+    paymentSplit: [],
+    revenueByLocation: [],
+    revenueByVendor: [],
   };
 
-  const previous = result.summary.find((s: any) => s._id === 'previous') || {
-    totalRevenue: 0,
-    orderCount: 0,
-  };
+  // TRANSFORM SUMMARY
+  const current = (result.summary || []).find(
+    (s: any) => s._id === 'current',
+  ) || { totalRevenue: 0, orderCount: 0 };
+  const previous = (result.summary || []).find(
+    (s: any) => s._id === 'previous',
+  ) || { totalRevenue: 0, orderCount: 0 };
 
   const growthRate =
     previous.totalRevenue > 0
@@ -3371,39 +3352,50 @@ const getAdminSalesAnalytics = async (query: any) => {
         ? 100
         : 0;
 
-  // DAILY
+  // DAILY TREND (Timezone Safe Backfilling)
   const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
-
-  const map = new Map(result.daily.map((d: any) => [d._id, d]));
+  const dailyMap = new Map((result.daily || []).map((d: any) => [d._id, d]));
 
   const daily = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(to);
     d.setDate(d.getDate() - (6 - i));
     const key = d.toISOString().slice(0, 10);
-    const found = map.get(key) as any;
+    const found = dailyMap.get(key) as any;
 
     return {
       label: formatter.format(d),
       orders: found?.orders || 0,
-      revenue: +roundTo2(found?.revenue || 0),
+      revenue: roundTo2(found?.revenue || 0),
     };
   });
 
-  // WEEKLY
-  const weekly = result.weekly.map((w: any, i: number) => ({
+  // WEEKLY TREND
+  const weekly = (result.weekly || []).map((w: any, i: number) => ({
     label: `Week ${i + 1}`,
     orders: w.orders,
-    revenue: +roundTo2(w.revenue),
+    revenue: roundTo2(w.revenue),
   }));
 
-  // MONTHLY
-  const monthly = result.monthly.map((m: any) => ({
+  // MONTHLY TREND
+  const monthly = (result.monthly || []).map((m: any) => ({
     label: new Intl.DateTimeFormat('en-US', { month: 'short' }).format(
       new Date(m._id.year, m._id.month - 1),
     ),
     orders: m.orders,
-    revenue: +roundTo2(m.revenue),
+    revenue: roundTo2(m.revenue),
   }));
+
+  const formatVendorName = (vendorDetails: any) => {
+    if (!vendorDetails) return 'Vendor';
+    const nameObj = vendorDetails.name;
+    if (nameObj && typeof nameObj === 'object') {
+      return (
+        `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim() ||
+        'Vendor'
+      );
+    }
+    return vendorDetails.businessDetails?.businessName || 'Vendor';
+  };
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -3411,37 +3403,39 @@ const getAdminSalesAnalytics = async (query: any) => {
     data: {
       summary: {
         totalOrders: current.orderCount,
-        totalRevenue: +roundTo2(current.totalRevenue),
+        totalRevenue: roundTo2(current.totalRevenue),
         averageOrderValue:
           current.orderCount > 0
-            ? +roundTo2(current.totalRevenue / current.orderCount)
+            ? roundTo2(current.totalRevenue / current.orderCount)
             : 0,
-        growthRate: growthRate,
+        growthRate: roundTo2(growthRate),
       },
       daily,
       weekly,
       monthly,
       statusDistribution: {
         completed:
-          result.statusDistribution.find((s: any) => s._id === 'DELIVERED')
-            ?.count || 0,
+          (result.statusDistribution || []).find(
+            (s: any) => s._id === 'DELIVERED',
+          )?.count || 0,
         cancelled:
-          result.statusDistribution.find((s: any) => s._id === 'CANCELED')
-            ?.count || 0,
+          (result.statusDistribution || []).find(
+            (s: any) => s._id === 'CANCELED',
+          )?.count || 0,
       },
-      paymentSplit: result.paymentSplit.map((p: any) => ({
+      paymentSplit: (result.paymentSplit || []).map((p: any) => ({
         method: p._id,
         count: p.count,
-        revenue: +roundTo2(p.revenue),
+        revenue: roundTo2(p.revenue),
       })),
-      revenueByLocation: result.revenueByLocation.map((l: any) => ({
+      revenueByLocation: (result.revenueByLocation || []).map((l: any) => ({
         location: l._id || 'Unknown',
-        revenue: +roundTo2(l.revenue),
+        revenue: roundTo2(l.revenue),
       })),
-      revenueByVendor: result.revenueByVendor.map((v: any) => ({
+      revenueByVendor: (result.revenueByVendor || []).map((v: any) => ({
         vendorId: v._id.toString(),
-        vendorName: v.vendorDetails?.name?.firstName || 'Vendor',
-        revenue: +roundTo2(v.revenue),
+        vendorName: formatVendorName(v.vendorDetails),
+        revenue: roundTo2(v.revenue),
       })),
     },
   };
