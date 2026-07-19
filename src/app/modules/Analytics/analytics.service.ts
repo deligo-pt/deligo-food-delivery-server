@@ -2143,7 +2143,6 @@ const getVendorTaxReport = async (
 };
 
 // get fleet manager performance analytics
-
 const getFleetManagerPerformanceAnalytics = async (
   query: Record<string, unknown>,
 ): Promise<TFleetPerformanceData> => {
