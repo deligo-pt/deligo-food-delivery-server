@@ -233,6 +233,8 @@ deliveryPartnerSchema.index({
 });
 deliveryPartnerSchema.index({ 'registeredBy.id': 1 });
 
+deliveryPartnerSchema.index({ 'rating.average': -1 });
+
 export const DeliveryPartner = model<TDeliveryPartner>(
   'DeliveryPartner',
   deliveryPartnerSchema,

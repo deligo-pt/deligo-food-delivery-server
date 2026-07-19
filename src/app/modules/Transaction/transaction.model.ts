@@ -102,6 +102,14 @@ const transactionSchema = new Schema<TTransaction>(
 transactionSchema.index({ userId: 1, type: 1 });
 transactionSchema.index({ userId: 1, createdAt: -1 });
 
+transactionSchema.index({
+  userId: 1,
+  userModel: 1,
+  type: 1,
+  status: 1,
+  createdAt: -1,
+});
+
 export const Transaction = model<TTransaction>(
   'Transaction',
   transactionSchema,
