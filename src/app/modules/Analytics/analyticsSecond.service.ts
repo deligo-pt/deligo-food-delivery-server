@@ -1256,9 +1256,8 @@ const getVendorPerformanceAnalytics = async (
   const { page = 1, limit = 10 } = query;
   const skip = (Number(page) - 1) * Number(limit);
 
-  const sixMonthsAgo = new Date();
+  const sixMonthsAgo = getLocalStartOfPeriod('month');
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
 
   const results = await Vendor.aggregate([
     { $match: { isDeleted: false } },
@@ -1280,27 +1279,47 @@ const getVendorPerformanceAnalytics = async (
             },
           },
           {
+            $group: {
+              _id: {
+                $dateToString: { format: '%Y-%m', date: '$createdAt' },
+              },
+              monthlyOrdersCount: { $sum: 1 },
+              monthlyRevenueSum: {
+                $sum: '$payoutSummary.vendor.earningsWithoutTax',
+              },
+              monthlyItemsSum: { $sum: '$totalItems' },
+            },
+          },
+          {
             $project: {
-              createdAt: 1,
-              'payoutSummary.vendor': 1,
-              totalItems: 1,
+              _id: 0,
+              month: '$_id',
+              ordersCount: '$monthlyOrdersCount',
+              revenue: '$monthlyRevenueSum',
+              itemsCount: '$monthlyItemsSum',
             },
           },
         ],
-        as: 'vendorOrders',
+        as: 'orderMonthlyStats',
       },
     },
 
     {
       $addFields: {
-        totalRevenue: {
-          $round: [
-            { $sum: '$vendorOrders.payoutSummary.vendor.earningsWithoutTax' },
-            2,
-          ],
+        totalRevenue: { $round: [{ $sum: '$orderMonthlyStats.revenue' }, 2] },
+        totalItems: { $sum: '$orderMonthlyStats.itemsCount' },
+        totalOrdersCount: { $sum: '$orderMonthlyStats.ordersCount' },
+        fullName: {
+          $trim: {
+            input: {
+              $concat: [
+                { $ifNull: ['$name.firstName', ''] },
+                ' ',
+                { $ifNull: ['$name.lastName', ''] },
+              ],
+            },
+          },
         },
-        totalItems: { $sum: '$vendorOrders.totalItems' },
-        totalOrdersCount: { $size: '$vendorOrders' },
       },
     },
 
@@ -1333,27 +1352,21 @@ const getVendorPerformanceAnalytics = async (
               _id: null,
               mostOrders: {
                 $push: {
-                  vendorName: {
-                    $concat: ['$name.firstName', ' ', '$name.lastName'],
-                  },
+                  vendorName: '$fullName',
                   vendorPhoto: '$profilePhoto',
                   ordersCount: '$totalOrdersCount',
                 },
               },
               highestRating: {
                 $push: {
-                  vendorName: {
-                    $concat: ['$name.firstName', ' ', '$name.lastName'],
-                  },
+                  vendorName: '$fullName',
                   vendorPhoto: '$profilePhoto',
-                  rating: '$rating',
+                  rating: { $ifNull: ['$rating.average', 0] },
                 },
               },
               highestRevenue: {
                 $push: {
-                  vendorName: {
-                    $concat: ['$name.firstName', ' ', '$name.lastName'],
-                  },
+                  vendorName: '$fullName',
                   vendorPhoto: '$profilePhoto',
                   revenue: '$totalRevenue',
                 },
@@ -1379,7 +1392,7 @@ const getVendorPerformanceAnalytics = async (
                   {
                     $sortArray: {
                       input: '$highestRating',
-                      sortBy: { 'rating.average': -1 },
+                      sortBy: { rating: -1 },
                     },
                   },
                   0,
@@ -1401,20 +1414,19 @@ const getVendorPerformanceAnalytics = async (
         ],
 
         vendorMonthlyPerformance: [
-          { $unwind: '$vendorOrders' },
-          { $match: { 'vendorOrders.createdAt': { $gte: sixMonthsAgo } } },
+          { $unwind: '$orderMonthlyStats' },
+          {
+            $match: {
+              'orderMonthlyStats.month': {
+                $gte: sixMonthsAgo.toISOString().substring(0, 7),
+              },
+            },
+          },
           {
             $group: {
-              _id: {
-                $dateToString: {
-                  format: '%Y-%m',
-                  date: '$vendorOrders.createdAt',
-                },
-              },
-              totalOrders: { $sum: 1 },
-              totalRevenue: {
-                $sum: '$vendorOrders.payoutSummary.vendor.earningsWithoutTax',
-              },
+              _id: '$orderMonthlyStats.month',
+              totalOrders: { $sum: '$orderMonthlyStats.ordersCount' },
+              totalRevenue: { $sum: '$orderMonthlyStats.revenue' },
             },
           },
           { $sort: { _id: 1 } },
@@ -1434,11 +1446,9 @@ const getVendorPerformanceAnalytics = async (
           {
             $project: {
               _id: 0,
-              vendorName: {
-                $concat: ['$name.firstName', ' ', '$name.lastName'],
-              },
+              vendorName: '$fullName',
               vendorPhoto: '$profilePhoto',
-              rating: '$rating.average',
+              rating: { $ifNull: ['$rating.average', 0] },
               totalRevenue: 1,
             },
           },
@@ -1449,7 +1459,14 @@ const getVendorPerformanceAnalytics = async (
     },
   ]);
 
-  const data = results[0];
+  const data = results[0] || {
+    vendorPerformance: [],
+    vendorPerformanceStat: [],
+    vendorMonthlyPerformance: [],
+    topVendorPerformers: [],
+    totalCount: [],
+  };
+
   const total = data.totalCount[0]?.count || 0;
 
   return {
