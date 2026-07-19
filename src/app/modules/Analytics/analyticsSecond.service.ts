@@ -1499,16 +1499,16 @@ const getSingleVendorPerformanceDetails = async (
   const vendor = await Vendor.findOne({
     userId: vendorUserId,
     isDeleted: false,
-  });
+  }).lean();
 
   if (!vendor) {
     throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
   const vendorObjectId = vendor._id;
-  const sixMonthsAgo = new Date();
+
+  const sixMonthsAgo = getLocalStartOfPeriod('month');
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
 
   const results = await Order.aggregate([
     {
@@ -1567,7 +1567,11 @@ const getSingleVendorPerformanceDetails = async (
               productId: { $toString: '$_id' },
               name: 1,
               images: {
-                $cond: [{ $ifNull: ['$image', false] }, ['$image'], []],
+                $cond: {
+                  if: { $gt: [{ $strLenCP: { $ifNull: ['$image', ''] } }, 0] },
+                  then: ['$image'],
+                  else: { $ifNull: ['$productInfo.images', []] },
+                },
               },
               totalOrders: 1,
               rating: {
@@ -1608,7 +1612,7 @@ const getSingleVendorPerformanceDetails = async (
     data: {
       vendorPerformance: {
         _id: vendor._id,
-        profilePhoto: vendor.profilePhoto,
+        profilePhoto: vendor.profilePhoto || '',
         userId: vendor.userId,
         email: vendor.email,
         status: vendor.status,
