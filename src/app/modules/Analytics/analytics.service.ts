@@ -2902,26 +2902,30 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
   const limit = Number(query.limit) || 10;
   const skip = (page - 1) * limit;
 
+  const TZ = 'Europe/Lisbon';
+
   // Base Filter
   const baseQuery = {
     type: 'PLATFORM_COMMISSION',
     status: 'SUCCESS',
   };
 
-  // Stats Calculations
-  const now = new Date();
+  const startOfToday = getLocalStartOfPeriod('today');
 
-  const weekStart = new Date();
-  weekStart.setDate(now.getDate() - 7);
+  const weekStart = new Date(startOfToday);
+  weekStart.setDate(weekStart.getDate() - 6); // Last 7 days including today
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
+  const monthStart = getLocalStartOfPeriod('month');
+
+  const sixMonthsAgo = getLocalStartOfPeriod('month');
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // 6 months continuity limit
 
   const [
     totalPlatformCommissionAgg,
     thisWeekAgg,
     thisMonthAgg,
     totalRevenueAgg,
+    monthlyCommissionsAgg,
   ] = await Promise.all([
     Transaction.aggregate([
       { $match: baseQuery },
@@ -2963,35 +2967,65 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
         },
       },
     ]),
+
+    Transaction.aggregate([
+      {
+        $match: {
+          ...baseQuery,
+          createdAt: { $gte: sixMonthsAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: { date: '$createdAt', timezone: TZ } },
+            month: { $month: { date: '$createdAt', timezone: TZ } },
+          },
+          commission: { $sum: '$totalAmount' },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]),
   ]);
 
   const totalPlatformCommission = totalPlatformCommissionAgg?.[0]?.total || 0;
-
   const thisWeekCommission = thisWeekAgg?.[0]?.total || 0;
-
   const thisMonthCommission = thisMonthAgg?.[0]?.total || 0;
-
   const totalRevenue = totalRevenueAgg?.[0]?.totalRevenue || 0;
 
-  // Monthly Commission Chart
-  const monthlyCommissionsAgg = await Transaction.aggregate([
-    { $match: baseQuery },
-    {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-        },
-        commission: { $sum: '$totalAmount' },
-      },
-    },
-    { $sort: { '_id.year': 1, '_id.month': 1 } },
-  ]);
+  const monthNames = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  const monthlyCommissions = [];
+  const referenceDate = getLocalStartOfPeriod('month');
 
-  const monthlyCommissions = monthlyCommissionsAgg.map((m) => ({
-    month: `${m._id.year}-${String(m._id.month).padStart(2, '0')}`,
-    commission: m.commission,
-  }));
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(referenceDate);
+    d.setMonth(d.getMonth() - i);
+    const m = d.getMonth();
+    const y = d.getFullYear();
+
+    const found = (monthlyCommissionsAgg || []).find(
+      (item: any) => item._id.month === m + 1 && item._id.year === y,
+    );
+
+    monthlyCommissions.push({
+      month: `${y}-${String(m + 1).padStart(2, '0')}`,
+      label: `${monthNames[m]} ${y.toString().slice(-2)}`,
+      commission: found ? roundTo2(found.commission) : 0,
+    });
+  }
 
   // Paginated Commission Table
   const [transactions, total] = await Promise.all([
@@ -3000,15 +3034,27 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
         path: 'orderId',
         populate: {
           path: 'customerId',
-          select: 'name',
+          select: 'name email contactNumber',
         },
       })
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit),
+      .limit(limit)
+      .lean(),
 
     Transaction.countDocuments(baseQuery),
   ]);
+
+  const formatCustomerName = (customerObj: any) => {
+    if (!customerObj) return null;
+    const nameObj = customerObj.name;
+    if (nameObj && typeof nameObj === 'object') {
+      const fullName =
+        `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim();
+      return fullName || customerObj.email || 'Guest User';
+    }
+    return customerObj.name || customerObj.email || 'Guest User';
+  };
 
   const commissions = transactions.map((txn: any) => {
     const order = txn.orderId;
@@ -3016,19 +3062,20 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
 
     return {
       _id: txn._id.toString(),
-
-      customer: customer || null,
-
+      customer: customer
+        ? {
+            _id: customer._id.toString(),
+            name: formatCustomerName(customer),
+          }
+        : null,
       transactionId: txn.transactionId,
-
       orderId: order?.orderId || null,
-
-      amount: order?.payoutSummary?.grandTotal?.toFixed(2) || '0.00',
-
-      platformFee:
-        order?.payoutSummary?.deliGoCommission?.totalDeduction?.toFixed(2) ||
-        '0.00',
-
+      amount: order?.payoutSummary?.grandTotal
+        ? roundTo2(order.payoutSummary.grandTotal)
+        : 0,
+      platformFee: order?.payoutSummary?.deliGoCommission?.totalDeduction
+        ? roundTo2(order.payoutSummary.deliGoCommission.totalDeduction)
+        : 0,
       createdAt: txn.createdAt.toISOString(),
     };
   });
@@ -3038,14 +3085,12 @@ const getPlatformEarnings = async (query: Record<string, any>) => {
     variables: { entity: 'Platform Earnings' },
     data: {
       stats: {
-        totalRevenue,
-        totalPlatformCommission,
-        thisWeekCommission,
-        thisMonthCommission,
+        totalRevenue: roundTo2(totalRevenue),
+        totalPlatformCommission: roundTo2(totalPlatformCommission),
+        thisWeekCommission: roundTo2(thisWeekCommission),
+        thisMonthCommission: roundTo2(thisMonthCommission),
       },
-
       monthlyCommissions,
-
       commissions,
     },
     meta: {
