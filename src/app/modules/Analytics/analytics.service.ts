@@ -1193,73 +1193,70 @@ const getAdminFleetManagerReportAnalytics = async (
     toDate,
   );
 
-  // 1. Generate the exact timeline map with 0s
   const timelineMap = generateEmptyBuckets(start, end, resolution, size);
   const groupId = getGroupingPipeline(resolution, size, start);
 
-  // Match only within timeframe if provided, otherwise all non-deleted
   const growthMatch: any = { isDeleted: false };
   if (timeframe || fromDate) {
     growthMatch.createdAt = { $gte: start, $lte: end };
   }
 
-  const [analytics] = await FleetManager.aggregate([
-    {
-      $facet: {
-        summary: [
-          { $match: { isDeleted: false } },
-          {
-            $group: {
-              _id: null,
-              totalManagers: { $sum: 1 },
-              approvedManagers: {
-                $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
+  const [analyticsResult, totalDriverCount, totalDeliveryCount] =
+    await Promise.all([
+      FleetManager.aggregate([
+        {
+          $facet: {
+            summary: [
+              { $match: { isDeleted: false } },
+              {
+                $group: {
+                  _id: null,
+                  totalManagers: { $sum: 1 },
+                  approvedManagers: {
+                    $sum: { $cond: [{ $eq: ['$status', 'APPROVED'] }, 1, 0] },
+                  },
+                },
               },
-            },
+            ],
+            growth: [
+              { $match: growthMatch },
+              { $group: { _id: groupId, count: { $sum: 1 } } },
+              {
+                $sort: {
+                  '_id.year': 1,
+                  '_id.month': 1,
+                  '_id.day': 1,
+                  '_id.bucket': 1,
+                },
+              },
+            ],
+            statusStats: [
+              { $match: { isDeleted: false } },
+              { $group: { _id: '$status', count: { $sum: 1 } } },
+            ],
           },
-          {
-            $lookup: {
-              from: 'drivers',
-              pipeline: [{ $match: { isDeleted: false } }, { $count: 'count' }],
-              as: 'driverCount',
-            },
-          },
-          {
-            $lookup: {
-              from: 'orders',
-              pipeline: [
-                { $match: { isDeleted: false, status: 'DELIVERED' } },
-                { $count: 'count' },
-              ],
-              as: 'deliveryCount',
-            },
-          },
-        ],
-        growth: [
-          { $match: growthMatch },
-          { $group: { _id: groupId, count: { $sum: 1 } } },
-          {
-            $sort: {
-              '_id.year': 1,
-              '_id.month': 1,
-              '_id.day': 1,
-              '_id.bucket': 1,
-            },
-          },
-        ],
-        statusStats: [
-          { $match: { isDeleted: false } },
-          { $group: { _id: '$status', count: { $sum: 1 } } },
-        ],
-      },
-    },
-  ]);
+        },
+      ]),
 
-  const summary = analytics.summary[0] || {};
+      DeliveryPartner.countDocuments({ isDeleted: false }),
 
-  // 2. Map MongoDB results to the correct timeline labels
+      Order.countDocuments({ isDeleted: false, orderStatus: 'DELIVERED' }),
+    ]);
+
+  const analytics = analyticsResult[0] || {
+    summary: [],
+    growth: [],
+    statusStats: [],
+  };
+
+  const summary = analytics.summary[0] || {
+    totalManagers: 0,
+    approvedManagers: 0,
+  };
+  const statusStatsList = analytics.statusStats || [];
+
   const fleetGrowths = mapGrowthToTimeline({
-    growth: analytics.growth,
+    growth: analytics.growth || [],
     timelineMap,
     start,
     end,
@@ -1271,7 +1268,7 @@ const getAdminFleetManagerReportAnalytics = async (
   }));
 
   const getStatusCount = (status: string) =>
-    analytics.statusStats.find((s: any) => s._id === status)?.count || 0;
+    statusStatsList.find((s: any) => s._id === status)?.count || 0;
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -1280,8 +1277,8 @@ const getAdminFleetManagerReportAnalytics = async (
       stats: {
         totalManagers: summary.totalManagers || 0,
         approvedManagers: summary.approvedManagers || 0,
-        totalDrivers: summary.driverCount?.[0]?.count || 0,
-        totalDeliveries: summary.deliveryCount?.[0]?.count || 0,
+        totalDrivers: totalDriverCount,
+        totalDeliveries: totalDeliveryCount,
       },
 
       fleetGrowths,
