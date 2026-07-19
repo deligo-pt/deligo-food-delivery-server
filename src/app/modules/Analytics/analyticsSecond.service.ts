@@ -16,6 +16,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { Offer } from '../Offer/offer.model';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { getLocalStartOfPeriod } from '../../utils/dateTimeProvider';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
@@ -406,8 +407,7 @@ const getVendorDashboardAnalytics = async (currentUser: TCurrentUser) => {
 // get fleet dashboard analytics
 const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
   const managerId = new Types.ObjectId(currentUser._id);
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  const startOfDay = getLocalStartOfPeriod('today');
 
   const [partnerMetrics] = await DeliveryPartner.aggregate([
     { $match: { 'registeredBy.id': managerId, isDeleted: false } },
@@ -533,10 +533,10 @@ const getPartnerPerformanceAnalytics = async (
 
   const timeframe = (query?.timeframe as string) || 'last30days';
   const endDate = new Date();
-  const startDate = new Date();
+  const startDate = getLocalStartOfPeriod('today');
   const days =
     timeframe === 'last30days' ? 30 : timeframe === 'last14days' ? 14 : 7;
-  startDate.setDate(endDate.getDate() - days);
+  startDate.setDate(startDate.getDate() - days);
 
   const myPartners = await DeliveryPartner.find({
     'registeredBy.id': managerId,
@@ -709,56 +709,58 @@ const getDeliveryPartnerEarningAnalytics = async (
 ) => {
   const riderObjectId = new Types.ObjectId(currentUser._id);
 
-  const today = new Date();
+  const startOfToday = getLocalStartOfPeriod('today');
+  const startOfWeek = getLocalStartOfPeriod('week');
+  const startOfMonth = getLocalStartOfPeriod('month');
 
-  const startOfToday = new Date(today);
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const dayOfWeek = today.getDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const earnings = await Transaction.aggregate([
-    {
-      $match: {
-        userId: riderObjectId,
-        userModel: 'DeliveryPartner',
-        status: 'SUCCESS',
-        type: 'DELIVERY_PARTNER_EARNING',
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        totalEarnings: { $sum: '$totalAmount' },
-        dailyEarnings: {
-          $sum: {
-            $cond: [{ $gte: ['$createdAt', startOfToday] }, '$totalAmount', 0],
-          },
-        },
-        weeklyEarnings: {
-          $sum: {
-            $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
-          },
-        },
-        monthlyEarnings: {
-          $sum: {
-            $cond: [{ $gte: ['$createdAt', startOfMonth] }, '$totalAmount', 0],
-          },
+  const [earnings, wallet] = await Promise.all([
+    Transaction.aggregate([
+      {
+        $match: {
+          userId: riderObjectId,
+          userModel: 'DeliveryPartner',
+          status: 'SUCCESS',
+          type: 'DELIVERY_PARTNER_EARNING',
         },
       },
-    },
+      {
+        $group: {
+          _id: null,
+          totalEarnings: { $sum: '$totalAmount' },
+          dailyEarnings: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', startOfToday] },
+                '$totalAmount',
+                0,
+              ],
+            },
+          },
+          weeklyEarnings: {
+            $sum: {
+              $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$totalAmount', 0],
+            },
+          },
+          monthlyEarnings: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', startOfMonth] },
+                '$totalAmount',
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    Wallet.findOne({
+      userId: riderObjectId,
+      userModel: 'DeliveryPartner',
+    })
+      .select('currentBalance')
+      .lean(),
   ]);
-
-  const wallet = await Wallet.findOne({
-    userId: riderObjectId,
-    userModel: 'DeliveryPartner',
-  }).select('currentBalance');
 
   const report = earnings[0] || {
     totalEarnings: 0,
