@@ -2525,162 +2525,148 @@ const getDeliveryPartnerPerformanceAnalytics = async (
   meta: TMeta;
 }> => {
   const { page = 1, limit = 10 } = query;
-
   const skip = (Number(page) - 1) * Number(limit);
 
-  const now = new Date();
+  const startOfPeriod = getLocalStartOfPeriod('month');
+  startOfPeriod.setMonth(startOfPeriod.getMonth() - 5);
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(now.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
-
-  const result = await DeliveryPartner.aggregate([
-    {
-      $match: {
-        isDeleted: false,
-      },
-    },
-
-    {
-      $lookup: {
-        from: 'orders',
-        localField: '_id',
-        foreignField: 'deliveryPartnerId',
-        pipeline: [
-          {
-            $match: {
-              orderStatus: 'DELIVERED',
-              isDeleted: false,
-            },
+  const [tableResult, monthlyRawStats, globalLeaderboardStats] =
+    await Promise.all([
+      DeliveryPartner.aggregate([
+        { $match: { isDeleted: false } },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: '_id',
+            foreignField: 'deliveryPartnerId',
+            pipeline: [
+              { $match: { orderStatus: 'DELIVERED', isDeleted: false } },
+            ],
+            as: 'orders',
           },
-        ],
-        as: 'orders',
-      },
-    },
-
-    {
-      $addFields: {
-        totalDeliveries: { $size: '$orders' },
-
-        totalEarnings: {
-          $sum: '$orders.payoutSummary.rider.riderNetEarnings',
         },
-
-        rating: {
-          $ifNull: ['$rating.average', 0],
-        },
-      },
-    },
-
-    {
-      $facet: {
-        partnerPerformance: [
-          { $sort: { totalDeliveries: -1 } },
-
-          { $skip: skip },
-
-          { $limit: Number(limit) },
-
-          {
-            $project: {
-              _id: 1,
-              profilePhoto: 1,
-              userId: 1,
-              email: 1,
-              status: 1,
-              name: 1,
-              address: 1,
-              operationalData: 1,
-              totalDeliveries: 1,
-              totalEarnings: 1,
-              rating: 1,
+        {
+          $addFields: {
+            totalDeliveries: { $size: '$orders' },
+            totalEarnings: {
+              $sum: '$orders.payoutSummary.rider.riderNetEarnings',
             },
+            rating: { $ifNull: ['$rating.average', 0] },
           },
-        ],
-
-        topCards: [
-          {
-            $group: {
-              _id: null,
-
-              mostOrders: {
-                $max: {
-                  ordersCount: '$totalDeliveries',
-                  partnerName: '$name',
-                  partnerPhoto: '$profilePhoto',
+        },
+        {
+          $facet: {
+            partnerPerformance: [
+              { $sort: { totalDeliveries: -1 } },
+              { $skip: skip },
+              { $limit: Number(limit) },
+              {
+                $project: {
+                  _id: 1,
+                  profilePhoto: 1,
+                  userId: 1,
+                  email: 1,
+                  status: 1,
+                  name: 1,
+                  address: 1,
+                  operationalData: 1,
+                  totalDeliveries: 1,
+                  totalEarnings: 1,
+                  rating: 1,
                 },
               },
-
-              highestEarnings: {
-                $max: {
-                  earnings: '$totalEarnings',
-                  partnerName: '$name',
-                  partnerPhoto: '$profilePhoto',
+            ],
+            topPerformers: [
+              { $sort: { rating: -1, totalEarnings: -1 } },
+              { $limit: 5 },
+              {
+                $project: {
+                  name: 1,
+                  rating: 1,
+                  totalEarnings: 1,
+                  profilePhoto: 1,
+                  initials: {
+                    $concat: [
+                      { $substr: [{ $ifNull: ['$name.firstName', ''] }, 0, 1] },
+                      { $substr: [{ $ifNull: ['$name.lastName', ''] }, 0, 1] },
+                    ],
+                  },
                 },
               },
-
-              highestRated: {
-                $max: {
-                  rating: '$rating',
-                  partnerName: '$name',
-                  partnerPhoto: '$profilePhoto',
-                },
-              },
-            },
+            ],
+            totalCount: [{ $count: 'count' }],
           },
-        ],
-
-        topPerformers: [
-          { $sort: { rating: -1, totalEarnings: -1 } },
-
-          { $limit: 5 },
-
-          {
-            $project: {
-              name: 1,
-              rating: 1,
-              totalEarnings: '$totalEarnings',
-              profilePhoto: 1,
-              initials: {
-                $concat: [
-                  { $substr: ['$name.firstName', 0, 1] },
-                  { $substr: ['$name.lastName', 0, 1] },
-                ],
-              },
-            },
-          },
-        ],
-
-        totalCount: [{ $count: 'count' }],
-      },
-    },
-  ]);
-
-  const data = result[0];
-
-  // Monthly Earnings Performance
-  const monthlyRaw = await Order.aggregate([
-    {
-      $match: {
-        orderStatus: 'DELIVERED',
-        isDeleted: false,
-        createdAt: { $gte: sixMonthsAgo },
-      },
-    },
-
-    {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
         },
-        totalOrders: { $sum: 1 },
-      },
-    },
+      ]),
 
-    { $sort: { '_id.year': 1, '_id.month': 1 } },
-  ]);
+      Order.aggregate([
+        {
+          $match: {
+            orderStatus: 'DELIVERED',
+            isDeleted: false,
+            createdAt: { $gte: startOfPeriod },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              year: {
+                $year: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+              },
+              month: {
+                $month: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+              },
+            },
+            totalOrders: { $sum: 1 },
+          },
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } },
+      ]),
+
+      DeliveryPartner.aggregate([
+        { $match: { isDeleted: false } },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: '_id',
+            foreignField: 'deliveryPartnerId',
+            pipeline: [
+              { $match: { orderStatus: 'DELIVERED', isDeleted: false } },
+            ],
+            as: 'orders',
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            profilePhoto: 1,
+            totalDeliveries: { $size: '$orders' },
+            totalEarnings: {
+              $sum: '$orders.payoutSummary.rider.riderNetEarnings',
+            },
+            ratingAvg: { $ifNull: ['$rating.average', 0] },
+          },
+        },
+        {
+          $facet: {
+            mostOrders: [{ $sort: { totalDeliveries: -1 } }, { $limit: 1 }],
+            highestEarnings: [{ $sort: { totalEarnings: -1 } }, { $limit: 1 }],
+            highestRated: [{ $sort: { ratingAvg: -1 } }, { $limit: 1 }],
+          },
+        },
+      ]),
+    ]);
+
+  const data = tableResult[0] || {
+    partnerPerformance: [],
+    topPerformers: [],
+    totalCount: [],
+  };
+  const leaderboard = globalLeaderboardStats[0] || {
+    mostOrders: [],
+    highestEarnings: [],
+    highestRated: [],
+  };
 
   const monthNames = [
     'Jan',
@@ -2696,17 +2682,17 @@ const getDeliveryPartnerPerformanceAnalytics = async (
     'Nov',
     'Dec',
   ];
-
   const earningsPerformance: TPartnerMonthlyPerformance[] = [];
+  const referenceDate = getLocalStartOfPeriod('month');
 
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-
+    const d = new Date(referenceDate);
+    d.setMonth(d.getMonth() - i);
     const month = d.getMonth() + 1;
     const year = d.getFullYear();
 
-    const found = monthlyRaw.find(
-      (m) => m._id.month === month && m._id.year === year,
+    const found = (monthlyRawStats || []).find(
+      (m: any) => m._id.month === month && m._id.year === year,
     );
 
     earningsPerformance.push({
@@ -2715,38 +2701,64 @@ const getDeliveryPartnerPerformanceAnalytics = async (
     });
   }
 
-  const stats = data.topCards?.[0] || {};
+  const formatName = (nameObj: any) => {
+    if (!nameObj) return 'N/A';
+    if (typeof nameObj === 'object')
+      return (
+        `${nameObj.firstName || ''} ${nameObj.lastName || ''}`.trim() || 'N/A'
+      );
+    return nameObj;
+  };
+
+  const formattedPartnerPerformance = (data.partnerPerformance || []).map(
+    (p: any) => ({
+      ...p,
+      name: formatName(p.name),
+      totalEarnings: roundTo2(p.totalEarnings),
+    }),
+  );
+
+  const formattedTopPerformers = (data.topPerformers || []).map((tp: any) => ({
+    ...tp,
+    name: formatName(tp.name),
+    totalEarnings: roundTo2(tp.totalEarnings),
+  }));
+
+  const mostOrdersRider = leaderboard.mostOrders?.[0];
+  const highestEarningsRider = leaderboard.highestEarnings?.[0];
+  const highestRatedRider = leaderboard.highestRated?.[0];
 
   const response: TPartnerPerformanceData = {
-    partnerPerformance: data.partnerPerformance,
+    partnerPerformance: formattedPartnerPerformance,
 
     topCards: {
       mostOrders: {
-        partnerName: stats?.mostOrders?.partnerName || '',
-        partnerPhoto: stats?.mostOrders?.partnerPhoto || '',
-        ordersCount: stats?.mostOrders?.ordersCount || 0,
+        partnerName: formatName(mostOrdersRider?.name),
+        partnerPhoto: mostOrdersRider?.profilePhoto || '',
+        ordersCount: mostOrdersRider?.totalDeliveries || 0,
       },
-
       highestRated: {
-        partnerName: stats?.highestRated?.partnerName || '',
-        partnerPhoto: stats?.highestRated?.partnerPhoto || '',
+        partnerName: formatName(highestRatedRider?.name),
+        partnerPhoto: highestRatedRider?.profilePhoto || '',
         rating: {
-          average: stats?.highestRated?.rating || 0,
+          average: highestRatedRider?.ratingAvg || 0,
           totalRatings: 0,
         },
       },
-
       highestEarnings: {
-        partnerName: stats?.highestEarnings?.partnerName || '',
-        partnerPhoto: stats?.highestEarnings?.partnerPhoto || '',
-        earnings: stats?.highestEarnings?.earnings || 0,
+        partnerName: formatName(highestEarningsRider?.name),
+        partnerPhoto: highestEarningsRider?.profilePhoto || '',
+        earnings: highestEarningsRider
+          ? roundTo2(highestEarningsRider.totalEarnings)
+          : 0,
       },
     },
 
     earningsPerformance,
-
-    topPerformers: data.topPerformers,
+    topPerformers: formattedTopPerformers,
   };
+
+  const totalItems = data.totalCount?.[0]?.count || 0;
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -2755,8 +2767,8 @@ const getDeliveryPartnerPerformanceAnalytics = async (
     meta: {
       page: Number(page),
       limit: Number(limit),
-      total: data.totalCount?.[0]?.count || 0,
-      totalPage: Math.ceil((data.totalCount?.[0]?.count || 0) / Number(limit)),
+      total: totalItems,
+      totalPage: Math.ceil(totalItems / Number(limit)),
     },
   };
 };
