@@ -1634,9 +1634,9 @@ const getSingleVendorPerformanceDetails = async (
 const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
   const now = new Date();
 
-  const last7DaysDate = new Date();
-  last7DaysDate.setDate(now.getDate() - 6);
-  last7DaysDate.setHours(0, 0, 0, 0);
+  const startOfToday = getLocalStartOfPeriod('today');
+  const last7DaysDate = new Date(startOfToday);
+  last7DaysDate.setDate(last7DaysDate.getDate() - 6);
 
   const offerFilter: any = {
     isDeleted: false,
@@ -1653,6 +1653,7 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
     offerFilter.vendorId = vId;
     orderFilter.vendorId = vId;
   }
+
   const [offerStats, orderStats] = await Promise.all([
     Offer.aggregate([
       { $match: offerFilter },
@@ -1696,7 +1697,11 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
             {
               $group: {
                 _id: {
-                  $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+                  $dateToString: {
+                    format: '%Y-%m-%d',
+                    date: '$createdAt',
+                    timezone: 'Europe/Lisbon',
+                  },
                 },
                 redemptions: { $sum: 1 },
               },
@@ -1737,15 +1742,25 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
   ]);
 
   const stats = offerStats[0] || { totalOffers: 0, activeOffers: 0 };
-  const orders = orderStats[0];
+
+  const orders = orderStats[0] || {
+    overall: [],
+    usageOverTime: [],
+    typeUsage: [],
+    topOffers: [],
+  };
 
   const last7DaysArray = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(now.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - i);
 
-    const existingDate = orders.usageOverTime.find(
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const existingDate = (orders.usageOverTime || []).find(
       (u: any) => u._id === dateStr,
     );
     last7DaysArray.push({
@@ -1756,12 +1771,17 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
 
   const allTypes = ['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO'];
   const formattedTypeUsage = allTypes.map((type) => {
-    const found = orders.typeUsage.find((u: any) => u.name === type);
+    const found = (orders.typeUsage || []).find((u: any) => u.name === type);
     return {
       name: type,
       usage: found ? found.usage : 0,
     };
   });
+
+  const overallStats = orders.overall[0] || {
+    totalRedemptions: 0,
+    revenueImpact: 0,
+  };
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -1770,12 +1790,12 @@ const getOfferAnalyticsForAdmin = async (currentUser: TCurrentUser) => {
       stats: {
         totalOffers: stats.totalOffers,
         activeOffers: stats.activeOffers,
-        totalRedemptions: orders.overall[0]?.totalRedemptions || 0,
-        revenueImpact: roundTo2(orders.overall[0]?.revenueImpact || 0),
+        totalRedemptions: overallStats.totalRedemptions,
+        revenueImpact: roundTo2(overallStats.revenueImpact),
       },
       usageOverTime: last7DaysArray,
       offerTypeUsage: formattedTypeUsage,
-      topOffers: orders.topOffers,
+      topOffers: orders.topOffers || [],
     },
   };
 };
