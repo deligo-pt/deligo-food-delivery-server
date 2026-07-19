@@ -227,146 +227,24 @@ const deleteFleetManagerDocument = async (
 };
 // get all fleet managers
 const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
-  const rawLatitude =
-    query.latitude !== undefined ? String(query.latitude).trim() : '';
-  const rawLongitude =
-    query.longitude !== undefined ? String(query.longitude).trim() : '';
+  const city = query.city !== undefined ? String(query.city).trim() : '';
 
-  const latitude = rawLatitude !== '' ? Number(rawLatitude) : undefined;
-  const longitude = rawLongitude !== '' ? Number(rawLongitude) : undefined;
+  const baseQuery: Record<string, unknown> = { ...query };
 
-  const hasNearestSearch = rawLatitude !== '' || rawLongitude !== '';
-
-  if (hasNearestSearch) {
-    if (latitude === undefined || longitude === undefined) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'LATITUDE_LONGITUDE_REQUIRED');
-    }
-
-    if (
-      Number.isNaN(latitude) ||
-      Number.isNaN(longitude) ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
-    ) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_LAT_LNG_COORDINATES');
-    }
-
-    const page = Math.max(1, Number(query.page) || 1);
-    const limit = Math.max(1, Number(query.limit) || 10);
-    const skip = (page - 1) * limit;
-
-    const distanceOrder = String(query.distanceOrder || 'asc').toLowerCase();
-    const distanceSort = distanceOrder === 'desc' ? -1 : 1;
-
-    const maxDistanceKm =
-      query.maxDistanceKm !== undefined ? Number(query.maxDistanceKm) : null;
-
-    const maxDistanceMeters =
-      maxDistanceKm !== null &&
-      !Number.isNaN(maxDistanceKm) &&
-      maxDistanceKm > 0
-        ? maxDistanceKm * 1000
-        : undefined;
-
-    const nearestFleetManagers = await DeliveryPartner.aggregate([
-      {
-        $geoNear: {
-          near: {
-            type: 'Point',
-            coordinates: [longitude, latitude],
-          },
-          distanceField: 'distanceInMeter',
-          spherical: true,
-          query: {
-            isDeleted: false,
-            'registeredBy.model': 'FleetManager',
-          },
-          ...(maxDistanceMeters ? { maxDistance: maxDistanceMeters } : {}),
-        },
-      },
-      {
-        $sort: {
-          distanceInMeter: distanceSort,
-        },
-      },
-      {
-        $group: {
-          _id: '$registeredBy.id',
-          nearestDeliveryPartner: {
-            $first: {
-              _id: '$_id',
-              userId: '$userId',
-              name: '$name',
-              profilePhoto: '$profilePhoto',
-              email: '$email',
-              distanceInMeter: '$distanceInMeter',
-            },
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: 'fleetmanagers',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'fleetManager',
-        },
-      },
-      {
-        $unwind: '$fleetManager',
-      },
-      {
-        $match: {
-          'fleetManager.isDeleted': false,
-        },
-      },
-      {
-        $set: {
-          'nearestDeliveryPartner.distanceInKm': {
-            $round: [
-              { $divide: ['$nearestDeliveryPartner.distanceInMeter', 1000] },
-              2,
-            ],
-          },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          fleetManager: 1,
-          nearestDeliveryPartner: 1,
-        },
-      },
-      {
-        $facet: {
-          meta: [{ $count: 'total' }],
-          data: [{ $skip: skip }, { $limit: limit }],
-        },
-      },
-    ]);
-
-    const total = nearestFleetManagers?.[0]?.meta?.[0]?.total || 0;
-    const data = (nearestFleetManagers?.[0]?.data || []).map((item: any) => ({
-      ...item.fleetManager,
-      nearestDeliveryPartner: item.nearestDeliveryPartner,
-    }));
-
-    return {
-      messageKey: 'DATA_LOAD_SUCCESS',
-      variables: { entity: 'Fleet Managers', isPlural: true },
-      meta: {
-        page,
-        limit,
-        total,
-        totalPage: Math.ceil(total / limit),
-      },
-      data,
+  if (city) {
+    baseQuery['businessLocation.city'] = {
+      $regex: city,
+      $options: 'i',
     };
   }
 
-  const fleetManagers = new QueryBuilder(FleetManager.find(), query)
+  delete baseQuery.city;
+  delete baseQuery.latitude;
+  delete baseQuery.longitude;
+  delete baseQuery.maxDistanceKm;
+  delete baseQuery.distanceOrder;
+
+  const fleetManagers = new QueryBuilder(FleetManager.find(), baseQuery)
     .search(FleetManagerSearchableFields)
     .filter()
     .sort()
