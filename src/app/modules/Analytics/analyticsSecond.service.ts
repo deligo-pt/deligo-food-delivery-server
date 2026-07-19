@@ -409,47 +409,66 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const myPartners = await DeliveryPartner.find({
-    'registeredBy.id': managerId,
-    isDeleted: false,
-  }).select('_id');
-
-  const partnerIds = myPartners.map((p) => p._id);
-
-  const [
-    totalPartners,
-    onlinePartners,
-    deliveriesToday,
-    vehicleComposition,
-    statusStats,
-  ] = await Promise.all([
-    DeliveryPartner.countDocuments({
-      'registeredBy.id': managerId,
-      isDeleted: false,
-    }),
-
-    DeliveryPartner.countDocuments({
-      'registeredBy.id': managerId,
-      'operationalData.currentStatus': { $ne: currentStatusOptions.OFFLINE },
-      isDeleted: false,
-    }),
-
-    Order.countDocuments({
-      orderStatus: 'DELIVERED',
-      createdAt: { $gte: startOfDay },
-      deliveryPartnerId: { $in: partnerIds },
-    }),
-
-    DeliveryPartner.aggregate([
-      { $match: { 'registeredBy.id': managerId, isDeleted: false } },
-      { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
-    ]),
-
-    DeliveryPartner.aggregate([
-      { $match: { 'registeredBy.id': managerId, isDeleted: false } },
-      { $group: { _id: '$operationalData.currentStatus', count: { $sum: 1 } } },
-    ]),
+  const [partnerMetrics] = await DeliveryPartner.aggregate([
+    { $match: { 'registeredBy.id': managerId, isDeleted: false } },
+    {
+      $facet: {
+        totalCount: [{ $count: 'count' }],
+        vehicleComposition: [
+          { $group: { _id: '$vehicleInfo.vehicleType', count: { $sum: 1 } } },
+        ],
+        statusStats: [
+          {
+            $group: {
+              _id: '$operationalData.currentStatus',
+              count: { $sum: 1 },
+            },
+          },
+        ],
+        topDrivers: [
+          { $sort: { 'rating.average': -1, createdAt: -1 } },
+          { $limit: 4 },
+          {
+            $project: {
+              name: 1,
+              'personalInfo.gender': 1,
+              'personalInfo.nationality': 1,
+              rating: 1,
+              'operationalData.completedDeliveries': 1,
+              vehicleInfo: 1,
+            },
+          },
+        ],
+        partnerIds: [{ $project: { _id: 1 } }],
+      },
+    },
   ]);
+
+  const totalPartners = partnerMetrics.totalCount[0]?.count || 0;
+  const rawPartnerIds = partnerMetrics.partnerIds.map((p: any) => p._id);
+
+  const todayDeliveriesCount =
+    rawPartnerIds.length > 0
+      ? await Order.countDocuments({
+          orderStatus: 'DELIVERED',
+          createdAt: { $gte: startOfDay },
+          deliveryPartnerId: { $in: rawPartnerIds },
+        })
+      : 0;
+
+  const statusStats = partnerMetrics.statusStats || [];
+
+  const offlinePartners =
+    statusStats.find((s: any) => s._id === currentStatusOptions.OFFLINE)
+      ?.count || 0;
+  const waitingPartners =
+    statusStats.find((s: any) => s._id === currentStatusOptions.IDLE)?.count ||
+    0;
+  const onDeliveryPartners =
+    statusStats.find((s: any) => s._id === currentStatusOptions.ON_DELIVERY)
+      ?.count || 0;
+
+  const onlinePartners = totalPartners - offlinePartners;
 
   const onlinePercentage =
     totalPartners > 0
@@ -457,38 +476,21 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
       : '0';
 
   const avgDeliveries =
-    totalPartners > 0 ? (deliveriesToday / totalPartners).toFixed(1) : '0';
-
-  const waitingPartners =
-    statusStats.find((s) => s._id === currentStatusOptions.IDLE)?.count || 0;
+    totalPartners > 0 ? (todayDeliveriesCount / totalPartners).toFixed(1) : '0';
 
   const availabilityRate =
     onlinePartners > 0
       ? ((waitingPartners / onlinePartners) * 100).toFixed(1)
       : '0';
 
-  let topDrivers = await DeliveryPartner.find({
-    'registeredBy.id': managerId,
-    isDeleted: false,
-    'rating.average': { $exists: true, $gt: 0 },
-  })
-    .sort({ 'rating.average': -1 })
-    .limit(4)
-    .select(
-      'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo',
-    );
-
-  if (!topDrivers.length) {
-    topDrivers = await DeliveryPartner.find({
-      'registeredBy.id': managerId,
-      isDeleted: false,
-    })
-      .sort({ createdAt: -1 })
-      .limit(4)
-      .select(
-        'name personalInfo.gender rating personalInfo.nationality operationalData.completedDeliveries vehicleInfo',
-      );
-  }
+  const formattedTopDrivers = (partnerMetrics.topDrivers || []).map(
+    (driver: any) => ({
+      ...driver,
+      name:
+        `${driver?.name?.firstName || ''} ${driver?.name?.lastName || ''}`.trim() ||
+        'N/A',
+    }),
+  );
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -501,25 +503,23 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
           percentage: `${onlinePercentage}%`,
         },
         deliveriesToday: {
-          total: deliveriesToday,
+          total: todayDeliveriesCount,
           avgPerPartner: avgDeliveries,
         },
         availabilityRate: `${availabilityRate}%`,
       },
-      fleetComposition: vehicleComposition.map((item) => ({
-        vehicle: item._id || 'Other',
-        count: item.count,
-      })),
+      fleetComposition: (partnerMetrics.vehicleComposition || []).map(
+        (item: any) => ({
+          vehicle: item._id || 'Other',
+          count: item.count,
+        }),
+      ),
       partnerStatus: {
-        onDelivery:
-          statusStats.find((s) => s._id === currentStatusOptions.ON_DELIVERY)
-            ?.count || 0,
+        onDelivery: onDeliveryPartners,
         waiting: waitingPartners,
-        offline:
-          statusStats.find((s) => s._id === currentStatusOptions.OFFLINE)
-            ?.count || 0,
+        offline: offlinePartners,
       },
-      topRatedDrivers: topDrivers,
+      topRatedDrivers: formattedTopDrivers,
     },
   };
 };
