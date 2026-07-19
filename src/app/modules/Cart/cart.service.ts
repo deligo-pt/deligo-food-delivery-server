@@ -188,6 +188,10 @@ const addToCart = async (
   if (!existingProduct)
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
+  if (existingProduct.meta?.status !== 'ACTIVE') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'PRODUCT_UNAVAILABLE');
+  }
+
   if (addons.length > 0) {
     await existingProduct.populate({
       path: 'addonGroups',
