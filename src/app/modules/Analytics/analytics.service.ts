@@ -765,14 +765,16 @@ const getAdminSalesReportAnalytics = async (
     },
   ]);
 
-  const stats = analytics?.stats[0] ?? {
+  const analyticsData = analytics || { stats: [], revenueTrendRaw: [] };
+
+  const stats = analyticsData.stats[0] ?? {
     totalRevenue: 0,
     completedOrders: 0,
     cancelledOrders: 0,
   };
 
   const revenueTrend = mapGrowthToTimeline({
-    growth: analytics?.revenueTrendRaw ?? [],
+    growth: analyticsData.revenueTrendRaw ?? [],
     timelineMap,
     start,
     end,
@@ -793,7 +795,7 @@ const getAdminSalesReportAnalytics = async (
             ? roundTo2(stats.totalRevenue / stats.completedOrders)
             : 0.0,
       },
-      revenueTrend: revenueTrend.map((item) => ({
+      revenueTrend: (revenueTrend || []).map((item) => ({
         time: item.time,
         revenue: roundTo2(item.value as number),
       })),
