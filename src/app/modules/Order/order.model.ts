@@ -210,5 +210,6 @@ orderSchema.index({
 });
 
 orderSchema.index({ orderStatus: 1, dispatchExpiresAt: 1 });
+orderSchema.index({ deliveryPartnerId: 1, orderStatus: 1, createdAt: -1 });
 
 export const Order = model<TOrder>('Order', orderSchema);

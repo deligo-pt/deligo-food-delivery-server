@@ -8,7 +8,6 @@ import { Order } from '../Order/order.model';
 import { Product } from '../Product/product.model';
 import { Vendor } from '../Vendor/vendor.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { TDeliveryPartner } from '../Delivery-Partner/delivery-partner.interface';
 import { roundTo2 } from '../../utils/mathProvider';
 
 import { Transaction } from '../Transaction/transaction.model';
@@ -517,13 +516,35 @@ const getPartnerPerformanceAnalytics = async (
   const myPartners = await DeliveryPartner.find({
     'registeredBy.id': managerId,
     isDeleted: false,
-  }).select('_id');
+  })
+    .select('_id')
+    .lean();
+
   const partnerIds = myPartners.map((p) => p._id);
+
+  if (partnerIds.length === 0) {
+    return {
+      messageKey: 'DATA_LOAD_SUCCESS',
+      variables: { entity: 'Partners Performance Analytics' },
+      data: {
+        cards: {
+          topPartnerDeliveries: 0,
+          avgDeliveryTime: '0 min',
+          avgAcceptanceRate: '0%',
+          totalEarnings: '€0',
+        },
+        table: {
+          data: [],
+          meta: { page: 1, limit: 10, total: 0, totalPage: 0 },
+        },
+      },
+    };
+  }
 
   const sortMapping: Record<string, string> = {
     'top-deliveries': '-operationalData.completedDeliveries',
     'top-rating': '-rating.average',
-    'top-earnings': '-earnings.totalEarnings',
+    'top-earnings': '-operationalData.totalDeliveries',
   };
 
   if (query.sortBy && sortMapping[query.sortBy as string]) {
@@ -543,7 +564,7 @@ const getPartnerPerformanceAnalytics = async (
         {
           $group: {
             _id: null,
-            totalEarnings: { $sum: '$pricing.deliveryFee' },
+            totalEarnings: { $sum: '$payoutSummary.rider.riderNetEarnings' },
             avgTimeMs: { $avg: { $subtract: ['$deliveredAt', '$pickedUpAt'] } },
           },
         },
@@ -590,7 +611,7 @@ const getPartnerPerformanceAnalytics = async (
     .paginate()
     .fields();
 
-  const tableData = await partnerQuery.modelQuery;
+  const tableData = await partnerQuery.modelQuery.lean();
   const meta = await partnerQuery.countTotal();
 
   const stats = orderStats[0] || { totalEarnings: 0, avgTimeMs: 0 };
@@ -617,13 +638,13 @@ const getPartnerPerformanceAnalytics = async (
         totalEarnings: `€${roundTo2(stats.totalEarnings)}`,
       },
       table: {
-        data: tableData.map((partner: TDeliveryPartner) => {
+        data: tableData.map((partner: any) => {
           const opData = partner.operationalData;
 
           const rowAcceptance =
             opData && opData.totalOfferedOrders && opData.totalOfferedOrders > 0
               ? Math.round(
-                  (opData.totalAcceptedOrders! / opData.totalOfferedOrders) *
+                  (opData.totalAcceptedOrders / opData.totalOfferedOrders) *
                     100,
                 ) + '%'
               : '0%';
@@ -637,11 +658,14 @@ const getPartnerPerformanceAnalytics = async (
                 )
               : 0;
 
+          const fullName =
+            `${partner?.name?.firstName || ''} ${partner?.name?.lastName || ''}`.trim();
+
           return {
             id: partner._id,
-            name: `${partner?.name?.firstName} ${partner?.name?.lastName}`,
+            name: fullName || 'N/A',
             displayId: partner.userId,
-            vehicle: partner?.vehicleInfo?.vehicleType,
+            vehicle: partner?.vehicleInfo?.vehicleType || 'N/A',
             city: partner?.address?.city || 'N/A',
             deliveries: opData?.completedDeliveries || 0,
             avgMins: `${rowAvgMins} min`,
