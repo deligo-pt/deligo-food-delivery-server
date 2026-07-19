@@ -36,6 +36,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { getLocalStartOfPeriod } from '../../utils/dateTimeProvider';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Morshed) -----------------------
@@ -47,9 +48,8 @@ const timezone = 'Europe/Lisbon';
 const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
-  const sevenDaysAgo = new Date();
+  const sevenDaysAgo = getLocalStartOfPeriod('today');
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  sevenDaysAgo.setHours(0, 0, 0, 0);
 
   const [result] = await Order.aggregate([
     {
@@ -63,7 +63,6 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
     },
     {
       $facet: {
-        // Weekly sales
         weeklySales: [
           {
             $group: {
@@ -110,24 +109,23 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
   ]);
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
   const weeklyTrend = dayNames.map((day) => ({
     day,
     total: 0,
   }));
 
-  let totalSales = 0;
-
-  if (result?.totalSales?.length) {
-    totalSales = roundTo2(result.totalSales[0].total);
-  }
-
-  if (result?.weeklySales?.length) {
+  if (result?.weeklySales) {
     result.weeklySales.forEach((item: any) => {
       const index = item._id - 1;
-      weeklyTrend[index].total = roundTo2(item.total);
+      if (weeklyTrend[index]) {
+        weeklyTrend[index].total = roundTo2(item.total);
+      }
     });
   }
+
+  const totalSales = result?.totalSales?.[0]?.total
+    ? roundTo2(result.totalSales[0].total)
+    : 0;
 
   // Best & slowest day
   const nonZeroDays = weeklyTrend.filter((d) => d.total > 0);
@@ -150,12 +148,14 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
       bestPerformingDay,
       slowestDay,
       weeklyTrend,
-      topSellingItems:
-        result?.topItems?.map((item: any) => ({
-          id: item._id,
-          name: item.name,
-          sold: item.sold,
-        })) || [],
+      topSellingItems: (result?.topItems || []).map((item: any) => ({
+        id: item._id,
+        name:
+          typeof item.name === 'object'
+            ? item.name.en || item.name.pt || 'N/A'
+            : item.name,
+        sold: item.sold,
+      })),
     },
   };
 };
@@ -164,103 +164,103 @@ const getVendorSalesAnalytics = async (currentUser: TCurrentUser) => {
 const getCustomerInsights = async (currentUser: TCurrentUser) => {
   const vendorId = new Types.ObjectId(currentUser._id);
 
-  const now = new Date();
+  const startOfToday = getLocalStartOfPeriod('today');
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(now.getDate() - 7);
+  const sevenDaysAgo = new Date(startOfToday);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const fourteenDaysAgo = new Date();
-  fourteenDaysAgo.setDate(now.getDate() - 14);
+  const fourteenDaysAgo = new Date(startOfToday);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(now.getDate() - 30);
+  const thirtyDaysAgo = new Date(startOfToday);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [facet] = await Order.aggregate([
-    {
-      $match: {
-        vendorId,
-        orderStatus: 'DELIVERED',
-        isPaid: true,
-        isDeleted: false,
+  const [facet, customersRaw] = await Promise.all([
+    Order.aggregate([
+      {
+        $match: {
+          vendorId,
+          orderStatus: 'DELIVERED',
+          isPaid: true,
+          isDeleted: false,
+        },
       },
-    },
-
-    {
-      $facet: {
-        /** ---------------- ORDER FREQUENCY ---------------- */
-        orderFrequency: [
-          {
-            $group: {
-              _id: null,
-
-              weekly: {
-                $sum: {
-                  $cond: [{ $gte: ['$createdAt', sevenDaysAgo] }, 1, 0],
-                },
-              },
-
-              biweekly: {
-                $sum: {
-                  $cond: [{ $gte: ['$createdAt', fourteenDaysAgo] }, 1, 0],
-                },
-              },
-
-              monthly: {
-                $sum: {
-                  $cond: [{ $gte: ['$createdAt', thirtyDaysAgo] }, 1, 0],
-                },
-              },
-            },
-          },
-        ],
-
-        /** ---------------- CUSTOMER GROUP ---------------- */
-        customers: [
-          {
-            $group: {
-              _id: '$customerId',
-              totalOrders: { $sum: 1 },
-              totalSpent: { $sum: '$payoutSummary.grandTotal' },
-              firstOrderDate: { $min: '$createdAt' },
-              city: { $first: '$deliveryAddress.city' },
-            },
-          },
-        ],
-
-        /** ---------------- HEATMAP ---------------- */
-        heatmap: [
-          {
-            $match: {
-              createdAt: { $gte: sevenDaysAgo },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                day: {
-                  $dayOfWeek: {
-                    date: '$createdAt',
-                    timezone: 'Europe/Lisbon',
+      {
+        $facet: {
+          orderFrequency: [
+            {
+              $group: {
+                _id: null,
+                weekly: {
+                  $sum: {
+                    $cond: [{ $gte: ['$createdAt', sevenDaysAgo] }, 1, 0],
                   },
                 },
-                hour: {
-                  $hour: {
-                    date: '$createdAt',
-                    timezone: 'Europe/Lisbon',
+                biweekly: {
+                  $sum: {
+                    $cond: [{ $gte: ['$createdAt', fourteenDaysAgo] }, 1, 0],
+                  },
+                },
+                monthly: {
+                  $sum: {
+                    $cond: [{ $gte: ['$createdAt', thirtyDaysAgo] }, 1, 0],
                   },
                 },
               },
-              orders: { $sum: 1 },
             },
-          },
-        ],
+          ],
+
+          heatmap: [
+            { $match: { createdAt: { $gte: sevenDaysAgo } } },
+            {
+              $group: {
+                _id: {
+                  day: {
+                    $dayOfWeek: {
+                      date: '$createdAt',
+                      timezone: 'Europe/Lisbon',
+                    },
+                  },
+                  hour: {
+                    $hour: { date: '$createdAt', timezone: 'Europe/Lisbon' },
+                  },
+                },
+                orders: { $sum: 1 },
+              },
+            },
+          ],
+        },
       },
-    },
+    ]),
+
+    Order.aggregate([
+      {
+        $match: {
+          vendorId,
+          orderStatus: 'DELIVERED',
+          isPaid: true,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: '$customerId',
+          totalOrders: { $sum: 1 },
+          totalSpent: { $sum: '$payoutSummary.grandTotal' },
+          firstOrderDate: { $min: '$createdAt' },
+          city: { $first: '$deliveryAddress.city' },
+        },
+      },
+    ]),
   ]);
 
-  const orderFrequencyRaw = facet?.orderFrequency?.[0] || {};
-  const customersRaw = facet?.customers || [];
-  const heatmapRaw = facet?.heatmap || [];
+  const rawData = facet[0] || { orderFrequency: [], heatmap: [] };
+  const orderFrequencyRaw = rawData.orderFrequency?.[0] || {
+    weekly: 0,
+    biweekly: 0,
+    monthly: 0,
+  };
+  const heatmapRaw = rawData.heatmap || [];
 
   const totalCustomers = customersRaw.length;
 
@@ -280,9 +280,8 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
         ).toFixed(1)
       : '0.0';
 
-  /** ---------------- DEMOGRAPHICS ---------------- */
+  /** DEMOGRAPHICS */
   const cityMap: Record<string, number> = {};
-
   customersRaw.forEach((c: any) => {
     if (!c.city) return;
     cityMap[c.city] = (cityMap[c.city] || 0) + 1;
@@ -292,7 +291,7 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
     .map(([city, count]) => ({ city, count }))
     .sort((a, b) => b.count - a.count);
 
-  /** ---------------- VALUE SEGMENTS ---------------- */
+  /** VALUE SEGMENTS */
   const valueRaw = customersRaw
     .map((c: any) => ({
       avgOrderValue: c.totalOrders > 0 ? c.totalSpent / c.totalOrders : 0,
@@ -331,12 +330,10 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
           value: totalCustomers,
           subValue: `${newCustomers} new`,
         },
-
         returningCustomers: {
           value: returningCustomers,
           subValue: `${avgOrders} orders/avg`,
         },
-
         topCity: {
           value: demographicsRaw[0]?.city || 'N/A',
           subValue:
@@ -344,7 +341,6 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
               ? `${((demographicsRaw[0]?.count / totalCustomers) * 100).toFixed(0)}% of customers`
               : '0%',
         },
-
         retentionRate: {
           value:
             totalCustomers > 0
@@ -369,18 +365,9 @@ const getCustomerInsights = async (currentUser: TCurrentUser) => {
       ],
 
       orderFrequency: [
-        {
-          name: 'weekly',
-          orders: orderFrequencyRaw.weekly || 0,
-        },
-        {
-          name: 'biweekly',
-          orders: orderFrequencyRaw.biweekly || 0,
-        },
-        {
-          name: 'monthly',
-          orders: orderFrequencyRaw.monthly || 0,
-        },
+        { name: 'weekly', orders: orderFrequencyRaw.weekly || 0 },
+        { name: 'biweekly', orders: orderFrequencyRaw.biweekly || 0 },
+        { name: 'monthly', orders: orderFrequencyRaw.monthly || 0 },
       ],
 
       heatmap: heatmapRaw.map((h: any) => ({
