@@ -1,4 +1,6 @@
 import { Vendor } from '../modules/Vendor/vendor.model';
+import { getIO } from '../lib/Socket';
+import { emitVendorStoreStatusUpdate } from '../lib/Socket/events/shopStatus.events';
 
 export const vendorStoreOpenCloseCron = async (): Promise<void> => {
   try {
@@ -67,6 +69,19 @@ export const vendorStoreOpenCloseCron = async (): Promise<void> => {
             },
           },
         );
+
+        try {
+          emitVendorStoreStatusUpdate(getIO(), {
+            vendorId: vendor.userId,
+            isOpen: shouldBeOpen,
+            isManualControl: !!vendor.businessDetails?.isManualControl,
+            storeClosedAt: shouldBeOpen ? null : new Date(),
+            updatedAt: new Date(),
+            source: 'cron',
+          });
+        } catch (error) {
+          void error;
+        }
 
         console.log(
           `Vendor "${businessDetails.businessName}" status auto-updated to: ${shouldBeOpen ? 'OPEN' : 'CLOSED'}`,

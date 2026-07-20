@@ -20,6 +20,8 @@ import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
 import { TMessageKey } from '../../errors/messages';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { getIO } from '../../lib/Socket';
+import { emitVendorStoreStatusUpdate } from '../../lib/Socket/events/shopStatus.events';
 
 /**
  * Service to update vendor profile information.
@@ -285,6 +287,19 @@ const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
     : new Date();
 
   await (currentUser as any).save();
+
+  try {
+    emitVendorStoreStatusUpdate(getIO(), {
+      vendorId: currentUser.userId,
+      isOpen: !!currentUser?.businessDetails?.isStoreOpen,
+      isManualControl: !!currentUser?.businessDetails?.isManualControl,
+      storeClosedAt: currentUser?.businessDetails?.storeClosedAt ?? null,
+      updatedAt: new Date(),
+      source: 'toggle',
+    });
+  } catch (error) {
+    void error;
+  }
 
   return {
     messageKey: 'STORE_STATUS_MESSAGE' as TMessageKey,

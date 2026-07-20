@@ -8,6 +8,7 @@ import AppError from '../../errors/AppError';
 import { registerDriverLiveLocationEvents } from './events/riderLiveLocation.events';
 import { registerSosSocketEvents } from './events/sosAlerts.events';
 import { registerOrderEvents } from './events/order.events';
+import { registerShopStatusEvents } from './events/shopStatus.events';
 
 let io: Server;
 
@@ -35,6 +36,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
     registerDriverLiveLocationEvents(io, socket);
     registerSosSocketEvents(io, socket);
     registerOrderEvents(io, socket);
+    registerShopStatusEvents(io, socket);
   });
 };
 
