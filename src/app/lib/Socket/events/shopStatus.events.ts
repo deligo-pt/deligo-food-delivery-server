@@ -19,11 +19,13 @@ export const registerShopStatusEvents = (io: Server, socket: Socket) => {
   const user = socket.data.user as TCurrentUser | undefined;
   const userRole = user?.role;
   const isCustomer = userRole === 'CUSTOMER';
+  const isVendor = userRole === 'VENDOR' || userRole === 'SUB_VENDOR';
 
   socket.on(
     'join-vendor-store-status-room',
     ({ vendorId }: { vendorId?: string }) => {
-      if (!isCustomer || !vendorId) return;
+      if ((!isCustomer && !isVendor) || !vendorId) return;
+      if (isVendor && user?.userId !== vendorId) return;
       socket.join(getVendorRoomName(vendorId));
     },
   );
@@ -31,7 +33,7 @@ export const registerShopStatusEvents = (io: Server, socket: Socket) => {
   socket.on(
     'leave-vendor-store-status-room',
     ({ vendorId }: { vendorId?: string }) => {
-      if (!isCustomer || !vendorId) return;
+      if ((!isCustomer && !isVendor) || !vendorId) return;
       socket.leave(getVendorRoomName(vendorId));
     },
   );
