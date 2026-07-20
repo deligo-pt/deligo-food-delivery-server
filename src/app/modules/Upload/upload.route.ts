@@ -6,10 +6,6 @@ import { parseBody } from '../../middlewares/bodyParser';
 
 const router = Router();
 
-/**
- * POST /api/v1/uploads
- * Key name should be 'files' in form-data
- */
 router.post(
   '/',
   auth(

@@ -45,11 +45,7 @@ export default {
     super_admin_profile_photo: process.env.SUPER_ADMIN_PROFILE_PHOTO,
     super_admin_contact_number: process.env.SUPER_ADMIN_CONTACT_NUMBER,
   },
-  cloudinary: {
-    cloudinary_cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    cloudinary_api_key: process.env.CLOUDINARY_API_KEY,
-    cloudinary_api_secret: process.env.CLOUDINARY_API_SECRET,
-  },
+
   sender_email: process.env.SENDER_EMAIL,
   sender_app_password: process.env.SENDER_APP_PASS,
   firebase_service_account: process.env.FIREBASE_SERVICE_ACCOUNT,
@@ -74,5 +70,11 @@ export default {
     test_customer_contact_number: process.env.TEST_CUSTOMER_CONTACT_NUMBER,
     test_customer_otp: process.env.TEST_CUSTOMER_OTP,
     test_customer_contact_otp: process.env.TEST_CUSTOMER_CONTACT_OTP,
+  },
+  rustfs: {
+    endpoint: process.env.RUSTFS_ENDPOINT,
+    accessKeyId: process.env.RUSTFS_ACCESS_KEY,
+    secretAccessKey: process.env.RUSTFS_SECRET_KEY,
+    bucketName: process.env.RUSTFS_BUCKET_NAME,
   },
 };

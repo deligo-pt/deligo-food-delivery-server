@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-unused-vars */
 import { ErrorRequestHandler } from 'express';
@@ -9,11 +10,10 @@ import handleValidationError from '../errors/handleValidationError';
 import handleZodError from '../errors/handleZodError';
 import handleDuplicateError from '../errors/handlerDuplicateError';
 import { TErrorSources } from '../interfaces/error.interface';
-import { TImageFiles } from '../interfaces/image.interface';
-import { deleteImageFromCloudinary } from '../utils/deleteImage';
 import multer from 'multer';
 import { ErrorLog } from '../modules/ErrorLog/errorLog.schema';
 import { localizedMessages, TMessageKey } from '../errors/messages';
+import { deleteMultipleImagesFromRustFS } from '../utils/storage';
 
 type TMessageFunction = (
   vars: Record<string, string | number | boolean>,
@@ -35,11 +35,18 @@ const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
     },
   ];
 
-  if (req.files && Object.keys(req.files).length > 0) {
+  const uploadedFilesToCleanup = (req as any).uploadedFiles as
+    | string[]
+    | undefined;
+
+  if (uploadedFilesToCleanup && uploadedFilesToCleanup.length > 0) {
     try {
-      await deleteImageFromCloudinary(req.files as TImageFiles);
+      await deleteMultipleImagesFromRustFS(uploadedFilesToCleanup);
     } catch (deleteError) {
-      console.error('Failed to delete images:', deleteError);
+      console.error(
+        'Failed to delete uploaded images from RustFS:',
+        deleteError,
+      );
     }
   }
 

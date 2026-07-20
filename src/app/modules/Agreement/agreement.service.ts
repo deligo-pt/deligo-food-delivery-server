@@ -11,10 +11,10 @@ import httpStatus from 'http-status';
 import generateOtp from '../../utils/generateOtp';
 import { EmailHelper } from '../../utils/emailSender';
 import { RedisService } from '../../config/redis';
-import { uploadLocalFileToCloudinary } from '../../utils/uploadToCloudinary';
 import { sendAgreementSignedEmail } from '../../helpers/sendAgreementSignedEmail';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { uploadLocalFileToRustFS } from '../../utils/storage';
 
 const initiateAgreement = async (
   payload: TInitiateAgreementPayload,
@@ -173,11 +173,11 @@ const verifyAgreementOtp = async (
     agreement._id.toString(),
   );
 
-  const draftPdfUrl = await uploadLocalFileToCloudinary(
+  const draftPdfUrl = await uploadLocalFileToRustFS(
     localDraftPdfPath,
     'agreements',
     `draft-${agreement._id}`,
-    'raw',
+    'application/pdf',
   );
 
   agreement.draftPdfPath = draftPdfUrl;
@@ -299,11 +299,11 @@ const signAgreement = async (
     agreement._id.toString(),
     'agent',
   );
-  const agentSignatureUrl = await uploadLocalFileToCloudinary(
+  const agentSignatureUrl = await uploadLocalFileToRustFS(
     localAgentSignaturePath,
     'signatures',
     `signature-${agreement._id}-agent`,
-    'image',
+    'image/png',
   );
 
   const localEstSignaturePath = await saveSignatureImage(
@@ -311,11 +311,11 @@ const signAgreement = async (
     agreement._id.toString(),
     'establishment',
   );
-  const establishmentSignatureUrl = await uploadLocalFileToCloudinary(
+  const establishmentSignatureUrl = await uploadLocalFileToRustFS(
     localEstSignaturePath,
     'signatures',
     `signature-${agreement._id}-establishment`,
-    'image',
+    'image/png',
   );
 
   const agentName = currentUser?.name?.firstName
@@ -335,11 +335,11 @@ const signAgreement = async (
     agreement._id.toString(),
   );
 
-  const signedPdfUrl = await uploadLocalFileToCloudinary(
+  const signedPdfUrl = await uploadLocalFileToRustFS(
     localSignedPdfPath,
     'agreements',
     `signed-${agreement._id}`,
-    'raw',
+    'application/pdf',
   );
 
   agreement.agentSignaturePath = agentSignatureUrl;

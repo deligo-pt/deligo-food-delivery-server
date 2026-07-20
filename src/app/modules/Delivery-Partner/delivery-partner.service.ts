@@ -9,12 +9,12 @@ import {
 } from './delivery-partner.interface';
 import { DeliveryPartner } from './delivery-partner.model';
 import { DeliveryPartnerSearchableFields } from './delivery-partner.constant';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
 import { FleetManager } from '../Fleet-Manager/fleet-manager.model';
 import mongoose from 'mongoose';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
@@ -253,7 +253,7 @@ const deliverPartnerDocImageUpload = async (
 
   if (docTitle && existingDeliveryPartner?.documents?.[docTitle]) {
     const oldImage = existingDeliveryPartner?.documents?.[docTitle];
-    deleteSingleImageFromCloudinary(oldImage).catch(() => undefined);
+    deleteSingleImageFromRustFS(oldImage).catch(() => undefined);
   }
 
   if (data.docImageTitle && file) {

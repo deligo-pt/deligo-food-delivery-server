@@ -7,8 +7,8 @@ import {
   TCreateBusinessCategoryInput,
 } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 //  Create Business Category
 const createBusinessCategory = async (
@@ -94,8 +94,8 @@ const updateBusinessCategory = async (
   if (icon) {
     if (category.icon) {
       const oldIcon = category.icon;
-      deleteSingleImageFromCloudinary(oldIcon).catch((error) => {
-        console.error('Failed to delete old icon from Cloudinary:', error);
+      deleteSingleImageFromRustFS(oldIcon).catch((error) => {
+        console.error('Failed to delete old icon from RustFS:', error);
       });
     }
     category.icon = icon;

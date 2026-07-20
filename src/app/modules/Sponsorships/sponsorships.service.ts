@@ -2,10 +2,10 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { TSponsorship } from './sponsorships.interface';
 import { Sponsorship } from './sponsorships.model';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 // Create sponsorship
 const createSponsorship = async (
@@ -75,7 +75,7 @@ const updateSponsorship = async (
   if (bannerImage) {
     const oldPhoto = isExist.bannerImage;
     if (oldPhoto) {
-      deleteSingleImageFromCloudinary(oldPhoto).catch((err) => {
+      deleteSingleImageFromRustFS(oldPhoto).catch((err) => {
         void err;
       });
     }

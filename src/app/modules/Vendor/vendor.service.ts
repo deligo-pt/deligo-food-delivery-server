@@ -14,7 +14,6 @@ import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
@@ -22,6 +21,7 @@ import { TMessageKey } from '../../errors/messages';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { getIO } from '../../lib/Socket';
 import { emitVendorStoreStatusUpdate } from '../../lib/Socket/events/shopStatus.events';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 /**
  * Service to update vendor profile information.
@@ -247,7 +247,7 @@ const deleteVendorDocument = async (
     );
   }
 
-  await deleteSingleImageFromCloudinary(imageUrl).catch((err) => {
+  await deleteSingleImageFromRustFS(imageUrl).catch((err) => {
     void err;
   });
 

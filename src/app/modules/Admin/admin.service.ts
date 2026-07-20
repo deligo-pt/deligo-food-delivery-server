@@ -5,9 +5,9 @@ import { TAdmin } from './admin.interface';
 import { Admin, TAdminImageDocuments } from './admin.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { AdminSearchableFields } from './admin.constant';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 // update admin service
 const updateAdmin = async (
   payload: Partial<TAdmin>,
@@ -119,7 +119,7 @@ const adminDocImageUpload = async (
 
   if (docTitle && existingAdmin?.documents?.[docTitle]) {
     const oldImage = existingAdmin?.documents?.[docTitle];
-    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
+    deleteSingleImageFromRustFS(oldImage).catch((err) => {
       // throw new AppError(httpStatus.BAD_REQUEST, err.message);
       console.error(err);
     });

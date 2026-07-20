@@ -3,8 +3,8 @@ import AppError from '../../errors/AppError';
 import { BusinessCategory, ProductCategory } from './category.model';
 import { TProductCategory } from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 //  Create Product Category (Linked to Business)
 const createProductCategory = async (
@@ -90,7 +90,7 @@ const updateProductCategory = async (
   if (icon) {
     if (category.icon) {
       const oldIcon = category.icon;
-      deleteSingleImageFromCloudinary(oldIcon).catch((error) => {
+      deleteSingleImageFromRustFS(oldIcon).catch((error) => {
         console.error(error);
       });
     }

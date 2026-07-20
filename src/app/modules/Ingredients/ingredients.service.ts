@@ -2,13 +2,13 @@ import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { Ingredient } from './ingredients.model';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { IngredientsSearchFields } from './ingredients.constant';
 import { TIngredients } from './ingredients.interface';
 import customNanoId from '../../utils/customNanoId';
 import { Tax } from '../Tax/tax.model';
 import { flattenObject } from '../../utils/flattenObject';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 const createIngredient = async (
   payload: TIngredients,
@@ -95,8 +95,8 @@ const updateIngredient = async (
 
   if (payload.image && ingredient.image) {
     const oldImage = ingredient.image;
-    deleteSingleImageFromCloudinary(oldImage).catch((error) => {
-      console.error('Cloudinary delete error:', error);
+    deleteSingleImageFromRustFS(oldImage).catch((error) => {
+      console.error('RustFS delete error:', error);
     });
   }
 
@@ -193,10 +193,10 @@ const permanentDeleteIngredient = async (ingredientId: string) => {
     );
   }
 
-  // 1. Wipe out images from Cloudinary storage right away
+  // 1. Wipe out images from RustFS storage right away
   if (ingredient.image) {
-    deleteSingleImageFromCloudinary(ingredient.image).catch((error) => {
-      console.error('Cloudinary wipe failed for permanent delete:', error);
+    deleteSingleImageFromRustFS(ingredient.image).catch((error) => {
+      console.error('RustFS wipe failed for permanent delete:', error);
     });
   }
 

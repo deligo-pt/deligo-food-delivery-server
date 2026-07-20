@@ -7,7 +7,6 @@ import { Product } from './product.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { ProductSearchableFields } from './product.constant';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { cleanForSKU, localizeProductData } from './product.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
@@ -19,6 +18,7 @@ import {
 } from '../../constant/GlobalInterface/language.interface';
 import { UpdateProductUtils } from './updateProduct.utils';
 import { Order } from '../Order/order.model';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
@@ -784,7 +784,7 @@ const deleteProductImages = async (
   }
 
   // delete image from cloudinary
-  await Promise.all(images.map((img) => deleteSingleImageFromCloudinary(img)));
+  await Promise.all(images.map((img) => deleteSingleImageFromRustFS(img)));
 
   // Remove images from product
   product.images = product.images.filter((img) => !images.includes(img));

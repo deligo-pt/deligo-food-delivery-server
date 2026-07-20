@@ -1,10 +1,10 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { QueryBuilder } from '../../builder/QueryBuilder';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TCuisine } from './category.interface';
 import { Cuisine } from './category.model';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 // Create Cuisine
 const createCuisine = async (payload: TCuisine, image: string | null) => {
@@ -78,8 +78,8 @@ const updateCuisine = async (
   if (image) {
     if (cuisine.imageUrl) {
       const oldImage = cuisine.imageUrl;
-      deleteSingleImageFromCloudinary(oldImage).catch((error) => {
-        console.error('Failed to delete old image from Cloudinary:', error);
+      deleteSingleImageFromRustFS(oldImage).catch((error) => {
+        console.error('Failed to delete old image from RustFS:', error);
       });
     }
     cuisine.imageUrl = image;
@@ -226,11 +226,11 @@ const permanentDeleteCuisine = async (id: string) => {
     throw new AppError(httpStatus.CONFLICT, 'SOFT_DELETE_FIRST');
   }
 
-  // Final cleanup of the image resource from Cloudinary storage
+  // Final cleanup of the image resource from RustFS storage
   if (cuisine.imageUrl) {
-    deleteSingleImageFromCloudinary(cuisine.imageUrl).catch((error) => {
+    deleteSingleImageFromRustFS(cuisine.imageUrl).catch((error) => {
       console.error(
-        'Failed to clean up Cloudinary assets during permanent destruction:',
+        'Failed to clean up RustFS assets during permanent destruction:',
         error,
       );
     });

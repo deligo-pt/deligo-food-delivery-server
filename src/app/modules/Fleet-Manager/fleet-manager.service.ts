@@ -9,9 +9,9 @@ import {
   TFleetManagerImageDocuments,
 } from './fleet-manager.interface';
 import { FleetManager } from './fleet-manager.model';
-import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { AuthUser } from '../AuthUser/authUser.model';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
+import { deleteSingleImageFromRustFS } from '../../utils/storage';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -202,7 +202,7 @@ const deleteFleetManagerDocument = async (
     throw new AppError(httpStatus.NOT_FOUND, 'IMAGE_NOT_FOUND_IN_CATEGORY');
   }
 
-  await deleteSingleImageFromCloudinary(imageUrl).catch((err) => {
+  await deleteSingleImageFromRustFS(imageUrl).catch((err) => {
     void err;
   });
 
