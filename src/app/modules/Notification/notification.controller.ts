@@ -4,6 +4,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import { NotificationService } from './notification.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Get notifications for current user
 const getMyNotifications = catchAsync(async (req, res) => {
@@ -69,10 +70,19 @@ const getAllNotifications = catchAsync(async (req, res) => {
 // soft delete single notification controller
 const softDeleteSingleNotification = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const currentUser = req?.user as TCurrentUser;
   const result = await NotificationService.softDeleteSingleNotification(
     id,
-    req?.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Notification',
+    target: `Notification #${id}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -84,10 +94,19 @@ const softDeleteSingleNotification = catchAsync(async (req, res) => {
 // soft delete multiple notifications controller
 const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
   const { notificationIds } = req.body;
+  const currentUser = req?.user as TCurrentUser;
   const result = await NotificationService.softDeleteMultipleNotifications(
     notificationIds,
-    req?.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Multiple Notifications',
+    target: `${notificationIds?.length || 0} Notifications`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -99,9 +118,17 @@ const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
 
 // soft delete all notifications controller
 const softDeleteAllNotifications = catchAsync(async (req, res) => {
-  const result = await NotificationService.softDeleteAllNotifications(
-    req?.user as TCurrentUser,
-  );
+  const currentUser = req?.user as TCurrentUser;
+  const result =
+    await NotificationService.softDeleteAllNotifications(currentUser);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted All Notifications',
+    target: 'All Notifications',
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -114,10 +141,19 @@ const softDeleteAllNotifications = catchAsync(async (req, res) => {
 // Permanent Delete Single Notification Controller
 const permanentDeleteSingleNotification = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const currentUser = req?.user as TCurrentUser;
   const result = await NotificationService.permanentDeleteSingleNotification(
     id,
-    req?.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted Notification',
+    target: `Notification #${id}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -129,10 +165,19 @@ const permanentDeleteSingleNotification = catchAsync(async (req, res) => {
 // Permanent Delete Multiple Notification Controller
 const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
   const { notificationIds } = req.body;
+  const currentUser = req?.user as TCurrentUser;
   const result = await NotificationService.permanentDeleteMultipleNotifications(
     notificationIds,
-    req?.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted Multiple Notifications',
+    target: `${notificationIds?.length || 0} Notifications`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -144,9 +189,17 @@ const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
 
 // Permanent Delete All Notification Controller
 const permanentDeleteAllNotifications = catchAsync(async (req, res) => {
-  const result = await NotificationService.permanentDeleteAllNotifications(
-    req?.user as TCurrentUser,
-  );
+  const currentUser = req?.user as TCurrentUser;
+  const result =
+    await NotificationService.permanentDeleteAllNotifications(currentUser);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted All Notifications',
+    target: 'All Notifications',
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -158,7 +211,16 @@ const permanentDeleteAllNotifications = catchAsync(async (req, res) => {
 
 // Broadcast Notification Controller
 const sendBroadcastNotification = catchAsync(async (req, res) => {
+  const currentUser = req?.user as TCurrentUser;
   const result = await NotificationService.sendBroadcastNotification(req.body);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Sent Broadcast Notification',
+    target: req.body?.title || 'Broadcast Notification',
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

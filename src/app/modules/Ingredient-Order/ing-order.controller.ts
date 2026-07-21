@@ -4,12 +4,21 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { IngredientOrderService } from './ing-order.service';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 const confirmIngredientOrder = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await IngredientOrderService.confirmIngredientOrder(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Confirmed Ingredient Order',
+    target: `Ingredient Order #${req.body?.orderId}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,
@@ -73,6 +82,13 @@ const updateIngredientOrderStatus = catchAsync(async (req, res) => {
     status,
     currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Ingredient Order Status',
+    target: `Ingredient Order #${orderId}`,
+    type: 'WARNING',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

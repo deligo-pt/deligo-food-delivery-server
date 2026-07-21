@@ -5,15 +5,21 @@ import { CheckoutServices } from './checkout.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatCheckoutResponse } from './checkout.utils';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // checkout Controller
 const checkout = catchAsync(async (req, res) => {
-  const result = await CheckoutServices.checkout(
-    req.user as TCurrentUser,
-    req.body,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await CheckoutServices.checkout(currentUser, req.body);
 
   const formattedData = formatCheckoutResponse(result?.data, req.lang);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Checkout',
+    target: `Checkout #${result?.data?._id}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,

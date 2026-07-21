@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { DeliveryPartnerServices } from './delivery-partner.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Delivery Partner Update Controller
 const updateDeliveryPartner = catchAsync(async (req, res) => {
@@ -13,6 +14,14 @@ const updateDeliveryPartner = catchAsync(async (req, res) => {
     req.params.deliveryPartnerId,
     currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Delivery Partner',
+    target: `Delivery Partner #${req.params.deliveryPartnerId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -39,10 +48,19 @@ const updateDeliveryPartnerLiveLocation = catchAsync(async (req, res) => {
 
 // change delivery partner status
 const changeDeliveryPartnerStatus = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await DeliveryPartnerServices.changeDeliveryPartnerStatus(
-    req.user as TCurrentUser,
+    currentUser,
     req.body,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Changed Delivery Partner Status',
+    target: `Delivery Partner #${currentUser?.userId}`,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -54,12 +72,23 @@ const changeDeliveryPartnerStatus = catchAsync(async (req, res) => {
 // delivery partner doc image upload
 const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
   const file = req.file;
+  const currentUser = req.user as TCurrentUser;
   const result = await DeliveryPartnerServices.deliverPartnerDocImageUpload(
     file?.path,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
     req.params.deliveryPartnerId,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Uploaded Delivery Partner Document',
+    target:
+      req.body?.docImageTitle ||
+      `Delivery Partner #${req.params.deliveryPartnerId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -102,11 +131,19 @@ const getSingleDeliveryPartner = catchAsync(async (req, res) => {
 });
 
 const assignDeliveryPartnerToFleetManager = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result =
     await DeliveryPartnerServices.assignDeliveryPartnerToFleetManager(
       req.params.deliveryPartnerId,
       req.body.fleetManagerId,
     );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Assigned Delivery Partner To Fleet Manager',
+    target: `Delivery Partner #${req.params.deliveryPartnerId}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,

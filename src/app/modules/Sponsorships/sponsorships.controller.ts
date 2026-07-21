@@ -5,15 +5,24 @@ import { SponsorshipServices } from './sponsorships.service';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // create Sponsorship Controller
 const createSponsorship = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
+  const currentUser = req.user as TCurrentUser;
   const result = await SponsorshipServices.createSponsorship(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
     file?.path ?? null,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Sponsorship',
+    target: req.body?.sponsorName || 'New Sponsorship',
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -27,12 +36,20 @@ const createSponsorship = catchAsync(async (req, res) => {
 const updateSponsorship = catchAsync(async (req, res) => {
   const { id } = req.params;
   const file = req.file as TImageFile | undefined;
+  const currentUser = req.user as TCurrentUser;
 
   const result = await SponsorshipServices.updateSponsorship(
     id,
     req.body,
     file?.path ?? null,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Sponsorship',
+    target: req.body?.sponsorName || `Sponsorship #${id}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -84,10 +101,19 @@ const getSingleSponsorship = catchAsync(async (req, res) => {
 // soft delete Sponsorship Controller
 const softDeleteSponsorship = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const currentUser = req?.user as TCurrentUser;
   const result = await SponsorshipServices.softDeletedSponsorship(
-    req?.user as TCurrentUser,
+    currentUser,
     id,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Sponsorship',
+    target: `Sponsorship #${id}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -99,10 +125,19 @@ const softDeleteSponsorship = catchAsync(async (req, res) => {
 // permanent delete Sponsorship Controller
 const permanentDeleteSponsorship = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const currentUser = req?.user as TCurrentUser;
   const result = await SponsorshipServices.permanentDeleteSponsorship(
-    req?.user as TCurrentUser,
+    currentUser,
     id,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted Sponsorship',
+    target: `Sponsorship #${id}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
