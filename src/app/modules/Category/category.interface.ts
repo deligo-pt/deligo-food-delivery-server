@@ -1,4 +1,5 @@
 import mongoose, { Types } from 'mongoose';
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 export const BusinessCategoryName = {
   RESTAURANT: 'RESTAURANT',
@@ -8,9 +9,24 @@ export const BusinessCategoryName = {
 export type TBusinessCategoryName =
   (typeof BusinessCategoryName)[keyof typeof BusinessCategoryName];
 
+export const BusinessCategoryTranslation = {
+  [BusinessCategoryName.RESTAURANT]: {
+    en: 'RESTAURANT',
+    pt: 'RESTAURANTE',
+  },
+  [BusinessCategoryName.STORE]: {
+    en: 'STORE',
+    pt: 'LOJA',
+  },
+} as const;
+
+export type TCreateBusinessCategoryInput = Omit<TBusinessCategory, 'name'> & {
+  name: TBusinessCategoryName;
+};
+
 export type TBusinessCategory = {
   _id?: Types.ObjectId;
-  name: TBusinessCategoryName;
+  name: TLocalizedText;
   slug: string;
   description?: string;
   icon: string;
@@ -22,7 +38,7 @@ export type TBusinessCategory = {
 
 export type TProductCategory = {
   _id?: Types.ObjectId;
-  name: string; // e.g. "Pizza", "Burger", "Medicine"
+  name: TLocalizedText; // e.g. "Pizza", "Burger", "Medicine"
   slug: string;
   description?: string;
   icon: string;
@@ -35,7 +51,7 @@ export type TProductCategory = {
 
 export type TCuisine = {
   _id?: Types.ObjectId;
-  name: string;
+  name: TLocalizedText;
   slug: string;
   imageUrl: string;
   isActive: boolean;

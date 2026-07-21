@@ -17,6 +17,7 @@ import customNanoId from '../../utils/customNanoId';
 import { Admin } from '../Admin/admin.model';
 import { GlobalSettings } from '../GlobalSetting/globalSetting.model';
 import { roundTo2 } from '../../utils/mathProvider';
+import { TMessageKey } from '../../errors/messages';
 
 // initiate payout service
 const initiateSettlement = async (
@@ -32,7 +33,7 @@ const initiateSettlement = async (
   const { user } = await findUserById({ userId: targetUserId });
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Target user not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_USER_NOT_FOUND');
   }
   const userId = user?._id;
   const targetUserModel = ROLE_COLLECTION_MAP[user?.role as TUserRole];
@@ -42,7 +43,7 @@ const initiateSettlement = async (
       if (user?.role !== 'DELIVERY_PARTNER') {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'Fleet Managers can only settle with Delivery Partners.',
+          'FLEET_MANAGER_ONLY_SETTLE_DELIVERY_PARTNERS',
         );
       }
       const isHisRider =
@@ -52,7 +53,7 @@ const initiateSettlement = async (
       if (!isHisRider) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          'You can only initiate settlement for your own delivery partners.',
+          'ONLY_OWN_DELIVERY_PARTNERS_SETTLEMENT',
         );
       }
     }
@@ -66,7 +67,7 @@ const initiateSettlement = async (
     if (!hasCompleteBankDetails) {
       const alertPayload = {
         title: 'Bank Details Incomplete',
-        body: `Settlement could not be initiated because your bank details are missing. Please update them.`,
+        body: 'Settlement could not be initiated because your bank details are missing. Please update them.',
       };
 
       NotificationService.sendToUser(
@@ -80,7 +81,20 @@ const initiateSettlement = async (
 
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Cannot initiate settlement. Delivery partner has incomplete bank details.',
+        'CANNOT_INITIATE_SETTLEMENT_INCOMPLETE_BANK_DETAILS',
+      );
+    }
+
+    // Anti-Spam Check: Ensure no parallel pending request exists for this user
+    const existingPendingPayout = await Payout.findOne({
+      userId,
+      status: 'PENDING',
+    }).session(session);
+
+    if (existingPendingPayout) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'EXISTING_PENDING_PAYOUT_SESSION_ACTIVE',
       );
     }
 
@@ -89,14 +103,14 @@ const initiateSettlement = async (
       userModel: targetUserModel,
     }).session(session);
 
-    if (!wallet || wallet.totalUnpaidEarnings <= 0) {
+    if (!wallet || wallet.currentBalance <= 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No unpaid earnings to settle.',
+        'NO_UNPAID_EARNINGS_TO_SETTLE',
       );
     }
 
-    const snapshotAmount = wallet.totalUnpaidEarnings;
+    const snapshotAmount = roundTo2(wallet.currentBalance);
     const uniquePayoutId = customNanoId(8);
 
     const [payout] = await Payout.create(
@@ -144,7 +158,10 @@ const initiateSettlement = async (
       );
     }
 
-    return payout;
+    return {
+      messageKey: 'SETTLEMENT_INITIATED_SUCCESS' as TMessageKey,
+      data: payout,
+    };
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -173,32 +190,60 @@ const finalizeSettlement = async (
     const payout = await Payout.findOne({ payoutId })
       .populate('userId', 'userId bankDetails name nif')
       .session(session);
+
     if (!payout || payout.status !== 'PENDING') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Invalid payout session or already paid.',
+        'INVALID_PAYOUT_SESSION_OR_ALREADY_PAID',
       );
     }
 
     const user = payout.userId as any;
 
     if (!payoutProof) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'PAYOUT_PROOF_MANDATORY');
+    }
+
+    const amountToDeduct = roundTo2(payout.amount);
+
+    const updatedTargetWallet = await Wallet.findOneAndUpdate(
+      {
+        userId: payout.userId,
+        userModel: payout.userModel,
+        currentBalance: { $gte: amountToDeduct },
+      },
+      {
+        $inc: { currentBalance: -amountToDeduct },
+        $set: { lastSettlementDate: new Date() },
+      },
+      { session, new: true },
+    );
+
+    if (!updatedTargetWallet) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Payout proof image is mandatory.',
+        'INSUFFICIENT_WALLET_BALANCE_FOR_FINALIZATION',
       );
     }
 
-    const amountToDeduct = payout.amount;
-
-    await Wallet.findOneAndUpdate(
-      { userId: payout.userId, userModel: payout.userModel },
+    const updatedSenderWallet = await Wallet.findOneAndUpdate(
       {
-        $inc: { totalUnpaidEarnings: -amountToDeduct },
-        $set: { lastSettlementDate: new Date() },
+        userId: payout.senderId,
+        userModel: payout.senderModel,
+        currentBalance: { $gte: amountToDeduct },
       },
-      { session },
+      {
+        $inc: { currentBalance: -amountToDeduct },
+      },
+      { session, new: true },
     );
+
+    if (!updatedSenderWallet) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'SENDER_TREASURY_POOL_INSUFFICIENT_FUNDS',
+      );
+    }
 
     const settlementTypeMapper: Record<string, string> = {
       Vendor: 'VENDOR_SETTLEMENT',
@@ -206,17 +251,7 @@ const finalizeSettlement = async (
       FleetManager: 'FLEET_SETTLEMENT',
     };
 
-    if (
-      payout.userModel === 'DeliveryPartner' &&
-      payout.senderModel === 'FleetManager'
-    ) {
-      await Wallet.findOneAndUpdate(
-        { userId: payout.senderId, userModel: 'FleetManager' },
-        { $inc: { totalRiderPayable: -amountToDeduct } },
-        { session },
-      );
-    }
-
+    // Double-Entry System Transaction Log Generation
     await Transaction.create(
       [
         {
@@ -224,12 +259,15 @@ const finalizeSettlement = async (
           payoutId: payout._id,
           userId: payout.userId,
           userModel: payout.userModel,
+          baseAmount: amountToDeduct,
+          taxAmount: 0,
           totalAmount: amountToDeduct,
           type: settlementTypeMapper[payout.userModel],
           status: 'SUCCESS',
           paymentMethod: payout.paymentMethod,
-          remarks: payload.remarks || 'Weekly settlement completed',
-          processedBy: new mongoose.Types.ObjectId(processedBy),
+          remarks:
+            payload.remarks || 'Weekly bank settlement completed successfully',
+          processedBy: processedBy,
           processorModel: processorModel,
         },
       ],
@@ -241,19 +279,22 @@ const finalizeSettlement = async (
     payout.remarks = payload.remarks || 'Weekly settlement completed';
     payout.payoutProof = payoutProof;
     payout.bankDetails = { ...user.bankDetails };
+    payout.paymentDate = new Date();
+
     const result = await payout.save({ session });
 
     await session.commitTransaction();
 
     const NotificationPayload = {
       title: 'Settlement completed',
-      body: `Your settlement of ${amountToDeduct} has been processed successfully.`,
+      body: `Your bank settlement of €${amountToDeduct} has been processed successfully.`,
       data: {
         amount: String(result.amount),
         status: String(result.status),
         paymentMethod: String(result.paymentMethod),
       },
     };
+
     NotificationService.sendToUser(
       (result.userId as any).userId,
       NotificationPayload.title,
@@ -263,7 +304,10 @@ const finalizeSettlement = async (
       'PAYOUT',
     );
 
-    return { message: 'Settlement completed successfully.', data: result };
+    return {
+      messageKey: 'SETTLEMENT_COMPLETED_SUCCESS' as TMessageKey,
+      data: result,
+    };
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -362,8 +406,9 @@ const getAllPayouts = async (
   });
 
   return {
+    messageKey: 'PAYOUTS_FETCHED_SUCCESS' as TMessageKey,
     meta,
-    result,
+    data: result,
   };
 };
 
@@ -379,7 +424,7 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
     .populate('senderId', 'name role profilePhoto');
 
   if (!payout) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Payout record not found.');
+    throw new AppError(httpStatus.NOT_FOUND, 'PAYOUT_RECORD_NOT_FOUND');
   }
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
@@ -390,7 +435,7 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
     if (!isOwner && !isSender) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You do not have permission to view this payout detail.',
+        'NO_PERMISSION_TO_VIEW_PAYOUT_DETAIL',
       );
     }
   }
@@ -420,15 +465,17 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    ...payout.toObject(),
-    payoutCategory,
-    userId: updatedUser,
+    messageKey: 'PAYOUT_FETCHED_SUCCESS' as TMessageKey,
+    data: {
+      ...payout.toObject(),
+      payoutCategory,
+      userId: updatedUser,
+    },
   };
 };
 
 const initiateAutomatedSettlement = async () => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
     const settings = await GlobalSettings.findOne().lean();
@@ -438,32 +485,47 @@ const initiateAutomatedSettlement = async () => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() - (payoutWindowDays || 0));
 
+    session.startTransaction();
+
+    const activePendingUserIds = await Payout.find({ status: 'PENDING' })
+      .select('userId')
+      .session(session)
+      .lean()
+      .then((payouts) => payouts.map((p) => p.userId.toString()));
+
     const eligibleWallets = await Wallet.find({
-      totalUnpaidEarnings: { $gte: minPayoutAmount },
+      userId: { $nin: activePendingUserIds },
+      currentBalance: { $gte: minPayoutAmount },
       userModel: { $in: ['Vendor', 'FleetManager', 'DeliveryPartner'] },
     })
       .populate('userId', 'registeredBy bankDetails userId name')
       .session(session);
 
-    if (eligibleWallets.length === 0) return;
+    if (eligibleWallets.length === 0) {
+      await session.commitTransaction();
+      return;
+    }
 
-    const superAdmin = await Admin.findOne({ role: 'SUPER_ADMIN' });
+    const superAdmin = await Admin.findOne({ role: 'SUPER_ADMIN' }).session(
+      session,
+    );
 
     for (const wallet of eligibleWallets) {
       const user = wallet.userId as any;
 
       if (wallet.userModel === 'DeliveryPartner') {
-        if (user?.registeredBy?.role === 'FLEET_MANAGER') {
+        if (user?.registeredBy?.model === 'FleetManager') {
           continue;
         }
       }
+
       const hasCompleteBankDetails =
         user?.bankDetails?.bankName &&
         user?.bankDetails?.accountHolderName &&
         user?.bankDetails?.iban;
 
       if (!hasCompleteBankDetails) {
-        const formattedAmount = roundTo2(wallet.totalUnpaidEarnings);
+        const formattedAmount = roundTo2(wallet.currentBalance);
         const NotificationPayload = {
           title: 'Dados Bancários Incompletos',
           body: `Não conseguimos iniciar o seu pagamento de €${formattedAmount} porque os seus dados bancários estão incompletos. Por favor, atualize-os para receber os pagamentos.`,
@@ -481,15 +543,6 @@ const initiateAutomatedSettlement = async () => {
         continue;
       }
 
-      const existingPendingPayout = await Payout.findOne({
-        userId: wallet.userId,
-        status: 'PENDING',
-      }).session(session);
-
-      if (existingPendingPayout) {
-        continue;
-      }
-
       const uniquePayoutId = customNanoId(8);
 
       await Payout.create(
@@ -500,10 +553,9 @@ const initiateAutomatedSettlement = async () => {
             userModel: wallet.userModel,
             senderId: superAdmin?._id,
             senderModel: 'Admin',
-            amount: wallet.totalUnpaidEarnings,
+            amount: roundTo2(wallet.currentBalance),
             status: 'PENDING',
             paymentMethod: 'BANK_TRANSFER',
-
             startDate: wallet.lastSettlementDate || wallet.createdAt,
             endDate: endDate,
           },
@@ -514,8 +566,10 @@ const initiateAutomatedSettlement = async () => {
 
     await session.commitTransaction();
   } catch (error) {
-    await session.abortTransaction();
-    console.error('Automated payout error:', error);
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.error('[Cron Worker] Automated Settlement System Failure: ', error);
   } finally {
     session.endSession();
   }

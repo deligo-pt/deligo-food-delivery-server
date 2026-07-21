@@ -1,6 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { TOffer } from './offer.interface';
 import { OFFER_TYPE } from './offer.constant';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const bogoSchema = new Schema(
   {
@@ -17,8 +18,8 @@ const bogoSchema = new Schema(
 
 const offerSchema = new Schema<TOffer>(
   {
-    title: { type: String, required: true, trim: true },
-    description: { type: String },
+    title: { type: localizedSchema },
+    description: { type: localizedSchema },
 
     offerType: {
       type: String,

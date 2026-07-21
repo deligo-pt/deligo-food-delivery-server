@@ -19,25 +19,27 @@ export type TInvoiceSync = {
 export type TOrder = {
   _id?: mongoose.Types.ObjectId;
   // Relationships
-  orderId: string;
+  orderId: string; // Readable Business Order ID (e.g., DG-10293)
 
   customerId: mongoose.Types.ObjectId;
   vendorId: mongoose.Types.ObjectId;
-  deliveryPartnerId?: mongoose.Types.ObjectId; // assigned after vendor accepts
+  deliveryPartnerId?: mongoose.Types.ObjectId;
   deliveryPartnerCancelReason?: string;
 
-  // Items
+  // Items Snapshot
   items: TOrderItemSnapshot[];
-
   totalItems: number;
+  totalQuantity: number;
 
   orderCalculation: {
     totalOriginalPrice: number;
     totalProductDiscount: number;
     totalOfferDiscount: number;
-    taxableAmount: number;
     totalTaxAmount: number;
+    itemsSubtotal: number;
     serviceCharge: number;
+    serviceChargeVatRate: number;
+    serviceChargeVatAmount: number;
   };
 
   delivery: {
@@ -59,56 +61,58 @@ export type TOrder = {
       vatAmount: number;
       totalDeduction: number;
       earnedServiceCharge: number;
+      serviceChargeVatAmount: number;
+      deliveryVatAmount: number;
+
+      totalPlatformNetRevenue: number; // Base Commission + Base Service Charge
+      totalPlatformPayableTax: number; // Commission VAT + Service Charge VAT + Delivery VAT
+      totalPlatformGrossHolding: number; // Total platform cash reserves held prior to merchant clearance updates
     };
     fleet: {
       rate: number;
       fee: number;
     };
-
     vendor: {
       earningsWithoutTax: number;
       payableTax: number;
       vendorNetPayout: number;
     };
     rider: {
-      earningsWithoutTax: number;
-      payableTax: number;
       riderNetEarnings: number;
     };
   };
 
   offer: {
     isApplied: boolean;
-    offerApplied?: TAppliedOfferSnapshot;
+    offerApplied?: TAppliedOfferSnapshot | null;
   };
 
   paymentMethod: TPaymentMethod;
-  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
-  transactionId?: string;
+  paymentStatus: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  transactionId?: string | null;
   isPaid: boolean;
 
   // Address & Location
   deliveryAddress: TAddress;
   pickupAddress?: TAddress;
 
-  // OTP Verification
+  // Metadata
   remarks?: string;
 
-  // Order Lifecycle
+  // Order Lifecycle Management
   orderStatus: OrderStatus;
   cancelReason?: string;
   rejectReason?: string;
 
   dispatchPartnerPool?: string[];
   dispatchExpiresAt?: Date;
-  // Delivery Details
+
+  // Delivery Timestamps
   pickedUpAt?: Date;
   deliveredAt?: Date;
   preparationTime?: number;
 
   isRated?: boolean;
-
-  // Status Tracking
   isDeleted: boolean;
 
   invoiceSync?: TInvoiceSync;

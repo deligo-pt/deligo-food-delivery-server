@@ -3,6 +3,8 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { VendorServices } from './vendor.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
+import { formatVendorResponse } from './vendor.utils';
 
 // Vendor Update Controller
 const vendorUpdate = catchAsync(async (req, res) => {
@@ -19,11 +21,13 @@ const vendorUpdate = catchAsync(async (req, res) => {
     currentUser,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 //  vendor doc image upload controller
@@ -37,7 +41,7 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -52,23 +56,7 @@ const deleteVendorDocument = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
-  });
-});
-
-// vendor live location update controller
-const updateVendorLiveLocation = catchAsync(async (req, res) => {
-  const result = await VendorServices.updateVendorLiveLocation(
-    req.body,
-    req.user as TCurrentUser,
-    req.params.vendorId,
-  );
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -82,8 +70,9 @@ const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -94,12 +83,14 @@ const getAllVendors = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendors Retrieved Successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -110,11 +101,13 @@ const getSingleVendor = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor Retrieved Successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -123,12 +116,13 @@ const getAllVendorsForCustomer = catchAsync(async (req, res) => {
   const result = await VendorServices.getAllVendorsForCustomer(
     req.query,
     req.user as TCurrentUser,
+    req.lang,
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendors Retrieved Successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -140,21 +134,26 @@ const getSingleVendorForCustomer = catchAsync(async (req, res) => {
     req.params.vendorId,
   );
 
+  const formattedData = formatVendorResponse(result.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor Retrieved Successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
 const getAllVendorsForCustomerPublic = catchAsync(async (req, res) => {
-  const result = await VendorServices.getAllVendorsForCustomerPublic(req.query);
+  const result = await VendorServices.getAllVendorsForCustomerPublic(
+    req.query,
+    req.lang,
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendors Retrieved Successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -164,7 +163,6 @@ export const VendorControllers = {
   vendorUpdate,
   vendorDocImageUpload,
   deleteVendorDocument,
-  updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,
   getSingleVendor,

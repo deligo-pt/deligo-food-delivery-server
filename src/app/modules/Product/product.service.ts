@@ -9,11 +9,16 @@ import { ProductSearchableFields } from './product.constant';
 import { BusinessCategory, ProductCategory } from '../Category/category.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
-import { cleanForSKU, generateSlug } from './product.utils';
-import { Tax } from '../Tax/tax.model';
+import { cleanForSKU, localizeProductData } from './product.utils';
 import { BusinessCategoryName } from '../Category/category.interface';
 import { CreateProductUtils } from './createProduct.utils';
 import customNanoId from '../../utils/customNanoId';
+import {
+  TLanguageCode,
+  TLocalizedText,
+} from '../../constant/GlobalInterface/language.interface';
+import { UpdateProductUtils } from './updateProduct.utils';
+import { Order } from '../Order/order.model';
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
@@ -21,16 +26,16 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
   CreateProductUtils.validateBasePayload(payload);
 
   const [vendorCategoryExist, category] = await Promise.all([
-    BusinessCategory.findOne({
-      name: currentUser?.businessDetails?.businessType,
-    }),
+    BusinessCategory.findById(currentUser?.businessDetails?.businessType),
     ProductCategory.findById(payload.category),
   ]);
 
   CreateProductUtils.validateRestaurantStock(vendorCategoryExist, payload);
   CreateProductUtils.validateCategory(vendorCategoryExist, category);
 
-  await CreateProductUtils.validateAddons(payload, currentUser._id);
+  if (payload.addonGroups) {
+    await CreateProductUtils.validateAddons(payload, currentUser._id);
+  }
   await CreateProductUtils.applyTax(payload);
 
   const { productNamePart } = CreateProductUtils.prepareBasicFields(
@@ -48,194 +53,161 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
 
   const newProduct = await Product.create(payload);
 
-  return newProduct;
+  return {
+    messageKey: 'PRODUCT_CREATED_SUCCESS',
+    data: newProduct,
+  };
 };
 
-// update Product Service
+// Update Product Service
 const updateProduct = async (
   productId: string,
   payload: Partial<TProduct>,
   currentUser: TCurrentUser,
 ) => {
   const { images } = payload;
-  const existingProduct = await Product.findOne({
+  const existingProduct = await UpdateProductUtils.getAndValidateProduct(
     productId,
-    ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
-  }).populate('vendorId', 'businessDetails.businessType');
+    currentUser,
+  );
 
-  if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-
-  if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
-
-  const modifiedData: Record<string, any> = {};
-
-  if (payload.name) {
-    modifiedData.name = payload.name;
-    modifiedData.slug = generateSlug(payload.name);
-  }
-  if (payload.description) modifiedData.description = payload.description;
-  if (payload.category) modifiedData.category = payload.category;
-  if (payload.subCategory) modifiedData.subCategory = payload.subCategory;
-  if (payload.brand) modifiedData.brand = payload.brand;
-  if (payload.addonGroups) modifiedData.addonGroups = payload.addonGroups;
-
-  // Pricing & Tax Update
-  if (payload.pricing) {
-    if (payload.pricing.taxId) {
-      const tax = await Tax.findById(payload.pricing.taxId);
-      if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
-      modifiedData['pricing.taxId'] = payload.pricing.taxId;
-      modifiedData['pricing.taxRate'] = tax.taxRate;
-    }
-    if (payload.pricing.currency)
-      modifiedData['pricing.currency'] = payload.pricing.currency;
-    if (payload.pricing.discount !== undefined)
-      modifiedData['pricing.discount'] = payload.pricing.discount;
-  }
-
-  // Meta & Stock Unit Update
-  if (payload.stock?.unit) modifiedData['stock.unit'] = payload.stock.unit;
-  if (payload.meta) {
-    Object.keys(payload.meta).forEach((key) => {
-      modifiedData[`meta.${key}`] = (payload.meta as any)[key];
-    });
-  }
-
-  // Database Update Query
-  if (images && images.length > 0) {
-    modifiedData.images = images;
-  }
+  const modifiedData = await UpdateProductUtils.prepareUpdateData(
+    payload,
+    existingProduct,
+  );
 
   const updateQuery: any = { $set: modifiedData };
+  if (images && images?.length > 0) {
+    updateQuery.$push = { images: { $each: images } };
+  }
+
   const updatedProduct = await Product.findOneAndUpdate(
     { productId },
     updateQuery,
     { new: true, runValidators: true },
   );
 
-  // Availability Status Auto-Update (Based on the current variation stock)
-  const vendorBusinessType = (existingProduct?.vendorId as any)?.businessDetails
-    ?.businessType;
-  if (
-    updatedProduct &&
-    vendorBusinessType !== BusinessCategoryName.RESTAURANT &&
-    updatedProduct.stock
-  ) {
-    const finalQty = updatedProduct.stock.quantity;
-    updatedProduct.stock.availabilityStatus =
-      finalQty > 0 ? (finalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
-    await updatedProduct.save();
-  }
+  await UpdateProductUtils.syncStockStatus(updatedProduct, existingProduct);
 
-  return updatedProduct;
+  return {
+    messageKey: 'PRODUCT_UPDATED_SUCCESS',
+    data: updatedProduct,
+  };
 };
-
-// const updateProduct = async (
-//   productId: string,
-//   payload: Partial<TProduct>,
-//   currentUser: AuthUser,
-//   images: string[],
-// ) => {
-//   const existingProduct = await UpdateProductUtils.getAndValidateProduct(
-//     productId,
-//     currentUser,
-//   );
-
-//   const modifiedData = await UpdateProductUtils.prepareUpdateData(payload);
-
-//   const updateQuery: any = { $set: modifiedData };
-//   if (images?.length > 0) {
-//     updateQuery.$push = { images: { $each: images } };
-//   }
-
-//   const updatedProduct = await Product.findOneAndUpdate(
-//     { productId },
-//     updateQuery,
-//     { new: true, runValidators: true },
-//   );
-
-//   await UpdateProductUtils.syncStockStatus(updatedProduct, existingProduct);
-
-//   return updatedProduct;
-// };
 
 // manage product variations service
 const manageProductVariations = async (
   productId: string,
-  payload: { name: string; options: any[] },
+  payload: { name: TLocalizedText; options: any[] },
   currentUser: TCurrentUser,
 ) => {
   const existingProduct = await Product.findOne({
     productId,
     ...((currentUser.role === 'VENDOR' ||
       currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
-  }).populate('vendorId', 'businessDetails.businessType');
+  }).populate({
+    path: 'vendorId',
+    select: 'businessDetails',
+    populate: {
+      path: 'businessDetails.businessType',
+    },
+  });
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_NOT_APPROVED');
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
+    vendor?.businessDetails?.businessType?.name?.en ===
+    BusinessCategoryName.RESTAURANT;
 
   const { name, options } = payload;
-  const normalizedName = name.trim();
-  const productNamePart = cleanForSKU(existingProduct.name);
+
+  const normalizedEnName = name.en?.trim();
+  const normalizedPtName = name.pt?.trim();
+
+  if (!normalizedEnName || !normalizedPtName) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'VARIATION_NAMES_REQUIRED_BOTH_LANGUAGES',
+    );
+  }
+  const productNamePart = cleanForSKU(
+    existingProduct.name?.en || existingProduct.name?.pt || '',
+  );
 
   if (!existingProduct.variations) {
     existingProduct.variations = [];
   }
 
   const variationIndex = existingProduct.variations.findIndex(
-    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+    (v) => v.name?.en?.toLowerCase() === normalizedEnName.toLowerCase(),
   );
 
   const finalOptionsToPush: any[] = [];
 
   for (const opt of options) {
-    const normalizedLabel = opt.label.trim();
+    const normalizedEnLabel = opt.label?.en?.trim();
+    const normalizedPtLabel = opt.label?.pt?.trim();
+
+    if (!normalizedEnLabel || !normalizedPtLabel) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'VARIATION_OPTION_LABELS_REQUIRED_BOTH_LANGUAGES',
+      );
+    }
 
     if (variationIndex > -1) {
       const isOptionExists = existingProduct.variations[
         variationIndex
       ].options.some(
-        (o: any) => o.label.toLowerCase() === normalizedLabel.toLowerCase(),
+        (o: any) =>
+          o.label?.en?.toLowerCase() === normalizedEnLabel.toLowerCase(),
       );
       if (isOptionExists) {
-        throw new AppError(
-          httpStatus.BAD_REQUEST,
-          `Option '${normalizedLabel}' already exists.`,
-        );
+        throw new AppError(httpStatus.BAD_REQUEST, 'OPTION_ALREADY_EXISTS', {
+          label: normalizedEnLabel,
+        });
       }
     }
 
     const generatedSku =
       opt.sku ||
-      `VAR-${productNamePart}-${cleanForSKU(normalizedLabel)}-${customNanoId(3)}`;
+      `VAR-${productNamePart}-${cleanForSKU(normalizedEnLabel)}-${customNanoId(3)}`;
 
     const isSkuTaken = await Product.findOne({
+      productId: { $ne: productId },
       'variations.options.sku': generatedSku,
     });
     if (isSkuTaken) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `SKU ${generatedSku} is already in use.`,
+        'VARIATION_SKU_ALREADY_IN_USE',
+        { sku: generatedSku },
+      );
+    }
+
+    if (isRestaurant && opt.stockQuantity) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'VARIATION_STOCK_NOT_ALLOWED_FOR_RESTAURANTS',
       );
     }
 
     const newOption: any = {
-      label: normalizedLabel,
+      label: {
+        en: normalizedEnLabel,
+        pt: normalizedPtLabel,
+      },
       price: opt.price,
       sku: generatedSku,
     };
 
     if (!isRestaurant) {
-      const inputStockQty = opt.stockQuantity || 0;
+      const inputStockQty = opt.stockQuantity ?? 0;
       newOption.stockQuantity = inputStockQty;
       newOption.totalAddedQuantity = inputStockQty;
       newOption.isOutOfStock = inputStockQty <= 0;
@@ -250,7 +222,10 @@ const manageProductVariations = async (
     );
   } else {
     existingProduct.variations.push({
-      name: normalizedName,
+      name: {
+        en: normalizedEnName,
+        pt: normalizedPtName,
+      },
       options: finalOptionsToPush,
     });
   }
@@ -288,16 +263,19 @@ const manageProductVariations = async (
   }
 
   await existingProduct.save();
-  return existingProduct;
+  return {
+    messageKey: 'PRODUCT_VARIATIONS_UPDATED_SUCCESS',
+    data: existingProduct,
+  };
 };
 
 const renameProductVariation = async (
   productId: string,
   payload: {
     oldName: string;
-    newName?: string;
+    newName?: Partial<TLocalizedText>;
     oldLabel?: string;
-    newLabel?: string;
+    newLabel?: Partial<TLocalizedText>;
   },
   currentUser: TCurrentUser,
 ) => {
@@ -310,7 +288,7 @@ const renameProductVariation = async (
   });
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   if (!existingProduct.variations) {
     existingProduct.variations = [];
@@ -319,38 +297,145 @@ const renameProductVariation = async (
   const { oldName, newName, oldLabel, newLabel } = payload;
 
   const variationIndex = existingProduct.variations.findIndex(
-    (v) => v.name.toLowerCase() === oldName.trim().toLowerCase(),
+    (v) => v.name?.en?.toLowerCase() === oldName.trim().toLowerCase(),
   );
 
   if (variationIndex === -1)
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `Variation group '${oldName}' not found`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'VARIATION_GROUP_NOT_FOUND', {
+      name: oldName,
+    });
 
   if (newName && !oldLabel) {
-    existingProduct.variations[variationIndex].name = newName.trim();
+    const normalizedNewEn = newName.en?.trim();
+    const normalizedNewPt = newName.pt?.trim();
+
+    if (!normalizedNewEn && !normalizedNewPt) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'AT_LEAST_ONE_VARIATION_NAME_TRANSLATION_REQUIRED',
+      );
+    }
+
+    if (normalizedNewEn) {
+      if (normalizedNewEn.toLowerCase() !== oldName.trim().toLowerCase()) {
+        const hasEnDuplicate = existingProduct.variations.some(
+          (v, idx) =>
+            idx !== variationIndex &&
+            v.name?.en?.toLowerCase() === normalizedNewEn.toLowerCase(),
+        );
+        if (hasEnDuplicate) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            'VARIATION_GROUP_ENGLISH_DUPLICATE',
+            { name: normalizedNewEn },
+          );
+        }
+      }
+      existingProduct.variations[variationIndex].name.en = normalizedNewEn;
+    }
+
+    if (normalizedNewPt) {
+      const currentPtName = existingProduct.variations[variationIndex].name.pt;
+      if (
+        !currentPtName ||
+        normalizedNewPt.toLowerCase() !== currentPtName.toLowerCase()
+      ) {
+        const hasPtDuplicate = existingProduct.variations.some(
+          (v, idx) =>
+            idx !== variationIndex &&
+            v.name?.pt?.toLowerCase() === normalizedNewPt.toLowerCase(),
+        );
+        if (hasPtDuplicate) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            'VARIATION_GROUP_PORTUGUESE_DUPLICATE',
+            { name: normalizedNewPt },
+          );
+        }
+      }
+      existingProduct.variations[variationIndex].name.pt = normalizedNewPt;
+    }
   }
 
   if (oldLabel && newLabel) {
+    const normalizedNewEnLabel = newLabel.en?.trim();
+    const normalizedNewPtLabel = newLabel.pt?.trim();
+
+    if (!normalizedNewEnLabel && !normalizedNewPtLabel) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'AT_LEAST_ONE_OPTION_LABEL_TRANSLATION_REQUIRED',
+      );
+    }
     const optionIndex = existingProduct.variations[
       variationIndex
     ].options.findIndex(
-      (o: any) => o.label.toLowerCase() === oldLabel.trim().toLowerCase(),
+      (o: any) => o.label?.en?.toLowerCase() === oldLabel.trim().toLowerCase(),
     );
 
     if (optionIndex === -1)
       throw new AppError(
         httpStatus.NOT_FOUND,
-        `Option '${oldLabel}' not found`,
+        'VARIATION_OPTION_NOT_FOUND_IN_GROUP',
+        { label: oldLabel, group: oldName },
       );
 
-    existingProduct.variations[variationIndex].options[optionIndex].label =
-      newLabel.trim();
+    if (normalizedNewEnLabel) {
+      if (
+        normalizedNewEnLabel.toLowerCase() !== oldLabel.trim().toLowerCase()
+      ) {
+        const hasEnLabelDuplicate = existingProduct.variations[
+          variationIndex
+        ].options.some(
+          (o: any, idx: number) =>
+            idx !== optionIndex &&
+            o.label?.en?.toLowerCase() === normalizedNewEnLabel.toLowerCase(),
+        );
+        if (hasEnLabelDuplicate) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            'OPTION_LABEL_ENGLISH_DUPLICATE_IN_GROUP',
+            { label: normalizedNewEnLabel },
+          );
+        }
+      }
+      existingProduct.variations[variationIndex].options[optionIndex].label.en =
+        normalizedNewEnLabel;
+    }
+
+    if (normalizedNewPtLabel) {
+      const currentPtLabel =
+        existingProduct.variations[variationIndex].options[optionIndex].label
+          .pt;
+      if (
+        !currentPtLabel ||
+        normalizedNewPtLabel.toLowerCase() !== currentPtLabel.toLowerCase()
+      ) {
+        const hasPtLabelDuplicate = existingProduct.variations[
+          variationIndex
+        ].options.some(
+          (o: any, idx: number) =>
+            idx !== optionIndex &&
+            o.label?.pt?.toLowerCase() === normalizedNewPtLabel.toLowerCase(),
+        );
+        if (hasPtLabelDuplicate) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            'OPTION_LABEL_PORTUGUESE_DUPLICATE_IN_GROUP',
+            { label: normalizedNewPtLabel },
+          );
+        }
+      }
+      existingProduct.variations[variationIndex].options[optionIndex].label.pt =
+        normalizedNewPtLabel;
+    }
   }
 
   await existingProduct.save();
-  return existingProduct;
+  return {
+    messageKey: 'PRODUCT_VARIATIONS_RENAMED_SUCCESS',
+    data: existingProduct,
+  };
 };
 
 // remove product variations service
@@ -366,43 +451,55 @@ const removeProductVariations = async (
     productId,
     ...((currentUser.role === 'VENDOR' ||
       currentUser.role === 'SUB_VENDOR') && { vendorId: currentUser._id }),
+  }).populate({
+    path: 'vendorId',
+    select: 'businessDetails',
+    populate: {
+      path: 'businessDetails.businessType',
+    },
   });
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'Your account is not approved.');
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_NOT_APPROVED');
+
+  const vendor = existingProduct.vendorId as any;
+  const isRestaurant =
+    vendor?.businessDetails?.businessType?.name?.en ===
+    BusinessCategoryName.RESTAURANT;
 
   const { name, labelToRemove } = payload;
   const normalizedName = name.trim();
 
   if (!existingProduct.variations || existingProduct.variations.length === 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'No variations found to remove');
+    throw new AppError(httpStatus.BAD_REQUEST, 'NO_VARIATIONS_FOUND_TO_REMOVE');
   }
 
   const variationIndex = existingProduct.variations.findIndex(
-    (v) => v.name.toLowerCase() === normalizedName.toLowerCase(),
+    (v) => v.name?.en?.toLowerCase() === normalizedName.toLowerCase(),
   );
 
   if (variationIndex === -1) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `Variation group '${normalizedName}' not found`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'VARIATION_GROUP_NOT_FOUND', {
+      name: normalizedName,
+    });
   }
 
   if (labelToRemove) {
     const optionIndex = existingProduct.variations[
       variationIndex
     ].options.findIndex(
-      (o: any) => o.label.toLowerCase() === labelToRemove.trim().toLowerCase(),
+      (o: any) =>
+        o.label?.en?.toLowerCase() === labelToRemove.trim().toLowerCase(),
     );
 
     if (optionIndex === -1) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        `Option '${labelToRemove}' not found in '${normalizedName}'`,
+        'OPTION_NOT_FOUND_IN_VARIATION',
+        { label: labelToRemove, name: normalizedName },
       );
     }
 
@@ -438,20 +535,25 @@ const removeProductVariations = async (
     }
   });
 
-  if (existingProduct.stock && existingProduct.stock.quantity) {
+  if (!isRestaurant && existingProduct.stock) {
     existingProduct.stock.quantity = totalQty;
     existingProduct.stock.totalAddedQuantity = totalAddedAcrossVariations;
     existingProduct.stock.hasVariations = existingProduct.variations.length > 0;
     existingProduct.stock.availabilityStatus =
       totalQty > 0 ? (totalQty < 5 ? 'Limited' : 'In Stock') : 'Out of Stock';
+  } else if (isRestaurant) {
+    existingProduct.stock = undefined;
+  }
 
-    if (minPrice !== Infinity) {
-      existingProduct.pricing.price = minPrice;
-    }
+  if (minPrice !== Infinity) {
+    existingProduct.pricing.price = minPrice;
   }
 
   await existingProduct.save();
-  return existingProduct;
+  return {
+    messageKey: 'PRODUCT_VARIATIONS_REMOVED_SUCCESS',
+    data: existingProduct,
+  };
 };
 
 // update inventory and pricing service
@@ -463,18 +565,21 @@ const updateInventoryAndPricing = async (
   newPrice?: number,
   variationSku?: string,
 ) => {
-  const product = await Product.findOne({ productId }).populate(
-    'vendorId',
-    'businessDetails.businessType',
-  );
-
+  const product = await Product.findOne({ productId }).populate({
+    path: 'vendorId',
+    select: 'businessDetails',
+    populate: {
+      path: 'businessDetails.businessType',
+    },
+  });
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   const vendor = product.vendorId as any;
   const isRestaurant =
-    vendor?.businessDetails?.businessType === BusinessCategoryName.RESTAURANT;
+    vendor?.businessDetails?.businessType?.name?.en ===
+    BusinessCategoryName.RESTAURANT;
 
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
     if (
@@ -482,24 +587,38 @@ const updateInventoryAndPricing = async (
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to update this product',
+        'NOT_AUTHORIZED_TO_UPDATE_PRODUCT',
       );
     }
   }
 
   const netQuantityChange = addedQuantity - reduceQuantity;
 
-  if (product.variations && product.variations.length > 0) {
-    if (!variationSku) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Variation SKU is required');
-    }
+  const hasVariations = product.variations && product.variations.length > 0;
 
+  if (variationSku && !hasVariations) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'PRODUCT_HAS_NO_VARIATIONS_FOR_SKU_UPDATE',
+    );
+  }
+
+  if (!variationSku && hasVariations) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'VARIATION_SKU_REQUIRED_FOR_PRODUCT',
+    );
+  }
+
+  if (hasVariations && product.variations) {
     let variationFound = false;
     let minPrice = Infinity;
 
     product.variations.forEach((variation) => {
       variation.options.forEach((opt) => {
         if (opt.sku === variationSku) {
+          variationFound = true;
+
           if (!isRestaurant) {
             if (
               reduceQuantity > 0 &&
@@ -507,24 +626,26 @@ const updateInventoryAndPricing = async (
             ) {
               throw new AppError(
                 httpStatus.BAD_REQUEST,
-                `Insufficient stock. Available: ${opt.stockQuantity}`,
+                'INSUFFICIENT_STOCK_WITH_AVAILABLE',
+                { available: opt.stockQuantity || 0 },
               );
             }
             opt.stockQuantity = (opt.stockQuantity || 0) + netQuantityChange;
+
             opt.totalAddedQuantity =
-              (opt.totalAddedQuantity || 0) + netQuantityChange;
+              (opt.totalAddedQuantity || 0) + addedQuantity;
+
             opt.isOutOfStock = opt.stockQuantity <= 0;
           }
 
           if (newPrice !== undefined) opt.price = newPrice;
-          variationFound = true;
         }
         if (opt.price < minPrice) minPrice = opt.price;
       });
     });
 
     if (!variationFound)
-      throw new AppError(httpStatus.NOT_FOUND, 'Variation SKU not found');
+      throw new AppError(httpStatus.NOT_FOUND, 'VARIATION_SKU_NOT_FOUND');
 
     if (!isRestaurant && product.stock) {
       let totalStock = 0;
@@ -533,18 +654,18 @@ const updateInventoryAndPricing = async (
       );
       product.stock.quantity = totalStock;
       product.stock.totalAddedQuantity =
-        (product.stock.totalAddedQuantity || 0) + netQuantityChange;
+        (product.stock.totalAddedQuantity || 0) + addedQuantity;
     }
 
     if (newPrice !== undefined) product.pricing.price = minPrice;
   } else {
     if (!isRestaurant && product.stock) {
       if (reduceQuantity > 0 && reduceQuantity > product.stock.quantity) {
-        throw new AppError(httpStatus.BAD_REQUEST, `Insufficient stock.`);
+        throw new AppError(httpStatus.BAD_REQUEST, 'INSUFFICIENT_STOCK');
       }
       product.stock.quantity += netQuantityChange;
       product.stock.totalAddedQuantity =
-        (product.stock.totalAddedQuantity || 0) + netQuantityChange;
+        (product.stock.totalAddedQuantity || 0) + addedQuantity;
     }
 
     if (newPrice !== undefined) product.pricing.price = newPrice;
@@ -559,7 +680,10 @@ const updateInventoryAndPricing = async (
   }
 
   await product.save();
-  return product;
+  return {
+    messageKey: 'INVENTORY_AND_PRICING_UPDATED_SUCCESS',
+    data: product,
+  };
 };
 
 // Approved Product Service
@@ -568,45 +692,47 @@ const approvedProduct = async (
   currentUser: TCurrentUser,
   payload: { isApproved: boolean; remarks?: string },
 ) => {
-  const existingProduct = await Product.findOne({
-    productId,
-  });
+  const existingProduct = await Product.findOne({ productId });
+
   if (!existingProduct) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
-  if (existingProduct.isApproved === payload.isApproved) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Product is already ${payload.isApproved ? 'approved' : 'rejected'}`,
-    );
+  const { isApproved, remarks } = payload;
+
+  const currentStatus = existingProduct.isApproved ?? false;
+
+  if (currentStatus === isApproved) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'PRODUCT_ALREADY_IN_STATUS', {
+      status: isApproved ? 'approved' : 'rejected',
+    });
   }
 
-  if (existingProduct.isApproved === false && payload.isApproved === true) {
-    existingProduct.isApproved = payload.isApproved;
-  } else if (
-    existingProduct.isApproved === true &&
-    payload.isApproved === false
-  ) {
-    if (payload.isApproved === false && !payload.remarks) {
+  if (!isApproved) {
+    if (!remarks || remarks.trim() === '') {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Remarks are required when rejecting a product',
+        'REMARKS_REQUIRED_WHEN_REJECTING',
       );
     }
-    existingProduct.remarks = payload.remarks;
-    existingProduct.isApproved = payload.isApproved;
+    existingProduct.remarks = remarks.trim();
+  } else {
+    existingProduct.remarks = undefined;
   }
 
+  existingProduct.isApproved = isApproved;
+  existingProduct.approvedBy = currentUser._id as any;
+
   await existingProduct.save();
+
   return {
-    message: `Product has been ${
-      payload.isApproved ? 'approved' : 'rejected'
-    } successfully`,
+    messageKey: 'PRODUCT_APPROVAL_UPDATED_SUCCESS',
+    variables: { status: isApproved ? 'approved' : 'rejected' },
     data: {
       productId: existingProduct.productId,
       isApproved: existingProduct.isApproved,
       remarks: existingProduct.remarks,
+      approvedBy: existingProduct.approvedBy,
     },
   };
 };
@@ -620,13 +746,14 @@ const deleteProductImages = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to delete product images. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_DELETE_PRODUCT_IMAGES',
+      { status: currentUser.status },
     );
   }
 
   const product = await Product.findOne({ productId });
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
   if (
@@ -635,14 +762,25 @@ const deleteProductImages = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You can only delete images of your own products',
+      'ONLY_OWN_PRODUCT_IMAGES_CAN_BE_DELETED',
     );
   }
 
   // -------------check if images to be deleted exist in product images-------------
   const invalidImages = images.filter((img) => !product.images.includes(img));
   if (invalidImages.length > 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid images');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'IMAGES_DO_NOT_BELONG_TO_PRODUCT',
+    );
+  }
+
+  const remainingImagesCount = product.images.length - images.length;
+  if (remainingImagesCount < 1) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'AT_LEAST_ONE_IMAGE_MUST_REMAIN',
+    );
   }
 
   // delete image from cloudinary
@@ -652,23 +790,26 @@ const deleteProductImages = async (
   product.images = product.images.filter((img) => !images.includes(img));
   await product.save();
 
-  return product;
+  return {
+    messageKey: 'PRODUCT_IMAGES_DELETED_SUCCESS',
+    data: product,
+  };
 };
 
 // get all products service
 const getAllProducts = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
+  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_PRODUCTS', {
+      status: currentUser.status,
+    });
   }
   const role = currentUser.role;
 
-  if (role === 'VENDOR') {
+  if (role === 'VENDOR' || role === 'SUB_VENDOR') {
     query.vendorId = currentUser._id;
     query.isDeleted = false;
   }
@@ -676,6 +817,7 @@ const getAllProducts = async (
   if (['CUSTOMER', 'FLEET_MANAGER', 'DELIVERY_PARTNER'].includes(role)) {
     query.isApproved = true;
     query.isDeleted = false;
+    query['meta.status'] = 'ACTIVE';
   }
 
   const products = new QueryBuilder(Product.find(), query)
@@ -689,6 +831,7 @@ const getAllProducts = async (
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
+    businessType: 'name slug',
   });
 
   populateOptions.forEach((option) => {
@@ -696,13 +839,23 @@ const getAllProducts = async (
   });
 
   const meta = await products.countTotal();
-  const data = await products.modelQuery;
+  const rawData = await products.modelQuery;
+
+  const localizedData = rawData.map((product: any) =>
+    localizeProductData(product, role, lang),
+  );
   return {
+    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
     meta,
-    data,
+    data: localizedData,
   };
 };
-const getAllProductsPublic = async (query: Record<string, unknown>) => {
+
+// get all products service
+const getAllProductsPublic = async (
+  query: Record<string, unknown>,
+  lang: TLanguageCode,
+) => {
   const role = 'CUSTOMER';
 
   query.isApproved = true;
@@ -719,6 +872,7 @@ const getAllProductsPublic = async (query: Record<string, unknown>) => {
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
+    businessType: 'name slug',
   });
 
   populateOptions.forEach((option) => {
@@ -726,11 +880,15 @@ const getAllProductsPublic = async (query: Record<string, unknown>) => {
   });
 
   const meta = await products.countTotal();
-  const data = await products.modelQuery;
+  const rawData = await products.modelQuery;
 
+  const localizedData = rawData.map((product: any) =>
+    localizeProductData(product, 'CUSTOMER', lang),
+  );
   return {
+    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
     meta,
-    data,
+    data: localizedData,
   };
 };
 
@@ -738,49 +896,66 @@ const getAllProductsPublic = async (query: Record<string, unknown>) => {
 const getSingleProduct = async (
   productId: string,
   currentUser: TCurrentUser,
+  lang: TLanguageCode,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view products. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_PRODUCTS', {
+      status: currentUser.status,
+    });
   }
 
+  const role = currentUser.role;
   let query;
+
   if (
-    currentUser.role === 'CUSTOMER' ||
-    currentUser.role === 'DELIVERY_PARTNER' ||
-    currentUser.role === 'FLEET_MANAGER'
+    role === 'CUSTOMER' ||
+    role === 'DELIVERY_PARTNER' ||
+    role === 'FLEET_MANAGER'
   ) {
     query = Product.findOne({
       productId,
       isApproved: true,
       isDeleted: false,
     });
-  } else if (currentUser.role === 'VENDOR') {
+  } else if (role === 'VENDOR' || role === 'SUB_VENDOR') {
     query = Product.findOne({
       productId,
       vendorId: currentUser._id,
+      isDeleted: false,
     });
-  } else {
+  } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
     query = Product.findOne({ productId });
+  } else {
+    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_ROLE_ACCESS');
   }
-  const populateOptions = getPopulateOptions(currentUser.role, {
+
+  const populateOptions = getPopulateOptions(role, {
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
+    businessType: 'name slug',
   });
 
   populateOptions.forEach((option) => {
     query.populate(option);
   });
+
   const product = await query;
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
-  return product;
+
+  return {
+    messageKey: 'PRODUCT_RETRIEVED_SUCCESS',
+    data: localizeProductData(product, role, lang),
+  };
 };
-const getSingleProductPublic = async (productId: string) => {
+
+// get single product service
+const getSingleProductPublic = async (
+  productId: string,
+  lang: TLanguageCode,
+) => {
   const role = 'CUSTOMER';
 
   const productQuery = Product.findOne({
@@ -793,6 +968,7 @@ const getSingleProductPublic = async (productId: string) => {
     vendor:
       'userId  businessDetails.businessName businessDetails.businessType businessDetails.isStoreOpen businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays businessLocation.latitude businessLocation.longitude documents.storePhoto rating',
     productCategory: 'name',
+    businessType: 'name slug',
   });
 
   populateOptions.forEach((option) => {
@@ -802,10 +978,13 @@ const getSingleProductPublic = async (productId: string) => {
   const product = await productQuery;
 
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
-  return product;
+  return {
+    messageKey: 'PRODUCT_RETRIEVED_SUCCESS',
+    data: localizeProductData(product, role, lang),
+  };
 };
 
 // product soft delete service
@@ -814,41 +993,65 @@ const softDeleteProduct = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to delete a product. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_DELETE_PRODUCT', {
+      status: currentUser.status,
+    });
   }
 
   const product = await Product.findOne({ productId });
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+  }
+
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
-    if (currentUser._id.toString() !== product?.vendorId.toString()) {
+    if (currentUser._id.toString() !== product.vendorId.toString()) {
       throw new AppError(
-        httpStatus.NOT_FOUND,
-        'You are not authorized to delete this product',
+        httpStatus.FORBIDDEN,
+        'NOT_AUTHORIZED_TO_DELETE_PRODUCT',
       );
     }
   }
 
-  if (product?.isDeleted) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Product is already deleted');
+  if (product.isDeleted) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'PRODUCT_ALREADY_DELETED');
   }
 
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  }
+  const activeOrderStatuses = [
+    'PENDING',
+    'ACCEPTED',
+    'AWAITING_PARTNER',
+    'DISPATCHING',
+    'ASSIGNED',
+    'REASSIGNMENT_NEEDED',
+    'PREPARING',
+    'READY_FOR_PICKUP',
+    'PICKED_UP',
+    'ON_THE_WAY',
+  ];
 
-  // --------------------------------------------------------------------------
-  // TODO: check if product in order or not. if in order, throw error will be added
-  // --------------------------------------------------------------------------
+  const hasActiveOrder = await Order.findOne({
+    'items.productId': product._id,
+    orderStatus: { $in: activeOrderStatuses },
+  });
+  if (hasActiveOrder) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'CANNOT_DELETE_PRODUCT_WITH_ACTIVE_ORDER',
+    );
+  }
   product.isDeleted = true;
   await product.save();
+
+  const productName = product.name?.en || 'Product';
+
   return {
-    message: `${product.name} has been deleted successfully`,
+    messageKey: 'PRODUCT_SOFT_DELETED_SUCCESS',
+    variables: { productName },
+    data: null,
   };
 };
 
-//  product permanent delete service (admin only)
+// product permanent delete service (admin only)
 const permanentDeleteProduct = async (
   productId: string,
   currentUser: TCurrentUser,
@@ -856,29 +1059,47 @@ const permanentDeleteProduct = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to permanently delete a product. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_PERMANENTLY_DELETE_PRODUCT',
+      { status: currentUser.status },
+    );
+  }
+
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'ONLY_ADMINS_CAN_PERMANENTLY_DELETE_PRODUCTS',
     );
   }
 
   const product = await Product.findOne({ productId });
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+  }
 
-  if (product?.isDeleted === false) {
+  if (product.isDeleted === false) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Product must be soft deleted before permanent deletion',
+      'PRODUCT_SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE',
     );
   }
 
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  }
+  const productName = product.name?.en || 'Product';
+
   await product.deleteOne();
+
   return {
-    message: `${product.name} has been permanently deleted successfully`,
+    messageKey: 'PRODUCT_PERMANENTLY_DELETED_SUCCESS',
+    variables: { productName },
+    data: null,
   };
 };
 
-const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
+// get out of stock alerts
+const getOutOfStockAlerts = async (
+  query: Record<string, unknown>,
+  currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
+) => {
   const {
     page = 1,
     limit = 10,
@@ -887,12 +1108,13 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
   } = query;
 
   const skip = (Number(page) - 1) * Number(limit);
+  const role = currentUser.role;
 
   const lowStockConditions: any = {
     isDeleted: false,
     $or: [
-      { 'stock.quantity': { $lt: 10 } },
-      { 'variations.options.stockQuantity': { $lt: 10 } },
+      { 'stock.quantity': { $exists: true, $lt: 10 } },
+      { 'variations.options.stockQuantity': { $exists: true, $lt: 10 } },
       { 'stock.availabilityStatus': 'Out of Stock' },
       { 'variations.options.isOutOfStock': true },
     ],
@@ -902,19 +1124,20 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
     lowStockConditions.$and = [
       {
         $or: [
-          { name: { $regex: searchTerm, $options: 'i' } },
+          { 'name.en': { $regex: searchTerm, $options: 'i' } },
+          { 'name.pt': { $regex: searchTerm, $options: 'i' } },
           { sku: { $regex: searchTerm, $options: 'i' } },
         ],
       },
     ];
   }
 
-  const data = await Product.find(lowStockConditions)
+  const rawData = await Product.find(lowStockConditions)
     .select(
       'name sku stock variations vendorId category images createdAt updatedAt',
     )
     .populate('vendorId', 'userId businessDetails')
-    .populate('category')
+    .populate('category', 'name')
     .sort(sortBy as string)
     .skip(skip)
     .limit(Number(limit))
@@ -923,8 +1146,13 @@ const getOutOfStockAlerts = async (query: Record<string, unknown>) => {
   const total = await Product.countDocuments(lowStockConditions);
   const totalPage = Math.ceil(total / Number(limit));
 
+  const localizedData = rawData.map((product: any) =>
+    localizeProductData(product, role, lang),
+  );
+
   return {
-    data,
+    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
+    data: localizedData,
     meta: {
       page: Number(page),
       limit: Number(limit),

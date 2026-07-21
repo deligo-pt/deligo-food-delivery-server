@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { TransactionServices } from './transaction.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // get all transactions
 const getMyTransactions = catchAsync(async (req, res) => {
@@ -14,7 +15,7 @@ const getMyTransactions = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Transactions fetched successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -28,8 +29,8 @@ const getTransactionById = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Transactions fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 

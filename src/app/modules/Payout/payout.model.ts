@@ -40,6 +40,9 @@ const payoutSchema = new Schema<TPayout>(
       type: Date,
       required: true,
     },
+    paymentDate: {
+      type: Date,
+    },
     amount: {
       type: Number,
       required: true,

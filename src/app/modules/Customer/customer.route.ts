@@ -3,9 +3,6 @@ import validateRequest from '../../middlewares/validateRequest';
 import auth from '../../middlewares/auth';
 import { CustomerControllers } from './customer.controller';
 import { CustomerValidation } from './customer.validation';
-import { multerUpload } from '../../config/multer.config';
-import { parseBody } from '../../middlewares/bodyParser';
-import { LocationValidation } from '../../constant/GlobalValidation/location.validation';
 
 const router = Router();
 

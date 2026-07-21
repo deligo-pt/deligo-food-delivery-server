@@ -26,10 +26,10 @@ const createLimiterHandler = (messagePrefix: string) => {
       : 60;
 
     next(
-      new AppError(
-        httpStatus.TOO_MANY_REQUESTS,
-        `${messagePrefix} Please try again after ${secondsLeft} seconds.`,
-      ),
+      new AppError(httpStatus.TOO_MANY_REQUESTS, 'RATE_LIMIT_EXCEEDED', {
+        messagePrefix,
+        secondsLeft,
+      }),
     );
   };
 };

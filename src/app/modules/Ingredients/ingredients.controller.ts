@@ -3,6 +3,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { IngredientsServices } from './ingredients.service';
+import { TMessageKey } from '../../errors/messages';
 
 const createIngredient = catchAsync(async (req, res) => {
   const result = await IngredientsServices.createIngredient(
@@ -13,8 +14,8 @@ const createIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Ingredient created successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -29,8 +30,8 @@ const updateIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Ingredient updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -41,8 +42,9 @@ const getIngredientDetails = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Ingredient details retrieved successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -52,9 +54,10 @@ const getAllIngredients = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Ingredients retrieved successfully',
-    meta: result.meta,
-    data: result.data,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -65,8 +68,8 @@ const softDeleteIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Ingredient soft deleted successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -78,8 +81,8 @@ const permanentDeleteIngredient = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Ingredient permanently removed from database',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 

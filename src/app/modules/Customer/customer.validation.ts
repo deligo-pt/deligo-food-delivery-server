@@ -1,10 +1,5 @@
 import { z } from 'zod';
 import { addressValidationSchema } from '../Admin/admin.validation';
-import { AddressType } from './customer.constant';
-
-const AddressTypeEnum = z.enum(
-  Object.values(AddressType) as [string, ...string[]],
-);
 
 // ---------------------------------------------
 // Update Customer Data Validation Schema

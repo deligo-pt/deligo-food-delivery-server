@@ -6,6 +6,7 @@ import {
   TUserRole,
   USER_STATUS,
 } from '../constant/GlobalConstant/user.constant';
+import httpStatus from 'http-status';
 
 export const createToken = (
   jwtPayload: {
@@ -35,6 +36,6 @@ export const verifyToken = (
   try {
     return jwt.verify(token, secret) as JwtPayload;
   } catch (error: any) {
-    throw new AppError(401, 'You are not authorized!');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED');
   }
 };

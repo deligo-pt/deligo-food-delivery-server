@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AnalyticsServices } from './analytics.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // ----------------------------------------------------------------------------------
 // ---------------- ANALYTICS CONTROLLERS (Developer Morshed) -----------------------
@@ -15,8 +16,9 @@ const getVendorSalesAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor sales analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -28,8 +30,9 @@ const getCustomerInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Customer insights fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -41,8 +44,9 @@ const getOrderTrendInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Order trend insights fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -54,8 +58,9 @@ const getTopSellingItemsAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Top selling items analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 // get admin sales report analytics controller
@@ -66,8 +71,9 @@ const getAdminSalesReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin sales report analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -79,8 +85,9 @@ const getAdminOrderReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin order report analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -97,8 +104,9 @@ const getAdminCustomerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin customer report analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -115,8 +123,9 @@ const getAdminVendorReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin vendor report analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -133,8 +142,9 @@ const getAdminFleetManagerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin fleet manager report analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -150,8 +160,9 @@ const getAdminDeliveryPartnerReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin delivery partner report analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -164,8 +175,9 @@ const getVendorSalesReportAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor sales report analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -179,8 +191,9 @@ const getVendorCustomerReport = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor customer report fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -193,8 +206,9 @@ const getVendorTaxReport = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Vendor Tax report fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -207,8 +221,10 @@ const getFleetManagerPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Fleet manager performance analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -224,24 +240,12 @@ const getSingleFleetPerformanceDetailsAnalytics = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message:
-        'Single fleet manager performance analytics fetched successfully',
-      data: result,
+      messageKey: result?.messageKey as TMessageKey,
+      variables: result?.variables,
+      data: result?.data,
     });
   },
 );
-
-// get admin delivery partner report analytics controller
-const getAdminSalesAnalytics = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminSalesAnalytics(req.query);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin vendor sales analytics fetched successfully',
-    data: result,
-  });
-});
 
 // get delivery partner performance analytics controller
 const getDeliveryPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
@@ -252,8 +256,10 @@ const getDeliveryPartnerPerformanceAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery partner performance analytics fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -269,24 +275,12 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message:
-        'Single delivery partner performance analytics fetched successfully',
-      data: result,
+      messageKey: result?.messageKey as TMessageKey,
+      variables: result?.variables,
+      data: result?.data,
     });
   },
 );
-
-// get customer insights controller
-const getAdminCustomerInsights = catchAsync(async (req, res) => {
-  const result = await AnalyticsServices.getAdminCustomerInsights(req.query);
-
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Admin customer insights fetched successfully',
-    data: result,
-  });
-});
 
 // get platform earnings controller
 const getPlatformEarnings = catchAsync(async (req, res) => {
@@ -295,8 +289,36 @@ const getPlatformEarnings = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Admin platform earnings fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
+    data: result?.data,
+  });
+});
+
+// get admin delivery partner report analytics controller
+const getAdminSalesAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminSalesAnalytics(req.query);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
+  });
+});
+
+// get customer insights controller
+const getAdminCustomerInsights = catchAsync(async (req, res) => {
+  const result = await AnalyticsServices.getAdminCustomerInsights(req.query);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -307,8 +329,9 @@ const getTopVendors = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Top vendors fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -319,8 +342,9 @@ const getPeakHourAnalytics = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Peak hour fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -331,8 +355,9 @@ const getDeliveryInsights = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery insights fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 

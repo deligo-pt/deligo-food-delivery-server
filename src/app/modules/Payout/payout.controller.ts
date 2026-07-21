@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TImageFile } from '../../interfaces/image.interface';
 import { PayoutServices } from './payout.service';
+import { TMessageKey } from '../../errors/messages';
 
 // initiate payout controller
 const initiateSettlement = catchAsync(async (req, res) => {
@@ -15,8 +16,8 @@ const initiateSettlement = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Settlement initiated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -32,7 +33,7 @@ const finalizeSettlement = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -46,9 +47,9 @@ const getAllPayouts = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Payouts fetched successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
-    data: result?.result,
+    data: result?.data,
   });
 });
 
@@ -61,8 +62,8 @@ const getSinglePayout = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Payout fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 

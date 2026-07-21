@@ -8,14 +8,21 @@ const addToCartValidationSchema = z.object({
         z
           .object({
             productId: z.string({ required_error: 'Product ID is required' }),
-            quantity: z.number().min(1, 'Quantity must be at least 1'),
+            quantity: z
+              .number()
+              .min(1, 'Quantity must be at least 1')
+              .optional(),
             variationSku: z.string().optional(),
             addons: z
               .array(
-                z.object({
-                  addOnId: z.string(),
-                  quantity: z.number().min(1),
-                }),
+                z
+                  .object({
+                    optionSku: z.string({
+                      required_error: 'Add-on option SKU is required',
+                    }),
+                    quantity: z.number().min(0, 'Quantity cannot be negative'),
+                  })
+                  .strict(),
               )
               .optional(),
           })
@@ -25,16 +32,17 @@ const addToCartValidationSchema = z.object({
     .strict(),
 });
 
-// update cart quantity validation
-const updateCartItemQuantityValidationSchema = z.object({
+const toggleCartItemStatusValidationSchema = z.object({
   body: z
     .object({
-      productId: z.string({ required_error: 'Product ID is required' }),
-      variationSku: z.string().optional(),
-      quantity: z.number().min(1, 'Quantity must be at least 1').optional(),
-      action: z.enum(['increment', 'decrement'], {
-        required_error: 'Action is required',
+      toggleMode: z.enum(['ITEM_LEVEL', 'VENDOR_BULK'], {
+        required_error: 'Toggle mode is required',
+        invalid_type_error:
+          'Toggle mode must be either ITEM_LEVEL or VENDOR_BULK',
       }),
+      vendorId: z.string().optional(),
+      productIds: z.array(z.string()).optional(),
+      variationSku: z.array(z.string()).optional(),
     })
     .strict(),
 });
@@ -46,11 +54,12 @@ const updateAddonQuantityValidationSchema = z.object({
         required_error: 'Product ID is required',
       }),
       variationSku: z.string().optional(),
-      optionId: z.string({
-        required_error: 'Add-on option ID is required',
+      optionSku: z.string({
+        required_error: 'Add-on option SKU is required',
       }),
-      action: z.enum(['increment', 'decrement'], {
-        required_error: 'Action is required',
+      quantity: z.number({
+        required_error: 'Quantity is required',
+        invalid_type_error: 'Quantity must be a number',
       }),
     })
     .strict(),
@@ -74,7 +83,7 @@ const deleteCartItemValidationSchema = z.object({
 
 export const CartValidation = {
   addToCartValidationSchema,
-  updateCartItemQuantityValidationSchema,
+  toggleCartItemStatusValidationSchema,
   updateAddonQuantityValidationSchema,
   deleteCartItemValidationSchema,
 };

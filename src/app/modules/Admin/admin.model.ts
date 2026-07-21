@@ -3,9 +3,7 @@
 import { model, Schema } from 'mongoose';
 import { TAdmin } from './admin.interface';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
-import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 
 const adminSchema = new Schema<TAdmin>(
   {

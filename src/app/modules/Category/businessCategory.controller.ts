@@ -4,6 +4,8 @@ import sendResponse from '../../utils/sendResponse';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { BusinessCategoryService } from './businessCategory.service';
+import { formatBusinessCategoryResponse } from './category.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {
@@ -15,8 +17,8 @@ const createBusinessCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Business category created successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -31,22 +33,35 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business category updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
 // Get Business Category Controllers
 const getAllBusinessCategories = catchAsync(async (req, res) => {
+  const user = req.user as TCurrentUser;
   const result = await BusinessCategoryService.getAllBusinessCategories(
     req.query,
-    req.user as TCurrentUser,
+    user,
   );
+
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
+
+  let formattedData;
+  if (isAdmin) {
+    formattedData = result.data;
+  } else {
+    formattedData = formatBusinessCategoryResponse(result.data, req.lang);
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business categories fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
+    data: formattedData,
   });
 });
 
@@ -55,12 +70,15 @@ const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
   const result = await BusinessCategoryService.getAllBusinessCategoriesPublic(
     req.query,
   );
+
+  const formattedData = formatBusinessCategoryResponse(result.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business categories fetched successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -70,11 +88,20 @@ const getSingleBusinessCategory = catchAsync(async (req, res) => {
     req.params.id,
     req.user as TCurrentUser,
   );
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user?.role);
+  if (isAdmin) {
+    formattedData = result?.data;
+  } else {
+    formattedData = formatBusinessCategoryResponse(result?.data, req.lang);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business category fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -83,11 +110,13 @@ const getSingleBusinessCategoryPublic = catchAsync(async (req, res) => {
   const result = await BusinessCategoryService.getSingleBusinessCategoryPublic(
     req.params.id,
   );
+  const formattedData = formatBusinessCategoryResponse(result?.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Business category fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -99,7 +128,7 @@ const softDeleteBusinessCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -112,7 +141,7 @@ const permanentDeleteBusinessCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

@@ -1,51 +1,93 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import { BusinessCategory, ProductCategory } from './category.model';
-import { TBusinessCategory, TProductCategory } from './category.interface';
+import { BusinessCategory } from './category.model';
+import {
+  BusinessCategoryTranslation,
+  TCreateBusinessCategoryInput,
+} from './category.interface';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 //  Create Business Category
 const createBusinessCategory = async (
-  payload: TBusinessCategory,
+  payload: TCreateBusinessCategoryInput,
   icon: string | null,
 ) => {
-  const exists = await BusinessCategory.findOne({ name: payload.name });
-  if (exists) {
-    throw new AppError(httpStatus.CONFLICT, 'Business category already exists');
+  const translation = BusinessCategoryTranslation[payload.name];
+
+  if (!translation) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'INVALID_BUSINESS_CATEGORY_NAME',
+    );
   }
 
-  // generate slug
-  payload.slug = payload.name
+  const exists = await BusinessCategory.findOne({ 'name.en': translation.en });
+  if (exists) {
+    throw new AppError(httpStatus.CONFLICT, 'ALREADY_EXISTS');
+  }
+
+  const slug = translation.en
     .toLowerCase()
     .replace(/[^\w ]+/g, '')
     .replace(/ +/g, '-');
 
-  const category = await BusinessCategory.create({ ...payload, icon });
-  return category;
+  const categoryData = {
+    ...payload,
+    name: translation,
+    slug,
+    icon,
+  };
+
+  if (!icon) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'ICON_IS_REQUIRED');
+  }
+
+  const category = await BusinessCategory.create(categoryData);
+
+  return {
+    messageKey: 'CREATE_SUCCESS',
+    data: category,
+  };
 };
 
 //  Update Business Category
 const updateBusinessCategory = async (
   id: string,
-  payload: Partial<TBusinessCategory>,
+  payload: Partial<TCreateBusinessCategoryInput>,
   icon: string | null,
 ) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
   }
-  if (payload.name)
-    payload.slug = payload.name
+
+  if (payload.name) {
+    const translation = BusinessCategoryTranslation[payload.name];
+    if (!translation) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'INVALID_BUSINESS_CATEGORY_NAME',
+      );
+    }
+
+    payload.name = translation as any;
+
+    payload.slug = translation.en
       .toLowerCase()
       .replace(/[^\w ]+/g, '')
       .replace(/ +/g, '-');
+  }
 
-  if (payload?.isActive === category.isActive) {
+  if (
+    payload?.isActive !== undefined &&
+    payload.isActive === category.isActive
+  ) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `Business category is already ${category.isActive}`,
+      category.isActive ? 'ALREADY_ACTIVE' : 'ALREADY_INACTIVE',
     );
   }
 
@@ -53,17 +95,19 @@ const updateBusinessCategory = async (
     if (category.icon) {
       const oldIcon = category.icon;
       deleteSingleImageFromCloudinary(oldIcon).catch((error) => {
-        console.error(error);
+        console.error('Failed to delete old icon from Cloudinary:', error);
       });
     }
-  }
-  if (icon) {
     category.icon = icon;
   }
 
   Object.assign(category, payload);
   await category.save();
-  return category;
+
+  return {
+    messageKey: 'BUSINESS_CATEGORY_UPDATE_SUCCESS',
+    data: category,
+  };
 };
 
 //  Get All Business Categories
@@ -87,7 +131,13 @@ const getAllBusinessCategories = async (
     businessCategories.countTotal(),
     businessCategories.modelQuery,
   ]);
-  return { meta, data };
+
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Business Categories', isPlural: true },
+    meta,
+    data,
+  };
 };
 
 //  Get All Business Categories Public
@@ -108,7 +158,12 @@ const getAllBusinessCategoriesPublic = async (
     businessCategories.countTotal(),
     businessCategories.modelQuery,
   ]);
-  return { meta, data };
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Business Categories', isPlural: true },
+    meta,
+    data,
+  };
 };
 
 //  Get Single Business Category
@@ -121,53 +176,55 @@ const getSingleBusinessCategory = async (
 
   const category = await BusinessCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
   }
 
   if (!isAdmin && category.isActive === false && category.isDeleted === true) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
   }
 
-  return category;
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Business Category' },
+    data: category,
+  };
 };
 
 //  Get Single Business Category Public
 const getSingleBusinessCategoryPublic = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
   }
 
   if (category.isActive === false && category.isDeleted === true) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
   }
 
-  return category;
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Business Category' },
+    data: category,
+  };
 };
 
 // Soft Delete Business Category
 const softDeleteBusinessCategory = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category)
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
   if (category.isDeleted === true) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'Business category already deleted',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'ALREADY_DELETED');
   }
 
   if (category.isActive) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'Business category is active, cannot delete',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'ACTIVE_CANNOT_DELETE');
   }
 
   category.isDeleted = true;
   await category.save();
   return {
-    message: 'Business category deleted successfully',
+    messageKey: 'SOFT_DELETE_SUCCESS',
   };
 };
 
@@ -175,15 +232,15 @@ const softDeleteBusinessCategory = async (id: string) => {
 const permanentDeleteBusinessCategory = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Business category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
   }
   if (category.isDeleted === false) {
-    throw new AppError(httpStatus.CONFLICT, 'Please soft delete first');
+    throw new AppError(httpStatus.CONFLICT, 'SOFT_DELETE_FIRST');
   }
 
   await BusinessCategory.findByIdAndDelete(id);
   return {
-    message: 'Business category permanently deleted successfully',
+    messageKey: 'PERMANENT_DELETE_SUCCESS',
   };
 };
 

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { TLocalizedText } from './language.interface';
 
 export type TAddress = {
   label?: 'Home' | 'Work' | 'Other';
@@ -16,13 +17,12 @@ export type TAddress = {
 export type TOrderItemSnapshot = {
   productId: mongoose.Types.ObjectId;
   vendorId: mongoose.Types.ObjectId;
-  name: string;
+  name: TLocalizedText;
   image?: string;
   hasVariations: boolean;
   variationSku?: string | null;
   addons?: {
-    optionId: string;
-    name: string;
+    name: TLocalizedText;
     sku: string;
     originalPrice: number;
     promoDiscountAmount: number;
@@ -36,7 +36,7 @@ export type TOrderItemSnapshot = {
   productPricing: {
     originalPrice: number;
     productDiscountAmount: number;
-    priceAfterProductDiscount: number;
+    discountType: 'PERCENTAGE' | 'FLAT';
     promoDiscountAmount: number;
     unitPrice: number;
     lineTotal: number;
@@ -46,7 +46,6 @@ export type TOrderItemSnapshot = {
 
   itemSummary: {
     quantity: number;
-    totalBeforeTax: number;
     totalTaxAmount: number;
     totalPromoDiscount: number;
     totalProductDiscount: number;
@@ -61,8 +60,8 @@ export type TOrderItemSnapshot = {
   };
 
   vendor: {
-    vendorEarningsWithoutTax: number;
+    earningsWithoutTax: number;
     payableTax: number;
-    vendorNetEarnings: number;
+    vendorNetPayout: number;
   };
 };

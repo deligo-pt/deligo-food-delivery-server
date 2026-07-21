@@ -2,6 +2,7 @@ import { model, Schema } from 'mongoose';
 import { TOrder, TInvoiceSync } from './order.interface';
 import { ORDER_STATUS } from './order.constant';
 import { addressSchema } from '../../constant/GlobalModel/address.model';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const invoiceSyncSchema = new Schema<TInvoiceSync>(
   {
@@ -19,30 +20,29 @@ const orderItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
     vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor' },
-    name: { type: String, required: true },
+    name: { type: localizedSchema },
     image: { type: String },
     hasVariations: { type: Boolean, required: true },
     variationSku: { type: String, default: null },
     addons: [
       {
-        optionId: { type: String },
-        name: { type: String },
-        sku: { type: String },
-        originalPrice: { type: Number },
+        name: { type: localizedSchema },
+        sku: { type: String, required: true },
+        originalPrice: { type: Number, required: true },
         promoDiscountAmount: { type: Number, default: 0 },
-        unitPrice: { type: Number },
-        quantity: { type: Number },
-        lineTotal: { type: Number },
-        taxRate: { type: Number },
-        taxAmount: { type: Number },
-        _id: false,
+        unitPrice: { type: Number, required: true },
+        quantity: { type: Number, required: true },
+        lineTotal: { type: Number, required: true },
+        taxRate: { type: Number, required: true },
+        taxAmount: { type: Number, required: true },
       },
+      { _id: false },
     ],
 
     productPricing: {
       originalPrice: { type: Number, required: true },
       productDiscountAmount: { type: Number, default: 0 },
-      priceAfterProductDiscount: { type: Number, required: true },
+      discountType: { type: String, enum: ['PERCENTAGE', 'FLAT'] },
       promoDiscountAmount: { type: Number, default: 0 },
       unitPrice: { type: Number, required: true },
       lineTotal: { type: Number, required: true },
@@ -52,7 +52,6 @@ const orderItemSchema = new Schema(
 
     itemSummary: {
       quantity: { type: Number, required: true },
-      totalBeforeTax: { type: Number, required: true },
       totalTaxAmount: { type: Number, required: true },
       totalPromoDiscount: { type: Number, default: 0 },
       totalProductDiscount: { type: Number, default: 0 },
@@ -93,19 +92,22 @@ const orderSchema = new Schema<TOrder>(
     items: { type: [orderItemSchema], required: true },
 
     totalItems: { type: Number, required: true },
+    totalQuantity: { type: Number, required: true },
 
     orderCalculation: {
       totalOriginalPrice: { type: Number, required: true },
       totalProductDiscount: { type: Number, default: 0 },
       totalOfferDiscount: { type: Number, default: 0 },
-      taxableAmount: { type: Number, required: true },
       totalTaxAmount: { type: Number, required: true },
+      itemsSubtotal: { type: Number, required: true },
       serviceCharge: { type: Number, required: true },
+      serviceChargeVatRate: { type: Number, default: 23 },
+      serviceChargeVatAmount: { type: Number, default: 0 },
     },
 
     delivery: {
       charge: { type: Number, required: true },
-      vatRate: { type: Number, default: 0 },
+      vatRate: { type: Number, default: 23 },
       vatAmount: { type: Number, default: 0 },
       totalDeliveryCharge: { type: Number, required: true },
       distance: { type: Number, default: 0 },
@@ -122,6 +124,12 @@ const orderSchema = new Schema<TOrder>(
         vatAmount: { type: Number, required: true },
         totalDeduction: { type: Number, required: true },
         earnedServiceCharge: { type: Number, required: true },
+        serviceChargeVatAmount: { type: Number, required: true },
+        deliveryVatAmount: { type: Number, required: true },
+
+        totalPlatformNetRevenue: { type: Number, required: true }, // base commission + base service charge
+        totalPlatformPayableTax: { type: Number, required: true }, // commission vat + service charge vat + delivery vat
+        totalPlatformGrossHolding: { type: Number, required: true }, // central cash reserve pool before merchant split
       },
       fleet: {
         rate: { type: Number, required: true },
@@ -133,15 +141,13 @@ const orderSchema = new Schema<TOrder>(
         vendorNetPayout: { type: Number, required: true },
       },
       rider: {
-        earningsWithoutTax: { type: Number, required: true },
-        payableTax: { type: Number, required: true },
         riderNetEarnings: { type: Number, required: true },
       },
     },
 
     offer: {
       isApplied: { type: Boolean, default: false },
-      offerApplied: { type: Object, default: null },
+      offerApplied: { type: Schema.Types.Mixed, default: null },
     },
 
     paymentMethod: {
@@ -151,7 +157,7 @@ const orderSchema = new Schema<TOrder>(
     },
     paymentStatus: {
       type: String,
-      enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
+      enum: ['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
     },
     transactionId: { type: String, unique: true, sparse: true },
@@ -189,22 +195,23 @@ const orderSchema = new Schema<TOrder>(
   { timestamps: true },
 );
 
-// The "Dispatching" Engine (Critical for partnerAcceptsDispatchedOrder)
+// Indexes
 orderSchema.index({
   orderStatus: 1,
   deliveryPartnerId: 1,
   dispatchPartnerPool: 1,
 });
 
-// Customer History (Optimized for the "My Orders" tab)
 orderSchema.index({ customerId: 1, createdAt: -1 });
 
-// For top items aggregation
 orderSchema.index({
   vendorId: 1,
   'items.productId': 1,
 });
 
 orderSchema.index({ orderStatus: 1, dispatchExpiresAt: 1 });
+orderSchema.index({ deliveryPartnerId: 1, orderStatus: 1, createdAt: -1 });
+orderSchema.index({ 'items.productId': 1 });
+orderSchema.index({ createdAt: -1 });
 
 export const Order = model<TOrder>('Order', orderSchema);

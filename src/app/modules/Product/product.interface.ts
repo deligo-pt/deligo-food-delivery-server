@@ -1,13 +1,16 @@
 import mongoose from 'mongoose';
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 export type TProduct = {
   _id: mongoose.Types.ObjectId;
   productId: string;
   vendorId: mongoose.Types.ObjectId;
   sku: string;
-  name: string;
+
+  name: TLocalizedText;
   slug: string;
-  description: string;
+  description: TLocalizedText;
+
   isDeleted: boolean;
   isApproved: boolean;
   approvedBy?: mongoose.Types.ObjectId;
@@ -18,12 +21,11 @@ export type TProduct = {
   brand?: string;
 
   variations?: {
-    name: string;
+    name: TLocalizedText;
     options: {
-      label: string;
+      label: TLocalizedText;
       price: number;
       sku: string;
-      pdItemId?: string;
       stockQuantity?: number;
       totalAddedQuantity?: number;
       isOutOfStock?: boolean;
@@ -35,6 +37,7 @@ export type TProduct = {
   pricing: {
     price: number;
     discount: number;
+    discountType: 'PERCENTAGE' | 'FLAT';
     taxId: mongoose.Types.ObjectId;
     taxRate: number;
     currency: string;

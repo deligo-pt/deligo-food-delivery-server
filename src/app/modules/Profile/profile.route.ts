@@ -1,8 +1,6 @@
 import auth from '../../middlewares/auth';
 import { ProfileController } from './profile.controller';
-import { multerUpload } from '../../config/multer.config';
 import { Router } from 'express';
-import { parseBody } from '../../middlewares/bodyParser';
 import validateRequest from '../../middlewares/validateRequest';
 import { ProfileValidation } from './profile.validation';
 

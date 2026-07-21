@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { CustomerServices } from './customer.service';
+import { TMessageKey } from '../../errors/messages';
 
 // Customer Update Controller
 const updateCustomer = catchAsync(async (req, res) => {
@@ -14,8 +15,8 @@ const updateCustomer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Customer updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -30,7 +31,7 @@ const updateCustomerLiveLocation = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -45,8 +46,8 @@ const addDeliveryAddress = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery address added successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -65,8 +66,8 @@ const updateDeliveryAddress = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result.message,
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -79,7 +80,7 @@ const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -93,8 +94,8 @@ const deleteDeliveryAddress = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery address deleted successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -108,7 +109,8 @@ const getAllCustomers = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Customers Retrieved Successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -116,7 +118,7 @@ const getAllCustomers = catchAsync(async (req, res) => {
 
 // get single customer
 const getSingleCustomer = catchAsync(async (req, res) => {
-  const customer = await CustomerServices.getSingleCustomerFromDB(
+  const result = await CustomerServices.getSingleCustomerFromDB(
     req.params.customerId,
     req.user as TCurrentUser,
   );
@@ -124,8 +126,9 @@ const getSingleCustomer = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Customer Retrieved Successfully',
-    data: customer,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 

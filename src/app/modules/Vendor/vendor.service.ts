@@ -15,11 +15,13 @@ import { flattenObject } from '../../utils/flattenObject';
 import { Product } from '../Product/product.model';
 import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
-import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { BusinessCategoryName } from '../Category/category.interface';
 import { Customer } from '../Customer/customer.model';
 import { Types } from 'mongoose';
+import { TMessageKey } from '../../errors/messages';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { getIO } from '../../lib/Socket';
+import { emitVendorStoreStatusUpdate } from '../../lib/Socket/events/shopStatus.events';
 
 /**
  * Service to update vendor profile information.
@@ -35,7 +37,7 @@ const vendorUpdate = async (
   const existingVendor = await Vendor.findOne({ userId: id });
 
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found.');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND_WITH_DOT');
   }
 
   // 2. Define access control: Admins/Super Admins or the Account Owner (Vendor/Sub-Vendor)
@@ -46,48 +48,53 @@ const vendorUpdate = async (
 
   // 3. Authorization: Block unauthorized users from modifying the vendor profile
   if (!isStaff && !isOwner) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
   }
 
   // 4. Update-Lock: Prevent changes if the profile is locked, unless bypassed by an Admin
   if (existingVendor.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Vendor update is locked. Please contact support.',
+      'VENDOR_UPDATE_LOCKED_CONTACT_SUPPORT',
     );
   }
 
-  const businessType = payload.businessDetails?.businessType;
-  const cuisineType = payload.businessDetails?.restaurantCuisineType;
+  const businessTypeSlug = payload.businessDetails
+    ?.businessType as unknown as string;
+  const cuisineTypeSlug = payload.businessDetails
+    ?.restaurantCuisineType as unknown as string[];
 
   // 5. Business Validation: Verify that the provided business type exists in the database
-  if (businessType) {
-    const exists = await BusinessCategory.findOne({
-      name: businessType,
-    });
+  if (businessTypeSlug) {
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
 
-    if (!exists) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid business type.');
+    if (!businessCategory) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
     }
 
-    if (businessType === BusinessCategoryName.RESTAURANT && !cuisineType) {
+    payload.businessDetails!.businessType = businessCategory._id;
+    const isRestaurant = businessTypeSlug === 'restaurant';
+
+    if (isRestaurant && !cuisineTypeSlug) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'PLEASE_SELECT_CUISINE_TYPE');
+    }
+
+    if (isRestaurant && cuisineTypeSlug && !Array.isArray(cuisineTypeSlug)) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Please select a cuisine type.',
+        'PLEASE_SELECT_AT_LEAST_ONE_CUISINE_TYPE',
       );
     }
-  }
 
-  if (cuisineType && cuisineType.length > 0) {
-    const cuisineTypes = await Cuisine.find({
-      name: { $in: cuisineType },
-    });
-
-    if (cuisineTypes.length !== cuisineType.length) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid cuisine type.');
+    if (cuisineTypeSlug && cuisineTypeSlug.length > 0) {
+      const cuisineTypeExists = await Cuisine.find({
+        slug: { $in: cuisineTypeSlug },
+      });
+      if (cuisineTypeExists.length !== cuisineTypeSlug.length) {
+        throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_CUISINE_TYPE');
+      }
     }
   }
 
@@ -115,16 +122,21 @@ const vendorUpdate = async (
     { userId: existingVendor.userId },
     { $set: flattenedPayload },
     { new: true, runValidators: true }, // Ensure new data adheres to schema rules
-  );
+  )
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
 
   if (!updatedVendor) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update vendor.',
+      'FAILED_TO_UPDATE_VENDOR',
     );
   }
 
-  return updatedVendor;
+  return {
+    messageKey: 'VENDOR_UPDATED_SUCCESS' as TMessageKey,
+    data: updatedVendor,
+  };
 };
 
 /**
@@ -139,7 +151,7 @@ const vendorDocImageUpload = async (
   // 1. Check if the vendor exists in the database
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
   }
 
   const { docImageTitle, docImageUrls } = payload;
@@ -152,17 +164,14 @@ const vendorDocImageUpload = async (
 
   // 3. Authorization: Only Admins or the Account Owner can perform this action
   if (!isStaff && !isOwner) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
   }
 
   // 4. Protection: Block updates if the profile is locked (Admins can bypass this lock)
   if (existingVendor.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Vendor update is locked. Please contact support.',
+      'VENDOR_UPDATE_LOCKED_CONTACT_SUPPORT',
     );
   }
 
@@ -178,7 +187,12 @@ const vendorDocImageUpload = async (
     if (uniqueImages.length > 3) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Maximum 3 images are allowed for ${payload.docImageTitle}. You already have ${previousImages.length} and trying to add ${docImageUrls.length}.`,
+        'MAXIMUM_IMAGES_ALLOWED_FOR_DOCUMENT',
+        {
+          title: payload.docImageTitle,
+          existing: previousImages.length,
+          adding: docImageUrls.length,
+        },
       );
     }
     // Spread existing documents to prevent accidental data loss
@@ -197,7 +211,7 @@ const vendorDocImageUpload = async (
   }
 
   return {
-    message: 'Vendor document image updated successfully',
+    messageKey: 'VENDOR_DOCUMENT_IMAGE_UPDATED_SUCCESS' as TMessageKey,
     data: existingVendor.documents,
   };
 };
@@ -211,20 +225,17 @@ const deleteVendorDocument = async (
   const { docImageTitle, imageUrl } = payload;
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor)
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
 
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner = currentUser.userId === existingVendor.userId;
   if (!isStaff && !isOwner)
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
 
   if (existingVendor.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Profile is locked. Contact support.',
+      'PROFILE_LOCKED_CONTACT_SUPPORT',
     );
   }
 
@@ -232,12 +243,12 @@ const deleteVendorDocument = async (
   if (!Array.isArray(docArray) || !docArray.includes(imageUrl)) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Image not found in this document category',
+      'IMAGE_NOT_FOUND_IN_DOCUMENT_CATEGORY',
     );
   }
 
   await deleteSingleImageFromCloudinary(imageUrl).catch((err) => {
-    console.error('Cloudinary deletion failed:', err);
+    void err;
   });
 
   existingVendor.documents = {
@@ -252,106 +263,50 @@ const deleteVendorDocument = async (
   await existingVendor.save();
 
   return {
-    message: 'Vendor document image deleted successfully',
+    messageKey: 'VENDOR_DOCUMENT_IMAGE_DELETED_SUCCESS' as TMessageKey,
     data: existingVendor.documents,
-  };
-};
-
-// vendor business location update service
-const updateVendorLiveLocation = async (
-  payload: TLiveLocationPayload,
-  currentUser: TCurrentUser,
-  vendorId: string,
-) => {
-  if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to update live location. Your account status is: ${currentUser?.status}`,
-    );
-  }
-
-  if (currentUser?.userId !== vendorId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'You are not authorize to update live location!',
-    );
-  }
-
-  const {
-    latitude,
-    longitude,
-    geoAccuracy,
-    heading,
-    speed,
-    isMocked,
-    timestamp,
-  } = payload;
-
-  if (geoAccuracy !== undefined && geoAccuracy > 100) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Geo accuracy should be less than 100',
-    );
-  }
-
-  const updateData: Record<string, any> = {
-    'currentSessionLocation.type': 'Point',
-    'currentSessionLocation.coordinates': [longitude, latitude],
-    'currentSessionLocation.lastLocationUpdate': timestamp
-      ? new Date(timestamp)
-      : new Date(),
-    // 'businessLocation.longitude': longitude,
-    // 'businessLocation.latitude': latitude,
-  };
-
-  if (geoAccuracy !== undefined)
-    updateData['currentSessionLocation.geoAccuracy'] = geoAccuracy;
-  if (heading !== undefined)
-    updateData['currentSessionLocation.heading'] = heading;
-  if (speed !== undefined) updateData['currentSessionLocation.speed'] = speed;
-  if (isMocked !== undefined)
-    updateData['currentSessionLocation.isMocked'] = isMocked;
-
-  const updatedVendor = await Vendor.findOneAndUpdate(
-    { userId: currentUser.userId },
-    { $set: updateData },
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
-
-  if (!updatedVendor) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Vendor not found or update failed.',
-    );
-  }
-
-  return {
-    success: true,
-    message: 'Live location updated successfully',
-    data: updatedVendor.currentSessionLocation,
   };
 };
 
 // toggle vendor store open/close service
 const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `You are not approved to toggle store open/close. Your account is ${currentUser?.status}`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPROVED_TO_TOGGLE_STORE', {
+      status: currentUser?.status || 'UNKNOWN',
+    });
   }
 
-  currentUser.businessDetails!.isStoreOpen =
-    !currentUser.businessDetails?.isStoreOpen;
-  currentUser.businessDetails!.storeClosedAt = new Date();
+  const nextStoreState = !currentUser.businessDetails?.isStoreOpen;
+
+  currentUser.businessDetails!.isStoreOpen = nextStoreState;
+
+  currentUser.businessDetails!.isManualControl = true;
+
+  currentUser.businessDetails!.storeClosedAt = nextStoreState
+    ? undefined
+    : new Date();
+
   await (currentUser as any).save();
+
+  try {
+    emitVendorStoreStatusUpdate(getIO(), {
+      vendorId: currentUser.userId,
+      isOpen: !!currentUser?.businessDetails?.isStoreOpen,
+      isManualControl: !!currentUser?.businessDetails?.isManualControl,
+      storeClosedAt: currentUser?.businessDetails?.storeClosedAt ?? null,
+      updatedAt: new Date(),
+      source: 'toggle',
+    });
+  } catch (error) {
+    void error;
+  }
+
   return {
-    message: `Store is ${
-      currentUser?.businessDetails?.isStoreOpen ? 'open' : 'closed'
-    }`,
+    messageKey: 'STORE_STATUS_MESSAGE' as TMessageKey,
+    variables: {
+      isOpen: !!currentUser?.businessDetails?.isStoreOpen,
+    },
+    data: null,
   };
 };
 
@@ -361,12 +316,35 @@ const getAllVendors = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved to view vendors. Your account is ${currentUser?.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_VENDORS', {
+      status: currentUser?.status || 'UNKNOWN',
+    });
   }
-  const vendors = new QueryBuilder(Vendor.find(), query)
+
+  const filter: any = {};
+
+  if (query.businessType) {
+    const businessTypeSlug = (query.businessType as string)
+      .trim()
+      .toLowerCase();
+
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
+
+    if (!businessCategory) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
+    }
+
+    if (businessCategory) {
+      filter['businessDetails.businessType'] = businessCategory._id;
+    }
+
+    delete query.businessType;
+    delete query['businessDetails.businessType'];
+  }
+
+  const vendors = new QueryBuilder(Vendor.find(filter), query)
     .search(VendorSearchableFields)
     .filter()
     .sort()
@@ -383,10 +361,15 @@ const getAllVendors = async (
     vendors.modelQuery = vendors.modelQuery.populate(option);
   });
 
+  vendors.modelQuery = vendors.modelQuery
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
+
   const meta = await vendors.countTotal();
   const data = await vendors.modelQuery;
 
   return {
+    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -397,7 +380,7 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to access this vendor!',
+      'NOT_AUTHORIZED_TO_ACCESS_VENDOR',
     );
   }
 
@@ -423,19 +406,30 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
     query = query.populate(option);
   });
 
+  query = query.populate('cuisinesData');
+  query = query.populate('businessDetails.businessType');
+
   const existingVendor = await query;
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'VENDOR_NOT_FOUND_WITH_EXCLAMATION',
+    );
   }
 
-  return existingVendor;
+  return {
+    messageKey: 'VENDOR_RETRIEVED_SUCCESS' as TMessageKey,
+    data: existingVendor,
+  };
 };
 
 // get all vendors for customer
 const getAllVendorsForCustomer = async (
   query: Record<string, unknown>,
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
+  // 1. Initial check to ensure the customer exists
   const customerProfile = await Customer.findOne({
     userId: currentUser.userId,
     isDeleted: false,
@@ -444,10 +438,11 @@ const getAllVendorsForCustomer = async (
   if (!customerProfile) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Customer profile not found. Please set up your profile first.',
+      'CUSTOMER_PROFILE_NOT_FOUND_SETUP_FIRST',
     );
   }
 
+  // 2. Location Resolution (Active Address or Session GPS Location)
   let lng: number | undefined;
   let lat: number | undefined;
   const activeAddress = customerProfile.deliveryAddresses?.find(
@@ -471,17 +466,20 @@ const getAllVendorsForCustomer = async (
   if (lng == null || lat == null) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Location required. Please select a delivery address or enable GPS to find nearby restaurants.',
+      'LOCATION_REQUIRED_SELECT_ADDRESS_OR_ENABLE_GPS',
     );
   }
 
+  // Get operational radius from global settings
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
   const radiusInKm = globalSettings.customerNearestVendorRadiusKm;
 
+  // Optimize vendor pool: Only include vendors who have active products
   const activeProductVendorIds = await Product.distinct('vendorId', {
     isDeleted: false,
   });
 
+  // 3. Base Query Filter Setup (Geospatial + Status Checks)
   const filter: any = {
     _id: { $in: activeProductVendorIds },
     status: 'APPROVED',
@@ -492,20 +490,42 @@ const getAllVendorsForCustomer = async (
           type: 'Point',
           coordinates: [lng, lat],
         },
-        $maxDistance: radiusInKm * 1000,
+        $maxDistance: radiusInKm * 1000, // Conversion to meters
       },
     },
   };
 
-  if (query.restaurantCuisineType) {
-    const cuisineInput = query.restaurantCuisineType as string;
+  const businessTypeInput = (query['businessDetails.businessType'] ||
+    query.businessType) as string;
 
-    filter['businessDetails.restaurantCuisineType'] = {
-      $regex: new RegExp(`^${cuisineInput.trim()}$`, 'i'),
-    };
+  if (businessTypeInput) {
+    const businessTypeSlug = businessTypeInput.trim().toLowerCase();
+
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
+
+    if (!businessCategory) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
+    }
+
+    filter['businessDetails.businessType'] = businessCategory._id;
+
+    delete query['businessDetails.businessType'];
+    delete query.businessType;
+  }
+
+  if (query.restaurantCuisineType) {
+    const cuisineSlugInput = (query.restaurantCuisineType as string)
+      .trim()
+      .toLowerCase();
+
+    filter['businessDetails.restaurantCuisineType'] = cuisineSlugInput;
+
     delete query.restaurantCuisineType;
   }
 
+  // Product Category Filter Setup
   if (query.productCategory) {
     const categoryObjectId = new Types.ObjectId(
       query.productCategory as string,
@@ -519,6 +539,7 @@ const getAllVendorsForCustomer = async (
 
     if (matchingVendorIds.length === 0) {
       return {
+        messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
         meta: {
           total: 0,
           page: 1,
@@ -550,9 +571,12 @@ const getAllVendorsForCustomer = async (
   }
   vendors.paginate().fields();
 
-  vendors.modelQuery = vendors.modelQuery.select(
-    'name userId businessDetails businessLocation documents rating currentSessionLocation',
-  );
+  vendors.modelQuery = vendors.modelQuery
+    .select(
+      'name userId businessDetails businessLocation documents rating currentSessionLocation',
+    )
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
   const rawData = await vendors.modelQuery;
@@ -577,8 +601,10 @@ const getAllVendorsForCustomer = async (
     .lean();
 
   const data = rawData.map((vendor: any) => {
+    const vendorObj = vendor.toObject?.() || vendor;
+
     const thisVendorProducts = allActiveProducts.filter(
-      (p) => p.vendorId?.toString() === vendor._id.toString(),
+      (p) => p.vendorId?.toString() === vendorObj._id.toString(),
     );
 
     const thisVendorCategoryIds = [
@@ -589,28 +615,71 @@ const getAllVendorsForCustomer = async (
       thisVendorCategoryIds.includes(cat._id.toString()),
     );
 
+    const formattedCategories = populatedCategories.map((cat: any) => {
+      const categoryName =
+        cat.name && typeof cat.name === 'object'
+          ? cat.name[lang] || cat.name['en'] || ''
+          : cat.name || '';
+
+      return {
+        _id: cat._id,
+        name: categoryName,
+        icon: cat.icon,
+      };
+    });
+
+    const rawBusinessType = vendorObj.businessDetails?.businessType;
+    let formattedBusinessType = '';
+
+    if (
+      rawBusinessType &&
+      typeof rawBusinessType === 'object' &&
+      rawBusinessType.name
+    ) {
+      formattedBusinessType =
+        rawBusinessType.name[lang] || rawBusinessType.name['en'] || '';
+    }
+
+    let formattedCuisines: string[] = [];
+    if (
+      Array.isArray(vendorObj.cuisinesData) &&
+      vendorObj.cuisinesData.length > 0
+    ) {
+      formattedCuisines = vendorObj.cuisinesData.map(
+        (cuisine: any) => cuisine.name?.[lang] || cuisine.name?.['en'] || '',
+      );
+    } else if (
+      Array.isArray(vendorObj.businessDetails?.restaurantCuisineType)
+    ) {
+      formattedCuisines = vendorObj.businessDetails.restaurantCuisineType.map(
+        (c: string) =>
+          typeof c === 'string' ? c.charAt(0).toUpperCase() + c.slice(1) : c,
+      );
+    }
+
     return {
-      id: vendor._id,
-      userId: vendor.userId,
-      name: vendor.name,
+      id: vendorObj._id,
+      userId: vendorObj.userId,
+      name: vendorObj.name,
       businessDetails: {
-        businessName: vendor.businessDetails?.businessName,
-        businessType: vendor.businessDetails?.businessType,
-        restaurantCuisineType: vendor.businessDetails?.restaurantCuisineType,
-        openingHours: vendor.businessDetails?.openingHours,
-        closingHours: vendor.businessDetails?.closingHours,
-        closingDays: vendor.businessDetails?.closingDays,
-        isStoreOpen: vendor.businessDetails?.isStoreOpen,
+        businessName: vendorObj.businessDetails?.businessName,
+        businessType: formattedBusinessType,
+        restaurantCuisineType: formattedCuisines,
+        openingHours: vendorObj.businessDetails?.openingHours,
+        closingHours: vendorObj.businessDetails?.closingHours,
+        closingDays: vendorObj.businessDetails?.closingDays,
+        isStoreOpen: vendorObj.businessDetails?.isStoreOpen,
       },
-      businessLocation: vendor.businessLocation,
-      storePhoto: vendor.documents?.storePhoto || '',
-      rating: vendor.rating,
-      currentSessionLocation: vendor.currentSessionLocation,
-      availableCategories: populatedCategories,
+      businessLocation: vendorObj.businessLocation,
+      storePhoto: vendorObj.documents?.storePhoto || '',
+      rating: vendorObj.rating,
+      currentSessionLocation: vendorObj.currentSessionLocation,
+      availableCategories: formattedCategories,
     };
   });
 
   return {
+    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -621,16 +690,28 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
   const existingVendor = await Vendor.findOne({
     userId: vendorId,
     isDeleted: false,
-  }).select('name userId email contactNumber businessDetails businessLocation');
+  })
+    .select(
+      'name userId email contactNumber businessDetails businessLocation documents.storePhoto rating',
+    )
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Vendor not found!');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'VENDOR_NOT_FOUND_WITH_EXCLAMATION',
+    );
   }
 
-  return existingVendor;
+  return {
+    messageKey: 'VENDOR_RETRIEVED_SUCCESS' as TMessageKey,
+    data: existingVendor,
+  };
 };
 
 const getAllVendorsForCustomerPublic = async (
   query: Record<string, unknown>,
+  lang: TLanguageCode = 'en',
 ) => {
   const reqLatitude = query.latitude;
   const reqLongitude = query.longitude;
@@ -649,7 +730,7 @@ const getAllVendorsForCustomerPublic = async (
   if (lng == null || lat == null || isNaN(lng) || isNaN(lat)) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Location coordinates (latitude and longitude) are strictly required to find nearby restaurants.',
+      'LOCATION_COORDINATES_REQUIRED_FOR_NEARBY_RESTAURANTS',
     );
   }
 
@@ -677,12 +758,33 @@ const getAllVendorsForCustomerPublic = async (
     },
   };
 
-  if (query.restaurantCuisineType) {
-    const cuisineInput = query.restaurantCuisineType as string;
+  const businessTypeInput = (query['businessDetails.businessType'] ||
+    query.businessType) as string;
 
-    filter['businessDetails.restaurantCuisineType'] = {
-      $regex: new RegExp(`^${cuisineInput.trim()}$`, 'i'),
-    };
+  if (businessTypeInput) {
+    const businessTypeSlug = businessTypeInput.trim().toLowerCase();
+
+    const businessCategory = await BusinessCategory.findOne({
+      slug: businessTypeSlug,
+    }).lean();
+
+    if (!businessCategory) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_BUSINESS_TYPE');
+    }
+
+    filter['businessDetails.businessType'] = businessCategory._id;
+
+    delete query['businessDetails.businessType'];
+    delete query.businessType;
+  }
+
+  if (query.restaurantCuisineType) {
+    const cuisineSlugInput = (query.restaurantCuisineType as string)
+      .trim()
+      .toLowerCase();
+
+    filter['businessDetails.restaurantCuisineType'] = cuisineSlugInput;
+
     delete query.restaurantCuisineType;
   }
 
@@ -699,6 +801,7 @@ const getAllVendorsForCustomerPublic = async (
 
     if (matchingVendorIds.length === 0) {
       return {
+        messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
         meta: {
           total: 0,
           page: 1,
@@ -720,7 +823,6 @@ const getAllVendorsForCustomerPublic = async (
     delete query.productCategory;
   }
 
-  // ৫. QueryBuilder Execution
   const vendors = new QueryBuilder(Vendor.find(filter), query)
     .search(['businessDetails.businessName'])
     .filter()
@@ -728,9 +830,12 @@ const getAllVendorsForCustomerPublic = async (
     .paginate()
     .fields();
 
-  vendors.modelQuery = vendors.modelQuery.select(
-    'name userId businessDetails businessLocation documents rating currentSessionLocation',
-  );
+  vendors.modelQuery = vendors.modelQuery
+    .select(
+      'name userId businessDetails businessLocation documents rating currentSessionLocation',
+    )
+    .populate('businessDetails.businessType')
+    .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
   const rawData = await vendors.modelQuery;
@@ -755,8 +860,10 @@ const getAllVendorsForCustomerPublic = async (
     .lean();
 
   const data = rawData.map((vendor: any) => {
+    const vendorObj = vendor.toObject?.() || vendor;
+
     const thisVendorProducts = allActiveProducts.filter(
-      (p) => p.vendorId?.toString() === vendor._id.toString(),
+      (p) => p.vendorId?.toString() === vendorObj._id.toString(),
     );
 
     const thisVendorCategoryIds = [
@@ -767,28 +874,71 @@ const getAllVendorsForCustomerPublic = async (
       thisVendorCategoryIds.includes(cat._id.toString()),
     );
 
+    const formattedCategories = populatedCategories.map((cat: any) => {
+      const categoryName =
+        cat.name && typeof cat.name === 'object'
+          ? cat.name[lang] || cat.name['en'] || ''
+          : cat.name || '';
+
+      return {
+        _id: cat._id,
+        name: categoryName,
+        icon: cat.icon,
+      };
+    });
+
+    const rawBusinessType = vendorObj.businessDetails?.businessType;
+    let formattedBusinessType = '';
+
+    if (
+      rawBusinessType &&
+      typeof rawBusinessType === 'object' &&
+      rawBusinessType.name
+    ) {
+      formattedBusinessType =
+        rawBusinessType.name[lang] || rawBusinessType.name['en'] || '';
+    }
+
+    let formattedCuisines: string[] = [];
+    if (
+      Array.isArray(vendorObj.cuisinesData) &&
+      vendorObj.cuisinesData.length > 0
+    ) {
+      formattedCuisines = vendorObj.cuisinesData.map(
+        (cuisine: any) => cuisine.name?.[lang] || cuisine.name?.['en'] || '',
+      );
+    } else if (
+      Array.isArray(vendorObj.businessDetails?.restaurantCuisineType)
+    ) {
+      formattedCuisines = vendorObj.businessDetails.restaurantCuisineType.map(
+        (c: string) =>
+          typeof c === 'string' ? c.charAt(0).toUpperCase() + c.slice(1) : c,
+      );
+    }
+
     return {
-      id: vendor._id,
-      userId: vendor.userId,
-      name: vendor.name,
+      id: vendorObj._id,
+      userId: vendorObj.userId,
+      name: vendorObj.name,
       businessDetails: {
-        businessName: vendor.businessDetails?.businessName,
-        businessType: vendor.businessDetails?.businessType,
-        restaurantCuisineType: vendor.businessDetails?.restaurantCuisineType,
-        openingHours: vendor.businessDetails?.openingHours,
-        closingHours: vendor.businessDetails?.closingHours,
-        closingDays: vendor.businessDetails?.closingDays,
-        isStoreOpen: vendor.businessDetails?.isStoreOpen,
+        businessName: vendorObj.businessDetails?.businessName,
+        businessType: formattedBusinessType,
+        restaurantCuisineType: formattedCuisines,
+        openingHours: vendorObj.businessDetails?.openingHours,
+        closingHours: vendorObj.businessDetails?.closingHours,
+        closingDays: vendorObj.businessDetails?.closingDays,
+        isStoreOpen: vendorObj.businessDetails?.isStoreOpen,
       },
-      businessLocation: vendor.businessLocation,
-      storePhoto: vendor.documents?.storePhoto || '',
-      rating: vendor.rating,
-      currentSessionLocation: vendor.currentSessionLocation,
-      availableCategories: populatedCategories,
+      businessLocation: vendorObj.businessLocation,
+      storePhoto: vendorObj.documents?.storePhoto || '',
+      rating: vendorObj.rating,
+      currentSessionLocation: vendorObj.currentSessionLocation,
+      availableCategories: formattedCategories,
     };
   });
 
   return {
+    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -798,7 +948,6 @@ export const VendorServices = {
   vendorUpdate,
   vendorDocImageUpload,
   deleteVendorDocument,
-  updateVendorLiveLocation,
   toggleVendorStoreOpenClose,
   getAllVendors,
   getSingleVendor,

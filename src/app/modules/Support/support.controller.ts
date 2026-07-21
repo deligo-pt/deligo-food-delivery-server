@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { SupportService } from './support.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 const sendMessage = catchAsync(async (req, res) => {
   // We send the whole body and req.user to service
@@ -15,36 +16,36 @@ const sendMessage = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Message processed successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
 const getAllTickets = catchAsync(async (req, res) => {
-  const { meta, data } = await SupportService.getAllTickets(
+  const result = await SupportService.getAllTickets(
     req.query,
     req.user as TCurrentUser,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Tickets retrieved',
-    meta,
-    data,
+    messageKey: result?.messageKey as TMessageKey,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
 const getMessagesByTicketId = catchAsync(async (req, res) => {
-  const { meta, data } = await SupportService.getMessagesByTicketId(
+  const result = await SupportService.getMessagesByTicketId(
     req.params.ticketId,
     req.query,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Chat history retrieved',
-    meta,
-    data,
+    messageKey: result?.messageKey as TMessageKey,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 
@@ -56,8 +57,8 @@ const markAsRead = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -69,8 +70,8 @@ const closeTicket = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Ticket closed',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 

@@ -1,15 +1,13 @@
 import { z } from 'zod';
+import { createLocalizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
 // Variation Options Schema (e.g., Small, Medium, Large)
 const variationOptionSchema = z
   .object({
-    label: z.string({ required_error: 'Variation label is required' }),
+    label: createLocalizedValidationSchema('variation option name'),
     price: z.number().min(0, 'Variation price must be non-negative'),
     sku: z.string().optional(),
-    stockQuantity: z
-      .number({ required_error: 'Variation stock quantity is required' })
-      .min(0)
-      .optional(),
+    stockQuantity: z.number().min(0).optional(),
     isOutOfStock: z.boolean().default(false),
   })
   .strict();
@@ -17,7 +15,7 @@ const variationOptionSchema = z
 // Variation Group Schema (e.g., Size, Color)
 const variationSchema = z
   .object({
-    name: z.string({ required_error: 'Variation name is required' }),
+    name: createLocalizedValidationSchema('variation group name'),
     options: z
       .array(variationOptionSchema)
       .min(1, 'At least one option is required'),
@@ -28,8 +26,8 @@ const variationSchema = z
 const createProductValidationSchema = z.object({
   body: z
     .object({
-      name: z.string().min(1, 'Product name is required'),
-      description: z.string({ required_error: 'Description is required' }),
+      name: createLocalizedValidationSchema('product name'),
+      description: createLocalizedValidationSchema('product description'),
       category: z.string().min(1, 'Category is required'),
       subCategory: z.string().optional(),
       brand: z.string().optional(),
@@ -42,8 +40,9 @@ const createProductValidationSchema = z.object({
 
       pricing: z
         .object({
-          price: z.number().optional(),
+          price: z.number().min(0, 'Price must be non-negative').optional(),
           discount: z.number().min(0).max(100).default(0),
+          discountType: z.enum(['PERCENTAGE', 'FLAT']).default('PERCENTAGE'),
           taxId: z.string({ required_error: 'Tax ID is required' }),
           currency: z.string().default('EUR'),
         })
@@ -70,15 +69,33 @@ const createProductValidationSchema = z.object({
         .strict()
         .optional(),
     })
-    .strict(),
+    .strict()
+    .refine(
+      (data) => {
+        const hasVariations = data.variations && data.variations.length > 0;
+        const hasPrice = data.pricing && data.pricing.price !== undefined;
+
+        if (!hasVariations && !hasPrice) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: 'Price is required when the product has no variations',
+        path: ['pricing', 'price'],
+      },
+    ),
 });
 
 // updateProductValidationSchema
 const updateProductValidationSchema = z.object({
   body: z
     .object({
-      name: z.string().optional(),
-      description: z.string().optional(),
+      name: createLocalizedValidationSchema('product name', true).optional(),
+      description: createLocalizedValidationSchema(
+        'product description',
+        true,
+      ).optional(),
       category: z.string().optional(),
       subCategory: z.string().optional(),
       brand: z.string().optional(),
@@ -87,7 +104,9 @@ const updateProductValidationSchema = z.object({
 
       pricing: z
         .object({
+          price: z.number().min(0).optional(),
           discount: z.number().min(0).max(100).optional(),
+          discountType: z.enum(['PERCENTAGE', 'FLAT']).optional(),
           taxId: z.string().optional(),
           currency: z.string().optional(),
         })
@@ -118,22 +137,12 @@ const updateProductValidationSchema = z.object({
 const manageVariationValidationSchema = z.object({
   body: z
     .object({
-      name: z
-        .string({
-          required_error: 'Variation group name is required',
-        })
-        .min(1, 'Name cannot be empty')
-        .trim(),
+      name: createLocalizedValidationSchema('variation group name'),
       options: z
         .array(
           z
             .object({
-              label: z
-                .string({
-                  required_error: 'Option label is required (e.g., Small, Red)',
-                })
-                .min(1)
-                .trim(),
+              label: createLocalizedValidationSchema('variation option name'),
               price: z
                 .number({
                   required_error: 'Price is required',
@@ -143,7 +152,7 @@ const manageVariationValidationSchema = z.object({
               stockQuantity: z
                 .number()
                 .min(0, 'Stock cannot be negative')
-                .default(0),
+                .optional(),
             })
             .strict(),
         )
@@ -152,33 +161,39 @@ const manageVariationValidationSchema = z.object({
     .strict(),
 });
 
+// renameVariationValidationSchema
 const renameVariationValidationSchema = z.object({
   body: z
     .object({
-      oldName: z
-        .string({
-          required_error: 'Current variation group name (oldName) is required',
-        })
-        .min(1, 'Old name cannot be empty'),
+      oldName: z.string().min(1, 'Old variation name is required'),
 
-      newName: z.string().optional(),
+      newName: createLocalizedValidationSchema(
+        'new variation name',
+        true,
+      ).optional(),
 
       oldLabel: z.string().optional(),
-
-      newLabel: z.string().optional(),
+      newLabel: createLocalizedValidationSchema(
+        'new variation label',
+        true,
+      ).optional(),
     })
     .strict()
     .refine(
       (data) => {
-        const isRenamingGroup = !!data.newName;
+        const isRenamingGroup =
+          !!data.newName && (!!data.newName.en || !!data.newName.pt);
 
-        const isRenamingOption = !!(data.oldLabel && data.newLabel);
+        const isRenamingOption =
+          !!data.oldLabel &&
+          !!data.newLabel &&
+          (!!data.newLabel.en || !!data.newLabel.pt);
 
         return isRenamingGroup || isRenamingOption;
       },
       {
         message:
-          "You must provide 'newName' to rename the group, or both 'oldLabel' and 'newLabel' to rename an option.",
+          "You must provide at least one field (en/pt) inside 'newName' to rename the group, or 'oldLabel' along with at least one field inside 'newLabel' to rename an option.",
         path: ['newName'],
       },
     ),
@@ -188,12 +203,7 @@ const renameVariationValidationSchema = z.object({
 const removeVariationValidationSchema = z.object({
   body: z
     .object({
-      name: z
-        .string({
-          required_error: 'Variation name is required',
-        })
-        .min(1, 'Variation name cannot be empty'),
-
+      name: z.string().min(1, 'Variation name is required'),
       labelToRemove: z.string().optional(),
     })
     .strict(),
@@ -223,6 +233,34 @@ const approveProductValidationSchema = z.object({
       isApproved: z.boolean({ required_error: 'isApproved is required' }),
       remarks: z.string().optional(),
     })
+    .strict()
+    .refine(
+      (data) => {
+        if (
+          data.isApproved === false &&
+          (!data.remarks || data.remarks.trim() === '')
+        ) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: 'Remarks are required when rejecting a product',
+        path: ['remarks'],
+      },
+    ),
+});
+
+// deleteProductImagesValidationSchema
+const deleteProductImagesValidationSchema = z.object({
+  body: z
+    .object({
+      images: z
+        .array(
+          z.string().url({ message: 'Each image must be a valid URL string' }),
+        )
+        .min(1, 'Please provide at least one image URL to delete'),
+    })
     .strict(),
 });
 
@@ -234,4 +272,5 @@ export const ProductValidation = {
   removeVariationValidationSchema,
   updateStockAndPriceValidationSchema,
   approveProductValidationSchema,
+  deleteProductImagesValidationSchema,
 };

@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { DeliveryPartnerServices } from './delivery-partner.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // Delivery Partner Update Controller
 const updateDeliveryPartner = catchAsync(async (req, res) => {
@@ -15,8 +16,8 @@ const updateDeliveryPartner = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery Partner updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -31,7 +32,7 @@ const updateDeliveryPartnerLiveLocation = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -45,8 +46,8 @@ const changeDeliveryPartnerStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -62,7 +63,7 @@ const deliveryPartnerDocImageUpload = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.existingDeliveryPartner,
   });
 });
@@ -77,7 +78,8 @@ const getAllDeliveryPartners = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery Partners Retrieved Successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -93,8 +95,24 @@ const getSingleDeliveryPartner = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery Partner Retrieved Successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
+  });
+});
+
+const assignDeliveryPartnerToFleetManager = catchAsync(async (req, res) => {
+  const result =
+    await DeliveryPartnerServices.assignDeliveryPartnerToFleetManager(
+      req.params.deliveryPartnerId,
+      req.body.fleetManagerId,
+    );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -105,4 +123,5 @@ export const DeliveryPartnerControllers = {
   changeDeliveryPartnerStatus,
   getAllDeliveryPartners,
   getSingleDeliveryPartner,
+  assignDeliveryPartnerToFleetManager,
 };

@@ -16,14 +16,28 @@ const subscriber = new Redis({
 });
 
 // Connection
-redis.on('connect', () => console.log('Redis Main Connected'));
-subscriber.on('connect', () => console.log('Redis Subscriber Connected'));
+redis.on(
+  'connect',
+  () =>
+    config.NODE_ENV === 'development' && console.log('Redis Main Connected'),
+);
+subscriber.on(
+  'connect',
+  () =>
+    config.NODE_ENV === 'development' &&
+    console.log('Redis Subscriber Connected'),
+);
 
 // Error handling
 redis.on('error', (err) => console.error('Redis Main Error:', err));
 subscriber.on('error', (err) => console.error('Redis Subscriber Error:', err));
 
 const subscriptions = new Map<string, (data: any) => void>();
+
+const expirySubscriptions = new Map<
+  string,
+  (key: string) => void | Promise<void>
+>();
 
 subscriber.on('message', (channel, message) => {
   const callback = subscriptions.get(channel);
@@ -36,6 +50,15 @@ subscriber.on('message', (channel, message) => {
   }
 });
 
+subscriber.on('pmessage', async (pattern, channel, expiredKey) => {
+  if (expiredKey) {
+    for (const [prefix, callback] of expirySubscriptions.entries()) {
+      if (expiredKey.startsWith(prefix)) {
+        await callback(expiredKey);
+      }
+    }
+  }
+});
 export const RedisService = {
   set: async (key: string, value: unknown, ttl: number = 3600) => {
     const data =
@@ -60,6 +83,10 @@ export const RedisService = {
     return result === 1;
   },
 
+  async keys(pattern: string): Promise<string[]> {
+    return await redis.keys(pattern);
+  },
+
   publish: async (channel: string, message: unknown) => {
     const data =
       typeof message === 'object' ? JSON.stringify(message) : String(message);
@@ -69,7 +96,25 @@ export const RedisService = {
   subscribe: async (channel: string, callback: (data: any) => void) => {
     subscriptions.set(channel, callback);
     await subscriber.subscribe(channel);
-    console.log(`Listening to channel: ${channel}`);
+  },
+
+  onKeyExpire: (
+    keyPrefix: string,
+    callback: (key: string) => void | Promise<void>,
+  ) => {
+    expirySubscriptions.set(keyPrefix, callback);
+  },
+
+  initKeySpaceNotification: async () => {
+    await redis.config('SET', 'notify-keyspace-events', 'Ex');
+
+    await subscriber.psubscribe('__keyevent@0__:expired');
+
+    if (config.NODE_ENV === 'development') {
+      console.log(
+        'Redis Keyspace Expiry Notifications Activated with Config SET',
+      );
+    }
   },
 };
 

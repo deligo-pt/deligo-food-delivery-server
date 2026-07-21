@@ -1,13 +1,12 @@
 import { model, Schema } from 'mongoose';
 import { TCart } from './cart.interface';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const cartAddonSchema = new Schema(
   {
-    optionId: { type: String, required: true },
-    name: { type: String, required: true },
+    name: { type: localizedSchema, required: true },
     sku: { type: String, required: true },
     originalPrice: { type: Number, required: true },
-    promoDiscountAmount: { type: Number, default: 0 },
     unitPrice: { type: Number, required: true },
     quantity: { type: Number, required: true },
     lineTotal: { type: Number, required: true },
@@ -21,7 +20,7 @@ const cartItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
-    name: { type: String, required: true }, // Snapshot of product name
+    name: { type: localizedSchema, required: true }, // Snapshot of product name
     image: { type: String }, // Snapshot of product image
     hasVariations: { type: Boolean, default: false },
     variationSku: { type: String, default: null },
@@ -33,8 +32,11 @@ const cartItemSchema = new Schema(
       type: {
         originalPrice: { type: Number, required: true },
         productDiscountAmount: { type: Number, default: 0 },
-        priceAfterProductDiscount: { type: Number, required: true },
-        promoDiscountAmount: { type: Number, default: 0 },
+        discountType: {
+          type: String,
+          enum: ['PERCENTAGE', 'FLAT'],
+          default: 'PERCENTAGE',
+        },
         unitPrice: { type: Number, required: true },
         lineTotal: { type: Number, required: true },
         taxRate: { type: Number, default: 0 },
@@ -46,9 +48,7 @@ const cartItemSchema = new Schema(
     itemSummary: {
       type: {
         quantity: { type: Number, required: true, min: 1 },
-        totalBeforeTax: { type: Number, required: true },
         totalTaxAmount: { type: Number, required: true },
-        totalPromoDiscount: { type: Number, default: 0 },
         totalProductDiscount: { type: Number, default: 0 },
         grandTotal: { type: Number, required: true },
       },
@@ -68,18 +68,23 @@ const cartSchema = new Schema<TCart>(
     items: { type: [cartItemSchema], required: true, default: [] },
 
     totalItems: { type: Number, default: 0 },
+    totalQuantity: { type: Number, default: 0 },
 
     cartCalculation: {
       type: {
         totalOriginalPrice: { type: Number, default: 0 },
         totalProductDiscount: { type: Number, default: 0 },
-        taxableAmount: { type: Number, default: 0 },
         totalTaxAmount: { type: Number, default: 0 },
         grandTotal: { type: Number, default: 0 },
       },
       _id: false,
     },
 
+    status: {
+      type: String,
+      enum: ['active', 'abandoned'],
+    },
+    isNotified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },

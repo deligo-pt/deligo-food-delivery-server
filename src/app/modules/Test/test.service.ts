@@ -1,15 +1,13 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
-import {
-  sendPushNotification,
-  sendTestPushNotification,
-} from '../../utils/sendPushNotification';
+import { sendTestPushNotification } from '../../utils/sendPushNotification';
+import { TMessageKey } from '../../errors/messages';
 
 const getNotificationByToken = async (payload: { token: string }) => {
   const { token } = payload;
 
   if (!token) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'FCM Token is required');
+    throw new AppError(httpStatus.BAD_REQUEST, 'FCM_TOKEN_REQUIRED');
   }
 
   const hardcodedPayload = {
@@ -27,16 +25,15 @@ const getNotificationByToken = async (payload: { token: string }) => {
   const result = await sendTestPushNotification(token, hardcodedPayload);
 
   if (!result.success) {
-    console.error(result.error);
+    void result.error;
 
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      `FCM Failed: ${result.error}`,
-    );
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'FCM_FAILED', {
+      error: String(result.error),
+    });
   }
 
   return {
-    message: 'Notification sent successfully',
+    messageKey: 'NOTIFICATION_SENT_SUCCESS' as TMessageKey,
     data: result.response,
   };
 };

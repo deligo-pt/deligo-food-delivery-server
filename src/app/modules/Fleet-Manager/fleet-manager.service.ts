@@ -11,6 +11,7 @@ import {
 import { FleetManager } from './fleet-manager.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 
 // Fleet Manager Update Service
 const fleetManagerUpdate = async (
@@ -27,14 +28,14 @@ const fleetManagerUpdate = async (
   }).populate('profileId', 'isUpdateLocked registeredBy');
 
   if (!existingFleetManager) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found.');
+    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND_DOT');
   }
 
   const fleetProfile = existingFleetManager.profileId as any;
   if (!fleetProfile) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Fleet Manager profile not found.',
+      'FLEET_MANAGER_PROFILE_NOT_FOUND_DOT',
     );
   }
 
@@ -49,30 +50,21 @@ const fleetManagerUpdate = async (
     currentUser.userId === existingFleetManager.userId;
 
   if (!isSelf && !isAdmin) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this Fleet Manager.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_UNAUTHORIZED');
   }
 
   // ---------------------------------------------------------
   // Ensure email is verified before self-update
   // ---------------------------------------------------------
   if (!existingFleetManager.isEmailVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please verify your email before updating your profile.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_VERIFICATION_REQUIRED');
   }
 
   if (payload.businessLocation) {
     const { longitude, latitude, geoAccuracy = 0 } = payload.businessLocation;
 
     if (geoAccuracy !== undefined && geoAccuracy > 100) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Geo accuracy must be less than or equal to 100.',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'GEO_ACCURACY_MAX_100');
     }
     const hasLng = typeof longitude === 'number';
     const hasLat = typeof latitude === 'number';
@@ -91,10 +83,7 @@ const fleetManagerUpdate = async (
   // Check if update is locked
   // ---------------------------------------------------------
   if (currentUser.role === 'FLEET_MANAGER' && fleetProfile.isUpdateLocked) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Fleet Manager update is locked. Please contact support.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'UPDATE_LOCKED_CONTACT_SUPPORT');
   }
 
   // ---------------------------------------------------------
@@ -107,13 +96,13 @@ const fleetManagerUpdate = async (
   );
 
   if (!updatedFleetManager) {
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update Fleet Manager.',
-    );
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'UPDATE_FAILED');
   }
 
-  return updatedFleetManager;
+  return {
+    messageKey: 'FLEET_MANAGER_UPDATE_SUCCESS',
+    data: updatedFleetManager,
+  };
 };
 
 // fleet manager doc image upload service
@@ -128,7 +117,7 @@ const fleetManagerDocImageUpload = async (
     isDeleted: false,
   });
   if (!existingFleetManager) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND');
   }
 
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -137,20 +126,14 @@ const fleetManagerDocImageUpload = async (
     currentUser.userId === existingFleetManager.userId;
 
   if (!isStaff && !isOwner) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ACTION_UNAUTHORIZED');
   }
 
   // ---------------------------------------------------------
   // Check if update is locked
   // ---------------------------------------------------------
   if (existingFleetManager.isUpdateLocked && !isStaff) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Fleet Manager update is locked. Please contact support.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'UPDATE_LOCKED_CONTACT_SUPPORT');
   }
 
   if (docImageTitle && docImageUrls.length > 0) {
@@ -164,7 +147,12 @@ const fleetManagerDocImageUpload = async (
     if (uniqueImages.length > 3) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        `Maximum 3 images are allowed for ${payload.docImageTitle}. You already have ${previousImages.length} and trying to add ${docImageUrls.length}.`,
+        'DOC_LIMIT_EXCEEDED_TEMPLATE',
+        {
+          docImageTitle: String(payload.docImageTitle),
+          previousCount: previousImages.length,
+          incomingCount: docImageUrls.length,
+        },
       );
     }
     existingFleetManager.documents = {
@@ -179,7 +167,7 @@ const fleetManagerDocImageUpload = async (
   }
 
   return {
-    message: 'Fleet Manager document image updated successfully',
+    messageKey: 'DOC_IMAGE_UPDATED_SUCCESS',
     existingFleetManager,
   };
 };
@@ -195,33 +183,27 @@ const deleteFleetManagerDocument = async (
     userId: fleetManagerId,
   });
   if (!existingFleetManager)
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND');
 
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner = currentUser.userId === existingFleetManager.userId;
   if (!isStaff && !isOwner)
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized for this action.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ACTION_UNAUTHORIZED');
 
   if (existingFleetManager.isUpdateLocked && !isStaff) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Profile is locked. Contact support.',
+      'PROFILE_LOCKED_CONTACT_SUPPORT',
     );
   }
 
   const docArray = (existingFleetManager.documents as any)[docImageTitle];
   if (!Array.isArray(docArray) || !docArray.includes(imageUrl)) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Image not found in this document category',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'IMAGE_NOT_FOUND_IN_CATEGORY');
   }
 
   await deleteSingleImageFromCloudinary(imageUrl).catch((err) => {
-    console.error('Cloudinary deletion failed:', err);
+    void err;
   });
 
   existingFleetManager.documents = {
@@ -239,13 +221,30 @@ const deleteFleetManagerDocument = async (
   await existingFleetManager.save();
 
   return {
-    message: 'Fleet Manager document image deleted successfully',
+    messageKey: 'DOC_IMAGE_DELETED_SUCCESS',
     data: existingFleetManager.documents,
   };
 };
 // get all fleet managers
 const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
-  const fleetManagers = new QueryBuilder(FleetManager.find(), query)
+  const city = query.city !== undefined ? String(query.city).trim() : '';
+
+  const baseQuery: Record<string, unknown> = { ...query };
+
+  if (city) {
+    baseQuery['businessLocation.city'] = {
+      $regex: city,
+      $options: 'i',
+    };
+  }
+
+  delete baseQuery.city;
+  delete baseQuery.latitude;
+  delete baseQuery.longitude;
+  delete baseQuery.maxDistanceKm;
+  delete baseQuery.distanceOrder;
+
+  const fleetManagers = new QueryBuilder(FleetManager.find(), baseQuery)
     .search(FleetManagerSearchableFields)
     .filter()
     .sort()
@@ -255,6 +254,8 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 
   const data = await fleetManagers.modelQuery;
   return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet Managers', isPlural: true },
     meta,
     data,
   };
@@ -264,12 +265,13 @@ const getAllFleetManagersFromDb = async (query: Record<string, unknown>) => {
 const getSingleFleetManagerFromDB = async (
   fleetManagerId: string,
   currentUser: TCurrentUser,
+  query: Record<string, unknown>,
 ) => {
   const userId = currentUser?.userId;
   if (currentUser?.role === 'FLEET_MANAGER' && userId !== fleetManagerId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You are not authorize to access this fleet manager!',
+      'ACCESS_FLEET_MANAGER_UNAUTHORIZED_BANG',
     );
   }
   let existingFleetManager;
@@ -286,10 +288,30 @@ const getSingleFleetManagerFromDB = async (
   }
 
   if (!existingFleetManager) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND_BANG');
   }
 
-  return existingFleetManager;
+  const baseQuery = DeliveryPartner.find({
+    'registeredBy.id': existingFleetManager._id,
+    isDeleted: false,
+  }).select('name profilePhoto email userId -_id');
+
+  const deliveryPartnerQuery = new QueryBuilder(baseQuery, query)
+    .search(['name', 'email'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const deliveryPartners = await deliveryPartnerQuery.modelQuery;
+  const meta = await deliveryPartnerQuery.countTotal();
+
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Fleet Manager' },
+    data: { existingFleetManager, deliveryPartners },
+    meta,
+  };
 };
 
 export const FleetManagerServices = {

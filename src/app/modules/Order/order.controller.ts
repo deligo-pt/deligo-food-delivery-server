@@ -3,19 +3,26 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { OrderServices } from './order.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
-import { InvoicePdService } from '../PdInvoice/downloadInvoice.service';
+import { TMessageKey } from '../../errors/messages';
+import { formatOrderResponse } from './order.utils';
+import { InvoiceService } from '../Invoice/invoice.service';
+import { formatCartResponse } from '../Cart/cart.utils';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderAfterRedUniqPayment(
     req.body,
     req.user as TCurrentUser,
+    req.lang,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Order created successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -26,12 +33,16 @@ const getAllOrders = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = result?.data?.map((order) =>
+    formatOrderResponse(order, req.lang),
+  );
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Orders retrieved successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -42,11 +53,13 @@ const getSingleOrder = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Order retrieved successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -58,11 +71,14 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
     req.body,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: `Order ${req.body.type.toLowerCase()} successfully`,
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -72,11 +88,15 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
     req.params.orderId,
     req.user as TCurrentUser,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -88,11 +108,13 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
     req.body,
   );
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -103,17 +125,20 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
     req.body,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: result?.data,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
 // download invoice pdf from pasta digital controller
 const downloadInvoicePdfFromPd = catchAsync(async (req, res) => {
-  const base64Data = await InvoicePdService.downloadOrderInvoicePdf(
+  const base64Data = await InvoiceService.downloadOrderInvoicePdf(
     req.params.orderId,
   );
 
@@ -133,11 +158,16 @@ const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getDeliveryPartnersDispatchOrder(
     req.user as TCurrentUser,
   );
+
+  const formattedData = result?.data?.map((order) =>
+    formatOrderResponse(order, req.lang),
+  );
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery partner dispatch order fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -146,11 +176,31 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.getDeliveryPartnerCurrentOrder(
     req.user as TCurrentUser,
   );
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Delivery partner current order fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
+  });
+});
+
+const reorderOrder = catchAsync(async (req, res) => {
+  const result = await OrderServices.reorderOrder(
+    req.params.orderId,
+    req.user as TCurrentUser,
+    req.lang,
+  );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -165,4 +215,5 @@ export const OrderControllers = {
   downloadInvoicePdfFromPd,
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
+  reorderOrder,
 };

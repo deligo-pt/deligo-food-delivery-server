@@ -4,16 +4,14 @@ import {
   TCuisine,
   TProductCategory,
 } from './category.interface';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 export const BusinessCategoryNameEnum = ['RESTAURANT', 'STORE'] as const;
 
 const businessCategorySchema = new Schema<TBusinessCategory>(
   {
     name: {
-      type: String,
-      enum: BusinessCategoryNameEnum,
-      required: true,
-      unique: true,
+      type: localizedSchema,
     },
     slug: { type: String, required: true, unique: true },
     description: { type: String },
@@ -26,13 +24,13 @@ const businessCategorySchema = new Schema<TBusinessCategory>(
 
 const productCategorySchema = new Schema<TProductCategory>(
   {
-    name: { type: String, required: true, unique: true },
+    name: { type: localizedSchema, required: true },
     slug: { type: String, required: true, unique: true },
     description: { type: String },
     icon: { type: String, required: true },
     businessCategoryId: {
       type: Schema.Types.ObjectId,
-      ref: 'BusinessCategory', // reference to BusinessCategory
+      ref: 'BusinessCategory',
       required: true,
       index: true,
     },
@@ -42,9 +40,9 @@ const productCategorySchema = new Schema<TProductCategory>(
   { timestamps: true },
 );
 
-const CuisineSchema = new Schema<TCuisine>(
+const cuisineSchema = new Schema<TCuisine>(
   {
-    name: { type: String, required: true, unique: true, trim: true },
+    name: { type: localizedSchema, required: true },
     slug: {
       type: String,
       required: true,
@@ -59,7 +57,10 @@ const CuisineSchema = new Schema<TCuisine>(
   { timestamps: true },
 );
 
+businessCategorySchema.index({ 'name.en': 1, 'name.pt': 1 }, { unique: true });
 productCategorySchema.index({ isActive: 1, isDeleted: 1 });
+productCategorySchema.index({ 'name.en': 1 }, { unique: true });
+cuisineSchema.index({ 'name.en': 1 }, { unique: true });
 
 export const BusinessCategory = model<TBusinessCategory>(
   'BusinessCategory',
@@ -70,4 +71,4 @@ export const ProductCategory = model<TProductCategory>(
   productCategorySchema,
 );
 
-export const Cuisine = model<TCuisine>('Cuisine', CuisineSchema);
+export const Cuisine = model<TCuisine>('Cuisine', cuisineSchema);

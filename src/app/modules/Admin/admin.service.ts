@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { TAdmin } from './admin.interface';
@@ -22,7 +23,9 @@ const updateAdmin = async (
   );
 
   if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Admin',
+    });
   }
 
   const adminProfile = existingAdmin?.profileId as any;
@@ -31,27 +34,21 @@ const updateAdmin = async (
   // Email verification check
   // -----------------------------------------
   if (!existingAdmin.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Please verify your email.');
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_UNVERIFIED');
   }
 
   // -----------------------------------------
   // Update lock check
   // -----------------------------------------
   if (adminProfile.isUpdateLocked) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Admin update is locked. Please contact support.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'UPDATE_LOCKED');
   }
 
   if (payload.address) {
     const { longitude, latitude, geoAccuracy = 0 } = payload.address;
 
     if (geoAccuracy !== undefined && geoAccuracy > 100) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Geo accuracy must be less than or equal to 100.',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_GEO_ACCURACY');
     }
     const hasLng = typeof longitude === 'number';
     const hasLat = typeof latitude === 'number';
@@ -73,10 +70,7 @@ const updateAdmin = async (
     currentUser.role === 'ADMIN' &&
     currentUser.userId !== existingAdmin.userId
   ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this admin account.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_UNAUTHORIZED');
   }
 
   // -----------------------------------------
@@ -89,13 +83,13 @@ const updateAdmin = async (
   );
 
   if (!updatedAdmin) {
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update admin profile.',
-    );
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'UPDATE_FAILED');
   }
 
-  return updatedAdmin;
+  return {
+    messageKey: 'ADMIN_UPDATE_SUCCESS',
+    data: updatedAdmin,
+  };
 };
 
 // admin doc image upload service
@@ -108,21 +102,17 @@ const adminDocImageUpload = async (
   const existingAdmin = await Admin.findOne({ userId: adminId });
 
   if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Admin',
+    });
   }
 
   if (currentUser.role === 'ADMIN' && existingAdmin.isUpdateLocked) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Admin update is locked. Please contact support.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'UPDATE_LOCKED');
   }
 
   if (currentUser.role === 'ADMIN' && existingAdmin.userId !== adminId) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this admin account.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_UNAUTHORIZED');
   }
   // delete previous image if exists
   const docTitle = data?.docImageTitle;
@@ -147,7 +137,7 @@ const adminDocImageUpload = async (
   }
 
   return {
-    message: 'Admin document updated successfully.',
+    messageKey: 'DOCUMENT_UPLOAD_SUCCESS',
     data: existingAdmin,
   };
 };
@@ -164,6 +154,8 @@ const getAllAdmins = async (query: Record<string, unknown>) => {
   const data = await admins.modelQuery;
 
   return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Admins', isPlural: true },
     meta,
     data,
   };
@@ -175,10 +167,7 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
   // Authorization Logic
   // ---------------------------------------------------------
   if (currentUser.role === 'ADMIN' && currentUser.userId !== adminId) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to access this admin.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCESS_UNAUTHORIZED');
   }
 
   // ---------------------------------------------------------
@@ -187,10 +176,16 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
   const existingAdmin = await Admin.findOne({ userId: adminId });
 
   if (!existingAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Admin',
+    });
   }
 
-  return existingAdmin;
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Admin' },
+    data: existingAdmin,
+  };
 };
 
 export const AdminServices = {

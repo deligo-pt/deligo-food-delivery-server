@@ -2,14 +2,15 @@
 import { model, Schema } from 'mongoose';
 import { TProduct } from './product.interface';
 import { roundTo2 } from '../../utils/mathProvider';
+import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const variationSchema = new Schema({
-  name: { type: String, required: true }, // e.g., "Size"
+  name: { type: localizedSchema, required: true },
   options: [
     {
       _id: false,
-      label: { type: String, required: true }, // e.g., "Large"
-      price: { type: Number, required: true }, // e.g., 500
+      label: { type: localizedSchema, required: true },
+      price: { type: Number, required: true },
       sku: { type: String },
       stockQuantity: { type: Number },
       totalAddedQuantity: { type: Number },
@@ -23,9 +24,11 @@ const productSchema = new Schema<TProduct>(
     productId: { type: String, required: true, unique: true },
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     sku: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
+
+    name: { type: localizedSchema, required: true },
     slug: { type: String, required: true },
-    description: { type: String },
+    description: { type: localizedSchema, required: true },
+
     isDeleted: { type: Boolean, default: false },
     isApproved: { type: Boolean, default: true },
     approvedBy: { type: Schema.Types.ObjectId, default: null, ref: 'Admin' },
@@ -47,8 +50,18 @@ const productSchema = new Schema<TProduct>(
     addonGroups: [{ type: Schema.Types.ObjectId, ref: 'AddonGroup' }],
 
     pricing: {
-      price: { type: Number, required: true },
+      price: {
+        type: Number,
+        required: function () {
+          return !this.variations || this.variations.length === 0;
+        },
+      },
       discount: { type: Number, default: 0 },
+      discountType: {
+        type: String,
+        enum: ['PERCENTAGE', 'FLAT'],
+        default: 'PERCENTAGE',
+      },
       taxId: {
         type: Schema.Types.ObjectId,
         ref: 'Tax',
@@ -93,39 +106,52 @@ const productSchema = new Schema<TProduct>(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
+    id: false,
   },
 );
 
-const getNetPriceAfterDiscount = (price: number, discount: number) => {
-  const discountedPrice = roundTo2((price * discount) / 100);
-  const discountedBase = roundTo2(price - discountedPrice);
-  return roundTo2(discountedBase);
-};
+productSchema.virtual('pricing.finalPrice').get(function () {
+  const vendorPrice = this.pricing?.price || 0;
+  const discountVal = this.pricing?.discount || 0;
+  const discountType = this.pricing?.discountType || 'PERCENTAGE';
 
-productSchema.virtual('pricing.discountedBasePrice').get(function () {
-  const price = this.pricing?.price || 0;
-  const discountPercent = this.pricing?.discount || 0;
-  const discountedPrice = roundTo2((price * discountPercent) / 100);
-  const discountedBase = roundTo2(price - discountedPrice);
-  return roundTo2(discountedBase);
+  let discountAmount = 0;
+  if (discountType === 'PERCENTAGE') {
+    discountAmount = roundTo2((vendorPrice * discountVal) / 100);
+  } else {
+    discountAmount = discountVal;
+  }
+
+  return roundTo2(Math.max(0, vendorPrice - discountAmount));
+});
+
+productSchema.virtual('pricing.discountAmount').get(function () {
+  const vendorPrice = this.pricing?.price || 0;
+  const discountVal = this.pricing?.discount || 0;
+  const discountType = this.pricing?.discountType || 'PERCENTAGE';
+
+  let computedDiscount = 0;
+  if (discountType === 'PERCENTAGE') {
+    computedDiscount = roundTo2((vendorPrice * discountVal) / 100);
+  } else {
+    computedDiscount = discountVal;
+  }
+
+  return roundTo2(Math.min(vendorPrice, computedDiscount));
 });
 
 productSchema.virtual('pricing.taxAmount').get(function () {
-  const netPriceAfterDiscount = getNetPriceAfterDiscount(
-    this.pricing.price,
-    this.pricing.discount || 0,
-  );
-  const tax = roundTo2(netPriceAfterDiscount * (this.pricing.taxRate / 100));
-  return tax;
+  const finalPrice = this.get('pricing.finalPrice') || 0;
+  const taxRate = this.pricing?.taxRate || 0;
+
+  return roundTo2(finalPrice * (taxRate / 100));
 });
 
-productSchema.virtual('pricing.finalPrice').get(function () {
-  const netPriceAfterDiscount = getNetPriceAfterDiscount(
-    this.pricing.price,
-    this.pricing.discount || 0,
-  );
-  const tax = roundTo2(netPriceAfterDiscount * (this.pricing.taxRate / 100));
-  return roundTo2(netPriceAfterDiscount + tax);
+productSchema.virtual('pricing.basePrice').get(function () {
+  const finalPrice = this.get('pricing.finalPrice') || 0;
+  const taxAmount = this.get('pricing.taxAmount') || 0;
+
+  return roundTo2(finalPrice - taxAmount);
 });
 
 export const Product = model<TProduct>('Product', productSchema);

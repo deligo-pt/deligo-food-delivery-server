@@ -16,10 +16,7 @@ const createIngredient = async (
 ) => {
   // 1. Role Validation
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Only administrators can perform this action',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ONLY_ADMIN_CAN_PERFORM_ACTION');
   }
 
   const isTaxExist = await Tax.findOne({
@@ -31,7 +28,7 @@ const createIngredient = async (
   if (!isTaxExist) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'The provided Tax configuration ID is invalid, inactive, or does not exist.',
+      'TAX_CONFIGURATION_INVALID_OR_INACTIVE',
     );
   }
 
@@ -60,7 +57,10 @@ const createIngredient = async (
   // 5. Database Insertion
   const newIngredient = await Ingredient.create(payload);
 
-  return newIngredient;
+  return {
+    messageKey: 'INGREDIENT_CREATED_SUCCESS',
+    data: newIngredient,
+  };
 };
 
 const updateIngredient = async (
@@ -69,7 +69,7 @@ const updateIngredient = async (
 ) => {
   const ingredient = await Ingredient.findById(ingredientId);
   if (!ingredient) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
   }
 
   if (payload.tax) {
@@ -81,7 +81,7 @@ const updateIngredient = async (
     if (!isTaxExist) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'The provided Tax configuration ID is invalid or inactive.',
+        'TAX_CONFIGURATION_INVALID_FOR_UPDATE',
       );
     }
   }
@@ -112,15 +112,22 @@ const updateIngredient = async (
     { new: true, runValidators: true },
   );
 
-  return updatedIngredient;
+  return {
+    messageKey: 'INGREDIENT_UPDATED_SUCCESS',
+    data: updatedIngredient,
+  };
 };
 
 const getIngredientDetails = async (sku: string) => {
   const result = await Ingredient.findOne({ sku }).populate('tax', 'taxRate');
   if (!result || result.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Ingredient not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
   }
-  return result;
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Ingredient' },
+    data: result,
+  };
 };
 
 const getAllIngredients = async (query: Record<string, unknown>) => {
@@ -138,6 +145,8 @@ const getAllIngredients = async (query: Record<string, unknown>) => {
   const meta = await ingredientQuery.countTotal();
 
   return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Ingredients', isPlural: true },
     meta,
     data: result,
   };
@@ -149,7 +158,7 @@ const softDeleteIngredient = async (ingredientId: string) => {
   if (!ingredient || ingredient.isDeleted) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Ingredient not found or already deleted',
+      'INGREDIENT_NOT_FOUND_OR_ALREADY_DELETED',
     );
   }
 
@@ -164,23 +173,23 @@ const softDeleteIngredient = async (ingredientId: string) => {
     { new: true },
   );
 
-  return null;
+  return {
+    messageKey: 'INGREDIENT_SOFT_DELETED_SUCCESS',
+    data: null,
+  };
 };
 
 const permanentDeleteIngredient = async (ingredientId: string) => {
   const ingredient = await Ingredient.findById(ingredientId);
 
   if (!ingredient) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Ingredient not found in database',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
   }
 
   if (!ingredient.isDeleted) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Please first soft delete for permanent delete',
+      'SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE',
     );
   }
 
@@ -194,7 +203,10 @@ const permanentDeleteIngredient = async (ingredientId: string) => {
   // 2. Completely remove the record from MongoDB
   const result = await Ingredient.findByIdAndDelete(ingredientId);
 
-  return result;
+  return {
+    messageKey: 'INGREDIENT_PERMANENTLY_REMOVED_SUCCESS',
+    data: result,
+  };
 };
 
 export const IngredientsServices = {

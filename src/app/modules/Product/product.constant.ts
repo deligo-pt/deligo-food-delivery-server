@@ -1,6 +1,8 @@
 export const ProductSearchableFields = [
-  'name',
-  'description',
+  'name.en',
+  'name.pt',
+  'description.en',
+  'description.pt',
   'tags',
   'brand',
   'vendor.vendorName',

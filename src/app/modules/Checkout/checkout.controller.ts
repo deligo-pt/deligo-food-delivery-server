@@ -3,6 +3,8 @@ import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { CheckoutServices } from './checkout.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatCheckoutResponse } from './checkout.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // checkout Controller
 const checkout = catchAsync(async (req, res) => {
@@ -11,11 +13,13 @@ const checkout = catchAsync(async (req, res) => {
     req.body,
   );
 
+  const formattedData = formatCheckoutResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Checkout successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -26,11 +30,14 @@ const getCheckoutSummary = catchAsync(async (req, res) => {
     checkoutSummaryId,
     req.user as TCurrentUser,
   );
+
+  const formattedData = formatCheckoutResponse(result?.data, req.lang);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Checkout summary retrieved successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 

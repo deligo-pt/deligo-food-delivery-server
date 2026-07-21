@@ -3,49 +3,43 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { CartServices } from './cart.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatCartResponse } from './cart.utils';
+import { TMessageKey } from '../../errors/messages';
+import config from '../../config';
+
+const node_env = config.NODE_ENV;
 
 // Cart add Controller
 const addToCart = catchAsync(async (req, res) => {
   const result = await CartServices.addToCart(
     req.body,
     req.user as TCurrentUser,
+    req.lang,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product added to cart successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: node_env === 'development' ? formattedData : null,
   });
 });
 
-// activate item Controller
-const activateItem = catchAsync(async (req, res) => {
-  const { productId } = req.params;
-  const result = await CartServices.activateItem(
-    req.user as TCurrentUser,
-    productId,
-    req.body.variationSku,
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Item activated successfully',
-    data: result,
-  });
-});
-
-// update cart item Controller
-const updateCartItemQuantity = catchAsync(async (req, res) => {
-  const result = await CartServices.updateCartItemQuantity(
+// toggle cart item status Controller
+const toggleCartItemStatus = catchAsync(async (req, res) => {
+  const result = await CartServices.toggleCartItemStatus(
     req.user as TCurrentUser,
     req.body,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product quantity updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: node_env === 'development' ? formattedData : null,
   });
 });
 
@@ -54,12 +48,13 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
   const result = await CartServices.updateAddonQuantity(
     req.user as TCurrentUser,
     req.body,
+    req.lang,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product addon quantity updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 
@@ -75,8 +70,8 @@ const deleteCartItem = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart updated: Item(s) removed successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 
@@ -86,8 +81,8 @@ const clearCart = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart cleared successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: node_env === 'development' ? result?.data : null,
   });
 });
 
@@ -96,35 +91,45 @@ const getAllCart = catchAsync(async (req, res) => {
   const result = await CartServices.getAllCart(
     req.user as TCurrentUser,
     req.query,
+    req.lang,
   );
+
+  const formattedData = result?.data.map((item) => {
+    return formatCartResponse(item, req.lang);
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart retrieved successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
+    data: formattedData,
   });
 });
 
 // view cart Controller
 const viewCart = catchAsync(async (req, res) => {
-  const { cartCustomerId } = req.body;
   const result = await CartServices.viewCart(
     req.user as TCurrentUser,
-    cartCustomerId,
+    req.query,
+    req.lang,
   );
+
+  const formattedData = formatCartResponse(result?.data, req.lang);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Cart retrieved successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
 export const CartControllers = {
   addToCart,
-  activateItem,
-  updateCartItemQuantity,
+  toggleCartItemStatus,
   updateAddonQuantity,
   deleteCartItem,
   clearCart,

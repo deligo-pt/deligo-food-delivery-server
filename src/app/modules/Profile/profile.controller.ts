@@ -3,18 +3,29 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { ProfileServices } from './profile.service';
-import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
+import { formatVendorResponse } from '../Vendor/vendor.utils';
 
 // get my profile controller
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
-  const result = await ProfileServices.getMyProfile(req.user as TCurrentUser);
+  const currentUser = req.user as TCurrentUser;
+  const result = await ProfileServices.getMyProfile(currentUser);
+
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+
+  let formattedData;
+  if (isVendor) {
+    formattedData = formatVendorResponse(result.data, req.lang);
+  } else {
+    formattedData = result.data;
+  }
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'My Profile Retrieve Successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: formattedData,
   });
 });
 
@@ -27,8 +38,8 @@ const sendOtp = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -41,8 +52,8 @@ const updateEmailOrContactNumber = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 

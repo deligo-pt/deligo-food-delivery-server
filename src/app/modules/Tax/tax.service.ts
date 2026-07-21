@@ -4,6 +4,8 @@ import AppError from '../../errors/AppError';
 import { TTax } from './tax.interface';
 import { Tax } from './tax.model';
 import { QueryBuilder } from '../../builder/QueryBuilder';
+import { flattenObject } from '../../utils/flattenObject';
+import { TMessageKey } from '../../errors/messages';
 
 const checkExistingTax = async (
   taxCode: string,
@@ -37,35 +39,63 @@ const createTax = async (payload: TTax) => {
   const isDuplicate = await checkExistingTax(
     payload.taxCode,
     payload.taxRate,
-    payload.countryID,
+    payload.countryID || 'PRT',
   );
 
   if (isDuplicate) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `A tax with code '${payload.taxCode}' or rate '${payload.taxRate}%' already exists in ${payload.countryID}.`,
+      'TAX_CODE_OR_RATE_ALREADY_EXISTS_IN_COUNTRY',
+      {
+        taxCode: payload.taxCode,
+        taxRate: payload.taxRate,
+        countryID: payload.countryID || 'PRT',
+      },
     );
   }
 
-  if (
-    payload.taxRate === 0 &&
-    (!payload.taxExemptionCode || !payload.taxExemptionReason)
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Tax rate 0 requires a valid Tax Exemption Code and Reason for Portugal compliance.',
-    );
+  if (payload.taxName && payload.taxName.en) {
+    const existingName = await Tax.findOne({
+      'taxName.en': { $regex: new RegExp(`^${payload.taxName.en}$`, 'i') },
+      isDeleted: false,
+    });
+
+    if (existingName) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'TAX_CONFIGURATION_NAME_ALREADY_EXISTS',
+      );
+    }
+  }
+
+  if (payload.taxRate === 0) {
+    const reason = payload.taxExemptionReason;
+    const hasReasonText = reason && (reason.en?.trim() || reason.pt?.trim());
+
+    if (!payload.taxExemptionCode?.trim() || !hasReasonText) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'TAX_RATE_ZERO_REQUIRES_EXEMPTION_COMPLIANCE',
+      );
+    }
   }
 
   const result = await Tax.create(payload);
-  return result;
+
+  return {
+    messageKey: 'TAX_CREATED_SUCCESS' as TMessageKey,
+    data: result,
+  };
 };
 
 // Update Tax Service
 const updateTax = async (taxId: string, payload: Partial<TTax>) => {
   const isExist = await Tax.findById(taxId);
   if (!isExist) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Tax record not found!');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'TAX_RECORD_NOT_FOUND_WITH_EXCLAMATION',
+    );
   }
 
   if (payload.taxCode || payload.taxRate !== undefined) {
@@ -79,7 +109,7 @@ const updateTax = async (taxId: string, payload: Partial<TTax>) => {
     if (isDuplicate) {
       throw new AppError(
         httpStatus.CONFLICT,
-        `Conflict: Another tax with this code or rate already exists.`,
+        'TAX_CONFLICT_CODE_OR_RATE_EXISTS',
       );
     }
   }
@@ -91,60 +121,74 @@ const updateTax = async (taxId: string, payload: Partial<TTax>) => {
     const exemptionReason =
       payload.taxExemptionReason || isExist.taxExemptionReason;
 
-    if (!exemptionCode || !exemptionReason) {
+    const hasReasonText =
+      exemptionReason &&
+      (exemptionReason.en?.trim() || exemptionReason.pt?.trim());
+
+    if (!exemptionCode?.trim() || !hasReasonText) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Tax rate 0 requires a valid Tax Exemption Code and Reason.',
+        'TAX_RATE_ZERO_REQUIRES_EXEMPTION',
       );
     }
   }
 
-  const result = await Tax.findByIdAndUpdate(taxId, payload, {
-    new: true,
-    runValidators: true,
-  });
+  const flattenedPayload = flattenObject(payload);
 
-  return result;
+  const result = await Tax.findByIdAndUpdate(
+    taxId,
+    { $set: flattenedPayload },
+    {
+      new: true,
+      runValidators: false,
+    },
+  );
+
+  return {
+    messageKey: 'TAX_UPDATED_SUCCESS' as TMessageKey,
+    data: result,
+  };
 };
 
 // Get all taxes service
 const getAllTaxes = async (query: Record<string, unknown>) => {
   const taxes = new QueryBuilder(Tax.find(), query)
-    .search(['taxName'])
+    .search(['taxName.en', 'taxName.pt'])
     .filter()
     .sort()
     .paginate()
     .fields();
   const meta = await taxes.countTotal();
   const data = await taxes.modelQuery;
-  return { meta, data };
+  return {
+    messageKey: 'TAXES_RETRIEVED_SUCCESS' as TMessageKey,
+    meta,
+    data,
+  };
 };
 
 // Get single tax service
 const getSingleTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `Tax record with ID '${taxId}' not found!`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_NOT_FOUND');
   }
-  return result;
+  return {
+    messageKey: 'TAX_RETRIEVED_SUCCESS' as TMessageKey,
+    data: result,
+  };
 };
 
 // soft delete  tax service
 const softDeleteTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `Tax record with ID '${taxId}' not found!`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_NOT_FOUND');
   }
   if (result.isActive) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'Active tax cannot be deleted. Please deactivate first.',
+      'ACTIVE_TAX_CANNOT_BE_DELETED_DEACTIVATE_FIRST',
     );
   }
 
@@ -152,7 +196,8 @@ const softDeleteTax = async (taxId: string) => {
   await result.save();
 
   return {
-    message: 'Tax soft deleted successfully',
+    messageKey: 'TAX_SOFT_DELETED_SUCCESS' as TMessageKey,
+    data: null,
   };
 };
 
@@ -160,23 +205,23 @@ const softDeleteTax = async (taxId: string) => {
 const permanentDeleteTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      `Tax record with ID '${taxId}' not found!`,
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'tax',
+    });
   }
 
   if (!result.isDeleted) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'Tax is not soft deleted. Please soft delete first.',
+      'TAX_NOT_SOFT_DELETED_SOFT_DELETE_FIRST',
     );
   }
 
   await Tax.findByIdAndDelete(taxId);
 
   return {
-    message: 'Tax permanently deleted successfully',
+    messageKey: 'TAX_PERMANENTLY_DELETED_SUCCESS' as TMessageKey,
+    data: null,
   };
 };
 
