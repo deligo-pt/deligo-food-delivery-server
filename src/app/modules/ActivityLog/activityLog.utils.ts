@@ -3,7 +3,8 @@ import { TActivityLog } from './activityLog.interface';
 import { ActivityLog } from './activityLog.model';
 
 type TCreateLogPayload = {
-  customUserId: string;
+  customUserId?: string;
+  email?: string;
   action: string;
   target?: string;
   type?: TActivityLog['type'];
@@ -19,13 +20,24 @@ interface IProfile {
 export const createActivityLog = (payload: TCreateLogPayload) => {
   (async () => {
     try {
-      const { customUserId, action, target, type } = payload;
+      const { customUserId, email, action, target, type } = payload;
+
+      if (!customUserId && !email) return;
+
+      const queryConditions: Record<string, unknown>[] = [];
+      if (customUserId) queryConditions.push({ userId: customUserId });
+      if (email) queryConditions.push({ email });
 
       const authUserProfile = await AuthUser.findOne({
-        userId: customUserId,
+        $or: queryConditions,
       }).populate<{ profileId: IProfile }>('profileId', 'name');
 
-      if (!authUserProfile) return;
+      if (!authUserProfile) {
+        console.error(
+          `Activity Log Warning: User not found for ID: ${customUserId || email}`,
+        );
+        return;
+      }
 
       const profile = authUserProfile.profileId;
       const firstName = profile?.name?.firstName || '';

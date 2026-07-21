@@ -4,8 +4,8 @@ import { AuthServices } from './auth.service';
 import { catchAsync } from '../../utils/catchAsync';
 import config from '../../config';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
-//register User Controller [Vendor, Fleet Manager, Admin]
 const registerUser = catchAsync(async (req, res) => {
   const result = await AuthServices.registerUser(req.body);
 
@@ -19,10 +19,15 @@ const registerUser = catchAsync(async (req, res) => {
 
 // register User Controller [Vendor, Fleet Manager, Admin, Sub Vendor, Delivery Partner]
 const onboardUser = catchAsync(async (req, res) => {
-  const result = await AuthServices.onboardUser(
-    req.body,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await AuthServices.onboardUser(req.body, currentUser);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: `Onboarded New ${req.body?.role || 'User'}`,
+    target: req.body?.email,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -138,11 +143,17 @@ const logoutUser = catchAsync(async (req, res) => {
 // Change Password
 const changePassword = catchAsync(async (req, res) => {
   const { ...passwordData } = req.body;
+  const currentUser = req.user as TCurrentUser;
 
-  const result = await AuthServices.changePassword(
-    req.user as TCurrentUser,
-    passwordData,
-  );
+  const result = await AuthServices.changePassword(currentUser, passwordData);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Changed Password',
+    target: currentUser?.email || 'Account Security',
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -165,6 +176,14 @@ const forgotPassword = catchAsync(async (req, res) => {
 // Reset Password
 const resetPassword = catchAsync(async (req, res) => {
   const result = await AuthServices.resetPassword(req.body);
+
+  createActivityLog({
+    email: req.body?.email,
+    action: 'Reset Password',
+    target: req.body?.email,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -188,10 +207,18 @@ const refreshToken = catchAsync(async (req, res) => {
 
 //  Submit Approval Request Controller
 const submitForApproval = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await AuthServices.submitForApproval(
     req.params.userId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Submitted Request For Approval',
+    target: `User #${req.params.userId}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,
@@ -205,11 +232,23 @@ const submitForApproval = catchAsync(async (req, res) => {
 // Active or Block User Controller
 const approvedOrRejectedUser = catchAsync(async (req, res) => {
   const currentUser = req.user as TCurrentUser;
+  const { status } = req.body;
+  const targetUserId = req.params.userId;
+
   const result = await AuthServices.approvedOrRejectedUser(
-    req.params.userId,
+    targetUserId,
     req.body,
     currentUser,
   );
+
+  const logType = status === 'APPROVED' ? 'INFO' : 'DANGER';
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: `User Status Changed to ${status}`,
+    target: `User #${targetUserId}`,
+    type: logType,
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -221,10 +260,17 @@ const approvedOrRejectedUser = catchAsync(async (req, res) => {
 
 // soft delete user controller
 const softDeleteUser = catchAsync(async (req, res) => {
-  const result = await AuthServices.softDeleteUser(
-    req.params.userId,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const targetUserId = req.params.userId;
+
+  const result = await AuthServices.softDeleteUser(targetUserId, currentUser);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted User Account',
+    target: `User #${targetUserId}`,
+    type: 'DANGER',
+  });
 
   sendResponse(res, {
     success: true,
@@ -237,10 +283,20 @@ const softDeleteUser = catchAsync(async (req, res) => {
 
 // permanent delete user controller
 const permanentDeleteUser = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
+  const targetUserId = req.params.userId;
+
   const result = await AuthServices.permanentDeleteUser(
-    req.params.userId,
-    req.user as TCurrentUser,
+    targetUserId,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted User Account',
+    target: `User #${targetUserId}`,
+    type: 'DANGER',
+  });
 
   sendResponse(res, {
     success: true,
