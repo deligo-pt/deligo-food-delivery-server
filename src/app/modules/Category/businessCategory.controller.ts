@@ -6,14 +6,25 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { BusinessCategoryService } from './businessCategory.service';
 import { formatBusinessCategoryResponse } from './category.utils';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Create Business Category Controllers
 const createBusinessCategory = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
+  const currentUser = req.user as TCurrentUser;
+
   const result = await BusinessCategoryService.createBusinessCategory(
     req.body,
     file?.path ?? null,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Business Category',
+    target: req.body?.name || 'New Category',
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -25,11 +36,22 @@ const createBusinessCategory = catchAsync(async (req, res) => {
 // Update Business Category Controllers
 const updateBusinessCategory = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
+  const currentUser = req.user as TCurrentUser;
+  const categoryId = req.params.id;
+
   const result = await BusinessCategoryService.updateBusinessCategory(
-    req.params.id,
+    categoryId,
     req.body,
     file?.path ?? null,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Business Category',
+    target: req.body?.name || `Category #${categoryId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -38,7 +60,7 @@ const updateBusinessCategory = catchAsync(async (req, res) => {
   });
 });
 
-// Get Business Category Controllers
+// Get Business Category Controllers (No Log)
 const getAllBusinessCategories = catchAsync(async (req, res) => {
   const user = req.user as TCurrentUser;
   const result = await BusinessCategoryService.getAllBusinessCategories(
@@ -65,7 +87,7 @@ const getAllBusinessCategories = catchAsync(async (req, res) => {
   });
 });
 
-// Get Business Category Controllers Public
+// Get Business Category Controllers Public (No Log)
 const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
   const result = await BusinessCategoryService.getAllBusinessCategoriesPublic(
     req.query,
@@ -82,7 +104,7 @@ const getAllBusinessCategoriesPublic = catchAsync(async (req, res) => {
   });
 });
 
-// Get Single Business Category Controllers
+// Get Single Business Category Controllers (No Log)
 const getSingleBusinessCategory = catchAsync(async (req, res) => {
   const result = await BusinessCategoryService.getSingleBusinessCategory(
     req.params.id,
@@ -105,7 +127,7 @@ const getSingleBusinessCategory = catchAsync(async (req, res) => {
   });
 });
 
-// Get Single Business Category Controllers Public
+// Get Single Business Category Controllers Public (No Log)
 const getSingleBusinessCategoryPublic = catchAsync(async (req, res) => {
   const result = await BusinessCategoryService.getSingleBusinessCategoryPublic(
     req.params.id,
@@ -122,9 +144,19 @@ const getSingleBusinessCategoryPublic = catchAsync(async (req, res) => {
 
 // soft Delete Business Category Controllers
 const softDeleteBusinessCategory = catchAsync(async (req, res) => {
-  const result = await BusinessCategoryService.softDeleteBusinessCategory(
-    req.params.id,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const categoryId = req.params.id;
+
+  const result =
+    await BusinessCategoryService.softDeleteBusinessCategory(categoryId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Business Category',
+    target: `Category #${categoryId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -135,9 +167,19 @@ const softDeleteBusinessCategory = catchAsync(async (req, res) => {
 
 // Permanent Delete Business Category Controllers
 const permanentDeleteBusinessCategory = catchAsync(async (req, res) => {
-  const result = await BusinessCategoryService.permanentDeleteBusinessCategory(
-    req.params.id,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const categoryId = req.params.id;
+
+  const result =
+    await BusinessCategoryService.permanentDeleteBusinessCategory(categoryId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted Business Category',
+    target: `Category #${categoryId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
