@@ -5,7 +5,7 @@ export const activityTypes = ['INFO', 'WARNING', 'DANGER'] as const;
 export type ActivityType = (typeof activityTypes)[number];
 
 export type TActivityLog = {
-  userObjectId: Types.ObjectId;
+  authUserId: Types.ObjectId;
   userName: string;
   email: string;
   role: string;

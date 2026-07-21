@@ -3,7 +3,7 @@ import { activityTypes, TActivityLog } from './activityLog.interface';
 
 const activityLogSchema = new Schema<TActivityLog>(
   {
-    userObjectId: {
+    authUserId: {
       type: Schema.Types.ObjectId,
       ref: 'AuthUser',
       required: true,
