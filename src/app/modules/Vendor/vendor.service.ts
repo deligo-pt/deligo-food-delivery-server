@@ -663,7 +663,7 @@ const getAllVendorsForCustomer = async (
       name: vendorObj.name,
       businessDetails: {
         businessName: vendorObj.businessDetails?.businessName,
-        businessType: formattedBusinessType, // 👈 Localized String
+        businessType: formattedBusinessType,
         restaurantCuisineType: formattedCuisines,
         openingHours: vendorObj.businessDetails?.openingHours,
         closingHours: vendorObj.businessDetails?.closingHours,
@@ -691,7 +691,9 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
     userId: vendorId,
     isDeleted: false,
   })
-    .select('name userId email contactNumber businessDetails businessLocation')
+    .select(
+      'name userId email contactNumber businessDetails businessLocation documents.storePhoto rating',
+    )
     .populate('businessDetails.businessType')
     .populate('cuisinesData');
   if (!existingVendor) {
