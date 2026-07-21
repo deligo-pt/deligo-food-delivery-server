@@ -72,10 +72,6 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
       type: Boolean,
       default: false,
     },
-    mobileOtpId: {
-      type: String,
-      default: null,
-    },
 
     // 5. Password Credentials & Security Audit Logs
     password: {

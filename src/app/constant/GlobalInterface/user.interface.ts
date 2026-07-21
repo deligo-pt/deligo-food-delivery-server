@@ -14,7 +14,6 @@ export type TCurrentUser = {
   role: TUserRole;
   status: keyof typeof USER_STATUS;
   profilePhoto?: string;
-  mobileOtpId?: string;
   contactNumber: string;
   email: string;
   currentSessionLocation?: {
