@@ -5,10 +5,21 @@ import { TaxService } from './tax.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatTaxResponse } from './tax.utils';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // create tax controller
 const createTax = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await TaxService.createTax(req.body);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Tax',
+    target:
+      req.body?.taxName?.en || req.body?.taxName?.pt || 'New Tax',
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -20,7 +31,16 @@ const createTax = catchAsync(async (req, res) => {
 // update tax controller
 const updateTax = catchAsync(async (req, res) => {
   const { taxId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await TaxService.updateTax(taxId, req.body);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Tax',
+    target: req.body?.taxName?.en || req.body?.taxName?.pt || `Tax #${taxId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -76,7 +96,16 @@ const getSingleTax = catchAsync(async (req, res) => {
 // soft delete tax controller
 const softDeleteTax = catchAsync(async (req, res) => {
   const { taxId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await TaxService.softDeleteTax(taxId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Tax',
+    target: `Tax #${taxId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -88,7 +117,16 @@ const softDeleteTax = catchAsync(async (req, res) => {
 // permanent delete tax controller
 const permanentDeleteTax = catchAsync(async (req, res) => {
   const { taxId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await TaxService.permanentDeleteTax(taxId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted Tax',
+    target: `Tax #${taxId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

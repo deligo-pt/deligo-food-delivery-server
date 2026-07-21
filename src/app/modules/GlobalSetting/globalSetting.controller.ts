@@ -4,13 +4,23 @@ import sendResponse from '../../utils/sendResponse';
 import { GlobalSettingsService } from './globalSetting.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // create global settings controller
 const createGlobalSettings = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await GlobalSettingsService.createGlobalSettings(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Global Settings',
+    target: 'Global Settings',
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
@@ -21,10 +31,19 @@ const createGlobalSettings = catchAsync(async (req, res) => {
 
 // update global settings controller
 const updateGlobalSettings = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await GlobalSettingsService.updateGlobalSettings(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Global Settings',
+    target: 'Global Settings',
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { FleetManagerServices } from './fleet-manager.service';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Fleet Manager Update Controller
 const fleetManagerUpdate = catchAsync(async (req, res) => {
@@ -14,6 +15,13 @@ const fleetManagerUpdate = catchAsync(async (req, res) => {
     currentUser,
   );
 
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Fleet Manager',
+    target: `Fleet Manager #${req.params.fleetManagerId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -23,11 +31,20 @@ const fleetManagerUpdate = catchAsync(async (req, res) => {
 });
 //  fleet manager doc image upload controller
 const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await FleetManagerServices.fleetManagerDocImageUpload(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
     req.params.fleetManagerId,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Uploaded Fleet Manager Document',
+    target:
+      req.body?.docImageTitle || `Fleet Manager #${req.params.fleetManagerId}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,
@@ -39,11 +56,20 @@ const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
 
 // fleet manager document delete controller
 const deleteFleetManagerDocument = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await FleetManagerServices.deleteFleetManagerDocument(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
     req.params.fleetManagerId,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Deleted Fleet Manager Document',
+    target:
+      req.body?.docImageTitle || `Fleet Manager #${req.params.fleetManagerId}`,
+    type: 'DANGER',
+  });
 
   sendResponse(res, {
     success: true,

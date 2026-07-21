@@ -7,6 +7,7 @@ import { TMessageKey } from '../../errors/messages';
 import { formatOrderResponse } from './order.utils';
 import { InvoiceService } from '../Invoice/invoice.service';
 import { formatCartResponse } from '../Cart/cart.utils';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
@@ -65,11 +66,28 @@ const getSingleOrder = catchAsync(async (req, res) => {
 
 // update order status by vendor controller (accept/reject/preparing/cancel)
 const updateOrderStatusByVendor = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
+  const orderId = req.params.orderId;
   const result = await OrderServices.updateOrderStatusByVendor(
-    req.user as TCurrentUser,
-    req.params.orderId,
+    currentUser,
+    orderId,
     req.body,
   );
+
+  const statusType = req.body?.type;
+  const activityType =
+    statusType === 'REJECTED'
+      ? 'DANGER'
+      : statusType === 'CANCELED'
+        ? 'WARNING'
+        : 'INFO';
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: `Updated Order Status to ${statusType}`,
+    target: `Order #${orderId}`,
+    type: activityType,
+  });
 
   const formattedData = formatOrderResponse(result?.data, req.lang);
 
@@ -84,10 +102,19 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
 
 // broadcast order controller
 const broadcastOrderToPartners = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
+  const orderId = req.params.orderId;
   const result = await OrderServices.broadcastOrderToPartners(
-    req.params.orderId,
-    req.user as TCurrentUser,
+    orderId,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Broadcasted Order to Delivery Partners',
+    target: `Order #${orderId}`,
+    type: 'INFO',
+  });
 
   const formattedData = formatOrderResponse(result?.data, req.lang);
 
@@ -102,11 +129,25 @@ const broadcastOrderToPartners = catchAsync(async (req, res) => {
 
 // assign delivery partner to order controller
 const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
+  const orderId = req.params.orderId;
   const result = await OrderServices.partnerAcceptsDispatchedOrder(
-    req.user as TCurrentUser,
-    req.params.orderId,
+    currentUser,
+    orderId,
     req.body,
   );
+
+  const action = req.body?.action;
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action:
+      action === 'REJECT'
+        ? 'Rejected Dispatched Order'
+        : 'Accepted Dispatched Order',
+    target: `Order #${orderId}`,
+    type: action === 'REJECT' ? 'DANGER' : 'INFO',
+  });
 
   const formattedData = formatOrderResponse(result?.data, req.lang);
 
@@ -120,11 +161,22 @@ const partnerAcceptsDispatchedOrder = catchAsync(async (req, res) => {
 
 // update order status by delivery partner controller
 const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
+  const orderId = req.params.orderId;
   const result = await OrderServices.updateOrderStatusByDeliveryPartner(
-    req.params.orderId,
-    req.user as TCurrentUser,
+    orderId,
+    currentUser,
     req.body,
   );
+
+  const orderStatus = req.body?.orderStatus;
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: `Updated Order Status to ${orderStatus}`,
+    target: `Order #${orderId}`,
+    type: orderStatus === 'REASSIGNMENT_NEEDED' ? 'WARNING' : 'INFO',
+  });
 
   const formattedData = formatOrderResponse(result?.data, req.lang);
 
