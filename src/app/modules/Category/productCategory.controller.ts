@@ -6,14 +6,25 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { ProductCategoryService } from './productCategory.service';
 import { formatProductCategoryResponse } from './category.utils';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Create Product Category Controllers
 const createProductCategory = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
+  const currentUser = req.user as TCurrentUser;
+
   const result = await ProductCategoryService.createProductCategory(
     req.body,
     file?.path ?? null,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Product Category',
+    target: req.body?.name?.en || req.body?.name?.pt || 'New Product Category',
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -25,11 +36,25 @@ const createProductCategory = catchAsync(async (req, res) => {
 // Update Product Category Controllers
 const updateProductCategory = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
+  const currentUser = req.user as TCurrentUser;
+  const categoryId = req.params.id;
+
   const result = await ProductCategoryService.updateProductCategory(
-    req.params.id,
+    categoryId,
     req.body,
     file?.path ?? null,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Product Category',
+    target:
+      req.body?.name?.en ||
+      req.body?.name?.pt ||
+      `Product Category #${categoryId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -38,7 +63,7 @@ const updateProductCategory = catchAsync(async (req, res) => {
   });
 });
 
-// Get Product Category Controllers
+// Get Product Category Controllers (No Log)
 const getAllProductCategories = catchAsync(async (req, res) => {
   const user = req.user as TCurrentUser;
   const role = user?.role;
@@ -64,7 +89,7 @@ const getAllProductCategories = catchAsync(async (req, res) => {
   });
 });
 
-// Get Product Category Controllers Public
+// Get Product Category Controllers Public (No Log)
 const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
   const result = await ProductCategoryService.getAllProductCategoriesPublic(
     req.query,
@@ -81,7 +106,7 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
   });
 });
 
-// Get Single Product Category Controllers
+// Get Single Product Category Controllers (No Log)
 const getSingleProductCategory = catchAsync(async (req, res) => {
   const user = req.user as TCurrentUser;
   const role = user?.role;
@@ -106,7 +131,7 @@ const getSingleProductCategory = catchAsync(async (req, res) => {
   });
 });
 
-// Get Single Product Category Controllers Public
+// Get Single Product Category Controllers Public (No Log)
 const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
   const result = await ProductCategoryService.getSingleProductCategoryPublic(
     req.params.id,
@@ -124,9 +149,19 @@ const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
 
 // soft Delete Product Category Controllers
 const softDeleteProductCategory = catchAsync(async (req, res) => {
-  const result = await ProductCategoryService.softDeleteProductCategory(
-    req.params.id,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const categoryId = req.params.id;
+
+  const result =
+    await ProductCategoryService.softDeleteProductCategory(categoryId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Product Category',
+    target: `Product Category #${categoryId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -137,9 +172,19 @@ const softDeleteProductCategory = catchAsync(async (req, res) => {
 
 // Permanent Delete Product Category Controllers
 const permanentDeleteProductCategory = catchAsync(async (req, res) => {
-  const result = await ProductCategoryService.permanentDeleteProductCategory(
-    req.params.id,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const categoryId = req.params.id;
+
+  const result =
+    await ProductCategoryService.permanentDeleteProductCategory(categoryId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted Product Category',
+    target: `Product Category #${categoryId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
