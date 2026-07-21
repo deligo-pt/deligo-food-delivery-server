@@ -49,6 +49,15 @@ router.patch(
   DeliveryPartnerControllers.changeDeliveryPartnerStatus,
 );
 
+router.patch(
+  '/:deliveryPartnerId/assign-fleet-manager',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  validateRequest(
+    DeliveryPartnerValidation.assignDeliveryPartnerToFleetManagerValidationSchema,
+  ),
+  DeliveryPartnerControllers.assignDeliveryPartnerToFleetManager,
+);
+
 // Get All Delivery Partners Route
 router.get(
   '/',

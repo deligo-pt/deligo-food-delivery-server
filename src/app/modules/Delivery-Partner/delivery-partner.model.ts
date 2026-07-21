@@ -1,9 +1,7 @@
 /* eslint-disable no-useless-escape */
 import { Schema, model } from 'mongoose';
 import { TDeliveryPartner } from './delivery-partner.interface';
-import { passwordPlugin } from '../../plugins/passwordPlugin';
 import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
-import { loginDeviceSchema } from '../../constant/GlobalModel/user.model';
 import { currentStatusOptions } from './delivery-partner.constant';
 import { liveLocationSchema } from '../../constant/GlobalModel/location.model';
 
@@ -234,6 +232,8 @@ deliveryPartnerSchema.index({
   currentSessionLocation: '2dsphere',
 });
 deliveryPartnerSchema.index({ 'registeredBy.id': 1 });
+
+deliveryPartnerSchema.index({ 'rating.average': -1 });
 
 export const DeliveryPartner = model<TDeliveryPartner>(
   'DeliveryPartner',

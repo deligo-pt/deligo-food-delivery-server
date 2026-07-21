@@ -1,5 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
+import AppError from '../../errors/AppError';
+import httpStatus from 'http-status';
 
 export const saveSignatureImage = async (
   signatureImage: string,
@@ -11,7 +13,7 @@ export const saveSignatureImage = async (
   );
 
   if (!matches) {
-    throw new Error('Invalid signature image format');
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_SIGNATURE_FORMAT');
   }
 
   const extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];

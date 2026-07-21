@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { ProductServices } from './product.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // Product create Controller
 const productCreate = catchAsync(async (req, res) => {
@@ -14,8 +15,8 @@ const productCreate = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product created successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -31,8 +32,8 @@ const updateProduct = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -47,8 +48,8 @@ const renameProductVariation = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product variations renamed successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -63,8 +64,8 @@ const manageProductVariations = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product variations updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -79,8 +80,8 @@ const removeProductVariations = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product variations removed successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -99,8 +100,8 @@ const updateInventoryAndPricing = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Inventory and pricing updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -115,7 +116,8 @@ const approvedProduct = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -134,8 +136,8 @@ const deleteProductImages = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product images deleted successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -144,23 +146,29 @@ const getAllProducts = catchAsync(async (req, res) => {
   const result = await ProductServices.getAllProducts(
     req.query,
     req.user as TCurrentUser,
+    req.lang,
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Products retrieved successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
 });
+
+// get all products controller
 const getAllProductsPublic = catchAsync(async (req, res) => {
-  const result = await ProductServices.getAllProductsPublic(req.query);
+  const result = await ProductServices.getAllProductsPublic(
+    req.query,
+    req.lang,
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Products retrieved successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });
@@ -172,22 +180,27 @@ const getSingleProduct = catchAsync(async (req, res) => {
   const result = await ProductServices.getSingleProduct(
     productId,
     req.user as TCurrentUser,
+    req.lang,
   );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product retrieved successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
+// get single product controller
 const getSingleProductPublic = catchAsync(async (req, res) => {
   const { productId } = req.params;
-  const result = await ProductServices.getSingleProductPublic(productId);
+  const result = await ProductServices.getSingleProductPublic(
+    productId,
+    req.lang,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Product retrieved successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -201,8 +214,9 @@ const softDeleteProduct = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
@@ -216,17 +230,22 @@ const permanentDeleteProduct = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: result?.data,
   });
 });
 
 const getOutOfStockAlerts = catchAsync(async (req, res) => {
-  const result = await ProductServices.getOutOfStockAlerts(req.query);
+  const result = await ProductServices.getOutOfStockAlerts(
+    req.query,
+    req.user as TCurrentUser,
+    req.lang,
+  );
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Products retrieved successfully',
+    messageKey: result?.messageKey as TMessageKey,
     meta: result?.meta,
     data: result?.data,
   });

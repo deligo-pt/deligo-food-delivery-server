@@ -6,6 +6,7 @@ import httpStatus from 'http-status';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { Tax } from '../Tax/tax.model';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 // create addon group service
 const createAddonGroup = async (
@@ -13,23 +14,17 @@ const createAddonGroup = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Your vendor account is not approved yet!',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'VENDOR_NOT_APPROVED');
   }
 
   const isGroupExists = await AddonGroup.findOne({
     vendorId: currentUser._id,
-    title: { $regex: new RegExp(`^${payload.title}$`, 'i') },
+    'title.en': { $regex: new RegExp(`^${payload.title.en}$`, 'i') },
     isDeleted: false,
   });
 
   if (isGroupExists) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'An addon group with this title already exists!',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'GROUP_ALREADY_EXISTS');
   }
 
   if (payload.options && payload.options.length > 0) {
@@ -44,18 +39,18 @@ const createAddonGroup = async (
       });
 
       if (existingTaxesCount !== taxIds.length) {
-        throw new AppError(
-          httpStatus.NOT_FOUND,
-          'One or more assigned tax records were not found',
-        );
+        throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+          entity: 'Taxes',
+          isOneOrMore: true,
+        });
       }
     }
   }
 
   payload.options = payload.options.map((opt) => {
     if (!opt.sku) {
-      const cleanTitle = payload.title.substring(0, 3).toUpperCase();
-      const cleanName = opt.name.substring(0, 3).toUpperCase();
+      const cleanTitle = payload.title.en.substring(0, 3).toUpperCase();
+      const cleanName = opt.name.en.substring(0, 3).toUpperCase();
       const randomStr = Math.random()
         .toString(36)
         .substring(2, 5)
@@ -74,9 +69,13 @@ const createAddonGroup = async (
 
   const result = await AddonGroup.findById(createdRecord._id).populate(
     'options.tax',
+    'taxName taxCode taxRate',
   );
 
-  return result;
+  return {
+    messageKey: 'CREATE_SUCCESS',
+    data: result,
+  };
 };
 
 // update addon group service
@@ -86,28 +85,25 @@ const updateAddonGroup = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Your vendor account is not approved yet!',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'VENDOR_NOT_APPROVED');
   }
-  const isGroupExists = await AddonGroup.findOne({
-    _id: { $ne: id },
-    vendorId: currentUser._id,
-    title: { $regex: new RegExp(`^${payload.title}$`, 'i') },
-    isDeleted: false,
-  });
 
-  if (isGroupExists) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'An addon group with this title already exists!',
-    );
+  if (payload.title && payload.title.en) {
+    const isGroupExists = await AddonGroup.findOne({
+      _id: { $ne: id },
+      vendorId: currentUser._id,
+      'title.en': { $regex: new RegExp(`^${payload.title.en}$`, 'i') },
+      isDeleted: false,
+    });
+
+    if (isGroupExists) {
+      throw new AppError(httpStatus.CONFLICT, 'GROUP_ALREADY_EXISTS');
+    }
   }
 
   if (payload.options && payload.options.length > 0) {
     const taxIds = [
-      ...new Set(payload.options.map((opt) => opt.tax).filter(Boolean)),
+      ...new Set(payload.options.map((opt: any) => opt.tax).filter(Boolean)),
     ];
 
     if (taxIds.length > 0) {
@@ -117,26 +113,35 @@ const updateAddonGroup = async (
       });
 
       if (existingTaxesCount !== taxIds.length) {
-        throw new AppError(
-          httpStatus.NOT_FOUND,
-          'One or more tax records are invalid or deleted',
-        );
+        throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORDS_INVALID');
       }
     }
   }
 
-  payload.options = payload?.options?.map((opt) => {
-    if (!opt.sku) {
-      const cleanTitle = (payload.title || 'ADD').substring(0, 3).toUpperCase();
-      const cleanName = opt.name.substring(0, 3).toUpperCase();
-      const randomStr = Math.random()
-        .toString(36)
-        .substring(2, 5)
-        .toUpperCase();
-      opt.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
+  if (payload.options && payload.options.length > 0) {
+    const currentGroup = await AddonGroup.findById(id);
+    if (!currentGroup) {
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'addon group',
+      });
     }
-    return opt;
-  });
+
+    const groupTitleEnglish =
+      payload.title?.en || currentGroup.title?.en || 'ADD';
+
+    payload.options = payload.options.map((opt: any) => {
+      if (!opt.sku) {
+        const cleanTitle = groupTitleEnglish.substring(0, 3).toUpperCase();
+        const cleanName = (opt.name?.en || 'OPT').substring(0, 3).toUpperCase();
+        const randomStr = Math.random()
+          .toString(36)
+          .substring(2, 5)
+          .toUpperCase();
+        opt.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
+      }
+      return opt;
+    });
+  }
 
   const { options, ...remainingData } = payload;
   const modifiedUpdatedData: Record<string, unknown> = { ...remainingData };
@@ -156,29 +161,34 @@ const updateAddonGroup = async (
       new: true,
       runValidators: true,
     },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxName taxCode taxRate');
 
   if (!result) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Addon group not found or you do not have permission to edit it',
+      'UPDATE_NOT_FOUND_OR_UNAUTHORIZED',
     );
   }
 
-  return result;
+  return {
+    messageKey: 'ADDON_GROUP_UPDATE_SUCCESS',
+    data: result,
+  };
 };
 
 // add option to addon group service
 const addOptionToAddonGroup = async (
   groupId: string,
-  newOption: { name: string; price: number; tax: string; sku?: string },
+  newOption: {
+    name: TLocalizedText;
+    price: number;
+    tax: string;
+    sku?: string;
+  },
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Your vendor account is not approved yet!',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'VENDOR_NOT_APPROVED');
   }
 
   if (newOption.tax) {
@@ -187,36 +197,42 @@ const addOptionToAddonGroup = async (
       isDeleted: false,
     });
     if (!taxExists) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'The provided Tax ID is invalid',
-      );
+      throw new AppError(httpStatus.NOT_FOUND, 'TAX_ID_INVALID');
     }
   }
 
   const group = await AddonGroup.findOne({
     _id: groupId,
     vendorId: currentUser._id,
+    isDeleted: false,
   });
   if (!group) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Addon group not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'addon group',
+    });
   }
 
-  const isDuplicate = group.options.some(
-    (opt) => opt.name.toLowerCase() === newOption.name.toLowerCase(),
-  );
+  const isDuplicate = group.options.some((opt) => {
+    const existingNameEn = opt?.name?.en?.toLowerCase() || '';
+    const newNameEn = newOption?.name?.en?.toLowerCase() || '';
+
+    if (!existingNameEn || !newNameEn) return false;
+
+    return existingNameEn === newNameEn;
+  });
 
   if (isDuplicate) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'An option with this name already exists in this group',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'OPTION_ALREADY_EXISTS');
   }
 
   if (!newOption.sku) {
-    const cleanTitle = group.title.substring(0, 3).toUpperCase();
-    const cleanName = newOption.name.substring(0, 3).toUpperCase();
+    const groupTitleEnglish = group.title?.en || 'ADD';
+    const optionNameEnglish = newOption.name?.en || 'OPT';
+
+    const cleanTitle = groupTitleEnglish.substring(0, 3).toUpperCase();
+    const cleanName = optionNameEnglish.substring(0, 3).toUpperCase();
     const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+
     newOption.sku = `ADD-${cleanTitle}-${cleanName}-${randomStr}`;
   }
 
@@ -226,48 +242,49 @@ const addOptionToAddonGroup = async (
       $push: { options: { ...newOption, isActive: true } },
     },
     { new: true, runValidators: true },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxName taxCode taxRate');
 
-  return result;
+  return {
+    messageKey: 'ADD_OPTION_SUCCESS',
+    data: result,
+  };
 };
 
 // toggle option status (active/inactive)
 const toggleOptionStatus = async (
   groupId: string,
-  optionId: string,
+  optionSku: string,
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Your vendor account is not approved yet!',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'VENDOR_NOT_APPROVED');
   }
 
   const group = await AddonGroup.findOne({
     _id: groupId,
     vendorId: currentUser._id,
-    'options._id': optionId,
+    'options.sku': optionSku,
     isDeleted: false,
   });
 
   if (!group) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Addon Group or Option not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'GROUP_OR_OPTION_NOT_FOUND');
   }
 
-  const currentOption = group.options.find(
-    (opt: any) => opt._id.toString() === optionId,
-  );
+  const currentOption = group.options.find((opt: any) => opt.sku === optionSku);
 
-  if (!currentOption)
-    throw new AppError(httpStatus.NOT_FOUND, 'Option not found');
+  if (!currentOption) {
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'option',
+    });
+  }
 
   const newStatus = !currentOption.isActive;
 
   const result = await AddonGroup.findOneAndUpdate(
     {
       _id: groupId,
-      'options._id': optionId,
+      'options.sku': optionSku,
     },
     {
       $set: { 'options.$.isActive': newStatus },
@@ -276,22 +293,23 @@ const toggleOptionStatus = async (
       new: true,
       runValidators: true,
     },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxName taxCode taxRate');
 
-  return result;
+  return {
+    messageKey: 'TOGGLE_OPTION_SUCCESS',
+    variables: { status: newStatus ? 'active' : 'inactive' },
+    data: result,
+  };
 };
 
 // delete option from addon group service
 const deleteOptionFromAddonGroup = async (
   groupId: string,
-  optionId: string,
+  optionSku: string,
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Your vendor account is not approved yet!',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'VENDOR_NOT_APPROVED');
   }
 
   const result = await AddonGroup.findOneAndUpdate(
@@ -299,22 +317,25 @@ const deleteOptionFromAddonGroup = async (
       _id: groupId,
       vendorId: currentUser._id,
       isDeleted: false,
-      'options._id': optionId,
+      'options.sku': optionSku,
     },
     {
-      $pull: { options: { _id: optionId } },
+      $pull: { options: { sku: optionSku } },
     },
     { new: true },
-  ).populate('options.tax');
+  ).populate('options.tax', 'taxName taxCode taxRate');
 
   if (!result) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Addon group not found or the option does not exist in this group',
+      'DELETE_OPTION_NOT_FOUND_OR_UNAUTHORIZED',
     );
   }
 
-  return result;
+  return {
+    messageKey: 'DELETE_OPTION_SUCCESS',
+    data: result,
+  };
 };
 
 // get all addon groups service
@@ -329,10 +350,10 @@ const getAllAddonGroups = async (
   query.isDeleted = false;
 
   const addOns = new QueryBuilder(
-    AddonGroup.find().populate('options.tax'),
+    AddonGroup.find().populate('options.tax', 'taxName taxCode taxRate'),
     query,
   )
-    .search(['title'])
+    .search(['title.en', 'title.pt', 'options.name.en', 'options.name.pt'])
     .filter()
     .sort()
     .paginate()
@@ -344,6 +365,8 @@ const getAllAddonGroups = async (
   ]);
 
   return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Addon Groups', isPlural: true },
     meta,
     data,
   };
@@ -358,14 +381,20 @@ const getSingleAddonGroup = async (id: string, currentUser: TCurrentUser) => {
   }
 
   const result = await AddonGroup.findOne(queryObj)
-    .populate('options.tax')
+    .populate('options.tax', 'taxName taxCode taxRate')
     .lean();
 
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Addon group not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Addon Group',
+    });
   }
 
-  return result;
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Addon Group' },
+    data: result,
+  };
 };
 
 // soft delete addon group
@@ -385,12 +414,12 @@ const softDeleteAddonGroup = async (id: string, currentUser: TCurrentUser) => {
   if (!result) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Addon group not found, already deleted, or unauthorized',
+      'DELETE_NOT_FOUND_OR_UNAUTHORIZED',
     );
   }
 
   return {
-    message: 'Addon group deleted successfully',
+    messageKey: 'DELETE_SUCCESS',
   };
 };
 export const AddOnsServices = {

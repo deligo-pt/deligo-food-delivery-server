@@ -16,13 +16,13 @@ export const findUserById = async ({
   isDeleted?: boolean;
 }) => {
   if (!userId) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'User id must be provided');
+    throw new AppError(httpStatus.BAD_REQUEST, 'USER_ID_MUST_BE_PROVIDED');
   }
 
   const existingUser = await AuthUser.findOne({ userId });
 
   if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');
   }
 
   const role = existingUser?.role;
@@ -32,7 +32,9 @@ export const findUserById = async ({
     const Model = mongoose.model(modelName);
 
     if (!Model) {
-      throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
+      throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_ROLE', {
+        role,
+      });
     }
 
     const foundUser = await Model.findOne({
@@ -43,10 +45,7 @@ export const findUserById = async ({
       return { user: foundUser, model: Model };
     }
   }
-  throw new AppError(
-    httpStatus.NOT_FOUND,
-    `No user found with ID "${userId}".`,
-  );
+  throw new AppError(httpStatus.NOT_FOUND, 'NO_USER_FOUND_WITH_ID', { userId });
 };
 
 export const findUserByEmail = async ({
@@ -57,12 +56,12 @@ export const findUserByEmail = async ({
   isDeleted?: boolean;
 }) => {
   if (!email) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Email must be provided');
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_MUST_BE_PROVIDED');
   }
   const existingUser = await AuthUser.findOne({ email });
 
   if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');
   }
 
   const role = existingUser?.role;
@@ -72,7 +71,9 @@ export const findUserByEmail = async ({
     const Model = mongoose.model(modelName);
 
     if (!Model) {
-      throw new AppError(httpStatus.UNAUTHORIZED, `Unauthorized role: ${role}`);
+      throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_ROLE', {
+        role,
+      });
     }
 
     const foundUser = await Model.findOne({
@@ -83,8 +84,7 @@ export const findUserByEmail = async ({
       return { user: foundUser, model: Model };
     }
   }
-  throw new AppError(
-    httpStatus.NOT_FOUND,
-    `No user found with email "${email}".`,
-  );
+  throw new AppError(httpStatus.NOT_FOUND, 'NO_USER_FOUND_WITH_EMAIL', {
+    email,
+  });
 };

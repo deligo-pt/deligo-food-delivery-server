@@ -110,10 +110,8 @@ authUserSchema.index(
 );
 
 authUserSchema.pre('save', function (next) {
-  const user = this;
-
-  if (user.isNew && user.profileModel === 'Customer') {
-    user.status = 'APPROVED';
+  if (this.isNew && this.profileModel === 'Customer') {
+    this.status = 'APPROVED';
   }
 
   next();

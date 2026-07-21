@@ -10,6 +10,8 @@ import { ROLE_COLLECTION_MAP } from '../../constant/GlobalConstant/user.constant
 import { Order } from '../Order/order.model';
 import { findUserById } from '../../utils/findUserByEmailOrId';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
+import { supportMessages } from './support.messages';
 
 /**
  * Checks for an existing active ticket.
@@ -32,7 +34,7 @@ const getOrCreateActiveTicket = async (
     if (isAgent) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'No active ticket found for this user. Agents cannot create new tickets.',
+        'NO_ACTIVE_TICKET_AGENTS_CANNOT_CREATE',
       );
     }
 
@@ -86,7 +88,7 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
   if (payload.referenceOrderId && !isAgent) {
     const order = await Order.findById(payload.referenceOrderId);
     if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
     }
     if (
       order.customerId.toString() !== loggedInUser?._id.toString() &&
@@ -94,7 +96,7 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to create a support ticket for this order',
+        'NOT_AUTHORIZED_FOR_ORDER_SUPPORT_TICKET',
       );
     }
 
@@ -104,7 +106,7 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to create a support ticket for this order',
+        'NOT_AUTHORIZED_FOR_ORDER_SUPPORT_TICKET',
       );
     }
 
@@ -114,7 +116,7 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to create a support ticket for this order',
+        'NOT_AUTHORIZED_FOR_ORDER_SUPPORT_TICKET',
       );
     }
   }
@@ -169,7 +171,10 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
   ticket.lastMessageTime = new Date();
 
   await ticket.save();
-  return newMessage;
+  return {
+    messageKey: 'MESSAGE_PROCESSED_SUCCESS' as TMessageKey,
+    data: newMessage,
+  };
 };
 
 const getAllTickets = async (
@@ -199,7 +204,11 @@ const getAllTickets = async (
     .sort()
     .paginate()
     .fields();
-  return { meta: await qb.countTotal(), data: await qb.modelQuery };
+  return {
+    messageKey: 'TICKETS_RETRIEVED' as TMessageKey,
+    meta: await qb.countTotal(),
+    data: await qb.modelQuery,
+  };
 };
 
 const getMessagesByTicketId = async (
@@ -210,7 +219,11 @@ const getMessagesByTicketId = async (
     .sort()
     .paginate()
     .fields();
-  return { meta: await qb.countTotal(), data: await qb.modelQuery };
+  return {
+    messageKey: 'CHAT_HISTORY_RETRIEVED' as TMessageKey,
+    meta: await qb.countTotal(),
+    data: await qb.modelQuery,
+  };
 };
 
 const markReadByAdminOrUser = async (
@@ -224,7 +237,7 @@ const markReadByAdminOrUser = async (
   );
   const ticket = await SupportTicket.findOne({ ticketId: ticketId });
   if (!ticket) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Ticket not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'TICKET_NOT_FOUND');
   }
   if (ticket?.unreadCount) {
     ticket.unreadCount.set(customUserId, 0);
@@ -236,7 +249,8 @@ const markReadByAdminOrUser = async (
     await ticket.save();
   }
   return {
-    message: 'Messages marked as read',
+    messageKey: 'MESSAGES_MARKED_AS_READ' as TMessageKey,
+    data: null,
   };
 };
 
@@ -249,7 +263,7 @@ const closeTicket = async (ticketId: string, currentUser: TCurrentUser) => {
     status: { $ne: 'CLOSED' },
   });
   if (!ticket)
-    throw new AppError(httpStatus.NOT_FOUND, 'Active ticket not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'ACTIVE_TICKET_NOT_FOUND');
 
   const adminId = loggedInUser?._id;
 
@@ -264,12 +278,14 @@ const closeTicket = async (ticketId: string, currentUser: TCurrentUser) => {
     ticketId: ticket.ticketId,
     senderId: currentUser.userId,
     senderRole: currentUser.role,
-    message:
-      'O suporte foi encerrado. Envie uma nova mensagem para iniciar um novo ticket.',
+    message: supportMessages.SUPPORT_CLOSED_SYSTEM_MESSAGE.pt,
     messageType: 'SYSTEM',
   });
 
-  return { success: true };
+  return {
+    messageKey: 'TICKET_CLOSED' as TMessageKey,
+    data: { success: true },
+  };
 };
 
 export const SupportService = {

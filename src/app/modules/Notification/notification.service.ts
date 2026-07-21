@@ -1,9 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import {
-  ROLE_COLLECTION_MAP,
-  TUserRole,
-} from '../../constant/GlobalConstant/user.constant';
+import { TUserRole } from '../../constant/GlobalConstant/user.constant';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import AppError from '../../errors/AppError';
 import { sendPushNotification } from '../../utils/sendPushNotification';
@@ -14,7 +11,6 @@ import {
   TNotificationType,
 } from './notification.interface';
 import { EmailHelper } from '../../utils/emailSender';
-import mongoose from 'mongoose';
 import { AuthUser } from '../AuthUser/authUser.model';
 
 //  Helper: Save Notification Log
@@ -55,10 +51,11 @@ const sendPushSafely = async (
     channelId?: 'order_notification' | 'default';
   },
 ) => {
-  if (!tokens.length) return;
+  const validTokens = tokens.filter((token) => token && token.trim() !== '');
+  if (!validTokens.length) return;
 
   await Promise.allSettled(
-    tokens.map((token) =>
+    validTokens.map((token) =>
       sendPushNotification(token, payload).catch(async (err) => {
         const errCode = err?.errorInfo?.code || err?.code;
         const errMsg = err?.message || '';
@@ -73,21 +70,17 @@ const sendPushSafely = async (
           errMsg.includes('not a valid FCM registration token') ||
           errMsg.includes('SenderId mismatch')
         ) {
-          console.log(
-            `[FCM Cleanup] Expired token detected. Removing from DB...`,
-          );
+          if (!token || token.trim() === '') return;
 
           await AuthUser.updateOne(
-            { 'loginDevices.fcmToken': token },
             {
-              $pull: {
-                loginDevices: { fcmToken: token },
+              'loginDevices.fcmToken': token,
+            },
+            {
+              $set: {
+                'loginDevices.$.fcmToken': '',
               },
             },
-          );
-
-          console.log(
-            `[FCM Cleanup] Successfully deleted invalid token: ...${token.slice(-15)}`,
           );
         }
       }),
@@ -111,25 +104,26 @@ const sendToUser = (
         userId,
       });
 
-      console.log({ userId });
-
-      console.log({ user });
-
       if (!user) return;
+
+      // const deviceTokens =
+      //   user.loginDevices
+      //     ?.filter((device: any) => {
+      //       if (user.role === 'CUSTOMER') {
+      //         return !!device.fcmToken;
+      //       }
+      //       return device.isLoggedIn === true && device.fcmToken;
+      //     })
+      //     .map((device: any) => device.fcmToken) || [];
 
       const deviceTokens =
         user.loginDevices
           ?.filter((device: any) => {
-            if (user.role === 'CUSTOMER') {
-              return !!device.fcmToken;
-            }
-            return device.isLoggedIn === true && device.fcmToken;
+            return device.fcmToken && device.fcmToken.trim() !== '';
           })
           .map((device: any) => device.fcmToken) || [];
 
       const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
-
-      console.log({ uniqueTokens });
 
       if (uniqueTokens.length > 0) {
         // Push notification (parallel)
@@ -139,7 +133,6 @@ const sendToUser = (
           data,
           channelId: channelId || 'default',
         });
-        console.log(`[Notification] Push sent safely to tokens.`);
       } else {
         console.warn(
           `[Notification Warning] No valid FCM tokens found for user: ${userId}`,
@@ -177,19 +170,27 @@ const sendToRole = (
         role: { $in: roles },
         loginDevices: {
           $elemMatch: {
-            isLoggedIn: true,
+            // isLoggedIn: true,
             fcmToken: { $exists: true, $ne: '' },
           },
         },
       });
 
       for (const user of users) {
+        // const deviceTokens =
+        //   user.loginDevices
+        //     ?.filter(
+        //       (device: any) => device.isLoggedIn === true && device.fcmToken,
+        //     )
+        //     .map((device: any) => device.fcmToken) || [];
+
         const deviceTokens =
           user.loginDevices
             ?.filter(
-              (device: any) => device.isLoggedIn === true && device.fcmToken,
+              (device: any) => device.fcmToken && device.fcmToken.trim() !== '',
             )
             .map((device: any) => device.fcmToken) || [];
+
         const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
 
         if (uniqueTokens.length > 0) {
@@ -220,18 +221,20 @@ const sendToRole = (
 const markAsRead = async (id: string, currentUser: TCurrentUser) => {
   const notification = await Notification.findById(id);
   if (!notification) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Notification not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOTIFICATION_NOT_FOUND');
   }
 
   if (currentUser.userId !== notification.receiverId) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'You are not authorized to perform this action',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_ACTION');
   }
 
   notification.isRead = true;
   await notification.save();
+
+  return {
+    messageKey: 'MARKED_AS_READ_SUCCESS',
+    data: null,
+  };
 };
 
 // mark as read (all)
@@ -240,7 +243,10 @@ const markAllAsRead = async (currentUser: TCurrentUser) => {
     { receiverId: currentUser.userId },
     { isRead: true },
   );
-  return null;
+  return {
+    messageKey: 'MARK_ALL_AS_READ_SUCCESS',
+    data: null,
+  };
 };
 
 const getMyNotifications = async (
@@ -261,6 +267,8 @@ const getMyNotifications = async (
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
   return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Notifications', isPlural: true },
     meta,
     data,
   };
@@ -284,7 +292,12 @@ const getAllNotifications = async (
 
   const meta = await notifications.countTotal();
   const data = await notifications.modelQuery;
-  return { meta, data };
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Notifications', isPlural: true },
+    meta,
+    data,
+  };
 };
 
 // soft delete single notification
@@ -313,7 +326,7 @@ const softDeleteSingleNotification = async (
   if (!notification) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Notification not found or access denied',
+      'NOTIFICATION_NOT_FOUND_OR_ACCESS_DENIED',
     );
   }
 
@@ -324,7 +337,7 @@ const softDeleteSingleNotification = async (
   await notification.save();
 
   return {
-    message: 'Notification deleted successfully',
+    messageKey: 'NOTIFICATION_DELETED_SUCCESS',
   };
 };
 
@@ -334,7 +347,7 @@ const softDeleteMultipleNotifications = async (
   currentUser: TCurrentUser,
 ) => {
   if (!notificationIds.length) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
+    throw new AppError(httpStatus.BAD_REQUEST, 'NO_NOTIFICATIONS_SELECTED');
   }
 
   // --------------------------------------------------
@@ -358,7 +371,8 @@ const softDeleteMultipleNotifications = async (
   });
 
   return {
-    message: `${result.modifiedCount} notifications deleted successfully`,
+    messageKey: 'NOTIFICATIONS_DELETED_COUNT_SUCCESS',
+    variables: { count: result.modifiedCount },
   };
 };
 
@@ -384,7 +398,8 @@ const softDeleteAllNotifications = async (currentUser: TCurrentUser) => {
   });
 
   return {
-    message: `${result.modifiedCount} notifications deleted successfully`,
+    messageKey: 'NOTIFICATIONS_DELETED_COUNT_SUCCESS',
+    variables: { count: result.modifiedCount },
   };
 };
 
@@ -399,7 +414,7 @@ const permanentDeleteSingleNotification = async (
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only super admin can permanently delete notifications',
+      'ONLY_SUPER_ADMIN_PERMANENT_DELETE',
     );
   }
 
@@ -414,14 +429,14 @@ const permanentDeleteSingleNotification = async (
   if (!notification) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Notification must be soft deleted before permanent delete',
+      'MUST_SOFT_DELETE_BEFORE_PERMANENT',
     );
   }
 
   await Notification.deleteOne({ _id: id });
 
   return {
-    message: 'Notification permanently deleted successfully',
+    messageKey: 'NOTIFICATION_PERMANENT_DELETE_SUCCESS',
   };
 };
 
@@ -433,12 +448,12 @@ const permanentDeleteMultipleNotifications = async (
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only super admin can permanently delete notifications',
+      'ONLY_SUPER_ADMIN_PERMANENT_DELETE',
     );
   }
 
   if (!notificationIds.length) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'No notifications selected');
+    throw new AppError(httpStatus.BAD_REQUEST, 'NO_NOTIFICATIONS_SELECTED');
   }
 
   // --------------------------------------------------
@@ -452,12 +467,13 @@ const permanentDeleteMultipleNotifications = async (
   if (result.deletedCount === 0) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Selected notifications must be soft deleted first',
+      'SELECTED_MUST_BE_SOFT_DELETED_FIRST',
     );
   }
 
   return {
-    message: `${result.deletedCount} notifications permanently deleted successfully`,
+    messageKey: 'NOTIFICATIONS_PERMANENT_DELETED_COUNT_SUCCESS',
+    variables: { count: result.deletedCount },
   };
 };
 
@@ -466,7 +482,7 @@ const permanentDeleteAllNotifications = async (currentUser: TCurrentUser) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only super admin can permanently delete notifications',
+      'ONLY_SUPER_ADMIN_PERMANENT_DELETE',
     );
   }
 
@@ -477,12 +493,13 @@ const permanentDeleteAllNotifications = async (currentUser: TCurrentUser) => {
   if (result.deletedCount === 0) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'No soft-deleted notifications found to permanently delete',
+      'NO_SOFT_DELETED_FOUND_FOR_PERMANENT',
     );
   }
 
   return {
-    message: `${result.deletedCount} notifications permanently deleted successfully`,
+    messageKey: 'NOTIFICATIONS_PERMANENT_DELETED_COUNT_SUCCESS',
+    variables: { count: result.deletedCount },
   };
 };
 
@@ -591,7 +608,10 @@ const sendBroadcastNotification = async (
     });
   }
 
-  return { success: true, message: 'Broadcast processing started' };
+  return {
+    success: true,
+    messageKey: 'BROADCAST_PROCESSING_STARTED',
+  };
 };
 
 export const NotificationService = {

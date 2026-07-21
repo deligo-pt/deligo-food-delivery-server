@@ -1,26 +1,34 @@
 import z from 'zod';
+import { createLocalizedValidationSchema } from '../../constant/GlobalValidation/language.validation';
 
-const optionSchema = z.object({
-  name: z.string({ required_error: 'Option name is required' }),
+const createOptionSchema = z.object({
+  name: createLocalizedValidationSchema('option name'),
   price: z.number().min(0, 'Price cannot be negative'),
   tax: z.string({ required_error: 'Tax ID is required for each option' }),
   isActive: z.boolean().optional().default(true),
 });
 
-// --- CREATE SCHEMA ---
+const updateOptionSchema = z.object({
+  name: createLocalizedValidationSchema('option name', true).optional(),
+  price: z.number().min(0, 'Price cannot be negative').optional(),
+  tax: z
+    .string({ required_error: 'Tax ID is required for each option' })
+    .optional(),
+  isActive: z.boolean().optional(),
+});
+
+// Create Addon Group Validation Schema
 const createAddonGroupValidationSchema = z.object({
   body: z
     .object({
-      title: z.string({
-        required_error: 'Group title is required (e.g., Extra Cheese)',
-      }),
+      title: createLocalizedValidationSchema('addon group title'),
       minSelectable: z
         .number()
         .min(0, 'Minimum selection cannot be negative')
         .default(0),
       maxSelectable: z.number().min(1, 'Maximum selection must be at least 1'),
       options: z
-        .array(optionSchema)
+        .array(createOptionSchema)
         .min(1, 'At least one option must be provided in the group'),
       isActive: z.boolean().optional().default(true),
     })
@@ -35,14 +43,17 @@ const createAddonGroupValidationSchema = z.object({
     }),
 });
 
-// --- UPDATE SCHEMA ---
+// Update Addon Group Validation Schema
 const updateAddonGroupValidationSchema = z.object({
   body: z
     .object({
-      title: z.string().optional(),
+      title: createLocalizedValidationSchema(
+        'addon group title',
+        true,
+      ).optional(),
       minSelectable: z.number().min(0).optional(),
       maxSelectable: z.number().min(1).optional(),
-      options: z.array(optionSchema).min(1).optional(),
+      options: z.array(updateOptionSchema).min(1).optional(),
       isActive: z.boolean().optional(),
     })
     .strict()
@@ -75,7 +86,31 @@ const updateAddonGroupValidationSchema = z.object({
     ),
 });
 
+// Add Option to Addon Group Validation Schema
+const addOptionToAddonGroupValidationSchema = z.object({
+  body: z
+    .object({
+      name: createLocalizedValidationSchema('option name'),
+      price: z
+        .number({ required_error: 'Price is required' })
+        .min(0, 'Price cannot be negative'),
+      tax: z.string({ required_error: 'Tax ID is required for the option' }),
+    })
+    .strict(),
+});
+
+// Toggle Option Status Validation Schema
+const toggleStatusAndDeleteOptionValidationSchema = z.object({
+  body: z
+    .object({
+      optionSku: z.string({ required_error: 'Option SKU is required' }),
+    })
+    .strict(),
+});
+
 export const AddOnsValidation = {
   createAddonGroupValidationSchema,
   updateAddonGroupValidationSchema,
+  addOptionToAddonGroupValidationSchema,
+  toggleStatusAndDeleteOptionValidationSchema,
 };

@@ -14,19 +14,12 @@ router.post(
   CartControllers.addToCart,
 );
 
-// activate item
+// toggle cart item status
 router.patch(
-  '/activate-item/:productId',
+  '/toggle-item-status',
   auth('CUSTOMER'),
-  CartControllers.activateItem,
-);
-
-// update cart item quantity
-router.patch(
-  '/update-quantity',
-  auth('CUSTOMER'),
-  validateRequest(CartValidation.updateCartItemQuantityValidationSchema),
-  CartControllers.updateCartItemQuantity,
+  validateRequest(CartValidation.toggleCartItemStatusValidationSchema),
+  CartControllers.toggleCartItemStatus,
 );
 
 // update addon quantity

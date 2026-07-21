@@ -13,6 +13,8 @@ import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { TLiveLocationPayload } from '../../constant/GlobalInterface/location.interface';
 import { AuthUser } from '../AuthUser/authUser.model';
+import { FleetManager } from '../Fleet-Manager/fleet-manager.model';
+import mongoose from 'mongoose';
 
 // update delivery partner profile service
 const updateDeliveryPartner = async (
@@ -28,22 +30,19 @@ const updateDeliveryPartner = async (
   }).populate('profileId', 'isUpdateLocked registeredBy');
 
   if (!existingDeliveryPartner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND_BANG');
   }
 
   const partnerProfile = existingDeliveryPartner.profileId as any;
   if (!partnerProfile) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      'Delivery Partner profile not found!',
+      'DELIVERY_PARTNER_PROFILE_NOT_FOUND_BANG',
     );
   }
 
   if (!existingDeliveryPartner.isEmailVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Please verify your email before updating your profile.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_VERIFICATION_REQUIRED');
   }
 
   // ---------------------------------------------------------
@@ -54,10 +53,7 @@ const updateDeliveryPartner = async (
       currentUser.role === 'DELIVERY_PARTNER') &&
     partnerProfile.isUpdateLocked
   ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Delivery Partner update is locked. Please contact support.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'UPDATE_LOCKED_CONTACT_SUPPORT');
   }
 
   // ---------------------------------------------------------
@@ -67,10 +63,7 @@ const updateDeliveryPartner = async (
   // Delivery Partner updating their own profile
   if (currentUser.role === 'DELIVERY_PARTNER') {
     if (existingDeliveryPartner.userId !== currentUser?.userId) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You are not authorized to update this profile.',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_PROFILE_UNAUTHORIZED');
     }
   }
 
@@ -79,10 +72,7 @@ const updateDeliveryPartner = async (
     currentUser.role === 'FLEET_MANAGER' &&
     partnerProfile.registeredBy?.id.toString() !== currentUser?._id.toString()
   ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'You are not authorized to update this Delivery Partner.',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_PARTNER_UNAUTHORIZED');
   }
 
   payload.status = 'PENDING';
@@ -96,13 +86,13 @@ const updateDeliveryPartner = async (
   );
 
   if (!updatedDeliveryPartner) {
-    throw new AppError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update Delivery Partner.',
-    );
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'UPDATE_FAILED');
   }
 
-  return updatedDeliveryPartner;
+  return {
+    messageKey: 'UPDATED_SUCCESS',
+    data: updatedDeliveryPartner,
+  };
 };
 
 // update delivery partner live location
@@ -114,14 +104,14 @@ const updateDeliveryPartnerLiveLocation = async (
   if (currentUser.role !== 'DELIVERY_PARTNER') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Only delivery partners can update live location',
+      'ONLY_PARTNERS_CAN_UPDATE_LOCATION',
     );
   }
 
   if (deliveryPartnerId && currentUser.userId !== deliveryPartnerId) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorize to update live location!',
+      'LIVE_LOCATION_UPDATE_UNAUTHORIZED_BANG',
     );
   }
 
@@ -136,10 +126,7 @@ const updateDeliveryPartnerLiveLocation = async (
   } = payload;
 
   if (geoAccuracy !== undefined && geoAccuracy > 100) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Geo accuracy cannot be greater than 100',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'GEO_ACCURACY_TOO_HIGH');
   }
 
   const updateData: Record<string, any> = {
@@ -171,12 +158,12 @@ const updateDeliveryPartnerLiveLocation = async (
   );
 
   if (!updated) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
   }
 
   return {
     success: true,
-    message: 'Live location updated successfully',
+    messageKey: 'LIVE_LOCATION_UPDATED_SUCCESS',
     data: updated.currentSessionLocation,
   };
 };
@@ -186,16 +173,16 @@ const changeDeliveryPartnerStatus = async (
   payload: { status: 'IDLE' | 'OFFLINE' },
 ) => {
   if (currentUser.role !== 'DELIVERY_PARTNER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Only delivery partners can change their status',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ONLY_PARTNERS_CAN_CHANGE_STATUS');
   }
 
   const partner = await DeliveryPartner.findOne({ userId: currentUser.userId });
 
   if (!partner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Delivery partner not found');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'DELIVERY_PARTNER_NOT_FOUND_LOWER',
+    );
   }
 
   const currentStatus = partner.operationalData?.currentStatus;
@@ -203,14 +190,14 @@ const changeDeliveryPartnerStatus = async (
   if (payload.status === 'OFFLINE' && currentStatus !== 'IDLE') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You can only go OFFLINE if your current status is IDLE',
+      'OFFLINE_ALLOWED_ONLY_FROM_IDLE',
     );
   }
 
   if (payload.status === 'IDLE' && currentStatus !== 'OFFLINE') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'You can only go IDLE if your current status is OFFLINE',
+      'IDLE_ALLOWED_ONLY_FROM_OFFLINE',
     );
   }
 
@@ -226,7 +213,11 @@ const changeDeliveryPartnerStatus = async (
   );
 
   return {
-    message: `Status successfully changed from ${currentStatus} to ${payload.status}`,
+    messageKey: 'STATUS_CHANGE_SUCCESS_TEMPLATE',
+    variables: {
+      fromStatus: String(currentStatus),
+      toStatus: payload.status,
+    },
     data: result?.operationalData?.currentStatus,
   };
 };
@@ -242,7 +233,7 @@ const deliverPartnerDocImageUpload = async (
     userId: deliveryPartnerId,
   });
   if (!existingDeliveryPartner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Fleet Manager not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
   }
 
   if (currentUser?.role === 'FLEET_MANAGER') {
@@ -252,7 +243,7 @@ const deliverPartnerDocImageUpload = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'You are not authorize to upload document image!',
+        'DOC_UPLOAD_UNAUTHORIZED_BANG',
       );
     }
   }
@@ -262,9 +253,7 @@ const deliverPartnerDocImageUpload = async (
 
   if (docTitle && existingDeliveryPartner?.documents?.[docTitle]) {
     const oldImage = existingDeliveryPartner?.documents?.[docTitle];
-    deleteSingleImageFromCloudinary(oldImage).catch((err) => {
-      console.error(err);
-    });
+    deleteSingleImageFromCloudinary(oldImage).catch(() => undefined);
   }
 
   if (data.docImageTitle && file) {
@@ -279,7 +268,7 @@ const deliverPartnerDocImageUpload = async (
   }
 
   return {
-    message: 'Delivery Partner document image updated successfully',
+    messageKey: 'DOC_IMAGE_UPDATED_SUCCESS',
     existingDeliveryPartner: existingDeliveryPartner,
   };
 };
@@ -301,6 +290,7 @@ const getAllDeliveryPartnersFromDB = async (
     .fields();
 
   const populateOptions = getPopulateOptions(currentUser.role, {
+    registeredByWithModel: 'name userId role',
     approvedBy: 'name userId role',
     rejectedBy: 'name userId role',
     blockedBy: 'name userId role',
@@ -314,6 +304,8 @@ const getAllDeliveryPartnersFromDB = async (
   const data = await deliveryPartners.modelQuery;
 
   return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery Partners', isPlural: true },
     meta,
     data,
   };
@@ -330,7 +322,7 @@ const getSingleDeliveryPartnerFromDB = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this delivery partner',
+      'ACCESS_DELIVERY_PARTNER_UNAUTHORIZED',
     );
   }
 
@@ -348,7 +340,7 @@ const getSingleDeliveryPartnerFromDB = async (
   }
 
   if (!existingDeliveryPartner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Delivery Partner not found!');
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
   }
 
   if (
@@ -358,11 +350,74 @@ const getSingleDeliveryPartnerFromDB = async (
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You are not authorized to access this delivery partner',
+      'ACCESS_DELIVERY_PARTNER_UNAUTHORIZED',
     );
   }
 
-  return existingDeliveryPartner;
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery Partner' },
+    data: existingDeliveryPartner,
+  };
+};
+
+const assignDeliveryPartnerToFleetManager = async (
+  deliveryPartnerId: string,
+  fleetManagerId: string,
+) => {
+  const deliveryPartnerProfile = await DeliveryPartner.findOne({
+    userId: deliveryPartnerId,
+    role: 'DELIVERY_PARTNER',
+    isDeleted: false,
+  }).select('status registeredBy isDeleted');
+
+  if (!deliveryPartnerProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+  }
+
+  if (deliveryPartnerProfile.status === 'APPROVED') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'DELIVERY_PARTNER_ALREADY_APPROVED',
+    );
+  }
+
+  const fleetManagerProfile = await FleetManager.findOne({
+    _id: fleetManagerId,
+    role: 'FLEET_MANAGER',
+    isDeleted: false,
+  }).select('_id status');
+
+  if (!fleetManagerProfile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND');
+  }
+
+  if (fleetManagerProfile.status !== 'APPROVED') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'FLEET_MANAGER_NOT_APPROVED');
+  }
+
+  if (!deliveryPartnerProfile || deliveryPartnerProfile.isDeleted) {
+    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+  }
+
+  if (deliveryPartnerProfile.registeredBy?.model === 'FleetManager') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'DELIVERY_PARTNER_ALREADY_ASSIGNED_TO_FLEET_MANAGER',
+    );
+  }
+
+  deliveryPartnerProfile.registeredBy = {
+    id: new mongoose.Types.ObjectId(fleetManagerProfile._id),
+    model: 'FleetManager',
+  };
+
+  await deliveryPartnerProfile.save();
+
+  return {
+    messageKey: 'UPDATED_SUCCESS',
+    data: deliveryPartnerProfile,
+  };
 };
 
 export const DeliveryPartnerServices = {
@@ -372,4 +427,5 @@ export const DeliveryPartnerServices = {
   deliverPartnerDocImageUpload,
   getAllDeliveryPartnersFromDB,
   getSingleDeliveryPartnerFromDB,
+  assignDeliveryPartnerToFleetManager,
 };

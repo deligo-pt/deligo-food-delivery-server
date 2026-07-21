@@ -12,6 +12,7 @@ import generateOtp from '../../utils/generateOtp';
 import { RedisService } from '../../config/redis';
 import { AuthUser } from '../AuthUser/authUser.model';
 import mongoose from 'mongoose';
+import { TMessageKey } from '../../errors/messages';
 
 // get my profile service
 const getMyProfile = async (currentUser: TCurrentUser) => {
@@ -19,12 +20,44 @@ const getMyProfile = async (currentUser: TCurrentUser) => {
   // Status Check
   // -----------------------------
   if (currentUser.status !== USER_STATUS.APPROVED) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `Your account is ${currentUser.status.toLowerCase()}. Please contact support.`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_STATUS_CONTACT_SUPPORT', {
+      status: currentUser.status,
+    });
   }
-  return currentUser;
+
+  const modelName = ROLE_COLLECTION_MAP[currentUser.role];
+
+  const model = mongoose.model(modelName);
+
+  if (!model) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_USER_ROLE_MAPPING');
+  }
+
+  const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
+
+  let profile;
+  if (!isVendor) {
+    profile = await model.findOne({
+      userId: currentUser.userId,
+      isDeleted: false,
+    });
+  }
+
+  if (isVendor) {
+    profile = await model
+      .findOne({ userId: currentUser.userId, isDeleted: false })
+      .populate('businessDetails.businessType')
+      .populate('cuisinesData');
+  }
+
+  if (!profile) {
+    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
+  }
+
+  return {
+    messageKey: 'MY_PROFILE_RETRIEVED_SUCCESS' as TMessageKey,
+    data: profile,
+  };
 };
 
 // send otp service
@@ -33,10 +66,7 @@ const sendOtp = async (
   payload: { contactNumber?: string; email?: string },
 ) => {
   if (!payload?.contactNumber && !payload?.email) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Email or contact number is required',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_OR_CONTACT_REQUIRED');
   }
 
   const currentUserId = currentUser.userId;
@@ -53,14 +83,14 @@ const sendOtp = async (
     ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This contact number is already linked to your account and verified. Please use another.',
+        'CONTACT_ALREADY_LINKED_AND_VERIFIED',
       );
     }
 
     if (exists && exists?.userId !== currentUserId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This mobile number is already registered with another account.',
+        'MOBILE_ALREADY_REGISTERED_ANOTHER_ACCOUNT',
       );
     }
   }
@@ -73,14 +103,14 @@ const sendOtp = async (
     if (exists?.userId === currentUser.userId && exists?.isEmailVerified) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This email is already linked to your account and verified. Please use another.',
+        'EMAIL_ALREADY_LINKED_AND_VERIFIED',
       );
     }
 
     if (exists && exists?.userId !== currentUserId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This email is already registered with another account.',
+        'EMAIL_ALREADY_REGISTERED_ANOTHER_ACCOUNT',
       );
     }
   }
@@ -94,12 +124,11 @@ const sendOtp = async (
     if (isLockedBySomeone && isLockedBySomeone !== currentUserId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This mobile number is currently undergoing verification by another user. Please try again after 5 minutes.',
+        'MOBILE_UNDERGOING_VERIFICATION_BY_ANOTHER_USER',
       );
     }
 
     const response = await sendMobileOtp(formattedContact);
-    console.log('BulkGate Profile Update SMS Sent:', response);
     const otpCode = response.otp;
 
     await RedisService.set(globalMobileLockKey, currentUserId, OTP_TTL_SECONDS);
@@ -113,8 +142,8 @@ const sendOtp = async (
     await RedisService.set(redisMobileKey, redisMobileData, OTP_TTL_SECONDS);
 
     return {
-      message:
-        'OTP sent to your mobile number. Please verify within 5 minutes to update.',
+      messageKey: 'MOBILE_OTP_SENT_SUCCESS' as TMessageKey,
+      data: null,
     };
   }
 
@@ -126,7 +155,7 @@ const sendOtp = async (
     if (isEmailLocked && isEmailLocked !== currentUserId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'This email address is currently undergoing verification by another user. Please try again after 5 minutes.',
+        'EMAIL_UNDERGOING_VERIFICATION_BY_ANOTHER_USER',
       );
     }
 
@@ -157,14 +186,14 @@ const sendOtp = async (
       emailHtml,
       'Verify your email for DeliGo',
     ).catch(async (err) => {
-      console.error('Email sending failed:', err);
+      void err;
       await RedisService.del(redisEmailKey);
       await RedisService.del(globalEmailLockKey);
     });
 
     return {
-      message:
-        'OTP sent to your email. Please verify within 5 minutes to update.',
+      messageKey: 'EMAIL_OTP_SENT_SUCCESS' as TMessageKey,
+      data: null,
     };
   }
 };
@@ -183,7 +212,7 @@ const updateEmailOrContactNumber = async (
   const modelName =
     ROLE_COLLECTION_MAP[currentUser.role as keyof typeof ROLE_COLLECTION_MAP];
   if (!modelName) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role mapping.');
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_USER_ROLE_MAPPING');
   }
   const Model = mongoose.model(modelName);
 
@@ -200,7 +229,7 @@ const updateEmailOrContactNumber = async (
       if (!cachedRawData) {
         throw new AppError(
           httpStatus.UNAUTHORIZED,
-          'OTP has expired or is invalid. Please request a new one.',
+          'OTP_EXPIRED_OR_INVALID_REQUEST_NEW',
         );
       }
 
@@ -211,7 +240,7 @@ const updateEmailOrContactNumber = async (
       const { otp: savedOtp, pendingEmail } = cachedData;
 
       if (savedOtp !== otp) {
-        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP code.');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OTP_CODE');
       }
 
       await AuthUser.findOneAndUpdate(
@@ -232,7 +261,10 @@ const updateEmailOrContactNumber = async (
       await RedisService.del(redisEmailKey);
       await RedisService.del(`${globalEmailLockKey}:${pendingEmail}`);
 
-      return { message: 'Email updated successfully.' };
+      return {
+        messageKey: 'EMAIL_UPDATED_SUCCESS' as TMessageKey,
+        data: null,
+      };
     }
 
     if (type === 'mobile') {
@@ -243,7 +275,7 @@ const updateEmailOrContactNumber = async (
       if (!cachedRawData) {
         throw new AppError(
           httpStatus.UNAUTHORIZED,
-          'OTP has expired or is invalid. Please request a new one.',
+          'OTP_EXPIRED_OR_INVALID_REQUEST_NEW',
         );
       }
 
@@ -255,7 +287,7 @@ const updateEmailOrContactNumber = async (
       const { otp: savedOtp, pendingContactNumber } = cachedData;
 
       if (String(savedOtp) !== String(otp)) {
-        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid OTP code.');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OTP_CODE');
       }
 
       await AuthUser.findOneAndUpdate(
@@ -276,7 +308,10 @@ const updateEmailOrContactNumber = async (
       await RedisService.del(redisMobileKey);
       await RedisService.del(`${globalMobileLockKey}:${pendingContactNumber}`);
 
-      return { message: 'Contact number updated successfully.' };
+      return {
+        messageKey: 'CONTACT_NUMBER_UPDATED_SUCCESS' as TMessageKey,
+        data: null,
+      };
     }
   } catch (error) {
     await session.abortTransaction();

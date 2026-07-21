@@ -4,6 +4,8 @@ import sendResponse from '../../utils/sendResponse';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { CuisineService } from './cuisineCategory.service';
+import { formatCuisineResponse } from './category.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // Create Cuisine Controller
 const createCuisine = catchAsync(async (req, res) => {
@@ -15,8 +17,8 @@ const createCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Cuisine created successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -31,60 +33,79 @@ const updateCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisine updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
 // Get All Cuisines Controller (Protected)
 const getAllCuisines = catchAsync(async (req, res) => {
-  const result = await CuisineService.getAllCuisines(
-    req.query,
-    req.user as TCurrentUser,
-  );
+  const user = req.user as TCurrentUser;
+  const result = await CuisineService.getAllCuisines(req.query, user);
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
+  if (isAdmin) {
+    formattedData = result.data;
+  } else {
+    formattedData = formatCuisineResponse(result.data, req.lang);
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisines fetched successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
 // Get All Cuisines Controller Public
 const getAllCuisinesPublic = catchAsync(async (req, res) => {
   const result = await CuisineService.getAllCuisinesPublic(req.query);
+  const formattedData = formatCuisineResponse(result.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisines fetched successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
 // Get Single Cuisine Controller (Protected)
 const getSingleCuisine = catchAsync(async (req, res) => {
-  const result = await CuisineService.getSingleCuisine(
-    req.params.id,
-    req.user as TCurrentUser,
-  );
+  const user = req.user as TCurrentUser;
+  const result = await CuisineService.getSingleCuisine(req.params.id, user);
+
+  let formattedData;
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
+  if (isAdmin) {
+    formattedData = result?.data;
+  } else {
+    formattedData = formatCuisineResponse(result?.data, req.lang);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisine fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
 // Get Single Cuisine Controller Public
 const getSingleCuisinePublic = catchAsync(async (req, res) => {
   const result = await CuisineService.getSingleCuisinePublic(req.params.id);
+  const formattedData = formatCuisineResponse(result?.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Cuisine fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -94,7 +115,7 @@ const softDeleteCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -105,7 +126,7 @@ const permanentDeleteCuisine = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

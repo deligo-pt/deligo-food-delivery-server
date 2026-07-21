@@ -8,6 +8,7 @@ import AppError from '../../errors/AppError';
 import { registerDriverLiveLocationEvents } from './events/riderLiveLocation.events';
 import { registerSosSocketEvents } from './events/sosAlerts.events';
 import { registerOrderEvents } from './events/order.events';
+import { registerShopStatusEvents } from './events/shopStatus.events';
 
 let io: Server;
 
@@ -31,15 +32,11 @@ export const initializeSocket = (httpServer: HTTPServer) => {
   io.use(socketAuthMiddleware);
 
   io.on('connection', (socket) => {
-    if (config.NODE_ENV === 'development') {
-      const user = socket.data.user;
-      console.log(`Socket connected: ${user?.userId}`);
-    }
-
     registerSupportEvents(io, socket);
     registerDriverLiveLocationEvents(io, socket);
     registerSosSocketEvents(io, socket);
     registerOrderEvents(io, socket);
+    registerShopStatusEvents(io, socket);
   });
 };
 
@@ -47,7 +44,7 @@ export const getIO = () => {
   if (!io) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'Socket not initialized',
+      'SOCKET_NOT_INITIALIZED',
     );
   }
   return io;

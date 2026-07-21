@@ -12,6 +12,7 @@ import { SosModel } from './sos.model';
 import mongoose from 'mongoose';
 import { getIO } from '../../lib/Socket';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
+import { TMessageKey } from '../../errors/messages';
 
 // trigger SOS service
 const triggerSos = async (
@@ -23,7 +24,7 @@ const triggerSos = async (
   if (!sosLocation) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Could not determine your current location. Please enable GPS.',
+      'COULD_NOT_DETERMINE_CURRENT_LOCATION_ENABLE_GPS',
     );
   }
   const sosData = {
@@ -42,7 +43,7 @@ const triggerSos = async (
   const result = await SosModel.create(sosData);
 
   if (!result) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Failed to trigger SOS');
+    throw new AppError(httpStatus.BAD_REQUEST, 'FAILED_TO_TRIGGER_SOS');
   }
 
   getIO().to('SOS_ALERTS_POOL').emit('new-sos-alert', {
@@ -50,7 +51,10 @@ const triggerSos = async (
     data: result,
   });
 
-  return result;
+  return {
+    messageKey: 'SOS_TRIGGERED_SUCCESS_HELP_ON_WAY' as TMessageKey,
+    data: result,
+  };
 };
 
 // update sos status in db
@@ -61,21 +65,20 @@ const updateSosStatus = async (
 ) => {
   const isSosExist = await SosModel.findById(id);
   if (!isSosExist) {
-    throw new AppError(httpStatus.NOT_FOUND, 'SOS alert not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'SOS_ALERT_NOT_FOUND');
   }
 
   if (isSosExist.status === 'RESOLVED') {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Resolved SOS cannot be changed',
+      'RESOLVED_SOS_CANNOT_BE_CHANGED',
     );
   }
 
   if (isSosExist.status === payload.status) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `SOS is already ${payload.status}`,
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'SOS_ALREADY_IN_STATUS', {
+      status: payload.status,
+    });
   }
 
   const updateData: Partial<TSos> = {
@@ -102,7 +105,10 @@ const updateSosStatus = async (
     getIO().emit(`sos-status-updated-${id}`, result);
   }
 
-  return result;
+  return {
+    messageKey: 'SOS_STATUS_UPDATED_SUCCESS' as TMessageKey,
+    data: result,
+  };
 };
 
 // get nearby sos alerts
@@ -112,7 +118,7 @@ const getNearbySosAlerts = async (currentUser: TCurrentUser) => {
   if (!sosLocation) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Could not determine your current location. Please enable GPS.',
+      'COULD_NOT_DETERMINE_CURRENT_LOCATION_ENABLE_GPS',
     );
   }
   const [longitude, latitude] = sosLocation;
@@ -126,7 +132,10 @@ const getNearbySosAlerts = async (currentUser: TCurrentUser) => {
     },
     status: 'ACTIVE',
   });
-  return result;
+  return {
+    messageKey: 'NEARBY_SOS_ALERTS_RETRIEVED_SUCCESS' as TMessageKey,
+    data: result,
+  };
 };
 
 // get all sos alerts
@@ -170,6 +179,7 @@ const getAllSosAlerts = async (
   const meta = await sosQuery.countTotal();
 
   return {
+    messageKey: 'SOS_ALERTS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -183,7 +193,7 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
   );
 
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'SOS Alert not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'SOS_ALERT_NOT_FOUND_SINGLE');
   }
 
   if (currentUser.role === 'FLEET_MANAGER') {
@@ -195,12 +205,15 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
     ) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'You are not authorized to view this SOS alert',
+        'NOT_AUTHORIZED_TO_VIEW_SOS_ALERT',
       );
     }
   }
 
-  return result;
+  return {
+    messageKey: 'SOS_ALERT_RETRIEVED_SUCCESS' as TMessageKey,
+    data: result,
+  };
 };
 
 // get sos alerts by user id
@@ -232,6 +245,7 @@ const getUserSosHistory = async (
   const meta = await sosQuery.countTotal();
 
   return {
+    messageKey: 'SOS_ALERTS_RETRIEVED_SUCCESS' as TMessageKey,
     meta,
     data,
   };
@@ -242,7 +256,8 @@ const getSosStats = async (currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view SOS stats. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_VIEW_SOS_STATS_WITH_STATUS',
+      { status: currentUser.status },
     );
   }
   const stats = await SosModel.aggregate([
@@ -275,7 +290,10 @@ const getSosStats = async (currentUser: TCurrentUser) => {
     }
   });
 
-  return formattedStats;
+  return {
+    messageKey: 'SOS_STATS_RETRIEVED_SUCCESS' as TMessageKey,
+    data: formattedStats,
+  };
 };
 
 export const SosService = {

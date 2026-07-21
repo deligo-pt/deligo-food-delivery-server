@@ -1,6 +1,18 @@
 import { z } from 'zod';
 import { addressValidationSchema } from '../Admin/admin.validation';
-import { CuisineType } from './vendor.constant';
+
+const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+
+// Valid Weekdays array based on Intl.DateTimeFormat 'long'
+const weekdays = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const;
 
 // --------------------------------------------------
 // Vendor Update Validation Schema
@@ -28,15 +40,71 @@ const vendorUpdateValidationSchema = z.object({
           businessName: z.string().optional(),
           businessType: z.string().optional(),
           restaurantCuisineType: z.array(z.string()).optional(),
-          businessLicenseNumber: z.string().optional(),
           NIF: z.string().optional(),
           totalBranches: z.number().optional(),
-          openingHours: z.string().optional(),
-          closingHours: z.string().optional(),
-          closingDays: z.array(z.string()).optional(),
+          openingHours: z
+            .string()
+            .regex(timeRegex, {
+              message:
+                'Opening hours must be in HH:mm 24-hour format (e.g., 09:00)',
+            })
+            .optional(),
+
+          closingHours: z
+            .string()
+            .regex(timeRegex, {
+              message:
+                'Closing hours must be in HH:mm 24-hour format (e.g., 23:00)',
+            })
+            .optional(),
+          closingDays: z
+            .array(
+              z.enum(weekdays, {
+                errorMap: () => ({
+                  message:
+                    'Invalid day name. Must be full weekday (e.g., Monday)',
+                }),
+              }),
+            )
+            .optional(),
         })
         .strict()
-        .optional(),
+        .optional()
+        .refine(
+          (data) => {
+            if (!data) return true;
+            if (
+              (data.openingHours && !data.closingHours) ||
+              (!data.openingHours && data.closingHours)
+            ) {
+              return false;
+            }
+            return true;
+          },
+          {
+            message:
+              'Both openingHours and closingHours must be provided together',
+            path: ['openingHours'],
+          },
+        )
+        .refine(
+          (data) => {
+            if (!data) return true;
+            if (
+              data.openingHours &&
+              data.closingHours &&
+              data.openingHours === data.closingHours
+            ) {
+              return false;
+            }
+            return true;
+          },
+          {
+            message:
+              'Opening hours and Closing hours cannot be the exact same time',
+            path: ['closingHours'],
+          },
+        ),
 
       // Business Location
       businessLocation: addressValidationSchema.optional(),

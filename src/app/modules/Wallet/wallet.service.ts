@@ -33,6 +33,7 @@ const getAllWallets = async (
   const data = await wallets.modelQuery;
   const meta = await wallets.countTotal();
   return {
+    messageKey: 'WALLETS_RETRIEVED_SUCCESS',
     meta,
     data,
   };
@@ -46,7 +47,7 @@ const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
   );
 
   if (!wallet) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Wallet not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'WALLET_NOT_FOUND');
   }
 
   if (currentUser.role === 'FLEET_MANAGER') {
@@ -56,14 +57,14 @@ const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
     });
 
     if (!isPartner) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'You do not have permission to view this wallet',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'NO_PERMISSION_TO_VIEW_WALLET');
     }
   }
 
-  return wallet;
+  return {
+    messageKey: 'WALLET_RETRIEVED_SUCCESS',
+    data: wallet,
+  };
 };
 
 // get my wallet
@@ -83,10 +84,13 @@ const getMyWallet = async (currentUser: TCurrentUser) => {
     }).populate('userId', 'name email userId');
   }
   if (!wallet) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Wallet not found for this user');
+    throw new AppError(httpStatus.NOT_FOUND, 'WALLET_NOT_FOUND_FOR_USER');
   }
 
-  return wallet;
+  return {
+    messageKey: 'WALLET_RETRIEVED_SUCCESS',
+    data: wallet,
+  };
 };
 
 export const WalletServices = {

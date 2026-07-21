@@ -37,7 +37,7 @@ const createReferralEntry = async (
   };
 
   const target = roleMap[newUser.role];
-  if (!target) throw new AppError(httpStatus.BAD_REQUEST, 'Invalid user role');
+  if (!target) throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_USER_ROLE');
 
   const referrer = await target.model
     .findOne({ referralCode })
@@ -47,10 +47,7 @@ const createReferralEntry = async (
   const modelName = target.name;
 
   if (!referrer) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'Please enter a valid referral code.',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'INVALID_REFERRAL_CODE');
   }
 
   const referredUserId = new Types.ObjectId(newUser._id as string);
@@ -107,7 +104,7 @@ const distributeReferralBonus = async (
       if (!externalSession) await session.abortTransaction();
       return {
         success: false,
-        message: 'Referral already processed or not found',
+        messageKey: 'REFERRAL_ALREADY_PROCESSED_OR_NOT_FOUND',
       };
     }
 
@@ -129,17 +126,13 @@ const distributeReferralBonus = async (
       if (!order) throw new Error('Order data missing');
 
       if (order.payoutSummary.grandTotal < milestone.minOrderAmountPerFriend) {
-        console.log(
-          `Condition failed: €${order.payoutSummary.grandTotal} < €${milestone.minOrderAmountPerFriend}`,
-        );
-
         referral.status = 'COMPLETED';
         referral.isRewardDistributed = false;
         referral.remarks = 'Milestone reached but min order amount not met';
         await referral.save({ session });
 
         if (!externalSession) await session.commitTransaction();
-        return { success: false, message: 'Min order amount not met' };
+        return { success: false, messageKey: 'ORDER_DATA_MISSING' };
       }
     }
 
@@ -242,36 +235,39 @@ const getReferralStats = async (currentUser: TCurrentUser) => {
   );
 
   return {
-    myReferralCode: (userData as any)?.referralCode || 'N/A',
-    summary: {
-      totalInvites: referrals.length,
-      successfulInvites,
-      pendingInvites,
-      totalEarned: userBalance?.totalEarned || 0,
-      currentWalletBalance: userBalance?.totalBalance || 0,
-      friendsRemainingForNextMilestone: nextMilestone
-        ? nextMilestone.friendsRequired - successfulInvites
-        : 0,
+    messageKey: 'REFERRAL_STATS_RETRIEVED_SUCCESS',
+    data: {
+      myReferralCode: (userData as any)?.referralCode || 'N/A',
+      summary: {
+        totalInvites: referrals.length,
+        successfulInvites,
+        pendingInvites,
+        totalEarned: userBalance?.totalEarned || 0,
+        currentWalletBalance: userBalance?.totalBalance || 0,
+        friendsRemainingForNextMilestone: nextMilestone
+          ? nextMilestone.friendsRequired - successfulInvites
+          : 0,
+      },
+      milestones: milestones.map((m: any) => ({
+        friendsRequired: m.friendsRequired,
+        rewardType: m.rewardType,
+        rewardValue: m.rewardValue,
+        isCompleted: successfulInvites >= m.friendsRequired,
+        isNext: nextMilestone
+          ? m.friendsRequired === nextMilestone.friendsRequired
+          : false,
+      })),
+      referralHistory: referrals.map((ref: any) => ({
+        id: ref._id,
+        friendName:
+          ref.referredId?.name?.firstName +
+            ' ' +
+            ref.referredId?.name?.lastName || 'DeliGo User',
+        friendPhoto: ref.referredId?.profilePhoto,
+        status: ref.status,
+        date: ref.createdAt,
+      })),
     },
-    milestones: milestones.map((m: any) => ({
-      friendsRequired: m.friendsRequired,
-      rewardType: m.rewardType,
-      rewardValue: m.rewardValue,
-      isCompleted: successfulInvites >= m.friendsRequired,
-      isNext: nextMilestone
-        ? m.friendsRequired === nextMilestone.friendsRequired
-        : false,
-    })),
-    referralHistory: referrals.map((ref: any) => ({
-      id: ref._id,
-      friendName:
-        ref.referredId?.name?.firstName +
-          ' ' +
-          ref.referredId?.name?.lastName || 'DeliGo User',
-      friendPhoto: ref.referredId?.profilePhoto,
-      status: ref.status,
-      date: ref.createdAt,
-    })),
   };
 };
 

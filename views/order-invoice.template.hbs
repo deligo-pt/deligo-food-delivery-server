@@ -1,0 +1,315 @@
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f3f4fa;
+        font-family: monospace;
+        font-weight: 600;
+      }
+      .wrapper {
+        width: 100%;
+        background-color: #f3f4fa;
+        padding: 30px 10px;
+      }
+      .container {
+        max-width: 500px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+      }
+      .header {
+        background: linear-gradient(135deg, #dc3173, #a80e52);
+        padding: 32px 24px;
+        text-align: left;
+        position: relative;
+      }
+      .logo {
+        color: #ffffff;
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin: 0;
+      }
+      .date {
+        color: #fae0ea;
+        font-size: 13px;
+        font-weight: 500;
+        margin-top: 5px;
+        text-align: right;
+        float: right;
+      }
+      .greeting {
+        color: #ffffff;
+        font-size: 28px;
+        font-weight: 700;
+        margin: 25px 0 5px 0;
+        clear: both;
+      }
+      .sub-greeting {
+        color: #fae0ea;
+        font-size: 15px;
+        margin: 0;
+        opacity: 0.9;
+      }
+      .address-section {
+        padding: 24px;
+        color: #1e1e1e;
+      }
+      .address-label {
+        color: #666666;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 4px 0;
+        font-weight: bold;
+      }
+      .address-value {
+        font-size: 15px;
+        margin: 0 0 16px 0;
+        color: #333333;
+        line-height: 1.4;
+      }
+      .address-value-2 {
+        font-size: 15px;
+        margin: 0 0 2px 0;
+        color: #333333;
+        line-height: 1.4;
+      }
+      .arrow-down {
+        color: #dc3173;
+        font-size: 18px;
+        margin: 0 0 16px 0;
+        font-weight: bold;
+      }
+      .content-section {
+        padding: 0 24px 24px 24px;
+      }
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .items-table td {
+        padding: 12px 0;
+        font-size: 15px;
+        color: #333333;
+        vertical-align: top;
+        border-bottom: 1px dashed #dc3173;
+      }
+      .item-qty-name {
+        font-weight: 600;
+      }
+      .text-right {
+        text-align: right;
+      }
+      .total-row td {
+        color: #a80e52 !important;
+        font-size: 19px !important;
+        font-weight: bold !important;
+        padding-top: 16px;
+        border-bottom: none !important;
+      }
+      .download-block {
+        background: linear-gradient(135deg, #dc3173, #a80e52);
+        border-radius: 12px;
+        padding: 16px;
+        cursor: pointer;
+        display: block;
+        box-shadow: 0 6px 20px rgba(220, 49, 115, 0.2);
+      }
+      .download-text-main {
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0;
+      }
+      .download-text-sub {
+        color: #fae0ea;
+        font-size: 12px;
+        margin: 2px 0 0 0;
+        font-weight: normal;
+      }
+      .download-arrow {
+        color: #ffffff;
+        font-size: 20px;
+        font-weight: bold;
+      }
+      .legal-footer {
+        padding: 20px 24px;
+        background-color: #ffffff;
+        border-left: 4px solid #a80e52;
+        margin: 10px 24px;
+        border-radius: 4px;
+        color: #555555;
+        font-size: 12px;
+        line-height: 1.6;
+        font-weight: normal;
+        font-family: sans-serif;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      .footer-org {
+        text-align: center;
+        color: #666666;
+        font-size: 13px;
+        padding: 25px 24px;
+        border-top: 1px solid #e4e4e4;
+      }
+      .footer-org a {
+        color: #dc3173;
+        text-decoration: none;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='wrapper'>
+      <div class='container'>
+
+        <!-- HEADER -->
+        <div class='header'>
+          <span class='date'>{{dateStr}}</span>
+          <h1 class='logo'>DeliGo</h1>
+          <h2 class='greeting'>Hello, {{customerName}}!</h2>
+          <p class='sub-greeting'>This is your receipt.</p>
+        </div>
+
+        <!-- STABLE CONTAINER LAYER -->
+        <table
+          width='100%'
+          cellspacing='0'
+          cellpadding='0'
+          border='0'
+          bgcolor='#fae0ea'
+        >
+          <tr>
+            <td>
+
+              <!-- ADDRESS BLOCK (FROM & TO) -->
+              <div class='address-section'>
+                <p class='address-label'>From</p>
+                <p class='address-value-2'><strong>{{vendorName}}</strong></p>
+                <p class='address-value'><strong>{{vendorAddress}}</strong></p>
+
+                <div class='arrow-down'>↓</div>
+
+                <p class='address-label'>To</p>
+                <p class='address-value'>{{deliveryAddress}}</p>
+              </div>
+
+              <!-- CONTENT BREAKDOWN -->
+              <div class='content-section'>
+                <table class='items-table'>
+                  <!-- Food Items List -->
+                  {{#each items}}
+                    <tr>
+                      <td class='item-qty-name'>{{this.quantity}}
+                        ×
+                        {{this.name}}</td>
+                      <td class='text-right'>€{{this.total}}</td>
+                    </tr>
+                  {{/each}}
+
+                  <!-- Delivery & Fees Breakdowns -->
+                  <tr>
+                    <td>Delivery fee</td>
+                    <td class='text-right'>€{{deliveryFee}}</td>
+                  </tr>
+                  <tr>
+                    <td>Service fee</td>
+                    <td class='text-right'>€{{serviceFee}}</td>
+                  </tr>
+
+                  <!-- Optional Offer/Discounts -->
+                  {{#if hasDiscount}}
+                    <tr>
+                      <td>Discount</td>
+                      <td
+                        class='text-right'
+                        style='color: #ef4444;'
+                      >-€{{discountAmount}}</td>
+                    </tr>
+                  {{/if}}
+
+                  <!-- Total Charged Row -->
+                  <tr class='total-row'>
+                    <td>Total charged:</td>
+                    <td class='text-right'>€{{grandTotal}}</td>
+                  </tr>
+                </table>
+
+                <!-- REDIRECT DOWNLOAD BUTTON WITH EXPRESS API TARGET -->
+                <a
+                  href='{{downloadUrl}}'
+                  target='_blank'
+                  style='text-decoration: none; display: block; margin: 24px 0;'
+                >
+                  <div class='download-block'>
+                    <table width='100%' cellspacing='0' cellpadding='0'>
+                      <tr>
+                        <td align='left'>
+                          <p class='download-text-main'>Download cost document</p>
+                          <p class='download-text-sub'>Delivery & Service
+                            Invoice</p>
+                        </td>
+                        <td
+                          align='right'
+                          class='download-arrow'
+                          style='vertical-align: middle; font-size: 20px;'
+                        >
+                          &gt;
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                </a>
+              </div>
+
+              <!-- LEGAL CONTEXT FOOTER -->
+              <div class='legal-footer'>
+                <strong>Important Note:</strong>
+                If you require an invoice for Food, please request it directly
+                from the Seller (<strong>{{vendorName}}</strong>). Your delivery
+                legal invoice is attached as a PDF to this email.
+              </div>
+
+              <!-- SYSTEM FOOTER -->
+              <div class='footer-org'>
+                <p
+                  style='margin: 0 0 8px 0; font-weight: bold; color: #1e1e1e;'
+                >DeliGo / Operated by Pixel Miracle Lda</p>
+                <p
+                  style='margin: 0; font-size: 13px; color: #555; line-height: 1.5;'
+                >
+                  <strong>NIF / Tax Number:</strong>
+                  518758176<br />
+                  <strong>Address:</strong>
+                  Rua Joaquim Agostinho 16C, 1750-126 Lisbon, Portugal<br />
+                  <strong>Phone:</strong>
+                  +351 920 136 680 | +351 217 570 184<br />
+                  <strong>Email:</strong>
+                  contact@deligo.pt |
+                  <strong>Website:</strong>
+                  <a href='https://deligo.pt'>deligo.pt</a>
+                </p>
+                <p
+                  style='margin: 15px 0 0 0; font-size: 12px; color: #999; border-top: 1px solid #ddd; padding-top: 10px;'
+                >
+                  &copy;
+                  {{currentYear}}
+                  DeliGo. All rights reserved.
+                </p>
+              </div>
+
+            </td>
+          </tr>
+        </table>
+
+      </div>
+    </div>
+  </body>
+</html>

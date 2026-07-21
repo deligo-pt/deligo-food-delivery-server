@@ -15,7 +15,7 @@ const validateVendor = (currentUser: TCurrentUser) => {
   if (currentUser?.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'Vendor is not approved to add products',
+      'VENDOR_NOT_APPROVED_TO_ADD_PRODUCTS',
     );
   }
 };
@@ -24,14 +24,14 @@ const validateBasePayload = (payload: TProduct) => {
   if (!payload.variations && !payload.pricing.price) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Price is required when no variations',
+      'PRICE_REQUIRED_WHEN_NO_VARIATIONS',
     );
   }
 };
 
 const validateCategory = (vendorCategoryExist: any, category: any) => {
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Category not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'CATEGORY_NOT_FOUND');
   }
 
   if (
@@ -40,7 +40,7 @@ const validateCategory = (vendorCategoryExist: any, category: any) => {
   ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Category is not under your business type',
+      'CATEGORY_NOT_UNDER_BUSINESS_TYPE',
     );
   }
 };
@@ -49,18 +49,25 @@ const validateRestaurantStock = (
   vendorCategoryExist: any,
   payload: TProduct,
 ) => {
-  if (
-    vendorCategoryExist?.name === BusinessCategoryName.RESTAURANT &&
-    payload.stock
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Stock is not allowed for Restaurants',
-    );
+  const isRestaurant =
+    vendorCategoryExist?.name?.en === BusinessCategoryName.RESTAURANT;
+
+  if (isRestaurant) {
+    if (payload.stock && (payload.stock.quantity || 0) > 0) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'STOCK_MANAGEMENT_NOT_ALLOWED_FOR_RESTAURANTS',
+      );
+    }
+
+    payload.stock = undefined;
   }
 };
 
-const validateAddons = async (payload: TProduct, vendorId: Types.ObjectId) => {
+const validateAddons = async (
+  payload: Partial<TProduct>,
+  vendorId: Types.ObjectId,
+) => {
   if (!payload.addonGroups?.length) return;
 
   const validAddonsCount = await AddonGroup.countDocuments({
@@ -70,10 +77,7 @@ const validateAddons = async (payload: TProduct, vendorId: Types.ObjectId) => {
   });
 
   if (validAddonsCount !== payload.addonGroups.length) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'One or more invalid Addon Groups',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_ADDON_GROUPS');
   }
 };
 
@@ -81,7 +85,7 @@ const applyTax = async (payload: TProduct) => {
   if (!payload.pricing.taxId) return;
 
   const tax: TTax | null = await Tax.findById(payload.pricing.taxId);
-  if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
+  if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'TAX_NOT_FOUND');
 
   payload.pricing.taxRate = tax.taxRate;
 };
@@ -92,13 +96,15 @@ const prepareBasicFields = (
   category: any,
 ) => {
   const shortId = customNanoId(6);
-  const productNamePart = cleanForSKU(payload.name);
+
+  const productNamePart = cleanForSKU(payload.name.en || payload.name.pt || '');
 
   payload.vendorId = currentUser._id;
   payload.productId = `PROD-${shortId}`;
-  payload.slug = generateSlug(payload.name);
 
-  payload.sku = `${category.name
+  payload.slug = generateSlug(payload.name.en || payload.name.pt || '');
+
+  payload.sku = `${category?.name?.en
     .substring(0, 3)
     .toUpperCase()}-${productNamePart}-${shortId.split('-').pop()}`;
 
@@ -111,7 +117,8 @@ const handleVariations = (
   vendorCategory: any,
 ) => {
   if (!payload.variations?.length) return;
-
+  const isRestaurant =
+    vendorCategory?.name?.en === BusinessCategoryName.RESTAURANT;
   let totalStock = 0;
   let minPrice = Infinity;
 
@@ -119,32 +126,46 @@ const handleVariations = (
     ...variation,
     options: variation.options.map((option) => {
       const price = option.price;
-      const stock = option.stockQuantity || 0;
+
+      if (isRestaurant && (option.stockQuantity || 0) > 0) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'VARIATION_STOCK_NOT_ALLOWED_FOR_RESTAURANTS',
+        );
+      }
+
+      const stock = isRestaurant ? 0 : option.stockQuantity || 0;
 
       if (price < minPrice) minPrice = price;
       totalStock += stock;
 
-      return {
+      const variationLabelPart = cleanForSKU(option.label.en || '');
+
+      const cleanOption: any = {
         ...option,
         price,
         sku:
           option.sku ||
-          `VAR-${productNamePart}-${cleanForSKU(option.label)}-${customNanoId(
-            3,
-          )}`,
-        stockQuantity: stock,
-        totalAddedQuantity: stock,
-        isOutOfStock: stock <= 0,
+          `VAR-${productNamePart}-${variationLabelPart}-${customNanoId(3)}`,
       };
+
+      if (!isRestaurant) {
+        cleanOption.stockQuantity = stock;
+        cleanOption.totalAddedQuantity = stock;
+        cleanOption.isOutOfStock = stock <= 0;
+      } else {
+        delete cleanOption.stockQuantity;
+        delete cleanOption.totalAddedQuantity;
+        delete cleanOption.isOutOfStock;
+      }
+
+      return cleanOption;
     }),
   }));
 
   payload.pricing.price = minPrice === Infinity ? 0 : minPrice;
 
-  if (
-    vendorCategory?.name !== BusinessCategoryName.RESTAURANT &&
-    payload.stock
-  ) {
+  if (!isRestaurant && payload.stock) {
     payload.stock.quantity = totalStock;
     payload.stock.totalAddedQuantity = totalStock;
     payload.stock.hasVariations = true;

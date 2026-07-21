@@ -3,6 +3,7 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { NotificationService } from './notification.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // Get notifications for current user
 const getMyNotifications = catchAsync(async (req, res) => {
@@ -14,7 +15,8 @@ const getMyNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Notifications retrieved successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -23,23 +25,28 @@ const getMyNotifications = catchAsync(async (req, res) => {
 // Mark as read (one)
 const markAsRead = catchAsync(async (req, res) => {
   const { id } = req.params;
-  await NotificationService.markAsRead(id, req?.user as TCurrentUser);
+  const result = await NotificationService.markAsRead(
+    id,
+    req?.user as TCurrentUser,
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Notification marked as read',
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
 // Mark as read (all)
 const markAllAsRead = catchAsync(async (req, res) => {
-  await NotificationService.markAllAsRead(req?.user as TCurrentUser);
+  const result = await NotificationService.markAllAsRead(
+    req?.user as TCurrentUser,
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'All notifications marked as read',
-    data: null,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -52,7 +59,8 @@ const getAllNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'All notifications retrieved successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -68,7 +76,7 @@ const softDeleteSingleNotification = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -83,7 +91,8 @@ const softDeleteMultipleNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -96,7 +105,8 @@ const softDeleteAllNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -111,7 +121,7 @@ const permanentDeleteSingleNotification = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -126,7 +136,8 @@ const permanentDeleteMultipleNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -139,7 +150,8 @@ const permanentDeleteAllNotifications = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -150,7 +162,7 @@ const sendBroadcastNotification = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

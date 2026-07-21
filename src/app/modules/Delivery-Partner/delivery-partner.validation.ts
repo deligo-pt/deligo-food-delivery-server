@@ -131,9 +131,18 @@ const deliveryPartnerStatusChangeValidationSchema = z.object({
     .strict(),
 });
 
+const assignDeliveryPartnerToFleetManagerValidationSchema = z.object({
+  body: z
+    .object({
+      fleetManagerId: z.string().min(1),
+    })
+    .strict(),
+});
+
 // ---------------------------------------------
 export const DeliveryPartnerValidation = {
   updateDeliveryPartnerDataValidationSchema,
   deliveryPartnerDocImageValidationSchema,
   deliveryPartnerStatusChangeValidationSchema,
+  assignDeliveryPartnerToFleetManagerValidationSchema,
 };

@@ -4,6 +4,8 @@ import sendResponse from '../../utils/sendResponse';
 import { TImageFile } from '../../interfaces/image.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { ProductCategoryService } from './productCategory.service';
+import { formatProductCategoryResponse } from './category.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // Create Product Category Controllers
 const createProductCategory = catchAsync(async (req, res) => {
@@ -15,8 +17,8 @@ const createProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Product category created successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -31,22 +33,34 @@ const updateProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product category updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
 // Get Product Category Controllers
 const getAllProductCategories = catchAsync(async (req, res) => {
+  const user = req.user as TCurrentUser;
+  const role = user?.role;
   const result = await ProductCategoryService.getAllProductCategories(
     req.query,
-    req.user as TCurrentUser,
+    user,
   );
+
+  let formattedData;
+
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    formattedData = result.data;
+  } else {
+    formattedData = formatProductCategoryResponse(result.data, req.lang);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product categories fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
+    data: formattedData,
   });
 });
 
@@ -55,26 +69,40 @@ const getAllProductCategoriesPublic = catchAsync(async (req, res) => {
   const result = await ProductCategoryService.getAllProductCategoriesPublic(
     req.query,
   );
+
+  const formattedData = formatProductCategoryResponse(result.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product categories fetched successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
 // Get Single Product Category Controllers
 const getSingleProductCategory = catchAsync(async (req, res) => {
+  const user = req.user as TCurrentUser;
+  const role = user?.role;
   const result = await ProductCategoryService.getSingleProductCategory(
     req.params.id,
-    req.user as TCurrentUser,
+    user,
   );
+
+  let formattedData;
+
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    formattedData = result?.data;
+  } else {
+    formattedData = formatProductCategoryResponse(result?.data, req.lang);
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product category fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -83,11 +111,14 @@ const getSingleProductCategoryPublic = catchAsync(async (req, res) => {
   const result = await ProductCategoryService.getSingleProductCategoryPublic(
     req.params.id,
   );
+
+  const formattedData = formatProductCategoryResponse(result?.data, req.lang);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product category fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -99,7 +130,7 @@ const softDeleteProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });
@@ -112,7 +143,7 @@ const permanentDeleteProductCategory = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

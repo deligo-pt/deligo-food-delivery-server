@@ -5,7 +5,7 @@ import {
 } from '../interfaces/error.interface';
 
 const handleCastError = (
-  err: mongoose.Error.CastError
+  err: mongoose.Error.CastError,
 ): TGenericErrorResponse => {
   const errorSources: TErrorSources = [
     {
@@ -18,7 +18,7 @@ const handleCastError = (
 
   return {
     statusCode,
-    message: 'Invalid ID',
+    message: 'Invalid Id Error',
     errorSources,
   };
 };

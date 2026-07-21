@@ -7,45 +7,69 @@ import { generateSlug } from './product.utils';
 import { TProduct } from './product.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { Product } from './product.model';
+import { CreateProductUtils } from './createProduct.utils';
 
 const getAndValidateProduct = async (
   productId: string,
   currentUser: TCurrentUser,
 ) => {
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+  if (currentUser?.status !== 'APPROVED') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'NOT_AUTHORIZED_TO_UPDATE_ACCOUNT_STATUS',
+      { status: currentUser.status },
+    );
+  }
   const product = await Product.findOne({
     productId,
-    ...(currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
+    ...(!isAdmin &&
+      currentUser.role === 'VENDOR' && { vendorId: currentUser._id }),
   }).populate('vendorId', 'businessDetails.businessType');
 
-  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
-  if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'Action forbidden.');
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+  }
 
   return product;
 };
 
-const prepareUpdateData = async (payload: Partial<TProduct>) => {
+const prepareUpdateData = async (
+  payload: Partial<TProduct>,
+  existingProduct: TProduct,
+) => {
   const modifiedData: Record<string, any> = {};
 
   if (payload.name) {
-    modifiedData.name = payload.name;
-    modifiedData.slug = generateSlug(payload.name);
+    if (payload.name.en) modifiedData['name.en'] = payload.name.en;
+    if (payload.name.pt) modifiedData['name.pt'] = payload.name.pt;
+    const finalSlugName = payload.name.en || existingProduct?.name?.en || '';
+    modifiedData.slug = generateSlug(finalSlugName);
   }
-  if (payload.description) modifiedData.description = payload.description;
+  if (payload.description) {
+    if (payload.description.en)
+      modifiedData['description.en'] = payload.description.en;
+    if (payload.description.pt)
+      modifiedData['description.pt'] = payload.description.pt;
+  }
   if (payload.category) modifiedData.category = payload.category;
   if (payload.subCategory) modifiedData.subCategory = payload.subCategory;
   if (payload.brand) modifiedData.brand = payload.brand;
-  if (payload.addonGroups) modifiedData.addonGroups = payload.addonGroups;
+  if (payload.addonGroups && payload.addonGroups.length > 0) {
+    await CreateProductUtils.validateAddons(payload, existingProduct.vendorId);
+    modifiedData.addonGroups = payload.addonGroups;
+  }
 
   if (payload.pricing) {
-    const { taxId, currency, discount, price } = payload.pricing;
+    const { taxId, currency, discount, price, discountType } = payload.pricing;
     if (price !== undefined) modifiedData['pricing.price'] = price;
     if (currency) modifiedData['pricing.currency'] = currency;
+    if (discountType) modifiedData['pricing.discountType'] = discountType;
     if (discount !== undefined) modifiedData['pricing.discount'] = discount;
 
     if (taxId) {
       const tax = await Tax.findById(taxId);
-      if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'Tax not found');
+      if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'TAX_NOT_FOUND');
       modifiedData['pricing.taxId'] = taxId;
       modifiedData['pricing.taxRate'] = tax.taxRate;
     }

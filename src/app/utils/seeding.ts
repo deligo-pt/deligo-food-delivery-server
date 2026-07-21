@@ -22,7 +22,6 @@ export const seed = async () => {
     }).session(session);
 
     if (!superAdminExists) {
-      console.log('Seeding Super Admin...');
       const customUserId = `SA-${customNanoId(8)}`;
 
       const [newAdminProfile] = await Admin.create(
@@ -62,7 +61,9 @@ export const seed = async () => {
         { session },
       );
 
-      console.log('Super Admin seeded successfully.');
+      if (config.NODE_ENV === 'development') {
+        console.log('Super Admin seeded successfully.');
+      }
     }
 
     // --------------------------------------------------

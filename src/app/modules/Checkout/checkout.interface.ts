@@ -23,15 +23,6 @@ export type TAppliedOfferSnapshot = {
   };
 };
 
-export type TCheckoutItem = {
-  productId: mongoose.Types.ObjectId;
-  quantity: number;
-  price: number;
-  subtotal: number;
-  vendorId: mongoose.Types.ObjectId;
-  estimatedDeliveryTime?: string;
-};
-
 export type TCheckoutAddress = {
   street?: string;
   city?: string;
@@ -49,19 +40,22 @@ export type TCheckoutAddress = {
 export type TCheckoutSummary = {
   customerId: mongoose.Types.ObjectId;
   vendorId: mongoose.Types.ObjectId;
-  customerEmail?: string; // will check is it need?
-  contactNumber?: string; // will check is it need?
+  customerEmail?: string;
+  contactNumber?: string;
 
   items: TOrderItemSnapshot[];
   totalItems: number;
+  totalQuantity: number;
 
   orderCalculation: {
     totalOriginalPrice: number;
     totalProductDiscount: number;
     totalOfferDiscount: number;
-    taxableAmount: number;
     totalTaxAmount: number;
+    itemsSubtotal: number;
     serviceCharge: number;
+    serviceChargeVatRate: number;
+    serviceChargeVatAmount: number;
   };
 
   delivery: {
@@ -81,6 +75,12 @@ export type TCheckoutSummary = {
       vatAmount: number;
       totalDeduction: number;
       earnedServiceCharge: number;
+      serviceChargeVatAmount: number;
+      deliveryVatAmount: number;
+
+      totalPlatformNetRevenue: number;
+      totalPlatformPayableTax: number;
+      totalPlatformGrossHolding: number;
     };
     fleet: {
       rate: number;
@@ -92,8 +92,6 @@ export type TCheckoutSummary = {
       vendorNetPayout: number;
     };
     rider: {
-      earningsWithoutTax: number;
-      payableTax: number;
       riderNetEarnings: number;
     };
   };
@@ -107,10 +105,10 @@ export type TCheckoutSummary = {
 
   paymentMethod?: TPaymentMethod;
   paymentStatus?: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
-  transactionId?: string; // Stripe PaymentIntent ID
+  transactionId?: string;
 
   isConvertedToOrder?: boolean;
-  orderId?: mongoose.Types.ObjectId; // Linked Order ID
+  orderId?: mongoose.Types.ObjectId;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -125,7 +123,7 @@ export type TCheckoutPayload = {
     variationName?: string;
     variationSku?: string;
     addons?: {
-      optionId: string;
+      optionSku: string;
       quantity: number;
     }[];
     price?: number;

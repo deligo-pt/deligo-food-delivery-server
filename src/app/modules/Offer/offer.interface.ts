@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
 import { OfferType } from './offer.constant';
+import { TLocalizedText } from '../../constant/GlobalInterface/language.interface';
 
 export type TOffer = {
   _id?: string;
-  title: string;
-  description?: string;
+  title: TLocalizedText;
+  description?: TLocalizedText;
 
   // Offer type
   offerType: OfferType;

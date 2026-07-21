@@ -36,6 +36,8 @@ import { ReferralRoutes } from '../modules/Referral/referral.route';
 import { AIContentGeneratorRoutes } from '../modules/Ai-Content-Generator/ai-content-generator.route';
 import { AgreementRoutes } from '../modules/Agreement/agreement.route';
 import { PermissionRoutes } from '../modules/Permission/permission.route';
+import { InvoiceRoutes } from '../modules/Invoice/invoice.route';
+import { LoginHistoryRoutes } from '../modules/LoginHistory/loginHistory.route';
 
 const router = Router();
 
@@ -188,6 +190,14 @@ const moduleRoutes = [
   {
     path: '/permissions',
     route: PermissionRoutes,
+  },
+  {
+    path: '/invoices',
+    route: InvoiceRoutes,
+  },
+  {
+    path: '/login-histories',
+    route: LoginHistoryRoutes,
   },
 ];
 

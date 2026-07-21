@@ -3,6 +3,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { FleetManagerServices } from './fleet-manager.service';
+import { TMessageKey } from '../../errors/messages';
 
 // Fleet Manager Update Controller
 const fleetManagerUpdate = catchAsync(async (req, res) => {
@@ -16,8 +17,8 @@ const fleetManagerUpdate = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Fleet Manager updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 //  fleet manager doc image upload controller
@@ -31,7 +32,7 @@ const fleetManagerDocImageUpload = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.existingFleetManager,
   });
 });
@@ -47,7 +48,7 @@ const deleteFleetManagerDocument = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
   });
 });
@@ -61,7 +62,8 @@ const getAllFleetManagers = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Fleet Managers Retrieved Successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -72,13 +74,16 @@ const getSingleFleetManager = catchAsync(async (req, res) => {
   const result = await FleetManagerServices.getSingleFleetManagerFromDB(
     req.params.fleetManagerId,
     req.user as TCurrentUser,
+    req.query,
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Fleet Manager Retrieved Successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    meta: result?.meta,
+    data: result?.data,
   });
 });
 

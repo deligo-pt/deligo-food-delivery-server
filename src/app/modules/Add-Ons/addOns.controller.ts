@@ -3,6 +3,8 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AddOnsServices } from './addOns.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { formatAddonGroupResponse } from './addOns.utils';
+import { TMessageKey } from '../../errors/messages';
 
 // create addon group controller
 const createAddonGroup = catchAsync(async (req, res) => {
@@ -13,8 +15,8 @@ const createAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: 'Addon group created successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -29,8 +31,8 @@ const updateAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Addon group updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
@@ -45,72 +47,90 @@ const addOptionToGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'New option added to group successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
 // toggle option status controller
 const toggleOptionStatus = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
-  const { optionId } = req.body;
+  const { optionSku } = req.body;
   const result = await AddOnsServices.toggleOptionStatus(
     addonGroupId,
-    optionId as string,
+    optionSku as string,
     req.user as TCurrentUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Option status updated successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
 // delete option from addon group controller
 const deleteOptionFromGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
-  const { optionId } = req.body;
+  const { optionSku } = req.body;
   const result = await AddOnsServices.deleteOptionFromAddonGroup(
     addonGroupId,
-    optionId,
+    optionSku,
     req.user as TCurrentUser,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Option removed from group successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
   });
 });
 
 // get all addon groups controller
 const getAllAddonGroups = catchAsync(async (req, res) => {
-  const result = await AddOnsServices.getAllAddonGroups(
-    req.query,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const role = currentUser?.role;
+  const result = await AddOnsServices.getAllAddonGroups(req.query, currentUser);
+
+  let formattedData;
+  if (role === 'CUSTOMER') {
+    formattedData = formatAddonGroupResponse(result?.data, req.lang);
+  } else {
+    formattedData = result?.data;
+  }
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Addon groups fetched successfully',
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result.meta,
-    data: result.data,
+    data: formattedData,
   });
 });
 
 // get single addon group controller
 const getSingleAddonGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
+  const currentUser = req.user as TCurrentUser;
+  const role = currentUser?.role;
   const result = await AddOnsServices.getSingleAddonGroup(
     addonGroupId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  let formattedData;
+  if (role === 'CUSTOMER') {
+    formattedData = formatAddonGroupResponse(result?.data, req.lang);
+  } else {
+    formattedData = result?.data;
+  }
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Addon group fetched successfully',
-    data: result,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -124,7 +144,7 @@ const softDeleteAddonGroup = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: result?.message,
+    messageKey: result?.messageKey as TMessageKey,
     data: null,
   });
 });

@@ -5,6 +5,7 @@ import { Sponsorship } from './sponsorships.model';
 import { deleteSingleImageFromCloudinary } from '../../utils/deleteImage';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { TMessageKey } from '../../errors/messages';
 
 // Create sponsorship
 const createSponsorship = async (
@@ -13,17 +14,13 @@ const createSponsorship = async (
   bannerImage: string | null,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      `You are not approved. Your account is ${currentUser.status}`,
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_WITH_STATUS', {
+      status: currentUser.status,
+    });
   }
 
   if (payload.bannerImage) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Banner image must be uploaded as a file, not in text.',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'BANNER_IMAGE_MUST_BE_FILE');
   }
 
   const isExist = await Sponsorship.findOne({
@@ -34,7 +31,7 @@ const createSponsorship = async (
   if (isExist) {
     throw new AppError(
       httpStatus.CONFLICT,
-      'This sponsorship campaign already exists for the same start date.',
+      'SPONSORSHIP_CAMPAIGN_ALREADY_EXISTS_SAME_START_DATE',
     );
   }
 
@@ -43,7 +40,10 @@ const createSponsorship = async (
     bannerImage,
   };
   const result = await Sponsorship.create(sponsorshipData);
-  return result;
+  return {
+    messageKey: 'SPONSORSHIP_CREATED_SUCCESS' as TMessageKey,
+    data: result,
+  };
 };
 
 // Update sponsorship by id
@@ -54,7 +54,7 @@ const updateSponsorship = async (
 ) => {
   const isExist = await Sponsorship.findById(id);
   if (!isExist) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Sponsorship not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'SPONSORSHIP_NOT_FOUND');
   }
 
   if (payload.sponsorName || payload.startDate) {
@@ -67,7 +67,7 @@ const updateSponsorship = async (
     if (duplicate) {
       throw new AppError(
         httpStatus.CONFLICT,
-        'Another campaign with same name and start date already exists',
+        'CAMPAIGN_WITH_SAME_NAME_AND_START_DATE_EXISTS',
       );
     }
   }
@@ -76,7 +76,7 @@ const updateSponsorship = async (
     const oldPhoto = isExist.bannerImage;
     if (oldPhoto) {
       deleteSingleImageFromCloudinary(oldPhoto).catch((err) => {
-        console.error(err);
+        void err;
       });
     }
     payload.bannerImage = bannerImage;
@@ -87,7 +87,10 @@ const updateSponsorship = async (
     runValidators: true,
   });
 
-  return result;
+  return {
+    messageKey: 'SPONSORSHIP_UPDATED_SUCCESS' as TMessageKey,
+    data: result,
+  };
 };
 
 // get all sponsorships
@@ -98,7 +101,8 @@ const getAllSponsorships = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view sponsorships. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_VIEW_SPONSORSHIPS_WITH_STATUS',
+      { status: currentUser.status },
     );
   }
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -118,7 +122,11 @@ const getAllSponsorships = async (
     sponsorships.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    messageKey: 'SPONSORSHIPS_RETRIEVED_SUCCESS' as TMessageKey,
+    meta,
+    data,
+  };
 };
 const getAllSponsorshipsPublic = async (query: Record<string, unknown>) => {
   query.isDeleted = false;
@@ -136,7 +144,11 @@ const getAllSponsorshipsPublic = async (query: Record<string, unknown>) => {
     sponsorships.modelQuery,
   ]);
 
-  return { meta, data };
+  return {
+    messageKey: 'SPONSORSHIPS_RETRIEVED_SUCCESS' as TMessageKey,
+    meta,
+    data,
+  };
 };
 
 // get single sponsorship
@@ -144,23 +156,27 @@ const getSingleSponsorship = async (currentUser: TCurrentUser, id: string) => {
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view sponsorships. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_VIEW_SPONSORSHIPS_WITH_STATUS',
+      { status: currentUser.status },
     );
   }
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const sponsorship = await Sponsorship.findById(id);
   if (!sponsorship) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Sponsorship not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'SPONSORSHIP_NOT_FOUND');
   }
   if (!isAdmin) {
     if (sponsorship.isDeleted || !sponsorship.isActive) {
       throw new AppError(
         httpStatus.FORBIDDEN,
-        'Sponsorship is not found or deleted',
+        'SPONSORSHIP_NOT_FOUND_OR_DELETED',
       );
     }
   }
-  return sponsorship;
+  return {
+    messageKey: 'SPONSORSHIP_RETRIEVED_SUCCESS' as TMessageKey,
+    data: sponsorship,
+  };
 };
 
 // soft deleted sponsorship
@@ -171,17 +187,18 @@ const softDeletedSponsorship = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view sponsorships. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_VIEW_SPONSORSHIPS_WITH_STATUS',
+      { status: currentUser.status },
     );
   }
 
   const isExist = await Sponsorship.findById(id);
   if (!isExist) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Sponsorship not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'SPONSORSHIP_NOT_FOUND');
   }
 
   if (isExist.isDeleted) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Sponsorship is already deleted');
+    throw new AppError(httpStatus.FORBIDDEN, 'SPONSORSHIP_ALREADY_DELETED');
   }
 
   await Sponsorship.findByIdAndUpdate(
@@ -192,7 +209,10 @@ const softDeletedSponsorship = async (
     },
   );
 
-  return { message: 'Sponsorship deleted successfully' };
+  return {
+    messageKey: 'SPONSORSHIP_DELETED_SUCCESS' as TMessageKey,
+    data: null,
+  };
 };
 
 // permanent delete sponsorship
@@ -203,19 +223,21 @@ const permanentDeleteSponsorship = async (
   if (currentUser.status !== 'APPROVED') {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      `You are not approved to view sponsorships. Your account is ${currentUser.status}`,
+      'NOT_APPROVED_TO_VIEW_SPONSORSHIPS_WITH_STATUS',
+      { status: currentUser.status },
     );
   }
   const isExist = await Sponsorship.findById(id);
   if (!isExist) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Sponsorship not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'SPONSORSHIP_NOT_FOUND');
   }
   if (!isExist.isDeleted) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Please soft delete first');
+    throw new AppError(httpStatus.FORBIDDEN, 'PLEASE_SOFT_DELETE_FIRST');
   }
   await Sponsorship.findByIdAndDelete(id);
   return {
-    message: 'Sponsorship deleted permanently',
+    messageKey: 'SPONSORSHIP_DELETED_PERMANENTLY' as TMessageKey,
+    data: null,
   };
 };
 

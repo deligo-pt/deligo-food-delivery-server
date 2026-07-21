@@ -3,14 +3,18 @@ import mongoose from 'mongoose';
 export type TWallet = {
   walletId: string;
   userId: mongoose.Types.ObjectId | string;
-  userModel: 'Customer' | 'Vendor' | 'FleetManager' | 'DeliveryPartner';
+  userModel:
+    | 'Admin'
+    | 'Customer'
+    | 'Vendor'
+    | 'FleetManager'
+    | 'DeliveryPartner';
   lastSettlementDate?: Date;
-  totalUnpaidTax: number;
-  totalTax: number;
-  totalUnpaidEarnings: number;
-  totalEarnings: number;
-  totalRiderPayable: number;
-  totalFleetEarnings: number;
+
+  currentBalance: number; // CURRENT WITHDRAWABLE / PAYABLE / REFUND BALANCE
+  lifetimeEarnings: number; // CUMULATIVE GROSS REVENUE / INFLOW
+  currentTaxLiability: number; // TAX CURRENTLY PENDING FOR AT DECLARATION
+  lifetimeTaxProcessed: number; // CUMULATIVE TAX PROCESSED SO FAR
 
   createdAt: Date;
   updatedAt: Date;

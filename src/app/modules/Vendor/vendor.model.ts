@@ -13,6 +13,7 @@ const vendorSchema = new Schema<TVendor>(
       type: String,
       required: true,
       unique: true,
+      index: true,
     },
     registeredBy: {
       id: {
@@ -75,11 +76,10 @@ const vendorSchema = new Schema<TVendor>(
     // -------------------------------------------------------
     businessDetails: {
       businessName: { type: String, default: '' },
-      businessType: { type: String, default: '' },
+      businessType: { type: Schema.Types.ObjectId, ref: 'BusinessCategory' },
       restaurantCuisineType: {
         type: [String],
       },
-      businessLicenseNumber: { type: String, default: '' },
       NIF: { type: String, default: '' },
       totalBranches: { type: Number, default: 1 },
 
@@ -90,6 +90,7 @@ const vendorSchema = new Schema<TVendor>(
 
       // Operational Status
       isStoreOpen: { type: Boolean, default: true },
+      isManualControl: { type: Boolean, default: false },
       storeClosedAt: { type: Date, default: null },
 
       // Association (Crucial for pricing/assignment)
@@ -173,5 +174,17 @@ vendorSchema.index({
   'businessLocation.latitude': 1,
   'businessLocation.longitude': 1,
 });
+
+// -------------------------------------------------------
+// Virtual Populate for Cuisines
+// -------------------------------------------------------
+vendorSchema.virtual('cuisinesData', {
+  ref: 'Cuisine',
+  localField: 'businessDetails.restaurantCuisineType',
+  foreignField: 'slug',
+});
+
+vendorSchema.set('toObject', { virtuals: true });
+vendorSchema.set('toJSON', { virtuals: true });
 
 export const Vendor = model<TVendor>('Vendor', vendorSchema);

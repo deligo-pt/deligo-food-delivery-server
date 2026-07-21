@@ -31,7 +31,6 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
   socket.on('join-conversation', ({ ticketId }: { ticketId: string }) => {
     if (!ticketId) return;
     socket.join(ticketId);
-    console.log(`User ${userId} joined ticket: ${ticketId}`);
   });
 
   /**
@@ -64,7 +63,7 @@ export const registerSupportEvents = (io: Server, socket: Socket) => {
       // Call Service (Updated to your latest service logic)
       const savedMessage = await SupportService.createMessage(payload, user);
 
-      const ticketId = savedMessage.ticketId;
+      const ticketId = savedMessage?.data?.ticketId;
 
       // Ensure the sender is in the ticket room
       socket.join(ticketId);

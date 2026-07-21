@@ -34,13 +34,13 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
     if (exists) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'You have already submitted a rating for this category in this order.',
+        'ALREADY_SUBMITTED_RATING_FOR_CATEGORY_IN_ORDER',
       );
     }
 
     const existsOrder = await Order.findById(payload.orderId).session(session);
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order not found');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
     }
 
     const reviewerModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
@@ -54,7 +54,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
       if (!existsOrder.items || existsOrder.items.length === 0) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          'No products found in this order.',
+          'NO_PRODUCTS_FOUND_IN_ORDER',
         );
       }
 
@@ -84,7 +84,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
         if (!existsOrder.deliveryPartnerId) {
           throw new AppError(
             httpStatus.BAD_REQUEST,
-            'No delivery partner assigned to this order.',
+            'NO_DELIVERY_PARTNER_ASSIGNED_TO_ORDER',
           );
         }
         targetId = existsOrder.deliveryPartnerId.toString();
@@ -97,7 +97,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
       }
 
       if (!targetId || !targetModel) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Target for rating not found');
+        throw new AppError(httpStatus.NOT_FOUND, 'TARGET_FOR_RATING_NOT_FOUND');
       }
 
       payload.targetId = new mongoose.Types.ObjectId(targetId);
@@ -110,13 +110,40 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
         await calcAndUpdateDeliveryPartner(targetId, session);
       }
     }
+
+    const nextRatingStatus = {
+      isProductRated:
+        updateFields['ratingStatus.isProductRated'] ??
+        existsOrder.ratingStatus?.isProductRated ??
+        false,
+      isVendorRated:
+        updateFields['ratingStatus.isVendorRated'] ??
+        existsOrder.ratingStatus?.isVendorRated ??
+        false,
+      isDeliveryRated:
+        updateFields['ratingStatus.isDeliveryRated'] ??
+        existsOrder.ratingStatus?.isDeliveryRated ??
+        false,
+    };
+
+    if (
+      nextRatingStatus.isProductRated &&
+      nextRatingStatus.isVendorRated &&
+      nextRatingStatus.isDeliveryRated
+    ) {
+      updateFields.isRated = true;
+    }
+
     await Order.findByIdAndUpdate(
       payload.orderId,
       { $set: updateFields },
       { session },
     );
     await session.commitTransaction();
-    return result;
+    return {
+      messageKey: 'RATING_CREATED_SUCCESS',
+      data: result,
+    };
   } catch (err) {
     await session.abortTransaction();
     throw err;
@@ -173,7 +200,11 @@ const getAllRatings = async (
   const data = await ratingQuery.modelQuery;
   const meta = await ratingQuery.countTotal();
 
-  return { meta, data };
+  return {
+    messageKey: 'RATINGS_FETCHED_SUCCESS',
+    meta,
+    data,
+  };
 };
 
 // get single rating
@@ -185,7 +216,7 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
     .populate('orderId', 'orderId');
 
   if (!rating) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Rating not found');
+    throw new AppError(httpStatus.NOT_FOUND, 'RATING_NOT_FOUND');
   }
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -225,11 +256,14 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
   ) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      'You do not have permission to view this rating detail',
+      'NO_PERMISSION_TO_VIEW_RATING_DETAIL',
     );
   }
 
-  return rating;
+  return {
+    messageKey: 'RATING_FETCHED_SUCCESS',
+    data: rating,
+  };
 };
 
 const getRatingSummary = async (currentUser: TCurrentUser) => {
@@ -481,19 +515,22 @@ const getRatingSummary = async (currentUser: TCurrentUser) => {
   ]);
 
   return {
-    summary: stats[0].overallStats[0] || {
-      totalRatings: 0,
-      avgRating: 0,
-      sentimentPercentages: { positive: 0, neutral: 0, negative: 0 },
-      starPercentages: { five: 0, four: 0, three: 0, two: 0, one: 0 },
-      categoryRatings: {
-        foodQuality: 0,
-        packaging: 0,
-        deliverySpeed: 0,
-        riderBehavior: 0,
+    messageKey: 'RATING_FETCHED_SUCCESS',
+    data: {
+      summary: stats[0].overallStats[0] || {
+        totalRatings: 0,
+        avgRating: 0,
+        sentimentPercentages: { positive: 0, neutral: 0, negative: 0 },
+        starPercentages: { five: 0, four: 0, three: 0, two: 0, one: 0 },
+        categoryRatings: {
+          foodQuality: 0,
+          packaging: 0,
+          deliverySpeed: 0,
+          riderBehavior: 0,
+        },
       },
+      chart: stats[0].chartData || [],
     },
-    chart: stats[0].chartData || [],
   };
 };
 

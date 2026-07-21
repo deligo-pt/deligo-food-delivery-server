@@ -9,8 +9,8 @@ const createContact = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Contact message sent successfully',
-    data: result,
+    messageKey: result?.messageKey,
+    data: result?.data,
   });
 });
 export const ContactController = {
