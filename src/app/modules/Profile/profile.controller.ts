@@ -6,6 +6,7 @@ import { ProfileServices } from './profile.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
 import { formatVendorResponse } from '../Vendor/vendor.utils';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // get my profile controller
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
@@ -31,10 +32,16 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
 
 // send otp controller
 const sendOtp = catchAsync(async (req, res) => {
-  const result = await ProfileServices.sendOtp(
-    req.user as TCurrentUser,
-    req.body,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await ProfileServices.sendOtp(currentUser, req.body);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Sent OTP',
+    target: req.body?.email || req.body?.contactNumber || currentUser?.email,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -45,10 +52,19 @@ const sendOtp = catchAsync(async (req, res) => {
 
 // update email or contact number controller
 const updateEmailOrContactNumber = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await ProfileServices.updateEmailOrContactNumber(
-    req.user as TCurrentUser,
+    currentUser,
     req.body,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Email Or Contact Number',
+    target: currentUser?.email || `User #${currentUser?.userId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

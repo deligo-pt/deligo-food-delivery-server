@@ -5,6 +5,7 @@ import { VendorServices } from './vendor.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
 import { formatVendorResponse } from './vendor.utils';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Vendor Update Controller
 const vendorUpdate = catchAsync(async (req, res) => {
@@ -21,6 +22,16 @@ const vendorUpdate = catchAsync(async (req, res) => {
     currentUser,
   );
 
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Vendor',
+    target:
+      req.body?.name?.en ||
+      req.body?.name?.pt ||
+      `Vendor #${req.params.vendorId}`,
+    type: 'INFO',
+  });
+
   const formattedData = formatVendorResponse(result.data, req.lang);
 
   sendResponse(res, {
@@ -32,11 +43,19 @@ const vendorUpdate = catchAsync(async (req, res) => {
 });
 //  vendor doc image upload controller
 const vendorDocImageUpload = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await VendorServices.vendorDocImageUpload(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
     req.params.vendorId,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Uploaded Vendor Document',
+    target: req.body?.docImageTitle || `Vendor #${req.params.vendorId}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,
@@ -47,11 +66,19 @@ const vendorDocImageUpload = catchAsync(async (req, res) => {
 });
 
 const deleteVendorDocument = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await VendorServices.deleteVendorDocument(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
     req.params.vendorId,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Deleted Vendor Document',
+    target: req.body?.docImageTitle || `Vendor #${req.params.vendorId}`,
+    type: 'DANGER',
+  });
 
   sendResponse(res, {
     success: true,
@@ -63,9 +90,15 @@ const deleteVendorDocument = catchAsync(async (req, res) => {
 
 // toggle vendor store open/close controller
 const toggleVendorStoreOpenClose = catchAsync(async (req, res) => {
-  const result = await VendorServices.toggleVendorStoreOpenClose(
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await VendorServices.toggleVendorStoreOpenClose(currentUser);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Toggled Vendor Store Open/Close',
+    target: `Vendor #${currentUser?.userId}`,
+    type: 'WARNING',
+  });
 
   sendResponse(res, {
     success: true,

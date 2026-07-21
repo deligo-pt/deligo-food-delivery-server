@@ -4,14 +4,24 @@ import sendResponse from '../../utils/sendResponse';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { CustomerServices } from './customer.service';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Customer Update Controller
 const updateCustomer = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await CustomerServices.updateCustomer(
     req.body,
     req.params.customerId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Customer',
+    target: `Customer #${req.params.customerId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -22,11 +32,19 @@ const updateCustomer = catchAsync(async (req, res) => {
 
 // update live location controller
 const updateCustomerLiveLocation = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await CustomerServices.updateCustomerLiveLocation(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
     req.params.customerId,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Customer Live Location',
+    target: `Customer #${req.params.customerId}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,
@@ -39,10 +57,22 @@ const updateCustomerLiveLocation = catchAsync(async (req, res) => {
 // add delivery address
 const addDeliveryAddress = catchAsync(async (req, res) => {
   const { deliveryAddress } = req.body;
+  const currentUser = req.user as TCurrentUser;
   const result = await CustomerServices.addDeliveryAddress(
     deliveryAddress,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Added Delivery Address',
+    target:
+      deliveryAddress?.addressType ||
+      deliveryAddress?.street ||
+      `Customer #${currentUser?.userId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -63,6 +93,16 @@ const updateDeliveryAddress = catchAsync(async (req, res) => {
     user,
   );
 
+  createActivityLog({
+    customUserId: user?.userId,
+    action: 'Updated Delivery Address',
+    target:
+      payload?.addressType ||
+      payload?.street ||
+      `Delivery Address #${addressId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -73,10 +113,19 @@ const updateDeliveryAddress = catchAsync(async (req, res) => {
 
 // toggle delivery address status
 const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await CustomerServices.toggleDeliveryAddressStatus(
     req.params.addressId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Toggled Delivery Address Status',
+    target: `Delivery Address #${req.params.addressId}`,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -87,10 +136,19 @@ const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
 
 // delete delivery address
 const deleteDeliveryAddress = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await CustomerServices.deleteDeliveryAddress(
     req.params.addressId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Deleted Delivery Address',
+    target: `Delivery Address #${req.params.addressId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

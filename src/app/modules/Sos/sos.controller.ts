@@ -4,6 +4,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { SosService } from './sos.service';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Controller logic snippet
 const triggerSos = catchAsync(async (req, res) => {
@@ -23,8 +24,17 @@ const triggerSos = catchAsync(async (req, res) => {
 // update sos status controller
 const updateSosStatus = catchAsync(async (req, res) => {
   const sosId = req.params.id;
-  const adminId = (req.user as TCurrentUser)._id.toString();
+  const currentUser = req.user as TCurrentUser;
+  const adminId = currentUser._id.toString();
   const result = await SosService.updateSosStatus(sosId, adminId, req.body);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated SOS Status',
+    target: `SOS Alert #${sosId}${req.body?.status ? ` (${req.body.status})` : ''}`,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

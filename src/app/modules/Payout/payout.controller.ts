@@ -5,14 +5,24 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TImageFile } from '../../interfaces/image.interface';
 import { PayoutServices } from './payout.service';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // initiate payout controller
 const initiateSettlement = catchAsync(async (req, res) => {
   const { targetUserId } = req.body;
+  const currentUser = req.user as TCurrentUser;
   const result = await PayoutServices.initiateSettlement(
     targetUserId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Initiated Payout Settlement',
+    target: `Vendor #${targetUserId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -24,12 +34,21 @@ const initiateSettlement = catchAsync(async (req, res) => {
 // finalize payout controller
 const finalizeSettlement = catchAsync(async (req, res) => {
   const file = req.file as TImageFile | undefined;
+  const currentUser = req.user as TCurrentUser;
   const result = await PayoutServices.finalizeSettlement(
     req.params.payoutId,
     req.body,
     file?.path ?? null,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Finalized Payout Settlement',
+    target: `Payout #${req.params.payoutId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

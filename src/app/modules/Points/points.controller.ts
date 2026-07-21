@@ -4,6 +4,7 @@ import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
 import { PointsServices } from './points.service';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // add order points controller
 const addOrderPoints = catchAsync(async (req, res) => {
@@ -11,6 +12,14 @@ const addOrderPoints = catchAsync(async (req, res) => {
   const { _id: userId } = currentUser;
 
   const result = await PointsServices.addOrderPoints(userId, req.body.orderId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Added Order Points',
+    target: `Order #${req.body.orderId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -26,6 +35,14 @@ const addDeliveryPartnerPoints = catchAsync(async (req, res) => {
     currentUser._id.toString(),
     req.body.orderId,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Added Delivery Partner Points',
+    target: `Order #${req.body.orderId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,

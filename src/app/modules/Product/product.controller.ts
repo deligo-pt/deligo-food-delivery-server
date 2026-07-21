@@ -4,13 +4,19 @@ import sendResponse from '../../utils/sendResponse';
 import { ProductServices } from './product.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Product create Controller
 const productCreate = catchAsync(async (req, res) => {
-  const result = await ProductServices.createProduct(
-    req.body,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await ProductServices.createProduct(req.body, currentUser);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Product',
+    target: req.body?.name?.en || req.body?.name?.pt || 'New Product',
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,
@@ -23,11 +29,19 @@ const productCreate = catchAsync(async (req, res) => {
 // update product controller
 const updateProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ProductServices.updateProduct(
     productId,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Product',
+    target: req.body?.name?.en || req.body?.name?.pt || `Product #${productId}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     success: true,
@@ -40,11 +54,20 @@ const updateProduct = catchAsync(async (req, res) => {
 // rename product variations controller
 const renameProductVariation = catchAsync(async (req, res) => {
   const { productId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ProductServices.renameProductVariation(
     productId,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Renamed Product Variation',
+    target: `Product #${productId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -56,11 +79,20 @@ const renameProductVariation = catchAsync(async (req, res) => {
 // manage product variations controller
 const manageProductVariations = catchAsync(async (req, res) => {
   const { productId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ProductServices.manageProductVariations(
     productId,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Managed Product Variations',
+    target: `Product #${productId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -72,11 +104,20 @@ const manageProductVariations = catchAsync(async (req, res) => {
 // remove product variations controller
 const removeProductVariations = catchAsync(async (req, res) => {
   const { productId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ProductServices.removeProductVariations(
     productId,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Removed Product Variations',
+    target: `Product #${productId}`,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -89,14 +130,23 @@ const removeProductVariations = catchAsync(async (req, res) => {
 const updateInventoryAndPricing = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const { addedQuantity, newPrice, variationSku, reduceQuantity } = req.body;
+  const currentUser = req.user as TCurrentUser;
   const result = await ProductServices.updateInventoryAndPricing(
-    req.user as TCurrentUser,
+    currentUser,
     productId,
     addedQuantity,
     reduceQuantity,
     newPrice,
     variationSku,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Product Inventory And Pricing',
+    target: `Product #${productId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -108,11 +158,20 @@ const updateInventoryAndPricing = catchAsync(async (req, res) => {
 // Approved product controller
 const approvedProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ProductServices.approvedProduct(
     productId,
-    req.user as TCurrentUser,
+    currentUser,
     req.body,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: req.body?.isApproved ? 'Approved Product' : 'Rejected Product',
+    target: `Product #${productId}`,
+    type: req.body?.isApproved ? 'INFO' : 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -126,12 +185,20 @@ const approvedProduct = catchAsync(async (req, res) => {
 const deleteProductImages = catchAsync(async (req, res) => {
   const { productId } = req.params;
   const images = req.body.images;
+  const currentUser = req.user as TCurrentUser;
 
   const result = await ProductServices.deleteProductImages(
     productId,
     images,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Deleted Product Images',
+    target: `Product #${productId}`,
+    type: 'WARNING',
+  });
 
   sendResponse(res, {
     success: true,
@@ -207,10 +274,19 @@ const getSingleProductPublic = catchAsync(async (req, res) => {
 // soft delete product controller
 const softDeleteProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ProductServices.softDeleteProduct(
     productId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Product',
+    target: `Product #${productId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -223,10 +299,19 @@ const softDeleteProduct = catchAsync(async (req, res) => {
 // product permanent delete controller
 const permanentDeleteProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ProductServices.permanentDeleteProduct(
     productId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted Product',
+    target: `Product #${productId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
