@@ -5,13 +5,25 @@ import { AddOnsServices } from './addOns.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatAddonGroupResponse } from './addOns.utils';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 
 // create addon group controller
 const createAddonGroup = catchAsync(async (req, res) => {
-  const result = await AddOnsServices.createAddonGroup(
-    req.body,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const lang = req.lang as TLanguageCode;
+  const result = await AddOnsServices.createAddonGroup(req.body, currentUser);
+
+  // Background Activity Log
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Addon Group',
+    target:
+      (lang === 'en' ? result?.data?.title?.en : result?.data?.title?.pt) ||
+      'Addon Group',
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -23,11 +35,23 @@ const createAddonGroup = catchAsync(async (req, res) => {
 // update addon group controller
 const updateAddonGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
+  const currentUser = req.user as TCurrentUser;
+  const lang = req.lang as TLanguageCode;
   const result = await AddOnsServices.updateAddonGroup(
     addonGroupId,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Addon Group',
+    target:
+      (lang === 'en' ? result?.data?.title?.en : result?.data?.title?.pt) ||
+      addonGroupId,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -39,11 +63,21 @@ const updateAddonGroup = catchAsync(async (req, res) => {
 // add option to addon group controller
 const addOptionToGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
+  const currentUser = req.user as TCurrentUser;
+  const lang = req.lang as TLanguageCode;
   const result = await AddOnsServices.addOptionToAddonGroup(
     addonGroupId,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Added Option to Addon Group',
+    target: req.body.name?.[lang] || req.body.name?.en || addonGroupId,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -56,11 +90,20 @@ const addOptionToGroup = catchAsync(async (req, res) => {
 const toggleOptionStatus = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
   const { optionSku } = req.body;
+  const currentUser = req.user as TCurrentUser;
   const result = await AddOnsServices.toggleOptionStatus(
     addonGroupId,
     optionSku as string,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Toggled Addon Option Status',
+    target: optionSku as string,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -73,11 +116,20 @@ const toggleOptionStatus = catchAsync(async (req, res) => {
 const deleteOptionFromGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
   const { optionSku } = req.body;
+  const currentUser = req.user as TCurrentUser;
   const result = await AddOnsServices.deleteOptionFromAddonGroup(
     addonGroupId,
     optionSku,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Deleted Addon Option',
+    target: optionSku,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -137,10 +189,19 @@ const getSingleAddonGroup = catchAsync(async (req, res) => {
 // soft delete addon group controller
 const softDeleteAddonGroup = catchAsync(async (req, res) => {
   const { addonGroupId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await AddOnsServices.softDeleteAddonGroup(
     addonGroupId,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Addon Group',
+    target: addonGroupId,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

@@ -38,6 +38,7 @@ import { AgreementRoutes } from '../modules/Agreement/agreement.route';
 import { PermissionRoutes } from '../modules/Permission/permission.route';
 import { InvoiceRoutes } from '../modules/Invoice/invoice.route';
 import { LoginHistoryRoutes } from '../modules/LoginHistory/loginHistory.route';
+import { ActivityLogRoutes } from '../modules/ActivityLog/activityLog.route';
 
 const router = Router();
 
@@ -198,6 +199,10 @@ const moduleRoutes = [
   {
     path: '/login-histories',
     route: LoginHistoryRoutes,
+  },
+  {
+    path: '/activity-logs',
+    route: ActivityLogRoutes,
   },
 ];
 
