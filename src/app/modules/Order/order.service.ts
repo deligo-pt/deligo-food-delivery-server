@@ -1123,7 +1123,7 @@ const getAllOrders = async (
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
-    product: 'productId name',
+    // product: 'productId name',
   });
 
   populateOptions.forEach((option) => {
@@ -1212,7 +1212,7 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
     vendor: 'name userId role',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
-    product: 'productId name',
+    // product: 'productId name',
   });
 
   populateOptions.forEach((option) => {
