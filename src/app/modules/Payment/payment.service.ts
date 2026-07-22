@@ -4,6 +4,7 @@ import config from '../../config';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
+import { Order } from '../Order/order.model';
 import {
   TIngredientOrder,
   TIngredientOrderDetail,
@@ -26,7 +27,26 @@ const solutionIds = {
   OTHER: null,
 };
 
-// create redUniq payment intent service
+const REDUNIQ_SUCCESS_CODES = new Set(['00000000', '17000000000', '900000000']);
+
+const isRedUniqSuccess = (result: any, transaction: any) =>
+  transaction?.status === '1' || REDUNIQ_SUCCESS_CODES.has(result?.code);
+
+const performRedUniqDoVoid = async (transactionId: string, comment: string) => {
+  const payload = {
+    method: 'doVoid',
+    api: {
+      username: config.redUniq.username,
+      password: config.redUniq.password,
+    },
+    transaction: { id: transactionId },
+    comment,
+  };
+
+  const response = await axios.post(config.redUniq.api_url as string, payload);
+  return response.data;
+};
+
 const createRedUniqPayment = async (
   checkoutSummaryId: string,
   paymentMethod: TPaymentMethod,
@@ -111,6 +131,135 @@ const createRedUniqPayment = async (
     };
   } catch (error: any) {
     if (axios.isAxiosError(error) && error.response) {
+      if (error.response.status === 502) {
+        throw new AppError(
+          error.response.status,
+          'PAYMENT_GATEWAY_TEMP_UNAVAILABLE_502',
+        );
+      }
+
+      throw new AppError(error.response.status, 'GATEWAY_ERROR');
+    }
+
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'PAYMENT_PROCESSING_FAILED',
+    );
+  }
+};
+
+// refund redUniq payment service
+const refundRedUniqPayment = async (orderId: string) => {
+  const order = await Order.findOne({
+    orderId,
+    isDeleted: false,
+  });
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+  }
+
+  if (!order.isPaid || order.paymentStatus !== 'PAID') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_CANNOT_BE_REFUNDED');
+  }
+
+  if (!order.transactionId) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'TRANSACTION_ID_NOT_FOUND');
+  }
+
+  if (!config.redUniq.api_url) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'REDUNIQ_API_URL_NOT_CONFIGURED',
+    );
+  }
+
+  const refundPayload = {
+    method: 'doRefund',
+    api: {
+      username: config.redUniq.username,
+      password: config.redUniq.password,
+    },
+    transaction: {
+      id: order.transactionId,
+    },
+    payment: {
+      amount: Math.round(order.payoutSummary.grandTotal * 100),
+      action: 300,
+    },
+    comment: `Full refund for Order ${order.orderId}`,
+  };
+
+  try {
+    const response = await axios.post(config.redUniq.api_url, refundPayload);
+    const { result = {}, transaction = {} } = response.data || {};
+    const isRefundSuccessful = isRedUniqSuccess(result, transaction);
+
+    if (!isRefundSuccessful) {
+      if (
+        result?.code === '00100060' ||
+        transaction?.status === '2' ||
+        transaction?.status === '3'
+      ) {
+        const transactionId = order.transactionId as string;
+        const voidResponse = await performRedUniqDoVoid(
+          transactionId,
+          `Void for Order ${order.orderId}`,
+        );
+        const { result: voidResult = {}, transaction: voidTxn = {} } =
+          voidResponse || {};
+        const isVoidSuccessful = isRedUniqSuccess(voidResult, voidTxn);
+
+        if (!isVoidSuccessful) {
+          throw new AppError(
+            httpStatus.BAD_REQUEST,
+            'REFUND_FAILED_BY_GATEWAY',
+            {
+              gatewayCode: voidResult?.code,
+              gatewayMessage: voidResult?.message,
+              transactionStatus: voidTxn?.status,
+            },
+          );
+        }
+
+        order.paymentStatus = 'REFUNDED';
+        order.isPaid = false;
+        await order.save();
+
+        return {
+          messageKey: 'REDUNIQ_PAYMENT_REFUNDED' as TMessageKey,
+          data: {
+            refundTransactionId: (voidTxn as any)?.id || null,
+            refundedBy: 'void',
+          },
+        };
+      }
+
+      throw new AppError(httpStatus.BAD_REQUEST, 'REFUND_FAILED_BY_GATEWAY', {
+        gatewayCode: result?.code,
+        gatewayMessage: result?.message,
+        transactionStatus: transaction?.status,
+      });
+    }
+
+    order.paymentStatus = 'REFUNDED';
+    order.isPaid = false;
+    await order.save();
+
+    return {
+      messageKey: 'REDUNIQ_PAYMENT_REFUNDED' as TMessageKey,
+      data: {
+        refundTransactionId: (transaction as any)?.id || null,
+      },
+    };
+  } catch (error: any) {
+    console.error({ error });
+    if (axios.isAxiosError(error) && error.response) {
+      console.log(error.response, 'jsndj');
       if (error.response.status === 502) {
         throw new AppError(
           error.response.status,
@@ -422,6 +571,7 @@ const createIngredientRedUniqPayment = async (
 
 export const PaymentServices = {
   createRedUniqPayment,
+  refundRedUniqPayment,
   handlePaymentFailure,
   createIngredientRedUniqPayment,
 };
