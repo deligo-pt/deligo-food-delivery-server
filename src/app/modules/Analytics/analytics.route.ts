@@ -257,4 +257,11 @@ router.get(
   AnalyticsSecondControllers.getTaxReportAnalyticsForVendor,
 );
 
+// get delivery partner analytics for admin
+router.get(
+  '/admin/delivery-partner-analytics',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  AnalyticsSecondControllers.getAdminDeliveryPartnerAnalytics,
+);
+
 export const AnalyticsRoutes = router;

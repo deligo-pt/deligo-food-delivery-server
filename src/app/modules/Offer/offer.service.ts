@@ -458,7 +458,6 @@ const getAvailableOffersForCheckout = async (
 
   const { vendorId, orderCalculation, items } = checkoutData;
 
-  // BUG FIXED: Swapped outdated 'itemSubtotal' with your verified schema field 'itemsSubtotal'
   const cartTotal =
     (orderCalculation.itemsSubtotal || 0) +
     (orderCalculation.totalOfferDiscount || 0);
