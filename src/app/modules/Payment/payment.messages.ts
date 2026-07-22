@@ -35,6 +35,26 @@ export const paymentMessages = {
     en: 'Payment processing failed. Please check your card or balance and try again.',
     pt: 'Falha no processamento do pagamento. Verifique seu cartão ou saldo e tente novamente.',
   },
+  PAYMENT_ALREADY_REFUNDED: {
+    en: 'This payment has already been refunded.',
+    pt: 'Este pagamento já foi reembolsado.',
+  },
+  PAYMENT_CANNOT_BE_REFUNDED: {
+    en: 'This payment cannot be refunded because it is not in a paid state.',
+    pt: 'Este pagamento não pode ser reembolsado porque não está em um estado pago.',
+  },
+  TRANSACTION_ID_NOT_FOUND: {
+    en: 'The original transaction reference is missing and refund cannot be processed.',
+    pt: 'A referência original da transação está ausente e o reembolso não pode ser processado.',
+  },
+  REFUND_FAILED_BY_GATEWAY: {
+    en: 'The payment gateway failed to process the refund. Please try again later.',
+    pt: 'O gateway de pagamento não conseguiu processar o reembolso. Por favor, tente novamente mais tarde.',
+  },
+  REDUNIQ_PAYMENT_REFUNDED: {
+    en: 'Payment refunded successfully.',
+    pt: 'Pagamento reembolsado com sucesso.',
+  },
   NOT_AUTHORIZED_TO_VIEW: {
     en: 'Access denied. You do not have permission to view this transaction data.',
     pt: 'Acesso negado. Você não tem permissão para visualizar estes dados de transação.',
