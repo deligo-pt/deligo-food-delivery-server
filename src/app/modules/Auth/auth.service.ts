@@ -28,6 +28,15 @@ import { sendMobileOtp } from '../../utils/sendMobileOtp';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
+import {
+  expiresInToSeconds,
+  generateFamilyId,
+  generateJti,
+  getRefreshSession,
+  revokeAllUserSessions,
+  revokeRefreshSession,
+  storeRefreshSession,
+} from './authSession.utils';
 import { ReferralServices } from '../Referral/referral.service';
 import {
   TCurrentUser,
@@ -535,10 +544,22 @@ const verifyOtp = async (payload: {
     config.jwt.jwt_access_secret as string,
     config.jwt.jwt_access_expires_in as string,
   );
+
+  // Each login starts a new rotation family; jti is the single refresh token valid right now.
+  const refreshFamily = generateFamilyId();
+  const refreshJti = generateJti();
   const refreshToken = createToken(
-    jwtPayload,
+    { ...jwtPayload, jti: refreshJti },
     config.jwt.jwt_refresh_secret as string,
     config.jwt.jwt_refresh_expires_in as string,
+  );
+
+  await storeRefreshSession(
+    userData.userId,
+    newDevice.deviceId,
+    refreshJti,
+    refreshFamily,
+    expiresInToSeconds(config.jwt.jwt_refresh_expires_in as string),
   );
 
   enqueueOtpLoginHistory('SUCCESS');
@@ -854,10 +875,21 @@ const loginUser = async (
     config.jwt.jwt_access_expires_in as string,
   );
 
+  // Each login starts a new rotation family; jti is the single refresh token valid right now.
+  const refreshFamily = generateFamilyId();
+  const refreshJti = generateJti();
   const refreshToken = createToken(
-    jwtPayload,
+    { ...jwtPayload, jti: refreshJti },
     config.jwt.jwt_refresh_secret as string,
     config.jwt.jwt_refresh_expires_in as string,
+  );
+
+  await storeRefreshSession(
+    user.userId,
+    newDevice.deviceId,
+    refreshJti,
+    refreshFamily,
+    expiresInToSeconds(config.jwt.jwt_refresh_expires_in as string),
   );
 
   authQueue.add('CREATE_LOGIN_LOG', {
@@ -1144,6 +1176,9 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
     },
   );
 
+  // Burn this device's refresh-token family so a leaked/cached refresh token is useless post-logout.
+  await revokeRefreshSession(currentUser.userId, deviceId);
+
   authQueue.add('UPDATE_LOGOUT_LOG', {
     userId: user?._id,
     email: currentUser.email,
@@ -1220,6 +1255,10 @@ const changePassword = async (
       passwordChangedAt: new Date(),
     },
   );
+
+  // A password change is a full account-security event: kill every device's refresh session.
+  // (Access tokens self-expire quickly and are also caught by isJWTIssuedBeforePasswordChanged.)
+  await revokeAllUserSessions(currentUser.userId);
 
   return {
     messageKey: 'PASSWORD_UPDATE_SUCCESS' as const,
@@ -1389,13 +1428,17 @@ const resetPassword = async (payload: {
 
 // Refresh Token
 const refreshToken = async (token: string) => {
-  // checking if the given token is valid
+  if (!token) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'SESSION_EXPIRED');
+  }
+
+  // checking if the given token is valid (signature + expiry)
   const decoded = verifyToken(
     token,
     config.jwt.jwt_refresh_secret as string,
   ) as JwtPayload;
 
-  const { iat, userId, deviceId } = decoded;
+  const { iat, userId, deviceId, jti } = decoded;
 
   const user = await AuthUser.findOne({
     userId,
@@ -1432,6 +1475,40 @@ const refreshToken = async (token: string) => {
     throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED');
   }
 
+  // --- Reuse detection ---
+  // The Redis record holds the ONE jti considered valid for this device right now.
+  // - No record: this device's family was never issued a Redis session (legacy token) or
+  //   was already revoked/expired -> treat as reuse, force re-login.
+  // - jti mismatch: someone is presenting a refresh token that has already been rotated
+  //   away (stolen/replayed old token) -> compromise, kill the whole device family.
+  const activeSession = await getRefreshSession(
+    userId as string,
+    deviceId as string,
+  );
+
+  if (!activeSession || activeSession.jti !== jti) {
+    await revokeRefreshSession(userId as string, deviceId as string);
+    await AuthUser.findOneAndUpdate(
+      { userId, 'loginDevices.deviceId': deviceId },
+      {
+        $set: {
+          'loginDevices.$.isLoggedIn': false,
+          'loginDevices.$.lastLogout': new Date(),
+        },
+      },
+    );
+
+    authQueue.add('UPDATE_LOGOUT_LOG', {
+      userId: user._id,
+      email: user.email,
+      userRole: user.role,
+      sessionId: deviceId,
+      logoutAt: new Date(),
+    });
+
+    throw new AppError(httpStatus.UNAUTHORIZED, 'TOKEN_REUSE_DETECTED');
+  }
+
   const jwtPayload = {
     userId: user?.userId,
     name: {
@@ -1451,9 +1528,26 @@ const refreshToken = async (token: string) => {
     config.jwt.jwt_access_expires_in as string,
   );
 
+  // Rotation: issue a brand-new refresh token + jti, same family, and overwrite the
+  // Redis record so the token just presented can never be used again.
+  const newJti = generateJti();
+  const newRefreshToken = createToken(
+    { ...jwtPayload, jti: newJti },
+    config.jwt.jwt_refresh_secret as string,
+    config.jwt.jwt_refresh_expires_in as string,
+  );
+
+  await storeRefreshSession(
+    userId as string,
+    deviceId as string,
+    newJti,
+    activeSession.family,
+    expiresInToSeconds(config.jwt.jwt_refresh_expires_in as string),
+  );
+
   return {
     messageKey: 'REFRESH_TOKEN_SUCCESS' as const,
-    accessToken,
+    data: { accessToken, refreshToken: newRefreshToken },
   };
 };
 
