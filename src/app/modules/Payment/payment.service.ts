@@ -5,6 +5,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Order } from '../Order/order.model';
+import { ORDER_STATUS } from '../Order/order.constant';
 import {
   TIngredientOrder,
   TIngredientOrderDetail,
@@ -167,6 +168,13 @@ const refundRedUniqPayment = async (orderId: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_CANNOT_BE_REFUNDED');
   }
 
+  if (
+    order.orderStatus !== ORDER_STATUS.REJECTED &&
+    order.orderStatus !== ORDER_STATUS.CANCELED
+  ) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'ORDER_NOT_ELIGIBLE_FOR_REFUND');
+  }
+
   if (!order.transactionId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'TRANSACTION_ID_NOT_FOUND');
   }
@@ -257,9 +265,7 @@ const refundRedUniqPayment = async (orderId: string) => {
       },
     };
   } catch (error: any) {
-    console.error({ error });
     if (axios.isAxiosError(error) && error.response) {
-      console.log(error.response, 'jsndj');
       if (error.response.status === 502) {
         throw new AppError(
           error.response.status,
