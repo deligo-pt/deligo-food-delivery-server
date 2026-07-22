@@ -269,6 +269,10 @@ export const authMessages = {
     en: 'Your session has expired. Please log in again.',
     pt: 'Sua sessão expirou. Por favor, faça login novamente.',
   },
+  TOKEN_REUSE_DETECTED: {
+    en: 'Suspicious activity detected on this session. Please log in again.',
+    pt: 'Atividade suspeita detectada nesta sessão. Por favor, faça login novamente.',
+  },
   NOT_AUTHORIZED: {
     en: 'You are not authorized to perform this action.',
     pt: 'Você não está autorizado a realizar esta ação.',
