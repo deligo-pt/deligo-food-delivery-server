@@ -549,7 +549,7 @@ const verifyOtp = async (payload: {
       : ('VERIFY_CONTACT_SUCCESS' as const),
     variables: email ? { role: userData.role as string } : undefined,
     accessToken,
-    refreshToken,
+    refreshToken, //check
   };
 };
 
