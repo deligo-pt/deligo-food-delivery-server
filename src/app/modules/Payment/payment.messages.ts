@@ -43,6 +43,10 @@ export const paymentMessages = {
     en: 'This payment cannot be refunded because it is not in a paid state.',
     pt: 'Este pagamento não pode ser reembolsado porque não está em um estado pago.',
   },
+  ORDER_NOT_ELIGIBLE_FOR_REFUND: {
+    en: 'Only rejected or canceled orders are eligible for refund.',
+    pt: 'Apenas pedidos rejeitados ou cancelados são elegíveis para reembolso.',
+  },
   TRANSACTION_ID_NOT_FOUND: {
     en: 'The original transaction reference is missing and refund cannot be processed.',
     pt: 'A referência original da transação está ausente e o reembolso não pode ser processado.',
