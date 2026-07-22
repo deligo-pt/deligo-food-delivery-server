@@ -193,7 +193,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
 
     paymentStatus: {
       type: String,
-      enum: ['PENDING', 'PROCESSING', 'PAID', 'FAILED'],
+      enum: ['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
     },
 
