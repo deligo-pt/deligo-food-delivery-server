@@ -618,7 +618,7 @@ const resendOtp = async (payload: {
       throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_EMAIL');
     }
 
-    if (user.isEmailVerified) {
+    if (user.isEmailVerified && role !== USER_ROLE.CUSTOMER) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'EMAIL_ALREADY_VERIFIED_LOGIN',
