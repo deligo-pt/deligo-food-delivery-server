@@ -973,6 +973,9 @@ const updateOrderStatusByDeliveryPartner = async (
     {
       $set: {
         orderStatus: orderStatus,
+        ...(orderStatus === ORDER_STATUS.PICKED_UP && {
+          pickedUpAt: new Date(),
+        }),
         ...(orderStatus === ORDER_STATUS.DELIVERED && {
           deliveredAt: new Date(),
           ...(deliveryProofImage && {

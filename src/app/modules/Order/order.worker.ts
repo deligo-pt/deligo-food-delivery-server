@@ -481,9 +481,6 @@ export const processOrderPostUpdate = async (job: Job) => {
     session.endSession();
   }
 
-  // =========================================================================
-  // Post-Transaction Triggers (Asynchronous Operations Outside Session Lock)
-  // =========================================================================
   try {
     const customer = await Customer.findById(updatedOrder.customerId).lean();
     const customerId = customer?.userId;
