@@ -478,7 +478,6 @@ export const processOrderPostUpdate = async (job: Job) => {
     console.error(`[Worker] Failed to process order ${orderDisplayId}:`, error);
     throw error;
   } finally {
-    // 🚨 FIXED: Instantly terminates database sessions to free pool connection slots
     session.endSession();
   }
 
