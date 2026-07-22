@@ -478,13 +478,9 @@ export const processOrderPostUpdate = async (job: Job) => {
     console.error(`[Worker] Failed to process order ${orderDisplayId}:`, error);
     throw error;
   } finally {
-    // 🚨 FIXED: Instantly terminates database sessions to free pool connection slots
     session.endSession();
   }
 
-  // =========================================================================
-  // Post-Transaction Triggers (Asynchronous Operations Outside Session Lock)
-  // =========================================================================
   try {
     const customer = await Customer.findById(updatedOrder.customerId).lean();
     const customerId = customer?.userId;
