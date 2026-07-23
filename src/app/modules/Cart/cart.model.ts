@@ -87,7 +87,7 @@ const cartSchema = new Schema<TCart>(
     isNotified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true },
+  { timestamps: true, versionKey: false },
 );
 
 export const Cart = model<TCart>('Cart', cartSchema);

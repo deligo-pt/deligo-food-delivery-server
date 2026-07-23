@@ -30,28 +30,6 @@ export interface DailyRevenueFacet {
   time: string;
   revenue: number;
 }
-// export interface DailyRevenueFacet {
-//   _id: string;
-//   revenue: number;
-// }
-
-// export interface SalesAnalyticsResponse {
-//   summary: {
-//     totalRevenue: number;
-//     completedOrders: number;
-//     cancelledOrders: number;
-//     avgOrderValue: number;
-//   };
-//   revenueCards: {
-//     thisWeek: number;
-//     thisMonth: number;
-//     topEarningDay: string;
-//   };
-//   charts: {
-//     revenueTrend: { date: string; revenue: number }[];
-//     earningsByDay: { date: string; revenue: number }[];
-//   };
-// }
 
 export interface SalesAnalyticsResponse {
   messageKey: string;
@@ -105,29 +83,6 @@ export interface OrderReportAnalyticsResponse {
     }[];
   };
 }
-// export interface OrderReportAnalyticsResponse {
-//   summary: {
-//     totalRevenue: number;
-//     totalOrders: number;
-//     avgOrderValue: number;
-//   };
-
-//   ordersByZone: {
-//     zone: string;
-//     orders: number;
-//   }[];
-
-//   revenueTrend: {
-//     date: string;
-//     revenue: number;
-//   }[];
-
-//   zoneHeatmap: {
-//     zone: string;
-//     hour: number;
-//     orderCount: number;
-//   }[];
-// }
 
 export type TVendorSalesReport = {
   messageKey: string;
@@ -484,4 +439,31 @@ export type TTaxReport = {
       tax: number;
     }[];
   };
+};
+
+export type TPartnerStatusDistribution = {
+  name: 'Active' | 'On Delivery' | 'Offline';
+  value: number;
+};
+
+export type TWorkloadTrend = {
+  time: string;
+  activePartners: number;
+  ordersProcessed: number;
+};
+
+export type TPartnerEfficiencyByLevel = {
+  level: 'Junior' | 'Pro' | 'Elite';
+  avgCompletionTime: number;
+};
+
+export type TDeliveryPartnerAnalyticsData = {
+  summary: {
+    avgActiveHours: number;
+    retentionRate: number;
+    avgEarningsPerPartner: number;
+  };
+  statusDistribution: TPartnerStatusDistribution[];
+  workloadTrends: TWorkloadTrend[];
+  efficiencyByLevel: TPartnerEfficiencyByLevel[];
 };

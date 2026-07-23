@@ -181,6 +181,20 @@ const getTaxReportAnalyticsForVendor = catchAsync(async (req, res) => {
   });
 });
 
+const getAdminDeliveryPartnerAnalytics = catchAsync(async (req, res) => {
+  const result = await AnalyticsSecondServices.getAdminDeliveryPartnerAnalytics(
+    req.query,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    // meta: result?.meta,
+    data: result?.data,
+  });
+});
+
 export const AnalyticsSecondControllers = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -194,4 +208,5 @@ export const AnalyticsSecondControllers = {
   getSingleVendorPerformanceDetails,
   getOfferAnalyticsForAdmin,
   getTaxReportAnalyticsForVendor,
+  getAdminDeliveryPartnerAnalytics,
 };

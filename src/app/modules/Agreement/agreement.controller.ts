@@ -4,13 +4,20 @@ import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 const initiateAgreement = catchAsync(async (req, res) => {
   const payload = req.body;
-  const result = await AgreementService.initiateAgreement(
-    payload,
-    req.user as TCurrentUser,
-  );
+  const currentUser = req.user as TCurrentUser;
+  const result = await AgreementService.initiateAgreement(payload, currentUser);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Initiated Agreement',
+    target: payload?.establishmentName || payload?.email,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -20,10 +27,19 @@ const initiateAgreement = catchAsync(async (req, res) => {
 });
 
 const verifyAgreementOtp = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await AgreementService.verifyAgreementOtp(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Verified Agreement OTP',
+    target: req.body?.email,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -33,10 +49,19 @@ const verifyAgreementOtp = catchAsync(async (req, res) => {
 });
 
 const resendAgreementOtp = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await AgreementService.resendAgreementOtp(
     req.body.email,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Resent Agreement OTP',
+    target: req.body?.email,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -47,11 +72,21 @@ const resendAgreementOtp = catchAsync(async (req, res) => {
 
 const signAgreement = catchAsync(async (req, res) => {
   const { agreementId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await AgreementService.signAgreement(
     agreementId,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  // 👈 Activity Log Integration
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Signed Agreement',
+    target: `Agreement #${agreementId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -60,6 +95,7 @@ const signAgreement = catchAsync(async (req, res) => {
   });
 });
 
+// GET Controller (No Log Needed)
 const getAgreementById = catchAsync(async (req, res) => {
   const result = await AgreementService.getAgreementById(
     req.params.agreementId,
@@ -74,6 +110,7 @@ const getAgreementById = catchAsync(async (req, res) => {
   });
 });
 
+// GET Controller (No Log Needed)
 const getAllAgreements = catchAsync(async (req, res) => {
   const result = await AgreementService.getAllAgreements(
     req.query,

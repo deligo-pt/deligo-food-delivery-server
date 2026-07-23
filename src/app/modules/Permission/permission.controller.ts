@@ -4,12 +4,21 @@ import sendResponse from '../../utils/sendResponse';
 import { PermissionServices } from './permission.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 const createPermission = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await PermissionServices.createPermission(
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Permission',
+    target: req.body?.name || 'New Permission',
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -21,11 +30,19 @@ const createPermission = catchAsync(async (req, res) => {
 
 const updatePermission = catchAsync(async (req, res) => {
   const { permissionId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await PermissionServices.updatePermission(
     permissionId,
     req.body,
-    req.user as TCurrentUser,
+    currentUser,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Permission',
+    target: req.body?.name || `Permission #${permissionId}`,
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -61,7 +78,15 @@ const getSinglePermission = catchAsync(async (req, res) => {
 
 const deletePermission = catchAsync(async (req, res) => {
   const { permissionId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await PermissionServices.deletePermission(permissionId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Deleted Permission',
+    target: `Permission #${permissionId}`,
+    type: 'DANGER',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -73,10 +98,18 @@ const deletePermission = catchAsync(async (req, res) => {
 
 const assignPermissionsToAdmin = catchAsync(async (req, res) => {
   const { adminId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await PermissionServices.assignPermissionsToAdmin(
     adminId,
     req.body,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Assigned Permissions To Admin',
+    target: `Admin #${adminId}`,
+    type: 'WARNING',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -88,10 +121,18 @@ const assignPermissionsToAdmin = catchAsync(async (req, res) => {
 
 const revokePermissionsFromAdmin = catchAsync(async (req, res) => {
   const { adminId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await PermissionServices.revokePermissionsFromAdmin(
     adminId,
     req.body,
   );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Revoked Permissions From Admin',
+    target: `Admin #${adminId}`,
+    type: 'DANGER',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

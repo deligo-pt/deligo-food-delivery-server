@@ -3,10 +3,20 @@ import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { ZoneService } from './zone.service';
 import { TMessageKey } from '../../errors/messages';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
+import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
 // Create Zone Controller
 const createZoneController = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
   const result = await ZoneService.createZone(req.body);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Created Zone',
+    target: req.body?.zoneName || 'New Zone',
+    type: 'INFO',
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -57,7 +67,16 @@ const getSingleZoneController = catchAsync(async (req, res) => {
 // update zone controller
 const updateZoneController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ZoneService.updateZone(zoneId, req.body);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Updated Zone',
+    target: req.body?.zoneName || `Zone #${zoneId}`,
+    type: 'INFO',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -70,7 +89,16 @@ const updateZoneController = catchAsync(async (req, res) => {
 const toggleZoneStatusController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
   const isOperational = req.body.isOperational;
+  const currentUser = req.user as TCurrentUser;
   const result = await ZoneService.toggleZoneStatus(zoneId, isOperational);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Toggled Zone Operational Status',
+    target: `Zone #${zoneId}`,
+    type: 'WARNING',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -83,7 +111,16 @@ const toggleZoneStatusController = catchAsync(async (req, res) => {
 // soft delete zone controller
 const softDeleteZoneController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ZoneService.softDeleteZone(zoneId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Soft Deleted Zone',
+    target: `Zone #${zoneId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -96,7 +133,16 @@ const softDeleteZoneController = catchAsync(async (req, res) => {
 // permanent delete zone controller
 const permanentDeleteZoneController = catchAsync(async (req, res) => {
   const { zoneId } = req.params;
+  const currentUser = req.user as TCurrentUser;
   const result = await ZoneService.permanentDeleteZone(zoneId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Permanently Deleted Zone',
+    target: `Zone #${zoneId}`,
+    type: 'DANGER',
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

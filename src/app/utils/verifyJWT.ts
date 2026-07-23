@@ -20,6 +20,7 @@ export const createToken = (
     role: TUserRole;
     status: keyof typeof USER_STATUS;
     deviceId?: string;
+    jti?: string; // unique id per refresh-token issuance, required for rotation/reuse detection
   },
   secret: string,
   expiresIn: string,

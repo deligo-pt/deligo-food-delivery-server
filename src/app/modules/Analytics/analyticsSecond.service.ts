@@ -17,6 +17,12 @@ import httpStatus from 'http-status';
 import { Offer } from '../Offer/offer.model';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { getLocalStartOfPeriod } from '../../utils/dateTimeProvider';
+import {
+  TDeliveryPartnerAnalyticsData,
+  TPartnerEfficiencyByLevel,
+  TPartnerStatusDistribution,
+  TWorkloadTrend,
+} from './analytics.interface';
 
 // --------------------------------------------------------------------------------------
 // ----------------------- ANALYTICS SERVICES (Developer Umayer) -----------------------
@@ -1982,6 +1988,276 @@ const getTaxReportAnalyticsForVendor = async (currentUser: TCurrentUser) => {
   };
 };
 
+const getAdminDeliveryPartnerAnalytics = async (query: {
+  fromDate?: string;
+  toDate?: string;
+}): Promise<{
+  messageKey: string;
+  variables: Record<string, string>;
+  data: TDeliveryPartnerAnalyticsData;
+}> => {
+  const TZ = 'Europe/Lisbon';
+  const now = new Date();
+
+  const startOfToday = getLocalStartOfPeriod('today');
+
+  const getDaysAgo = (days: number) => {
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - days);
+    return d;
+  };
+
+  const to = query.toDate ? new Date(query.toDate) : now;
+  const from = query.fromDate ? new Date(query.fromDate) : getDaysAgo(30);
+
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
+
+  const [partnerStatsRaw, workloadTrendsRaw, efficiencyByLevelRaw] =
+    await Promise.all([
+      // 1. STATUS DISTRIBUTION & SUMMARY
+      DeliveryPartner.aggregate([
+        { $match: { isDeleted: false, status: 'APPROVED' } },
+        {
+          $facet: {
+            statusDistribution: [
+              {
+                $group: {
+                  _id: '$operationalData.currentStatus',
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+            summaryMetrics: [
+              {
+                $group: {
+                  _id: null,
+                  totalApprovedPartners: { $sum: 1 },
+                  activeInPeriod: {
+                    $sum: {
+                      $cond: [
+                        { $eq: ['$operationalData.isWorking', true] },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ]),
+
+      // 2. WORKLOAD TRENDS
+      Order.aggregate([
+        {
+          $match: {
+            isDeleted: false,
+            orderStatus: 'DELIVERED',
+            createdAt: { $gte: from, $lte: to },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              hour: { $hour: { date: '$createdAt', timezone: TZ } },
+            },
+            ordersProcessed: { $sum: 1 },
+            activePartnersPool: { $addToSet: '$deliveryPartnerId' },
+          },
+        },
+        { $sort: { '_id.hour': 1 } },
+      ]),
+
+      // 3. EFFICIENCY BY LEVEL (With Fallback for missing pickedUpAt)
+      Order.aggregate([
+        {
+          $match: {
+            isDeleted: false,
+            orderStatus: 'DELIVERED',
+            deliveryPartnerId: { $ne: null },
+            createdAt: { $gte: from, $lte: to },
+          },
+        },
+        {
+          $addFields: {
+            completionTimeMinutes: {
+              $cond: [
+                {
+                  $and: [
+                    { $gt: ['$deliveredAt', null] },
+                    { $gt: ['$pickedUpAt', null] },
+                  ],
+                },
+                {
+                  $divide: [
+                    { $subtract: ['$deliveredAt', '$pickedUpAt'] },
+                    60000,
+                  ],
+                },
+                {
+                  $cond: [
+                    { $gt: ['$deliveredAt', null] },
+                    {
+                      $divide: [
+                        { $subtract: ['$deliveredAt', '$createdAt'] },
+                        60000,
+                      ],
+                    },
+                    15,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: 'deliverypartners',
+            localField: 'deliveryPartnerId',
+            foreignField: '_id',
+            as: 'rider',
+          },
+        },
+        { $unwind: { path: '$rider', preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: {
+              $ifNull: ['$rider.operationalData.level', 'Junior'],
+            },
+            avgCompletionTime: { $avg: '$completionTimeMinutes' },
+          },
+        },
+      ]),
+    ]);
+
+  // Total Earnings & Total Delivery Minutes Calculation
+  const [earningsStats] = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        orderStatus: 'DELIVERED',
+        isPaid: true,
+        deliveryPartnerId: { $ne: null },
+        createdAt: { $gte: from, $lte: to },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalPeriodEarnings: { $sum: '$payoutSummary.rider.riderNetEarnings' },
+        totalDeliveryMinutes: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gt: ['$deliveredAt', null] },
+                  { $gt: ['$pickedUpAt', null] },
+                ],
+              },
+              {
+                $divide: [
+                  { $subtract: ['$deliveredAt', '$pickedUpAt'] },
+                  60000,
+                ],
+              },
+              15,
+            ],
+          },
+        },
+        uniqueActiveRiders: { $addToSet: '$deliveryPartnerId' },
+      },
+    },
+  ]);
+
+  const facetResult = partnerStatsRaw[0] || {
+    statusDistribution: [],
+    summaryMetrics: [],
+  };
+  const summaryMetrics = facetResult.summaryMetrics?.[0] || {
+    totalApprovedPartners: 0,
+    activeInPeriod: 0,
+  };
+
+  const rawStatusMap = new Map<string, number>(
+    (facetResult.statusDistribution || []).map((s: any) => [
+      String(s._id),
+      Number(s.count) || 0,
+    ]),
+  );
+
+  const statusDistribution: TPartnerStatusDistribution[] = [
+    { name: 'Active', value: rawStatusMap.get('IDLE') ?? 0 },
+    { name: 'On Delivery', value: rawStatusMap.get('ON_DELIVERY') ?? 0 },
+    { name: 'Offline', value: rawStatusMap.get('OFFLINE') ?? 0 },
+  ];
+
+  // Metrics Processing
+  const totalRidersCount = summaryMetrics.totalApprovedPartners || 1;
+  const activeRidersInPeriodCount =
+    earningsStats?.uniqueActiveRiders?.length || 1;
+
+  const totalMinutes = earningsStats?.totalDeliveryMinutes || 0;
+  const avgActiveHours = roundTo2(
+    totalMinutes / 60 / activeRidersInPeriodCount,
+  );
+
+  const retentionRate = roundTo2(
+    ((summaryMetrics.activeInPeriod || 0) / totalRidersCount) * 100,
+  );
+
+  const avgEarningsPerPartner = roundTo2(
+    (earningsStats?.totalPeriodEarnings || 0) / activeRidersInPeriodCount,
+  );
+
+  // Workload Trends 24-Hour
+  const workloadMap = new Map<number, any>(
+    (workloadTrendsRaw || []).map((w: any) => [Number(w._id.hour), w]),
+  );
+
+  const workloadTrends: TWorkloadTrend[] = Array.from(
+    { length: 24 },
+    (_, hour) => {
+      const data = workloadMap.get(hour);
+      return {
+        time: `${String(hour).padStart(2, '0')}:00`,
+        activePartners: data?.activePartnersPool?.length || 0,
+        ordersProcessed: data?.ordersProcessed || 0,
+      };
+    },
+  );
+
+  // Efficiency By Level Mapping
+  const efficiencyMap = new Map<string, number>(
+    (efficiencyByLevelRaw || []).map((e: any) => [
+      String(e._id),
+      roundTo2(e.avgCompletionTime || 0),
+    ]),
+  );
+
+  const levels: Array<'Junior' | 'Pro' | 'Elite'> = ['Junior', 'Pro', 'Elite'];
+  const efficiencyByLevel: TPartnerEfficiencyByLevel[] = levels.map((lvl) => ({
+    level: lvl,
+    avgCompletionTime: efficiencyMap.get(lvl) ?? 0,
+  }));
+
+  return {
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Delivery partner analytics' },
+    data: {
+      summary: {
+        avgActiveHours,
+        retentionRate,
+        avgEarningsPerPartner,
+      },
+      statusDistribution,
+      workloadTrends,
+      efficiencyByLevel,
+    },
+  };
+};
+
 export const AnalyticsSecondServices = {
   getAdminDashboardAnalytics,
   getVendorDashboardAnalytics,
@@ -1995,4 +2271,5 @@ export const AnalyticsSecondServices = {
   getSingleVendorPerformanceDetails,
   getOfferAnalyticsForAdmin,
   getTaxReportAnalyticsForVendor,
+  getAdminDeliveryPartnerAnalytics,
 };

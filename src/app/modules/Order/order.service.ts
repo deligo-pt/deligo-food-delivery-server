@@ -973,6 +973,9 @@ const updateOrderStatusByDeliveryPartner = async (
     {
       $set: {
         orderStatus: orderStatus,
+        ...(orderStatus === ORDER_STATUS.PICKED_UP && {
+          pickedUpAt: new Date(),
+        }),
         ...(orderStatus === ORDER_STATUS.DELIVERED && {
           deliveredAt: new Date(),
           ...(deliveryProofImage && {
@@ -1120,10 +1123,10 @@ const getAllOrders = async (
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
       'name userId role contactNumber currentSessionLocation profilePhoto NIF',
-    vendor: 'name userId role',
+    vendor: 'name userId role businessDetails.businessName',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
-    product: 'productId name',
+    // product: 'productId name',
   });
 
   populateOptions.forEach((option) => {
@@ -1209,10 +1212,10 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
       'name userId role contactNumber currentSessionLocation profilePhoto NIF',
-    vendor: 'name userId role',
+    vendor: 'name userId role businessDetails.businessName',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
-    product: 'productId name',
+    // product: 'productId name',
   });
 
   populateOptions.forEach((option) => {
