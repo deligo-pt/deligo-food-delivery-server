@@ -14,6 +14,9 @@ import { generateReferralCode } from '../../utils/generateReferralCode';
 import { flattenObject } from '../../utils/flattenObject';
 import { AuthUser } from '../AuthUser/authUser.model';
 
+const toPlain = (doc: any) =>
+  doc && typeof doc.toObject === 'function' ? doc.toObject() : doc;
+
 // update customer service
 const updateCustomer = async (
   payload: Partial<TCustomer>,
@@ -76,10 +79,8 @@ const updateCustomer = async (
     );
 
     const mergedPrimaryAddress = {
-      ...(existingPrimaryAddress?.toObject?.() || existingPrimaryAddress || {}),
-      ...(customerProfile.address?.toObject?.() ||
-        customerProfile.address ||
-        {}),
+      ...(toPlain(existingPrimaryAddress) || existingPrimaryAddress || {}),
+      ...(toPlain(customerProfile.address) || customerProfile.address || {}),
       ...payload.address,
       addressType: 'PRIMARY',
       isActive: true,
@@ -88,7 +89,7 @@ const updateCustomer = async (
     const updatedExistingAddresses = (
       customerProfile.deliveryAddresses || []
     ).map((addr: any) => {
-      const plainAddress = addr.toObject?.() || addr;
+      const plainAddress = toPlain(addr) || addr;
 
       if (plainAddress.addressType === 'PRIMARY') {
         return mergedPrimaryAddress;
@@ -185,8 +186,8 @@ const updateCustomerLiveLocation = async (
     throw new AppError(httpStatus.NOT_FOUND, 'CUSTOMER_PROFILE_NOT_FOUND');
   }
 
-  const hasPrimaryAddress = customerExists.deliveryAddresses?.some(
-    (addr: any) => addr.addressType === 'PRIMARY',
+  const currentLocationAddress = customerExists.deliveryAddresses?.find(
+    (addr: any) => addr.addressType === 'CURRENT_LOCATION',
   );
 
   const updateQuery: Record<string, any> = {};
@@ -196,18 +197,19 @@ const updateCustomerLiveLocation = async (
   delete cleanAddressPayload.geoAccuracy;
   delete cleanAddressPayload.isMocked;
 
-  if (hasPrimaryAddress) {
+  if (currentLocationAddress) {
     const addressDataWithCoords = {
+      ...(toPlain(currentLocationAddress) || currentLocationAddress || {}),
       ...cleanAddressPayload,
       longitude,
       latitude,
-      addressType: 'PRIMARY',
+      addressType: 'CURRENT_LOCATION',
       isActive: true,
     };
 
     const flattenedAddressFields = flattenObject(
       addressDataWithCoords,
-      'deliveryAddresses.$[primaryElem]',
+      'deliveryAddresses.$[currentLocationElem]',
     );
 
     updateQuery['$set'] = {
@@ -216,18 +218,18 @@ const updateCustomerLiveLocation = async (
       'deliveryAddresses.$[otherElem].isActive': false,
     };
     arrayFilters = [
-      { 'primaryElem.addressType': 'PRIMARY' },
-      { 'otherElem.addressType': { $ne: 'PRIMARY' } },
+      { 'currentLocationElem.addressType': 'CURRENT_LOCATION' },
+      { 'otherElem.addressType': { $ne: 'CURRENT_LOCATION' } },
     ];
   } else {
     const updatedExistingAddresses = (
       customerExists.deliveryAddresses || []
     ).map((addr: any) => ({
-      ...(addr.toObject?.() || addr),
+      ...(toPlain(addr) || addr),
       isActive: false,
     }));
 
-    const newPrimaryAddress = {
+    const newCurrentLocationAddress = {
       street: cleanAddressPayload.street || '',
       city: cleanAddressPayload.city || '',
       state: cleanAddressPayload.state || '',
@@ -237,15 +239,17 @@ const updateCustomerLiveLocation = async (
       notes: cleanAddressPayload.notes || '',
       longitude,
       latitude,
-      addressType: 'PRIMARY',
+      addressType: 'CURRENT_LOCATION',
       isActive: true,
     };
 
     updateQuery['$set'] = {
       ...updateData,
-      deliveryAddresses: [...updatedExistingAddresses, newPrimaryAddress],
+      deliveryAddresses: [
+        ...updatedExistingAddresses,
+        newCurrentLocationAddress,
+      ],
     };
-
     arrayFilters = [];
   }
 
