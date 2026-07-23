@@ -36,7 +36,9 @@ const addDeliveryAddressValidationSchema = z.object({
           isActive: z.boolean().optional(),
 
           // zoneId: z.string().optional(),
-          addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
+          addressType: z
+            .enum(['HOME', 'OFFICE', 'OTHER', 'CURRENT_LOCATION'])
+            .optional(),
           notes: z.string().optional(),
         })
         .strict(),
@@ -52,7 +54,9 @@ const updateDeliveryAddressValidationSchema = z.object({
     .object({
       deliveryAddress: addressValidationSchema
         .extend({
-          addressType: z.enum(['HOME', 'OFFICE', 'OTHER']).optional(),
+          addressType: z
+            .enum(['HOME', 'OFFICE', 'OTHER', 'CURRENT_LOCATION'])
+            .optional(),
           notes: z.string().optional(),
         })
         .strict()
