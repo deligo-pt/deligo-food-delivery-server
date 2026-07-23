@@ -177,7 +177,10 @@ const updateCustomerLiveLocation = async (
     currentSessionLocation,
   };
 
-  const customerExists = await Customer.findOne({ userId: currentUser.userId });
+  const customerExists = await Customer.findOne({
+    userId: currentUser.userId,
+    isDeleted: false,
+  });
   if (!customerExists) {
     throw new AppError(httpStatus.NOT_FOUND, 'CUSTOMER_PROFILE_NOT_FOUND');
   }
@@ -301,6 +304,7 @@ const addDeliveryAddress = async (
 
   const customerProfile = await Customer.findOne({
     userId: currentUser.userId,
+    isDeleted: false,
   });
   if (!customerProfile) {
     throw new AppError(httpStatus.NOT_FOUND, 'CUSTOMER_PROFILE_SETUP_REQUIRED');
