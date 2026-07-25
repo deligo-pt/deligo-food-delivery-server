@@ -15,7 +15,7 @@ export type TCustomerLiveLocationPayload = {
   detailedAddress?: string;
   addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
   notes?: string; // Specific delivery instructions
-  isActive: boolean;
+  isActive?: boolean;
   isMocked?: boolean;
 };
 

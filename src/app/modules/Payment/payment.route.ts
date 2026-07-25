@@ -20,6 +20,13 @@ router.post(
   PaymentController.handlePaymentFailure,
 );
 
+// refund redUniq payment
+router.post(
+  '/reduniq/refund/:orderId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  PaymentController.refundRedUniqPayment,
+);
+
 // create ingredient redUniq payment intent
 router.post(
   '/ingredient/create-payment-intent',
