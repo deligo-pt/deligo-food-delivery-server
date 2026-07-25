@@ -14,6 +14,7 @@ export const AddressType = {
   HOME: 'HOME',
   OFFICE: 'OFFICE',
   OTHER: 'OTHER',
+  CURRENT_LOCATION: 'CURRENT_LOCATION',
 } as const;
 
 export const getAddressSignature = (addr: any) => {

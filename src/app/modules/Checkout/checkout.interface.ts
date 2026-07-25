@@ -104,7 +104,7 @@ export type TCheckoutSummary = {
   deliveryAddress: TAddress;
 
   paymentMethod?: TPaymentMethod;
-  paymentStatus?: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
+  paymentStatus?: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
   transactionId?: string;
 
   isConvertedToOrder?: boolean;

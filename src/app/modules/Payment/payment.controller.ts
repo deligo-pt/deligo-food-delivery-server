@@ -54,6 +54,26 @@ const handlePaymentFailure = catchAsync(async (req, res) => {
   });
 });
 
+// refund redUniq payment controller
+const refundRedUniqPayment = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
+  const result = await PaymentServices.refundRedUniqPayment(req.params.orderId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Refunded Payment',
+    target: `Order #${req.params.orderId}`,
+    type: 'WARNING',
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
+  });
+});
+
 // create ingredient redUniq payment intent controller
 const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
   const payload = req.body;
@@ -82,5 +102,6 @@ const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
 export const PaymentController = {
   createRedUniqPayment,
   handlePaymentFailure,
+  refundRedUniqPayment,
   createIngredientRedUniqPayment,
 };
