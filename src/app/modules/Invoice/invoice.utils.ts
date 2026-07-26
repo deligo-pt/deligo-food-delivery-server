@@ -18,7 +18,7 @@ export const INVOICE_PDF_TEMPLATE = `
   <html>
   <head>
     <meta charset="utf-8">
-    <title>Invoice for Delivery</title>
+    <title>Fatura de Entrega</title>
     <style>
       body { 
         font-family: Arial, sans-serif; 
@@ -145,20 +145,20 @@ export const INVOICE_PDF_TEMPLATE = `
   </head>
   <body>
 
-    <div class="title-center">Invoice for Delivery</div>
+    <div class="title-center">Fatura de Entrega</div>
 
     <!-- METADATA BLOCK -->
     <table class="meta-grid">
       <tr>
         <!-- Left Side: Order Core Meta -->
         <td class="meta-left">
-          <div class="meta-text">Order ID <span class="bold-value">{{orderId}}</span></div>
-          <div class="meta-text">Order created <span class="bold-value">{{dateStr}}</span></div>
+          <div class="meta-text">Nº do Pedido <span class="bold-value">{{orderId}}</span></div>
+          <div class="meta-text">Pedido criado em <span class="bold-value">{{dateStr}}</span></div>
         </td>
         <!-- Right Side: Document Tracking -->
         <td class="meta-right">
-          <div class="meta-text">Document no. <span class="bold-value">{{invoiceNo}}</span></div>
-          <div class="meta-text">Date <span class="bold-value">{{dateStr}}</span></div>
+          <div class="meta-text">Documento n.º <span class="bold-value">{{invoiceNo}}</span></div>
+          <div class="meta-text">Data <span class="bold-value">{{dateStr}}</span></div>
           {{#if atcud}}
           <div class="meta-text">ATCUD <span class="bold-value">{{atcud}}</span></div>
           {{/if}}
@@ -171,19 +171,19 @@ export const INVOICE_PDF_TEMPLATE = `
       <tr>
         <!-- Left Column: Recipient (Customer) -->
         <td class="meta-left" style="padding-right: 20px;">
-          <div class="block-title">Recipient</div>
+          <div class="block-title">Destinatário</div>
           <div class="bold-value" style="margin-bottom: 4px;">{{customerName}}</div>
           <div class="meta-text">{{deliveryAddress}}</div>
-          <div class="meta-text" style="margin-top: 8px;">VAT no.: {{cleanNif}}</div>
+          <div class="meta-text" style="margin-top: 8px;">NIF: {{cleanNif}}</div>
         </td>
-        
+
         <!-- Right Column: Courier (Fleet Manager Corporate Identity) -->
         <td class="meta-right" style="padding-left: 20px;">
-          <div class="block-title">Courier</div>
+          <div class="block-title">Transportadora</div>
           <div class="bold-value" style="margin-bottom: 4px;">{{providerName}}</div>
           <div class="meta-text">{{providerAddress}}</div>
-          <div class="meta-text" style="margin-top: 8px;">Reg. code: {{providerRegCode}}</div>
-          <div class="meta-text">VAT no.: {{providerVat}}</div>
+          <div class="meta-text" style="margin-top: 8px;">Código de registo: {{providerRegCode}}</div>
+          <div class="meta-text">NIF: {{providerVat}}</div>
         </td>
       </tr>
     </table>
@@ -192,23 +192,23 @@ export const INVOICE_PDF_TEMPLATE = `
     <table class="invoice-table">
       <thead>
         <tr>
-          <th class="align-left" style="width: 40%;">Title</th>
-          <th class="align-right" style="width: 15%;">Sum (EUR)</th>
-          <th class="align-center" style="width: 15%;">VAT (%)</th>
-          <th class="align-right" style="width: 15%;">VAT (EUR)</th>
+          <th class="align-left" style="width: 40%;">Descrição</th>
+          <th class="align-right" style="width: 15%;">Valor (EUR)</th>
+          <th class="align-center" style="width: 15%;">IVA (%)</th>
+          <th class="align-right" style="width: 15%;">IVA (EUR)</th>
           <th class="align-right" style="width: 15%;">Total (EUR)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td class="align-left">Delivery fee</td>
+          <td class="align-left">Taxa de entrega</td>
           <td class="align-right">€{{delivery.net}}</td>
           <td class="align-center">23%</td>
           <td class="align-right">€{{delivery.vatAmount}}</td>
           <td class="align-right">€{{delivery.gross}}</td>
         </tr>
         <tr>
-          <td class="align-left">Service fee</td>
+          <td class="align-left">Taxa de serviço</td>
           <td class="align-right">€{{service.net}}</td>
           <td class="align-center">23%</td>
           <td class="align-right">€{{service.vatAmount}}</td>
@@ -221,29 +221,29 @@ export const INVOICE_PDF_TEMPLATE = `
     <div class="summary-wrapper">
       <table class="summary-table">
         <tr class="total-bold">
-          <td>Total (EUR)</td>
+          <td>Valor (EUR)</td>
           <td class="text-right">€{{totalNet}}</td>
         </tr>
         <tr>
-          <td>VAT (23%)</td>
+          <td>IVA (23%)</td>
           <td class="text-right">€{{totalVat}}</td>
         </tr>
         <tr class="total-bold" style="border-bottom: 1px solid #e5e7eb;">
-          <td>Total VAT (EUR)</td>
+          <td>Total de IVA (EUR)</td>
           <td class="text-right">€{{totalVat}}</td>
         </tr>
         <tr class="total-bold">
-          <td>Total including VAT (EUR)</td>
+          <td>Total com IVA incluído (EUR)</td>
           <td class="text-right">€{{grandTotal}}</td>
         </tr>
         {{#if hasDiscount}}
         <tr style="color: #ef4444;">
-          <td>Campaign (EUR)</td>
+          <td>Campanha (EUR)</td>
           <td class="text-right">-€{{discountAmount}}</td>
         </tr>
         {{/if}}
         <tr class="grand-total-row">
-          <td>Charged to client (EUR)</td>
+          <td>Cobrado ao cliente (EUR)</td>
           <td class="text-right">€{{grandTotal}}</td>
         </tr>
       </table>
@@ -251,7 +251,7 @@ export const INVOICE_PDF_TEMPLATE = `
 
     <!-- LEGAL FOOTER -->
     <div class="footer">
-      Operated under official platform assignment for DeliGo. Processado por computador.<br>
+      Operado sob atribuição oficial da plataforma para a DeliGo. Processado por computador.<br>
       Esta fatura simplificada refere-se exclusivamente aos encargos de intermediação e transporte de entrega.
     </div>
 

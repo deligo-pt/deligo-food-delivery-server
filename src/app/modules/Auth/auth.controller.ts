@@ -197,11 +197,17 @@ const refreshToken = catchAsync(async (req, res) => {
   const { refreshToken } = req.cookies;
   const result = await AuthServices.refreshToken(refreshToken);
 
+  // Rotation: the client's old refresh cookie is now dead server-side, replace it.
+  res.cookie('refreshToken', result.data.refreshToken, {
+    secure: config.NODE_ENV === 'production',
+    httpOnly: true,
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
-    data: result,
+    data: result?.data,
   });
 });
 

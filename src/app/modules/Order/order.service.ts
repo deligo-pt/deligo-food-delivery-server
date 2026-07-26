@@ -21,6 +21,7 @@ import { Customer } from '../Customer/customer.model';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { Vendor } from '../Vendor/vendor.model';
 import { getIO } from '../../lib/Socket';
+import { emitOrderStatusUpdate } from '../../lib/Socket/orderSocket';
 import axios from 'axios';
 import config from '../../config';
 import { Transaction } from '../Transaction/transaction.model';
@@ -553,6 +554,15 @@ const updateOrderStatusByVendor = async (
     await session.commitTransaction();
     session.endSession();
 
+    emitOrderStatusUpdate(getIO(), {
+      orderId: order.orderId,
+      orderStatus: action.type,
+      order: order.toObject(),
+      customerUserId: customerId || null,
+      vendorUserId: (order.vendorId as any)?.userId || null,
+      deliveryPartnerUserId: deliveryPartnerId || null,
+    });
+
     return {
       messageKey: 'ORDER_STATUS_UPDATED_SUCCESS_DYNAMIC',
       variables: { status: action.type },
@@ -1037,6 +1047,15 @@ const updateOrderStatusByDeliveryPartner = async (
     orderStatus: orderStatus,
     partnerUserId: currentUser.userId,
     orderDisplayId: orderId,
+  });
+
+  emitOrderStatusUpdate(getIO(), {
+    orderId: updatedOrder.orderId,
+    orderStatus: orderStatus,
+    order: updatedOrder.toObject(),
+    customerUserId: (updatedOrder.customerId as any)?.userId || null,
+    vendorUserId: (updatedOrder.vendorId as any)?.userId || null,
+    deliveryPartnerUserId: currentUser.userId || null,
   });
 
   return {
