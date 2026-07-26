@@ -3814,6 +3814,29 @@ const getTopVendors = async (query: {
         averageRating: { $ifNull: ['$vendorInfo.rating.average', 0] },
         preparationTime: { $ifNull: [{ $round: ['$avgPrepTime', 0] }, 0] },
 
+        completionRate: {
+          $cond: {
+            if: { $eq: ['$grandTotalOrders', 0] },
+            then: 0,
+            else: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $subtract: [
+                        1,
+                        { $divide: ['$cancelledOrders', '$grandTotalOrders'] },
+                      ],
+                    },
+                    100,
+                  ],
+                },
+                1,
+              ],
+            },
+          },
+        },
+
         cancelRate: {
           $cond: {
             if: { $eq: ['$grandTotalOrders', 0] },
@@ -3834,7 +3857,12 @@ const getTopVendors = async (query: {
 
         satisfactionScore: {
           $cond: {
-            if: { $eq: ['$grandTotalOrders', 0] },
+            if: {
+              $or: [
+                { $eq: ['$grandTotalOrders', 0] },
+                { $eq: [{ $ifNull: ['$vendorInfo.rating.average', 0] }, 0] },
+              ],
+            },
             then: 0,
             else: {
               $round: [
@@ -3913,6 +3941,7 @@ const getTopVendors = async (query: {
     (vp: any) => ({
       ...vp,
       totalRevenue: roundTo2(vp.totalRevenue),
+      completionRate: Number(vp.completionRate || 0),
       cancelRate: Number(vp.cancelRate || 0),
       satisfactionScore: Number(vp.satisfactionScore || 0),
     }),
