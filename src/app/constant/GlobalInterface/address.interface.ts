@@ -16,5 +16,6 @@ export type TDeliveryAddress = {
   // Zone Integration & Metadata
   zoneId?: string; // CRITICAL: Links address to a defined delivery zone
   addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
+  customAddressType?: string; // Optional: For user-defined address types
   notes?: string; // Specific delivery instructions
 };

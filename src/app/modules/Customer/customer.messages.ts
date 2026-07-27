@@ -151,4 +151,9 @@ export const customerMessages = {
     en: 'The requested customer profile could not be found.',
     pt: 'O perfil do cliente solicitado não pôde ser encontrado.',
   },
+
+  CUSTOM_ADDRESS_TYPE_REQUIRED: {
+    en: 'Please provide a custom address type when selecting "Other" as the address type.',
+    pt: 'Por favor, forneça um tipo de endereço personalizado ao selecionar "Outro" como tipo de endereço.',
+  },
 } as const;
