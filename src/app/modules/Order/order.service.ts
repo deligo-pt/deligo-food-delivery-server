@@ -1142,9 +1142,11 @@ const getAllOrders = async (
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
       'name userId role contactNumber currentSessionLocation profilePhoto NIF',
-    vendor: 'name userId role businessDetails.businessName',
+    vendor:
+      'name userId role businessDetails.businessName businessDetails.businessType',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
+    businessType: 'name',
     // product: 'productId name',
   });
 
@@ -1231,9 +1233,11 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
   const populateOptions = getPopulateOptions(currentUser?.role, {
     customer:
       'name userId role contactNumber currentSessionLocation profilePhoto NIF',
-    vendor: 'name userId role businessDetails.businessName',
+    vendor:
+      'name userId role businessDetails.businessName businessDetails.businessType',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
+    businessType: 'name',
     // product: 'productId name',
   });
 
