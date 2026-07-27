@@ -571,7 +571,12 @@ const getAllOffers = async (
 
     delete query.isExpired;
   }
-  const offers = new QueryBuilder(Offer.find(), query)
+  const offers = new QueryBuilder(
+    Offer.find()
+      .populate('vendorId', 'name userId')
+      .populate('adminId', 'name userId'),
+    query,
+  )
     .search(['title.en', 'title.pt', 'code'])
     .filter()
     .sort()
@@ -603,7 +608,9 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
     query.isActive = true;
   }
 
-  const offer = await Offer.findOne(query);
+  const offer = await Offer.findOne(query)
+    .populate('vendorId', 'name userId')
+    .populate('adminId', 'name userId');
   if (!offer) {
     throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND_OR_UNAVAILABLE');
   }

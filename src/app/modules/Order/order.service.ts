@@ -30,6 +30,7 @@ import { TLanguageCode } from '../../constant/GlobalInterface/language.interface
 import { BusinessCategoryName } from '../Category/category.interface';
 import customNanoId from '../../utils/customNanoId';
 import { CartServices } from '../Cart/cart.service';
+import { updateOrderStatusHistory } from './order.utils';
 
 // Create Order after redUniq payment
 const createOrderAfterRedUniqPayment = async (
@@ -305,7 +306,6 @@ const updateOrderStatusByVendor = async (
 
     const previousStatus = order.orderStatus; // Old status
 
-    // Rule 1: ACCEPTED can happen from 'PENDING' or 'REJECTED'
     if (action.type === 'ACCEPTED') {
       const ALLOWED_PREVIOUS_STATUS_FOR_ACCEPT = ['PENDING', 'REJECTED'];
       if (!ALLOWED_PREVIOUS_STATUS_FOR_ACCEPT.includes(order.orderStatus)) {
@@ -317,7 +317,6 @@ const updateOrderStatusByVendor = async (
       }
     }
 
-    // Rule 2: Cannot REJECT if it was already ACCEPTED (or beyond)
     if (action.type === 'REJECTED') {
       if (order.orderStatus !== 'PENDING') {
         throw new AppError(
@@ -327,7 +326,6 @@ const updateOrderStatusByVendor = async (
       }
     }
 
-    // Rule 3: Cannot CANCEL if Rider / Delivery Partner is already assigned
     if (action.type === 'CANCELED') {
       if (order.deliveryPartnerId) {
         throw new AppError(
@@ -337,7 +335,6 @@ const updateOrderStatusByVendor = async (
       }
     }
 
-    // Standard Preparation & Pickup stage validations
     if (
       action.type === ORDER_STATUS.PREPARING &&
       order.orderStatus !== ORDER_STATUS.ASSIGNED
@@ -583,6 +580,14 @@ const updateOrderStatusByVendor = async (
 
     // Update Status and Save
     order.orderStatus = action.type;
+
+    updateOrderStatusHistory({
+      order,
+      newStatus: action.type,
+      updatedBy: currentUser._id,
+      note: action.reason,
+    });
+
     await order.save({ session });
 
     // Commit Transaction safely
@@ -631,7 +636,6 @@ const broadcastOrderToPartners = async (
     });
   }
 
-  // 1. Vendor Location Coordinates Verification Guard
   const loc = currentUser.currentSessionLocation?.coordinates;
   const longitude = loc?.[0];
   const latitude = loc?.[1];
@@ -676,7 +680,6 @@ const broadcastOrderToPartners = async (
     );
   }
 
-  // 2. Cascading Geo-Near Radius Query Pipeline
   let eligiblePartners: TDeliveryPartner[] = [];
 
   for (const radius of DELIVERY_SEARCH_TIERS_METERS) {
@@ -712,9 +715,14 @@ const broadcastOrderToPartners = async (
     }
   }
 
-  // Safe fallback if zero partners found in all surrounding tiers
   if (eligiblePartners.length === 0) {
-    order.orderStatus = ORDER_STATUS.AWAITING_PARTNER as any;
+    updateOrderStatusHistory({
+      order,
+      newStatus: ORDER_STATUS.AWAITING_PARTNER,
+      updatedBy: currentUser._id,
+      note: 'No delivery partner found nearby, waiting for partner',
+    });
+
     await order.save();
     throw new AppError(httpStatus.BAD_REQUEST, 'NO_PARTNER_FOUND');
   }
@@ -728,7 +736,6 @@ const broadcastOrderToPartners = async (
   const timerSeconds = 120;
   const expirationTime = new Date(Date.now() + timerSeconds * 1000);
 
-  // Increment operational workflow counters on target delivery fleets
   await DeliveryPartner.updateMany(
     { _id: { $in: partnerObjectIds } },
     {
@@ -737,19 +744,23 @@ const broadcastOrderToPartners = async (
     },
   );
 
-  // Safe atomic update using $addToSet to prevent double injection collisions
-  await Order.updateOne(
-    { _id: order._id },
-    {
-      $set: {
-        orderStatus: ORDER_STATUS.DISPATCHING,
-        dispatchExpiresAt: expirationTime,
-      },
-      $addToSet: { dispatchPartnerPool: { $each: partnerPoolIds } },
-    },
-  );
+  updateOrderStatusHistory({
+    order,
+    newStatus: ORDER_STATUS.DISPATCHING,
+    updatedBy: currentUser._id,
+    note: `Broadcasted to ${partnerPoolIds.length} nearby delivery partners`,
+  });
 
-  // Compile clean socket payload metadata structure
+  order.dispatchExpiresAt = expirationTime;
+
+  const currentPool = new Set(order.dispatchPartnerPool || []);
+  partnerPoolIds.forEach((id) => {
+    if (id) currentPool.add(id);
+  });
+  order.dispatchPartnerPool = Array.from(currentPool);
+
+  await order.save();
+
   const orderDataForPopup = {
     orderId: order.orderId,
     deliveryAddress: order.deliveryAddress,
@@ -759,12 +770,10 @@ const broadcastOrderToPartners = async (
     riderEarning: order.payoutSummary.rider,
   };
 
-  // Broadcast to individual secure rider rooms via Socket.io
   partnerUserIds.forEach((userId) => {
     io.to(`user_${userId}`).emit('NEW_ORDER_AVAILABLE', orderDataForPopup);
   });
 
-  // Push fallback push notifications asynchronously down to mobile devices
   for (const userId of partnerUserIds) {
     const notificationPayload = {
       title: 'New Order Available',
@@ -823,7 +832,6 @@ const partnerAcceptsDispatchedOrder = async (
   let isExpiredAction = false;
   let isRejectAction = false;
 
-  // Enforced standard string representation for pool operations matching broadcast model
   const currentPartnerPoolId = currentUser._id.toString();
 
   try {
@@ -847,6 +855,13 @@ const partnerAcceptsDispatchedOrder = async (
               orderStatus: ORDER_STATUS.AWAITING_PARTNER,
               dispatchPartnerPool: [],
             },
+            $push: {
+              statusHistory: {
+                status: ORDER_STATUS.AWAITING_PARTNER,
+                timestamp: new Date(),
+                note: 'Dispatch window expired, waiting for partner',
+              },
+            },
           },
           { session },
         );
@@ -861,12 +876,21 @@ const partnerAcceptsDispatchedOrder = async (
           throw new AppError(httpStatus.BAD_REQUEST, 'NOT_IN_POOL');
 
         const isLastPartner = order.dispatchPartnerPool?.length === 1;
+
         await Order.updateOne(
           { orderId },
           {
             $pull: { dispatchPartnerPool: currentPartnerPoolId },
             ...(isLastPartner && {
               $set: { orderStatus: ORDER_STATUS.AWAITING_PARTNER },
+              $push: {
+                statusHistory: {
+                  status: ORDER_STATUS.AWAITING_PARTNER,
+                  timestamp: new Date(),
+                  updatedBy: currentUser._id,
+                  note: 'Rejected by all offered partners, order is awaiting partner',
+                },
+              },
             }),
           },
           { session },
@@ -886,7 +910,10 @@ const partnerAcceptsDispatchedOrder = async (
 
       notifiedPartnerIds = [...(order.dispatchPartnerPool || [])];
 
-      // Atomic allocation lock sequence
+      const partnerFullName =
+        `${currentUser.name?.firstName || ''} ${currentUser.name?.lastName || ''}`.trim() ||
+        'Delivery Partner';
+
       const claimedOrder = await Order.findOneAndUpdate(
         {
           orderId,
@@ -900,6 +927,14 @@ const partnerAcceptsDispatchedOrder = async (
             deliveryPartnerId: currentUser._id,
             orderStatus: ORDER_STATUS.ASSIGNED,
             dispatchPartnerPool: [],
+          },
+          $push: {
+            statusHistory: {
+              status: ORDER_STATUS.ASSIGNED,
+              timestamp: new Date(),
+              updatedBy: currentUser._id,
+              note: `Assigned to delivery partner: ${partnerFullName}`,
+            },
           },
         },
         { new: true, session },
@@ -943,16 +978,12 @@ const partnerAcceptsDispatchedOrder = async (
       return { data: null, messageKey: 'ORDER_REJECTED' };
     }
 
-    // Broadcast pop-up removal over socket rooms via the mapped partner pool IDs
-    // Since broadcast saves _id strings, we can fallback to targeted channels safely
     notifiedPartnerIds.forEach((partnerPoolId) => {
-      // Direct broadcast out to active riders to clear the request card
       io.to(`partner_pool_${partnerPoolId}`).emit('REMOVE_ORDER_POPUP', {
         orderId,
       });
     });
 
-    // Also remove popup for the actual winning user explicitly
     io.to(`user_${currentUser.userId}`).emit('REMOVE_ORDER_POPUP', { orderId });
 
     if (vendorUserId) {
@@ -992,7 +1023,6 @@ const updateOrderStatusByDeliveryPartner = async (
     throw new AppError(httpStatus.FORBIDDEN, 'DELIVERY_PARTNER_NOT_FOUND');
   }
 
-  // VALID state transitions
   const validTransitions: Record<string, string> = {
     [ORDER_STATUS.PICKED_UP]: ORDER_STATUS.READY_FOR_PICKUP,
     [ORDER_STATUS.ON_THE_WAY]: ORDER_STATUS.PICKED_UP,
@@ -1008,7 +1038,6 @@ const updateOrderStatusByDeliveryPartner = async (
     });
   }
 
-  // REASSIGNMENT needs a reason
   if (orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && !reason) {
     throw new AppError(httpStatus.BAD_REQUEST, 'REASON_REQUIRED');
   }
@@ -1027,19 +1056,25 @@ const updateOrderStatusByDeliveryPartner = async (
     {
       $set: {
         orderStatus: orderStatus,
-        ...(orderStatus === ORDER_STATUS.PICKED_UP && {
-          pickedUpAt: new Date(),
-        }),
-        ...(orderStatus === ORDER_STATUS.DELIVERED && {
-          deliveredAt: new Date(),
-          ...(deliveryProofImage && {
+        ...(orderStatus === ORDER_STATUS.DELIVERED &&
+          deliveryProofImage && {
             'delivery.deliveryProofImage': deliveryProofImage,
           }),
-        }),
         ...(orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED && {
           deliveryPartnerId: null,
           deliveryPartnerCancelReason: reason,
         }),
+      },
+      $push: {
+        statusHistory: {
+          status: orderStatus,
+          timestamp: new Date(),
+          updatedBy: currentUser._id,
+          note:
+            orderStatus === ORDER_STATUS.REASSIGNMENT_NEEDED
+              ? reason
+              : undefined,
+        },
       },
     },
     { new: true },
@@ -1073,7 +1108,6 @@ const updateOrderStatusByDeliveryPartner = async (
     );
   }
 
-  // Update partner record
   if (payload.orderStatus === ORDER_STATUS.DELIVERED) {
     const partner = await DeliveryPartner.findById(
       updatedOrder?.deliveryPartnerId,

@@ -16,6 +16,13 @@ export type TInvoiceSync = {
   syncError?: string;
 };
 
+export type TOrderStatusHistory = {
+  status: OrderStatus;
+  timestamp: Date;
+  updatedBy?: mongoose.Types.ObjectId;
+  note?: string;
+};
+
 export type TOrder = {
   _id?: mongoose.Types.ObjectId;
   // Relationships
@@ -101,6 +108,7 @@ export type TOrder = {
 
   // Order Lifecycle Management
   orderStatus: OrderStatus;
+  statusHistory: TOrderStatusHistory[];
   cancelReason?: string;
   rejectReason?: string;
 
@@ -108,8 +116,6 @@ export type TOrder = {
   dispatchExpiresAt?: Date;
 
   // Delivery Timestamps
-  pickedUpAt?: Date;
-  deliveredAt?: Date;
   preparationTime?: number;
 
   isRated?: boolean;

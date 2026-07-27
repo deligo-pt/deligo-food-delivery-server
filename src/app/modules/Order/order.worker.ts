@@ -18,6 +18,7 @@ import { recalculateCartTotals } from '../Cart/cart.constant';
 import { RedisService } from '../../config/redis';
 import { Cart } from '../Cart/cart.model';
 import { sendInvoiceEmailWithAttachment } from './order.invoice';
+import { ORDER_STATUS } from './order.constant';
 
 const normalizeWalletFields = async (
   userId: mongoose.Types.ObjectId | string | null | undefined,
@@ -431,8 +432,11 @@ export const processOrderPostUpdate = async (job: Job) => {
 
       await Transaction.insertMany(transactionsToCreate, { session });
 
-      const pickupTime = updatedOrder.pickedUpAt
-        ? new Date(updatedOrder.pickedUpAt).getTime()
+      const pickedUpEntry = updatedOrder.statusHistory?.find(
+        (h) => h.status === ORDER_STATUS.PICKED_UP,
+      );
+      const pickupTime = pickedUpEntry?.timestamp
+        ? new Date(pickedUpEntry.timestamp).getTime()
         : Date.now();
       const deliveryTime = new Date().getTime();
       const durationMinutes = Math.max(
