@@ -213,6 +213,7 @@ const updateOrderStatusByVendor = async (
   orderId: string,
   action: { type: any; reason?: string },
 ) => {
+  // 1. Authorization & Role Check
   if (!currentUser || currentUser.role !== 'VENDOR') {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -247,6 +248,9 @@ const updateOrderStatusByVendor = async (
   const session = await mongoose.startSession();
   session.startTransaction();
 
+  // Notifications stack for firing after commit
+  const notificationsToEmit: Array<() => Promise<void>> = [];
+
   try {
     const order = await Order.findOne(
       {
@@ -265,7 +269,7 @@ const updateOrderStatusByVendor = async (
     });
 
     if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_WITH_DOT');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
     }
 
     const vendor = order.vendorId as any;
@@ -299,14 +303,41 @@ const updateOrderStatusByVendor = async (
       : null;
     const deliveryPartnerId = deliveryPartner?.userId;
 
-    if (action.type === 'ACCEPTED' && order.orderStatus !== 'PENDING') {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'ORDER_MUST_BE_PENDING_TO_ACCEPT',
-        { currentStatus: order.orderStatus },
-      );
+    const previousStatus = order.orderStatus; // Old status
+
+    // Rule 1: ACCEPTED can happen from 'PENDING' or 'REJECTED'
+    if (action.type === 'ACCEPTED') {
+      const ALLOWED_PREVIOUS_STATUS_FOR_ACCEPT = ['PENDING', 'REJECTED'];
+      if (!ALLOWED_PREVIOUS_STATUS_FOR_ACCEPT.includes(order.orderStatus)) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'CANNOT_ACCEPT_ORDER_FROM_CURRENT_STATUS',
+          { currentStatus: order.orderStatus },
+        );
+      }
     }
 
+    // Rule 2: Cannot REJECT if it was already ACCEPTED (or beyond)
+    if (action.type === 'REJECTED') {
+      if (order.orderStatus !== 'PENDING') {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'CANNOT_REJECT_ACCEPTED_ORDER_USE_CANCEL_INSTEAD',
+        );
+      }
+    }
+
+    // Rule 3: Cannot CANCEL if Rider / Delivery Partner is already assigned
+    if (action.type === 'CANCELED') {
+      if (order.deliveryPartnerId) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'CANNOT_CANCEL_ORDER_RIDER_ALREADY_ASSIGNED',
+        );
+      }
+    }
+
+    // Standard Preparation & Pickup stage validations
     if (
       action.type === ORDER_STATUS.PREPARING &&
       order.orderStatus !== ORDER_STATUS.ASSIGNED
@@ -338,7 +369,7 @@ const updateOrderStatusByVendor = async (
     }
 
     // ---------------------------------------------------------
-    // If ACCEPTED → Set Pickup Address & Deduct Variation / Normal Stock
+    // ACTION: ACCEPTED
     // ---------------------------------------------------------
     if (action.type === 'ACCEPTED') {
       if (!order.pickupAddress) {
@@ -380,7 +411,6 @@ const updateOrderStatusByVendor = async (
             };
           }
 
-          // Normal flat fallback product stock operational rules
           return {
             updateOne: {
               filter: {
@@ -398,61 +428,62 @@ const updateOrderStatusByVendor = async (
           session,
         });
         if (stockResult.modifiedCount !== order.items.length) {
-          throw new AppError(httpStatus.BAD_REQUEST, 'STOCK_CHECK_FAILED');
+          throw new AppError(httpStatus.BAD_REQUEST, 'INSUFFICIENT_STOCK');
         }
       }
 
       if (customerId) {
-        const notificationPayload = {
-          title: 'Order Accepted',
-          body: `Your order has been accepted by ${vendor?.businessDetails?.businessName || 'the store'}. Please wait for pickup updates.`,
-          data: { orderId: order.orderId },
-        };
-        NotificationService.sendToUser(
-          customerId,
-          notificationPayload.title,
-          notificationPayload.body,
-          notificationPayload.data,
-          'default',
-          'ORDER',
-        );
+        notificationsToEmit.push(async () => {
+          NotificationService.sendToUser(
+            customerId,
+            'Order Accepted',
+            `Your order has been accepted by ${vendor?.businessDetails?.businessName || 'the store'}. Please wait for pickup updates.`,
+            { orderId: order.orderId },
+            'default',
+            'ORDER',
+          );
+        });
       }
     }
 
     // ---------------------------------------------------------
-    // PREPARING Notification Trigger
+    // ACTION: PREPARING
     // ---------------------------------------------------------
     if (action.type === ORDER_STATUS.PREPARING) {
       if (customerId) {
-        NotificationService.sendToUser(
-          customerId,
-          'Order is being prepared',
-          `Your order is now being prepared by ${vendor?.businessDetails?.businessName || 'the store'}.`,
-          { orderId: order.orderId, status: ORDER_STATUS.PREPARING },
-          'default',
-          'ORDER',
-        );
+        notificationsToEmit.push(async () => {
+          NotificationService.sendToUser(
+            customerId,
+            'Order is being prepared',
+            `Your order is now being prepared by ${vendor?.businessDetails?.businessName || 'the store'}.`,
+            { orderId: order.orderId, status: ORDER_STATUS.PREPARING },
+            'default',
+            'ORDER',
+          );
+        });
       }
     }
 
     // ---------------------------------------------------------
-    // READY FOR PICKUP Notification Trigger
+    // ACTION: READY_FOR_PICKUP
     // ---------------------------------------------------------
     if (action.type === ORDER_STATUS.READY_FOR_PICKUP) {
       if (customerId) {
-        NotificationService.sendToUser(
-          customerId,
-          'Order is ready for pickup',
-          `Your order is now ready for pickup by ${vendor?.businessDetails?.businessName || 'the store'}.`,
-          { orderId: order.orderId, status: ORDER_STATUS.READY_FOR_PICKUP },
-          'default',
-          'ORDER',
-        );
+        notificationsToEmit.push(async () => {
+          NotificationService.sendToUser(
+            customerId,
+            'Order is ready for pickup',
+            `Your order is now ready for pickup by ${vendor?.businessDetails?.businessName || 'the store'}.`,
+            { orderId: order.orderId, status: ORDER_STATUS.READY_FOR_PICKUP },
+            'default',
+            'ORDER',
+          );
+        });
       }
     }
 
     // ---------------------------------------------------------
-    // If Canceled → Restore Stock Variations cleanly
+    // ACTION: CANCELED
     // ---------------------------------------------------------
     if (action.type === 'CANCELED') {
       if (!action.reason) {
@@ -460,7 +491,20 @@ const updateOrderStatusByVendor = async (
       }
       order.cancelReason = action.reason;
 
-      if (shouldCheckStock) {
+      // Restore stock if it was deducted previously
+      const STAGES_WHERE_STOCK_WAS_DEDUCTED = [
+        'ACCEPTED',
+        'AWAITING_PARTNER',
+        'DISPATCHING',
+        'ASSIGNED',
+        'PREPARING',
+        'READY_FOR_PICKUP',
+      ];
+
+      if (
+        shouldCheckStock &&
+        STAGES_WHERE_STOCK_WAS_DEDUCTED.includes(previousStatus)
+      ) {
         const stockOperations = order.items.map((item: any) => {
           const targetProductId = item.productId?._id || item.productId;
 
@@ -500,30 +544,22 @@ const updateOrderStatusByVendor = async (
         data: { orderId: order.orderId },
       };
 
-      if (order.deliveryPartnerId && deliveryPartnerId) {
-        NotificationService.sendToUser(
-          deliveryPartnerId,
-          notificationPayload.title,
-          notificationPayload.body,
-          notificationPayload.data,
-          'default',
-          'ORDER',
-        );
-      }
       if (customerId) {
-        NotificationService.sendToUser(
-          customerId,
-          notificationPayload.title,
-          notificationPayload.body,
-          notificationPayload.data,
-          'default',
-          'ORDER',
-        );
+        notificationsToEmit.push(async () => {
+          NotificationService.sendToUser(
+            customerId,
+            notificationPayload.title,
+            notificationPayload.body,
+            notificationPayload.data,
+            'default',
+            'ORDER',
+          );
+        });
       }
     }
 
     // ---------------------------------------------------------
-    // If REJECTED → Set Rejection Logic snap
+    // ACTION: REJECTED
     // ---------------------------------------------------------
     if (action.type === 'REJECTED') {
       if (!action.reason) {
@@ -532,36 +568,44 @@ const updateOrderStatusByVendor = async (
       order.rejectReason = action.reason;
 
       if (customerId) {
-        const notificationPayload = {
-          title: 'Order Rejected',
-          body: `Your order has been rejected for: ${action.reason}`,
-          data: { orderId: order.orderId },
-        };
-        NotificationService.sendToUser(
-          customerId,
-          notificationPayload.title,
-          notificationPayload.body,
-          notificationPayload.data,
-          'default',
-          'ORDER',
-        );
+        notificationsToEmit.push(async () => {
+          NotificationService.sendToUser(
+            customerId,
+            'Order Rejected',
+            `Your order has been rejected for: ${action.reason}`,
+            { orderId: order.orderId },
+            'default',
+            'ORDER',
+          );
+        });
       }
     }
 
+    // Update Status and Save
     order.orderStatus = action.type;
     await order.save({ session });
 
+    // Commit Transaction safely
     await session.commitTransaction();
-    session.endSession();
 
-    emitOrderStatusUpdate(getIO(), {
-      orderId: order.orderId,
-      orderStatus: action.type,
-      order: order.toObject(),
-      customerUserId: customerId || null,
-      vendorUserId: (order.vendorId as any)?.userId || null,
-      deliveryPartnerUserId: deliveryPartnerId || null,
-    });
+    // Fire notifications asynchronously after DB commit succeeds
+    Promise.allSettled(notificationsToEmit.map((fn) => fn())).catch((err) =>
+      console.error('Notification dispatch failed:', err),
+    );
+
+    // Emit socket update safely
+    try {
+      emitOrderStatusUpdate(getIO(), {
+        orderId: order.orderId,
+        orderStatus: action.type,
+        order: order.toObject(),
+        customerUserId: customerId || null,
+        vendorUserId: (order.vendorId as any)?.userId || null,
+        deliveryPartnerUserId: deliveryPartnerId || null,
+      });
+    } catch (socketErr) {
+      console.error('Socket emission failed:', socketErr);
+    }
 
     return {
       messageKey: 'ORDER_STATUS_UPDATED_SUCCESS_DYNAMIC',
@@ -570,8 +614,9 @@ const updateOrderStatusByVendor = async (
     };
   } catch (error) {
     await session.abortTransaction();
-    session.endSession();
     throw error;
+  } finally {
+    session.endSession();
   }
 };
 
@@ -608,7 +653,7 @@ const broadcastOrderToPartners = async (
   );
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_WITH_DOT');
+    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
   }
 
   if (order.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
@@ -786,8 +831,7 @@ const partnerAcceptsDispatchedOrder = async (
       const order = await Order.findOne({ orderId })
         .populate('vendorId')
         .session(session);
-      if (!order)
-        throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_WITH_DOT');
+      if (!order) throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
 
       vendorUserId = (order.vendorId as any)?.userId;
 
@@ -1011,7 +1055,7 @@ const updateOrderStatusByDeliveryPartner = async (
     }).select('orderStatus');
 
     if (!orderCheck) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_WITH_DOT');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
     }
 
     if (orderCheck?.orderStatus === payload.orderStatus) {
