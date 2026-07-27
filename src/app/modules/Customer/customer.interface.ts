@@ -81,6 +81,7 @@ export type TCustomer = {
     // Zone Integration & Metadata
     zoneId?: mongoose.Types.ObjectId; // CRITICAL: Links address to a defined delivery zone
     addressType?: keyof typeof AddressType; // e.g., 'Home', 'Work'
+    customAddressType?: string; // Optional: For user-defined address types
     notes?: string; // Specific delivery instructions
   }>;
 
