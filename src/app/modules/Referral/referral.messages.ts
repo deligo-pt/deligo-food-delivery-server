@@ -1,9 +1,4 @@
 export const referralMessages = {
-  // --- Validation & Business Logic Errors ---
-  INVALID_USER_ROLE: {
-    en: 'Invalid user role selected.',
-    pt: 'Função de usuário inválida selecionada.',
-  },
   INVALID_REFERRAL_CODE: {
     en: 'Please enter a valid referral code.',
     pt: 'Por favor, insira um código de recomendação válido.',

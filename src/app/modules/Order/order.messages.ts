@@ -1,20 +1,4 @@
 export const orderMessages = {
-  REDUNIQ_API_URL_NOT_CONFIGURED: {
-    en: 'Payment gateway configuration missing.',
-    pt: 'Configuração do gateway de pagamento ausente.',
-  },
-  NOT_AUTHORIZED_TO_VIEW: {
-    en: 'Access denied. You do not have permission to view this resource.',
-    pt: 'Acesso negado. Você não tem permissão para visualizar este recurso.',
-  },
-  CHECKOUT_SUMMARY_ALREADY_CONVERTED: {
-    en: 'This checkout has already been processed into an order.',
-    pt: 'Este checkout já foi processado em um pedido.',
-  },
-  VENDOR_NOT_FOUND: {
-    en: 'Restaurant profile could not be found.',
-    pt: 'O perfil do restaurante não pôde ser encontrado.',
-  },
   PAYMENT_FAILED_TRY_AGAIN: {
     en: 'Payment failed. Please check your details and try again.',
     pt: 'O pagamento falhou. Verifique seus dados e tente novamente.',
@@ -43,13 +27,13 @@ export const orderMessages = {
     pt: (vars: { status: string }) =>
       `Você não tem permissão para alterar o status deste pedido para ${vars.status.toUpperCase()}.`,
   },
-  ORDER_NOT_FOUND_WITH_DOT: {
+  ORDER_NOT_FOUND: {
     en: 'The requested order could not be found.',
     pt: 'O pedido solicitado não pôde ser encontrado.',
   },
   ONLY_PAID_ORDER_CAN_ACCEPT_REJECT: {
-    en: 'Only paid or confirmed orders can be accepted or rejected.',
-    pt: 'Apenas pedidos pagos ou confirmados podem ser aceitos ou rejeitados.',
+    en: 'Only paid orders can be accepted or rejected.',
+    pt: 'Apenas pedidos pagos podem ser aceitos ou rejeitados.',
   },
   ORDER_ALREADY_IN_STATUS: {
     en: (vars: { status: string }) =>
@@ -57,6 +41,25 @@ export const orderMessages = {
     pt: (vars: { status: string }) =>
       `Este pedido já está marcado como ${vars.status.toUpperCase()}.`,
   },
+  // ---------------------------------------------------------
+  // NEW ADDED MESSAGES FOR VENDOR STATUS FLOW
+  // ---------------------------------------------------------
+  CANNOT_ACCEPT_ORDER_FROM_CURRENT_STATUS: {
+    en: (vars: { currentStatus: string }) =>
+      `Cannot accept order from its current status (${vars.currentStatus.toUpperCase()}).`,
+    pt: (vars: { currentStatus: string }) =>
+      `Não é possível aceitar o pedido no status atual (${vars.currentStatus.toUpperCase()}).`,
+  },
+  CANNOT_REJECT_ACCEPTED_ORDER_USE_CANCEL_INSTEAD: {
+    en: 'Cannot reject an order once it has been accepted. Please cancel it instead.',
+    pt: 'Não é possível rejeitar um pedido depois de aceito. Por favor, cancele-o.',
+  },
+  CANNOT_CANCEL_ORDER_RIDER_ALREADY_ASSIGNED: {
+    en: 'Cannot cancel this order because a delivery rider has already been assigned.',
+    pt: 'Não é possível cancelar este pedido porque um entregador já foi atribuído.',
+  },
+
+  // ---------------------------------------------------------
   ORDER_MUST_BE_PENDING_TO_ACCEPT: {
     en: (vars: { currentStatus: string }) =>
       `Order must be PENDING to be accepted. Current status is ${vars.currentStatus.toUpperCase()}.`,
@@ -151,10 +154,6 @@ export const orderMessages = {
     en: 'Order accepted successfully.',
     pt: 'Pedido aceito com sucesso.',
   },
-  DELIVERY_PARTNER_NOT_FOUND: {
-    en: 'The assigned delivery partner could not be found.',
-    pt: 'O parceiro de entrega atribuído não pôde ser encontrado.',
-  },
   CANNOT_CHANGE_STATUS_TO: {
     en: (vars: { status: string }) =>
       `Invalid update. Cannot change order status to ${vars.status.toUpperCase()}.`,
@@ -212,10 +211,6 @@ export const orderMessages = {
   INVALID_ROLE_OR_PERMISSION_DENIED: {
     en: 'Access denied. Security check failed due to invalid role permissions.',
     pt: 'Acesso negado. A verificação de segurança falhou devido a permissões de função inválidas.',
-  },
-  ORDER_NOT_FOUND: {
-    en: 'Order could not be found.',
-    pt: 'O pedido não pôde ser encontrado.',
   },
   ORDER_RETRIEVED_SUCCESS: {
     en: 'Order tracking details loaded successfully.',

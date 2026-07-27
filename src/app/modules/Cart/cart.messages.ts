@@ -74,10 +74,6 @@ export const cartMessages = {
     en: 'This item does not have multiple options.',
     pt: 'Este item não possui múltiplas opções.',
   },
-  INSUFFICIENT_STOCK: {
-    en: 'Sorry, this item is out of stock.',
-    pt: 'Desculpe, este item está esgotado.',
-  },
   INSUFFICIENT_STOCK_WITH_QUANTITY: {
     en: (vars: { quantity: number }) =>
       `Not enough stock available. You already have ${vars.quantity} in your cart.`,
@@ -103,10 +99,6 @@ export const cartMessages = {
   PRODUCT_UNAVAILABLE: {
     en: 'This item is no longer available.',
     pt: 'Este item não está mais disponível.',
-  },
-  VENDOR_NOT_FOUND: {
-    en: 'Restaurant profile could not be found.',
-    pt: 'O perfil do restaurante não pôde ser encontrado.',
   },
   MULTIPLE_VENDORS_DENIED: {
     en: 'You can only order from one restaurant at a time. Please clear your cart first.',

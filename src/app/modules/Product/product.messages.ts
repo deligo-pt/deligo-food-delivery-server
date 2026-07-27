@@ -121,8 +121,8 @@ export const productMessages = {
     pt: 'SKU da variação não encontrado.',
   },
   INSUFFICIENT_STOCK: {
-    en: 'Insufficient stock available.',
-    pt: 'Estoque insuficiente.',
+    en: 'Insufficient stock available to accept this order.',
+    pt: 'Estoque insuficiente para aceitar este pedido.',
   },
   PRODUCT_ALREADY_IN_STATUS: {
     en: (vars: { status: string }) =>

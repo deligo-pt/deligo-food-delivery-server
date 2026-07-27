@@ -1,8 +1,4 @@
 export const paymentMessages = {
-  CHECKOUT_SUMMARY_ALREADY_CONVERTED: {
-    en: 'This checkout has already been processed into an order.',
-    pt: 'Este checkout já foi processado em um pedido.',
-  },
   PAYMENT_ALREADY_IN_PROCESS: {
     en: 'A payment process is already active for this checkout. Please wait.',
     pt: 'Um processo de pagamento já está ativo para este checkout. Por favor, aguarde.',
@@ -70,10 +66,6 @@ export const paymentMessages = {
   ORDER_DETAILS_EMPTY: {
     en: 'Order validation failed. Your cart cannot be empty.',
     pt: 'A validação do pedido falhou. Seu carrinho não pode estar vazio.',
-  },
-  VENDOR_NOT_FOUND: {
-    en: 'The requested vendor profile could not be found.',
-    pt: 'O perfil do fornecedor solicitado não pôde ser encontrado.',
   },
   INGREDIENT_NOT_FOUND: {
     en: 'The requested ingredient could not be found.',
