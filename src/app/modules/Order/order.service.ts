@@ -146,6 +146,14 @@ const createOrderAfterRedUniqPayment = async (
       isPaid: true,
       deliveryAddress: summary.deliveryAddress,
       orderStatus: 'PENDING',
+      statusHistory: [
+        {
+          status: ORDER_STATUS.PENDING,
+          timestamp: new Date(),
+          updatedBy: currentUser._id,
+          note: 'Order placed and payment verified successfully.',
+        },
+      ],
       isDeleted: false,
     };
 
