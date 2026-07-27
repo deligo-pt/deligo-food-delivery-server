@@ -7,7 +7,7 @@ import httpStatus from 'http-status';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TCustomer, TCustomerLiveLocationPayload } from './customer.interface';
 import { Customer } from './customer.model';
-import { CustomerSearchableFields } from './customer.constant';
+import { AddressType, CustomerSearchableFields } from './customer.constant';
 import { TDeliveryAddress } from '../../constant/GlobalInterface/address.interface';
 import { getPopulateOptions } from '../../utils/getPopulateOptions';
 import { generateReferralCode } from '../../utils/generateReferralCode';
@@ -306,6 +306,13 @@ const addDeliveryAddress = async (
     throw new AppError(httpStatus.FORBIDDEN, 'ONLY_CUSTOMER_CAN_ADD_ADDRESS');
   }
 
+  if (
+    deliveryAddress.addressType === AddressType.OTHER &&
+    !deliveryAddress.customAddressType?.trim()
+  ) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'CUSTOM_ADDRESS_TYPE_REQUIRED');
+  }
+
   const customerProfile = await Customer.findOne({
     userId: currentUser.userId,
     isDeleted: false,
@@ -330,21 +337,19 @@ const addDeliveryAddress = async (
     if (a == null || b == null) return false;
     return Math.abs(a - b) <= tolerance;
   };
-  const isDuplicate = currentUser.deliveryAddresses?.some(
-    (addr: TDeliveryAddress) => {
-      const textMatch =
-        normalize(addr.street) === normalize(deliveryAddress.street) &&
-        normalize(addr.city) === normalize(deliveryAddress.city) &&
-        normalize(addr.country) === normalize(deliveryAddress.country) &&
-        normalize(addr.postalCode) === normalize(deliveryAddress.postalCode);
+  const isDuplicate = currentAddresses?.some((addr: TDeliveryAddress) => {
+    const textMatch =
+      normalize(addr.street) === normalize(deliveryAddress.street) &&
+      normalize(addr.city) === normalize(deliveryAddress.city) &&
+      normalize(addr.country) === normalize(deliveryAddress.country) &&
+      normalize(addr.postalCode) === normalize(deliveryAddress.postalCode);
 
-      const geoMatch =
-        isClose(addr.latitude, deliveryAddress.latitude) &&
-        isClose(addr.longitude, deliveryAddress.longitude);
+    const geoMatch =
+      isClose(addr.latitude, deliveryAddress.latitude) &&
+      isClose(addr.longitude, deliveryAddress.longitude);
 
-      return textMatch || geoMatch;
-    },
-  );
+    return textMatch || geoMatch;
+  });
 
   if (isDuplicate) {
     throw new AppError(httpStatus.CONFLICT, 'ADDRESS_ALREADY_EXISTS');
@@ -357,6 +362,8 @@ const addDeliveryAddress = async (
   // --------------------------------------------------
   // Create new active address
   // --------------------------------------------------
+
+  const selectedAddressType = deliveryAddress.addressType ?? 'HOME';
   const newDeliveryAddress: TDeliveryAddress = {
     street: deliveryAddress.street.trim(),
     city: deliveryAddress.city.trim(),
@@ -373,7 +380,12 @@ const addDeliveryAddress = async (
     notes: deliveryAddress.notes?.trim(),
 
     isActive: true,
-    addressType: deliveryAddress.addressType ?? 'HOME',
+    addressType: selectedAddressType,
+
+    customAddressType:
+      selectedAddressType === AddressType.OTHER
+        ? deliveryAddress.customAddressType?.trim()
+        : '',
   };
 
   updatedAddresses.push(newDeliveryAddress);
@@ -393,7 +405,7 @@ const addDeliveryAddress = async (
   }
 
   await Customer.findByIdAndUpdate(
-    currentUser._id,
+    customerProfile._id,
     { $set: updateData },
     { runValidators: true, new: true },
   );
@@ -474,9 +486,31 @@ const updateDeliveryAddress = async (
     }
   }
 
+  // --------------------------------------------------
+  // Address Type & Custom Address Type Logic
+  // --------------------------------------------------
+  const finalAddressType = payload.addressType ?? targetAddress.addressType;
+  let finalCustomAddressType =
+    payload.customAddressType !== undefined
+      ? payload.customAddressType?.trim()
+      : targetAddress.customAddressType;
+
+  if (finalAddressType === AddressType.OTHER) {
+    if (!finalCustomAddressType) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'CUSTOM_ADDRESS_TYPE_REQUIRED',
+      );
+    }
+  } else {
+    finalCustomAddressType = '';
+  }
+
   const updatedTargetAddress = {
     ...targetAddress,
     ...payload,
+    addressType: finalAddressType,
+    customAddressType: finalCustomAddressType,
     street:
       typeof payload.street === 'string'
         ? payload.street.trim()
@@ -496,6 +530,10 @@ const updateDeliveryAddress = async (
   const updateData: Record<string, any> = {
     deliveryAddresses: currentAddresses,
   };
+
+  if (targetAddress.isActive) {
+    updateData.address = { ...updatedTargetAddress };
+  }
 
   const updatedCustomer = await Customer.findOneAndUpdate(
     { userId: currentUser.userId },

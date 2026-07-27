@@ -88,6 +88,7 @@ const customerSchema = new Schema<TCustomer>(
 
         zoneId: { type: Schema.Types.ObjectId, default: null, ref: 'Zone' },
         addressType: { type: String, enum: Object.keys(AddressType) },
+        customAddressType: { type: String, default: '' },
         notes: { type: String },
       },
     ],

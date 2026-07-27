@@ -28,24 +28,41 @@ const updateCustomerDataValidationSchema = z.object({
 // ---------------------------------------------
 //  add Delivery Address Validation Schema
 // ---------------------------------------------
+
 const addDeliveryAddressValidationSchema = z.object({
   body: z
     .object({
       deliveryAddress: addressValidationSchema
         .extend({
           isActive: z.boolean().optional(),
-
-          // zoneId: z.string().optional(),
           addressType: z
             .enum(['HOME', 'OFFICE', 'OTHER', 'CURRENT_LOCATION'])
             .optional(),
+
+          customAddressType: z.string().optional(),
+
           notes: z.string().optional(),
         })
-        .strict(),
+        .strict()
+        .refine(
+          (data) => {
+            if (data.addressType === 'OTHER') {
+              return (
+                !!data.customAddressType &&
+                data.customAddressType.trim().length > 0
+              );
+            }
+            return true;
+          },
+          {
+            message:
+              'Please provide a custom address type when selecting "Other" as the address type',
+            path: ['customAddressType'],
+          },
+        ),
     })
     .strict(),
 });
-
 // ---------------------------------------------
 // Update Delivery Address Validation Schema
 // ---------------------------------------------
@@ -57,10 +74,27 @@ const updateDeliveryAddressValidationSchema = z.object({
           addressType: z
             .enum(['HOME', 'OFFICE', 'OTHER', 'CURRENT_LOCATION'])
             .optional(),
+          customAddressType: z.string().optional(),
           notes: z.string().optional(),
         })
         .strict()
-        .partial(),
+        .partial()
+        .refine(
+          (data) => {
+            if (data.addressType === 'OTHER') {
+              return (
+                !!data.customAddressType &&
+                data.customAddressType.trim().length > 0
+              );
+            }
+            return true;
+          },
+          {
+            message:
+              'Please provide a custom address type when selecting "Other" as the address type',
+            path: ['customAddressType'],
+          },
+        ),
     })
     .strict(),
 });
