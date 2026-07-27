@@ -1,4 +1,8 @@
+import mongoose from 'mongoose';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { TOrder, TOrderStatusHistory } from './order.interface';
+import { OrderStatus } from './order.constant';
+import { HydratedDocument } from 'mongoose';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const formatOrderResponse = (
@@ -43,4 +47,55 @@ const processSingleOrder = (order: any, lang: TLanguageCode) => {
   });
 
   return order;
+};
+
+type TOrderDocument = HydratedDocument<TOrder>;
+
+type TUpdateStatusParams = {
+  order: TOrderDocument;
+  newStatus: OrderStatus;
+  updatedBy?: mongoose.Types.ObjectId | string;
+  note?: string;
+};
+
+export const updateOrderStatusHistory = ({
+  order,
+  newStatus,
+  updatedBy,
+  note,
+}: TUpdateStatusParams): void => {
+  order.orderStatus = newStatus;
+
+  // 2. Ensure statusHistory array exists
+  if (!Array.isArray(order.statusHistory)) {
+    order.statusHistory = [];
+  }
+
+  const lastIndex = order.statusHistory.length - 1;
+  const lastEntry = order.statusHistory[lastIndex];
+
+  const updatedByObjectId = updatedBy
+    ? new mongoose.Types.ObjectId(updatedBy)
+    : undefined;
+
+  if (lastEntry && lastEntry.status === newStatus) {
+    lastEntry.timestamp = new Date();
+    if (note !== undefined) {
+      lastEntry.note = note;
+    }
+    if (updatedByObjectId) {
+      lastEntry.updatedBy = updatedByObjectId;
+    }
+
+    order.markModified('statusHistory');
+  } else {
+    const newHistoryEntry: TOrderStatusHistory = {
+      status: newStatus,
+      timestamp: new Date(),
+      ...(updatedByObjectId && { updatedBy: updatedByObjectId }),
+      ...(note && { note }),
+    };
+
+    order.statusHistory.push(newHistoryEntry);
+  }
 };
