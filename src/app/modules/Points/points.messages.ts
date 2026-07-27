@@ -3,10 +3,6 @@ export const pointsMessages = {
     en: 'Points have already been added for this order.',
     pt: 'Os pontos já foram atribuídos para este pedido.',
   },
-  ORDER_NOT_FOUND_SPECIFIED: {
-    en: 'The specified order could not be found.',
-    pt: 'O pedido especificado não foi encontrado.',
-  },
   UNAUTHORIZED_ORDER_NOT_BELONG_TO_USER: {
     en: 'Access denied. This order belongs to another profile.',
     pt: 'Acesso negado. Este pedido pertence a outro perfil.',

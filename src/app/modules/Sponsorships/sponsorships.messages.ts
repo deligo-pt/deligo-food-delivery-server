@@ -36,7 +36,6 @@ export const sponsorshipsMessages = {
   },
 
   // --- Global Mappings Block (To be handled by globalCommonMessages) ---
-  NOT_APPROVED_WITH_STATUS: { en: 'Access denied.', pt: 'Acesso negado.' },
   SPONSORSHIP_NOT_FOUND: {
     en: 'Sponsorship not found.',
     pt: 'Patrocínio não encontrado.',
