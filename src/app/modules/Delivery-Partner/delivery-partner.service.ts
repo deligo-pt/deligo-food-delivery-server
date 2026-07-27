@@ -75,7 +75,6 @@ const updateDeliveryPartner = async (
     throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_PARTNER_UNAUTHORIZED');
   }
 
-  payload.status = 'PENDING';
   // ---------------------------------------------------------
   // Update the delivery partner
   // ---------------------------------------------------------
