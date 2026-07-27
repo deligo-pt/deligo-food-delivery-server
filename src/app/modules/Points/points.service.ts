@@ -161,7 +161,7 @@ const addDeliveryPartnerPoints = async (
     const existsOrder = await Order.findById(orderId).session(session);
 
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND_SPECIFIED');
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
     }
 
     // 3. Security: Ensure the delivery partner is the authorized delivery partner for this order

@@ -29,10 +29,6 @@ export const ingredientOrderMessages = {
     en: 'Could not confirm the order due to a system error. Please try again.',
     pt: 'Não foi possível confirmar o pedido devido a um erro do sistema. Tente novamente.',
   },
-  VENDOR_NOT_FOUND: {
-    en: 'The requested vendor profile could not be found.',
-    pt: 'O perfil do fornecedor solicitado não pôde ser encontrado.',
-  },
 
   UNAUTHORIZED_UPDATE_ORDER_STATUS: {
     en: 'Access denied. You do not have permission to change this order status.',

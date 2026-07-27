@@ -49,12 +49,6 @@ export const offerMessages = {
     en: 'Offer created successfully.',
     pt: 'Oferta criada com sucesso.',
   },
-  NOT_APPROVED_WITH_STATUS: {
-    en: (vars: { status: string }) =>
-      `Access denied. Your current account status is: ${vars.status.toLowerCase()}.`,
-    pt: (vars: { status: string }) =>
-      `Acesso negado. O status atual da sua conta é: ${vars.status.toLowerCase()}.`,
-  },
   OFFER_NOT_FOUND: {
     en: 'The requested offer could not be found.',
     pt: 'A oferta solicitada não pôde ser encontrada.',
