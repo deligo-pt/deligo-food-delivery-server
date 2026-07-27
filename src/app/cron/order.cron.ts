@@ -2,32 +2,51 @@
 import { Order } from '../modules/Order/order.model';
 import { getIO } from '../lib/Socket';
 import { Vendor } from '../modules/Vendor/vendor.model';
+import { ORDER_STATUS } from '../modules/Order/order.constant';
+
 export const handleOrderExpiryCron = async () => {
   try {
     const now = new Date();
 
     const expiredOrders = await Order.find({
-      orderStatus: 'DISPATCHING',
+      orderStatus: ORDER_STATUS.DISPATCHING,
       dispatchExpiresAt: { $lt: now },
       isDeleted: false,
     }).populate('vendorId');
 
     if (expiredOrders.length > 0) {
+      const io = getIO();
+
       for (const order of expiredOrders) {
         await Order.updateOne(
-          { _id: order._id },
+          { _id: order._id, orderStatus: ORDER_STATUS.DISPATCHING },
           {
             $set: {
-              orderStatus: 'AWAITING_PARTNER',
+              orderStatus: ORDER_STATUS.AWAITING_PARTNER,
               dispatchPartnerPool: [],
+            },
+            $push: {
+              statusHistory: {
+                status: ORDER_STATUS.AWAITING_PARTNER,
+                timestamp: new Date(),
+                note: 'Dispatch time expired. Waiting for delivery partner reassignment.',
+              },
             },
           },
         );
 
-        const io = getIO();
+        if (
+          Array.isArray(order.dispatchPartnerPool) &&
+          order.dispatchPartnerPool.length > 0
+        ) {
+          order.dispatchPartnerPool.forEach((partnerPoolId) => {
+            io.to(`partner_pool_${partnerPoolId}`).emit('REMOVE_ORDER_POPUP', {
+              orderId: order.orderId,
+            });
+          });
+        }
 
         let vendorUserId = '';
-
         if (
           typeof order.vendorId === 'object' &&
           (order.vendorId as any).userId
@@ -49,6 +68,6 @@ export const handleOrderExpiryCron = async () => {
       }
     }
   } catch (error) {
-    console.error('Error in Order Cron Job:', error);
+    console.error('Error in Order Expiry Cron Job:', error);
   }
 };

@@ -1,5 +1,5 @@
 import { model, Schema } from 'mongoose';
-import { TOrder, TInvoiceSync } from './order.interface';
+import { TOrder, TInvoiceSync, TOrderStatusHistory } from './order.interface';
 import { ORDER_STATUS } from './order.constant';
 import { addressSchema } from '../../constant/GlobalModel/address.model';
 import { localizedSchema } from '../../constant/GlobalModel/language.model';
@@ -12,6 +12,29 @@ const invoiceSyncSchema = new Schema<TInvoiceSync>(
     signature: { type: String },
     syncedAt: { type: Date },
     syncError: { type: String },
+  },
+  { _id: false },
+);
+
+const statusHistorySchema = new Schema<TOrderStatusHistory>(
+  {
+    status: {
+      type: String,
+      enum: Object.values(ORDER_STATUS),
+      required: true,
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
+    updatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    note: {
+      type: String,
+      default: null,
+    },
   },
   { _id: false },
 );
@@ -168,6 +191,12 @@ const orderSchema = new Schema<TOrder>(
       enum: Object.values(ORDER_STATUS),
       default: 'PENDING',
     },
+
+    statusHistory: {
+      type: [statusHistorySchema],
+      default: [],
+    },
+
     cancelReason: { type: String },
     rejectReason: { type: String },
     remarks: { type: String, default: '' },
@@ -178,8 +207,6 @@ const orderSchema = new Schema<TOrder>(
     deliveryAddress: { type: addressSchema, required: true },
     pickupAddress: { type: addressSchema },
 
-    pickedUpAt: { type: Date },
-    deliveredAt: { type: Date },
     preparationTime: { type: Number, default: 0 },
 
     ratingStatus: {
