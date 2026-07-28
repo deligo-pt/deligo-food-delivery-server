@@ -593,10 +593,56 @@ const getPartnerPerformanceAnalytics = async (
           },
         },
         {
+          $addFields: {
+            pickedUpAtHistory: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: { $ifNull: ['$statusHistory', []] },
+                    as: 'item',
+                    cond: { $eq: ['$$item.status', 'PICKED_UP'] },
+                  },
+                },
+                -1,
+              ],
+            },
+            deliveredAtHistory: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: { $ifNull: ['$statusHistory', []] },
+                    as: 'item',
+                    cond: { $eq: ['$$item.status', 'DELIVERED'] },
+                  },
+                },
+                -1,
+              ],
+            },
+          },
+        },
+        {
           $group: {
             _id: null,
             totalEarnings: { $sum: '$payoutSummary.rider.riderNetEarnings' },
-            avgTimeMs: { $avg: { $subtract: ['$deliveredAt', '$pickedUpAt'] } },
+            avgTimeMs: {
+              $avg: {
+                $cond: [
+                  {
+                    $and: [
+                      { $gt: ['$deliveredAtHistory.timestamp', null] },
+                      { $gt: ['$pickedUpAtHistory.timestamp', null] },
+                    ],
+                  },
+                  {
+                    $subtract: [
+                      '$deliveredAtHistory.timestamp',
+                      '$pickedUpAtHistory.timestamp',
+                    ],
+                  },
+                  '$$REMOVE',
+                ],
+              },
+            },
           },
         },
       ]),
@@ -2015,7 +2061,6 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
 
   const [partnerStatsRaw, workloadTrendsRaw, efficiencyByLevelRaw] =
     await Promise.all([
-      // 1. STATUS DISTRIBUTION & SUMMARY
       DeliveryPartner.aggregate([
         { $match: { isDeleted: false, status: 'APPROVED' } },
         {
@@ -2049,7 +2094,6 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
         },
       ]),
 
-      // 2. WORKLOAD TRENDS
       Order.aggregate([
         {
           $match: {
@@ -2070,7 +2114,6 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
         { $sort: { '_id.hour': 1 } },
       ]),
 
-      // 3. EFFICIENCY BY LEVEL (With Fallback for missing pickedUpAt)
       Order.aggregate([
         {
           $match: {
@@ -2082,26 +2125,64 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
         },
         {
           $addFields: {
+            pickedUpAtHistory: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: { $ifNull: ['$statusHistory', []] },
+                    as: 'item',
+                    cond: { $eq: ['$$item.status', 'PICKED_UP'] },
+                  },
+                },
+                -1,
+              ],
+            },
+            deliveredAtHistory: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: { $ifNull: ['$statusHistory', []] },
+                    as: 'item',
+                    cond: { $eq: ['$$item.status', 'DELIVERED'] },
+                  },
+                },
+                -1,
+              ],
+            },
+          },
+        },
+        {
+          $addFields: {
             completionTimeMinutes: {
               $cond: [
                 {
                   $and: [
-                    { $gt: ['$deliveredAt', null] },
-                    { $gt: ['$pickedUpAt', null] },
+                    { $gt: ['$deliveredAtHistory.timestamp', null] },
+                    { $gt: ['$pickedUpAtHistory.timestamp', null] },
                   ],
                 },
                 {
                   $divide: [
-                    { $subtract: ['$deliveredAt', '$pickedUpAt'] },
+                    {
+                      $subtract: [
+                        '$deliveredAtHistory.timestamp',
+                        '$pickedUpAtHistory.timestamp',
+                      ],
+                    },
                     60000,
                   ],
                 },
                 {
                   $cond: [
-                    { $gt: ['$deliveredAt', null] },
+                    { $gt: ['$deliveredAtHistory.timestamp', null] },
                     {
                       $divide: [
-                        { $subtract: ['$deliveredAt', '$createdAt'] },
+                        {
+                          $subtract: [
+                            '$deliveredAtHistory.timestamp',
+                            '$createdAt',
+                          ],
+                        },
                         60000,
                       ],
                     },
@@ -2132,7 +2213,6 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
       ]),
     ]);
 
-  // Total Earnings & Total Delivery Minutes Calculation
   const [earningsStats] = await Order.aggregate([
     {
       $match: {
@@ -2144,6 +2224,34 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
       },
     },
     {
+      $addFields: {
+        pickedUpAtHistory: {
+          $arrayElemAt: [
+            {
+              $filter: {
+                input: { $ifNull: ['$statusHistory', []] },
+                as: 'item',
+                cond: { $eq: ['$$item.status', 'PICKED_UP'] },
+              },
+            },
+            -1,
+          ],
+        },
+        deliveredAtHistory: {
+          $arrayElemAt: [
+            {
+              $filter: {
+                input: { $ifNull: ['$statusHistory', []] },
+                as: 'item',
+                cond: { $eq: ['$$item.status', 'DELIVERED'] },
+              },
+            },
+            -1,
+          ],
+        },
+      },
+    },
+    {
       $group: {
         _id: null,
         totalPeriodEarnings: { $sum: '$payoutSummary.rider.riderNetEarnings' },
@@ -2152,13 +2260,18 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
             $cond: [
               {
                 $and: [
-                  { $gt: ['$deliveredAt', null] },
-                  { $gt: ['$pickedUpAt', null] },
+                  { $gt: ['$deliveredAtHistory.timestamp', null] },
+                  { $gt: ['$pickedUpAtHistory.timestamp', null] },
                 ],
               },
               {
                 $divide: [
-                  { $subtract: ['$deliveredAt', '$pickedUpAt'] },
+                  {
+                    $subtract: [
+                      '$deliveredAtHistory.timestamp',
+                      '$pickedUpAtHistory.timestamp',
+                    ],
+                  },
                   60000,
                 ],
               },
@@ -2211,7 +2324,6 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
     (earningsStats?.totalPeriodEarnings || 0) / activeRidersInPeriodCount,
   );
 
-  // Workload Trends 24-Hour
   const workloadMap = new Map<number, any>(
     (workloadTrendsRaw || []).map((w: any) => [Number(w._id.hour), w]),
   );
@@ -2228,7 +2340,6 @@ const getAdminDeliveryPartnerAnalytics = async (query: {
     },
   );
 
-  // Efficiency By Level Mapping
   const efficiencyMap = new Map<string, number>(
     (efficiencyByLevelRaw || []).map((e: any) => [
       String(e._id),

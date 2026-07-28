@@ -4175,18 +4175,52 @@ const getDeliveryInsights = async (query: {
       },
       {
         $addFields: {
-          // Duration Calculation ONLY if both timestamps exist
+          // Extract PICKED_UP timestamp (takes the latest one if multiple exist)
+          pickedUpAtHistory: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: { $ifNull: ['$statusHistory', []] },
+                  as: 'item',
+                  cond: { $eq: ['$$item.status', 'PICKED_UP'] },
+                },
+              },
+              -1,
+            ],
+          },
+          // Extract DELIVERED timestamp (takes the latest one if multiple exist)
+          deliveredAtHistory: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: { $ifNull: ['$statusHistory', []] },
+                  as: 'item',
+                  cond: { $eq: ['$$item.status', 'DELIVERED'] },
+                },
+              },
+              -1,
+            ],
+          },
+        },
+      },
+      {
+        $addFields: {
           actualMinutes: {
             $cond: [
               {
                 $and: [
-                  { $gt: ['$deliveredAt', null] },
-                  { $gt: ['$pickedUpAt', null] },
+                  { $gt: ['$deliveredAtHistory.timestamp', null] },
+                  { $gt: ['$pickedUpAtHistory.timestamp', null] },
                 ],
               },
               {
                 $divide: [
-                  { $subtract: ['$deliveredAt', '$pickedUpAt'] },
+                  {
+                    $subtract: [
+                      '$deliveredAtHistory.timestamp',
+                      '$pickedUpAtHistory.timestamp',
+                    ],
+                  },
                   60000,
                 ],
               },
@@ -4209,7 +4243,6 @@ const getDeliveryInsights = async (query: {
       },
       {
         $addFields: {
-          // Late Logic: Success + Actual > Estimate
           isLate: {
             $cond: [
               {
@@ -4256,6 +4289,11 @@ const getDeliveryInsights = async (query: {
                 totalDeliveries: { $sum: 1 },
                 successfulDeliveries: { $sum: '$isSuccess' },
                 totalTime: { $sum: { $ifNull: ['$actualMinutes', 0] } },
+                timedDeliveriesCount: {
+                  $sum: {
+                    $cond: [{ $gt: ['$actualMinutes', 0] }, 1, 0],
+                  },
+                },
               },
             },
             {
@@ -4298,8 +4336,8 @@ const getDeliveryInsights = async (query: {
                   $round: [
                     {
                       $cond: [
-                        { $gt: ['$successfulDeliveries', 0] },
-                        { $divide: ['$totalTime', '$successfulDeliveries'] },
+                        { $gt: ['$timedDeliveriesCount', 0] },
+                        { $divide: ['$totalTime', '$timedDeliveriesCount'] },
                         0,
                       ],
                     },
