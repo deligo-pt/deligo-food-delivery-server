@@ -140,6 +140,7 @@ const vendorSchema = new Schema<TVendor>(
       storePhoto: { type: [String], default: [] },
       menuUpload: { type: [String], default: [] },
       agoserisHaccpCertificate: { type: [String], default: [] },
+      ibanProof: { type: [String], default: [] },
     },
 
     // -------------------------------------------------------
