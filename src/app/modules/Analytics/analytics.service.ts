@@ -3557,7 +3557,6 @@ const getAdminCustomerInsights = async (query: {
           },
         ],
 
-        // --- ACTIVE SNAPSHOTS (DAU / WAU / MAU) ---
         activeSnapshots: [
           {
             $group: {

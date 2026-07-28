@@ -18,6 +18,7 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
+import { EmailHelper } from '../../utils/emailSender';
 
 const solutionIds = {
   CARD: '117',
@@ -32,6 +33,44 @@ const REDUNIQ_SUCCESS_CODES = new Set(['00000000', '17000000000', '900000000']);
 
 const isRedUniqSuccess = (result: any, transaction: any) =>
   transaction?.status === '1' || REDUNIQ_SUCCESS_CODES.has(result?.code);
+
+const sendRefundSuccessEmail = async (
+  order: any,
+  refundTransactionId?: string | null,
+) => {
+  try {
+    const customer = order.customerId as any;
+    const customerEmail = customer?.email;
+
+    if (!customerEmail) return;
+
+    const customerName =
+      [customer?.name?.firstName, customer?.name?.lastName]
+        .filter(Boolean)
+        .join(' ') || 'Customer';
+
+    const emailHtml = await EmailHelper.createEmailContent(
+      {
+        user: customerName,
+        orderId: order.orderId,
+        refundAmount: Number(order.payoutSummary?.grandTotal || 0).toFixed(2),
+        refundTransactionId: refundTransactionId || 'N/A',
+        currentYear: new Date().getFullYear(),
+        date: new Date().toDateString(),
+      },
+      'refund-success',
+    );
+
+    await EmailHelper.sendEmail(
+      customerEmail,
+      emailHtml,
+      `Your refund for order #${order.orderId} has been processed`,
+      { shouldLog: false },
+    );
+  } catch (error) {
+    void error;
+  }
+};
 
 const performRedUniqDoVoid = async (transactionId: string, comment: string) => {
   const payload = {
@@ -158,7 +197,7 @@ const refundRedUniqPayment = async (orderId: string) => {
   const order = await Order.findOne({
     orderId,
     isDeleted: false,
-  });
+  }).populate('customerId', 'name email');
 
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
@@ -238,10 +277,15 @@ const refundRedUniqPayment = async (orderId: string) => {
         order.isPaid = false;
         await order.save();
 
+        const voidRefundTransactionId = (voidTxn as any)?.id || null;
+        sendRefundSuccessEmail(order, voidRefundTransactionId).catch((err) =>
+          console.error('Refund email sending failed:', err),
+        );
+
         return {
           messageKey: 'REDUNIQ_PAYMENT_REFUNDED' as TMessageKey,
           data: {
-            refundTransactionId: (voidTxn as any)?.id || null,
+            refundTransactionId: voidRefundTransactionId,
             refundedBy: 'void',
           },
         };
@@ -258,10 +302,15 @@ const refundRedUniqPayment = async (orderId: string) => {
     order.isPaid = false;
     await order.save();
 
+    const refundTransactionId = (transaction as any)?.id || null;
+    sendRefundSuccessEmail(order, refundTransactionId).catch((err) =>
+      console.error('Refund email sending failed:', err),
+    );
+
     return {
       messageKey: 'REDUNIQ_PAYMENT_REFUNDED' as TMessageKey,
       data: {
-        refundTransactionId: (transaction as any)?.id || null,
+        refundTransactionId,
       },
     };
   } catch (error: any) {

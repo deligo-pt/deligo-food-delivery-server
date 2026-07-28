@@ -1,0 +1,194 @@
+{{! Deligo Refund Successful Email }}
+
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+
+    <style>
+      body { margin: 0; padding: 0; background: #f3f4fa; font-family: monospace;
+      font-weight: 600; } img { max-width: 100%; display: block; } .container {
+      max-width: 650px; margin: 0 auto; background: #ffffff; border-radius:
+      18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07); } /*
+      HEADER (table-based for Gmail Mobile) */ .header { background:
+      linear-gradient(135deg, #dc3173, #a80e52); padding: 22px 30px; }
+      .header-left img { width: 70px; height: auto; } .header-date { color:
+      #ffffff; font-size: 15px; white-space: nowrap; } /* MIDDLE */ .middle {
+      background: #fae0ea; } .title { text-align: center; font-size: 24px;
+      font-weight: bold; padding: 25px 0 15px; color: #1e1e1e; } .content {
+      padding: 0 30px 25px 30px; font-size: 17px; color: #333333; line-height:
+      1.7; } .amount-box { font-size: 32px; font-weight: 800; padding: 18px 0;
+      background: #fafafa; border-radius: 10px; display: inline-block; width:
+      240px; color: #1fa971; border: 1px solid #e0e0e0; margin: 15px auto 10px;
+      text-align: center; } .details-table { width: 100%; max-width: 480px;
+      margin: 10px auto 0; border-collapse: collapse; } .details-table td {
+      padding: 8px 0; font-size: 15px; color: #333333; border-bottom: 1px
+      solid #eadfe4; } .details-table td.label { color: #777777; } .details-table
+      td.value { text-align: right; font-weight: bold; color: #1e1e1e; } .note {
+      font-size: 14px; color: #a83232; text-align: center; background: #fff5f5;
+      border: 1px solid #f3c8c8; border-radius: 8px; padding: 12px 18px;
+      margin: 25px 30px 20px; } .content.closing { padding-top: 5px; }
+      .social-section { text-align: center; padding: 20px 0; background:
+      #fae0ea; } .social-section img { width: 34px; } .footer { font-size:
+      14px; text-align: center; color: #666; padding: 15px 30px 25px 30px;
+      border-top: 1px solid #e4e4e4; background: #fae0ea; } /* RESPONSIVE */
+      @media only screen and (max-width: 480px) { .header-left img { width:
+      42px !important; } .header-date { width: 100%; text-align: right;
+      padding-top: 8px; } .title { font-size: 22px !important; } .amount-box {
+      width: 200px !important; font-size: 26px !important; } .content { padding:
+      0 20px 25px 20px !important; font-size: 16px !important; } .details-table
+      td { font-size: 14px !important; } .note { margin: 18px 20px 15px
+      !important; padding: 10px 14px !important; } .social-section img { width: 30px; }
+      .footer { padding: 10px 20px 20px 20px !important; } }
+    </style>
+  </head>
+
+  <body>
+    <br />
+
+    <div class='container'>
+      <!-- HEADER (fixed for Gmail mobile) -->
+      <div class='header'>
+        <table width='100%' cellspacing='0' cellpadding='0'>
+          <tr>
+            <td align='left' style='vertical-align:middle;'>
+              <img
+                src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763599290/DeliGo-White_cfd6my.png'
+                alt='DeliGo Logo'
+                width='70'
+              />
+            </td>
+
+            <td
+              align='right'
+              style='vertical-align:middle; color:#fff; font-size:15px; white-space:nowrap;'
+            >
+              {{date}}
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- BODY -->
+      <div class='middle'>
+        <div class='title'>Refund Successful</div>
+
+        <div class='content'>
+          <strong>Dear {{user}},</strong><br /><br />
+          Good news! Your refund for order
+          <strong>#{{orderId}}</strong>
+          has been processed successfully and the amount below has been
+          credited back to your original payment method.
+        </div>
+
+        <div style='text-align:center;'>
+          <div class='amount-box'>&euro;{{refundAmount}}</div>
+        </div>
+
+        <div style='text-align:center;'>
+          <table
+            class='details-table'
+            role='presentation'
+            cellspacing='0'
+            cellpadding='0'
+          >
+            <tr>
+              <td class='label'>Order ID</td>
+              <td class='value'>{{orderId}}</td>
+            </tr>
+            <tr>
+              <td class='label'>Refund Transaction ID</td>
+              <td class='value'>{{refundTransactionId}}</td>
+            </tr>
+            <tr>
+              <td class='label'>Refund Date</td>
+              <td class='value'>{{date}}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class='note'>Note: It may take a few business days for the
+          refund to reflect in your account, depending on your bank or card
+          provider.</div>
+
+        <div class='content closing'>
+          If you have any questions about this refund, please contact our
+          support team.
+          <br /><br />Regards,<br />
+          Team DeliGo
+        </div>
+      </div>
+
+      <!-- SOCIAL ICONS (always in row) -->
+      <div class='social-section'>
+        <table
+          role='presentation'
+          cellspacing='0'
+          cellpadding='0'
+          border='0'
+          align='center'
+        >
+          <tr>
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.facebook.com/deligoeu' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/facebook_pcla1y.png'
+                  alt='Facebook'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.youtube.com/@DeliGoPT' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/youtube_f3hzep.png'
+                  alt='Youtube'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.linkedin.com/in/deligopt' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520442/linkedin_bhmzdk.png'
+                  alt='LinkedIn'
+                  width='34'
+                />
+              </a>
+            </td>
+
+            <td align='center' style='padding: 0 8px;'>
+              <a href='https://www.instagram.com/deligo.pt/#' target='_blank'>
+                <img
+                  src='https://res.cloudinary.com/duagqnvpw/image/upload/v1763520443/instagram_lwmdxa.png'
+                  alt='Instagram'
+                  width='34'
+                />
+              </a>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- FOOTER -->
+      <div class='footer'>
+  <p style="margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #1e1e1e;">
+    DeliGo / Operated by Pixel Miracle Lda
+  </p>
+  <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.5;">
+    <strong>NIF / Tax Number:</strong> 518758176 <br>
+    <strong>Address:</strong> Rua Joaquim Agostinho 16C, 1750-126 Lisbon, Portugal <br>
+    <strong>Phone:</strong> +351 920 136 680 | +351 217 570 184 <br>
+    <strong>Email:</strong> contact@deligo.pt | <strong>Website:</strong> <a href="https://deligo.pt" style="color: #dc3173; text-decoration: none;">deligo.pt</a>
+  </p>
+  <p style="margin: 15px 0 0 0; font-size: 13px; color: #999; border-top: 1px solid #ddd; padding-top: 10px;">
+    &copy; {{currentYear}} DeliGo. All rights reserved.
+  </p>
+</div>
+    </div>
+
+    <br />
+  </body>
+</html>
