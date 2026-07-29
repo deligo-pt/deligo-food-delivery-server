@@ -9,6 +9,7 @@ export type TNotificationType =
   | 'PAYOUT_ALERT'
   | 'TRANSACTION'
   | 'PROMOTIONAL'
+  | 'STOCK_ALERT'
   | 'OTHER';
 
 export type TNotification = {

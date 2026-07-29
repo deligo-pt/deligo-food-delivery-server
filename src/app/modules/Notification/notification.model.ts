@@ -11,6 +11,7 @@ export const notificationTypes = [
   'PAYOUT_ALERT',
   'TRANSACTION',
   'PROMOTIONAL',
+  'STOCK_ALERT',
   'OTHER',
 ];
 
