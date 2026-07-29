@@ -7,6 +7,7 @@ import { ProductRoutes } from '../modules/Product/product.route';
 import { CartRoutes } from '../modules/Cart/cart.route';
 import { OrderRoutes } from '../modules/Order/order.route';
 import { PaymentRoutes } from '../modules/Payment/payment.route';
+import { PaymentTokenRoutes } from '../modules/Payment-Token/payment-token.route';
 import { FleetManagerRoutes } from '../modules/Fleet-Manager/fleet-manager.route';
 import { AdminRoutes } from '../modules/Admin/admin.route';
 import { DeliveryPartnerRoutes } from '../modules/Delivery-Partner/delivery-partner.route';
@@ -86,6 +87,10 @@ const moduleRoutes = [
   {
     path: '/payment',
     route: PaymentRoutes,
+  },
+  {
+    path: '/payment-tokens',
+    route: PaymentTokenRoutes,
   },
   {
     path: '/payouts',

@@ -1,56 +1,21 @@
-import { genAi } from '../../config/genAi';
+import { openai } from '../../config/openai';
+import { TMessageKey } from '../../errors/messages';
 import { TGenerateProductDescriptionPayload } from './ai-content-generator.interface';
-
-// const generateProductDescription = async (
-//   payload: TGenerateProductDescriptionPayload,
-// ): Promise<string> => {
-//   const { productName, productCategory, productImageUrl } = payload;
-
-//   const response = await openai.responses.create({
-//     model: 'gpt-5',
-//     input: [
-//       {
-//         role: 'user',
-//         content: [
-//           {
-//             type: 'input_text',
-//             text: `
-// Generate an attractive and professional food description.
-
-// Product Name: ${productName}
-// Category: ${productCategory}
-
-// Requirements:
-// - Maximum 40 words
-// - Appetizing tone
-// - No false claims
-// - Return only the description text.
-//             `,
-//           },
-//           {
-//             type: 'input_image',
-//             image_url: productImageUrl,
-//             detail: 'auto',
-//           },
-//         ],
-//       },
-//     ],
-//   });
-
-//   return response.output_text?.trim() || '';
-// };
 
 const generateProductDescription = async (
   payload: TGenerateProductDescriptionPayload,
-) => {
-  const {
-    productName,
-    productCategory,
-    productImageUrl,
-    language = 'English',
-  } = payload;
+): Promise<{ messageKey: TMessageKey; result: string }> => {
+  const { productName, productCategory, language = 'English' } = payload;
 
-  const prompt = `
+  const response = await openai.responses.create({
+    model: 'gpt-5',
+    input: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: `
 Generate an attractive and professional food description.
 
 Product Name: ${productName}
@@ -62,29 +27,21 @@ Requirements:
 - No false claims
 - Return only the description text.
 - Language: ${language}
-`;
-
-  const response = await genAi.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: [
-      {
-        text: prompt,
-      },
-      {
-        fileData: {
-          fileUri: productImageUrl,
-        },
+            `,
+          },
+        ],
       },
     ],
   });
 
-  const result = response.text?.trim() || '';
+  const responseText = response.output_text?.trim() || '';
 
   return {
-    messageKey: 'GENERATE_PRODUCT_DESCRIPTION_SUCCESS' as const,
-    result,
+    messageKey: 'GENERATE_PRODUCT_DESCRIPTION_SUCCESS',
+    result: responseText,
   };
 };
+
 export const AIContentGeneratorService = {
   generateProductDescription,
 };
