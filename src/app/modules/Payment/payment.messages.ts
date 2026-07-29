@@ -99,4 +99,12 @@ export const paymentMessages = {
     en: 'The transaction was declined or failed during processing.',
     pt: 'A transação foi recusada ou falhou durante o processamento.',
   },
+  SAVED_TOKEN_PAYMENT_FAILED: {
+    en: 'Payment with your saved card was declined. Please try again or use a different method.',
+    pt: 'O pagamento com o seu cartão guardado foi recusado. Tente novamente ou use outro método.',
+  },
+  NOTIFICATION_RECEIVED: {
+    en: 'Notification received.',
+    pt: 'Notificação recebida.',
+  },
 } as const;
