@@ -3,6 +3,10 @@ import { TOrder, TInvoiceSync, TOrderStatusHistory } from './order.interface';
 import { ORDER_STATUS } from './order.constant';
 import { addressSchema } from '../../constant/GlobalModel/address.model';
 import { localizedSchema } from '../../constant/GlobalModel/language.model';
+import {
+  PAYMENT_METHOD,
+  PAYMENT_STATUS,
+} from '../../constant/GlobalInterface/payment.interface';
 
 const invoiceSyncSchema = new Schema<TInvoiceSync>(
   {
@@ -175,13 +179,13 @@ const orderSchema = new Schema<TOrder>(
 
     paymentMethod: {
       type: String,
-      enum: ['CARD', 'MB_WAY', 'APPLE_PAY', 'PAYPAL', 'GOOGLE_PAY', 'OTHER'],
+      enum: Object.values(PAYMENT_METHOD),
       required: true,
     },
     paymentStatus: {
       type: String,
-      enum: ['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REFUNDED'],
-      default: 'PENDING',
+      enum: Object.values(PAYMENT_STATUS),
+      default: PAYMENT_STATUS.PENDING,
     },
     transactionId: { type: String, unique: true, sparse: true },
     isPaid: { type: Boolean, default: false },
