@@ -70,6 +70,14 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
 
   const customerNif = customer?.NIF || '999999990';
 
+  const deliveryAddress = order.deliveryAddress;
+  const addressLine1 = [deliveryAddress?.street, deliveryAddress?.detailedAddress]
+    .filter(Boolean)
+    .join(', ');
+  const addressLine2 = [deliveryAddress?.postalCode, deliveryAddress?.city]
+    .filter(Boolean)
+    .join(' ');
+
   const deliveryGross = order.delivery?.totalDeliveryCharge || 0;
   const serviceBase = order.orderCalculation?.serviceCharge || 0;
   const serviceVat = order.orderCalculation?.serviceChargeVatAmount || 0;
@@ -87,6 +95,8 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
     orderId: order.orderId || order._id.toString(),
     customerName,
     cleanNif: customerNif,
+    addressLine1,
+    addressLine2,
 
     providerName: 'Pixel Miracle Lda (DeliGo)',
     providerAddress: 'Rua Joaquim Agostinho 16C, 1750-126 Lisbon, Portugal',
