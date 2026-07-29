@@ -6,7 +6,7 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
 import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
-// create redUniq payment intent controller (Endpoint 1 — optionally saves the card)
+// create redUniq payment intent controller
 const createRedUniqPayment = catchAsync(async (req, res) => {
   const { checkoutSummaryId, paymentMethod, saveCard } = req.body;
   const currentUser = req.user as TCurrentUser;
@@ -32,7 +32,7 @@ const createRedUniqPayment = catchAsync(async (req, res) => {
   });
 });
 
-// Endpoint 3: pay with a previously saved card token (one-click checkout)
+// pay with a previously saved card token (one-click checkout)
 const payWithSavedToken = catchAsync(async (req, res) => {
   const { checkoutSummaryId, paymentTokenId } = req.body;
   const currentUser = req.user as TCurrentUser;
@@ -59,13 +59,11 @@ const payWithSavedToken = catchAsync(async (req, res) => {
   });
 });
 
-// Endpoint 4: REDUNIQ notification/webhook callback (no auth — gateway calls this directly)
+// REDUNIQ notification/webhook callback (no auth — gateway calls this directly)
 const handleReduniqNotification = catchAsync(async (req, res) => {
   try {
     await PaymentServices.handleReduniqNotification(req.body);
   } catch (error) {
-    // Never let an internal error surface a non-200 to the gateway — that would
-    // just trigger aggressive notification retries. Log and acknowledge instead.
     console.error('REDUNIQ notification handling failed:', error);
   }
 
