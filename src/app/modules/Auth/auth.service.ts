@@ -1279,11 +1279,18 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
     isDeleted: false,
   }).populate('profileId', 'name');
 
-  const populatedUser = user?.profileId as any;
-
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND_FOR_RESET');
   }
+
+  if (user?.role === 'SUPER_ADMIN') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'SUPER_ADMIN_PASSWORD_RESET_DENIED',
+    );
+  }
+
+  const populatedUser = user?.profileId as any;
 
   if (!user.isEmailVerified) {
     throw new AppError(httpStatus.FORBIDDEN, 'VERIFY_EMAIL_REQUIRED');

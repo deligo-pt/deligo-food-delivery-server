@@ -413,4 +413,8 @@ export const authMessages = {
     en: 'Access session renewed successfully.',
     pt: 'Sessão de acesso renovada com sucesso.',
   },
+  SUPER_ADMIN_PASSWORD_RESET_DENIED: {
+    en: 'Super Admin accounts password cannot be reset.',
+    pt: 'As senhas das contas de Super Admin não podem ser redefinidas.',
+  },
 } as const;

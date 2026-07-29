@@ -90,7 +90,6 @@ router.post(
   '/change-password',
   auth(
     'ADMIN',
-    'SUPER_ADMIN',
     'CUSTOMER',
     'DELIVERY_PARTNER',
     'VENDOR',
