@@ -258,4 +258,8 @@ export const productMessages = {
     en: 'Deactivation required first.',
     pt: 'Desativação necessária primeiro.',
   },
+  VENDOR_STOCK_ALERT_SENT_SUCCESS: {
+    en: 'Vendor has been notified about the stock alert successfully.',
+    pt: 'O fornecedor foi notificado sobre o alerta de estoque com sucesso.',
+  },
 } as const;

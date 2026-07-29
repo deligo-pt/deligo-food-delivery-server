@@ -19,6 +19,8 @@ import {
 } from '../../constant/GlobalInterface/language.interface';
 import { UpdateProductUtils } from './updateProduct.utils';
 import { Order } from '../Order/order.model';
+import { NotificationService } from '../Notification/notification.service';
+import { EmailHelper } from '../../utils/emailSender';
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
@@ -1161,6 +1163,90 @@ const getOutOfStockAlerts = async (
     },
   };
 };
+// notify vendor about a low/out-of-stock product (admin action)
+const notifyVendorStockAlert = async (productId: string) => {
+  const product = await Product.findOne({
+    _id: productId,
+    isDeleted: false,
+  }).populate({
+    path: 'vendorId',
+    select: 'userId email businessDetails.businessName',
+  });
+
+  if (!product) {
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+  }
+
+  const vendor = product.vendorId as any;
+  if (!vendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+  }
+
+  const productName = product.name?.en || product.name?.pt || 'Product';
+  const hasVariations = !!(product.variations && product.variations.length > 0);
+
+  let quantity = 0;
+  let isOutOfStock = false;
+
+  if (hasVariations) {
+    product.variations!.forEach((v) => {
+      v.options.forEach((o: any) => {
+        quantity += o.stockQuantity || 0;
+        if (o.isOutOfStock) isOutOfStock = true;
+      });
+    });
+  } else if (product.stock) {
+    quantity = product.stock.quantity;
+    isOutOfStock = product.stock.availabilityStatus === 'Out of Stock';
+  }
+
+  const title = isOutOfStock
+    ? `Critical: ${productName} is Out of Stock`
+    : `Low Stock Alert: ${productName}`;
+
+  const message = isOutOfStock
+    ? `${productName} (SKU: ${product.sku}) is out of stock. Please restock as soon as possible.`
+    : `${productName} (SKU: ${product.sku}) is running low on stock (${quantity} unit(s) remaining). Please restock soon.`;
+
+  NotificationService.sendToUser(
+    vendor.userId,
+    title,
+    message,
+    { productId: product.productId, sku: product.sku },
+    'default',
+    'STOCK_ALERT',
+  );
+
+  if (vendor.email) {
+    EmailHelper.createEmailContent(
+      {
+        vendorName: vendor.businessDetails?.businessName || 'Vendor',
+        productName,
+        sku: product.sku,
+        quantity,
+        isOutOfStock,
+        currentYear: new Date().getFullYear(),
+        date: new Date().toDateString(),
+      },
+      'low-stock-alert',
+    )
+      .then((html) =>
+        EmailHelper.sendEmail(vendor.email, html, title, { shouldLog: false }),
+      )
+      .catch((err) => {
+        console.error(
+          `Stock alert email failed for ${vendor.email}:`,
+          err.message,
+        );
+      });
+  }
+
+  return {
+    messageKey: 'VENDOR_STOCK_ALERT_SENT_SUCCESS',
+    data: null,
+  };
+};
+
 export const ProductServices = {
   createProduct,
   updateProduct,
@@ -1177,4 +1263,5 @@ export const ProductServices = {
   softDeleteProduct,
   permanentDeleteProduct,
   getOutOfStockAlerts,
+  notifyVendorStockAlert,
 };
