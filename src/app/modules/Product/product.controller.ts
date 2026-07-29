@@ -336,6 +336,27 @@ const getOutOfStockAlerts = catchAsync(async (req, res) => {
   });
 });
 
+// notify vendor about stock alert controller
+const notifyVendorStockAlert = catchAsync(async (req, res) => {
+  const { productId } = req.params;
+  const currentUser = req.user as TCurrentUser;
+  const result = await ProductServices.notifyVendorStockAlert(productId);
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Notified Vendor About Stock Alert',
+    target: `Product #${productId}`,
+    type: 'INFO',
+  });
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
+  });
+});
+
 export const ProductControllers = {
   productCreate,
   updateProduct,
@@ -352,4 +373,5 @@ export const ProductControllers = {
   softDeleteProduct,
   permanentDeleteProduct,
   getOutOfStockAlerts,
+  notifyVendorStockAlert,
 };
