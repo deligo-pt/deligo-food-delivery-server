@@ -24,39 +24,28 @@ import { OrderServices } from '../Order/order.service';
 import { PaymentToken } from '../Payment-Token/payment-token.model';
 import { PaymentTokenServices } from '../Payment-Token/payment-token.service';
 
-// REDUNIQ `payment.solution` codes, per REDUNIQ's merchant solution table.
-// CARD was previously '117', which is actually "Click to Pay (Cybersource)" — a
-// distinct checkout variant, not generic card acceptance — and was rejected by the
-// gateway with 00100042 "Invalid payment solution". '113' is the correct generic
-// card solution ("Cartão de crédito (Cybersource)") for this merchant account.
 export const solutionIds = {
-  CARD: '113', // Cartão de crédito (Cybersource)
-  MB_WAY: '110', // MB WAY (SPG)
-  APPLE_PAY: '115', // Apple Pay (Cybersource)
-  PAYPAL: '105', // PayPal (REST)
-  GOOGLE_PAY: '114', // Google Pay (Cybersource)
+  CARD: '113',
+  MB_WAY: '110',
+  APPLE_PAY: '115',
+  PAYPAL: '105',
+  GOOGLE_PAY: '114',
   OTHER: null,
 };
 
 export const REDUNIQ_SUCCESS_CODES = new Set([
-  '00000000', // initPayment: session accepted (not yet a completed transaction)
-  '17000000000', // initPayment: session accepted, alternate code
+  '00000000',
+  '17000000000',
   '900000000',
-  '13000000000', // doPaymentToken / synchronous charge: "AUTHORIZED" — confirmed via sandbox
+  '13000000000',
 ]);
 
 export const isRedUniqSuccess = (result: any, transaction: any) =>
   transaction?.status === '1' || REDUNIQ_SUCCESS_CODES.has(result?.code);
 
-// Only card-family networks can be tokenized by REDUNIQ. MB WAY / Apple Pay / Google
-// Pay / PayPal always fall back to a plain one-time authorization — never attempt
-// payToken creation for them, per business rule.
 export const isTokenizablePaymentMethod = (method: TPaymentMethod) =>
   method === 'CARD';
 
-// Only wire up the async notification callback (Endpoint 4) when the backend's
-// public base URL is actually configured — omitting it entirely is safer than
-// sending REDUNIQ an "undefined/..." URL it can never reach.
 const getReduniqNotificationUrl = () =>
   config.backend_base_url
     ? `${config.backend_base_url}/payment/reduniq/notification`
@@ -115,7 +104,7 @@ const performRedUniqDoVoid = async (transactionId: string, comment: string) => {
   return response.data;
 };
 
-// Endpoint 1: Initiate Payment with Option to Save Card (Checkout Flow)
+// Initiate Payment with Option to Save Card (Checkout Flow)
 const createRedUniqPayment = async (
   checkoutSummaryId: string,
   paymentMethod: TPaymentMethod,
@@ -147,10 +136,7 @@ const createRedUniqPayment = async (
     );
   }
 
-  // Business rule: only card-family networks can be tokenized. If the caller asked
-  // to save the method but chose MB WAY / Apple Pay / Google Pay / PayPal, silently
-  // ignore the save intent instead of failing the whole checkout — those methods
-  // simply always run as a plain one-time authorization.
+  // Silently ignore saveCard for non-tokenizable methods instead of failing checkout.
   const willSaveCard = saveCard && isTokenizablePaymentMethod(paymentMethod);
 
   const payload: Record<string, any> = {
@@ -177,16 +163,13 @@ const createRedUniqPayment = async (
     languageCode: 'pt',
   };
 
-  // Server-to-server confirmation (Endpoint 4) — backs up the client-driven
-  // /orders/create-order confirmation in case the customer never returns to the app.
+  // Backs up the client-driven /orders/create-order confirmation (Endpoint 4).
   const notificationUrl = getReduniqNotificationUrl();
   if (notificationUrl) {
     payload.notificationUrl = notificationUrl;
   }
 
-  // `payToken.action: 500` asks REDUNIQ to create a reusable card token as a
-  // side-effect of this sale. The card is entered on REDUNIQ's own hosted payment
-  // page (redirectUrl below) — our backend never sees the PAN for this flow.
+  // action: 500 = create a reusable card token; card is entered on REDUNIQ's hosted page.
   if (willSaveCard) {
     payload.payToken = {
       action: 500,
@@ -395,20 +378,7 @@ const refundRedUniqPayment = async (orderId: string) => {
   }
 };
 
-// -------------------------------------------------------------------------
-// Endpoint 3: Pay with Saved Token (One-Click Checkout)
-// REDUNIQ `doPaymentToken` payload shape (v7.0 REST API):
-// {
-//   method: 'doPaymentToken',
-//   api: { username, password },
-//   payment: { amount, action: 101, description },
-//   order: { ref, amount, date },
-//   payToken: { id, action: 503 },   // 503 = charge an existing card token
-// }
-// This call is synchronous — there is no hosted-page redirect, so on a successful
-// result we finalize the order immediately through the same shared code path
-// (`OrderServices.finalizeCheckoutIntoOrder`) used by the redirect flow.
-// -------------------------------------------------------------------------
+// pay with saved token — synchronous, no redirect, finalizes the order immediately.
 const payWithSavedToken = async (
   checkoutSummaryId: string,
   paymentTokenId: string,
@@ -514,8 +484,7 @@ const payWithSavedToken = async (
       );
     }
 
-    // Finalizing marks the summary PAID/converted inside its own atomic transaction —
-    // no separate save needed here even though we set it to PROCESSING above.
+    // finalizeCheckoutIntoOrder marks the summary PAID/converted itself — no separate save needed.
     return await OrderServices.finalizeCheckoutIntoOrder(
       summary,
       existingVendor,
@@ -545,15 +514,7 @@ const payWithSavedToken = async (
   }
 };
 
-// -------------------------------------------------------------------------
-// Endpoint 4: Webhook / Notification Callback Handler (notificationUrl)
-// REDUNIQ's exact notification signature/authenticity scheme is not published in
-// the public gateway docs, so this handler NEVER trusts the POSTed payload's
-// success claim on its own. Whenever a session token is present it re-derives the
-// canonical outcome via an authenticated server-to-server `getResult` call — the
-// same verification already used by the redirect-return flow — before mutating
-// any state. This is what makes the endpoint safe to leave unauthenticated.
-// -------------------------------------------------------------------------
+// webhook handler. Never trusts the POSTed status — re-verifies via
 const handleReduniqNotification = async (body: any) => {
   const checkoutSummaryId: string | undefined =
     body?.order?.ref || body?.ref || body?.transaction?.ref;
@@ -589,9 +550,6 @@ const handleReduniqNotification = async (body: any) => {
     return;
   }
 
-  // Store the tokenized card (if `payToken` creation was requested for this sale)
-  // before finalizing the order, so a slow/failed order-finalization step never
-  // costs the customer their newly saved card.
   if (summary.paymentMethod === 'CARD') {
     await PaymentTokenServices.persistCardTokenFromGatewayResponse(
       summary.customerId.toString(),
@@ -606,8 +564,6 @@ const handleReduniqNotification = async (body: any) => {
   if (!existingVendor) return;
 
   try {
-    // No authenticated request context exists for a gateway-initiated webhook;
-    // the order legitimately belongs to the checkout summary's own customer.
     await OrderServices.finalizeCheckoutIntoOrder(
       summary,
       existingVendor,
@@ -616,9 +572,6 @@ const handleReduniqNotification = async (body: any) => {
       'en',
     );
   } catch (err: any) {
-    // Duplicate key on Order.transactionId (unique, sparse) means the client-driven
-    // /orders/create-order (or payWithSavedToken) call already won the race —
-    // that's a successful outcome from the customer's point of view, so swallow it.
     if (err?.code !== 11000) {
       console.error('Webhook order finalization failed:', err);
     }
