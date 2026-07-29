@@ -19,20 +19,48 @@ import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
 import { EmailHelper } from '../../utils/emailSender';
+import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
+import { OrderServices } from '../Order/order.service';
+import { PaymentToken } from '../Payment-Token/payment-token.model';
+import { PaymentTokenServices } from '../Payment-Token/payment-token.service';
 
-const solutionIds = {
-  CARD: '117',
-  MB_WAY: '110',
-  APPLE_PAY: '115',
-  PAYPAL: '105',
-  GOOGLE_PAY: '114',
+// REDUNIQ `payment.solution` codes, per REDUNIQ's merchant solution table.
+// CARD was previously '117', which is actually "Click to Pay (Cybersource)" — a
+// distinct checkout variant, not generic card acceptance — and was rejected by the
+// gateway with 00100042 "Invalid payment solution". '113' is the correct generic
+// card solution ("Cartão de crédito (Cybersource)") for this merchant account.
+export const solutionIds = {
+  CARD: '113', // Cartão de crédito (Cybersource)
+  MB_WAY: '110', // MB WAY (SPG)
+  APPLE_PAY: '115', // Apple Pay (Cybersource)
+  PAYPAL: '105', // PayPal (REST)
+  GOOGLE_PAY: '114', // Google Pay (Cybersource)
   OTHER: null,
 };
 
-const REDUNIQ_SUCCESS_CODES = new Set(['00000000', '17000000000', '900000000']);
+export const REDUNIQ_SUCCESS_CODES = new Set([
+  '00000000', // initPayment: session accepted (not yet a completed transaction)
+  '17000000000', // initPayment: session accepted, alternate code
+  '900000000',
+  '13000000000', // doPaymentToken / synchronous charge: "AUTHORIZED" — confirmed via sandbox
+]);
 
-const isRedUniqSuccess = (result: any, transaction: any) =>
+export const isRedUniqSuccess = (result: any, transaction: any) =>
   transaction?.status === '1' || REDUNIQ_SUCCESS_CODES.has(result?.code);
+
+// Only card-family networks can be tokenized by REDUNIQ. MB WAY / Apple Pay / Google
+// Pay / PayPal always fall back to a plain one-time authorization — never attempt
+// payToken creation for them, per business rule.
+export const isTokenizablePaymentMethod = (method: TPaymentMethod) =>
+  method === 'CARD';
+
+// Only wire up the async notification callback (Endpoint 4) when the backend's
+// public base URL is actually configured — omitting it entirely is safer than
+// sending REDUNIQ an "undefined/..." URL it can never reach.
+const getReduniqNotificationUrl = () =>
+  config.backend_base_url
+    ? `${config.backend_base_url}/payment/reduniq/notification`
+    : undefined;
 
 const sendRefundSuccessEmail = async (
   order: any,
@@ -87,9 +115,11 @@ const performRedUniqDoVoid = async (transactionId: string, comment: string) => {
   return response.data;
 };
 
+// Endpoint 1: Initiate Payment with Option to Save Card (Checkout Flow)
 const createRedUniqPayment = async (
   checkoutSummaryId: string,
   paymentMethod: TPaymentMethod,
+  saveCard = false,
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
@@ -117,7 +147,13 @@ const createRedUniqPayment = async (
     );
   }
 
-  const payload = {
+  // Business rule: only card-family networks can be tokenized. If the caller asked
+  // to save the method but chose MB WAY / Apple Pay / Google Pay / PayPal, silently
+  // ignore the save intent instead of failing the whole checkout — those methods
+  // simply always run as a plain one-time authorization.
+  const willSaveCard = saveCard && isTokenizablePaymentMethod(paymentMethod);
+
+  const payload: Record<string, any> = {
     method: 'initPayment',
     api: {
       username: config.redUniq.username,
@@ -141,6 +177,23 @@ const createRedUniqPayment = async (
     languageCode: 'pt',
   };
 
+  // Server-to-server confirmation (Endpoint 4) — backs up the client-driven
+  // /orders/create-order confirmation in case the customer never returns to the app.
+  const notificationUrl = getReduniqNotificationUrl();
+  if (notificationUrl) {
+    payload.notificationUrl = notificationUrl;
+  }
+
+  // `payToken.action: 500` asks REDUNIQ to create a reusable card token as a
+  // side-effect of this sale. The card is entered on REDUNIQ's own hosted payment
+  // page (redirectUrl below) — our backend never sees the PAN for this flow.
+  if (willSaveCard) {
+    payload.payToken = {
+      action: 500,
+      ref: checkoutSummaryId,
+    };
+  }
+
   try {
     const response = await axios.post(config.redUniq.api_url, payload);
 
@@ -150,9 +203,14 @@ const createRedUniqPayment = async (
       !result?.code ||
       (result.code !== '00000000' && result.code !== '17000000000')
     ) {
+      console.error('REDUNIQ initPayment rejected:', response.data);
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'PAYMENT_INITIATION_FAILED_BY_GATEWAY',
+        {
+          gatewayCode: result?.code || '',
+          gatewayMessage: result?.message || '',
+        },
       );
     }
 
@@ -167,6 +225,7 @@ const createRedUniqPayment = async (
       data: {
         redirectUrl,
         paymentToken: token,
+        cardWillBeSaved: willSaveCard,
       },
     };
   } catch (error: any) {
@@ -333,6 +392,236 @@ const refundRedUniqPayment = async (orderId: string) => {
       httpStatus.INTERNAL_SERVER_ERROR,
       'PAYMENT_PROCESSING_FAILED',
     );
+  }
+};
+
+// -------------------------------------------------------------------------
+// Endpoint 3: Pay with Saved Token (One-Click Checkout)
+// REDUNIQ `doPaymentToken` payload shape (v7.0 REST API):
+// {
+//   method: 'doPaymentToken',
+//   api: { username, password },
+//   payment: { amount, action: 101, description },
+//   order: { ref, amount, date },
+//   payToken: { id, action: 503 },   // 503 = charge an existing card token
+// }
+// This call is synchronous — there is no hosted-page redirect, so on a successful
+// result we finalize the order immediately through the same shared code path
+// (`OrderServices.finalizeCheckoutIntoOrder`) used by the redirect flow.
+// -------------------------------------------------------------------------
+const payWithSavedToken = async (
+  checkoutSummaryId: string,
+  paymentTokenId: string,
+  currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
+) => {
+  const summary = await CheckoutSummary.findById(checkoutSummaryId);
+  if (!summary)
+    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+
+  if (summary.customerId.toString() !== currentUser._id.toString()) {
+    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_TO_VIEW');
+  }
+
+  if (summary.isConvertedToOrder) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'CHECKOUT_SUMMARY_ALREADY_CONVERTED',
+    );
+  }
+
+  if (summary.paymentStatus === 'PROCESSING') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_ALREADY_IN_PROCESS');
+  }
+
+  if (summary.paymentStatus === 'PAID') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'PAYMENT_ALREADY_COMPLETED');
+  }
+
+  const savedCard = await PaymentToken.findOne({
+    _id: paymentTokenId,
+    customerId: currentUser._id,
+    isActive: true,
+  });
+
+  if (!savedCard) {
+    throw new AppError(httpStatus.NOT_FOUND, 'SAVED_CARD_NOT_FOUND');
+  }
+
+  const existingVendor = await Vendor.findById(summary.vendorId).lean();
+  if (!existingVendor) {
+    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+  }
+
+  if (!config.redUniq.api_url) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'REDUNIQ_API_URL_NOT_CONFIGURED',
+    );
+  }
+
+  const payload: Record<string, any> = {
+    method: 'doPaymentToken',
+    api: {
+      username: config.redUniq.username,
+      password: config.redUniq.password,
+    },
+    payment: {
+      amount: Math.round(summary.payoutSummary.grandTotal * 100),
+      action: 101,
+      description: `One-click order payment via saved ${savedCard.cardBrand} card`,
+    },
+    order: {
+      ref: checkoutSummaryId,
+      amount: Math.round(summary.payoutSummary.grandTotal * 100),
+      date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    },
+    payToken: {
+      id: savedCard.tokenId,
+      action: 503,
+    },
+  };
+
+  const notificationUrl = getReduniqNotificationUrl();
+  if (notificationUrl) {
+    payload.notificationUrl = notificationUrl;
+  }
+
+  summary.paymentMethod = 'CARD';
+  summary.paymentStatus = 'PROCESSING';
+  await summary.save();
+
+  try {
+    const response = await axios.post(config.redUniq.api_url, payload);
+
+    const { result = {}, transaction = {} } = response.data || {};
+
+    if (!isRedUniqSuccess(result, transaction)) {
+      summary.paymentStatus = 'FAILED';
+      await summary.save();
+
+      throw new AppError(httpStatus.BAD_REQUEST, 'SAVED_TOKEN_PAYMENT_FAILED', {
+        gatewayCode: result?.code,
+        gatewayMessage: result?.message,
+      });
+    }
+
+    const transactionId = transaction?.id;
+    if (!transactionId) {
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'PAYMENT_TOKEN_NOT_RECEIVED',
+      );
+    }
+
+    // Finalizing marks the summary PAID/converted inside its own atomic transaction —
+    // no separate save needed here even though we set it to PROCESSING above.
+    return await OrderServices.finalizeCheckoutIntoOrder(
+      summary,
+      existingVendor,
+      transactionId,
+      currentUser,
+      lang,
+    );
+  } catch (error: any) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    if (axios.isAxiosError(error) && error.response) {
+      if (error.response.status === 502) {
+        throw new AppError(
+          error.response.status,
+          'PAYMENT_GATEWAY_TEMP_UNAVAILABLE_502',
+        );
+      }
+      throw new AppError(error.response.status, 'GATEWAY_ERROR');
+    }
+
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'PAYMENT_PROCESSING_FAILED',
+    );
+  }
+};
+
+// -------------------------------------------------------------------------
+// Endpoint 4: Webhook / Notification Callback Handler (notificationUrl)
+// REDUNIQ's exact notification signature/authenticity scheme is not published in
+// the public gateway docs, so this handler NEVER trusts the POSTed payload's
+// success claim on its own. Whenever a session token is present it re-derives the
+// canonical outcome via an authenticated server-to-server `getResult` call — the
+// same verification already used by the redirect-return flow — before mutating
+// any state. This is what makes the endpoint safe to leave unauthenticated.
+// -------------------------------------------------------------------------
+const handleReduniqNotification = async (body: any) => {
+  const checkoutSummaryId: string | undefined =
+    body?.order?.ref || body?.ref || body?.transaction?.ref;
+  const notificationToken: string | undefined =
+    body?.token || body?.transaction?.token;
+
+  if (!checkoutSummaryId) return;
+
+  const summary = await CheckoutSummary.findById(checkoutSummaryId);
+  if (!summary || summary.isConvertedToOrder) return;
+
+  let paymentData = body;
+
+  if (notificationToken && config.redUniq.api_url) {
+    const verifyPayload = {
+      method: 'getResult',
+      api: {
+        username: config.redUniq.username,
+        password: config.redUniq.password,
+      },
+      token: notificationToken,
+    };
+
+    const verifyRes = await axios.post(config.redUniq.api_url, verifyPayload);
+    paymentData = verifyRes.data;
+  }
+
+  const transaction = paymentData?.transaction || {};
+
+  if (transaction?.status !== '4') {
+    summary.paymentStatus = 'FAILED';
+    await summary.save();
+    return;
+  }
+
+  // Store the tokenized card (if `payToken` creation was requested for this sale)
+  // before finalizing the order, so a slow/failed order-finalization step never
+  // costs the customer their newly saved card.
+  if (summary.paymentMethod === 'CARD') {
+    await PaymentTokenServices.persistCardTokenFromGatewayResponse(
+      summary.customerId.toString(),
+      checkoutSummaryId,
+      paymentData,
+    ).catch((err) =>
+      console.error('Notification card token persistence failed:', err),
+    );
+  }
+
+  const existingVendor = await Vendor.findById(summary.vendorId).lean();
+  if (!existingVendor) return;
+
+  try {
+    // No authenticated request context exists for a gateway-initiated webhook;
+    // the order legitimately belongs to the checkout summary's own customer.
+    await OrderServices.finalizeCheckoutIntoOrder(
+      summary,
+      existingVendor,
+      transaction.id,
+      { _id: summary.customerId } as TCurrentUser,
+      'en',
+    );
+  } catch (err: any) {
+    // Duplicate key on Order.transactionId (unique, sparse) means the client-driven
+    // /orders/create-order (or payWithSavedToken) call already won the race —
+    // that's a successful outcome from the customer's point of view, so swallow it.
+    if (err?.code !== 11000) {
+      console.error('Webhook order finalization failed:', err);
+    }
   }
 };
 
@@ -626,6 +915,8 @@ const createIngredientRedUniqPayment = async (
 
 export const PaymentServices = {
   createRedUniqPayment,
+  payWithSavedToken,
+  handleReduniqNotification,
   refundRedUniqPayment,
   handlePaymentFailure,
   createIngredientRedUniqPayment,

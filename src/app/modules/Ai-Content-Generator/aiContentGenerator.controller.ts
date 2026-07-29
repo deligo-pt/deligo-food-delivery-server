@@ -3,6 +3,7 @@ import sendResponse from '../../utils/sendResponse';
 import { catchAsync } from '../../utils/catchAsync';
 import { AIContentGeneratorService } from './aiContentGenerator.service';
 import httpStatus from 'http-status';
+import { TMessageKey } from '../../errors/messages';
 
 const generateProductDescription = catchAsync(
   async (req: Request, res: Response) => {
@@ -13,7 +14,7 @@ const generateProductDescription = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      messageKey: result?.messageKey,
+      messageKey: result?.messageKey as TMessageKey,
       data: {
         description: result?.result,
       },

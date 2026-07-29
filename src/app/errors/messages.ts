@@ -24,6 +24,7 @@ import { notificationMessages } from '../modules/Notification/notification.messa
 import { offerMessages } from '../modules/Offer/offer.messages';
 import { orderMessages } from '../modules/Order/order.messages';
 import { paymentMessages } from '../modules/Payment/payment.messages';
+import { paymentTokenMessages } from '../modules/Payment-Token/payment-token.messages';
 import { payoutMessages } from '../modules/Payout/payout.messages';
 import { permissionMessages } from '../modules/Permission/permission.messages';
 import { pointsMessages } from '../modules/Points/points.messages';
@@ -66,9 +67,10 @@ export const localizedMessages = {
   ...ingredientsMessages,
   ...loginHistoryMessages,
   ...notificationMessages,
-  ...offerMessages, // eto toko done
+  ...offerMessages,
   ...orderMessages,
   ...paymentMessages,
+  ...paymentTokenMessages,
   ...payoutMessages,
   ...permissionMessages,
   ...pointsMessages,

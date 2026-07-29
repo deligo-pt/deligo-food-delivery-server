@@ -31,8 +31,137 @@ import { BusinessCategoryName } from '../Category/category.interface';
 import customNanoId from '../../utils/customNanoId';
 import { CartServices } from '../Cart/cart.service';
 import { updateOrderStatusHistory } from './order.utils';
+import { PaymentTokenServices } from '../Payment-Token/payment-token.service';
 
-// Create Order after redUniq payment
+// one-click flow (Payment module's payWithSavedToken, verified via doPaymentToken's
+const finalizeCheckoutIntoOrder = async (
+  summary: any,
+  existingVendor: { _id: any; userId: string },
+  transactionId: string,
+  currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
+  deliveryNotes?: string,
+) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    summary.$session(session);
+
+    const uniqueOrderId = customNanoId(10);
+
+    const orderData = {
+      orderId: `ORD-${uniqueOrderId}`,
+      customerId: summary.customerId,
+      vendorId: summary.vendorId,
+      items: summary.items,
+      totalItems: summary.totalItems,
+      totalQuantity: summary.totalQuantity,
+      orderCalculation: {
+        totalOriginalPrice: summary.orderCalculation.totalOriginalPrice,
+        totalProductDiscount: summary.orderCalculation.totalProductDiscount,
+        totalOfferDiscount: summary.orderCalculation.totalOfferDiscount,
+        totalTaxAmount: summary.orderCalculation.totalTaxAmount,
+        itemsSubtotal: summary.orderCalculation.itemsSubtotal,
+        serviceCharge: summary.orderCalculation.serviceCharge,
+        serviceChargeVatRate:
+          (summary.orderCalculation as any).serviceChargeVatRate ?? 23,
+        serviceChargeVatAmount:
+          (summary.orderCalculation as any).serviceChargeVatAmount ?? 0,
+      },
+      delivery: {
+        charge: summary.delivery.charge,
+        vatRate: summary.delivery.vatRate,
+        vatAmount: summary.delivery.vatAmount,
+        totalDeliveryCharge: summary.delivery.totalDeliveryCharge,
+        distance: summary.delivery.distance,
+        estimatedTime: summary.delivery.estimatedTime,
+        notes: deliveryNotes || '',
+      },
+      payoutSummary: {
+        grandTotal: summary.payoutSummary.grandTotal,
+        deliGoCommission: summary.payoutSummary.deliGoCommission,
+        fleet: summary.payoutSummary.fleet,
+        vendor: summary.payoutSummary.vendor,
+        rider: summary.payoutSummary.rider,
+      },
+      offer: {
+        isApplied: summary.offer.isApplied,
+        offerApplied: summary.offer.offerApplied,
+      },
+      paymentMethod: summary.paymentMethod || 'CARD',
+      paymentStatus: 'PAID',
+      transactionId: transactionId,
+      isPaid: true,
+      deliveryAddress: summary.deliveryAddress,
+      orderStatus: 'PENDING',
+      statusHistory: [
+        {
+          status: ORDER_STATUS.PENDING,
+          timestamp: new Date(),
+          updatedBy: currentUser._id,
+          note: 'Order placed and payment verified successfully.',
+        },
+      ],
+      isDeleted: false,
+    };
+
+    const [order] = await Order.create([orderData], { session });
+
+    await Transaction.create(
+      [
+        {
+          transactionId: transactionId,
+          orderId: order._id,
+          userId: currentUser?._id,
+          userModel: 'Customer',
+          totalAmount: order.payoutSummary.grandTotal,
+          type: 'ORDER_PAYMENT',
+          status: 'SUCCESS',
+          paymentMethod: order.paymentMethod,
+          remarks: `Order payment successful for Order ID: ${order.orderId}`,
+        },
+      ],
+      { session },
+    );
+
+    summary.isConvertedToOrder = true;
+    summary.paymentStatus = 'PAID';
+    summary.transactionId = transactionId;
+    summary.orderId = order._id as any;
+    await summary.save({ session });
+
+    await session.commitTransaction();
+
+    const orderedItemsPayload = summary.items.map((i: any) => ({
+      productId: i.productId.toString(),
+      variationSku: i.variationSku || null,
+    }));
+
+    await orderQueue.add('NEW_ORDER_POST_PROCESS', {
+      orderId: order._id.toString(),
+      vendorId: existingVendor._id.toString(),
+      vendorUserId: existingVendor.userId,
+      orderDisplayId: order.orderId,
+      grandTotal: order.payoutSummary.grandTotal,
+      lang: lang,
+      customerId: summary.customerId.toString(),
+      orderedItems: orderedItemsPayload,
+    });
+
+    return {
+      messageKey: 'ORDER_CREATED_SUCCESS',
+      data: order,
+    };
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+};
+
+// Create Order after redUniq payment (hosted-page / redirect checkout flow)
 const createOrderAfterRedUniqPayment = async (
   payload: {
     checkoutSummaryId: string;
@@ -44,7 +173,6 @@ const createOrderAfterRedUniqPayment = async (
 ) => {
   const { checkoutSummaryId, paymentToken, deliveryNotes } = payload;
 
-  // 1. Fetch Snapshot inside transactional boundaries safely
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
     throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
@@ -90,130 +218,22 @@ const createOrderAfterRedUniqPayment = async (
 
   const transactionId = paymentData.transaction.id;
 
-  // 3. Transaction Scope Initialization (Atomic Guard)
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    // Re-bind document instance to current transactional session state to prevent locking leaks
-    summary.$session(session);
-
-    const uniqueOrderId = customNanoId(10);
-
-    // Build standard structure mapping 1:1 with updated TOrder interface & Order schema
-    const orderData = {
-      orderId: `ORD-${uniqueOrderId}`,
-      customerId: summary.customerId,
-      vendorId: summary.vendorId,
-      items: summary.items,
-      totalItems: summary.totalItems,
-      totalQuantity: summary.totalQuantity,
-      orderCalculation: {
-        totalOriginalPrice: summary.orderCalculation.totalOriginalPrice,
-        totalProductDiscount: summary.orderCalculation.totalProductDiscount,
-        totalOfferDiscount: summary.orderCalculation.totalOfferDiscount,
-        totalTaxAmount: summary.orderCalculation.totalTaxAmount,
-        itemsSubtotal: summary.orderCalculation.itemsSubtotal,
-        serviceCharge: summary.orderCalculation.serviceCharge,
-        serviceChargeVatRate:
-          (summary.orderCalculation as any).serviceChargeVatRate ?? 23,
-        serviceChargeVatAmount:
-          (summary.orderCalculation as any).serviceChargeVatAmount ?? 0,
-      },
-      delivery: {
-        charge: summary.delivery.charge,
-        vatRate: summary.delivery.vatRate,
-        vatAmount: summary.delivery.vatAmount,
-        totalDeliveryCharge: summary.delivery.totalDeliveryCharge,
-        distance: summary.delivery.distance,
-        estimatedTime: summary.delivery.estimatedTime,
-        notes: deliveryNotes || '',
-      },
-      payoutSummary: {
-        grandTotal: summary.payoutSummary.grandTotal,
-        deliGoCommission: summary.payoutSummary.deliGoCommission, // Automatically carries the 3 treasury ledger additions
-        fleet: summary.payoutSummary.fleet,
-        vendor: summary.payoutSummary.vendor,
-        rider: summary.payoutSummary.rider,
-      },
-      offer: {
-        isApplied: summary.offer.isApplied,
-        offerApplied: summary.offer.offerApplied,
-      },
-      paymentMethod: summary.paymentMethod || 'CARD',
-      paymentStatus: 'PAID',
-      transactionId: transactionId,
-      isPaid: true,
-      deliveryAddress: summary.deliveryAddress,
-      orderStatus: 'PENDING',
-      statusHistory: [
-        {
-          status: ORDER_STATUS.PENDING,
-          timestamp: new Date(),
-          updatedBy: currentUser._id,
-          note: 'Order placed and payment verified successfully.',
-        },
-      ],
-      isDeleted: false,
-    };
-
-    const [order] = await Order.create([orderData], { session });
-
-    // Ledger transactional entries
-    await Transaction.create(
-      [
-        {
-          transactionId: transactionId,
-          orderId: order._id,
-          userId: currentUser?._id,
-          userModel: 'Customer',
-          totalAmount: order.payoutSummary.grandTotal,
-          type: 'ORDER_PAYMENT',
-          status: 'SUCCESS',
-          paymentMethod: order.paymentMethod,
-          remarks: `Order payment successful for Order ID: ${order.orderId}`,
-        },
-      ],
-      { session },
-    );
-
-    // Double-lock safeguard deployment
-    summary.isConvertedToOrder = true;
-    summary.paymentStatus = 'PAID';
-    summary.transactionId = transactionId;
-    summary.orderId = order._id as any;
-    await summary.save({ session });
-
-    await session.commitTransaction();
-
-    // Preparation of ordered items metadata extraction for downstream async queues
-    const orderedItemsPayload = summary.items.map((i: any) => ({
-      productId: i.productId.toString(),
-      variationSku: i.variationSku || null,
-    }));
-
-    // 4. Queue downstream asynchronously for microservice distribution
-    await orderQueue.add('NEW_ORDER_POST_PROCESS', {
-      orderId: order._id.toString(),
-      vendorId: existingVendor._id.toString(),
-      vendorUserId: existingVendor.userId,
-      orderDisplayId: order.orderId,
-      grandTotal: order.payoutSummary.grandTotal,
-      lang: lang,
-      customerId: summary.customerId.toString(),
-      orderedItems: orderedItemsPayload,
-    });
-
-    return {
-      messageKey: 'ORDER_CREATED_SUCCESS',
-      data: order,
-    };
-  } catch (err) {
-    await session.abortTransaction();
-    throw err;
-  } finally {
-    session.endSession();
+  if (summary.paymentMethod === 'CARD') {
+    await PaymentTokenServices.persistCardTokenFromGatewayResponse(
+      summary.customerId.toString(),
+      checkoutSummaryId,
+      paymentData,
+    ).catch((err) => console.error('Card token persistence failed:', err));
   }
+
+  return finalizeCheckoutIntoOrder(
+    summary,
+    existingVendor,
+    transactionId,
+    currentUser,
+    lang,
+    deliveryNotes,
+  );
 };
 
 // update order status by vendor (accept / reject / preparing / cancel)
@@ -1477,6 +1497,7 @@ const reorderOrder = async (
 
 export const OrderServices = {
   createOrderAfterRedUniqPayment,
+  finalizeCheckoutIntoOrder,
   updateOrderStatusByVendor,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
