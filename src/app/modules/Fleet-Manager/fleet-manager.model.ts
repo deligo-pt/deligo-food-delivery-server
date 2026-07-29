@@ -116,6 +116,7 @@ const fleetManagerSchema = new Schema<TFleetManager>(
       businessLicense: { type: [String], default: [] },
       proofOfAddress: { type: [String], default: [] },
       activityDocument: { type: [String], default: [] },
+      ibanProof: { type: [String], default: [] },
     },
 
     // ------------------------------------------

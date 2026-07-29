@@ -82,6 +82,7 @@ export type TFleetManager = {
     businessLicense?: string[];
     proofOfAddress?: string[];
     activityDocument?: string[];
+    ibanProof?: string[];
   };
 
   // ---------------------------------------------
@@ -124,6 +125,7 @@ export type TFleetManagerImageDocuments = {
     | 'idProofBack'
     | 'businessLicense'
     | 'proofOfAddress'
-    | 'activityDocument';
+    | 'activityDocument'
+    | 'ibanProof';
   docImageUrls: string[];
 };

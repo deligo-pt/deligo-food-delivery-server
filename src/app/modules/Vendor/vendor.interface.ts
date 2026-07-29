@@ -118,6 +118,7 @@ export type TVendor = {
     storePhoto?: string[];
     menuUpload?: string[];
     agoserisHaccpCertificate?: string[];
+    ibanProof?: string[];
   };
 
   // --------------------------------------------------------
@@ -156,6 +157,7 @@ export type TVendorImageDocuments = {
     | 'idProofBack'
     | 'storePhoto'
     | 'menuUpload'
-    | 'agoserisHaccpCertificate';
+    | 'agoserisHaccpCertificate'
+    | 'ibanProof';
   docImageUrls: string[];
 };
