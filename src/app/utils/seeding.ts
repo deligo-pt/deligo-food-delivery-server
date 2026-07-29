@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import config from '../config';
+import bcryptjs from 'bcryptjs';
 
 import { Admin } from '../modules/Admin/admin.model';
 import {
@@ -64,11 +65,64 @@ export const seed = async () => {
       if (config.NODE_ENV === 'development') {
         console.log('Super Admin seeded successfully.');
       }
+    } else {
+      const authUser = await AuthUser.findOne({
+        role: USER_ROLE.SUPER_ADMIN,
+      }).session(session);
+
+      if (authUser) {
+        let isAuthUserUpdated = false;
+        let isAdminProfileUpdated = false;
+
+        if (
+          config.super_admin.super_admin_email &&
+          authUser.email !== config.super_admin.super_admin_email
+        ) {
+          authUser.email = config.super_admin.super_admin_email;
+          superAdminExists.email = config.super_admin.super_admin_email;
+          isAuthUserUpdated = true;
+          isAdminProfileUpdated = true;
+        }
+
+        if (
+          config.super_admin.super_admin_contact_number &&
+          authUser.contactNumber !==
+            config.super_admin.super_admin_contact_number
+        ) {
+          authUser.contactNumber =
+            config.super_admin.super_admin_contact_number;
+          superAdminExists.contactNumber =
+            config.super_admin.super_admin_contact_number;
+          isAuthUserUpdated = true;
+          isAdminProfileUpdated = true;
+        }
+
+        if (config.super_admin.super_admin_password && authUser.password) {
+          const isPasswordMatched = await bcryptjs.compare(
+            config.super_admin.super_admin_password,
+            authUser.password,
+          );
+
+          if (!isPasswordMatched) {
+            authUser.password = config.super_admin.super_admin_password;
+            isAuthUserUpdated = true;
+          }
+        }
+
+        if (isAuthUserUpdated) {
+          await authUser.save({ session });
+        }
+
+        if (isAdminProfileUpdated) {
+          await superAdminExists.save({ session });
+        }
+
+        if (isAuthUserUpdated || isAdminProfileUpdated) {
+          console.log('Super Admin credentials updated from .env environment.');
+        }
+      }
     }
 
-    // --------------------------------------------------
-    // Seed Global Settings
-    // --------------------------------------------------
     const existingSettings = await GlobalSettings.findOne().session(session);
 
     if (!existingSettings) {
