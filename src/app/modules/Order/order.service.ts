@@ -1253,7 +1253,6 @@ const getAllOrders = async (
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
     businessType: 'name',
-    // product: 'productId name',
   });
 
   populateOptions.forEach((option) => {

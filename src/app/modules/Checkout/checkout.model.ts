@@ -1,6 +1,10 @@
 import { Schema, model } from 'mongoose';
 import { TCheckoutSummary } from './checkout.interface';
 import { localizedSchema } from '../../constant/GlobalModel/language.model';
+import {
+  PAYMENT_METHOD,
+  PAYMENT_STATUS,
+} from '../../constant/GlobalInterface/payment.interface';
 
 const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
   {
@@ -193,13 +197,13 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
 
     paymentStatus: {
       type: String,
-      enum: ['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REFUNDED'],
-      default: 'PENDING',
+      enum: Object.values(PAYMENT_STATUS),
+      default: PAYMENT_STATUS.PENDING,
     },
 
     paymentMethod: {
       type: String,
-      enum: ['CARD', 'MB_WAY', 'APPLE_PAY', 'PAYPAL', 'GOOGLE_PAY', 'OTHER'],
+      enum: Object.values(PAYMENT_METHOD),
     },
 
     transactionId: { type: String, default: null },
