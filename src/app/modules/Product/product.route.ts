@@ -21,6 +21,13 @@ router.get(
   ProductControllers.getOutOfStockAlerts,
 );
 
+// notify vendor about a low/out-of-stock product
+router.post(
+  '/notify-vendor/:productId',
+  auth('ADMIN', 'SUPER_ADMIN'),
+  ProductControllers.notifyVendorStockAlert,
+);
+
 // Product update
 router.patch(
   '/:productId',
