@@ -2,7 +2,7 @@ import { Types } from 'mongoose';
 import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
 
 export type TOrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED';
-export type TPaymentStatus = 'PROCESSING' | 'PAID';
+export type TIngredientPaymentStatus = 'PROCESSING' | 'PAID';
 
 export type TIngredientOrderDetail = {
   ingredientId: Types.ObjectId;
@@ -50,7 +50,7 @@ export type TIngredientOrder = {
 
   paymentMethod: TPaymentMethod;
   orderStatus: TOrderStatus;
-  paymentStatus: TPaymentStatus;
+  paymentStatus: TIngredientPaymentStatus;
 
   statusHistory: {
     shippedAt?: Date;

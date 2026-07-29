@@ -4,7 +4,10 @@ import {
   TAddress,
   TOrderItemSnapshot,
 } from '../../constant/GlobalInterface/order.interface';
-import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
+import {
+  TOrderPaymentStatus,
+  TPaymentMethod,
+} from '../../constant/GlobalInterface/payment.interface';
 
 export type TAppliedOfferSnapshot = {
   promoId: mongoose.Types.ObjectId;
@@ -104,7 +107,7 @@ export type TCheckoutSummary = {
   deliveryAddress: TAddress;
 
   paymentMethod?: TPaymentMethod;
-  paymentStatus?: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentStatus?: TOrderPaymentStatus;
   transactionId?: string;
 
   isConvertedToOrder?: boolean;
