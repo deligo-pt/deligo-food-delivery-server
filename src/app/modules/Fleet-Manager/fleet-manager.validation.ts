@@ -81,6 +81,7 @@ const fleetManagerDocImageValidationSchema = z.object({
           'businessLicense',
           'proofOfAddress',
           'activityDocument',
+          'ibanProof',
         ],
         {
           required_error: 'Document title is required',
@@ -111,6 +112,7 @@ const fleetManagerDocImageDeleteValidationSchema = z.object({
           'businessLicense',
           'proofOfAddress',
           'activityDocument',
+          'ibanProof',
         ],
         {
           required_error: 'Document image title is required',
