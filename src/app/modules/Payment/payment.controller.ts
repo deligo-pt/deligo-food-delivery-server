@@ -6,14 +6,15 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
 import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
-// create redUniq payment intent controller
+// create redUniq payment intent controller (Endpoint 1 — optionally saves the card)
 const createRedUniqPayment = catchAsync(async (req, res) => {
-  const { checkoutSummaryId, paymentMethod } = req.body;
+  const { checkoutSummaryId, paymentMethod, saveCard } = req.body;
   const currentUser = req.user as TCurrentUser;
 
   const result = await PaymentServices.createRedUniqPayment(
     checkoutSummaryId,
     paymentMethod,
+    Boolean(saveCard),
   );
 
   createActivityLog({
@@ -28,6 +29,51 @@ const createRedUniqPayment = catchAsync(async (req, res) => {
     success: true,
     messageKey: result?.messageKey as TMessageKey,
     data: result?.data,
+  });
+});
+
+// Endpoint 3: pay with a previously saved card token (one-click checkout)
+const payWithSavedToken = catchAsync(async (req, res) => {
+  const { checkoutSummaryId, paymentTokenId } = req.body;
+  const currentUser = req.user as TCurrentUser;
+
+  const result = await PaymentServices.payWithSavedToken(
+    checkoutSummaryId,
+    paymentTokenId,
+    currentUser,
+    req.lang,
+  );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Paid With Saved Card',
+    target: `Checkout Summary #${checkoutSummaryId}`,
+    type: 'INFO',
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    messageKey: result?.messageKey as TMessageKey,
+    data: result?.data,
+  });
+});
+
+// Endpoint 4: REDUNIQ notification/webhook callback (no auth — gateway calls this directly)
+const handleReduniqNotification = catchAsync(async (req, res) => {
+  try {
+    await PaymentServices.handleReduniqNotification(req.body);
+  } catch (error) {
+    // Never let an internal error surface a non-200 to the gateway — that would
+    // just trigger aggressive notification retries. Log and acknowledge instead.
+    console.error('REDUNIQ notification handling failed:', error);
+  }
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    messageKey: 'NOTIFICATION_RECEIVED' as TMessageKey,
+    data: null,
   });
 });
 
@@ -101,6 +147,8 @@ const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
 
 export const PaymentController = {
   createRedUniqPayment,
+  payWithSavedToken,
+  handleReduniqNotification,
   handlePaymentFailure,
   refundRedUniqPayment,
   createIngredientRedUniqPayment,
