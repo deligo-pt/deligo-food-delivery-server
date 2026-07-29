@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
 import { OrderStatus } from './order.constant';
 import { TAppliedOfferSnapshot } from '../Checkout/checkout.interface';
-import { TPaymentMethod } from '../../constant/GlobalInterface/payment.interface';
+import {
+  TOrderPaymentStatus,
+  TPaymentMethod,
+} from '../../constant/GlobalInterface/payment.interface';
 import {
   TAddress,
   TOrderItemSnapshot,
@@ -95,7 +98,7 @@ export type TOrder = {
   };
 
   paymentMethod: TPaymentMethod;
-  paymentStatus: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentStatus: TOrderPaymentStatus;
   transactionId?: string | null;
   isPaid: boolean;
 
