@@ -31,7 +31,7 @@ export const productCategoryMessages = {
     en: 'This item must be deactivated before performing a permanent deletion.',
     pt: 'Este item deve ser desativado antes de realizar a exclusão permanente.',
   },
-  CREATE_SUCCESS: {
+  PRODUCT_CATEGORY_CREATE_SUCCESS: {
     en: 'Product category created successfully.',
     pt: 'Categoria de produto criada com sucesso.',
   },

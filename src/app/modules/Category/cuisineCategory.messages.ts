@@ -31,7 +31,7 @@ export const cuisineCategoryMessages = {
     en: 'This item must be deactivated before performing a permanent deletion.',
     pt: 'Este item deve ser desativado antes de realizar a exclusão permanente.',
   },
-  CREATE_SUCCESS: {
+  CUISINE_CREATE_SUCCESS: {
     en: 'Cuisine created successfully.',
     pt: 'Culinária criada com sucesso.',
   },

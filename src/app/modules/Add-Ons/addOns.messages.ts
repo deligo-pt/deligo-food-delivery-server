@@ -7,7 +7,7 @@ export const addonMessages = {
     en: 'An addon group with this title already exists. Please use a different name.',
     pt: 'Um grupo de adicionais com este título já existe. Por favor, use um nome diferente.',
   },
-  CREATE_SUCCESS: {
+  ADDON_GROUP_CREATE_SUCCESS: {
     en: 'Addon group created successfully.',
     pt: 'Grupo de adicionais criado com sucesso.',
   },
