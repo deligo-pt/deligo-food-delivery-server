@@ -35,7 +35,7 @@ export const businessCategoryMessages = {
     en: 'This item must be deactivated before performing a permanent deletion.',
     pt: 'Este item deve ser desativado antes de realizar a exclusão permanente.',
   },
-  CREATE_SUCCESS: {
+  BUSINESS_CATEGORY_CREATE_SUCCESS: {
     en: 'Business category created successfully.',
     pt: 'Categoria de negócio criada com sucesso.',
   },

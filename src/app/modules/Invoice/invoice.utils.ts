@@ -264,7 +264,7 @@ export const INVOICE_PDF_TEMPLATE = `
         font-size: 12px;
         font-weight: bold;
         margin-bottom: 6px;
-        padding-top: 50px;
+        padding-top: 100px;
       }
       .thank-you-sub {
         text-align: center;

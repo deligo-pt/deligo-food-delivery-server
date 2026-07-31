@@ -87,7 +87,6 @@ const checkout = async (
     activeAddress.latitude,
   );
 
-  const distanceMeters = Number(distanceData.meters) || 0;
   const distanceKm = Number(distanceData.km) || 0;
 
   // 4. Configuration & Global Rates
@@ -107,17 +106,10 @@ const checkout = async (
 
   const PER_KM_RATE = globalSettings?.deliveryChargePerKm || 0;
 
-  let deliveryChargeBase = 0;
-
-  if (distanceMeters <= 1000) {
-    deliveryChargeBase = BASE_FIXED_DELIVERY_CHARGE;
-  } else {
-    const extraKm = distanceKm - 1;
-    const extraDistanceCharge = extraKm * PER_KM_RATE;
-    deliveryChargeBase = roundTo2(
-      BASE_FIXED_DELIVERY_CHARGE + extraDistanceCharge,
-    );
-  }
+  const distanceDeliveryCharge = distanceKm * PER_KM_RATE;
+  const deliveryChargeBase = roundTo2(
+    BASE_FIXED_DELIVERY_CHARGE + distanceDeliveryCharge,
+  );
 
   const deliveryVat = roundTo2((deliveryChargeBase * deliveryVatRate) / 100);
   const totalDeliveryCharge = roundTo2(deliveryChargeBase + deliveryVat);
