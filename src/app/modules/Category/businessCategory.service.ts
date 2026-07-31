@@ -48,7 +48,7 @@ const createBusinessCategory = async (
   const category = await BusinessCategory.create(categoryData);
 
   return {
-    messageKey: 'CREATE_SUCCESS',
+    messageKey: 'BUSINESS_CATEGORY_CREATE_SUCCESS',
     data: category,
   };
 };
