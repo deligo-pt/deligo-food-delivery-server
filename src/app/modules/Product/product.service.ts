@@ -1042,6 +1042,7 @@ const softDeleteProduct = async (
     );
   }
   product.isDeleted = true;
+  product.meta.status = 'DELETED';
   await product.save();
 
   const productName = product.name?.en || 'Product';

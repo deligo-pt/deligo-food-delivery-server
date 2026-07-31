@@ -32,7 +32,7 @@ const createCuisine = async (payload: TCuisine, image: string | null) => {
 
   const cuisine = await Cuisine.create(payload);
   return {
-    messageKey: 'CREATE_SUCCESS',
+    messageKey: 'CUISINE_CREATE_SUCCESS',
     data: cuisine,
   };
 };

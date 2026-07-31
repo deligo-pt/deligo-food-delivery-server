@@ -35,7 +35,7 @@ const createProductCategory = async (
 
   const category = await ProductCategory.create(payload);
   return {
-    messageKey: 'CREATE_SUCCESS',
+    messageKey: 'PRODUCT_CATEGORY_CREATE_SUCCESS',
     data: category,
   };
 };
