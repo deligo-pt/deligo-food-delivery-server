@@ -64,8 +64,8 @@ export const authMessages = {
     pt: 'Não encontramos uma conta com esses dados. Por favor, cadastre-se primeiro.',
   },
   LIMIT_EXCEEDED: {
-    en: 'Request limit exceeded. Please wait a moment before trying again.',
-    pt: 'Limite de solicitações excedido. Aguarde um momento antes de tentar novamente.',
+    en: 'Login limit exceeded. Please wait a moment and log in again.',
+    pt: 'Limite de login excedido. Por favor, aguarde um momento e faça login novamente.',
   },
   INVALID_OTP: {
     en: 'The code you entered is incorrect. Please try again.',

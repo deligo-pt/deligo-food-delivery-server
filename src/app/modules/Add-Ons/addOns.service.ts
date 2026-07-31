@@ -73,7 +73,7 @@ const createAddonGroup = async (
   );
 
   return {
-    messageKey: 'CREATE_SUCCESS',
+    messageKey: 'ADDON_GROUP_CREATE_SUCCESS',
     data: result,
   };
 };
