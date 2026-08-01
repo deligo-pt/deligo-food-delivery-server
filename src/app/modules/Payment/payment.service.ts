@@ -256,6 +256,10 @@ const refundRedUniqPayment = async (orderId: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'ORDER_NOT_ELIGIBLE_FOR_REFUND');
   }
 
+  if (order.refundStatus === REFUND_STATUS.NOT_APPLICABLE) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'REFUND_NOT_APPLICABLE_FOR_ORDER');
+  }
+
   if (!order.transactionId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'TRANSACTION_ID_NOT_FOUND');
   }

@@ -27,13 +27,6 @@ router.patch(
   OrderControllers.cancelOrderByCustomer,
 );
 
-// download invoice pdf from pasta digital
-router.get(
-  '/:orderId/download-invoice-pdf',
-  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
-  OrderControllers.downloadInvoicePdfFromPd,
-);
-
 // Accept / Reject / Preparing / Ready for pickup/ Cancel order by vendor
 router.patch(
   '/:orderId/status',
