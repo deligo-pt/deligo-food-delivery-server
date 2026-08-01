@@ -19,6 +19,14 @@ router.post(
   OrderControllers.reorderOrder,
 );
 
+// Cancel order by customer (refunded only if canceled before vendor accepts)
+router.patch(
+  '/:orderId/cancel',
+  auth('CUSTOMER'),
+  validateRequest(OrderValidation.cancelOrderByCustomerValidationSchema),
+  OrderControllers.cancelOrderByCustomer,
+);
+
 // download invoice pdf from pasta digital
 router.get(
   '/:orderId/download-invoice-pdf',

@@ -5,7 +5,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Order } from '../Order/order.model';
-import { ORDER_STATUS } from '../Order/order.constant';
+import { ORDER_STATUS, REFUND_STATUS } from '../Order/order.constant';
 import {
   TIngredientOrder,
   TIngredientOrderDetail,
@@ -317,6 +317,7 @@ const refundRedUniqPayment = async (orderId: string) => {
 
         order.paymentStatus = 'REFUNDED';
         order.isPaid = false;
+        order.refundStatus = REFUND_STATUS.REFUNDED;
         await order.save();
 
         const voidRefundTransactionId = (voidTxn as any)?.id || null;
@@ -342,6 +343,7 @@ const refundRedUniqPayment = async (orderId: string) => {
 
     order.paymentStatus = 'REFUNDED';
     order.isPaid = false;
+    order.refundStatus = REFUND_STATUS.REFUNDED;
     await order.save();
 
     const refundTransactionId = (transaction as any)?.id || null;

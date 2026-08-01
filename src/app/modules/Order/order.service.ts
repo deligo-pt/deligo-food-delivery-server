@@ -10,6 +10,7 @@ import {
   ORDER_STATUS,
   OrderSearchableFields,
   OrderStatus,
+  REFUND_STATUS,
 } from './order.constant';
 import { DeliveryPartner } from '../Delivery-Partner/delivery-partner.model';
 import { CheckoutSummary } from '../Checkout/checkout.model';
@@ -515,6 +516,7 @@ const updateOrderStatusByVendor = async (
         throw new AppError(httpStatus.BAD_REQUEST, 'CANCEL_REASON_REQUIRED');
       }
       order.cancelReason = action.reason;
+      order.refundStatus = REFUND_STATUS.PENDING;
 
       // Restore stock if it was deducted previously
       const STAGES_WHERE_STOCK_WAS_DEDUCTED = [
@@ -591,6 +593,7 @@ const updateOrderStatusByVendor = async (
         throw new AppError(httpStatus.BAD_REQUEST, 'REJECT_REASON_REQUIRED');
       }
       order.rejectReason = action.reason;
+      order.refundStatus = REFUND_STATUS.PENDING;
 
       if (customerId) {
         notificationsToEmit.push(async () => {
@@ -644,6 +647,249 @@ const updateOrderStatusByVendor = async (
       messageKey: 'ORDER_STATUS_UPDATED_SUCCESS_DYNAMIC',
       variables: { status: action.type },
       data: order,
+      // Vendor-initiated cancel/reject always refunds the customer, regardless of stage.
+      shouldRefund: action.type === 'CANCELED' || action.type === 'REJECTED',
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+// cancel order by customer (refunded only if canceled before vendor accepts)
+const cancelOrderByCustomer = async (
+  currentUser: TCurrentUser,
+  orderId: string,
+  reason: string,
+) => {
+  if (!currentUser || currentUser.role !== 'CUSTOMER') {
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_CANCEL_ORDER');
+  }
+
+  if (!reason) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'CANCEL_REASON_REQUIRED');
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  const notificationsToEmit: Array<() => Promise<void>> = [];
+
+  try {
+    const order = await Order.findOne(
+      {
+        orderId,
+        customerId: currentUser._id,
+        isDeleted: false,
+      },
+      null,
+      { session },
+    ).populate({
+      path: 'vendorId',
+      select: '_id userId businessDetails',
+      populate: {
+        path: 'businessDetails.businessType',
+      },
+    });
+
+    if (!order) {
+      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    }
+
+    if (!order.isPaid) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'ONLY_PAID_ORDER_CAN_BE_CANCELED',
+      );
+    }
+
+    // A customer can cancel at any point before delivery; only the refund
+    // eligibility and who gets notified change depending on the stage.
+    const NON_CANCELABLE_STATUSES = [
+      ORDER_STATUS.CANCELED,
+      ORDER_STATUS.REJECTED,
+      ORDER_STATUS.DELIVERED,
+    ];
+
+    if (NON_CANCELABLE_STATUSES.some((status) => order.orderStatus === status)) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'ORDER_CANNOT_BE_CANCELED_OR_REJECTED_AT_STAGE',
+      );
+    }
+
+    const previousStatus = order.orderStatus;
+    // Only refund if the vendor has not yet accepted the order.
+    const shouldRefund = previousStatus === ORDER_STATUS.PENDING;
+
+    // Stage buckets that drive who gets notified about the cancellation.
+    const BEFORE_ASSIGNED_STATUSES = [
+      ORDER_STATUS.PENDING,
+      ORDER_STATUS.ACCEPTED,
+      ORDER_STATUS.AWAITING_PARTNER,
+      ORDER_STATUS.DISPATCHING,
+      ORDER_STATUS.REASSIGNMENT_NEEDED,
+    ];
+    const BEFORE_PICKUP_STATUSES = [
+      ORDER_STATUS.ASSIGNED,
+      ORDER_STATUS.PREPARING,
+      ORDER_STATUS.READY_FOR_PICKUP,
+    ];
+
+    const isBeforeAssigned = BEFORE_ASSIGNED_STATUSES.some(
+      (status) => previousStatus === status,
+    );
+    const isBeforePickup = BEFORE_PICKUP_STATUSES.some(
+      (status) => previousStatus === status,
+    );
+    // Anything else at this point is PICKED_UP / ON_THE_WAY (after pickup).
+    const notifyVendor = isBeforeAssigned || isBeforePickup;
+    const notifyRider = isBeforePickup || !isBeforeAssigned;
+
+    const vendor = order.vendorId as any;
+    const isRestaurant =
+      vendor?.businessDetails?.businessType?.name?.en ===
+      BusinessCategoryName.RESTAURANT;
+    const shouldCheckStock = !isRestaurant;
+
+    order.cancelReason = reason;
+    order.refundStatus = shouldRefund
+      ? REFUND_STATUS.PENDING
+      : REFUND_STATUS.NOT_APPLICABLE;
+
+    // Restore stock if it was deducted previously (i.e. vendor already accepted)
+    // and the food hasn't already been picked up by the rider.
+    const STAGES_WHERE_STOCK_WAS_DEDUCTED = [
+      'ACCEPTED',
+      'AWAITING_PARTNER',
+      'DISPATCHING',
+      'REASSIGNMENT_NEEDED',
+      'ASSIGNED',
+      'PREPARING',
+      'READY_FOR_PICKUP',
+    ];
+
+    if (
+      shouldCheckStock &&
+      STAGES_WHERE_STOCK_WAS_DEDUCTED.includes(previousStatus)
+    ) {
+      const stockOperations = order.items.map((item: any) => {
+        const targetProductId = item.productId?._id || item.productId;
+
+        if (item.variationSku) {
+          return {
+            updateOne: {
+              filter: {
+                _id: new mongoose.Types.ObjectId(targetProductId),
+                'variations.options.sku': item.variationSku,
+              },
+              update: {
+                $inc: {
+                  'variations.options.$[elem].stockQuantity':
+                    item.itemSummary.quantity,
+                },
+              },
+              arrayFilters: [{ 'elem.sku': item.variationSku }],
+            },
+          };
+        }
+
+        return {
+          updateOne: {
+            filter: { _id: new mongoose.Types.ObjectId(targetProductId) },
+            update: {
+              $inc: { 'stock.quantity': item.itemSummary.quantity },
+            },
+          },
+        };
+      });
+      await Product.bulkWrite(stockOperations, { session });
+    }
+
+    // If a rider is already assigned, free them up so they aren't stuck
+    // "busy" on an order that no longer exists.
+    const deliveryPartner = order.deliveryPartnerId
+      ? await DeliveryPartner.findById(order.deliveryPartnerId, null, {
+          session,
+        })
+      : null;
+    const deliveryPartnerUserId = deliveryPartner?.userId;
+
+    if (deliveryPartner) {
+      await DeliveryPartner.updateOne(
+        { _id: deliveryPartner._id },
+        {
+          $set: {
+            'operationalData.currentOrderId': null,
+            'operationalData.currentStatus': 'IDLE',
+          },
+          $inc: { 'operationalData.canceledDeliveries': 1 },
+        },
+        { session },
+      );
+    }
+
+    updateOrderStatusHistory({
+      order,
+      newStatus: ORDER_STATUS.CANCELED,
+      updatedBy: currentUser._id,
+      note: reason,
+    });
+
+    await order.save({ session });
+
+    await session.commitTransaction();
+
+    const vendorUserId = vendor?.userId;
+    if (notifyVendor && vendorUserId) {
+      notificationsToEmit.push(async () => {
+        NotificationService.sendToUser(
+          vendorUserId,
+          'Order Canceled',
+          `The customer has canceled order #${order.orderId}: ${reason}`,
+          { orderId: order.orderId },
+          'default',
+          'ORDER',
+        );
+      });
+    }
+
+    if (notifyRider && deliveryPartnerUserId) {
+      notificationsToEmit.push(async () => {
+        NotificationService.sendToUser(
+          deliveryPartnerUserId,
+          'Order Canceled',
+          `Order #${order.orderId} was canceled by the customer. Please stop the delivery.`,
+          { orderId: order.orderId },
+          'default',
+          'ORDER',
+        );
+      });
+    }
+
+    Promise.allSettled(notificationsToEmit.map((fn) => fn())).catch((err) =>
+      console.error('Notification dispatch failed:', err),
+    );
+
+    try {
+      emitOrderStatusUpdate(getIO(), {
+        orderId: order.orderId,
+        orderStatus: ORDER_STATUS.CANCELED,
+        order: order.toObject(),
+        customerUserId: currentUser.userId || null,
+        vendorUserId: vendorUserId || null,
+        deliveryPartnerUserId: deliveryPartnerUserId || null,
+      });
+    } catch (socketErr) {
+      console.error('Socket emission failed:', socketErr);
+    }
+
+    return {
+      messageKey: 'ORDER_CANCELED_BY_CUSTOMER_SUCCESS',
+      data: order,
+      shouldRefund,
     };
   } catch (error) {
     await session.abortTransaction();
@@ -1498,6 +1744,7 @@ export const OrderServices = {
   createOrderAfterRedUniqPayment,
   finalizeCheckoutIntoOrder,
   updateOrderStatusByVendor,
+  cancelOrderByCustomer,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
   updateOrderStatusByDeliveryPartner,
