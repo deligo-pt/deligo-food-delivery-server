@@ -9,9 +9,6 @@ import { formatOrderResponse } from './order.utils';
 import { InvoiceService } from '../Invoice/invoice.service';
 import { formatCartResponse } from '../Cart/cart.utils';
 import { createActivityLog } from '../ActivityLog/activityLog.utils';
-import { PaymentServices } from '../Payment/payment.service';
-import { Order } from './order.model';
-import { REFUND_STATUS } from './order.constant';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
@@ -93,27 +90,7 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
     type: activityType,
   });
 
-  const formattedData: any = formatOrderResponse(result?.data, req.lang);
-
-  if ((result as any)?.shouldRefund) {
-    try {
-      await PaymentServices.refundRedUniqPayment(orderId);
-      if (formattedData) {
-        formattedData.paymentStatus = 'REFUNDED';
-        formattedData.isPaid = false;
-        formattedData.refundStatus = REFUND_STATUS.REFUNDED;
-      }
-    } catch (err) {
-      console.error('Auto-refund on vendor cancel/reject failed:', err);
-      await Order.updateOne(
-        { orderId },
-        { $set: { refundStatus: REFUND_STATUS.FAILED } },
-      ).catch(() => {});
-      if (formattedData) {
-        formattedData.refundStatus = REFUND_STATUS.FAILED;
-      }
-    }
-  }
+  const formattedData = formatOrderResponse(result?.data, req.lang);
 
   sendResponse(res, {
     success: true,
@@ -143,27 +120,7 @@ const cancelOrderByCustomer = catchAsync(async (req, res) => {
     type: 'WARNING',
   });
 
-  const formattedData: any = formatOrderResponse(result?.data, req.lang);
-
-  if (result?.shouldRefund) {
-    try {
-      await PaymentServices.refundRedUniqPayment(orderId);
-      if (formattedData) {
-        formattedData.paymentStatus = 'REFUNDED';
-        formattedData.isPaid = false;
-        formattedData.refundStatus = REFUND_STATUS.REFUNDED;
-      }
-    } catch (err) {
-      console.error('Auto-refund on customer order cancel failed:', err);
-      await Order.updateOne(
-        { orderId },
-        { $set: { refundStatus: REFUND_STATUS.FAILED } },
-      ).catch(() => {});
-      if (formattedData) {
-        formattedData.refundStatus = REFUND_STATUS.FAILED;
-      }
-    }
-  }
+  const formattedData = formatOrderResponse(result?.data, req.lang);
 
   sendResponse(res, {
     success: true,
