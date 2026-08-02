@@ -66,7 +66,7 @@ export const processNewOrderPostProcess = async (job: Job) => {
         },
       ]);
 
-      if (freshOrder && freshOrder.invoiceSync?.isSynced) {
+      if (freshOrder) {
         const customer = freshOrder.customerId as any;
         const targetEmail = customer?.email;
 

@@ -5,7 +5,7 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { CheckoutSummary } from '../Checkout/checkout.model';
 import { Order } from '../Order/order.model';
-import { ORDER_STATUS } from '../Order/order.constant';
+import { ORDER_STATUS, REFUND_STATUS } from '../Order/order.constant';
 import {
   TIngredientOrder,
   TIngredientOrderDetail,
@@ -256,6 +256,10 @@ const refundRedUniqPayment = async (orderId: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'ORDER_NOT_ELIGIBLE_FOR_REFUND');
   }
 
+  if (order.refundStatus === REFUND_STATUS.NOT_APPLICABLE) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'REFUND_NOT_APPLICABLE_FOR_ORDER');
+  }
+
   if (!order.transactionId) {
     throw new AppError(httpStatus.BAD_REQUEST, 'TRANSACTION_ID_NOT_FOUND');
   }
@@ -317,6 +321,7 @@ const refundRedUniqPayment = async (orderId: string) => {
 
         order.paymentStatus = 'REFUNDED';
         order.isPaid = false;
+        order.refundStatus = REFUND_STATUS.REFUNDED;
         await order.save();
 
         const voidRefundTransactionId = (voidTxn as any)?.id || null;
@@ -342,6 +347,7 @@ const refundRedUniqPayment = async (orderId: string) => {
 
     order.paymentStatus = 'REFUNDED';
     order.isPaid = false;
+    order.refundStatus = REFUND_STATUS.REFUNDED;
     await order.save();
 
     const refundTransactionId = (transaction as any)?.id || null;

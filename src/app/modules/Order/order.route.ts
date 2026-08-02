@@ -19,11 +19,12 @@ router.post(
   OrderControllers.reorderOrder,
 );
 
-// download invoice pdf from pasta digital
-router.get(
-  '/:orderId/download-invoice-pdf',
-  auth('CUSTOMER', 'ADMIN', 'SUPER_ADMIN'),
-  OrderControllers.downloadInvoicePdfFromPd,
+// Cancel order by customer (refunded only if canceled before vendor accepts)
+router.patch(
+  '/:orderId/cancel',
+  auth('CUSTOMER'),
+  validateRequest(OrderValidation.cancelOrderByCustomerValidationSchema),
+  OrderControllers.cancelOrderByCustomer,
 );
 
 // Accept / Reject / Preparing / Ready for pickup/ Cancel order by vendor

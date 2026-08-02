@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
@@ -8,6 +9,9 @@ import { formatOrderResponse } from './order.utils';
 import { InvoiceService } from '../Invoice/invoice.service';
 import { formatCartResponse } from '../Cart/cart.utils';
 import { createActivityLog } from '../ActivityLog/activityLog.utils';
+import { PaymentServices } from '../Payment/payment.service';
+import { Order } from './order.model';
+import { REFUND_STATUS } from './order.constant';
 
 // create order after redUniq payment
 const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
@@ -89,13 +93,82 @@ const updateOrderStatusByVendor = catchAsync(async (req, res) => {
     type: activityType,
   });
 
-  const formattedData = formatOrderResponse(result?.data, req.lang);
+  const formattedData: any = formatOrderResponse(result?.data, req.lang);
+
+  if ((result as any)?.shouldRefund) {
+    try {
+      await PaymentServices.refundRedUniqPayment(orderId);
+      if (formattedData) {
+        formattedData.paymentStatus = 'REFUNDED';
+        formattedData.isPaid = false;
+        formattedData.refundStatus = REFUND_STATUS.REFUNDED;
+      }
+    } catch (err) {
+      console.error('Auto-refund on vendor cancel/reject failed:', err);
+      await Order.updateOne(
+        { orderId },
+        { $set: { refundStatus: REFUND_STATUS.FAILED } },
+      ).catch(() => {});
+      if (formattedData) {
+        formattedData.refundStatus = REFUND_STATUS.FAILED;
+      }
+    }
+  }
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
     variables: result?.variables,
+    data: formattedData,
+  });
+});
+
+// cancel order by customer controller
+const cancelOrderByCustomer = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
+  const orderId = req.params.orderId;
+  const { reason } = req.body;
+
+  const result = await OrderServices.cancelOrderByCustomer(
+    currentUser,
+    orderId,
+    reason,
+  );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Canceled Order',
+    target: `Order #${orderId}`,
+    type: 'WARNING',
+  });
+
+  const formattedData: any = formatOrderResponse(result?.data, req.lang);
+
+  if (result?.shouldRefund) {
+    try {
+      await PaymentServices.refundRedUniqPayment(orderId);
+      if (formattedData) {
+        formattedData.paymentStatus = 'REFUNDED';
+        formattedData.isPaid = false;
+        formattedData.refundStatus = REFUND_STATUS.REFUNDED;
+      }
+    } catch (err) {
+      console.error('Auto-refund on customer order cancel failed:', err);
+      await Order.updateOne(
+        { orderId },
+        { $set: { refundStatus: REFUND_STATUS.FAILED } },
+      ).catch(() => {});
+      if (formattedData) {
+        formattedData.refundStatus = REFUND_STATUS.FAILED;
+      }
+    }
+  }
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
     data: formattedData,
   });
 });
@@ -261,6 +334,7 @@ export const OrderControllers = {
   getAllOrders,
   getSingleOrder,
   updateOrderStatusByVendor,
+  cancelOrderByCustomer,
   broadcastOrderToPartners,
   partnerAcceptsDispatchedOrder,
   updateOrderStatusByDeliveryPartner,

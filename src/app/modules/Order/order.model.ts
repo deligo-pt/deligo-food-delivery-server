@@ -1,6 +1,6 @@
 import { model, Schema } from 'mongoose';
 import { TOrder, TInvoiceSync, TOrderStatusHistory } from './order.interface';
-import { ORDER_STATUS } from './order.constant';
+import { ORDER_STATUS, REFUND_STATUS } from './order.constant';
 import { addressSchema } from '../../constant/GlobalModel/address.model';
 import { localizedSchema } from '../../constant/GlobalModel/language.model';
 import {
@@ -203,6 +203,11 @@ const orderSchema = new Schema<TOrder>(
 
     cancelReason: { type: String },
     rejectReason: { type: String },
+    refundStatus: {
+      type: String,
+      enum: Object.values(REFUND_STATUS),
+      default: REFUND_STATUS.NOT_APPLICABLE,
+    },
     remarks: { type: String, default: '' },
 
     dispatchPartnerPool: { type: [String], default: [] },

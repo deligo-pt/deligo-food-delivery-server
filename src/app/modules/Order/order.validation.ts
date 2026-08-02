@@ -53,8 +53,18 @@ const partnerAcceptDispatchOrder = z.object({
     .strict(),
 });
 
+// cancel order by customer validation
+const cancelOrderByCustomerValidationSchema = z.object({
+  body: z
+    .object({
+      reason: z.string({ required_error: 'Cancel reason is required' }).min(1),
+    })
+    .strict(),
+});
+
 export const OrderValidation = {
   updateOrderStatusByVendorValidationSchema,
   updateOrderStatusByDeliveryPartnerValidationSchema,
   partnerAcceptDispatchOrder,
+  cancelOrderByCustomerValidationSchema,
 };

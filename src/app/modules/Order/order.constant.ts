@@ -16,6 +16,15 @@ export const ORDER_STATUS = {
 
 export type OrderStatus = keyof typeof ORDER_STATUS;
 
+export const REFUND_STATUS = {
+  NOT_APPLICABLE: 'NOT_APPLICABLE', // no refund was ever owed for this order
+  PENDING: 'PENDING', // refund owed, gateway call not attempted/completed yet
+  REFUNDED: 'REFUNDED', // gateway refund (or void) succeeded
+  FAILED: 'FAILED', // refund was owed but the gateway call failed
+} as const;
+
+export type RefundStatus = keyof typeof REFUND_STATUS;
+
 export const BLOCKED_FOR_ORDER_CANCEL = [
   ORDER_STATUS.ASSIGNED,
   ORDER_STATUS.PREPARING,

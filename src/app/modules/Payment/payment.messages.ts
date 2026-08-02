@@ -43,6 +43,10 @@ export const paymentMessages = {
     en: 'Only rejected or canceled orders are eligible for refund.',
     pt: 'Apenas pedidos rejeitados ou cancelados são elegíveis para reembolso.',
   },
+  REFUND_NOT_APPLICABLE_FOR_ORDER: {
+    en: 'This order is not eligible for a refund (the customer canceled after the vendor had already accepted the order).',
+    pt: 'Este pedido não é elegível para reembolso (o cliente cancelou depois de o fornecedor já ter aceitado o pedido).',
+  },
   TRANSACTION_ID_NOT_FOUND: {
     en: 'The original transaction reference is missing and refund cannot be processed.',
     pt: 'A referência original da transação está ausente e o reembolso não pode ser processado.',
