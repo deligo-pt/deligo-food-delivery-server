@@ -3,6 +3,7 @@
 import cors from 'cors';
 import express, { Application, NextFunction, Request, Response } from 'express';
 import httpStatus from 'http-status';
+import swaggerUi from 'swagger-ui-express';
 import globalErrorHandler from './app/middlewares/globalErrorHandler';
 import cookieParser from 'cookie-parser';
 import notFound from './app/middlewares/notFound';
@@ -10,6 +11,7 @@ import config from './app/config';
 import { rateLimiter } from './app/middlewares/rateLimiter';
 import router from './app/routes';
 import { parseLanguage } from './app/middlewares/parseLanguage';
+import { getSwaggerDocument } from './app/docs/swagger';
 
 const app: Application = express();
 
@@ -35,6 +37,17 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // app.use(logIPToDB);
+
+// API docs — reads openapi.json fresh on every request so edits show up without a restart
+app.get('/openapi.json', (req: Request, res: Response) => {
+  res.json(getSwaggerDocument());
+});
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  (req: Request, res: Response, next: NextFunction) =>
+    swaggerUi.setup(getSwaggerDocument())(req, res, next),
+);
 
 app.use(rateLimiter('global'));
 
