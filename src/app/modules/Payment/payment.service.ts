@@ -43,8 +43,10 @@ export const REDUNIQ_SUCCESS_CODES = new Set([
 export const isRedUniqSuccess = (result: any, transaction: any) =>
   transaction?.status === '1' || REDUNIQ_SUCCESS_CODES.has(result?.code);
 
+// MB WAY confirmed to accept payToken at session-init (sandbox tested); Apple/Google
+// Pay/PayPal are excluded — device-generated one-time cryptograms have no reusable token.
 export const isTokenizablePaymentMethod = (method: TPaymentMethod) =>
-  method === 'CARD';
+  method === 'CARD' || method === 'MB_WAY';
 
 const getReduniqNotificationUrl = () =>
   config.backend_base_url
@@ -556,7 +558,7 @@ const handleReduniqNotification = async (body: any) => {
     return;
   }
 
-  if (summary.paymentMethod === 'CARD') {
+  if (summary.paymentMethod === 'CARD' || summary.paymentMethod === 'MB_WAY') {
     await PaymentTokenServices.persistCardTokenFromGatewayResponse(
       summary.customerId.toString(),
       checkoutSummaryId,
