@@ -49,13 +49,23 @@ const fleetManagerUpdateValidationSchema = z.object({
       // Operational Data
       operationalData: z
         .object({
-          totalDrivers: z.number().min(0).optional(),
-          activeVehicles: z.number().min(0).optional(),
+          totalDrivers: z
+            .number()
+            .min(0, 'Total drivers cannot be negative')
+            .optional(),
+          activeVehicles: z
+            .number()
+            .min(0, 'Active vehicles cannot be negative')
+            .optional(),
           totalDeliveries: z.number().optional(),
 
           rating: z
             .object({
-              average: z.number().min(0).max(5).optional(),
+              average: z
+                .number()
+                .min(0, 'Rating average must be at least 0')
+                .max(5, 'Rating average cannot exceed 5')
+                .optional(),
               totalReviews: z.number().optional(),
             })
             .strict()
@@ -92,6 +102,7 @@ const fleetManagerDocImageValidationSchema = z.object({
           z
             .string()
             .url({ message: 'Each document image URL must be a valid URL' }),
+          { required_error: 'At least one document image URL is required' },
         )
         .min(1, 'At least one document image URL is required'),
     })
@@ -118,7 +129,9 @@ const fleetManagerDocImageDeleteValidationSchema = z.object({
           required_error: 'Document image title is required',
         },
       ),
-      imageUrl: z.string({}).url({ message: 'Valid image URL is required' }),
+      imageUrl: z
+        .string({ required_error: 'Image URL is required' })
+        .url({ message: 'Image URL must be a valid URL' }),
     })
     .strict(),
 });

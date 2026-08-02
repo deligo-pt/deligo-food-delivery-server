@@ -41,7 +41,11 @@ const createSponsorshipValidationSchema = z.object({
 const updateSponsorshipValidationSchema = z.object({
   body: z
     .object({
-      sponsorName: z.string().min(3).trim().optional(),
+      sponsorName: z
+        .string()
+        .min(3, 'Sponsor name must be at least 3 characters long')
+        .trim()
+        .optional(),
       sponsorType: z.enum(['Ads', 'Offer', 'Other']).optional(),
       startDate: z.coerce.date().optional(),
       endDate: z.coerce.date().optional(),

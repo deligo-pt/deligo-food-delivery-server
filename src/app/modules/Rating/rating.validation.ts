@@ -13,9 +13,11 @@ const subRatingsSchema = z
 const createRatingValidationSchema = z.object({
   body: z
     .object({
-      ratingType: z.enum(['DELIVERY_PARTNER', 'PRODUCT', 'VENDOR']),
+      ratingType: z.enum(['DELIVERY_PARTNER', 'PRODUCT', 'VENDOR'], {
+        required_error: 'Rating type is required',
+      }),
       rating: z
-        .number()
+        .number({ required_error: 'Rating is required' })
         .min(1, { message: 'Rating must be at least 1' })
         .max(5, { message: 'Rating cannot exceed 5' }),
       review: z.string().optional().default(''),

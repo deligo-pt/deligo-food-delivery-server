@@ -16,7 +16,10 @@ const updateCustomerDataValidationSchema = z.object({
         .strict()
         .optional(),
 
-      profilePhoto: z.string().url().optional(),
+      profilePhoto: z
+        .string()
+        .url('Profile photo must be a valid URL')
+        .optional(),
       NIF: z.string().optional(),
 
       // Main Customer Address
@@ -111,7 +114,10 @@ const updateCustomerLiveLocationValidationSchema = z.object({
         .min(-180, { message: 'Longitude must be between -180 and 180' })
         .max(180, { message: 'Longitude must be between -180 and 180' }),
 
-      geoAccuracy: z.number().nonnegative().optional(),
+      geoAccuracy: z
+        .number()
+        .nonnegative('Geo accuracy must be non-negative')
+        .optional(),
       isMocked: z.boolean().optional(),
 
       street: z.string().trim().optional(),

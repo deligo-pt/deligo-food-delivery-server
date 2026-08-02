@@ -5,7 +5,9 @@ const createSosValidationSchema = z.object({
   body: z
     .object({
       orderId: z.string().optional(),
-      userNote: z.string().max(200),
+      userNote: z
+        .string({ required_error: 'User note is required' })
+        .max(200, 'User note cannot exceed 200 characters'),
       issueTags: z.array(
         z.enum([
           'Accident',
@@ -15,6 +17,7 @@ const createSosValidationSchema = z.object({
           'Natural Disaster',
           'Other',
         ]),
+        { required_error: 'At least one issue tag is required' },
       ),
       deviceSnapshot: z
         .object({

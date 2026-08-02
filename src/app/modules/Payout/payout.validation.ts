@@ -19,7 +19,9 @@ const RejectPayoutValidationSchema = z.object({
 const FinalizeSettlementValidationSchema = z.object({
   body: z
     .object({
-      bankReferenceId: z.string().min(1, 'Bank Reference ID is required.'),
+      bankReferenceId: z
+        .string({ required_error: 'Bank Reference ID is required.' })
+        .min(1, 'Bank Reference ID is required.'),
       remarks: z.string().optional(),
     })
     .strict(),
