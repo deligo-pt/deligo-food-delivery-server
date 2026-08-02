@@ -318,14 +318,23 @@ const persistCardTokenFromGatewayResponse = async (
   if (!gatewayTokenId) return null;
 
   const cardInfo = gatewayData?.card || payToken?.card || {};
+  const last4: string | undefined =
+    cardInfo?.suffix || cardInfo?.last4 || cardInfo?.number?.slice(-4);
+
+  // This schema/table only models card data (last4 is a required field). A token
+  // with no card-shaped fields (e.g. an MB WAY token) would otherwise silently save
+  // as a broken record — log the real shape instead so it can be modeled properly.
+  if (!last4) {
+    console.error(
+      'persistCardTokenFromGatewayResponse: non-card token response, not saving:',
+      gatewayData,
+    );
+    return null;
+  }
+
   const cardBrand: TCardBrand = cardInfo?.brand
     ? (String(cardInfo.brand).toUpperCase() as TCardBrand)
     : 'OTHER';
-  const last4 =
-    cardInfo?.suffix ||
-    cardInfo?.last4 ||
-    cardInfo?.number?.slice(-4) ||
-    '0000';
   const expiryDate =
     cardInfo?.expMonth && cardInfo?.expYear
       ? formatExpiryDate(cardInfo.expMonth, cardInfo.expYear)
