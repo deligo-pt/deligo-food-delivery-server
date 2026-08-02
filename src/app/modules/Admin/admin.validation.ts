@@ -6,7 +6,7 @@ import { USER_STATUS } from '../../constant/GlobalConstant/user.constant';
 // -----------------------------------------------------
 const emailSchema = z
   .string({ required_error: 'Email is required' })
-  .email('Invalid email address');
+  .email('Email must be a valid email address');
 
 export const addressValidationSchema = z
   .object({
@@ -53,6 +53,7 @@ const activateOrBlockUserValidationSchema = z.object({
     .object({
       status: z.nativeEnum(USER_STATUS, {
         required_error: 'Status is required',
+        invalid_type_error: 'Invalid status provided',
       }),
     })
     .strict(),

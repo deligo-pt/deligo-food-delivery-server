@@ -5,7 +5,7 @@ import { createLocalizedValidationSchema } from '../../constant/GlobalValidation
 export const objectIdSchema = z
   .string()
   .refine((val) => mongoose.Types.ObjectId.isValid(val), {
-    message: 'Invalid ObjectId',
+    message: 'Must be a valid ObjectId',
   });
 
 const offerBody = z
@@ -15,31 +15,48 @@ const offerBody = z
       'offer description',
       true,
     ).optional(),
-    offerType: z.enum(['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO']),
+    offerType: z.enum(['PERCENT', 'FLAT', 'FREE_DELIVERY', 'BOGO'], {
+      required_error: 'Offer type is required',
+    }),
 
-    discountValue: z.number().nonnegative().optional(),
-    maxDiscountAmount: z.number().nonnegative().optional(),
+    discountValue: z
+      .number()
+      .nonnegative('Discount value must be non-negative')
+      .optional(),
+    maxDiscountAmount: z
+      .number()
+      .nonnegative('Max discount amount must be non-negative')
+      .optional(),
 
     bogo: z
       .object({
-        buyQty: z.number().int().positive(),
-        getQty: z.number().int().positive(),
+        buyQty: z
+          .number()
+          .int('Buy quantity must be an integer')
+          .positive('Buy quantity must be greater than 0'),
+        getQty: z
+          .number()
+          .int('Get quantity must be an integer')
+          .positive('Get quantity must be greater than 0'),
         productId: objectIdSchema,
       })
       .strict()
       .optional(),
 
     validFrom: z.string().refine((val) => !isNaN(Date.parse(val)), {
-      message: 'Invalid start date',
+      message: 'Valid from must be a valid date',
     }),
     expiresAt: z.string().refine((val) => !isNaN(Date.parse(val)), {
-      message: 'Invalid end date',
+      message: 'Expiration date must be a valid date',
     }),
 
     adminId: objectIdSchema.nullable().optional(),
     isGlobal: z.boolean().default(false),
     vendorId: objectIdSchema.nullable().optional(),
-    minOrderAmount: z.number().nonnegative().default(0),
+    minOrderAmount: z
+      .number()
+      .nonnegative('Minimum order amount must be non-negative')
+      .default(0),
 
     applicableCategories: z.array(objectIdSchema).default([]),
     applicableProducts: z.array(objectIdSchema).default([]),
@@ -47,9 +64,21 @@ const offerBody = z
     isAutoApply: z.boolean().default(false),
     code: z.string().trim().toUpperCase().optional(),
 
-    maxUsageCount: z.number().int().positive().optional(),
-    usageCount: z.number().int().nonnegative().default(0),
-    userUsageLimit: z.number().int().positive().default(1),
+    maxUsageCount: z
+      .number()
+      .int('Max usage count must be an integer')
+      .positive('Max usage count must be greater than 0')
+      .optional(),
+    usageCount: z
+      .number()
+      .int('Usage count must be an integer')
+      .nonnegative('Usage count must be non-negative')
+      .default(0),
+    userUsageLimit: z
+      .number()
+      .int('User usage limit must be an integer')
+      .positive('User usage limit must be greater than 0')
+      .default(1),
 
     isActive: z.boolean().default(true),
   })
@@ -132,7 +161,9 @@ const applyOfferSchema = z.object({
         })
         .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Checkout ID format'),
 
-      offerIdentifier: z.string(),
+      offerIdentifier: z.string({
+        required_error: 'Offer identifier is required',
+      }),
     })
     .strict(),
 });

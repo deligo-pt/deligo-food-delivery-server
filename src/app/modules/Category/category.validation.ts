@@ -38,7 +38,7 @@ const createProductCategoryValidationSchema = z.object({
       description: z.string().optional(),
       businessCategoryId: z
         .string({ required_error: 'Business category ID is required' })
-        .min(1),
+        .min(1, 'Business category ID is required'),
       isActive: z.boolean().default(true).optional(),
     })
     .strict(),

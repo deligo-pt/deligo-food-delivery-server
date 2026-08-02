@@ -4,18 +4,32 @@ import { z } from 'zod';
 const createIngredientValidationSchema = z.object({
   body: z
     .object({
-      name: z.string().min(1, 'Ingredient name is required').trim(),
-      category: z.string().min(1, 'Category is required'),
+      name: z
+        .string({ required_error: 'Ingredient name is required' })
+        .min(1, 'Ingredient name is required')
+        .trim(),
+      category: z
+        .string({ required_error: 'Category is required' })
+        .min(1, 'Category is required'),
       description: z.string().optional(),
-      price: z.number().positive('Price must be a positive number'),
-      tax: z.string().min(1, 'Tax ID reference is required'),
+      price: z
+        .number({ required_error: 'Price is required' })
+        .positive('Price must be a positive number'),
+      tax: z
+        .string({ required_error: 'Tax ID reference is required' })
+        .min(1, 'Tax ID reference is required'),
       unit: z.enum(['kg', 'g', 'litre', 'ml', 'piece', 'packet', 'box'], {
         required_error: 'Valid unit is required',
       }),
-      stock: z.number().int().nonnegative('Stock cannot be negative'),
+      stock: z
+        .number({ required_error: 'Stock is required' })
+        .int()
+        .nonnegative('Stock cannot be negative'),
       lowStockAlert: z.number().int().nonnegative().default(5),
       minOrder: z.number().int().positive().optional().default(1),
-      image: z.string().url('Invalid image URL'),
+      image: z
+        .string({ required_error: 'Image URL is required' })
+        .url('Image must be a valid URL'),
       status: z.enum(['available', 'out-of-stock']).default('available'),
       shelfLifeDays: z.number().int().positive().optional(),
       bulkDiscount: z

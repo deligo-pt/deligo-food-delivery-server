@@ -14,7 +14,7 @@ const registerValidationSchema = z.object({
           required_error: 'Email is required',
         })
         .email({
-          message: 'Invalid email',
+          message: 'Email must be a valid email address',
         }),
       role: z.enum(['VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER'], {
         errorMap: (issue, ctx) => {
@@ -41,7 +41,7 @@ const registerOnboardingValidationSchema = z.object({
           required_error: 'Email is required',
         })
         .email({
-          message: 'Invalid email',
+          message: 'Email must be a valid email address',
         }),
       role: z.enum(['VENDOR', 'DELIVERY_PARTNER', 'FLEET_MANAGER', 'ADMIN'], {
         errorMap: (issue, ctx) => {
@@ -95,7 +95,10 @@ const loginValidationSchema = z.object({
 const loginCustomerValidationSchema = z.object({
   body: z
     .object({
-      email: z.string().email('Invalid email format').optional(),
+      email: z
+        .string()
+        .email('Email must be a valid email address')
+        .optional(),
       contactNumber: z
         .string()
         .refine((val) => !val || portugalPhoneRegex.test(val), {
@@ -130,7 +133,7 @@ const changePasswordValidationSchema = z.object({
       oldPassword: z.string({
         required_error: 'Old password is required',
       }),
-      newPassword: z.string({ required_error: 'Password is required' }),
+      newPassword: z.string({ required_error: 'New password is required' }),
     })
     .strict(),
 });
@@ -163,7 +166,7 @@ const resetPasswordValidationSchema = z.object({
       token: z.string({
         required_error: 'Token is required',
       }),
-      newPassword: z.string({ required_error: 'Password is required' }),
+      newPassword: z.string({ required_error: 'New password is required' }),
     })
     .strict(),
 });
@@ -183,11 +186,10 @@ const refreshTokenValidationSchema = z.object({
 const approvedOrRejectedUserValidationSchema = z.object({
   body: z
     .object({
-      status: z.enum([
-        USER_STATUS.APPROVED,
-        USER_STATUS.REJECTED,
-        USER_STATUS.BLOCKED,
-      ]),
+      status: z.enum(
+        [USER_STATUS.APPROVED, USER_STATUS.REJECTED, USER_STATUS.BLOCKED],
+        { required_error: 'Status is required' },
+      ),
       approvedBy: z.string().optional(),
       rejectedBy: z.string().optional(),
       remarks: z.string().optional(),
@@ -203,7 +205,7 @@ const verifyOtpValidationSchema = z.object({
         .string({
           required_error: 'Email is required',
         })
-        .email('Invalid email format')
+        .email('Email must be a valid email address')
         .optional(),
       contactNumber: z
         .string({
