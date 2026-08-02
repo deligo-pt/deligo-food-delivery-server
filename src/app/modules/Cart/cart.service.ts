@@ -419,14 +419,19 @@ const addToCart = async (
           lang,
         );
       }
+
+      currentItem.isActive = true;
+      cart.items.forEach((i: any) => {
+        if (i.vendorId.toString() !== existingProduct.vendorId.toString()) {
+          i.isActive = false;
+        }
+      });
     } else {
-      const activeItem = cart.items.find((i: any) => i.isActive === true);
-      if (
-        activeItem &&
-        activeItem.vendorId.toString() !== existingProduct.vendorId.toString()
-      ) {
-        newItem.isActive = false;
-      }
+      cart.items.forEach((i: any) => {
+        if (i.vendorId.toString() !== existingProduct.vendorId.toString()) {
+          i.isActive = false;
+        }
+      });
       cart.items.push(newItem);
     }
   }

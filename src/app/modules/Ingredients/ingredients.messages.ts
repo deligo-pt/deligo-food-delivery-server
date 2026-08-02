@@ -32,8 +32,8 @@ export const ingredientsMessages = {
     pt: 'Ingrediente removido com sucesso.',
   },
   SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE: {
-    en: 'This item must be deactivated before it can be permanently deleted.',
-    pt: 'Este item deve ser desativado antes de poder ser excluído permanentemente.',
+    en: 'This item must be soft deleted before it can be permanently deleted.',
+    pt: 'Este item deve ser excluído temporariamente antes de poder ser excluído permanentemente.',
   },
   INGREDIENT_PERMANENTLY_REMOVED_SUCCESS: {
     en: 'Ingredient permanently deleted from the system.',
