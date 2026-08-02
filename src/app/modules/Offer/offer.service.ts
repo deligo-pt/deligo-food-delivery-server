@@ -617,7 +617,7 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
 
   if (
     isVendor &&
-    offer.vendorId?.toString() !== currentUser._id.toString() &&
+    offer.vendorId?._id.toString() !== currentUser._id.toString() &&
     !offer.isGlobal
   ) {
     throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_VIEW_OFFER');
