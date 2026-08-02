@@ -647,8 +647,6 @@ const updateOrderStatusByVendor = async (
       messageKey: 'ORDER_STATUS_UPDATED_SUCCESS_DYNAMIC',
       variables: { status: action.type },
       data: order,
-      // Vendor-initiated cancel/reject always refunds the customer, regardless of stage.
-      shouldRefund: action.type === 'CANCELED' || action.type === 'REJECTED',
     };
   } catch (error) {
     await session.abortTransaction();
@@ -889,7 +887,6 @@ const cancelOrderByCustomer = async (
     return {
       messageKey: 'ORDER_CANCELED_BY_CUSTOMER_SUCCESS',
       data: order,
-      shouldRefund,
     };
   } catch (error) {
     await session.abortTransaction();
