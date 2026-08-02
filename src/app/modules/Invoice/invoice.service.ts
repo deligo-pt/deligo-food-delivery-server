@@ -71,7 +71,10 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
   const customerNif = customer?.NIF || '999999990';
 
   const deliveryAddress = order.deliveryAddress;
-  const addressLine1 = [deliveryAddress?.street, deliveryAddress?.detailedAddress]
+  const addressLine1 = [
+    deliveryAddress?.street,
+    deliveryAddress?.detailedAddress,
+  ]
     .filter(Boolean)
     .join(', ');
   const addressLine2 = [deliveryAddress?.postalCode, deliveryAddress?.city]
@@ -143,7 +146,7 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
 
     await page.setJavaScriptEnabled(false);
 
-    await page.setContent(compiledHtml, { waitUntil: 'networkidle0' });
+    await page.setContent(compiledHtml, { waitUntil: 'load' });
 
     const pdfBuffer: Uint8Array = await page.pdf({
       format: 'A4',

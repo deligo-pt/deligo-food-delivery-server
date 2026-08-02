@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { OrderStatus } from './order.constant';
+import { OrderStatus, RefundStatus } from './order.constant';
 import { TAppliedOfferSnapshot } from '../Checkout/checkout.interface';
 import {
   TOrderPaymentStatus,
@@ -114,6 +114,7 @@ export type TOrder = {
   statusHistory: TOrderStatusHistory[];
   cancelReason?: string;
   rejectReason?: string;
+  refundStatus: RefundStatus;
 
   dispatchPartnerPool?: string[];
   dispatchExpiresAt?: Date;

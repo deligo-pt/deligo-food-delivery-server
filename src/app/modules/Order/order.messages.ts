@@ -236,4 +236,16 @@ export const orderMessages = {
     en: 'Active delivery details loaded successfully.',
     pt: 'Detalhes da entrega ativa carregados com sucesso.',
   },
+  NOT_AUTHORIZED_TO_CANCEL_ORDER: {
+    en: 'You do not have permission to cancel this order.',
+    pt: 'Você não tem permissão para cancelar este pedido.',
+  },
+  ONLY_PAID_ORDER_CAN_BE_CANCELED: {
+    en: 'Only paid orders can be canceled.',
+    pt: 'Apenas pedidos pagos podem ser cancelados.',
+  },
+  ORDER_CANCELED_BY_CUSTOMER_SUCCESS: {
+    en: 'Your order has been canceled successfully.',
+    pt: 'O seu pedido foi cancelado com sucesso.',
+  },
 } as const;
