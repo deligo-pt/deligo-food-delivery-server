@@ -8,6 +8,8 @@ import {
 } from '../constant/GlobalConstant/user.constant';
 import httpStatus from 'http-status';
 
+const JWT_ALGORITHM = 'HS256' as const;
+
 export const createToken = (
   jwtPayload: {
     userId: string;
@@ -27,6 +29,7 @@ export const createToken = (
 ) => {
   return jwt.sign(jwtPayload, secret, {
     expiresIn: expiresIn as SignOptions['expiresIn'],
+    algorithm: JWT_ALGORITHM,
   });
 };
 
@@ -35,7 +38,9 @@ export const verifyToken = (
   secret: string,
 ): JwtPayload | Error => {
   try {
-    return jwt.verify(token, secret) as JwtPayload;
+    return jwt.verify(token, secret, {
+      algorithms: [JWT_ALGORITHM],
+    }) as JwtPayload;
   } catch (error: any) {
     throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED');
   }

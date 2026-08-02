@@ -47,6 +47,7 @@ const verifyOtp = catchAsync(async (req, res) => {
   res.cookie('refreshToken', refreshToken, {
     secure: config.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: config.NODE_ENV === 'production' ? 'none' : 'lax',
   });
 
   sendResponse(res, {
@@ -54,7 +55,7 @@ const verifyOtp = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey,
     variables: result?.variables,
-    data: { accessToken, refreshToken },
+    data: { accessToken },
   });
 });
 
@@ -84,6 +85,7 @@ const loginUser = catchAsync(async (req, res) => {
   res.cookie('refreshToken', refreshToken, {
     secure: config.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: config.NODE_ENV === 'production' ? 'none' : 'lax',
   });
 
   sendResponse(res, {
@@ -92,7 +94,6 @@ const loginUser = catchAsync(async (req, res) => {
     messageKey: result?.messageKey,
     data: {
       accessToken,
-      refreshToken,
     },
   });
 });
@@ -201,13 +202,14 @@ const refreshToken = catchAsync(async (req, res) => {
   res.cookie('refreshToken', result.data.refreshToken, {
     secure: config.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: config.NODE_ENV === 'production' ? 'none' : 'lax',
   });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
-    data: result?.data,
+    data: { accessToken: result?.data?.accessToken },
   });
 });
 

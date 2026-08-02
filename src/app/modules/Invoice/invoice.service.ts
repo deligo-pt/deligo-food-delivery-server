@@ -8,6 +8,7 @@ import httpStatus from 'http-status';
 import puppeteer from 'puppeteer';
 import Handlebars from '../../config/handlebars';
 import { calculateVatBreakdown, INVOICE_PDF_TEMPLATE } from './invoice.utils';
+import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 
 const downloadOrderInvoicePdf = async (orderId: string) => {
   const order = await Order.findOne({ orderId });
@@ -53,7 +54,13 @@ const downloadOrderInvoicePdf = async (orderId: string) => {
   }
 };
 
-const generateCustomInvoicePdfBuffer = async (orderId: string) => {
+const generateCustomInvoicePdfBuffer = async (
+  orderId: string,
+  // Absent when the request came in through the signed-link path (invoiceDownloadGuard
+  // already verified the token in that case) — present for the logged-in dashboard path,
+  // where we still need to check the caller actually owns this order.
+  currentUser?: TCurrentUser,
+) => {
   const order = await Order.findOne({ orderId }).populate({
     path: 'customerId',
     select: 'name NIF email',
@@ -64,6 +71,31 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
   }
 
   const customer = order.customerId as any;
+
+  if (currentUser) {
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+    const isOwningCustomer =
+      currentUser.role === 'CUSTOMER' &&
+      customer?._id?.toString() === currentUser._id.toString();
+    const isOwningVendor =
+      ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role) &&
+      order.vendorId?.toString() === currentUser._id.toString();
+    const isAssignedDeliveryPartner =
+      currentUser.role === 'DELIVERY_PARTNER' &&
+      order.deliveryPartnerId?.toString() === currentUser._id.toString();
+
+    if (
+      !isAdmin &&
+      !isOwningCustomer &&
+      !isOwningVendor &&
+      !isAssignedDeliveryPartner
+    ) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'NOT_AUTHORIZED_TO_ACCESS_INVOICE',
+      );
+    }
+  }
 
   const customerName =
     customer?.name?.firstName + ' ' + customer?.name?.lastName || 'Cliente';
