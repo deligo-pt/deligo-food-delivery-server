@@ -179,10 +179,6 @@ export const offerMessages = {
     en: 'Access denied. Only administrators can permanently delete an offer.',
     pt: 'Acesso negado. Apenas administradores podem excluir permanentemente uma oferta.',
   },
-  SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE: {
-    en: 'This offer must be deactivated before it can be permanently deleted.',
-    pt: 'Esta oferta deve ser desativada antes de poder ser excluída permanentemente.',
-  },
   ACTIVE_OFFER_CANNOT_BE_PERMANENTLY_DELETED: {
     en: 'An active offer cannot be permanently deleted.',
     pt: 'Uma oferta ativa não pode ser excluída permanentemente.',
