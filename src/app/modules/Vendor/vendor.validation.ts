@@ -151,6 +151,7 @@ const vendorDocImageValidationSchema = z.object({
           z
             .string()
             .url({ message: 'Each document image URL must be a valid URL' }),
+          { required_error: 'At least one document image URL is required' },
         )
         .min(1, 'At least one document image URL is required'),
     })
@@ -177,7 +178,9 @@ const vendorDocImageDeleteValidationSchema = z.object({
         ],
         { required_error: 'Document title is required' },
       ),
-      imageUrl: z.string().url({ message: 'Valid image URL is required' }),
+      imageUrl: z
+        .string({ required_error: 'Image URL is required' })
+        .url({ message: 'Valid image URL is required' }),
     })
     .strict(),
 });

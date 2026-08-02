@@ -5,7 +5,9 @@ import { createLocalizedValidationSchema } from '../../constant/GlobalValidation
 const variationOptionSchema = z
   .object({
     label: createLocalizedValidationSchema('variation option name'),
-    price: z.number().min(0, 'Variation price must be non-negative'),
+    price: z
+      .number({ required_error: 'Variation price is required' })
+      .min(0, 'Variation price must be non-negative'),
     sku: z.string().optional(),
     stockQuantity: z.number().min(0).optional(),
     isOutOfStock: z.boolean().default(false),
@@ -17,7 +19,9 @@ const variationSchema = z
   .object({
     name: createLocalizedValidationSchema('variation group name'),
     options: z
-      .array(variationOptionSchema)
+      .array(variationOptionSchema, {
+        required_error: 'At least one option is required',
+      })
       .min(1, 'At least one option is required'),
   })
   .strict();
@@ -26,16 +30,20 @@ const variationSchema = z
 const createProductValidationSchema = z.object({
   body: z
     .object({
-      name: createLocalizedValidationSchema('product name'),
-      description: createLocalizedValidationSchema('product description'),
-      category: z.string().min(1, 'Category is required'),
+      name: createLocalizedValidationSchema('Product name'),
+      description: createLocalizedValidationSchema('Product description'),
+      category: z
+        .string({ required_error: 'Category is required' })
+        .min(1, 'Category is required'),
       subCategory: z.string().optional(),
       brand: z.string().optional(),
 
       variations: z.array(variationSchema).optional(),
       addonGroups: z.array(z.string()).optional(),
       images: z
-        .array(z.string().url())
+        .array(z.string().url(), {
+          required_error: 'At least one image is required',
+        })
         .min(1, 'At least one image is required'),
 
       pricing: z
@@ -50,7 +58,9 @@ const createProductValidationSchema = z.object({
 
       stock: z
         .object({
-          quantity: z.number().min(0, 'Quantity must be non-negative'),
+          quantity: z
+            .number({ required_error: 'Quantity is required' })
+            .min(0, 'Quantity must be non-negative'),
           unit: z.string().optional(),
           availabilityStatus: z
             .enum(['In Stock', 'Out of Stock', 'Limited'])
@@ -155,6 +165,7 @@ const manageVariationValidationSchema = z.object({
                 .optional(),
             })
             .strict(),
+          { required_error: 'At least one option must be provided' },
         )
         .min(1, 'At least one option must be provided'),
     })
@@ -165,7 +176,9 @@ const manageVariationValidationSchema = z.object({
 const renameVariationValidationSchema = z.object({
   body: z
     .object({
-      oldName: z.string().min(1, 'Old variation name is required'),
+      oldName: z
+        .string({ required_error: 'Old variation name is required' })
+        .min(1, 'Old variation name is required'),
 
       newName: createLocalizedValidationSchema(
         'new variation name',
@@ -203,7 +216,9 @@ const renameVariationValidationSchema = z.object({
 const removeVariationValidationSchema = z.object({
   body: z
     .object({
-      name: z.string().min(1, 'Variation name is required'),
+      name: z
+        .string({ required_error: 'Variation name is required' })
+        .min(1, 'Variation name is required'),
       labelToRemove: z.string().optional(),
     })
     .strict(),
@@ -214,7 +229,10 @@ const updateStockAndPriceValidationSchema = z.object({
   body: z
     .object({
       addedQuantity: z.number().optional(),
-      reduceQuantity: z.number().min(1).optional(),
+      reduceQuantity: z
+        .number()
+        .min(1, 'Reduce quantity must be at least 1')
+        .optional(),
       newPrice: z.number().min(0, 'Price cannot be negative').optional(),
       variationSku: z.string().optional(),
     })
@@ -258,6 +276,7 @@ const deleteProductImagesValidationSchema = z.object({
       images: z
         .array(
           z.string().url({ message: 'Each image must be a valid URL string' }),
+          { required_error: 'Please provide at least one image URL to delete' },
         )
         .min(1, 'Please provide at least one image URL to delete'),
     })

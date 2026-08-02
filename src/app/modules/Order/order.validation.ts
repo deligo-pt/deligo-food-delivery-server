@@ -19,12 +19,10 @@ const updateOrderStatusByVendorValidationSchema = z.object({
 const updateOrderStatusByDeliveryPartnerValidationSchema = z.object({
   body: z
     .object({
-      orderStatus: z.enum([
-        'REASSIGNMENT_NEEDED',
-        'PICKED_UP',
-        'ON_THE_WAY',
-        'DELIVERED',
-      ]),
+      orderStatus: z.enum(
+        ['REASSIGNMENT_NEEDED', 'PICKED_UP', 'ON_THE_WAY', 'DELIVERED'],
+        { required_error: 'Order status is required' },
+      ),
       deliveryProofImage: z.string().optional(),
       reason: z.string().optional(),
     })
@@ -48,7 +46,9 @@ const updateOrderStatusByDeliveryPartnerValidationSchema = z.object({
 const partnerAcceptDispatchOrder = z.object({
   body: z
     .object({
-      action: z.enum(['ACCEPT', 'REJECT']),
+      action: z.enum(['ACCEPT', 'REJECT'], {
+        required_error: 'Action is required',
+      }),
     })
     .strict(),
 });
@@ -57,7 +57,9 @@ const partnerAcceptDispatchOrder = z.object({
 const cancelOrderByCustomerValidationSchema = z.object({
   body: z
     .object({
-      reason: z.string({ required_error: 'Cancel reason is required' }).min(1),
+      reason: z
+        .string({ required_error: 'Cancel reason is required' })
+        .min(1, 'Cancel reason is required'),
     })
     .strict(),
 });

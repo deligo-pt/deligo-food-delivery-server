@@ -5,7 +5,9 @@ const saveCardStandaloneValidationSchema = z.object({
     .object({
       card: z
         .object({
-          holderName: z.string({ required_error: 'Card holder name is required' }).min(2),
+          holderName: z
+            .string({ required_error: 'Card holder name is required' })
+            .min(2, 'Card holder name must be at least 2 characters'),
           number: z
             .string({ required_error: 'Card number is required' })
             .regex(/^\d{12,19}$/, 'Card number must be 12-19 digits'),
