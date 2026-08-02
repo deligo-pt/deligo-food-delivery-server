@@ -5,7 +5,9 @@ const deleteMultipleNotificationsValidationSchema = z.object({
   body: z
     .object({
       notificationIds: z
-        .array(z.string())
+        .array(z.string(), {
+          required_error: 'At least one notification ID is required',
+        })
         .min(1, 'At least one notification ID is required'),
     })
     .strict(),
@@ -38,7 +40,10 @@ const sendBroadcastNotificationValidationSchema = z.object({
         })
         .min(1, 'Message body cannot be empty')
         .max(1000, 'Message is too long'),
-      imageUrl: z.string().url('Invalid image URL').optional(),
+      imageUrl: z
+        .string()
+        .url('Image URL must be a valid URL')
+        .optional(),
       data: z.record(z.string()).optional(),
 
       type: z.enum(notificationTypes as [string, ...string[]]).optional(),

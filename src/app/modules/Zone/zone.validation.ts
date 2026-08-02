@@ -5,24 +5,35 @@ const geoJsonCoordinatesSchema = z.array(
     z
       .array(z.number())
       .length(2, 'Coordinates must be a [longitude, latitude] pair'),
+    { required_error: 'Each polygon ring must contain coordinate pairs' },
   ),
+  { required_error: 'Boundary coordinates are required' },
 );
 
 // Zod schema for the entire TZone type
 const createZoneSchema = z.object({
   body: z
     .object({
-      zoneId: z.string().min(3, 'Zone ID is required and must be unique.'),
-      district: z.string().min(1, 'District is required (e.g., Lisbon).'),
+      zoneId: z
+        .string({ required_error: 'Zone ID is required' })
+        .min(3, 'Zone ID must be at least 3 characters'),
+      district: z
+        .string({ required_error: 'District is required' })
+        .min(1, 'District is required (e.g., Lisbon).'),
       zoneName: z
-        .string()
+        .string({ required_error: 'Zone name is required' })
         .min(1, 'Zone name is required (e.g., Lisbon Centre).'),
 
       boundary: z
-        .object({
-          type: z.literal('Polygon'),
-          coordinates: geoJsonCoordinatesSchema,
-        })
+        .object(
+          {
+            type: z.literal('Polygon', {
+              required_error: "Boundary type must be 'Polygon'",
+            }),
+            coordinates: geoJsonCoordinatesSchema,
+          },
+          { required_error: 'Boundary is required' },
+        )
         .strict(),
 
       isOperational: z.boolean().optional(),
@@ -39,12 +50,12 @@ const checkPointInZoneSchema = z.object({
       lng: z
         .string({ required_error: 'Longitude (lng) is required' })
         .refine((val) => !isNaN(parseFloat(val)), {
-          message: 'Must be a number',
+          message: 'Longitude must be a valid number',
         }),
       lat: z
         .string({ required_error: 'Latitude (lat) is required' })
         .refine((val) => !isNaN(parseFloat(val)), {
-          message: 'Must be a number',
+          message: 'Latitude must be a valid number',
         }),
     })
     .strict(),

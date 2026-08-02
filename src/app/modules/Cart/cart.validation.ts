@@ -20,13 +20,16 @@ const addToCartValidationSchema = z.object({
                     optionSku: z.string({
                       required_error: 'Add-on option SKU is required',
                     }),
-                    quantity: z.number().min(0, 'Quantity cannot be negative'),
+                    quantity: z
+                      .number({ required_error: 'Add-on quantity is required' })
+                      .min(0, 'Add-on quantity cannot be negative'),
                   })
                   .strict(),
               )
               .optional(),
           })
           .strict(),
+        { required_error: 'Cart items are required' },
       ),
     })
     .strict(),
@@ -77,6 +80,7 @@ const deleteCartItemValidationSchema = z.object({
           variationSku: z.string().optional().nullable(),
         })
         .strict(),
+      { required_error: 'Cart items to delete are required' },
     )
     .min(1, 'At least one item must be provided to delete'),
 });

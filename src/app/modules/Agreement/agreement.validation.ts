@@ -12,7 +12,7 @@ const initiateAgreementValidationSchema = z.object({
         .string({
           required_error: 'Email is required',
         })
-        .email('Invalid email address'),
+        .email('Email must be a valid email address'),
 
       contactNumber: z
         .string({
@@ -36,7 +36,7 @@ const verifyAgreementOtpValidationSchema = z.object({
         .string({
           required_error: 'Email is required',
         })
-        .email('Invalid email address'),
+        .email('Email must be a valid email address'),
 
       otp: z
         .string({
@@ -54,7 +54,7 @@ const resendAgreementOtpValidationSchema = z.object({
         .string({
           required_error: 'Email is required',
         })
-        .email('Invalid email address'),
+        .email('Email must be a valid email address'),
     })
     .strict(),
 });

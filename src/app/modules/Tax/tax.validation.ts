@@ -16,9 +16,9 @@ const createTaxBodySchema = z
   .object({
     taxName: createLocalizedValidationSchema('tax name'),
     description: createLocalizedValidationSchema('tax description'),
-    taxCode: z.enum(TAX_CODES),
+    taxCode: z.enum(TAX_CODES, { required_error: 'Tax code is required' }),
     taxRate: z
-      .number()
+      .number({ required_error: 'Tax rate is required' })
       .refine((val) => (TAX_RATES as unknown as number[]).includes(val), {
         message: `Tax rate must be one of: ${TAX_RATES.join(', ')}`,
       }),

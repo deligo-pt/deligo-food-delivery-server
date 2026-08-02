@@ -54,7 +54,7 @@ const assignPermissionsValidationSchema = z.object({
             message: 'Invalid Permission ID format',
           }),
           {
-            required_error: 'permissionIds array is required',
+            required_error: 'Permission IDs array is required',
           },
         )
         .min(1, 'At least one permission ID must be provided'),

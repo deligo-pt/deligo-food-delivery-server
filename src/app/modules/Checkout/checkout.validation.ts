@@ -8,8 +8,12 @@ const checkoutValidationSchema = z.object({
         .array(
           z
             .object({
-              productId: z.string().min(1, 'Product ID is required'),
-              quantity: z.number().min(1, 'Quantity must be at least 1'),
+              productId: z
+                .string({ required_error: 'Product ID is required' })
+                .min(1, 'Product ID is required'),
+              quantity: z
+                .number({ required_error: 'Quantity is required' })
+                .min(1, 'Quantity must be at least 1'),
               variationSku: z.string().optional(),
             })
             .strict(),
