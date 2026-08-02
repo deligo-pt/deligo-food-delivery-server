@@ -108,17 +108,20 @@ const updateDeliveryPartnerDataValidationSchema = z.object({
 const deliveryPartnerDocImageValidationSchema = z.object({
   body: z
     .object({
-      docImageTitle: z.enum([
-        'myPhoto',
-        'idProofFront',
-        'idProofBack',
-        'drivingLicenseFront',
-        'drivingLicenseBack',
-        'vehicleRegistration',
-        'criminalRecordCertificate',
-        'activity',
-        'insurancePolicy',
-      ]),
+      docImageTitle: z.enum(
+        [
+          'myPhoto',
+          'idProofFront',
+          'idProofBack',
+          'drivingLicenseFront',
+          'drivingLicenseBack',
+          'vehicleRegistration',
+          'criminalRecordCertificate',
+          'activity',
+          'insurancePolicy',
+        ],
+        { required_error: 'Document image title is required' },
+      ),
     })
     .strict(),
 });
@@ -126,7 +129,9 @@ const deliveryPartnerDocImageValidationSchema = z.object({
 const deliveryPartnerStatusChangeValidationSchema = z.object({
   body: z
     .object({
-      status: z.enum(['IDLE', 'OFFLINE']),
+      status: z.enum(['IDLE', 'OFFLINE'], {
+        required_error: 'Status is required',
+      }),
     })
     .strict(),
 });
@@ -134,7 +139,9 @@ const deliveryPartnerStatusChangeValidationSchema = z.object({
 const assignDeliveryPartnerToFleetManagerValidationSchema = z.object({
   body: z
     .object({
-      fleetManagerId: z.string().min(1),
+      fleetManagerId: z
+        .string({ required_error: 'Fleet manager ID is required' })
+        .min(1, 'Fleet manager ID is required'),
     })
     .strict(),
 });
