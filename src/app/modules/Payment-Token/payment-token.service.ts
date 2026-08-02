@@ -109,14 +109,13 @@ const createStandaloneCardToken = async (
 
   try {
     const response = await axios.post(config.redUniq.api_url, gatewayPayload);
-
-    console.log({ response });
     const { result = {}, payToken, token } = response.data || {};
 
     if (
       !result?.code ||
       (result.code !== '00000000' && result.code !== '17000000000')
     ) {
+      console.error('REDUNIQ createPaymentToken rejected:', response.data);
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'CARD_TOKENIZATION_FAILED_BY_GATEWAY',

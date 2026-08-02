@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EmailHelper } from '../../utils/emailSender';
 import config from '../../config';
-import { generateInvoiceAccessToken } from '../../utils/invoiceAccessToken';
 
 export const sendInvoiceEmailWithAttachment = async (
   order: any,
@@ -65,7 +64,7 @@ export const sendInvoiceEmailWithAttachment = async (
       grandTotal: (order.payoutSummary?.grandTotal || 0).toFixed(2),
       orderId: orderIdStr,
       currentYear: new Date().getFullYear(),
-      downloadUrl: `${config.backend_base_url}/invoices/download/${orderIdStr}?token=${generateInvoiceAccessToken(orderIdStr)}`,
+      downloadUrl: `${config.backend_base_url}/invoices/download/${orderIdStr}`,
     };
 
     const htmlBody = await EmailHelper.createEmailContent(
