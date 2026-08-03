@@ -172,6 +172,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
           bogoSnapshot: {
             buyQty: { type: Number },
             getQty: { type: Number },
+            freeQty: { type: Number },
             productId: { type: Schema.Types.ObjectId, ref: 'Product' },
             productName: { type: String },
           },

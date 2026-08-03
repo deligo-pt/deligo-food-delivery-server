@@ -253,6 +253,7 @@ export const calculateOfferDiscount = async (
         bogoSnapshot = {
           buyQty: bogo.buyQty,
           getQty: bogo.getQty,
+          freeQty,
           productId: targetItem.productId,
           productName:
             targetItem.name?.[lang] || targetItem.name?.en || '',
@@ -528,6 +529,7 @@ export const rebuildCheckoutSummary = async (
               ? {
                   buyQty: bogoSnapshot.buyQty,
                   getQty: bogoSnapshot.getQty,
+                  freeQty: bogoSnapshot.freeQty,
                   productId: bogoSnapshot.productId,
                   productName: bogoSnapshot.productName,
                 }
