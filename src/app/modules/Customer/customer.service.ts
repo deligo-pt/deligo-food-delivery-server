@@ -739,10 +739,18 @@ const getSingleCustomerFromDB = async (
     throw new AppError(httpStatus.NOT_FOUND, 'REQUESTED_CUSTOMER_NOT_FOUND');
   }
 
+  const authUser = await AuthUser.findOne({
+    userId: customerId,
+  }).select('isEmailVerified isContactNumberVerified');
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Customer' },
-    data,
+    data: {
+      ...toPlain(data),
+      isEmailVerified: authUser?.isEmailVerified ?? false,
+      isContactNumberVerified: authUser?.isContactNumberVerified ?? false,
+    },
   };
 };
 

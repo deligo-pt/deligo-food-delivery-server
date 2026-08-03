@@ -21,6 +21,7 @@ export type TAppliedOfferSnapshot = {
   bogoSnapshot?: {
     buyQty: number;
     getQty: number;
+    freeQty: number; // units actually granted free in this cart (capped by cart qty)
     productId: mongoose.Types.ObjectId;
     productName?: string;
   };

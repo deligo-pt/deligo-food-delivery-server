@@ -22,6 +22,7 @@ import { TMessageKey } from '../../errors/messages';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { getIO } from '../../lib/Socket';
 import { emitVendorStoreStatusUpdate } from '../../lib/Socket/events/shopStatus.events';
+import { AuthUser } from '../AuthUser/authUser.model';
 
 /**
  * Service to update vendor profile information.
@@ -417,9 +418,17 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
     );
   }
 
+  const authUser = await AuthUser.findOne({
+    userId: existingVendor.userId,
+  }).select('isEmailVerified isContactNumberVerified');
+
   return {
     messageKey: 'VENDOR_RETRIEVED_SUCCESS' as TMessageKey,
-    data: existingVendor,
+    data: {
+      ...existingVendor.toObject(),
+      isEmailVerified: authUser?.isEmailVerified ?? false,
+      isContactNumberVerified: authUser?.isContactNumberVerified ?? false,
+    },
   };
 };
 

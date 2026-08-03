@@ -93,6 +93,8 @@ export const findAndValidateOffer = async (
   const baseQuery = {
     isActive: true,
     isDeleted: false,
+    // FREE_DELIVERY offers are disabled — never resolvable at checkout, even if one already exists in the DB
+    offerType: { $ne: 'FREE_DELIVERY' },
     validFrom: { $lte: now },
     expiresAt: { $gte: now },
     $or: [{ vendorId: checkoutData.vendorId }, { vendorId: null }],
@@ -253,6 +255,7 @@ export const calculateOfferDiscount = async (
         bogoSnapshot = {
           buyQty: bogo.buyQty,
           getQty: bogo.getQty,
+          freeQty,
           productId: targetItem.productId,
           productName:
             targetItem.name?.[lang] || targetItem.name?.en || '',
@@ -528,6 +531,7 @@ export const rebuildCheckoutSummary = async (
               ? {
                   buyQty: bogoSnapshot.buyQty,
                   getQty: bogoSnapshot.getQty,
+                  freeQty: bogoSnapshot.freeQty,
                   productId: bogoSnapshot.productId,
                   productName: bogoSnapshot.productName,
                 }
