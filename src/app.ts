@@ -2,7 +2,6 @@
 /* eslint-disable no-unused-vars */
 import cors from 'cors';
 import express, { Application, NextFunction, Request, Response } from 'express';
-import helmet from 'helmet';
 import httpStatus from 'http-status';
 import swaggerUi from 'swagger-ui-express';
 import globalErrorHandler from './app/middlewares/globalErrorHandler';
@@ -17,10 +16,6 @@ import { getSwaggerDocument } from './app/docs/swagger';
 const app: Application = express();
 
 app.set('trust proxy', 1);
-
-// contentSecurityPolicy is left off globally: this is a JSON API, and a strict default CSP
-// would break the inline scripts Swagger UI relies on for /api-docs.
-app.use(helmet({ contentSecurityPolicy: false }));
 
 const allowedOrigins = config.origins?.split(',') ?? [];
 
@@ -43,19 +38,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // app.use(logIPToDB);
 
-// API docs — reads openapi.json fresh on every request so edits show up without a restart.
-// Not exposed in production: it maps the entire API surface for anyone who finds the URL.
-if (config.NODE_ENV !== 'production') {
-  app.get('/openapi.json', (req: Request, res: Response) => {
-    res.json(getSwaggerDocument());
-  });
-  app.use(
-    '/api-docs',
-    swaggerUi.serve,
-    (req: Request, res: Response, next: NextFunction) =>
-      swaggerUi.setup(getSwaggerDocument())(req, res, next),
-  );
-}
+// API docs — reads openapi.json fresh on every request so edits show up without a restart
+app.get('/openapi.json', (req: Request, res: Response) => {
+  res.json(getSwaggerDocument());
+});
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  (req: Request, res: Response, next: NextFunction) =>
+    swaggerUi.setup(getSwaggerDocument())(req, res, next),
+);
 
 app.use(rateLimiter('global'));
 

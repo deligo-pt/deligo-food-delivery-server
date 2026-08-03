@@ -5,14 +5,6 @@ import {
 } from '../../constant/GlobalConstant/user.constant';
 
 const portugalPhoneRegex = /^(?:\+351|351)?9[1236]\d{7}$/;
-
-const strongPasswordSchema = z
-  .string({ required_error: 'Password is required' })
-  .min(8, 'Password must be at least 8 characters long')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number');
-
 // Register
 const registerValidationSchema = z.object({
   body: z
@@ -35,7 +27,9 @@ const registerValidationSchema = z.object({
           return { message: ctx.defaultError };
         },
       }),
-      password: strongPasswordSchema,
+      password: z.string({
+        required_error: 'Password is required',
+      }),
     })
     .strict(),
 });
@@ -60,7 +54,9 @@ const registerOnboardingValidationSchema = z.object({
           return { message: ctx.defaultError };
         },
       }),
-      password: strongPasswordSchema,
+      password: z.string({
+        required_error: 'Password is required',
+      }),
     })
     .strict(),
 });
@@ -99,10 +95,7 @@ const loginValidationSchema = z.object({
 const loginCustomerValidationSchema = z.object({
   body: z
     .object({
-      email: z
-        .string()
-        .email('Email must be a valid email address')
-        .optional(),
+      email: z.string().email('Email must be a valid email address').optional(),
       contactNumber: z
         .string()
         .refine((val) => !val || portugalPhoneRegex.test(val), {
@@ -137,7 +130,7 @@ const changePasswordValidationSchema = z.object({
       oldPassword: z.string({
         required_error: 'Old password is required',
       }),
-      newPassword: strongPasswordSchema,
+      newPassword: z.string({ required_error: 'New password is required' }),
     })
     .strict(),
 });
@@ -170,7 +163,7 @@ const resetPasswordValidationSchema = z.object({
       token: z.string({
         required_error: 'Token is required',
       }),
-      newPassword: strongPasswordSchema,
+      newPassword: z.string({ required_error: 'New password is required' }),
     })
     .strict(),
 });
