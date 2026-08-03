@@ -181,10 +181,18 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
     });
   }
 
+  const authUser = await AuthUser.findOne({
+    userId: adminId,
+  }).select('isEmailVerified isContactNumberVerified');
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Admin' },
-    data: existingAdmin,
+    data: {
+      ...existingAdmin.toObject(),
+      isEmailVerified: authUser?.isEmailVerified ?? false,
+      isContactNumberVerified: authUser?.isContactNumberVerified ?? false,
+    },
   };
 };
 
