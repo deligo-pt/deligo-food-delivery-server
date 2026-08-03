@@ -54,9 +54,17 @@ const getMyProfile = async (currentUser: TCurrentUser) => {
     throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
   }
 
+  const authUser = await AuthUser.findOne({
+    userId: currentUser.userId,
+  }).select('isEmailVerified isContactNumberVerified');
+
   return {
     messageKey: 'MY_PROFILE_RETRIEVED_SUCCESS' as TMessageKey,
-    data: profile,
+    data: {
+      ...profile.toObject(),
+      isEmailVerified: authUser?.isEmailVerified ?? false,
+      isContactNumberVerified: authUser?.isContactNumberVerified ?? false,
+    },
   };
 };
 

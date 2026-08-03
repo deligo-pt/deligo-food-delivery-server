@@ -306,10 +306,21 @@ const getSingleFleetManagerFromDB = async (
   const deliveryPartners = await deliveryPartnerQuery.modelQuery;
   const meta = await deliveryPartnerQuery.countTotal();
 
+  const authUser = await AuthUser.findOne({
+    userId: existingFleetManager.userId,
+  }).select('isEmailVerified isContactNumberVerified');
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Fleet Manager' },
-    data: { existingFleetManager, deliveryPartners },
+    data: {
+      existingFleetManager: {
+        ...existingFleetManager.toObject(),
+        isEmailVerified: authUser?.isEmailVerified ?? false,
+        isContactNumberVerified: authUser?.isContactNumberVerified ?? false,
+      },
+      deliveryPartners,
+    },
     meta,
   };
 };
