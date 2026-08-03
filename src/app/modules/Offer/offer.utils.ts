@@ -288,11 +288,21 @@ export const rebuildCheckoutSummary = async (
     originalCartTotal > 0 ? totalOfferDiscount / originalCartTotal : 0;
   let distributedDiscountSum = 0;
 
+  // BOGO belongs entirely to the reward item's line — never spread across
+  // unrelated cart items the way a cart-wide PERCENT/FLAT discount is.
+  const isBogo = offer.offerType === 'BOGO' && !!bogoSnapshot;
+  const bogoTargetProductId = bogoSnapshot?.productId?.toString();
+
   const updatedItems = items.map((item: any, index: number) => {
     const itemOriginalGrandTotal = item.itemSummary.grandTotal;
     let lineOfferDiscount = 0;
 
-    if (index === items.length - 1) {
+    if (isBogo) {
+      lineOfferDiscount =
+        item.productId?.toString() === bogoTargetProductId
+          ? roundTo2(totalOfferDiscount)
+          : 0;
+    } else if (index === items.length - 1) {
       lineOfferDiscount = roundTo2(totalOfferDiscount - distributedDiscountSum);
     } else {
       lineOfferDiscount = roundTo2(itemOriginalGrandTotal * discountRatio);
