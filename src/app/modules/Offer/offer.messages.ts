@@ -23,6 +23,14 @@ export const offerMessages = {
     pt: (vars: { amount: number }) =>
       `Esta oferta exige um valor mínimo de pedido de ${vars.amount}.`,
   },
+  FREE_DELIVERY_CREATION_DISABLED: {
+    en: 'Free Delivery offers are temporarily disabled and cannot be created.',
+    pt: 'Ofertas de Entrega Grátis estão temporariamente desativadas e não podem ser criadas.',
+  },
+  FREE_DELIVERY_UPDATE_DISABLED: {
+    en: 'Free Delivery offers are temporarily disabled and cannot be modified.',
+    pt: 'Ofertas de Entrega Grátis estão temporariamente desativadas e não podem ser modificadas.',
+  },
   BOGO_CREATION_RESTRICTED_TO_VENDOR: {
     en: 'BOGO offers can only be created and managed by vendors for their own products.',
     pt: 'Ofertas BOGO só podem ser criadas e gerenciadas por vendedores para seus próprios produtos.',

@@ -93,6 +93,8 @@ export const findAndValidateOffer = async (
   const baseQuery = {
     isActive: true,
     isDeleted: false,
+    // FREE_DELIVERY offers are disabled — never resolvable at checkout, even if one already exists in the DB
+    offerType: { $ne: 'FREE_DELIVERY' },
     validFrom: { $lte: now },
     expiresAt: { $gte: now },
     $or: [{ vendorId: checkoutData.vendorId }, { vendorId: null }],
