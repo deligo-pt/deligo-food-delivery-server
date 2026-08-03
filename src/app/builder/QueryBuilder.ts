@@ -1,28 +1,6 @@
 /* eslint-disable prefer-const */
 import { FilterQuery, Query } from 'mongoose';
 
-// Strips Mongo operator keys ($ne, $gt, $where, ...) and dotted paths from
-// client-supplied query objects so they can't override intended filters or
-// inject arbitrary query operators (NoSQL injection via ?field[$ne]=...).
-const sanitizeMongoOperators = (value: unknown): unknown => {
-  if (Array.isArray(value)) {
-    return value.map(sanitizeMongoOperators);
-  }
-  if (value && typeof value === 'object') {
-    return Object.entries(value as Record<string, unknown>).reduce(
-      (acc: Record<string, unknown>, [key, val]) => {
-        if (key.startsWith('$') || key.includes('.')) {
-          return acc;
-        }
-        acc[key] = sanitizeMongoOperators(val);
-        return acc;
-      },
-      {},
-    );
-  }
-  return value;
-};
-
 export class QueryBuilder<T> {
   public query: Record<string, unknown>; //payload
   public modelQuery: Query<T[], T>;
@@ -39,12 +17,11 @@ export class QueryBuilder<T> {
     }
     // {title: {$regex: searchTerm}}
     // {genre: {$regex: searchTerm}}
-    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     this.modelQuery = this.modelQuery.find({
       $or: searchableFields.map(
         (field) =>
           ({
-            [field]: new RegExp(escapedSearchTerm, 'i'),
+            [field]: new RegExp(searchTerm, 'i'),
           }) as FilterQuery<T>,
       ),
     });
@@ -90,9 +67,7 @@ export class QueryBuilder<T> {
 
     excludeFields.forEach((e) => delete queryObj[e]);
 
-    this.modelQuery = this.modelQuery.find(
-      sanitizeMongoOperators(queryObj) as FilterQuery<T>,
-    );
+    this.modelQuery = this.modelQuery.find(queryObj as FilterQuery<T>);
 
     return this;
   }

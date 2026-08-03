@@ -23,6 +23,10 @@ export const offerMessages = {
     pt: (vars: { amount: number }) =>
       `Esta oferta exige um valor mínimo de pedido de ${vars.amount}.`,
   },
+  BOGO_CREATION_RESTRICTED_TO_VENDOR: {
+    en: 'BOGO offers can only be created and managed by vendors for their own products.',
+    pt: 'Ofertas BOGO só podem ser criadas e gerenciadas por vendedores para seus próprios produtos.',
+  },
   BOGO_REQUIRES_BUY_TRIGGER_AND_QUANTITIES: {
     en: 'BOGO offers require buyQty, getQty and either a buyProductId or buyCategoryId.',
     pt: 'Ofertas BOGO exigem buyQty, getQty e um buyProductId ou buyCategoryId.',

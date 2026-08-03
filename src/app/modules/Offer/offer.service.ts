@@ -70,6 +70,14 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
       break;
 
     case 'BOGO': {
+      // BOGO is a vendor-only promotion type — admins cannot create BOGO offers
+      if (!isVendor) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'BOGO_CREATION_RESTRICTED_TO_VENDOR',
+        );
+      }
+
       const bogo = payload.bogo;
       if (
         !bogo?.buyQty ||
@@ -83,30 +91,28 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
       }
 
       // Vendors may only target products they own
-      if (isVendor) {
-        if (bogo.buyProductId) {
-          const buyProduct = await Product.findById(bogo.buyProductId);
-          if (
-            !buyProduct ||
-            buyProduct.vendorId.toString() !== currentUser._id.toString()
-          ) {
-            throw new AppError(
-              httpStatus.FORBIDDEN,
-              'BOGO_BUY_PRODUCT_NOT_OWNED',
-            );
-          }
+      if (bogo.buyProductId) {
+        const buyProduct = await Product.findById(bogo.buyProductId);
+        if (
+          !buyProduct ||
+          buyProduct.vendorId.toString() !== currentUser._id.toString()
+        ) {
+          throw new AppError(
+            httpStatus.FORBIDDEN,
+            'BOGO_BUY_PRODUCT_NOT_OWNED',
+          );
         }
-        if (bogo.getProductId) {
-          const getProduct = await Product.findById(bogo.getProductId);
-          if (
-            !getProduct ||
-            getProduct.vendorId.toString() !== currentUser._id.toString()
-          ) {
-            throw new AppError(
-              httpStatus.FORBIDDEN,
-              'BOGO_GET_PRODUCT_NOT_OWNED',
-            );
-          }
+      }
+      if (bogo.getProductId) {
+        const getProduct = await Product.findById(bogo.getProductId);
+        if (
+          !getProduct ||
+          getProduct.vendorId.toString() !== currentUser._id.toString()
+        ) {
+          throw new AppError(
+            httpStatus.FORBIDDEN,
+            'BOGO_GET_PRODUCT_NOT_OWNED',
+          );
         }
       }
       payload.discountValue = 0;
@@ -198,7 +204,15 @@ const updateOffer = async (
   // --------------------------------------------------
   const offerType = payload.offerType ?? offer.offerType;
 
-  if (offerType === 'BOGO' && isVendor && payload.bogo) {
+  // BOGO is a vendor-only promotion type — admins cannot create or manage BOGO offers
+  if (offerType === 'BOGO' && !isVendor) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'BOGO_CREATION_RESTRICTED_TO_VENDOR',
+    );
+  }
+
+  if (offerType === 'BOGO' && payload.bogo) {
     const buyProductId = payload.bogo.buyProductId;
     if (buyProductId) {
       const buyProduct = await Product.findById(buyProductId);
