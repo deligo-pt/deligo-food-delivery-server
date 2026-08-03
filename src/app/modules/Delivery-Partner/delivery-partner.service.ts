@@ -353,10 +353,18 @@ const getSingleDeliveryPartnerFromDB = async (
     );
   }
 
+  const authUser = await AuthUser.findOne({
+    userId: deliveryPartnerId,
+  }).select('isEmailVerified isContactNumberVerified');
+
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Delivery Partner' },
-    data: existingDeliveryPartner,
+    data: {
+      ...existingDeliveryPartner.toObject(),
+      isEmailVerified: authUser?.isEmailVerified ?? false,
+      isContactNumberVerified: authUser?.isContactNumberVerified ?? false,
+    },
   };
 };
 
