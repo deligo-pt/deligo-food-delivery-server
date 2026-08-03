@@ -12,9 +12,13 @@ import {
   calculateOfferDiscount,
   calculateOfferRemoval,
   findAndValidateOffer,
+  getBogoEligibleFreeQty,
+  getBogoTriggerLabel,
   rebuildCheckoutSummary,
+  resolveBogoTriggerProductIds,
 } from './offer.utils';
 import { Order } from '../Order/order.model';
+import { Product } from '../Product/product.model';
 import { flattenObject } from '../../utils/flattenObject';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { TMessageKey } from '../../errors/messages';
@@ -39,31 +43,6 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
     payload.vendorId = null;
   }
 
-  // --------------------------------------------
-  //  Product Validation & Ownership Check
-  // --------------------------------------------
-  // if (payload.offerType === 'BOGO' && payload.bogo?.productId) {
-  //   const product = await Product.findById(payload.bogo.productId);
-
-  //   if (!product) {
-  //     throw new AppError(
-  //       httpStatus.NOT_FOUND,
-  //       'The specified product for BOGO was not found',
-  //     );
-  //   }
-
-  //   // If currentUser is a Vendor, ensure they own the product
-  //   if (
-  //     isVendor &&
-  //     product.vendorId.toString() !== currentUser._id.toString()
-  //   ) {
-  //     throw new AppError(
-  //       httpStatus.FORBIDDEN,
-  //       'You can only create BOGO offers for your own products',
-  //     );
-  //   }
-  // }
-
   if (!payload.isAutoApply && payload.code) {
     const existingCode = await Offer.findOne({
       code: payload.code.toUpperCase(),
@@ -79,8 +58,6 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   //  Offer type validation
   // --------------------------------------------
   switch (payload.offerType) {
-    case 'BOGO':
-      throw new AppError(httpStatus.BAD_REQUEST, 'BOGO_CREATE_DISABLED');
     case 'PERCENT':
     case 'FLAT':
       if (!payload.discountValue || payload.discountValue <= 0) {
@@ -92,18 +69,49 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
       }
       break;
 
-    // case 'BOGO':
-    //   if (
-    //     !payload.bogo?.buyQty ||
-    //     !payload.bogo?.getQty ||
-    //     !payload.bogo?.productId
-    //   ) {
-    //     throw new AppError(
-    //       httpStatus.BAD_REQUEST,
-    //       'BOGO offer requires buyQty, getQty and a valid productId',
-    //     );
-    //   }
-    //   break;
+    case 'BOGO': {
+      const bogo = payload.bogo;
+      if (
+        !bogo?.buyQty ||
+        !bogo?.getQty ||
+        (!bogo?.buyProductId && !bogo?.buyCategoryId)
+      ) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'BOGO_REQUIRES_BUY_TRIGGER_AND_QUANTITIES',
+        );
+      }
+
+      // Vendors may only target products they own
+      if (isVendor) {
+        if (bogo.buyProductId) {
+          const buyProduct = await Product.findById(bogo.buyProductId);
+          if (
+            !buyProduct ||
+            buyProduct.vendorId.toString() !== currentUser._id.toString()
+          ) {
+            throw new AppError(
+              httpStatus.FORBIDDEN,
+              'BOGO_BUY_PRODUCT_NOT_OWNED',
+            );
+          }
+        }
+        if (bogo.getProductId) {
+          const getProduct = await Product.findById(bogo.getProductId);
+          if (
+            !getProduct ||
+            getProduct.vendorId.toString() !== currentUser._id.toString()
+          ) {
+            throw new AppError(
+              httpStatus.FORBIDDEN,
+              'BOGO_GET_PRODUCT_NOT_OWNED',
+            );
+          }
+        }
+      }
+      payload.discountValue = 0;
+      break;
+    }
 
     case 'FREE_DELIVERY':
       break;
@@ -190,21 +198,32 @@ const updateOffer = async (
   // --------------------------------------------------
   const offerType = payload.offerType ?? offer.offerType;
 
-  // if (offerType === 'BOGO') {
-  //   const productId = payload.bogo?.productId || offer.bogo?.productId;
-  //   if (productId && payload.bogo?.productId) {
-  //     const product = await Product.findById(productId);
-  //     if (
-  //       !product ||
-  //       (isVendor && product.vendorId.toString() !== currentUser._id.toString())
-  //     ) {
-  //       throw new AppError(httpStatus.FORBIDDEN, 'Invalid product for BOGO');
-  //     }
-  //   }
-  // }
-
-  if (offerType === 'BOGO') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'BOGO_UPDATE_DISABLED');
+  if (offerType === 'BOGO' && isVendor && payload.bogo) {
+    const buyProductId = payload.bogo.buyProductId;
+    if (buyProductId) {
+      const buyProduct = await Product.findById(buyProductId);
+      if (
+        !buyProduct ||
+        buyProduct.vendorId.toString() !== currentUser._id.toString()
+      ) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'BOGO_BUY_PRODUCT_NOT_OWNED',
+        );
+      }
+    }
+    if (payload.bogo.getProductId) {
+      const getProduct = await Product.findById(payload.bogo.getProductId);
+      if (
+        !getProduct ||
+        getProduct.vendorId.toString() !== currentUser._id.toString()
+      ) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'BOGO_GET_PRODUCT_NOT_OWNED',
+        );
+      }
+    }
   }
 
   const currentAutoApply = payload.isAutoApply ?? offer.isAutoApply;
@@ -268,9 +287,20 @@ const updateOffer = async (
     (payload as any).bogo = null;
   }
 
-  // if (payload.bogo && offer.bogo) {
-  //   payload.bogo = { ...offer.bogo, ...payload.bogo };
-  // }
+  // Merge partial bogo updates onto the existing bogo config
+  if (payload.bogo && offer.bogo) {
+    payload.bogo = { ...offer.bogo, ...payload.bogo };
+  }
+
+  if (offerType === 'BOGO') {
+    const bogo = payload.bogo ?? offer.bogo;
+    if (!bogo?.buyQty || !bogo?.getQty || (!bogo.buyProductId && !bogo.buyCategoryId)) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'BOGO_REQUIRES_BUY_TRIGGER_AND_QUANTITIES',
+      );
+    }
+  }
 
   // --------------------------------------------------
   // Usage limits sanity check
@@ -396,6 +426,7 @@ const validateAndApplyOffer = async (
     offerIdentifier,
     checkoutData,
     currentUser,
+    lang,
   );
 
   if (!offer) {
@@ -417,7 +448,7 @@ const validateAndApplyOffer = async (
     };
   }
 
-  const discountData = calculateOfferDiscount(offer, checkoutData);
+  const discountData = await calculateOfferDiscount(offer, checkoutData, lang);
   const updatePayload = await rebuildCheckoutSummary(
     checkoutData,
     offer,
@@ -445,6 +476,7 @@ const validateAndApplyOffer = async (
 const getAvailableOffersForCheckout = async (
   checkoutId: string,
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData) {
@@ -489,48 +521,78 @@ const getAvailableOffersForCheckout = async (
     return acc;
   }, {});
 
-  const availableOffers = allOffers.map((offer) => {
-    const minOrderAmount = offer.minOrderAmount || 0;
-    const usageCount = usageMap[offer._id.toString()] || 0;
+  const availableOffers = await Promise.all(
+    allOffers.map(async (offer) => {
+      const minOrderAmount = offer.minOrderAmount || 0;
+      const usageCount = usageMap[offer._id.toString()] || 0;
 
-    const hasApplicableProducts =
-      offer.applicableProducts && offer.applicableProducts.length > 0;
+      const hasApplicableProducts =
+        offer.applicableProducts && offer.applicableProducts.length > 0;
 
-    const isProductMatched = hasApplicableProducts
-      ? items.some((item: any) => {
-          const cartProductId = item.productId ? item.productId.toString() : '';
+      let isProductMatched = hasApplicableProducts
+        ? items.some((item: any) => {
+            const cartProductId = item.productId
+              ? item.productId.toString()
+              : '';
 
-          return offer?.applicableProducts?.some(
-            (pId: any) => pId.toString() === cartProductId,
-          );
-        })
-      : true;
+            return offer?.applicableProducts?.some(
+              (pId: any) => pId.toString() === cartProductId,
+            );
+          })
+        : true;
 
-    const isMinAmountMet = cartTotal >= minOrderAmount;
-    const isUsageLimitMet = usageCount < (offer.userUsageLimit || Infinity);
+      // BOGO: eligible only once a full (buyQty + getQty) tier is in the cart
+      let bogoMissingQty = 0;
+      if (offer.offerType === 'BOGO' && offer.bogo) {
+        const triggerProductIds = await resolveBogoTriggerProductIds(
+          offer.bogo,
+        );
+        const triggerQty = items.reduce((sum: number, item: any) => {
+          const cartProductId = item.productId?.toString();
+          return triggerProductIds.includes(cartProductId)
+            ? sum + item.itemSummary.quantity
+            : sum;
+        }, 0);
+        const eligibleFreeQty = getBogoEligibleFreeQty(offer.bogo, triggerQty);
+        isProductMatched = eligibleFreeQty > 0;
+        bogoMissingQty = Math.max(
+          0,
+          offer.bogo.buyQty + offer.bogo.getQty - triggerQty,
+        );
+      }
 
-    const isEligible = isMinAmountMet && isUsageLimitMet && isProductMatched;
+      const isMinAmountMet = cartTotal >= minOrderAmount;
+      const isUsageLimitMet = usageCount < (offer.userUsageLimit || Infinity);
 
-    let messageKey: TMessageKey = 'OFFER_IS_APPLICABLE';
-    let variables: Record<string, string | number | boolean> | undefined;
+      const isEligible = isMinAmountMet && isUsageLimitMet && isProductMatched;
 
-    if (!isProductMatched) {
-      messageKey = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
-    } else if (!isMinAmountMet) {
-      const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
-      messageKey = 'ADD_MORE_TO_UNLOCK_OFFER';
-      variables = { amount: diff };
-    } else if (!isUsageLimitMet) {
-      messageKey = 'OFFER_USAGE_LIMIT_EXCEEDED';
-    }
+      let messageKey: TMessageKey = 'OFFER_IS_APPLICABLE';
+      let variables: Record<string, string | number | boolean> | undefined;
 
-    return {
-      ...offer,
-      isEligible,
-      messageKey,
-      variables,
-    };
-  });
+      if (!isProductMatched) {
+        if (offer.offerType === 'BOGO' && offer.bogo) {
+          const productName = await getBogoTriggerLabel(offer.bogo, lang);
+          messageKey = 'BOGO_ADD_MORE_QTY_TO_UNLOCK';
+          variables = { qty: bogoMissingQty, productName };
+        } else {
+          messageKey = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
+        }
+      } else if (!isMinAmountMet) {
+        const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
+        messageKey = 'ADD_MORE_TO_UNLOCK_OFFER';
+        variables = { amount: diff };
+      } else if (!isUsageLimitMet) {
+        messageKey = 'OFFER_USAGE_LIMIT_EXCEEDED';
+      }
+
+      return {
+        ...offer,
+        isEligible,
+        messageKey,
+        variables,
+      };
+    }),
+  );
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',

@@ -4,6 +4,8 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { Order } from '../Order/order.model';
+import { Product } from '../Product/product.model';
+import { ProductCategory } from '../Category/category.model';
 import { roundTo2 } from '../../utils/mathProvider';
 import { Offer } from './offer.model';
 import mongoose from 'mongoose';
@@ -14,10 +16,76 @@ import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { localizedMessages } from '../../errors/messages';
 import { TCheckoutSummary } from '../Checkout/checkout.interface';
 
+// Resolves the set of productIds that satisfy a BOGO offer's "buy" trigger
+export const resolveBogoTriggerProductIds = async (bogo: {
+  buyProductId?: any;
+  buyCategoryId?: any;
+}): Promise<string[]> => {
+  if (bogo.buyProductId) return [bogo.buyProductId.toString()];
+
+  if (bogo.buyCategoryId) {
+    const products = await Product.find({ category: bogo.buyCategoryId })
+      .select('_id')
+      .lean();
+    return products.map((p: any) => p._id.toString());
+  }
+
+  return [];
+};
+
+// Sums cart quantity for items that satisfy the BOGO "buy" trigger
+const getBogoTriggerQty = (
+  checkoutData: any,
+  triggerProductIds: string[],
+): number =>
+  checkoutData.items.reduce((sum: number, item: any) => {
+    const cartProductId = item.productId?.toString();
+    return triggerProductIds.includes(cartProductId)
+      ? sum + item.itemSummary.quantity
+      : sum;
+  }, 0);
+
+// Free units earned for a given trigger quantity. Needs a full (buyQty + getQty)
+// tier in the cart before any unit is free — e.g. buyQty:2, getQty:1 needs 3 in
+// cart (2 paid + 1 free), not just 2. Single source of truth for every BOGO gate,
+// so "eligible" and "actual discount > 0" can never disagree.
+export const getBogoEligibleFreeQty = (
+  bogo: { buyQty: number; getQty: number },
+  triggerQty: number,
+): number => Math.floor(triggerQty / (bogo.buyQty + bogo.getQty)) * bogo.getQty;
+
+// Human-readable label for the BOGO "buy" trigger, used in "add N more X" messages
+export const getBogoTriggerLabel = async (
+  bogo: { buyProductId?: any; buyCategoryId?: any },
+  lang: TLanguageCode = 'en',
+): Promise<string> => {
+  if (bogo.buyProductId) {
+    const product = await Product.findById(bogo.buyProductId)
+      .select('name')
+      .lean();
+    return (
+      (product as any)?.name?.[lang] ||
+      (product as any)?.name?.en ||
+      'the qualifying item'
+    );
+  }
+
+  if (bogo.buyCategoryId) {
+    const category = await ProductCategory.findById(bogo.buyCategoryId)
+      .select('name')
+      .lean();
+    const label = (category as any)?.name?.[lang] || (category as any)?.name?.en;
+    return label ? `${label} item(s)` : 'qualifying item(s)';
+  }
+
+  return 'qualifying item(s)';
+};
+
 export const findAndValidateOffer = async (
   offerIdentifier: string,
   checkoutData: any,
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   if (!offerIdentifier || offerIdentifier.trim() === '') return null;
 
@@ -94,6 +162,24 @@ export const findAndValidateOffer = async (
     }
   }
 
+  // BOGO: cart must hold a full (buyQty + getQty) tier before any unit is free
+  if (offer.offerType === 'BOGO' && offer.bogo) {
+    const triggerProductIds = await resolveBogoTriggerProductIds(offer.bogo);
+    const triggerQty = getBogoTriggerQty(checkoutData, triggerProductIds);
+    const eligibleFreeQty = getBogoEligibleFreeQty(offer.bogo, triggerQty);
+
+    if (eligibleFreeQty <= 0) {
+      const productName = await getBogoTriggerLabel(offer.bogo, lang);
+      const qtyNeeded =
+        offer.bogo.buyQty + offer.bogo.getQty - triggerQty;
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'BOGO_ADD_MORE_QTY_TO_UNLOCK',
+        { qty: qtyNeeded, productName },
+      );
+    }
+  }
+
   const promoId = offer._id.toString();
   const usageCount = await Order.countDocuments({
     customerId: currentUser._id,
@@ -108,7 +194,11 @@ export const findAndValidateOffer = async (
   return offer;
 };
 
-export const calculateOfferDiscount = (offer: any, checkoutData: any) => {
+export const calculateOfferDiscount = async (
+  offer: any,
+  checkoutData: any,
+  lang: TLanguageCode = 'en',
+) => {
   const originalCartTotal = roundTo2(
     checkoutData.orderCalculation.itemsSubtotal +
       (checkoutData.orderCalculation.totalOfferDiscount || 0),
@@ -140,20 +230,32 @@ export const calculateOfferDiscount = (offer: any, checkoutData: any) => {
     }
     case 'BOGO': {
       const bogo = offer.bogo!;
+      const triggerProductIds = await resolveBogoTriggerProductIds(bogo);
+      const triggerQty = getBogoTriggerQty(checkoutData, triggerProductIds);
+
+      // Reward item defaults to the same product bought, unless a distinct reward item is configured
+      const getProductId = (bogo.getProductId || bogo.buyProductId)?.toString();
       const targetItem = checkoutData.items.find(
-        (i: any) => i.productId?.toString() === bogo.productId.toString(),
+        (i: any) => i.productId?.toString() === getProductId,
       );
-      if (targetItem) {
-        const freeQty =
-          Math.floor(
-            targetItem.itemSummary.quantity / (bogo.buyQty + bogo.getQty),
-          ) * bogo.getQty;
+
+      const eligibleFreeQty = getBogoEligibleFreeQty(bogo, triggerQty);
+
+      if (targetItem && eligibleFreeQty > 0) {
+        // Can never discount more units than what's actually in the cart for the reward item
+        const freeQty = Math.min(
+          eligibleFreeQty,
+          targetItem.itemSummary.quantity,
+        );
+
         totalOfferDiscount = freeQty * targetItem.productPricing.unitPrice;
+        // productName is stored as a plain string; targetItem.name is a { en, pt } localized object
         bogoSnapshot = {
           buyQty: bogo.buyQty,
           getQty: bogo.getQty,
-          productId: bogo.productId,
-          productName: targetItem.name,
+          productId: targetItem.productId,
+          productName:
+            targetItem.name?.[lang] || targetItem.name?.en || '',
         };
       }
       break;
