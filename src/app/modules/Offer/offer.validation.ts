@@ -38,9 +38,15 @@ const offerBody = z
           .number()
           .int('Get quantity must be an integer')
           .positive('Get quantity must be greater than 0'),
-        productId: objectIdSchema,
+        buyProductId: objectIdSchema.optional(), // Trigger product (X)
+        buyCategoryId: objectIdSchema.optional(), // Trigger category (Y)
+        getProductId: objectIdSchema.optional(), // Reward item (Z), defaults to buyProductId
       })
       .strict()
+      .refine((b) => !!(b.buyProductId || b.buyCategoryId), {
+        message: 'Either buyProductId or buyCategoryId is required',
+        path: ['buyProductId'],
+      })
       .optional(),
 
     validFrom: z.string().refine((val) => !isNaN(Date.parse(val)), {

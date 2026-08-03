@@ -5,13 +5,11 @@ import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const bogoSchema = new Schema(
   {
-    buyQty: { type: Number, required: true },
-    getQty: { type: Number, required: true },
-    productId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true,
-    },
+    buyQty: { type: Number, required: true, min: 1 },
+    getQty: { type: Number, required: true, min: 1 },
+    buyProductId: { type: Schema.Types.ObjectId, ref: 'Product' },
+    buyCategoryId: { type: Schema.Types.ObjectId, ref: 'ProductCategory' },
+    getProductId: { type: Schema.Types.ObjectId, ref: 'Product' },
   },
   { _id: false },
 );

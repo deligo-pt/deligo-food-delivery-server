@@ -26,7 +26,9 @@ export type TOffer = {
   bogo?: {
     buyQty: number;
     getQty: number;
-    productId: mongoose.Types.ObjectId;
+    buyProductId?: mongoose.Types.ObjectId; // Trigger: buy this exact product (X)
+    buyCategoryId?: mongoose.Types.ObjectId; // Trigger: buy any product in this category (Y)
+    getProductId?: mongoose.Types.ObjectId; // Reward item (Z); defaults to buyProductId when omitted
   };
 
   // Validity period
