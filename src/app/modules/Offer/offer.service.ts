@@ -120,7 +120,10 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
     }
 
     case 'FREE_DELIVERY':
-      break;
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'FREE_DELIVERY_CREATION_DISABLED',
+      );
 
     default:
       throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_OFFER_TYPE');
@@ -296,9 +299,10 @@ const updateOffer = async (
   }
 
   if (offerType === 'FREE_DELIVERY') {
-    payload.discountValue = 0;
-    payload.maxDiscountAmount = 0;
-    (payload as any).bogo = null;
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'FREE_DELIVERY_UPDATE_DISABLED',
+    );
   }
 
   // Merge partial bogo updates onto the existing bogo config
@@ -514,6 +518,8 @@ const getAvailableOffersForCheckout = async (
   const baseQuery = {
     isActive: true,
     isDeleted: false,
+    // FREE_DELIVERY offers are disabled — never listed as available, even if one already exists in the DB
+    offerType: { $ne: 'FREE_DELIVERY' },
     validFrom: { $lte: now },
     expiresAt: { $gte: now },
     $or: [{ vendorId: vendorId }, { vendorId: null }, { isGlobal: true }],
