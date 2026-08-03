@@ -23,9 +23,27 @@ export const offerMessages = {
     pt: (vars: { amount: number }) =>
       `Esta oferta exige um valor mínimo de pedido de ${vars.amount}.`,
   },
-  BOGO_CREATE_DISABLED: {
-    en: 'Buy-One-Get-One (BOGO) offers are temporarily disabled.',
-    pt: 'Ofertas do tipo "Leve 2, Pague 1" (BOGO) estão temporariamente desativadas.',
+  BOGO_CREATION_RESTRICTED_TO_VENDOR: {
+    en: 'BOGO offers can only be created and managed by vendors for their own products.',
+    pt: 'Ofertas BOGO só podem ser criadas e gerenciadas por vendedores para seus próprios produtos.',
+  },
+  BOGO_REQUIRES_BUY_TRIGGER_AND_QUANTITIES: {
+    en: 'BOGO offers require buyQty, getQty and either a buyProductId or buyCategoryId.',
+    pt: 'Ofertas BOGO exigem buyQty, getQty e um buyProductId ou buyCategoryId.',
+  },
+  BOGO_BUY_PRODUCT_NOT_OWNED: {
+    en: 'You can only set BOGO trigger products that you own.',
+    pt: 'Você só pode definir produtos-gatilho BOGO que possui.',
+  },
+  BOGO_GET_PRODUCT_NOT_OWNED: {
+    en: 'You can only set BOGO reward products that you own.',
+    pt: 'Você só pode definir produtos de recompensa BOGO que possui.',
+  },
+  BOGO_ADD_MORE_QTY_TO_UNLOCK: {
+    en: (vars: { qty: number; productName: string }) =>
+      `Add ${vars.qty} more ${vars.productName} to your cart to unlock this BOGO offer.`,
+    pt: (vars: { qty: number; productName: string }) =>
+      `Adicione mais ${vars.qty} ${vars.productName} ao carrinho para desbloquear esta oferta BOGO.`,
   },
   VALID_DISCOUNT_VALUE_REQUIRED: {
     en: (vars: { offerType: string }) =>
@@ -60,10 +78,6 @@ export const offerMessages = {
   EXPIRED_OFFER_UPDATE_REQUIRES_DATE_EXTENSION: {
     en: 'An expired offer cannot be updated without extending the end date.',
     pt: 'Uma oferta expirada não pode ser atualizada sem estender a data de término.',
-  },
-  BOGO_UPDATE_DISABLED: {
-    en: 'BOGO offers are currently disabled and cannot be modified.',
-    pt: 'Ofertas do tipo "Leve 2, Pague 1" (BOGO) estão desativadas e não podem ser modificadas.',
   },
   CODE_ALREADY_IN_USE: {
     en: 'This promo code is already in use.',

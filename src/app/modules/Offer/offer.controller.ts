@@ -4,6 +4,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import { OfferServices } from './offer.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatOfferResponse } from './offer.utils';
+import { formatCheckoutResponse } from '../Checkout/checkout.utils';
 import { TMessageKey } from '../../errors/messages';
 import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
@@ -83,11 +84,15 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
     req.lang,
   );
+
+  // Flatten items[].name / addons[].name to the requested locale, same as the Checkout controller
+  const formattedData = formatCheckoutResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    data: formattedData,
   });
 });
 
@@ -98,6 +103,7 @@ const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
   const result = await OfferServices.getAvailableOffersForCheckout(
     checkoutId as string,
     currentUser,
+    req.lang,
   );
 
   let formattedData;
