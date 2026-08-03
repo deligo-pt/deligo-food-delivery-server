@@ -114,7 +114,7 @@ Success response — note the fields that change vs. step 1:
         "title": "Buy 2 Get 1 Free Pizza",
         "discountType": "BOGO",
         "bogoSnapshot": {
-          "buyQty": 2, "getQty": 1,
+          "buyQty": 2, "getQty": 1, "freeQty": 1,
           "productId": "...",
           "productName": "Pepperoni Feast Pizza - Medium (10 inch)"  // localized string
         }
@@ -126,6 +126,11 @@ Success response — note the fields that change vs. step 1:
 
 `offer.offerApplied.bogoSnapshot` is only present for BOGO discounts — use it to
 render "1 free Pepperoni Feast Pizza" style messaging in the cart/checkout UI.
+Use **`freeQty`** for the badge/count, not `getQty` — `getQty` is the offer's
+fixed config (e.g. always `1`), while `freeQty` is how many units were actually
+granted free in *this* cart. They can differ: e.g. `buyQty:2, getQty:2` with only
+1 unit of the reward item in the cart caps `freeQty` at `1`, not `2`. `bogoSnapshot`
+is only ever present when `freeQty >= 1`.
 For PERCENT/FLAT/FREE_DELIVERY, `bogoSnapshot` is absent and `discountType` tells
 you which kind applied.
 
