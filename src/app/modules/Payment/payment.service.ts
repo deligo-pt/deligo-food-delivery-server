@@ -93,10 +93,10 @@ const persistRefundRecord = async (
   }
 };
 
-// MB WAY confirmed to accept payToken at session-init (sandbox tested); Apple/Google
-// Pay/PayPal are excluded — device-generated one-time cryptograms have no reusable token.
+// REDUNIQ confirmed there is no tokenization support for MB WAY (or any non-card
+// method) — createPaymentToken/payToken only models card data. CARD only.
 export const isTokenizablePaymentMethod = (method: TPaymentMethod) =>
-  method === 'CARD' || method === 'MB_WAY';
+  method === 'CARD';
 
 const getReduniqNotificationUrl = () =>
   config.backend_base_url
@@ -630,7 +630,7 @@ const handleReduniqNotification = async (body: any) => {
     return;
   }
 
-  if (summary.paymentMethod === 'CARD' || summary.paymentMethod === 'MB_WAY') {
+  if (summary.paymentMethod === 'CARD') {
     await PaymentTokenServices.persistCardTokenFromGatewayResponse(
       summary.customerId.toString(),
       checkoutSummaryId,
