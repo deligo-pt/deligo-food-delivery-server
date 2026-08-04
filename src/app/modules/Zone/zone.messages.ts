@@ -41,14 +41,6 @@ export const zoneMessages = {
   },
 
   // --- Unique Lifecycle Success Messages ---
-  ZONE_CREATED_SUCCESS: {
-    en: 'Delivery zone created successfully.',
-    pt: 'Zona de entrega criada com sucesso.',
-  },
-  ZONE_UPDATED_SUCCESS: {
-    en: 'Delivery zone updated successfully.',
-    pt: 'Zona de entrega atualizada com sucesso.',
-  },
   ZONE_STATUS_TOGGLED: {
     en: (vars: { zoneId: string; isOperational: boolean }) =>
       `Zone ${vars.zoneId} has been successfully ${vars.isOperational ? 'activated' : 'deactivated'}.`,
@@ -70,29 +62,5 @@ export const zoneMessages = {
 
   // --- Global Mappings Block (To be handled by globalCommonMessages) ---
   ZONE_NOT_FOUND: { en: 'Zone not found.', pt: 'Zona não encontrada.' },
-  ZONE_FOUND_SUCCESS: {
-    en: 'Zone details loaded.',
-    pt: 'Zona encontrada com sucesso.',
-  },
-  ZONES_RETRIEVED_SUCCESS: {
-    en: 'Zones loaded successfully.',
-    pt: 'Zonas carregadas com sucesso.',
-  },
-  ZONE_RETRIEVED_SUCCESS: {
-    en: 'Zone details loaded.',
-    pt: 'Zona carregada com sucesso.',
-  },
   ZONE_WITH_ID_NOT_FOUND: { en: 'Zone not found.', pt: 'Zona não encontrada.' },
-  ZONE_WITH_ID_NOT_FOUND_FOR_STATUS_UPDATE: {
-    en: 'Zone not found.',
-    pt: 'Zona não encontrada.',
-  },
-  ZONE_WITH_ID_NOT_FOUND_FOR_DELETION: {
-    en: 'Zone not found.',
-    pt: 'Zona não encontrada.',
-  },
-  ZONE_NOT_SOFT_DELETED_SOFT_DELETE_FIRST: {
-    en: 'Deactivation required first.',
-    pt: 'Desativação necessária primeiro.',
-  },
 } as const;

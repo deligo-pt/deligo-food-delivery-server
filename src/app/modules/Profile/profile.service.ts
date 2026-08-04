@@ -51,7 +51,9 @@ const getMyProfile = async (currentUser: TCurrentUser) => {
   }
 
   if (!profile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Profile Details',
+    });
   }
 
   const authUser = await AuthUser.findOne({
@@ -59,7 +61,8 @@ const getMyProfile = async (currentUser: TCurrentUser) => {
   }).select('isEmailVerified isContactNumberVerified');
 
   return {
-    messageKey: 'MY_PROFILE_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Profile' },
     data: {
       ...profile.toObject(),
       isEmailVerified: authUser?.isEmailVerified ?? false,
@@ -151,6 +154,7 @@ const sendOtp = async (
 
     return {
       messageKey: 'MOBILE_OTP_SENT_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: null,
     };
   }
@@ -201,6 +205,7 @@ const sendOtp = async (
 
     return {
       messageKey: 'EMAIL_OTP_SENT_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: null,
     };
   }
@@ -270,7 +275,8 @@ const updateEmailOrContactNumber = async (
       await RedisService.del(`${globalEmailLockKey}:${pendingEmail}`);
 
       return {
-        messageKey: 'EMAIL_UPDATED_SUCCESS' as TMessageKey,
+        messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+        variables: { entity: 'Email Address' },
         data: null,
       };
     }
@@ -317,7 +323,8 @@ const updateEmailOrContactNumber = async (
       await RedisService.del(`${globalMobileLockKey}:${pendingContactNumber}`);
 
       return {
-        messageKey: 'CONTACT_NUMBER_UPDATED_SUCCESS' as TMessageKey,
+        messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+        variables: { entity: 'Contact Number' },
         data: null,
       };
     }

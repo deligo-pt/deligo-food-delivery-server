@@ -60,6 +60,7 @@ const getAllLoginHistory = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: undefined,
     meta,
     data,
   };
@@ -81,6 +82,7 @@ const getSingleLoginHistory = async (id: string, currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: undefined,
     data: loginHistory,
   };
 };

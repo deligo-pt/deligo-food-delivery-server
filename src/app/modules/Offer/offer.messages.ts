@@ -71,18 +71,6 @@ export const offerMessages = {
     en: 'End date cannot be in the past.',
     pt: 'A data de término não pode estar no passado.',
   },
-  OFFER_CREATED_SUCCESS: {
-    en: 'Offer created successfully.',
-    pt: 'Oferta criada com sucesso.',
-  },
-  OFFER_NOT_FOUND: {
-    en: 'The requested offer could not be found.',
-    pt: 'A oferta solicitada não pôde ser encontrada.',
-  },
-  NOT_AUTHORIZED_TO_UPDATE_OFFER: {
-    en: 'You do not have permission to update this offer.',
-    pt: 'Você não tem permissão para atualizar esta oferta.',
-  },
   EXPIRED_OFFER_UPDATE_REQUIRES_DATE_EXTENSION: {
     en: 'An expired offer cannot be updated without extending the end date.',
     pt: 'Uma oferta expirada não pode ser atualizada sem estender a data de término.',
@@ -107,10 +95,6 @@ export const offerMessages = {
     en: 'Maximum usage limit cannot be less than the current usage.',
     pt: 'O limite máximo de uso não pode ser menor do que o uso atual.',
   },
-  OFFER_UPDATED_SUCCESS: {
-    en: 'Offer updated successfully.',
-    pt: 'Oferta atualizada com sucesso.',
-  },
   ACCOUNT_CANNOT_PERFORM_ACTION: {
     en: (vars: { status: string }) =>
       `Your account status (${vars.status.toLowerCase()}) restricts this action.`,
@@ -121,10 +105,6 @@ export const offerMessages = {
     en: 'Cannot modify a deleted offer.',
     pt: 'Não é possível alterar uma oferta excluída.',
   },
-  NOT_AUTHORIZED_TO_CHANGE_OFFER_STATUS: {
-    en: 'You do not have permission to change the status of this offer.',
-    pt: 'Você não tem permissão para alterar o status desta oferta.',
-  },
   CANNOT_ACTIVATE_EXPIRED_OFFER: {
     en: 'Cannot activate an expired offer. Please update the end date first.',
     pt: 'Não é possível ativar uma oferta expirada. Por favor, atualize a data de término primeiro.',
@@ -134,14 +114,6 @@ export const offerMessages = {
       `Offer ${vars.isActive ? 'activated' : 'deactivated'} successfully.`,
     pt: (vars: { isActive: boolean }) =>
       `Oferta ${vars.isActive ? 'ativada' : 'desativada'} com sucesso.`,
-  },
-  CHECKOUT_SESSION_NOT_FOUND: {
-    en: 'Checkout session could not be found.',
-    pt: 'Sessão de checkout não pôde ser encontrada.',
-  },
-  CHECKOUT_DOES_NOT_BELONG_TO_USER: {
-    en: 'Access denied. This checkout session belongs to another profile.',
-    pt: 'Acesso negado. Esta sessão de checkout pertence a outro perfil.',
   },
   CANNOT_APPLY_OFFER_TO_COMPLETED_CHECKOUT: {
     en: 'Cannot apply an offer to an already completed checkout.',
@@ -177,36 +149,16 @@ export const offerMessages = {
     en: 'Offer not found or currently unavailable.',
     pt: 'Oferta não encontrada ou indisponível no momento.',
   },
-  NOT_AUTHORIZED_TO_VIEW_OFFER: {
-    en: 'You do not have permission to view this offer.',
-    pt: 'Você não tem permissão para visualizar esta oferta.',
-  },
   OFFER_ALREADY_DELETED: {
     en: 'This offer has already been deleted.',
     pt: 'Esta oferta já foi excluída.',
-  },
-  NOT_AUTHORIZED_TO_DELETE_OFFER: {
-    en: 'You do not have permission to delete this offer.',
-    pt: 'Você não tem permissão para excluir esta oferta.',
   },
   ACTIVE_OFFER_MUST_BE_DEACTIVATED_BEFORE_DELETING: {
     en: 'An active offer must be deactivated before it can be deleted.',
     pt: 'Uma oferta ativa deve ser desativada antes de poder ser excluída.',
   },
-  OFFER_DELETED_SUCCESS: {
-    en: 'Offer removed successfully.',
-    pt: 'Oferta removida com sucesso.',
-  },
-  ONLY_ADMIN_CAN_PERMANENTLY_DELETE_OFFER: {
-    en: 'Access denied. Only administrators can permanently delete an offer.',
-    pt: 'Acesso negado. Apenas administradores podem excluir permanentemente uma oferta.',
-  },
   ACTIVE_OFFER_CANNOT_BE_PERMANENTLY_DELETED: {
     en: 'An active offer cannot be permanently deleted.',
     pt: 'Uma oferta ativa não pode ser excluída permanentemente.',
-  },
-  OFFER_PERMANENTLY_DELETED_SUCCESS: {
-    en: 'Offer permanently deleted from the system.',
-    pt: 'Oferta excluída permanentemente do sistema.',
   },
 } as const;

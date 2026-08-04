@@ -2402,7 +2402,9 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     .lean();
 
   if (!fleetManager) {
-    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Fleet Manager Account',
+    });
   }
 
   // Get Fleet Drivers
@@ -2785,7 +2787,9 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
     .lean();
 
   if (!partner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   const formatName = (nameObj: any) => {

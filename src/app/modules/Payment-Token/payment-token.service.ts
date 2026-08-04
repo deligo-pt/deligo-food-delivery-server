@@ -67,7 +67,7 @@ const createStandaloneCardToken = async (
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ_API_URL_NOT_CONFIGURED_TOKEN',
+      'PAYMENT_GATEWAY_CONFIG_MISSING',
     );
   }
 
@@ -146,6 +146,7 @@ const createStandaloneCardToken = async (
 
     return {
       messageKey: 'CARD_SAVED_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: {
         id: savedCard._id,
         brand: savedCard.cardBrand,
@@ -198,6 +199,7 @@ const listSavedCards = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'SAVED_CARDS_FETCHED_SUCCESS' as TMessageKey,
+    variables: undefined,
     data,
   };
 };
@@ -223,7 +225,7 @@ const disableSavedCard = async (
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ_API_URL_NOT_CONFIGURED_TOKEN',
+      'PAYMENT_GATEWAY_CONFIG_MISSING',
     );
   }
 
@@ -299,7 +301,8 @@ const disableSavedCard = async (
   }
 
   return {
-    messageKey: 'SAVED_CARD_DISABLED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Saved Card' },
     data: null,
   };
 };

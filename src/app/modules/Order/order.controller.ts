@@ -24,6 +24,7 @@ const createOrderAfterRedUniqPayment = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -43,6 +44,7 @@ const getAllOrders = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: formattedData,
   });
@@ -61,6 +63,7 @@ const getSingleOrder = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -126,6 +129,7 @@ const cancelOrderByCustomer = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -214,6 +218,7 @@ const updateOrderStatusByDeliveryPartner = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -249,6 +254,7 @@ const getDeliveryPartnersDispatchOrder = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -265,6 +271,7 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -282,6 +289,7 @@ const reorderOrder = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });

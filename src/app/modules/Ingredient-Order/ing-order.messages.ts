@@ -1,12 +1,4 @@
 export const ingredientOrderMessages = {
-  INGREDIENT_ORDER_NOT_FOUND: {
-    en: 'The requested ingredient order could not be found.',
-    pt: 'O pedido de ingredientes solicitado não pôde ser encontrado.',
-  },
-  UNAUTHORIZED_COMPLETE_ORDER: {
-    en: 'Access denied. You do not have permission to complete this order.',
-    pt: 'Acesso negado. Você não tem permissão para concluir este pedido.',
-  },
   ORDER_ALREADY_PAID_CONFIRMED: {
     en: 'This order has already been paid and confirmed.',
     pt: 'Este pedido já foi pago e confirmado.',
@@ -20,19 +12,9 @@ export const ingredientOrderMessages = {
     pt: 'O pedido de ingredientes foi confirmado com sucesso.',
   },
 
-  INGREDIENT_ORDER_CONFIRMATION_FAILED: {
-    en: 'Failed to confirm the order. Please try again.',
-    pt: 'Falha ao confirmar o pedido. Tente novamente.',
-  },
-
   FAILED_CONFIRM_ORDER: {
     en: 'Could not confirm the order due to a system error. Please try again.',
     pt: 'Não foi possível confirmar o pedido devido a um erro do sistema. Tente novamente.',
-  },
-
-  UNAUTHORIZED_UPDATE_ORDER_STATUS: {
-    en: 'Access denied. You do not have permission to change this order status.',
-    pt: 'Acesso negado. Você não tem permissão para alterar o status deste pedido.',
   },
 
   CANNOT_UPDATE_UNPAID_ORDER: {

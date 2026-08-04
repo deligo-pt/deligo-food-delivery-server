@@ -105,6 +105,7 @@ const distributeReferralBonus = async (
       return {
         success: false,
         messageKey: 'REFERRAL_ALREADY_PROCESSED_OR_NOT_FOUND',
+        variables: undefined,
       };
     }
 
@@ -235,7 +236,8 @@ const getReferralStats = async (currentUser: TCurrentUser) => {
   );
 
   return {
-    messageKey: 'REFERRAL_STATS_RETRIEVED_SUCCESS',
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Referral Statistics And History' },
     data: {
       myReferralCode: (userData as any)?.referralCode || 'N/A',
       summary: {

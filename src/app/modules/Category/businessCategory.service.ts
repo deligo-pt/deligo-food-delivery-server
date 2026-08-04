@@ -26,7 +26,7 @@ const createBusinessCategory = async (
 
   const exists = await BusinessCategory.findOne({ 'name.en': translation.en });
   if (exists) {
-    throw new AppError(httpStatus.CONFLICT, 'ALREADY_EXISTS');
+    throw new AppError(httpStatus.CONFLICT, 'BUSINESS_CATEGORY_ALREADY_EXISTS');
   }
 
   const slug = translation.en
@@ -48,7 +48,8 @@ const createBusinessCategory = async (
   const category = await BusinessCategory.create(categoryData);
 
   return {
-    messageKey: 'BUSINESS_CATEGORY_CREATE_SUCCESS',
+    messageKey: 'COMMON_CREATED_SUCCESS',
+    variables: { entity: 'Business Category' },
     data: category,
   };
 };
@@ -61,7 +62,9 @@ const updateBusinessCategory = async (
 ) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Business Category',
+    });
   }
 
   if (payload.name) {
@@ -87,7 +90,9 @@ const updateBusinessCategory = async (
   ) {
     throw new AppError(
       httpStatus.CONFLICT,
-      category.isActive ? 'ALREADY_ACTIVE' : 'ALREADY_INACTIVE',
+      category.isActive
+        ? 'BUSINESS_CATEGORY_ALREADY_ACTIVE'
+        : 'BUSINESS_CATEGORY_ALREADY_INACTIVE',
     );
   }
 
@@ -105,7 +110,8 @@ const updateBusinessCategory = async (
   await category.save();
 
   return {
-    messageKey: 'BUSINESS_CATEGORY_UPDATE_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Business Category Details' },
     data: category,
   };
 };
@@ -176,11 +182,15 @@ const getSingleBusinessCategory = async (
 
   const category = await BusinessCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Business Category',
+    });
   }
 
   if (!isAdmin && category.isActive === false && category.isDeleted === true) {
-    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Business Category',
+    });
   }
 
   return {
@@ -194,11 +204,15 @@ const getSingleBusinessCategory = async (
 const getSingleBusinessCategoryPublic = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Business Category',
+    });
   }
 
   if (category.isActive === false && category.isDeleted === true) {
-    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Business Category',
+    });
   }
 
   return {
@@ -212,19 +226,25 @@ const getSingleBusinessCategoryPublic = async (id: string) => {
 const softDeleteBusinessCategory = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category)
-    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Business Category',
+    });
   if (category.isDeleted === true) {
-    throw new AppError(httpStatus.CONFLICT, 'ALREADY_DELETED');
+    throw new AppError(
+      httpStatus.CONFLICT,
+      'BUSINESS_CATEGORY_ALREADY_DELETED',
+    );
   }
 
   if (category.isActive) {
-    throw new AppError(httpStatus.CONFLICT, 'ACTIVE_CANNOT_DELETE');
+    throw new AppError(httpStatus.CONFLICT, 'ACTIVE_CATEGORY_CANNOT_DELETE');
   }
 
   category.isDeleted = true;
   await category.save();
   return {
-    messageKey: 'SOFT_DELETE_SUCCESS',
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS',
+    variables: { entity: 'Business Category' },
   };
 };
 
@@ -232,15 +252,18 @@ const softDeleteBusinessCategory = async (id: string) => {
 const permanentDeleteBusinessCategory = async (id: string) => {
   const category = await BusinessCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'BUSINESS_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Business Category',
+    });
   }
   if (category.isDeleted === false) {
-    throw new AppError(httpStatus.CONFLICT, 'SOFT_DELETE_FIRST');
+    throw new AppError(httpStatus.CONFLICT, 'COMMON_MUST_SOFT_DELETE_FIRST');
   }
 
   await BusinessCategory.findByIdAndDelete(id);
   return {
-    messageKey: 'PERMANENT_DELETE_SUCCESS',
+    messageKey: 'COMMON_PERMANENTLY_DELETED_SUCCESS',
+    variables: { entity: 'Business Category' },
   };
 };
 

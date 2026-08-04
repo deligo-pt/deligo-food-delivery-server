@@ -8,6 +8,26 @@ export const objectIdSchema = z
     message: 'Must be a valid ObjectId',
   });
 
+// BOGO Base Schema
+const bogoSchema = z
+  .object({
+    buyQty: z
+      .number()
+      .int('Buy quantity must be an integer')
+      .positive('Buy quantity must be greater than 0'),
+    getQty: z
+      .number()
+      .int('Get quantity must be an integer')
+      .positive('Get quantity must be greater than 0'),
+    buyProductId: objectIdSchema.optional(),
+    buyCategoryId: objectIdSchema.optional(),
+    getProductId: objectIdSchema.optional(),
+  })
+  .strict();
+
+// Update Schemas setup
+const updateBogoSchema = bogoSchema.partial();
+
 const offerBody = z
   .object({
     title: createLocalizedValidationSchema('offer title'),
@@ -97,6 +117,7 @@ const updateOfferBody = offerBody
       'offer description',
       true,
     ).optional(),
+    bogo: updateBogoSchema.optional(),
   })
   .partial();
 

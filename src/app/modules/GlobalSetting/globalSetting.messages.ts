@@ -22,10 +22,6 @@ export const globalSettingMessages = {
     en: 'Global platform settings initialized successfully.',
     pt: 'Configurações globais da plataforma inicializadas com sucesso.',
   },
-  ONLY_ADMIN_CAN_UPDATE: {
-    en: 'Access denied. Global configuration updates are restricted to administrators.',
-    pt: 'Acesso negado. As alterações de configurações globais são restritas a administradores.',
-  },
   SETTINGS_NOT_FOUND_CREATE_FIRST: {
     en: 'Global settings not found. Please initialize settings first.',
     pt: 'Configurações globais não encontradas. Por favor, inicialize as configurações primeiro.',
@@ -37,17 +33,5 @@ export const globalSettingMessages = {
   MAINTENANCE_DEFAULT_MESSAGE: {
     en: 'The system is currently undergoing scheduled maintenance. Please check back shortly.',
     pt: 'O sistema está passando por uma manutenção programada. Por favor, tente novamente em breve.',
-  },
-  SETTINGS_UPDATED_SUCCESS: {
-    en: 'Global platform settings updated successfully.',
-    pt: 'Configurações globais da plataforma atualizadas com sucesso.',
-  },
-  ONLY_ADMIN_CAN_ACCESS: {
-    en: 'Access denied. Global settings view is restricted to administrators.',
-    pt: 'Acesso negado. A visualização das configurações globais é restrita a administradores.',
-  },
-  SETTINGS_NOT_FOUND: {
-    en: 'Global configuration settings could not be found.',
-    pt: 'Configurações globais de configuração não puderam ser encontradas.',
   },
 } as const;

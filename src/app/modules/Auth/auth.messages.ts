@@ -145,14 +145,6 @@ export const authMessages = {
     en: 'Your password was recently changed. Please log in again with your new credentials.',
     pt: 'Sua senha foi alterada recentemente. Faça login novamente com suas novas credenciais.',
   },
-  ROLE_ACCESS_DENIED: {
-    en: 'Access denied. You do not have permission to view this section.',
-    pt: 'Acesso negado. Você não tem permissão para visualizar esta seção.',
-  },
-  ROLE_PERMISSION_DENIED: {
-    en: 'Access denied. Your account role lacks the required permissions.',
-    pt: 'Acesso negado. Seu cargo de conta não possui as permissões necessárias.',
-  },
   ADMIN_ACTION_PERMISSION_DENIED: {
     en: 'Action denied. Your Admin account does not have the specific permission required.',
     pt: 'Ação negado. Sua conta de Administrador não possui a permissão específica necessária.',
@@ -205,10 +197,6 @@ export const authMessages = {
     en: 'Device session not found. Please sign in again.',
     pt: 'Sessão do dispositivo não encontrada. Por favor, faça login novamente.',
   },
-  CUSTOMER_LOGOUT_SUCCESS: {
-    en: 'Logged out successfully.',
-    pt: 'Desconectado com sucesso.',
-  },
   USER_LOGOUT_SUCCESS: {
     en: 'Logged out successfully.',
     pt: 'Desconectado com sucesso.',
@@ -226,10 +214,6 @@ export const authMessages = {
   OLD_PASSWORD_NOT_MATCHED: {
     en: 'The current password you entered is incorrect.',
     pt: 'A senha atual inserida está incorreta.',
-  },
-  PASSWORD_UPDATE_SUCCESS: {
-    en: 'Your password has been updated successfully.',
-    pt: 'Sua senha foi atualizada com sucesso.',
   },
   CUSTOMER_PASSWORD_RESET_DENIED: {
     en: 'Secure login via OTP is active. Password reset is not required.',
@@ -289,17 +273,9 @@ export const authMessages = {
     en: 'Account configuration issue. Invalid role assignment.',
     pt: 'Problema de configuração da conta. Atribuição de cargo inválida.',
   },
-  PROFILE_DETAILS_NOT_FOUND: {
-    en: 'Profile details could not be found.',
-    pt: 'Os detalhes do perfil não foram encontrados.',
-  },
   DELIVERY_PARTNER_FLEET_ASSIGNMENT_REQUIRED: {
     en: 'Before approval, this delivery partner must be assigned under a fleet manager.',
     pt: 'Antes da aprovação, este parceiro de entrega deve ser atribuído a um gestor de frota.',
-  },
-  SUBMIT_APPROVAL_PERMISSION_DENIED_FLEET: {
-    en: 'You do not have permission to manage approvals for this delivery partner.',
-    pt: 'Você não tem permissão para gerenciar aprovações para este parceiro de entrega.',
   },
   SUBMIT_APPROVAL_OWN_PROFILE_ONLY: {
     en: 'You can only submit verification requests for your own profile.',
@@ -326,10 +302,6 @@ export const authMessages = {
   ADMIN_NOT_FOUND_OR_UNAUTHORIZED: {
     en: 'Administrative authorization failed or account not found.',
     pt: 'Falha na autorização administrativa ou conta não encontrada.',
-  },
-  TARGET_USER_NOT_FOUND: {
-    en: 'The requested user could not be found.',
-    pt: 'O usuário solicitado não pôde ser encontrado.',
   },
   USER_ALREADY_IN_STATUS: {
     en: (vars: { status: string }) =>
@@ -398,10 +370,6 @@ export const authMessages = {
   MUST_BE_SOFT_DELETED_FIRST: {
     en: 'Account must be deactivated/soft-deleted before it can be permanently removed.',
     pt: 'A conta deve ser desativada antes de poder ser removida permanentemente.',
-  },
-  PERMANENT_DELETE_TRANSACTION_FAILED: {
-    en: 'Failed to process permanent deletion. Please try again.',
-    pt: 'Falha ao processar a exclusão permanente. Por favor, tente novamente.',
   },
   PERMANENT_DELETE_SUCCESS: {
     en: (vars: { role: string }) =>

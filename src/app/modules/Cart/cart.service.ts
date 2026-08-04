@@ -186,7 +186,9 @@ const addToCart = async (
   });
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Item',
+    });
 
   if (existingProduct.meta?.status !== 'ACTIVE') {
     throw new AppError(httpStatus.BAD_REQUEST, 'PRODUCT_UNAVAILABLE');
@@ -487,7 +489,9 @@ const toggleCartItemStatus = async (
   }
 
   if (!cart || !cart.items || cart.items.length === 0) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Cart',
+    });
   }
 
   let isFinalStateActive = false;
@@ -633,7 +637,10 @@ const updateAddonQuantity = async (
     }
   }
 
-  if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+  if (!cart)
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Cart',
+    });
 
   const itemIndex = cart.items.findIndex((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
@@ -659,7 +666,10 @@ const updateAddonQuantity = async (
     })
     .lean();
 
-  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+  if (!product)
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Item',
+    });
 
   let selectedPrice = product.pricing.price;
   let selectedVariantLabel: any = null;
@@ -845,6 +855,7 @@ const updateAddonQuantity = async (
 
   return {
     messageKey: 'ADDON_QUANTITY_UPDATE_SUCCESS',
+    variables: undefined,
     data: formattedCart,
   };
 };
@@ -904,6 +915,7 @@ const deleteCartItem = async (
 
     return {
       messageKey: 'REMOVE_ITEMS_SUCCESS',
+      variables: undefined,
       data: {
         customerId,
         items: [],
@@ -940,6 +952,7 @@ const deleteCartItem = async (
 
   return {
     messageKey: 'REMOVE_ITEMS_SUCCESS',
+    variables: undefined,
     data: cart,
   };
 };
@@ -962,7 +975,9 @@ const clearCart = async (currentUser: TCurrentUser) => {
   if (!cartExists) {
     const dbCart = await Cart.findOne({ customerId, isDeleted: false });
     if (!dbCart) {
-      throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Cart',
+      });
     }
   }
 
@@ -973,6 +988,7 @@ const clearCart = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'CLEAR_CART_SUCCESS',
+    variables: undefined,
     data: {
       customerId,
       items: [],
@@ -1273,7 +1289,9 @@ const viewCart = async (
   }
 
   if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Cart',
+    });
   }
 
   if (cart.items && cart.items.length > 0) {

@@ -13,17 +13,9 @@ export const customerMessages = {
     en: 'Please complete the OTP verification to continue.',
     pt: 'Por favor, conclua a verificação de OTP para continuar.',
   },
-  PROFILE_DETAILS_NOT_FOUND: {
+  CUSTOMER_PROFILE_SETUP_INCOMPLETE: {
     en: 'Profile details not found. Please complete your profile setup.',
     pt: 'Detalhes do perfil não encontrados. Por favor, conclua a configuração do seu perfil.',
-  },
-  UPDATE_PROFILE_FORBIDDEN: {
-    en: 'You do not have permission to update this profile.',
-    pt: 'Você não tem permissão para atualizar este perfil.',
-  },
-  CUSTOMER_UPDATED_SUCCESS: {
-    en: 'Profile updated successfully.',
-    pt: 'Perfil atualizado com sucesso.',
   },
   LOCATION_UPDATE_STATUS_BLOCKED: {
     en: (vars: { status: string }) =>
@@ -39,15 +31,11 @@ export const customerMessages = {
     en: "Low location accuracy detected. Please check your device's GPS settings and try again.",
     pt: 'Baixa precisão de localização detectada. Verifique o GPS do seu dispositivo e tente novamente.',
   },
-  CUSTOMER_PROFILE_NOT_FOUND: {
-    en: 'Customer profile could not be found.',
-    pt: 'Perfil do cliente não pôde ser encontrado.',
-  },
   LOCATION_UPDATE_FAILED: {
     en: "We couldn't update your location. Please try again.",
     pt: 'Não foi possível atualizar sua localização. Por favor, tente novamente.',
   },
-  LIVE_LOCATION_UPDATED_SUCCESS: {
+  CUSTOMER_LOCATION_UPDATED_SUCCESS: {
     en: 'Location and primary delivery address updated successfully!',
     pt: 'Localização e endereço de entrega principal atualizados com sucesso!',
   },
@@ -79,10 +67,6 @@ export const customerMessages = {
     en: 'Address not found or you do not have permission to modify it.',
     pt: 'Endereço não encontrado ou você não tem permissão para modificá-lo.',
   },
-  REQUESTED_ADDRESS_NOT_FOUND: {
-    en: 'The requested delivery address could not be found.',
-    pt: 'O endereço de entrega solicitado não pôde ser encontrado.',
-  },
   PRIMARY_ADDRESS_TYPE_IMMUTABLE: {
     en: 'The primary address type cannot be modified.',
     pt: 'O tipo de endereço principal não pode ser modificado.',
@@ -95,17 +79,9 @@ export const customerMessages = {
     en: 'An address with these coordinates is already saved.',
     pt: 'Um endereço com estas coordenadas já está salvo.',
   },
-  DELIVERY_ADDRESS_UPDATED_SUCCESS: {
-    en: 'Delivery address updated successfully.',
-    pt: 'Endereço de entrega atualizado com sucesso.',
-  },
   PROFILE_NOT_FOUND_LOGIN_AGAIN: {
     en: 'Profile not found. Please try logging in again.',
     pt: 'Perfil não encontrado. Por favor, tente fazer login novamente.',
-  },
-  ACTIVATE_ADDRESS_NOT_FOUND: {
-    en: 'The delivery address you are trying to activate could not be found.',
-    pt: 'O endereço de entrega que você está tentando ativar não pôde ser encontrado.',
   },
   DELIVERY_ADDRESS_CHANGED_SUCCESS: {
     en: 'Active delivery address changed successfully.',
@@ -143,15 +119,6 @@ export const customerMessages = {
     pt: (vars: { status: string }) =>
       `Acesso negado. O status da sua conta (${vars.status.toLowerCase()}) restringe a visualização desta informação.`,
   },
-  VIEW_CUSTOMER_DETAILS_FORBIDDEN: {
-    en: "You do not have permission to view this customer's details.",
-    pt: 'Você não tem permissão para visualizar os detalhes deste cliente.',
-  },
-  REQUESTED_CUSTOMER_NOT_FOUND: {
-    en: 'The requested customer profile could not be found.',
-    pt: 'O perfil do cliente solicitado não pôde ser encontrado.',
-  },
-
   CUSTOM_ADDRESS_TYPE_REQUIRED: {
     en: 'Please provide a custom address type when selecting "Other" as the address type.',
     pt: 'Por favor, forneça um tipo de endereço personalizado ao selecionar "Outro" como tipo de endereço.',

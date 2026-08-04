@@ -34,6 +34,7 @@ const getNotificationByToken = async (payload: { token: string }) => {
 
   return {
     messageKey: 'NOTIFICATION_SENT_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: result.response,
   };
 };
