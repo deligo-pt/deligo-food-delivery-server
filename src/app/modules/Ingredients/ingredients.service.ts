@@ -16,7 +16,9 @@ const createIngredient = async (
 ) => {
   // 1. Role Validation
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    throw new AppError(httpStatus.FORBIDDEN, 'ONLY_ADMIN_CAN_PERFORM_ACTION');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Only administrators can perform this action.',
+    });
   }
 
   const isTaxExist = await Tax.findOne({
@@ -58,7 +60,8 @@ const createIngredient = async (
   const newIngredient = await Ingredient.create(payload);
 
   return {
-    messageKey: 'INGREDIENT_CREATED_SUCCESS',
+    messageKey: 'COMMON_CREATED_SUCCESS',
+    variables: { entity: 'Ingredient' },
     data: newIngredient,
   };
 };
@@ -69,7 +72,9 @@ const updateIngredient = async (
 ) => {
   const ingredient = await Ingredient.findById(ingredientId);
   if (!ingredient) {
-    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Ingredient',
+    });
   }
 
   if (payload.tax) {
@@ -113,7 +118,8 @@ const updateIngredient = async (
   );
 
   return {
-    messageKey: 'INGREDIENT_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Ingredient Details' },
     data: updatedIngredient,
   };
 };
@@ -121,7 +127,9 @@ const updateIngredient = async (
 const getIngredientDetails = async (sku: string) => {
   const result = await Ingredient.findOne({ sku }).populate('tax', 'taxRate');
   if (!result || result.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Ingredient',
+    });
   }
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -174,7 +182,8 @@ const softDeleteIngredient = async (ingredientId: string) => {
   );
 
   return {
-    messageKey: 'INGREDIENT_SOFT_DELETED_SUCCESS',
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS',
+    variables: { entity: 'Ingredient' },
     data: null,
   };
 };
@@ -183,7 +192,9 @@ const permanentDeleteIngredient = async (ingredientId: string) => {
   const ingredient = await Ingredient.findById(ingredientId);
 
   if (!ingredient) {
-    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Ingredient',
+    });
   }
 
   if (!ingredient.isDeleted) {
@@ -204,7 +215,8 @@ const permanentDeleteIngredient = async (ingredientId: string) => {
   const result = await Ingredient.findByIdAndDelete(ingredientId);
 
   return {
-    messageKey: 'INGREDIENT_PERMANENTLY_REMOVED_SUCCESS',
+    messageKey: 'COMMON_PERMANENTLY_DELETED_SUCCESS',
+    variables: { entity: 'Ingredient' },
     data: result,
   };
 };

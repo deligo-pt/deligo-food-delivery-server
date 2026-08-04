@@ -36,6 +36,7 @@ const addOrderPoints = async (
       if (!externalSession) await session.commitTransaction();
       return {
         messageKey: 'POINTS_ALREADY_GRANTED_FOR_ORDER' as TMessageKey,
+        variables: undefined,
         pointsEarned: 0,
       };
     }
@@ -44,14 +45,15 @@ const addOrderPoints = async (
     const existsOrder = await Order.findById(orderId).session(session);
 
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
     // 3. Security: Ensure the points are being added for the correct customer
     if (existsOrder.customerId?.toString() !== userObjectId.toString()) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'UNAUTHORIZED_ORDER_NOT_BELONG_TO_USER',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'This order belongs to another profile.',
+      });
     }
 
     // 4. Status Check: Only grant points if the order is actually DELIVERED
@@ -70,7 +72,10 @@ const addOrderPoints = async (
     if (!settings) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'GLOBAL_SETTINGS_NOT_RETRIEVED',
+        'NOT_FOUND_MESSAGE',
+        {
+          entity: 'Global System Configuration Settings',
+        },
       );
     }
 
@@ -103,6 +108,7 @@ const addOrderPoints = async (
 
     return {
       messageKey: 'ORDER_POINTS_ADDED_SUCCESS' as TMessageKey,
+      variables: undefined,
       pointsEarned: pointsToAdd,
     };
   } catch (error: any) {
@@ -153,6 +159,7 @@ const addDeliveryPartnerPoints = async (
       if (!externalSession) await session.commitTransaction();
       return {
         messageKey: 'POINTS_ALREADY_GRANTED_FOR_ORDER' as TMessageKey,
+        variables: undefined,
         pointsEarned: 0,
       };
     }
@@ -161,17 +168,18 @@ const addDeliveryPartnerPoints = async (
     const existsOrder = await Order.findById(orderId).session(session);
 
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     // 3. Security: Ensure the delivery partner is the authorized delivery partner for this order
     if (
       existsOrder.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
     ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'UNAUTHORIZED_NOT_ASSIGNED_DELIVERY_PARTNER',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'You are not the assigned delivery partner for this order.',
+      });
     }
 
     // 4. State Validation: Points should only be granted for delivered orders
@@ -232,6 +240,7 @@ const addDeliveryPartnerPoints = async (
 
     return {
       messageKey: 'DELIVERY_POINTS_ADDED_SUCCESS' as TMessageKey,
+      variables: undefined,
       pointsEarned: points,
     };
   } catch (error: any) {
@@ -338,7 +347,8 @@ const getMyPoints = async (currentUser: TCurrentUser) => {
   }).lean();
 
   return {
-    messageKey: 'POINTS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Points Balance' },
     data: {
       currentPoints: points?.currentPoints || 0,
       totalEarned: points?.totalEarned || 0,
@@ -355,14 +365,17 @@ const getAllPoints = async (query: Record<string, unknown>) => {
   );
 
   if (!points) {
-    throw new AppError(httpStatus.NOT_FOUND, 'POINTS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Points Details',
+    });
   }
 
   const meta = await points.countTotal();
   const data = await points.modelQuery;
 
   return {
-    messageKey: 'POINTS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Points Balance' },
     data,
     meta,
   };

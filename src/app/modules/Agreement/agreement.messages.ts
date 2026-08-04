@@ -15,19 +15,11 @@ export const agreementMessages = {
     en: 'Please enter both the agreement email and the verification OTP.',
     pt: 'Por favor, insira o e-mail do contrato e o OTP de verificação.',
   },
-  AGREEMENT_NOT_FOUND: {
-    en: 'The requested commercial agreement could not be found.',
-    pt: 'O contrato comercial solicitado não pôde ser encontrado.',
-  },
-  ACTION_UNAUTHORIZED: {
-    en: 'Access denied. You do not have permission to manage this agreement.',
-    pt: 'Acesso negado. Você não tem permissão para gerenciar este contrato.',
-  },
-  EMAIL_ALREADY_VERIFIED: {
+  AGREEMENT_EMAIL_ALREADY_VERIFIED: {
     en: 'This email address has already been verified.',
     pt: 'Este endereço de e-mail já foi verificado.',
   },
-  INVALID_OR_EXPIRED_OTP: {
+  AGREEMENT_INVALID_OR_EXPIRED_CODE: {
     en: 'The code is invalid or has expired. Please request a new one.',
     pt: 'O código é inválido ou expirou. Por favor, solicite um novo.',
   },
@@ -47,7 +39,7 @@ export const agreementMessages = {
     en: 'This agreement is not currently eligible for signing.',
     pt: 'Este contrato não está elegível para assinatura no momento.',
   },
-  EMAIL_VERIFICATION_REQUIRED: {
+  AGREEMENT_EMAIL_VERIFICATION_REQUIRED: {
     en: 'Please verify your email address before signing the document.',
     pt: 'Por favor, verifique seu endereço de e-mail antes de assinar o documento.',
   },

@@ -31,7 +31,9 @@ const validateBasePayload = (payload: TProduct) => {
 
 const validateCategory = (vendorCategoryExist: any, category: any) => {
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Product Category',
+    });
   }
 
   if (
@@ -85,7 +87,10 @@ const applyTax = async (payload: TProduct) => {
   if (!payload.pricing.taxId) return;
 
   const tax: TTax | null = await Tax.findById(payload.pricing.taxId);
-  if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'TAX_NOT_FOUND');
+  if (!tax)
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Tax Configuration',
+    });
 
   payload.pricing.taxRate = tax.taxRate;
 };

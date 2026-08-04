@@ -65,7 +65,8 @@ const createZone = async (payload: TZone) => {
   // Create and Save the New Zone
   const newZone = await Zone.create(payload);
   return {
-    messageKey: 'ZONE_CREATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_CREATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Delivery Zone' },
     data: newZone,
   };
 };
@@ -90,7 +91,8 @@ const getZoneByCoordinates = async (lng: number, lat: number) => {
     throw new AppError(httpStatus.NOT_FOUND, 'ZONE_NOT_FOUND');
   }
   return {
-    messageKey: 'ZONE_FOUND_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Zone' },
     data: zone,
   };
 };
@@ -107,7 +109,8 @@ const getAllZones = async (query: Record<string, unknown>) => {
   const meta = await zones.countTotal();
   const zoneData = await zones.modelQuery;
   return {
-    messageKey: 'ZONES_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Zones' },
     meta,
     data: zoneData,
   };
@@ -117,7 +120,8 @@ const getAllZones = async (query: Record<string, unknown>) => {
 const getSingleZone = async (id: string) => {
   const zone = await Zone.findOne({ zoneId: id });
   return {
-    messageKey: 'ZONE_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Zone' },
     data: zone,
   };
 };
@@ -156,7 +160,8 @@ const updateZone = async (zoneId: string, payload: Partial<TZone>) => {
   }
 
   return {
-    messageKey: 'ZONE_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Delivery Zone' },
     data: updatedZone,
   };
 };
@@ -165,11 +170,9 @@ const updateZone = async (zoneId: string, payload: Partial<TZone>) => {
 const toggleZoneStatus = async (zoneId: string, isOperational: boolean) => {
   const zone = await Zone.findOne({ zoneId });
   if (!zone) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'ZONE_WITH_ID_NOT_FOUND_FOR_STATUS_UPDATE',
-      { zoneId },
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Zone',
+    });
   }
 
   if (zone.isOperational === isOperational) {
@@ -191,11 +194,9 @@ const toggleZoneStatus = async (zoneId: string, isOperational: boolean) => {
 const softDeleteZone = async (zoneId: string) => {
   const zone = await Zone.findOne({ zoneId });
   if (!zone) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'ZONE_WITH_ID_NOT_FOUND_FOR_DELETION',
-      { zoneId },
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Zone',
+    });
   }
   if (zone.isOperational) {
     throw new AppError(
@@ -217,18 +218,12 @@ const softDeleteZone = async (zoneId: string) => {
 const permanentDeleteZone = async (zoneId: string) => {
   const result = await Zone.findOne({ zoneId });
   if (!result) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'ZONE_WITH_ID_NOT_FOUND_FOR_DELETION',
-      { zoneId },
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Zone',
+    });
   }
   if (!result.isDeleted) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'ZONE_NOT_SOFT_DELETED_SOFT_DELETE_FIRST',
-      { zoneId },
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'DEACTIVATION_REQUIRED_FIRST');
   }
   await Zone.deleteOne({ zoneId });
   return {

@@ -33,7 +33,9 @@ const initiateSettlement = async (
   const { user } = await findUserById({ userId: targetUserId });
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_USER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'User',
+    });
   }
   const userId = user?._id;
   const targetUserModel = ROLE_COLLECTION_MAP[user?.role as TUserRole];
@@ -160,6 +162,7 @@ const initiateSettlement = async (
 
     return {
       messageKey: 'SETTLEMENT_INITIATED_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: payout,
     };
   } catch (error) {
@@ -306,6 +309,7 @@ const finalizeSettlement = async (
 
     return {
       messageKey: 'SETTLEMENT_COMPLETED_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: result,
     };
   } catch (error) {
@@ -406,7 +410,8 @@ const getAllPayouts = async (
   });
 
   return {
-    messageKey: 'PAYOUTS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Payout History' },
     meta,
     data: result,
   };
@@ -424,7 +429,9 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
     .populate('senderId', 'name role profilePhoto');
 
   if (!payout) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PAYOUT_RECORD_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Payout Record',
+    });
   }
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
@@ -433,10 +440,9 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
       payout.senderId._id.toString() === currentUserId.toString();
 
     if (!isOwner && !isSender) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'NO_PERMISSION_TO_VIEW_PAYOUT_DETAIL',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'You do not have permission to view this payout detail.',
+      });
     }
   }
 
@@ -465,7 +471,8 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'PAYOUT_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Payout' },
     data: {
       ...payout.toObject(),
       payoutCategory,

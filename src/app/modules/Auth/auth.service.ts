@@ -165,6 +165,7 @@ const registerUser = async (payload: TRegisterUser) => {
 
   return {
     messageKey: 'REGISTRATION_SUCCESS' as const,
+    variables: undefined,
     data: {
       userId,
       email: formattedEmail,
@@ -400,10 +401,7 @@ const verifyOtp = async (payload: {
   const enqueueOtpLoginHistory = (
     status: 'SUCCESS' | 'FAILED',
     failureReason?:
-      | 'INVALID_CREDENTIALS'
-      | 'LIMIT_EXCEEDED'
-      | 'INVALID_OTP'
-      | 'UNKNOWN',
+      'INVALID_CREDENTIALS' | 'LIMIT_EXCEEDED' | 'INVALID_OTP' | 'UNKNOWN',
   ) => {
     if (!userData?.email) {
       return;
@@ -589,8 +587,8 @@ const resendOtp = async (payload: {
   }
 
   let successMessageKey:
-    | 'RESEND_OTP_EMAIL_SUCCESS'
-    | 'RESEND_OTP_MOBILE_SUCCESS' = 'RESEND_OTP_EMAIL_SUCCESS';
+    'RESEND_OTP_EMAIL_SUCCESS' | 'RESEND_OTP_MOBILE_SUCCESS' =
+    'RESEND_OTP_EMAIL_SUCCESS';
 
   if (contactNumber) {
     const formattedContact = contactNumber.trim();
@@ -910,6 +908,7 @@ const loginUser = async (
     accessToken,
     refreshToken,
     messageKey: 'LOGIN_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1098,6 +1097,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
       return {
         messageKey: 'OTP_SENT_MOBILE' as const,
+        variables: undefined,
       };
     }
   } catch (err) {
@@ -1143,6 +1143,7 @@ const updateFcmToken = async (
 
   return {
     messageKey: 'FCM_SYNC_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1187,14 +1188,10 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
     logoutAt: new Date(),
   });
 
-  const userRole = currentUser?.role || 'User';
-
   return {
     success: true,
-    messageKey:
-      userRole === 'CUSTOMER'
-        ? ('CUSTOMER_LOGOUT_SUCCESS' as const)
-        : ('USER_LOGOUT_SUCCESS' as const),
+    messageKey: 'USER_LOGOUT_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1261,7 +1258,8 @@ const changePassword = async (
   await revokeAllUserSessions(currentUser.userId);
 
   return {
-    messageKey: 'PASSWORD_UPDATE_SUCCESS' as const,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as const,
+    variables: { entity: 'Password' },
   };
 };
 
@@ -1355,6 +1353,7 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
 
   return {
     messageKey: 'PASSWORD_RESET_LINK_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1430,6 +1429,7 @@ const resetPassword = async (payload: {
   return {
     success: true,
     messageKey: 'PASSWORD_RESET_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1554,6 +1554,7 @@ const refreshToken = async (token: string) => {
 
   return {
     messageKey: 'REFRESH_TOKEN_SUCCESS' as const,
+    variables: undefined,
     data: { accessToken, refreshToken: newRefreshToken },
   };
 };
@@ -1581,7 +1582,9 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   const submittedProfile = await TargetModel.findById(authUser.profileId);
 
   if (!submittedProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Profile Details',
+    });
   }
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -1594,10 +1597,9 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
         currentUser._id.toString();
 
       if (isFleetManager && !isOwner) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          'SUBMIT_APPROVAL_PERMISSION_DENIED_FLEET',
-        );
+        throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+          action: 'manage approvals for this delivery partner',
+        });
       }
 
       if (!isFleetManager && authUser.userId !== currentUser.userId) {
@@ -1742,7 +1744,9 @@ const approvedOrRejectedUser = async (
   });
 
   if (!authUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_USER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'User',
+    });
   }
 
   const role = authUser.role as TUserRole;
@@ -1772,7 +1776,9 @@ const approvedOrRejectedUser = async (
   const submittedProfile = await TargetModel.findById(authUser.profileId);
 
   if (!submittedProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Profile Details',
+    });
   }
 
   if (
@@ -2049,7 +2055,10 @@ const permanentDeleteUser = async (
     session.endSession();
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'PERMANENT_DELETE_TRANSACTION_FAILED',
+      'COMMON_OPERATION_FAILED',
+      {
+        operation: 'process permanent deletion. Please try again',
+      },
     );
   }
 

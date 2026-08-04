@@ -22,6 +22,7 @@ const initiateAgreement = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -44,6 +45,7 @@ const verifyAgreementOtp = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -66,6 +68,7 @@ const resendAgreementOtp = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -91,6 +94,7 @@ const signAgreement = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

@@ -30,7 +30,9 @@ const updateDeliveryPartner = async (
   }).populate('profileId', 'isUpdateLocked registeredBy');
 
   if (!existingDeliveryPartner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND_BANG');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Profile',
+    });
   }
 
   const partnerProfile = existingDeliveryPartner.profileId as any;
@@ -42,7 +44,10 @@ const updateDeliveryPartner = async (
   }
 
   if (!existingDeliveryPartner.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_VERIFICATION_REQUIRED');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'EMAIL_VERIFICATION_REQUIRED_FOR_UPDATE',
+    );
   }
 
   // ---------------------------------------------------------
@@ -53,7 +58,7 @@ const updateDeliveryPartner = async (
       currentUser.role === 'DELIVERY_PARTNER') &&
     partnerProfile.isUpdateLocked
   ) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'UPDATE_LOCKED_CONTACT_SUPPORT');
+    throw new AppError(httpStatus.BAD_REQUEST, 'PROFILE_UPDATE_LOCKED');
   }
 
   // ---------------------------------------------------------
@@ -63,7 +68,9 @@ const updateDeliveryPartner = async (
   // Delivery Partner updating their own profile
   if (currentUser.role === 'DELIVERY_PARTNER') {
     if (existingDeliveryPartner.userId !== currentUser?.userId) {
-      throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_PROFILE_UNAUTHORIZED');
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'You do not have permission to modify this profile.',
+      });
     }
   }
 
@@ -72,7 +79,9 @@ const updateDeliveryPartner = async (
     currentUser.role === 'FLEET_MANAGER' &&
     partnerProfile.registeredBy?.id.toString() !== currentUser?._id.toString()
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_PARTNER_UNAUTHORIZED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to modify this account.',
+    });
   }
 
   // ---------------------------------------------------------
@@ -85,11 +94,18 @@ const updateDeliveryPartner = async (
   );
 
   if (!updatedDeliveryPartner) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'UPDATE_FAILED');
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'COMMON_OPERATION_FAILED',
+      {
+        operation: 'update profile details. Please try again',
+      },
+    );
   }
 
   return {
-    messageKey: 'UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Profile Details' },
     data: updatedDeliveryPartner,
   };
 };
@@ -108,10 +124,9 @@ const updateDeliveryPartnerLiveLocation = async (
   }
 
   if (deliveryPartnerId && currentUser.userId !== deliveryPartnerId) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'LIVE_LOCATION_UPDATE_UNAUTHORIZED_BANG',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'You are not authorized to update real-time location.',
+    });
   }
 
   const {
@@ -125,7 +140,7 @@ const updateDeliveryPartnerLiveLocation = async (
   } = payload;
 
   if (geoAccuracy !== undefined && geoAccuracy > 100) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'GEO_ACCURACY_TOO_HIGH');
+    throw new AppError(httpStatus.BAD_REQUEST, 'GEO_ACCURACY_EXCEEDED');
   }
 
   const updateData: Record<string, any> = {
@@ -157,12 +172,15 @@ const updateDeliveryPartnerLiveLocation = async (
   );
 
   if (!updated) {
-    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   return {
     success: true,
-    messageKey: 'LIVE_LOCATION_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Live Location' },
     data: updated.currentSessionLocation,
   };
 };
@@ -232,7 +250,9 @@ const deliverPartnerDocImageUpload = async (
     userId: deliveryPartnerId,
   });
   if (!existingDeliveryPartner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   if (currentUser?.role === 'FLEET_MANAGER') {
@@ -240,10 +260,9 @@ const deliverPartnerDocImageUpload = async (
       currentUser?._id.toString() !==
       existingDeliveryPartner?.registeredBy?.id.toString()
     ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'DOC_UPLOAD_UNAUTHORIZED_BANG',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_ACCESS_DENIED', {
+        reason: 'You do not have permission to upload documents.',
+      });
     }
   }
 
@@ -267,7 +286,8 @@ const deliverPartnerDocImageUpload = async (
   }
 
   return {
-    messageKey: 'DOC_IMAGE_UPDATED_SUCCESS',
+    messageKey: 'VERIFICATION_DOCUMENT_UPLOADED_SUCCESS',
+    variables: undefined,
     existingDeliveryPartner: existingDeliveryPartner,
   };
 };
@@ -319,10 +339,9 @@ const getSingleDeliveryPartnerFromDB = async (
     currentUser?.role === 'DELIVERY_PARTNER' &&
     currentUser?.userId !== deliveryPartnerId
   ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ACCESS_DELIVERY_PARTNER_UNAUTHORIZED',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to view this partner profile.',
+    });
   }
 
   let existingDeliveryPartner;
@@ -339,7 +358,9 @@ const getSingleDeliveryPartnerFromDB = async (
   }
 
   if (!existingDeliveryPartner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   if (
@@ -347,10 +368,9 @@ const getSingleDeliveryPartnerFromDB = async (
     existingDeliveryPartner?.registeredBy?.id.toString() !==
       currentUser?._id.toString()
   ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ACCESS_DELIVERY_PARTNER_UNAUTHORIZED',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to view this partner profile.',
+    });
   }
 
   const authUser = await AuthUser.findOne({
@@ -379,7 +399,9 @@ const assignDeliveryPartnerToFleetManager = async (
   }).select('status registeredBy isDeleted');
 
   if (!deliveryPartnerProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   if (deliveryPartnerProfile.status === 'APPROVED') {
@@ -396,7 +418,9 @@ const assignDeliveryPartnerToFleetManager = async (
   }).select('_id status');
 
   if (!fleetManagerProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Fleet Manager Profile',
+    });
   }
 
   if (fleetManagerProfile.status !== 'APPROVED') {
@@ -404,7 +428,9 @@ const assignDeliveryPartnerToFleetManager = async (
   }
 
   if (!deliveryPartnerProfile || deliveryPartnerProfile.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   if (deliveryPartnerProfile.registeredBy?.model === 'FleetManager') {
@@ -422,7 +448,8 @@ const assignDeliveryPartnerToFleetManager = async (
   await deliveryPartnerProfile.save();
 
   return {
-    messageKey: 'UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Profile Details' },
     data: deliveryPartnerProfile,
   };
 };

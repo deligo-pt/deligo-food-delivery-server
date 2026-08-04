@@ -18,7 +18,7 @@ const createProductCategory = async (
 
   const exists = await ProductCategory.findOne({ 'name.en': payload.name.en });
   if (exists) {
-    throw new AppError(httpStatus.CONFLICT, 'ALREADY_EXISTS');
+    throw new AppError(httpStatus.CONFLICT, 'PRODUCT_CATEGORY_ALREADY_EXISTS');
   }
 
   payload.name.en = payload.name.en.toUpperCase();
@@ -35,7 +35,8 @@ const createProductCategory = async (
 
   const category = await ProductCategory.create(payload);
   return {
-    messageKey: 'PRODUCT_CATEGORY_CREATE_SUCCESS',
+    messageKey: 'COMMON_CREATED_SUCCESS',
+    variables: { entity: 'Product Category' },
     data: category,
   };
 };
@@ -48,7 +49,9 @@ const updateProductCategory = async (
 ) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Product Category',
+    });
   }
 
   if (payload.name) {
@@ -83,7 +86,9 @@ const updateProductCategory = async (
   ) {
     throw new AppError(
       httpStatus.CONFLICT,
-      category.isActive ? 'ALREADY_ACTIVE' : 'ALREADY_INACTIVE',
+      category.isActive
+        ? 'PRODUCT_CATEGORY_ALREADY_ACTIVE'
+        : 'PRODUCT_CATEGORY_ALREADY_INACTIVE',
     );
   }
 
@@ -101,7 +106,8 @@ const updateProductCategory = async (
   await category.save();
 
   return {
-    messageKey: 'PRODUCT_CATEGORY_UPDATE_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Product Category Details' },
     data: category,
   };
 };
@@ -191,7 +197,9 @@ const getSingleProductCategory = async (
     'name',
   );
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Product Category',
+    });
   }
 
   const { role } = currentUser;
@@ -200,7 +208,9 @@ const getSingleProductCategory = async (
 
   // Non-admin users cannot access deleted or inactive categories
   if (!isAdmin && (category.isDeleted || !category.isActive)) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Product Category',
+    });
   }
 
   // Vendors can only access categories from their business type
@@ -215,7 +225,9 @@ const getSingleProductCategory = async (
       !userBusinessCategory ||
       String(category.businessCategoryId) !== String(userBusinessCategory._id)
     ) {
-      throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Product Category',
+      });
     }
   }
 
@@ -233,11 +245,15 @@ const getSingleProductCategoryPublic = async (id: string) => {
     'name',
   );
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Product Category',
+    });
   }
 
   if (category.isDeleted || !category.isActive) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Product Category',
+    });
   }
 
   return {
@@ -251,37 +267,43 @@ const getSingleProductCategoryPublic = async (id: string) => {
 const softDeleteProductCategory = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Product Category',
+    });
   }
 
   if (category.isDeleted === true) {
-    throw new AppError(httpStatus.CONFLICT, 'ALREADY_DELETED');
+    throw new AppError(httpStatus.CONFLICT, 'PRODUCT_CATEGORY_ALREADY_DELETED');
   }
 
   if (category.isActive) {
-    throw new AppError(httpStatus.CONFLICT, 'ACTIVE_CANNOT_DELETE');
+    throw new AppError(httpStatus.CONFLICT, 'ACTIVE_CATEGORY_CANNOT_DELETE');
   }
 
   category.isDeleted = true;
   await category.save();
   return {
-    messageKey: 'SOFT_DELETE_SUCCESS',
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS',
+    variables: { entity: 'Product Category' },
   };
 };
 // Permanent Delete Product Category
 const permanentDeleteProductCategory = async (id: string) => {
   const category = await ProductCategory.findById(id);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_CATEGORY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Product Category',
+    });
   }
 
   if (category.isDeleted === false) {
-    throw new AppError(httpStatus.CONFLICT, 'SOFT_DELETE_FIRST');
+    throw new AppError(httpStatus.CONFLICT, 'COMMON_MUST_SOFT_DELETE_FIRST');
   }
 
   await ProductCategory.findByIdAndDelete(id);
   return {
-    messageKey: 'PERMANENT_DELETE_SUCCESS',
+    messageKey: 'COMMON_PERMANENTLY_DELETED_SUCCESS',
+    variables: { entity: 'Product Category' },
   };
 };
 

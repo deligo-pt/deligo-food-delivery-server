@@ -1,12 +1,4 @@
 export const notificationMessages = {
-  NOTIFICATION_NOT_FOUND: {
-    en: 'The requested notification could not be found.',
-    pt: 'A notificação solicitada não pôde ser encontrada.',
-  },
-  UNAUTHORIZED_ACTION: {
-    en: 'Access denied. You do not have permission to perform this action.',
-    pt: 'Acesso negado. Você não tem permissão para realizar esta ação.',
-  },
   MARKED_AS_READ_SUCCESS: {
     en: 'Notification marked as read.',
     pt: 'Notificação marcada como lida.',
@@ -19,10 +11,6 @@ export const notificationMessages = {
     en: 'Notification not found or access denied.',
     pt: 'Notificação não encontrada ou acesso negado.',
   },
-  NOTIFICATION_DELETED_SUCCESS: {
-    en: 'Notification removed successfully.',
-    pt: 'Notificação removida com sucesso.',
-  },
   NO_NOTIFICATIONS_SELECTED: {
     en: 'Please select at least one notification.',
     pt: 'Por favor, selecione pelo menos uma notificação.',
@@ -33,21 +21,9 @@ export const notificationMessages = {
     pt: (vars: { count: number }) =>
       `${vars.count} notificações removidas com sucesso.`,
   },
-  ONLY_SUPER_ADMIN_PERMANENT_DELETE: {
-    en: 'Access denied. Permanent deletion is restricted to Super Admins only.',
-    pt: 'Acesso negado. A exclusão permanente é restrita apenas a Super Administradores.',
-  },
   MUST_SOFT_DELETE_BEFORE_PERMANENT: {
     en: 'This item must be deactivated before it can be permanently deleted.',
     pt: 'Este item deve ser desativado antes de poder ser excluído permanentemente.',
-  },
-  NOTIFICATION_PERMANENT_DELETE_SUCCESS: {
-    en: 'Notification permanently deleted from the system.',
-    pt: 'Notificação excluída permanentemente do sistema.',
-  },
-  SELECTED_MUST_BE_SOFT_DELETED_FIRST: {
-    en: 'The selected notifications must be deactivated before permanent deletion.',
-    pt: 'As notificações selecionadas devem ser desativadas antes da exclusão permanente.',
   },
   NOTIFICATIONS_PERMANENT_DELETED_COUNT_SUCCESS: {
     en: (vars: { count: number }) =>

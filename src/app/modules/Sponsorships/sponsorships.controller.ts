@@ -28,6 +28,7 @@ const createSponsorship = catchAsync(async (req, res) => {
     statusCode: httpStatus.CREATED,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -55,6 +56,7 @@ const updateSponsorship = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -69,6 +71,7 @@ const getAllSponsorships = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -79,6 +82,7 @@ const getAllSponsorshipsPublic = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -94,6 +98,7 @@ const getSingleSponsorship = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -118,6 +123,7 @@ const softDeleteSponsorship = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -142,6 +148,7 @@ const permanentDeleteSponsorship = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

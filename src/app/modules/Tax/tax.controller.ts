@@ -15,8 +15,7 @@ const createTax = catchAsync(async (req, res) => {
   createActivityLog({
     customUserId: currentUser?.userId,
     action: 'Created Tax',
-    target:
-      req.body?.taxName?.en || req.body?.taxName?.pt || 'New Tax',
+    target: req.body?.taxName?.en || req.body?.taxName?.pt || 'New Tax',
     type: 'INFO',
   });
 
@@ -24,6 +23,7 @@ const createTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.CREATED,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -45,6 +45,7 @@ const updateTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -66,6 +67,7 @@ const getAllTaxes = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: formattedData,
   });
@@ -89,6 +91,7 @@ const getSingleTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -110,6 +113,7 @@ const softDeleteTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -131,6 +135,7 @@ const permanentDeleteTax = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

@@ -48,7 +48,7 @@ const updateAdmin = async (
     const { longitude, latitude, geoAccuracy = 0 } = payload.address;
 
     if (geoAccuracy !== undefined && geoAccuracy > 100) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_GEO_ACCURACY');
+      throw new AppError(httpStatus.BAD_REQUEST, 'GEO_ACCURACY_EXCEEDED');
     }
     const hasLng = typeof longitude === 'number';
     const hasLat = typeof latitude === 'number';
@@ -70,7 +70,10 @@ const updateAdmin = async (
     currentUser.role === 'ADMIN' &&
     currentUser.userId !== existingAdmin.userId
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_UNAUTHORIZED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason:
+        'You do not have permission to modify this administrator account.',
+    });
   }
 
   // -----------------------------------------
@@ -83,11 +86,12 @@ const updateAdmin = async (
   );
 
   if (!updatedAdmin) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'UPDATE_FAILED');
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, 'ADMIN_UPDATE_FAILED');
   }
 
   return {
-    messageKey: 'ADMIN_UPDATE_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Admin Profile' },
     data: updatedAdmin,
   };
 };
@@ -112,7 +116,10 @@ const adminDocImageUpload = async (
   }
 
   if (currentUser.role === 'ADMIN' && existingAdmin.userId !== adminId) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_UNAUTHORIZED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason:
+        'You do not have permission to modify this administrator account.',
+    });
   }
   // delete previous image if exists
   const docTitle = data?.docImageTitle;
@@ -137,7 +144,8 @@ const adminDocImageUpload = async (
   }
 
   return {
-    messageKey: 'DOCUMENT_UPLOAD_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Administrative Document' },
     data: existingAdmin,
   };
 };
@@ -167,7 +175,9 @@ const getSingleAdmin = async (adminId: string, currentUser: TCurrentUser) => {
   // Authorization Logic
   // ---------------------------------------------------------
   if (currentUser.role === 'ADMIN' && currentUser.userId !== adminId) {
-    throw new AppError(httpStatus.FORBIDDEN, 'ACCESS_UNAUTHORIZED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'You lack the required clearance to view this profile.',
+    });
   }
 
   // ---------------------------------------------------------
