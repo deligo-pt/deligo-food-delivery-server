@@ -543,6 +543,32 @@ export const rebuildCheckoutSummary = async (
     totalPlatformNetRevenue + totalPlatformPayableTax,
   );
 
+  const vendorNetPayout = roundTo2(finalItemsSubTotal - totalDeduction);
+  const riderNetEarnings = roundTo2(finalDeliveryChargeNet - fleetFee);
+
+  // An offer (e.g. a BOGO free item priced above the line's remaining
+  // earnings) must never be allowed to push the vendor's payout negative.
+  if (vendorNetPayout < 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'PAYOUT_SPLIT_RECONCILIATION_MISMATCH',
+    );
+  }
+
+  // Zero-sum guard: the four-way split must reconcile back to the grand
+  // total exactly (within rounding tolerance) before it's persisted or used
+  // to credit wallets downstream.
+  const reconciliationDelta = roundTo2(
+    grandTotal -
+      (vendorNetPayout + riderNetEarnings + fleetFee + totalPlatformGrossHolding),
+  );
+  if (Math.abs(reconciliationDelta) > 0.01) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'PAYOUT_SPLIT_RECONCILIATION_MISMATCH',
+    );
+  }
+
   const flattenedTitle =
     typeof offer.title === 'object'
       ? offer.title?.[lang] || offer.title?.['en'] || ''
@@ -587,10 +613,10 @@ export const rebuildCheckoutSummary = async (
           finalItemsSubTotal - totalDeduction - finalGlobalTaxAmount,
         ),
         payableTax: finalGlobalTaxAmount,
-        vendorNetPayout: roundTo2(finalItemsSubTotal - totalDeduction),
+        vendorNetPayout,
       },
       rider: {
-        riderNetEarnings: roundTo2(finalDeliveryChargeNet - fleetFee),
+        riderNetEarnings,
       },
     },
     offer: {

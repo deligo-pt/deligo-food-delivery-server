@@ -258,24 +258,28 @@ export const processOrderPostUpdate = async (job: Job) => {
       );
 
       // --- Delivery Partner Wallet Update (Rider Earnings) ---
-      await Wallet.findOneAndUpdate(
-        { userId: partner?._id, userModel: 'DeliveryPartner' },
-        {
-          $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
-          $inc: {
-            currentBalance: roundTo2(riderNetEarnings),
-            lifetimeEarnings: roundTo2(riderNetEarnings),
+      // Only credited directly when self-managed; fleet-managed riders are
+      // paid out via their Fleet Manager's pool below to avoid double-payout.
+      if (!isManagedByFleet) {
+        await Wallet.findOneAndUpdate(
+          { userId: partner?._id, userModel: 'DeliveryPartner' },
+          {
+            $setOnInsert: { walletId: `WAL-D-${customNanoId(8)}` },
+            $inc: {
+              currentBalance: roundTo2(riderNetEarnings),
+              lifetimeEarnings: roundTo2(riderNetEarnings),
+            },
           },
-        },
-        { session, upsert: true },
-      );
+          { session, upsert: true },
+        );
 
-      await normalizeWalletFields(
-        partner?._id,
-        'DeliveryPartner',
-        ['currentBalance', 'lifetimeEarnings'],
-        session,
-      );
+        await normalizeWalletFields(
+          partner?._id,
+          'DeliveryPartner',
+          ['currentBalance', 'lifetimeEarnings'],
+          session,
+        );
+      }
 
       const SYSTEM_ADMIN = await Admin.findOne({ role: 'SUPER_ADMIN' })
         .select('_id')
