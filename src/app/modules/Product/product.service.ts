@@ -21,6 +21,24 @@ import { UpdateProductUtils } from './updateProduct.utils';
 import { Order } from '../Order/order.model';
 import { NotificationService } from '../Notification/notification.service';
 import { EmailHelper } from '../../utils/emailSender';
+import { getActiveBogoOffersMap } from '../Offer/offer.utils';
+
+// Flattens a BOGO offer map entry's localized title for the response, or null if none
+const attachBogoOffer = (
+  product: any,
+  bogoOffersMap: Map<string, any>,
+  lang: TLanguageCode,
+) => {
+  const offer = bogoOffersMap.get(product._id.toString());
+  if (!offer) return null;
+
+  return {
+    offerId: offer.offerId,
+    title: offer.title?.[lang] || offer.title?.en || '',
+    buyQty: offer.buyQty,
+    getQty: offer.getQty,
+  };
+};
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
@@ -846,9 +864,12 @@ const getAllProducts = async (
   const meta = await products.countTotal();
   const rawData = await products.modelQuery;
 
-  const localizedData = rawData.map((product: any) =>
-    localizeProductData(product, role, lang),
-  );
+  const bogoOffersMap = await getActiveBogoOffersMap(rawData);
+
+  const localizedData = rawData.map((product: any) => ({
+    ...localizeProductData(product, role, lang),
+    bogoOffer: attachBogoOffer(product, bogoOffersMap, lang),
+  }));
   return {
     messageKey: 'COMMON_RETRIEVED_SUCCESS',
     variables: { entity: 'Products' },
@@ -888,9 +909,12 @@ const getAllProductsPublic = async (
   const meta = await products.countTotal();
   const rawData = await products.modelQuery;
 
-  const localizedData = rawData.map((product: any) =>
-    localizeProductData(product, 'CUSTOMER', lang),
-  );
+  const bogoOffersMap = await getActiveBogoOffersMap(rawData);
+
+  const localizedData = rawData.map((product: any) => ({
+    ...localizeProductData(product, 'CUSTOMER', lang),
+    bogoOffer: attachBogoOffer(product, bogoOffersMap, lang),
+  }));
   return {
     messageKey: 'COMMON_RETRIEVED_SUCCESS',
     variables: { entity: 'Products' },
@@ -952,10 +976,15 @@ const getSingleProduct = async (
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
+  const bogoOffersMap = await getActiveBogoOffersMap([product]);
+
   return {
     messageKey: 'COMMON_RETRIEVED_SUCCESS',
     variables: { entity: 'Product' },
-    data: localizeProductData(product, role, lang),
+    data: {
+      ...localizeProductData(product, role, lang),
+      bogoOffer: attachBogoOffer(product, bogoOffersMap, lang),
+    },
   };
 };
 
@@ -989,10 +1018,15 @@ const getSingleProductPublic = async (
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
+  const bogoOffersMap = await getActiveBogoOffersMap([product]);
+
   return {
     messageKey: 'COMMON_RETRIEVED_SUCCESS',
     variables: { entity: 'Product' },
-    data: localizeProductData(product, role, lang),
+    data: {
+      ...localizeProductData(product, role, lang),
+      bogoOffer: attachBogoOffer(product, bogoOffersMap, lang),
+    },
   };
 };
 

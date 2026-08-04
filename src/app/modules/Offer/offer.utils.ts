@@ -81,6 +81,83 @@ export const getBogoTriggerLabel = async (
   return 'qualifying item(s)';
 };
 
+// Builds a productId -> active BOGO offer map for a batch of products, so
+// product list/detail responses can flag "this product unlocks a BOGO deal"
+// without a per-product query. Matches on the offer's own vendorId against
+// each product's vendor, and on the BOGO trigger (buyProductId, or
+// buyCategoryId against the product's category).
+export const getActiveBogoOffersMap = async (
+  products: any[],
+): Promise<Map<string, any>> => {
+  const map = new Map<string, any>();
+  if (!products.length) return map;
+
+  const now = new Date();
+  const vendorIds = [
+    ...new Set(
+      products
+        .map((p) => (p.vendorId?._id || p.vendorId)?.toString())
+        .filter(Boolean),
+    ),
+  ];
+  const productIds = products.map((p) => p._id);
+  const categoryIds = [
+    ...new Set(
+      products
+        .map((p) => (p.category?._id || p.category)?.toString())
+        .filter(Boolean),
+    ),
+  ];
+
+  if (!vendorIds.length) return map;
+
+  const bogoOffers = await Offer.find({
+    isActive: true,
+    isDeleted: false,
+    offerType: 'BOGO',
+    vendorId: { $in: vendorIds },
+    validFrom: { $lte: now },
+    expiresAt: { $gte: now },
+    $or: [
+      { 'bogo.buyProductId': { $in: productIds } },
+      { 'bogo.buyCategoryId': { $in: categoryIds } },
+    ],
+  })
+    .select('title bogo vendorId')
+    .lean();
+
+  if (!bogoOffers.length) return map;
+
+  for (const product of products) {
+    const productId = product._id.toString();
+    const productVendorId = (product.vendorId?._id || product.vendorId)?.toString();
+    const productCategoryId = (
+      product.category?._id || product.category
+    )?.toString();
+
+    const matchedOffer = bogoOffers.find((offer: any) => {
+      if (offer.vendorId?.toString() !== productVendorId) return false;
+
+      const buyProductId = offer.bogo?.buyProductId?.toString();
+      if (buyProductId) return buyProductId === productId;
+
+      const buyCategoryId = offer.bogo?.buyCategoryId?.toString();
+      return !!buyCategoryId && buyCategoryId === productCategoryId;
+    });
+
+    if (matchedOffer) {
+      map.set(productId, {
+        offerId: matchedOffer._id,
+        title: matchedOffer.title,
+        buyQty: matchedOffer.bogo?.buyQty,
+        getQty: matchedOffer.bogo?.getQty,
+      });
+    }
+  }
+
+  return map;
+};
+
 export const findAndValidateOffer = async (
   offerIdentifier: string,
   checkoutData: any,
