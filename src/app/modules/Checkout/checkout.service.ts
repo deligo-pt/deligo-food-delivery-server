@@ -360,6 +360,20 @@ const checkout = async (
   );
   const totalDeduction = roundTo2(totalCommAmt + totalCommVat);
 
+  // Zero-sum guard: the four-way split must reconcile back to the grand
+  // total exactly (within rounding tolerance) before it's ever persisted or
+  // used to credit wallets downstream.
+  const reconciliationDelta = roundTo2(
+    finalGrandTotal -
+      (vendorNetPayout + riderNetEarnings + fleetFee + totalPlatformGrossHolding),
+  );
+  if (Math.abs(reconciliationDelta) > 0.01) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'PAYOUT_SPLIT_RECONCILIATION_MISMATCH',
+    );
+  }
+
   const finalSummaryData = {
     customerId,
     vendorId,

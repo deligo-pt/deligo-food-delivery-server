@@ -18,6 +18,7 @@ const walletSchema = new Schema<TWallet>(
     lastSettlementDate: { type: Date, default: null },
 
     currentBalance: { type: Number, default: 0, min: 0 },
+    lockedBalance: { type: Number, default: 0, min: 0 },
     lifetimeEarnings: { type: Number, default: 0, min: 0 },
     currentTaxLiability: { type: Number, min: 0 },
     lifetimeTaxProcessed: { type: Number, min: 0 },

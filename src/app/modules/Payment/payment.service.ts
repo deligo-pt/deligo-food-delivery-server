@@ -23,6 +23,8 @@ import { TLanguageCode } from '../../constant/GlobalInterface/language.interface
 import { OrderServices } from '../Order/order.service';
 import { PaymentToken } from '../Payment-Token/payment-token.model';
 import { PaymentTokenServices } from '../Payment-Token/payment-token.service';
+import { Transaction } from '../Transaction/transaction.model';
+import customNanoId from '../../utils/customNanoId';
 
 export const solutionIds = {
   CARD: '113',
@@ -42,6 +44,54 @@ export const REDUNIQ_SUCCESS_CODES = new Set([
 
 export const isRedUniqSuccess = (result: any, transaction: any) =>
   transaction?.status === '1' || REDUNIQ_SUCCESS_CODES.has(result?.code);
+
+// Persists the order refund state change together with its ledger entry as
+// a single atomic write, so a mid-write failure can never leave the order
+// flipped to REFUNDED with no corresponding Transaction audit row (or vice
+// versa).
+const persistRefundRecord = async (
+  order: any,
+  refundTransactionId: string | null,
+  remarks: string,
+) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    order.paymentStatus = 'REFUNDED';
+    order.isPaid = false;
+    order.refundStatus = REFUND_STATUS.REFUNDED;
+    await order.save({ session });
+
+    await Transaction.create(
+      [
+        {
+          transactionId: `TXN-RF-${customNanoId(8)}`,
+          orderId: order._id,
+          userId: order.customerId,
+          userModel: 'Customer',
+          baseAmount: order.payoutSummary.grandTotal,
+          taxAmount: 0,
+          totalAmount: order.payoutSummary.grandTotal,
+          type: 'REFUND',
+          status: 'SUCCESS',
+          paymentMethod: order.paymentMethod,
+          remarks: refundTransactionId
+            ? `${remarks} (gateway ref: ${refundTransactionId})`
+            : remarks,
+        },
+      ],
+      { session },
+    );
+
+    await session.commitTransaction();
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+};
 
 // MB WAY confirmed to accept payToken at session-init (sandbox tested); Apple/Google
 // Pay/PayPal are excluded — device-generated one-time cryptograms have no reusable token.
@@ -329,12 +379,13 @@ const refundRedUniqPayment = async (orderId: string) => {
           );
         }
 
-        order.paymentStatus = 'REFUNDED';
-        order.isPaid = false;
-        order.refundStatus = REFUND_STATUS.REFUNDED;
-        await order.save();
-
         const voidRefundTransactionId = (voidTxn as any)?.id || null;
+        await persistRefundRecord(
+          order,
+          voidRefundTransactionId,
+          `Void refund for Order ${order.orderId}`,
+        );
+
         sendRefundSuccessEmail(order, voidRefundTransactionId).catch((err) =>
           console.error('Refund email sending failed:', err),
         );
@@ -356,12 +407,13 @@ const refundRedUniqPayment = async (orderId: string) => {
       });
     }
 
-    order.paymentStatus = 'REFUNDED';
-    order.isPaid = false;
-    order.refundStatus = REFUND_STATUS.REFUNDED;
-    await order.save();
-
     const refundTransactionId = (transaction as any)?.id || null;
+    await persistRefundRecord(
+      order,
+      refundTransactionId,
+      `Full refund for Order ${order.orderId}`,
+    );
+
     sendRefundSuccessEmail(order, refundTransactionId).catch((err) =>
       console.error('Refund email sending failed:', err),
     );
@@ -550,21 +602,25 @@ const handleReduniqNotification = async (body: any) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary || summary.isConvertedToOrder) return;
 
-  let paymentData = body;
-
-  if (notificationToken && config.redUniq.api_url) {
-    const verifyPayload = {
-      method: 'getResult',
-      api: {
-        username: config.redUniq.username,
-        password: config.redUniq.password,
-      },
-      token: notificationToken,
-    };
-
-    const verifyRes = await axios.post(config.redUniq.api_url, verifyPayload);
-    paymentData = verifyRes.data;
+  if (!notificationToken || !config.redUniq.api_url) {
+    console.error(
+      'Webhook missing verification token — rejecting',
+      checkoutSummaryId,
+    );
+    return;
   }
+
+  const verifyPayload = {
+    method: 'getResult',
+    api: {
+      username: config.redUniq.username,
+      password: config.redUniq.password,
+    },
+    token: notificationToken,
+  };
+
+  const verifyRes = await axios.post(config.redUniq.api_url, verifyPayload);
+  const paymentData = verifyRes.data;
 
   const transaction = paymentData?.transaction || {};
 
