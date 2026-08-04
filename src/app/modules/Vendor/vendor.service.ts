@@ -38,7 +38,9 @@ const vendorUpdate = async (
   const existingVendor = await Vendor.findOne({ userId: id });
 
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND_WITH_DOT');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   // 2. Define access control: Admins/Super Admins or the Account Owner (Vendor/Sub-Vendor)
@@ -49,7 +51,7 @@ const vendorUpdate = async (
 
   // 3. Authorization: Block unauthorized users from modifying the vendor profile
   if (!isStaff && !isOwner) {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED');
   }
 
   // 4. Update-Lock: Prevent changes if the profile is locked, unless bypassed by an Admin
@@ -130,12 +132,14 @@ const vendorUpdate = async (
   if (!updatedVendor) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'FAILED_TO_UPDATE_VENDOR',
+      'COMMON_OPERATION_FAILED',
+      { operation: 'update vendor profile' },
     );
   }
 
   return {
-    messageKey: 'VENDOR_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Vendor Profile' },
     data: updatedVendor,
   };
 };
@@ -152,7 +156,9 @@ const vendorDocImageUpload = async (
   // 1. Check if the vendor exists in the database
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   const { docImageTitle, docImageUrls } = payload;
@@ -165,7 +171,7 @@ const vendorDocImageUpload = async (
 
   // 3. Authorization: Only Admins or the Account Owner can perform this action
   if (!isStaff && !isOwner) {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED');
   }
 
   // 4. Protection: Block updates if the profile is locked (Admins can bypass this lock)
@@ -212,7 +218,8 @@ const vendorDocImageUpload = async (
   }
 
   return {
-    messageKey: 'VENDOR_DOCUMENT_IMAGE_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Vendor Document Image' },
     data: existingVendor.documents,
   };
 };
@@ -226,18 +233,17 @@ const deleteVendorDocument = async (
   const { docImageTitle, imageUrl } = payload;
   const existingVendor = await Vendor.findOne({ userId: vendorId });
   if (!existingVendor)
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
 
   const isStaff = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isOwner = currentUser.userId === existingVendor.userId;
   if (!isStaff && !isOwner)
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_FOR_ACTION');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED');
 
   if (existingVendor.isUpdateLocked && !isStaff) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'PROFILE_LOCKED_CONTACT_SUPPORT',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_PROFILE_LOCKED');
   }
 
   const docArray = (existingVendor.documents as any)[docImageTitle];
@@ -265,6 +271,7 @@ const deleteVendorDocument = async (
 
   return {
     messageKey: 'VENDOR_DOCUMENT_IMAGE_DELETED_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: existingVendor.documents,
   };
 };
@@ -272,9 +279,7 @@ const deleteVendorDocument = async (
 // toggle vendor store open/close service
 const toggleVendorStoreOpenClose = async (currentUser: TCurrentUser) => {
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPROVED_TO_TOGGLE_STORE', {
-      status: currentUser?.status || 'UNKNOWN',
-    });
+    throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_ACCESS_DENIED');
   }
 
   const nextStoreState = !currentUser.businessDetails?.isStoreOpen;
@@ -317,9 +322,7 @@ const getAllVendors = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_VIEW_VENDORS', {
-      status: currentUser?.status || 'UNKNOWN',
-    });
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED');
   }
 
   const filter: any = {};
@@ -370,7 +373,8 @@ const getAllVendors = async (
   const data = await vendors.modelQuery;
 
   return {
-    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Vendors' },
     meta,
     data,
   };
@@ -379,10 +383,7 @@ const getAllVendors = async (
 // get single vendor
 const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   if (currentUser.role === 'VENDOR' && currentUser.userId !== vendorId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'NOT_AUTHORIZED_TO_ACCESS_VENDOR',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_ACCESS_DENIED', {});
   }
 
   let query: any;
@@ -412,10 +413,9 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
 
   const existingVendor = await query;
   if (!existingVendor) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'VENDOR_NOT_FOUND_WITH_EXCLAMATION',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   const authUser = await AuthUser.findOne({
@@ -423,7 +423,8 @@ const getSingleVendor = async (vendorId: string, currentUser: TCurrentUser) => {
   }).select('isEmailVerified isContactNumberVerified');
 
   return {
-    messageKey: 'VENDOR_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Vendor' },
     data: {
       ...existingVendor.toObject(),
       isEmailVerified: authUser?.isEmailVerified ?? false,
@@ -548,7 +549,8 @@ const getAllVendorsForCustomer = async (
 
     if (matchingVendorIds.length === 0) {
       return {
-        messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
+        messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+        variables: { entity: 'Vendors' },
         meta: {
           total: 0,
           page: 1,
@@ -688,7 +690,8 @@ const getAllVendorsForCustomer = async (
   });
 
   return {
-    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Vendors' },
     meta,
     data,
   };
@@ -706,14 +709,14 @@ const getSingleVendorForCustomer = async (vendorId: string) => {
     .populate('businessDetails.businessType')
     .populate('cuisinesData');
   if (!existingVendor) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'VENDOR_NOT_FOUND_WITH_EXCLAMATION',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   return {
-    messageKey: 'VENDOR_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Vendor' },
     data: existingVendor,
   };
 };
@@ -810,7 +813,8 @@ const getAllVendorsForCustomerPublic = async (
 
     if (matchingVendorIds.length === 0) {
       return {
-        messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
+        messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+        variables: { entity: 'Vendors' },
         meta: {
           total: 0,
           page: 1,
@@ -947,7 +951,8 @@ const getAllVendorsForCustomerPublic = async (
   });
 
   return {
-    messageKey: 'VENDORS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Vendors' },
     meta,
     data,
   };

@@ -26,44 +26,4 @@ export const taxMessages = {
     en: 'Active tax cannot be deleted. Please deactivate it first.',
     pt: 'Um imposto ativo não pode ser excluído. Por favor, desative-o primeiro.',
   },
-
-  // --- Unique Lifecycle Success Messages ---
-  TAX_CREATED_SUCCESS: {
-    en: 'Tax configuration created successfully.',
-    pt: 'Imposto criado com sucesso.',
-  },
-  TAX_UPDATED_SUCCESS: {
-    en: 'Tax configuration updated successfully.',
-    pt: 'Imposto atualizado com sucesso.',
-  },
-  TAX_SOFT_DELETED_SUCCESS: {
-    en: 'Tax configuration removed successfully.',
-    pt: 'Imposto excluído logicamente com sucesso.',
-  },
-  TAX_PERMANENTLY_DELETED_SUCCESS: {
-    en: 'Tax permanently deleted from the system.',
-    pt: 'Imposto excluído permanentemente com sucesso.',
-  },
-
-  // --- Global Mappings Block (To be handled by globalCommonMessages) ---
-  TAX_RECORD_NOT_FOUND_WITH_EXCLAMATION: {
-    en: 'Tax record not found.',
-    pt: 'Registro de imposto não encontrado.',
-  },
-  TAXES_RETRIEVED_SUCCESS: {
-    en: 'Taxes loaded successfully.',
-    pt: 'Impostos recuperados com sucesso.',
-  },
-  TAX_RECORD_NOT_FOUND: {
-    en: 'Tax record not found.',
-    pt: 'Registro de imposto não encontrado.',
-  },
-  TAX_RETRIEVED_SUCCESS: {
-    en: 'Tax details loaded successfully.',
-    pt: 'Imposto recuperado com sucesso.',
-  },
-  TAX_NOT_SOFT_DELETED_SOFT_DELETE_FIRST: {
-    en: 'Deactivation required first.',
-    pt: 'Desativação necessária primeiro.',
-  },
 } as const;

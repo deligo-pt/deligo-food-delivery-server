@@ -1545,7 +1545,9 @@ const getSingleVendorPerformanceDetails = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    throw new AppError(httpStatus.FORBIDDEN, 'ANALYTICS_ACCESS_DENIED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to view these analytics.',
+    });
   }
 
   const vendor = await Vendor.findOne({
@@ -1554,7 +1556,9 @@ const getSingleVendorPerformanceDetails = async (
   }).lean();
 
   if (!vendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   const vendorObjectId = vendor._id;

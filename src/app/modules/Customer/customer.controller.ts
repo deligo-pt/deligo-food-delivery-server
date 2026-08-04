@@ -26,6 +26,7 @@ const updateCustomer = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -50,6 +51,7 @@ const updateCustomerLiveLocation = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -77,6 +79,7 @@ const addDeliveryAddress = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -107,6 +110,7 @@ const updateDeliveryAddress = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -130,6 +134,7 @@ const toggleDeliveryAddressStatus = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -153,6 +158,7 @@ const deleteDeliveryAddress = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

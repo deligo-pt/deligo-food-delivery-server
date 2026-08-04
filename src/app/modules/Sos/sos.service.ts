@@ -43,7 +43,9 @@ const triggerSos = async (
   const result = await SosModel.create(sosData);
 
   if (!result) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'FAILED_TO_TRIGGER_SOS');
+    throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_OPERATION_FAILED', {
+      operation: 'trigger SOS alert. Please try again immediately',
+    });
   }
 
   getIO().to('SOS_ALERTS_POOL').emit('new-sos-alert', {
@@ -53,6 +55,7 @@ const triggerSos = async (
 
   return {
     messageKey: 'SOS_TRIGGERED_SUCCESS_HELP_ON_WAY' as TMessageKey,
+    variables: undefined,
     data: result,
   };
 };
@@ -65,7 +68,9 @@ const updateSosStatus = async (
 ) => {
   const isSosExist = await SosModel.findById(id);
   if (!isSosExist) {
-    throw new AppError(httpStatus.NOT_FOUND, 'SOS_ALERT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'SOS Alert',
+    });
   }
 
   if (isSosExist.status === 'RESOLVED') {
@@ -106,7 +111,8 @@ const updateSosStatus = async (
   }
 
   return {
-    messageKey: 'SOS_STATUS_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'SOS Alert Status' },
     data: result,
   };
 };
@@ -133,7 +139,8 @@ const getNearbySosAlerts = async (currentUser: TCurrentUser) => {
     status: 'ACTIVE',
   });
   return {
-    messageKey: 'NEARBY_SOS_ALERTS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'SOS Alerts' },
     data: result,
   };
 };
@@ -179,7 +186,8 @@ const getAllSosAlerts = async (
   const meta = await sosQuery.countTotal();
 
   return {
-    messageKey: 'SOS_ALERTS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'SOS Alerts' },
     meta,
     data,
   };
@@ -193,7 +201,9 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
   );
 
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'SOS_ALERT_NOT_FOUND_SINGLE');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'SOS Alert',
+    });
   }
 
   if (currentUser.role === 'FLEET_MANAGER') {
@@ -203,15 +213,13 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
       !partner ||
       partner?.registeredBy?.id.toString() !== currentUser._id.toString()
     ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'NOT_AUTHORIZED_TO_VIEW_SOS_ALERT',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
     }
   }
 
   return {
-    messageKey: 'SOS_ALERT_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'SOS Alert' },
     data: result,
   };
 };
@@ -245,7 +253,8 @@ const getUserSosHistory = async (
   const meta = await sosQuery.countTotal();
 
   return {
-    messageKey: 'SOS_ALERTS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'SOS Alerts' },
     meta,
     data,
   };
@@ -254,11 +263,7 @@ const getUserSosHistory = async (
 // get sos stats
 const getSosStats = async (currentUser: TCurrentUser) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_APPROVED_TO_VIEW_SOS_STATS_WITH_STATUS',
-      { status: currentUser.status },
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
   }
   const stats = await SosModel.aggregate([
     {
@@ -291,7 +296,8 @@ const getSosStats = async (currentUser: TCurrentUser) => {
   });
 
   return {
-    messageKey: 'SOS_STATS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'SOS Metrics' },
     data: formattedStats,
   };
 };

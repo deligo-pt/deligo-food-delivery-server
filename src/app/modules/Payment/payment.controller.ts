@@ -29,6 +29,7 @@ const createRedUniqPayment = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -58,6 +59,7 @@ const payWithSavedToken = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: formattedData,
   });
 });
@@ -97,6 +99,7 @@ const handlePaymentFailure = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -117,6 +120,7 @@ const refundRedUniqPayment = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -142,6 +146,7 @@ const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

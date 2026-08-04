@@ -114,7 +114,9 @@ const createRedUniqPayment = async (
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
 
   if (summary.isConvertedToOrder) {
     throw new AppError(
@@ -134,7 +136,7 @@ const createRedUniqPayment = async (
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ_API_URL_NOT_CONFIGURED',
+      'PAYMENT_GATEWAY_CONFIG_MISSING',
     );
   }
 
@@ -207,6 +209,7 @@ const createRedUniqPayment = async (
 
     return {
       messageKey: 'REDUNIQ_PAYMENT_SESSION_CREATED' as TMessageKey,
+      variables: undefined,
       data: {
         redirectUrl,
         paymentToken: token,
@@ -244,7 +247,9 @@ const refundRedUniqPayment = async (orderId: string) => {
   }).populate('customerId', 'name email');
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
   }
 
   if (!order.isPaid || order.paymentStatus !== 'PAID') {
@@ -259,7 +264,10 @@ const refundRedUniqPayment = async (orderId: string) => {
   }
 
   if (order.refundStatus === REFUND_STATUS.NOT_APPLICABLE) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'REFUND_NOT_APPLICABLE_FOR_ORDER');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'REFUND_NOT_APPLICABLE_FOR_ORDER',
+    );
   }
 
   if (!order.transactionId) {
@@ -269,7 +277,7 @@ const refundRedUniqPayment = async (orderId: string) => {
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ_API_URL_NOT_CONFIGURED',
+      'PAYMENT_GATEWAY_CONFIG_MISSING',
     );
   }
 
@@ -333,6 +341,7 @@ const refundRedUniqPayment = async (orderId: string) => {
 
         return {
           messageKey: 'REDUNIQ_PAYMENT_REFUNDED' as TMessageKey,
+          variables: undefined,
           data: {
             refundTransactionId: voidRefundTransactionId,
             refundedBy: 'void',
@@ -359,6 +368,7 @@ const refundRedUniqPayment = async (orderId: string) => {
 
     return {
       messageKey: 'REDUNIQ_PAYMENT_REFUNDED' as TMessageKey,
+      variables: undefined,
       data: {
         refundTransactionId,
       },
@@ -395,10 +405,14 @@ const payWithSavedToken = async (
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this checkout session',
+    });
   }
 
   if (summary.isConvertedToOrder) {
@@ -428,13 +442,15 @@ const payWithSavedToken = async (
 
   const existingVendor = await Vendor.findById(summary.vendorId).lean();
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ_API_URL_NOT_CONFIGURED',
+      'PAYMENT_GATEWAY_CONFIG_MISSING',
     );
   }
 
@@ -594,10 +610,14 @@ const handlePaymentFailure = async (
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to view this transaction data.',
+    });
   }
 
   if (!summary.isConvertedToOrder) {
@@ -607,6 +627,7 @@ const handlePaymentFailure = async (
 
   return {
     messageKey: 'PAYMENT_STATUS_RESET_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: null,
   };
 };
@@ -629,7 +650,9 @@ const createIngredientRedUniqPayment = async (
 
     const vendorInfo = await Vendor.findById(currentUser._id).session(session);
     if (!vendorInfo) {
-      throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Vendor Profile',
+      });
     }
 
     const pendingOrders = await IngredientOrder.find({
@@ -671,8 +694,8 @@ const createIngredientRedUniqPayment = async (
         .session(session);
 
       if (!ingredient) {
-        throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND', {
-          ingredientId: String(item.ingredientId),
+        throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+          entity: 'Ingredient',
         });
       }
 
@@ -827,10 +850,9 @@ const createIngredientRedUniqPayment = async (
       !result?.code ||
       (result.code !== '00000000' && result.code !== '17000000000')
     ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'REDUNIQ_PAYMENT_INITIATION_FAILED',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_OPERATION_FAILED', {
+        operation: 'initiate payment with REDUNIQ. Please try again',
+      });
     }
 
     if (!token) {
@@ -848,16 +870,16 @@ const createIngredientRedUniqPayment = async (
 
       return {
         messageKey: 'INGREDIENT_REDUNIQ_PAYMENT_SESSION_CREATED' as TMessageKey,
+        variables: undefined,
         data: {
           redirectUrl: redirectUrl,
           paymentToken: token,
         },
       };
     } else {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'REDUNIQ_PAYMENT_INITIATION_FAILED',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_OPERATION_FAILED', {
+        operation: 'initiate payment with REDUNIQ. Please try again',
+      });
     }
   } catch (error: unknown) {
     if (session.inTransaction()) {

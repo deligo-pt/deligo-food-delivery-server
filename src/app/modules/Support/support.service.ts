@@ -88,36 +88,35 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
   if (payload.referenceOrderId && !isAgent) {
     const order = await Order.findById(payload.referenceOrderId);
     if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
     if (
       order.customerId.toString() !== loggedInUser?._id.toString() &&
       currentUser.role === 'CUSTOMER'
     ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'NOT_AUTHORIZED_FOR_ORDER_SUPPORT_TICKET',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+        action: 'create a support ticket for this order',
+      });
     }
 
     if (
       order.vendorId.toString() !== loggedInUser?._id.toString() &&
       (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR')
     ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'NOT_AUTHORIZED_FOR_ORDER_SUPPORT_TICKET',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+        action: 'create a support ticket for this order',
+      });
     }
 
     if (
       currentUser?.role === 'DELIVERY_PARTNER' &&
       order?.deliveryPartnerId?.toString() !== loggedInUser._id.toString()
     ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'NOT_AUTHORIZED_FOR_ORDER_SUPPORT_TICKET',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+        action: 'create a support ticket for this order',
+      });
     }
   }
 
@@ -173,6 +172,7 @@ const createMessage = async (payload: any, currentUser: TCurrentUser) => {
   await ticket.save();
   return {
     messageKey: 'MESSAGE_PROCESSED_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: newMessage,
   };
 };
@@ -205,7 +205,8 @@ const getAllTickets = async (
     .paginate()
     .fields();
   return {
-    messageKey: 'TICKETS_RETRIEVED' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Support Tickets' },
     meta: await qb.countTotal(),
     data: await qb.modelQuery,
   };
@@ -220,7 +221,8 @@ const getMessagesByTicketId = async (
     .paginate()
     .fields();
   return {
-    messageKey: 'CHAT_HISTORY_RETRIEVED' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Chat History' },
     meta: await qb.countTotal(),
     data: await qb.modelQuery,
   };
@@ -250,6 +252,7 @@ const markReadByAdminOrUser = async (
   }
   return {
     messageKey: 'MESSAGES_MARKED_AS_READ' as TMessageKey,
+    variables: undefined,
     data: null,
   };
 };
@@ -284,6 +287,7 @@ const closeTicket = async (ticketId: string, currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'TICKET_CLOSED' as TMessageKey,
+    variables: undefined,
     data: { success: true },
   };
 };

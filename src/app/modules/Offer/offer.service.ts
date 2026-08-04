@@ -159,7 +159,8 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   });
 
   return {
-    messageKey: 'OFFER_CREATED_SUCCESS',
+    messageKey: 'COMMON_CREATED_SUCCESS',
+    variables: { entity: 'Offer' },
     data: offer,
   };
 };
@@ -181,7 +182,9 @@ const updateOffer = async (
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer || offer.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Offer',
+    });
   }
 
   // --------------------------------------------------
@@ -189,7 +192,9 @@ const updateOffer = async (
   // --------------------------------------------------
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_UPDATE_OFFER');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'update this offer',
+    });
   }
 
   // --------------------------------------------------
@@ -223,10 +228,7 @@ const updateOffer = async (
         !buyProduct ||
         buyProduct.vendorId.toString() !== currentUser._id.toString()
       ) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          'BOGO_BUY_PRODUCT_NOT_OWNED',
-        );
+        throw new AppError(httpStatus.FORBIDDEN, 'BOGO_BUY_PRODUCT_NOT_OWNED');
       }
     }
     if (payload.bogo.getProductId) {
@@ -235,10 +237,7 @@ const updateOffer = async (
         !getProduct ||
         getProduct.vendorId.toString() !== currentUser._id.toString()
       ) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          'BOGO_GET_PRODUCT_NOT_OWNED',
-        );
+        throw new AppError(httpStatus.FORBIDDEN, 'BOGO_GET_PRODUCT_NOT_OWNED');
       }
     }
   }
@@ -299,20 +298,26 @@ const updateOffer = async (
   }
 
   if (offerType === 'FREE_DELIVERY') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'FREE_DELIVERY_UPDATE_DISABLED',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'FREE_DELIVERY_UPDATE_DISABLED');
   }
 
   // Merge partial bogo updates onto the existing bogo config
   if (payload.bogo && offer.bogo) {
-    payload.bogo = { ...offer.bogo, ...payload.bogo };
+    const plainOffer = offer.toObject();
+
+    payload.bogo = {
+      ...plainOffer.bogo,
+      ...payload.bogo,
+    };
   }
 
   if (offerType === 'BOGO') {
     const bogo = payload.bogo ?? offer.bogo;
-    if (!bogo?.buyQty || !bogo?.getQty || (!bogo.buyProductId && !bogo.buyCategoryId)) {
+    if (
+      !bogo?.buyQty ||
+      !bogo?.getQty ||
+      (!bogo.buyProductId && !bogo.buyCategoryId)
+    ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'BOGO_REQUIRES_BUY_TRIGGER_AND_QUANTITIES',
@@ -348,7 +353,8 @@ const updateOffer = async (
   );
 
   return {
-    messageKey: 'OFFER_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Offer' },
     data: updatedOffer,
   };
 };
@@ -363,7 +369,9 @@ const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
 
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Offer',
+    });
   }
 
   if (offer.isDeleted) {
@@ -373,10 +381,9 @@ const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
 
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_AUTHORIZED_TO_CHANGE_OFFER_STATUS',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'change the status of this offer',
+    });
   }
 
   if (!offer.isActive && offer.expiresAt < new Date()) {
@@ -400,13 +407,14 @@ const validateAndApplyOffer = async (
 ) => {
   let checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Session',
+    });
 
   if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'CHECKOUT_DOES_NOT_BELONG_TO_USER',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'This checkout session belongs to another profile.',
+    });
   }
   if (checkoutData.isConvertedToOrder) {
     throw new AppError(
@@ -424,6 +432,7 @@ const validateAndApplyOffer = async (
   if (checkoutData.offer?.isApplied && alreadyAppliedCode === inputCodeClean) {
     return {
       messageKey: 'OFFER_APPLIED_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: checkoutData,
     };
   }
@@ -462,6 +471,7 @@ const validateAndApplyOffer = async (
 
     return {
       messageKey: 'OFFER_REMOVED_OR_INVALID' as TMessageKey,
+      variables: undefined,
       data: updatedCheckout,
     };
   }
@@ -486,6 +496,7 @@ const validateAndApplyOffer = async (
 
   return {
     messageKey: 'OFFER_APPLIED_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: updatedCheckout,
   };
 };
@@ -498,12 +509,16 @@ const getAvailableOffersForCheckout = async (
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Session',
+    });
   }
 
   // SECURITY CHECK: Ensure the customer can only access their own checkout session offers
   if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this checkout session',
+    });
   }
 
   const { vendorId, orderCalculation, items } = checkoutData;
@@ -702,7 +717,9 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
     offer.vendorId?._id.toString() !== currentUser._id.toString() &&
     !offer.isGlobal
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_VIEW_OFFER');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this offer',
+    });
   }
 
   return {
@@ -725,7 +742,9 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Offer',
+    });
   }
 
   // --------------------------------------------------
@@ -740,7 +759,9 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_DELETE_OFFER');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'delete this offer',
+    });
   }
 
   // --------------------------------------------------
@@ -761,7 +782,8 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   await offer.save();
 
   return {
-    messageKey: 'OFFER_DELETED_SUCCESS',
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS',
+    variables: { entity: 'Offer' },
   };
 };
 
@@ -778,10 +800,9 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   if (!isAdmin) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_ADMIN_CAN_PERMANENTLY_DELETE_OFFER',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Only administrators can permanently delete an offer.',
+    });
   }
 
   // --------------------------------------------------
@@ -789,7 +810,9 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Offer',
+    });
   }
 
   // --------------------------------------------------
@@ -815,7 +838,8 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   await Offer.findByIdAndDelete(id);
 
   return {
-    messageKey: 'OFFER_PERMANENTLY_DELETED_SUCCESS',
+    messageKey: 'COMMON_PERMANENTLY_DELETED_SUCCESS',
+    variables: { entity: 'Offer' },
   };
 };
 export const OfferServices = {

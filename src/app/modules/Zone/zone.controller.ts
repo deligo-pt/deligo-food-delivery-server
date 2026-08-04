@@ -22,6 +22,7 @@ const createZoneController = catchAsync(async (req, res) => {
     statusCode: httpStatus.CREATED,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -36,6 +37,7 @@ const checkPointInZoneController = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -47,6 +49,7 @@ const getAllZonesController = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -60,6 +63,7 @@ const getSingleZoneController = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -81,6 +85,7 @@ const updateZoneController = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

@@ -46,15 +46,11 @@ export const cartMessages = {
     en: 'Quantity is required when adding a new item to cart.',
     pt: 'A quantidade e obrigatoria ao adicionar um novo item ao carrinho.',
   },
-  PRODUCT_NOT_FOUND: {
-    en: 'This item could not be found.',
-    pt: 'Este item não pôde ser encontrado.',
-  },
   STORE_CLOSED_OR_UNAPPROVED: {
     en: 'This restaurant is temporarily unavailable.',
     pt: 'Este restaurante está temporariamente indisponível.',
   },
-  TAX_RECORD_NOT_FOUND: {
+  CART_TAX_CONFIG_MISSING: {
     en: 'Tax profile configuration missing.',
     pt: 'Configuração do perfil de impostos ausente.',
   },
@@ -79,10 +75,6 @@ export const cartMessages = {
       `Not enough stock available. You already have ${vars.quantity} in your cart.`,
     pt: (vars: { quantity: number }) =>
       `Estoque insuficiente. Você já possui ${vars.quantity} no carrinho.`,
-  },
-  CART_NOT_FOUND: {
-    en: 'Your cart could not be found.',
-    pt: 'Seu carrinho não pôde ser encontrado.',
   },
   VENDOR_ID_REQUIRED_FOR_BULK: {
     en: 'Vendor ID is required for bulk toggle.',

@@ -3,14 +3,6 @@ export const pointsMessages = {
     en: 'Points have already been added for this order.',
     pt: 'Os pontos já foram atribuídos para este pedido.',
   },
-  UNAUTHORIZED_ORDER_NOT_BELONG_TO_USER: {
-    en: 'Access denied. This order belongs to another profile.',
-    pt: 'Acesso negado. Este pedido pertence a outro perfil.',
-  },
-  UNAUTHORIZED_NOT_ASSIGNED_DELIVERY_PARTNER: {
-    en: 'Access denied. You are not the assigned delivery partner for this order.',
-    pt: 'Acesso negado. Você não é o parceiro de entrega atribuído a este pedido.',
-  },
   POINTS_ONLY_FOR_DELIVERED_ORDER: {
     en: (vars: { status: string }) =>
       `Points can only be earned for DELIVERED orders. Current status: ${vars.status}.`,
@@ -23,10 +15,6 @@ export const pointsMessages = {
     pt: (vars: { status: string }) =>
       `Os pontos não podem ser atribuídos. O status do pedido deve ser ENTREGUE. Status atual: ${vars.status}.`,
   },
-  GLOBAL_SETTINGS_NOT_RETRIEVED: {
-    en: 'Global system configuration settings could not be found.',
-    pt: 'Não foi possível recuperar as configurações globais do sistema.',
-  },
   ORDER_POINTS_ADDED_SUCCESS: {
     en: 'Order points added successfully!',
     pt: 'Pontos do pedido adicionados com sucesso!',
@@ -38,18 +26,6 @@ export const pointsMessages = {
   INSUFFICIENT_POINTS_BALANCE: {
     en: 'Insufficient points balance.',
     pt: 'Saldo de pontos insuficiente.',
-  },
-  POINTS_FETCHED_SUCCESS: {
-    en: 'Points balance loaded successfully.',
-    pt: 'Saldo de pontos carregado com sucesso.',
-  },
-  POINTS_NOT_FOUND: {
-    en: 'Points details could not be found.',
-    pt: 'Pontos não encontrados.',
-  },
-  POINTS_LOG_BACKUP_LOGGING_FAILED: {
-    en: 'Failed to save points backup history.',
-    pt: 'Falha no registro de backup do histórico de pontos.',
   },
   CRITICAL_FAILED_TO_LOG_LOYALTY_ERROR: {
     en: 'System error: Failed to log loyalty details.',

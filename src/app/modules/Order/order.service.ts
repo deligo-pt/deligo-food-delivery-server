@@ -151,7 +151,8 @@ const finalizeCheckoutIntoOrder = async (
     });
 
     return {
-      messageKey: 'ORDER_CREATED_SUCCESS',
+      messageKey: 'ORDER_PLACED_SUCCESS',
+      variables: undefined,
       data: order,
     };
   } catch (err) {
@@ -176,10 +177,14 @@ const createOrderAfterRedUniqPayment = async (
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this checkout session',
+    });
   }
 
   if (summary.isConvertedToOrder) {
@@ -191,7 +196,9 @@ const createOrderAfterRedUniqPayment = async (
 
   const existingVendor = await Vendor.findById(summary.vendorId).lean();
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   const verifyPayload = {
@@ -245,10 +252,9 @@ const updateOrderStatusByVendor = async (
 ) => {
   // 1. Authorization & Role Check
   if (!currentUser || currentUser.role !== 'VENDOR') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_AUTHORIZED_ACCEPT_REJECT_ORDERS',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'accept or reject orders',
+    });
   }
 
   if (currentUser.status !== 'APPROVED') {
@@ -299,7 +305,9 @@ const updateOrderStatusByVendor = async (
     });
 
     if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     const vendor = order.vendorId as any;
@@ -663,7 +671,9 @@ const cancelOrderByCustomer = async (
   reason: string,
 ) => {
   if (!currentUser || currentUser.role !== 'CUSTOMER') {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_CANCEL_ORDER');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'cancel this order',
+    });
   }
 
   if (!reason) {
@@ -693,7 +703,9 @@ const cancelOrderByCustomer = async (
     });
 
     if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     if (!order.isPaid) {
@@ -711,7 +723,9 @@ const cancelOrderByCustomer = async (
       ORDER_STATUS.DELIVERED,
     ];
 
-    if (NON_CANCELABLE_STATUSES.some((status) => order.orderStatus === status)) {
+    if (
+      NON_CANCELABLE_STATUSES.some((status) => order.orderStatus === status)
+    ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'ORDER_CANNOT_BE_CANCELED_OR_REJECTED_AT_STAGE',
@@ -886,6 +900,7 @@ const cancelOrderByCustomer = async (
 
     return {
       messageKey: 'ORDER_CANCELED_BY_CUSTOMER_SUCCESS',
+      variables: undefined,
       data: order,
     };
   } catch (error) {
@@ -928,7 +943,9 @@ const broadcastOrderToPartners = async (
   );
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
   }
 
   if (order.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
@@ -1082,7 +1099,9 @@ const partnerAcceptsDispatchedOrder = async (
     currentUser.status !== 'APPROVED' ||
     currentUser.role !== 'DELIVERY_PARTNER'
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, 'PARTNER_NOT_APPROVED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'The selected delivery partner is not approved.',
+    });
   }
 
   if (
@@ -1110,7 +1129,10 @@ const partnerAcceptsDispatchedOrder = async (
       const order = await Order.findOne({ orderId })
         .populate('vendorId')
         .session(session);
-      if (!order) throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      if (!order)
+        throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+          entity: 'Order',
+        });
 
       vendorUserId = (order.vendorId as any)?.userId;
 
@@ -1291,7 +1313,9 @@ const updateOrderStatusByDeliveryPartner = async (
 ) => {
   const { orderStatus, deliveryProofImage, reason } = payload;
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
-    throw new AppError(httpStatus.FORBIDDEN, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   const validTransitions: Record<string, string> = {
@@ -1361,7 +1385,9 @@ const updateOrderStatusByDeliveryPartner = async (
     }).select('orderStatus');
 
     if (!orderCheck) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     if (orderCheck?.orderStatus === payload.orderStatus) {
@@ -1408,7 +1434,8 @@ const updateOrderStatusByDeliveryPartner = async (
   });
 
   return {
-    messageKey: 'ORDER_STATUS_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Order Status' },
     data: updatedOrder,
   };
 };
@@ -1508,7 +1535,8 @@ const getAllOrders = async (
   const data = await builder.modelQuery.lean();
 
   return {
-    messageKey: 'ORDERS_RETRIEVED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Orders', isPlural: true },
     meta,
     data,
   };
@@ -1563,10 +1591,9 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
       break;
 
     default:
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'INVALID_ROLE_OR_PERMISSION_DENIED',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'Security check failed due to invalid role permissions.',
+      });
   }
 
   // ------------------------------------------------------
@@ -1596,11 +1623,14 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
   const order = await query.lean();
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
   }
 
   return {
-    messageKey: 'ORDER_RETRIEVED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Order Tracking' },
     data: order,
   };
 };
@@ -1609,11 +1639,15 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
 const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
   // Enforce role barrier safety
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
-    throw new AppError(httpStatus.FORBIDDEN, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(httpStatus.FORBIDDEN, 'PARTNER_NOT_APPROVED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'The selected delivery partner is not approved.',
+    });
   }
 
   const currentPartnerPoolId = currentUser._id.toString();
@@ -1639,7 +1673,8 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'DELIVERY_PARTNER_DISPATCH_ORDER_FETCHED_SUCCESS',
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Available Delivery Tasks' },
     data: orders,
   };
 };
@@ -1648,14 +1683,15 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
 const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
   // Enforce absolute role barrier safety
   if (currentUser.role !== 'DELIVERY_PARTNER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_DELIVERY_PARTNERS_CAN_ACCESS_CURRENT_ORDER',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'This view is restricted to active delivery riders only.',
+    });
   }
 
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(httpStatus.FORBIDDEN, 'PARTNER_NOT_APPROVED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'The selected delivery partner is not approved.',
+    });
   }
 
   const currentOrderId = currentUser.operationalData?.currentOrderId;
@@ -1685,7 +1721,8 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'DELIVERY_PARTNER_CURRENT_ORDER_FETCHED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Active Delivery' },
     data: order,
   };
 };
@@ -1706,7 +1743,9 @@ const reorderOrder = async (
   }).lean();
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
   }
 
   let cartResult: any = null;
@@ -1733,6 +1772,7 @@ const reorderOrder = async (
 
   return {
     messageKey: 'ORDER_REORDER_SUCCESS',
+    variables: undefined,
     data: cartResult?.data || null,
   };
 };

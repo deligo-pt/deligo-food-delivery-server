@@ -30,7 +30,7 @@ const checkout = async (
     }
 
     if (!cart || !cart.items || cart.items.length === 0) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'CART_EMPTY');
+      throw new AppError(httpStatus.BAD_REQUEST, 'CHECKOUT_CART_EMPTY');
     }
 
     selectedItems = cart.items.filter((i: any) => i.isActive === true);
@@ -123,7 +123,10 @@ const checkout = async (
     const product = products.find(
       (p) => p._id.toString() === item.productId.toString(),
     );
-    if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+    if (!product)
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Item',
+      });
 
     let basePrice = product.pricing?.price || 0;
     let finalItemNameObj = { en: '', pt: '' };
@@ -146,7 +149,9 @@ const checkout = async (
         .find((opt: any) => opt.sku === item.variationSku);
 
       if (!selectedOption) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'VARIATION_NOT_FOUND');
+        throw new AppError(httpStatus.BAD_REQUEST, 'NOT_FOUND_MESSAGE', {
+          entity: 'Variation',
+        });
       }
 
       basePrice = selectedOption.price;
@@ -433,7 +438,8 @@ const checkout = async (
   const summary = await CheckoutSummary.create(finalSummaryData);
 
   return {
-    messageKey: 'CHECKOUT_SUCCESS',
+    messageKey: 'ORDER_PLACED_SUCCESS',
+    variables: undefined,
     data: summary,
   };
 };
@@ -452,11 +458,15 @@ const getCheckoutSummary = async (
   const summary = await CheckoutSummary.findById(checkoutSummaryId).lean();
 
   if (!summary) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
   }
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this checkout session',
+    });
   }
 
   if (summary.isConvertedToOrder) {
