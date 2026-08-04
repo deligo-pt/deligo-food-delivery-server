@@ -58,6 +58,7 @@ const transactionSchema = new Schema<TTransaction>(
         'REFERRAL_BONUS',
         'PLATFORM_TAX_COLLECTION',
         'PLATFORM_SERVICE_CHARGE',
+        'REFUND',
       ],
     },
     status: {

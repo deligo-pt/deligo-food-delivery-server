@@ -45,4 +45,8 @@ export const checkoutMessages = {
     en: 'A variation SKU is required for this item.',
     pt: 'Um SKU de variação é necessário para este item.',
   },
+  PAYOUT_SPLIT_RECONCILIATION_MISMATCH: {
+    en: 'Unable to calculate this order. Please try again or contact support.',
+    pt: 'Não foi possível calcular este pedido. Por favor, tente novamente ou contacte o suporte.',
+  },
 } as const;

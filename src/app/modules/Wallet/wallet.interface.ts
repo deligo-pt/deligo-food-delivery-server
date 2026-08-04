@@ -12,6 +12,7 @@ export type TWallet = {
   lastSettlementDate?: Date;
 
   currentBalance: number; // CURRENT WITHDRAWABLE / PAYABLE / REFUND BALANCE
+  lockedBalance: number; // RESERVED AGAINST AN IN-FLIGHT (PENDING) PAYOUT — NOT AVAILABLE FOR NEW SETTLEMENT
   lifetimeEarnings: number; // CUMULATIVE GROSS REVENUE / INFLOW
   currentTaxLiability: number; // TAX CURRENTLY PENDING FOR AT DECLARATION
   lifetimeTaxProcessed: number; // CUMULATIVE TAX PROCESSED SO FAR

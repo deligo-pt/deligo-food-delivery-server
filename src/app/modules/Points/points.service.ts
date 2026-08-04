@@ -112,21 +112,28 @@ const addOrderPoints = async (
       pointsEarned: pointsToAdd,
     };
   } catch (error: any) {
-    if (!externalSession) await session.abortTransaction();
-    try {
-      await PointsLog.create({
-        userId: { id: userObjectId, model: 'Customer', role: role },
-        points: 0,
-        transactionType: 'FAILED_LOG',
-        referenceId: orderId as any,
-        onModel: 'Order',
-        description: `FAILED: ${error.message}`,
-      });
-    } catch (logError) {
-      void logError;
+    if (!externalSession) {
+      await session.abortTransaction();
+      try {
+        await PointsLog.create({
+          userId: { id: userObjectId, model: 'Customer', role: role },
+          points: 0,
+          transactionType: 'FAILED_LOG',
+          referenceId: orderId as any,
+          onModel: 'Order',
+          description: `FAILED: ${error.message}`,
+        });
+      } catch (logError) {
+        void logError;
+      }
+
+      return { success: false, error: error.message };
     }
 
-    return { success: false, error: error.message };
+    // Under an external (caller-owned) session, this failure must propagate
+    // so the caller's outer transaction aborts instead of silently
+    // committing wallet/earning writes without the points side-effect.
+    throw error;
   } finally {
     if (!externalSession) session.endSession();
   }
@@ -244,27 +251,38 @@ const addDeliveryPartnerPoints = async (
       pointsEarned: points,
     };
   } catch (error: any) {
-    if (!externalSession) await session.abortTransaction();
-    // --- Database Logging: Save failure info to PointsLog as FAILED_LOG ---
-    try {
-      await PointsLog.create({
-        userId: { id: deliveryPartnerId, model: 'DeliveryPartner', role: role },
-        points: 0,
-        transactionType: 'FAILED_LOG',
-        referenceId: orderId as any,
-        onModel: 'Order',
-        description: `FAILED: ${error.message}`,
-      });
-    } catch (logError) {
-      void logError;
+    if (!externalSession) {
+      await session.abortTransaction();
+      // --- Database Logging: Save failure info to PointsLog as FAILED_LOG ---
+      try {
+        await PointsLog.create({
+          userId: {
+            id: deliveryPartnerId,
+            model: 'DeliveryPartner',
+            role: role,
+          },
+          points: 0,
+          transactionType: 'FAILED_LOG',
+          referenceId: orderId as any,
+          onModel: 'Order',
+          description: `FAILED: ${error.message}`,
+        });
+      } catch (logError) {
+        void logError;
+      }
+
+      // Return failure object instead of throwing, to keep the main flow alive
+      return {
+        success: false,
+        error: error.message,
+        pointsEarned: 0,
+      };
     }
 
-    // Return failure object instead of throwing, to keep the main flow alive
-    return {
-      success: false,
-      error: error.message,
-      pointsEarned: 0,
-    };
+    // Under an external (caller-owned) session, this failure must propagate
+    // so the caller's outer transaction aborts instead of silently
+    // committing wallet/earning writes without the points side-effect.
+    throw error;
   } finally {
     if (!externalSession) session.endSession();
   }
