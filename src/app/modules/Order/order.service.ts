@@ -436,7 +436,7 @@ const updateOrderStatusByVendor = async (
                 },
                 update: {
                   $inc: {
-                    'variations.options.$[elem].stockQuantity':
+                    'variations.$[].options.$[elem].stockQuantity':
                       -item.itemSummary.quantity,
                   },
                 },
@@ -552,7 +552,7 @@ const updateOrderStatusByVendor = async (
                 },
                 update: {
                   $inc: {
-                    'variations.options.$[elem].stockQuantity':
+                    'variations.$[].options.$[elem].stockQuantity':
                       item.itemSummary.quantity,
                   },
                 },
@@ -799,7 +799,7 @@ const cancelOrderByCustomer = async (
               },
               update: {
                 $inc: {
-                  'variations.options.$[elem].stockQuantity':
+                  'variations.$[].options.$[elem].stockQuantity':
                     item.itemSummary.quantity,
                 },
               },
