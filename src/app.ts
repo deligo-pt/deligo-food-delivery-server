@@ -12,6 +12,17 @@ import { rateLimiter } from './app/middlewares/rateLimiter';
 import router from './app/routes';
 import { parseLanguage } from './app/middlewares/parseLanguage';
 import { getSwaggerDocument } from './app/docs/swagger';
+import {
+  customCss,
+  customfavIcon,
+  customSiteTitle,
+} from './app/docs/swaggerTheme';
+import {
+  apiDocsAuth,
+  apiDocsBasicAuthOnly,
+  listApiDocsDevices,
+  revokeApiDocsDevice,
+} from './app/middlewares/apiDocsAuth';
 
 const app: Application = express();
 
@@ -39,14 +50,23 @@ app.use(express.urlencoded({ extended: true }));
 // app.use(logIPToDB);
 
 // API docs — reads openapi.json fresh on every request so edits show up without a restart
-app.get('/openapi.json', (req: Request, res: Response) => {
+app.get('/openapi.json', apiDocsAuth, (req: Request, res: Response) => {
   res.json(getSwaggerDocument());
 });
+// Device management routes must be registered before the /api-docs mount below, otherwise
+// swaggerUi.serve would swallow them
+app.get('/api-docs/devices', apiDocsBasicAuthOnly, listApiDocsDevices);
+app.delete('/api-docs/devices/:id', apiDocsBasicAuthOnly, revokeApiDocsDevice);
 app.use(
   '/api-docs',
+  apiDocsAuth,
   swaggerUi.serve,
   (req: Request, res: Response, next: NextFunction) =>
-    swaggerUi.setup(getSwaggerDocument())(req, res, next),
+    swaggerUi.setup(getSwaggerDocument(), {
+      customCss,
+      customfavIcon,
+      customSiteTitle,
+    })(req, res, next),
 );
 
 app.use(rateLimiter('global'));
