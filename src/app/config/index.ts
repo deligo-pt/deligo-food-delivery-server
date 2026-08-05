@@ -29,6 +29,10 @@ export default {
     bulkgate_app_id: process.env.BULKGATE_APP_ID,
   },
   origins: process.env.ORIGINS,
+  api_docs: {
+    user: process.env.API_DOCS_USER,
+    password: process.env.API_DOCS_PASSWORD,
+  },
   db_url: process.env.DB_URL,
   bcrypt_salt_rounds: process.env.BCRYPT_SALT_ROUNDS,
   jwt: {
