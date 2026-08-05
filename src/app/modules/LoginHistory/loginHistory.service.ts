@@ -21,7 +21,9 @@ const resolveAuthUserId = async (currentUser: TCurrentUser) => {
   const authUser = await AuthUser.findOne({
     userId: currentUser.userId,
     role: currentUser.role,
-  }).select('_id');
+  })
+    .select('_id')
+    .lean();
 
   if (!authUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');

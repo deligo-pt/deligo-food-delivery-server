@@ -16,7 +16,9 @@ const getAllWallets = async (
     const partners = await DeliveryPartner.find({
       'registeredBy.id': new mongoose.Types.ObjectId(currentUser._id),
       'registeredBy.model': 'FleetManager',
-    }).select('_id');
+    })
+      .select('_id')
+      .lean();
     const partnerIds = partners.map((p) => p._id);
     query.userId = { $in: partnerIds };
     query.userModel = 'DeliveryPartner';

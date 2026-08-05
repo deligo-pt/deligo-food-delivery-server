@@ -91,6 +91,10 @@ export const paymentMessages = {
     en: 'Payment with your saved card was declined. Please try again or use a different method.',
     pt: 'O pagamento com o seu cartão guardado foi recusado. Tente novamente ou use outro método.',
   },
+  SAVED_TOKEN_PAYMENT_TEMPORARILY_UNAVAILABLE: {
+    en: 'Paying with a saved card is temporarily unavailable. Please pay with your card details directly instead.',
+    pt: 'O pagamento com cartão guardado está temporariamente indisponível. Por favor, pague com os dados do seu cartão diretamente.',
+  },
   NOTIFICATION_RECEIVED: {
     en: 'Notification received.',
     pt: 'Notificação recebida.',

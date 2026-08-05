@@ -158,7 +158,9 @@ const getAllSosAlerts = async (
   } else if (currentUser.role === 'FLEET_MANAGER') {
     const partners = await DeliveryPartner.find({
       'registeredBy.id': currentUser._id.toString(),
-    }).select('_id');
+    })
+      .select('_id')
+      .lean();
 
     const partnerIds = partners.map((p) => p._id);
 

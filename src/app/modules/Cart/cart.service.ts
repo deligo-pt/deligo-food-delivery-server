@@ -524,11 +524,27 @@ const toggleCartItemStatus = async (
       });
     }
 
+    if (determineActiveState) {
+      const vendorItems = cart.items.filter(
+        (i: any) => i.vendorId.toString() === targetVendorIdStr,
+      );
+      const productIds = [
+        ...new Set(vendorItems.map((i: any) => i.productId.toString())),
+      ];
+      const products = await Product.find({
+        _id: { $in: productIds },
+        isDeleted: false,
+        isApproved: true,
+      }).lean();
+      const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+
+      for (const item of vendorItems) {
+        await refreshItemPricingAndTotals(item, productMap);
+      }
+    }
+
     for (const item of cart.items) {
       if (item.vendorId.toString() === targetVendorIdStr) {
-        if (determineActiveState) {
-          await refreshItemPricingAndTotals(item);
-        }
         item.isActive = determineActiveState;
       }
     }
@@ -565,8 +581,20 @@ const toggleCartItemStatus = async (
         }
       }
 
+      const toggleProductIds = [
+        ...new Set(itemsToToggle.map((i: any) => i.productId.toString())),
+      ];
+      const toggleProducts = await Product.find({
+        _id: { $in: toggleProductIds },
+        isDeleted: false,
+        isApproved: true,
+      }).lean();
+      const toggleProductMap = new Map(
+        toggleProducts.map((p) => [p._id.toString(), p]),
+      );
+
       for (const item of itemsToToggle) {
-        await refreshItemPricingAndTotals(item);
+        await refreshItemPricingAndTotals(item, toggleProductMap);
       }
     }
 
@@ -1021,8 +1049,10 @@ const getAllCart = async (
   let redisCarts: any[] = [];
 
   if (redisKeys && redisKeys.length > 0) {
-    for (const key of redisKeys) {
-      const cartData = await RedisService.get<any>(key);
+    const fetchedCarts = await Promise.all(
+      redisKeys.map((key) => RedisService.get<any>(key)),
+    );
+    for (const cartData of fetchedCarts) {
       if (cartData && cartData.items && cartData.items.length > 0) {
         if (cartData.cartCalculation) {
           delete cartData.cartCalculation.taxableAmount;
@@ -1297,12 +1327,20 @@ const viewCart = async (
   if (cart.items && cart.items.length > 0) {
     let isCartDirty = false;
 
+    const cartProductIds = [
+      ...new Set(cart.items.map((item: any) => item.productId.toString())),
+    ];
+    const freshProducts = await Product.find({
+      _id: { $in: cartProductIds },
+      isDeleted: false,
+      isApproved: true,
+    }).lean();
+    const freshProductMap = new Map(
+      freshProducts.map((p) => [p._id.toString(), p]),
+    );
+
     for (const item of cart.items) {
-      const freshProduct = await Product.findOne({
-        _id: item.productId,
-        isDeleted: false,
-        isApproved: true,
-      }).lean();
+      const freshProduct = freshProductMap.get(item.productId.toString());
 
       if (!freshProduct) {
         if (item.isActive !== false) {

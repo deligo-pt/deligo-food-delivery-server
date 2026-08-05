@@ -164,14 +164,18 @@ const getAllRatings = async (
   if (currentUser.role === 'FLEET_MANAGER') {
     const myDeliveryPartners = await DeliveryPartner.find({
       'registeredBy.id': currentUser._id,
-    }).select('_id');
+    })
+      .select('_id')
+      .lean();
     const partnerIds = myDeliveryPartners.map((dp) => dp._id);
     query.targetId = { $in: [...partnerIds, currentUser._id] };
   } else if (currentUser.role === 'VENDOR') {
     const myProducts = await Product.find({
       vendorId: currentUser._id,
       isDeleted: false,
-    }).select('_id');
+    })
+      .select('_id')
+      .lean();
 
     const productIds = myProducts.map((product) => product._id);
 
@@ -202,7 +206,7 @@ const getAllRatings = async (
     ratingQuery.modelQuery = ratingQuery.modelQuery.populate(option);
   });
 
-  const data = await ratingQuery.modelQuery;
+  const data = await ratingQuery.modelQuery.lean();
   const meta = await ratingQuery.countTotal();
 
   return {
@@ -278,7 +282,9 @@ const getRatingSummary = async (currentUser: TCurrentUser) => {
   const myProducts = await Product.find({
     vendorId: currentUser._id,
     isDeleted: false,
-  }).select('_id');
+  })
+    .select('_id')
+    .lean();
 
   const productIds = myProducts.map((p) => p._id);
 

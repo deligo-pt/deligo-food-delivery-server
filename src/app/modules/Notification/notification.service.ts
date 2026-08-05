@@ -174,43 +174,41 @@ const sendToRole = (
             fcmToken: { $exists: true, $ne: '' },
           },
         },
-      });
+      })
+        .select('userId role loginDevices')
+        .lean();
 
-      for (const user of users) {
-        // const deviceTokens =
-        //   user.loginDevices
-        //     ?.filter(
-        //       (device: any) => device.isLoggedIn === true && device.fcmToken,
-        //     )
-        //     .map((device: any) => device.fcmToken) || [];
+      await Promise.allSettled(
+        users.map(async (user) => {
+          const deviceTokens =
+            user.loginDevices
+              ?.filter(
+                (device: any) =>
+                  device.fcmToken && device.fcmToken.trim() !== '',
+              )
+              .map((device: any) => device.fcmToken) || [];
 
-        const deviceTokens =
-          user.loginDevices
-            ?.filter(
-              (device: any) => device.fcmToken && device.fcmToken.trim() !== '',
-            )
-            .map((device: any) => device.fcmToken) || [];
+          const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
 
-        const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
+          if (uniqueTokens.length > 0) {
+            await sendPushSafely(uniqueTokens, {
+              title,
+              body: message,
+              data,
+              channelId: channelId || 'default',
+            });
+          }
 
-        if (uniqueTokens.length > 0) {
-          await sendPushSafely(uniqueTokens, {
+          await logNotification({
+            receiverId: user.userId,
+            receiverRole: user.role,
             title,
-            body: message,
+            message,
             data,
-            channelId: channelId || 'default',
+            type,
           });
-        }
-
-        await logNotification({
-          receiverId: user.userId,
-          receiverRole: user.role,
-          title,
-          message,
-          data,
-          type,
-        });
-      }
+        }),
+      );
     } catch (err) {
       console.error('sendToRole notification failed:', err);
     }
@@ -271,7 +269,7 @@ const getMyNotifications = async (
     .paginate()
     .fields();
   const meta = await notifications.countTotal();
-  const data = await notifications.modelQuery;
+  const data = await notifications.modelQuery.lean();
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Notifications', isPlural: true },
@@ -297,7 +295,7 @@ const getAllNotifications = async (
     .fields();
 
   const meta = await notifications.countTotal();
-  const data = await notifications.modelQuery;
+  const data = await notifications.modelQuery.lean();
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Notifications', isPlural: true },
@@ -544,7 +542,9 @@ const sendBroadcastNotification = async (
     }
 
     const userCursor = AuthUser.find(query)
+      .select('userId role email loginDevices profileId')
       .populate('profileId', 'name')
+      .lean()
       .cursor();
     setImmediate(async () => {
       try {
