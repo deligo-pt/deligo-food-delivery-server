@@ -370,7 +370,7 @@ const getAllVendors = async (
     .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
-  const data = await vendors.modelQuery;
+  const data = await vendors.modelQuery.lean();
 
   return {
     messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
@@ -590,7 +590,7 @@ const getAllVendorsForCustomer = async (
     .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
-  const rawData = await vendors.modelQuery;
+  const rawData = await vendors.modelQuery.lean();
 
   const vendorIds = rawData.map((v: any) => v._id);
 
@@ -851,7 +851,7 @@ const getAllVendorsForCustomerPublic = async (
     .populate('cuisinesData');
 
   const meta = await vendors.countTotal();
-  const rawData = await vendors.modelQuery;
+  const rawData = await vendors.modelQuery.lean();
 
   const vendorIds = rawData.map((v: any) => v._id);
 

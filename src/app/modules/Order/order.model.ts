@@ -70,6 +70,7 @@ const orderItemSchema = new Schema(
       originalPrice: { type: Number, required: true },
       productDiscountAmount: { type: Number, default: 0 },
       discountType: { type: String, enum: ['PERCENTAGE', 'FLAT'] },
+      priceAfterProductDiscount: { type: Number, required: true },
       promoDiscountAmount: { type: Number, default: 0 },
       unitPrice: { type: Number, required: true },
       lineTotal: { type: Number, required: true },
@@ -232,11 +233,18 @@ const orderSchema = new Schema<TOrder>(
 );
 
 // Indexes
-orderSchema.index({
-  orderStatus: 1,
-  deliveryPartnerId: 1,
-  dispatchPartnerPool: 1,
-});
+// dispatchPartnerPool/dispatchExpiresAt are only ever populated while
+// orderStatus === DISPATCHING (see broadcastOrderToPartners), so scope both
+// indexes to that status to keep them tiny instead of covering every
+// DELIVERED/CANCELED order forever.
+orderSchema.index(
+  {
+    orderStatus: 1,
+    deliveryPartnerId: 1,
+    dispatchPartnerPool: 1,
+  },
+  { partialFilterExpression: { orderStatus: 'DISPATCHING' } },
+);
 
 orderSchema.index({ customerId: 1, createdAt: -1 });
 
@@ -245,7 +253,10 @@ orderSchema.index({
   'items.productId': 1,
 });
 
-orderSchema.index({ orderStatus: 1, dispatchExpiresAt: 1 });
+orderSchema.index(
+  { orderStatus: 1, dispatchExpiresAt: 1 },
+  { partialFilterExpression: { orderStatus: 'DISPATCHING' } },
+);
 orderSchema.index({ deliveryPartnerId: 1, orderStatus: 1, createdAt: -1 });
 orderSchema.index({ 'items.productId': 1 });
 orderSchema.index({ createdAt: -1 });

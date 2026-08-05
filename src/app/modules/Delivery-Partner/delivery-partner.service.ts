@@ -320,7 +320,7 @@ const getAllDeliveryPartnersFromDB = async (
 
   const meta = await deliveryPartners.countTotal();
 
-  const data = await deliveryPartners.modelQuery;
+  const data = await deliveryPartners.modelQuery.lean();
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',

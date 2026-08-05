@@ -542,6 +542,8 @@ const payWithSavedToken = async (
 
     const { result = {}, transaction = {} } = response.data || {};
 
+    console.log({ response });
+
     if (!isRedUniqSuccess(result, transaction)) {
       summary.paymentStatus = 'FAILED';
       await summary.save();
@@ -574,14 +576,34 @@ const payWithSavedToken = async (
     }
 
     if (axios.isAxiosError(error) && error.response) {
+      console.error(
+        'REDUNIQ doPaymentToken HTTP error:',
+        error.response.status,
+        error.response.data,
+      );
+
       if (error.response.status === 502) {
         throw new AppError(
           error.response.status,
           'PAYMENT_GATEWAY_TEMP_UNAVAILABLE_502',
         );
       }
+
+      // Confirmed via direct sandbox testing: doPaymentToken crashes with an empty
+      // 500 body for this merchant account specifically — an account provisioning
+      // gap on REDUNIQ's side, not a per-request issue. Surface a clearer, honest
+      // message instead of the generic "network error" wording.
+      if (error.response.status === 500) {
+        throw new AppError(
+          httpStatus.SERVICE_UNAVAILABLE,
+          'SAVED_TOKEN_PAYMENT_TEMPORARILY_UNAVAILABLE',
+        );
+      }
+
       throw new AppError(error.response.status, 'GATEWAY_ERROR');
     }
+
+    console.error('REDUNIQ doPaymentToken failed (no HTTP response):', error);
 
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,

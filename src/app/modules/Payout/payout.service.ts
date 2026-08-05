@@ -537,7 +537,8 @@ const initiateAutomatedSettlement = async () => {
       },
     })
       .populate('userId', 'registeredBy bankDetails userId name')
-      .session(session);
+      .session(session)
+      .lean();
 
     if (eligibleWallets.length === 0) {
       await session.commitTransaction();

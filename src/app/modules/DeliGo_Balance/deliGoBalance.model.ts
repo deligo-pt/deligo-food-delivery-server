@@ -38,8 +38,6 @@ const deliGoBalanceSchema = new Schema<TDeliGoBalance>(
   },
 );
 
-deliGoBalanceSchema.index({ userId: 1, userModel: 1 });
-
 export const DeliGoBalance = model<TDeliGoBalance>(
   'DeliGoBalance',
   deliGoBalanceSchema,
