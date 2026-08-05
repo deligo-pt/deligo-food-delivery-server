@@ -228,7 +228,13 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
 );
 
 // --- Indexing and Plugins ---
+// Compound geo index: broadcastOrderToPartners() runs $geoNear filtered by
+// isDeleted/status/currentStatus, so those equality fields must lead the
+// 2dsphere key or every candidate outside the radius filter is scanned anyway.
 deliveryPartnerSchema.index({
+  isDeleted: 1,
+  status: 1,
+  'operationalData.currentStatus': 1,
   currentSessionLocation: '2dsphere',
 });
 deliveryPartnerSchema.index({ 'registeredBy.id': 1 });

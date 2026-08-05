@@ -41,7 +41,6 @@ const ratingSchema = new Schema<TRating>(
       type: Schema.Types.ObjectId,
       required: true,
       refPath: 'targetModel',
-      index: true,
     },
     targetModel: {
       type: String,

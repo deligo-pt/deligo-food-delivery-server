@@ -72,3 +72,12 @@ const PointsLogSchema = new Schema<TPointsLog>(
 export const PointsLog = model<TPointsLog>('PointsLog', PointsLogSchema);
 
 PointsSchema.index({ 'userId.id': 1, 'userId.model': 1 }, { unique: true });
+
+// Every EARN grant is preceded by an app-level findOne on this exact key
+// (see points.service.ts) to stop double-crediting for the same order; a
+// full collection scan on every order completion doesn't scale, and the
+// unique+partial constraint also closes the TOCTOU race the findOne leaves open.
+PointsLogSchema.index(
+  { 'userId.id': 1, referenceId: 1, transactionType: 1 },
+  { unique: true, partialFilterExpression: { transactionType: 'EARN' } },
+);

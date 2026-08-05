@@ -365,7 +365,10 @@ const checkout = async (
   // used to credit wallets downstream.
   const reconciliationDelta = roundTo2(
     finalGrandTotal -
-      (vendorNetPayout + riderNetEarnings + fleetFee + totalPlatformGrossHolding),
+      (vendorNetPayout +
+        riderNetEarnings +
+        fleetFee +
+        totalPlatformGrossHolding),
   );
   if (Math.abs(reconciliationDelta) > 0.01) {
     throw new AppError(
