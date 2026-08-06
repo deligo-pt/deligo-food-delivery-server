@@ -1,6 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { TCheckoutSummary } from './checkout.interface';
 import { localizedSchema } from '../../constant/GlobalModel/language.model';
+import { FULFILLMENT_TYPE } from '../Order/order.constant';
 import {
   PAYMENT_METHOD,
   PAYMENT_STATUS,
@@ -16,6 +17,13 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     vendorId: { type: Schema.Types.ObjectId, required: true, ref: 'Vendor' },
     customerEmail: { type: String, default: '' },
     contactNumber: { type: String, default: '' },
+
+    fulfillmentType: {
+      type: String,
+      enum: Object.values(FULFILLMENT_TYPE),
+      required: true,
+      default: FULFILLMENT_TYPE.DELIVERY,
+    },
 
     items: [
       {
@@ -182,18 +190,23 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
     },
 
     deliveryAddress: {
-      label: { type: String },
-      street: { type: String, required: true },
-      city: { type: String, required: true },
-      state: { type: String },
-      country: { type: String },
-      postalCode: { type: String },
-      longitude: { type: Number, required: true },
-      latitude: { type: Number, required: true },
-      geoAccuracy: { type: Number },
-      detailedAddress: {
-        type: String,
+      // Wrapped in `type: {...}` (rather than a bare nested object) so `default`
+      // can be set at this level — otherwise Mongoose auto-instantiates an empty
+      // subdocument for PICKUP checkouts and its required children fail to validate.
+      type: {
+        label: { type: String },
+        street: { type: String, required: true },
+        city: { type: String, required: true },
+        state: { type: String },
+        country: { type: String },
+        postalCode: { type: String },
+        longitude: { type: Number, required: true },
+        latitude: { type: Number, required: true },
+        geoAccuracy: { type: Number },
+        detailedAddress: { type: String },
       },
+      default: undefined,
+      _id: false,
     },
 
     paymentStatus: {

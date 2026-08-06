@@ -200,4 +200,32 @@ export const orderMessages = {
     en: 'Your order has been canceled successfully.',
     pt: 'O seu pedido foi cancelado com sucesso.',
   },
+
+  // ---------------------------------------------------------
+  // SELF-PICKUP / TAKEAWAY FLOW
+  // ---------------------------------------------------------
+  ORDER_MUST_BE_ACCEPTED_BEFORE_PREPARING: {
+    en: 'Order must be accepted before it can be prepared.',
+    pt: 'O pedido deve ser aceito antes de poder ser preparado.',
+  },
+  NOT_APPLICABLE_TO_PICKUP_ORDER: {
+    en: 'This action does not apply to self-pickup orders.',
+    pt: 'Esta ação não se aplica a pedidos de retirada no local.',
+  },
+  NO_SHOW_ONLY_FOR_PICKUP_ORDERS: {
+    en: 'No-show can only be marked for self-pickup orders.',
+    pt: 'A ausência só pode ser marcada para pedidos de retirada no local.',
+  },
+  ORDER_MUST_BE_READY_FOR_PICKUP_BEFORE_NO_SHOW: {
+    en: 'Order must be ready for pickup before it can be marked as no-show or verified.',
+    pt: 'O pedido deve estar pronto para retirada antes de ser marcado como não retirado ou verificado.',
+  },
+  INVALID_PICKUP_CODE: {
+    en: 'Invalid pickup code. Please check and try again.',
+    pt: 'Código de retirada inválido. Verifique e tente novamente.',
+  },
+  PICKUP_VERIFIED_SUCCESS: {
+    en: 'Pickup code verified — order handed over to the customer.',
+    pt: 'Código de retirada verificado — pedido entregue ao cliente.',
+  },
 } as const;

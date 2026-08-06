@@ -276,6 +276,36 @@ const getDeliveryPartnerCurrentOrder = catchAsync(async (req, res) => {
   });
 });
 
+// vendor/sub-vendor verifies customer's pickup code at the counter
+const verifyPickupCode = catchAsync(async (req, res) => {
+  const currentUser = req.user as TCurrentUser;
+  const orderId = req.params.orderId;
+  const { code } = req.body;
+
+  const result = await OrderServices.verifyPickupCode(
+    currentUser,
+    orderId,
+    code,
+  );
+
+  createActivityLog({
+    customUserId: currentUser?.userId,
+    action: 'Verified Self-Pickup Code',
+    target: `Order #${orderId}`,
+    type: 'INFO',
+  });
+
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
+    data: formattedData,
+  });
+});
+
 const reorderOrder = catchAsync(async (req, res) => {
   const result = await OrderServices.reorderOrder(
     req.params.orderId,
@@ -307,4 +337,5 @@ export const OrderControllers = {
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
   reorderOrder,
+  verifyPickupCode,
 };
