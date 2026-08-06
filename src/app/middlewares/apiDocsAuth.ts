@@ -16,7 +16,7 @@ const safeCompare = (a: string, b: string) => {
 export const DEVICE_KEY_PREFIX = 'api_docs:device:';
 const DEVICE_COOKIE_NAME = 'api_docs_device_id';
 const MAX_DEVICES = 10;
-const DEVICE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days, refreshed on every access
+const DEVICE_TTL_SECONDS = 20 * 60; // 20 min idle timeout, refreshed (slides forward) on every access
 
 export type TrackedDevice = {
   userAgent?: string;
@@ -74,7 +74,8 @@ export const apiDocsBasicAuthOnly = catchAsync(
 );
 
 // Gates /api-docs and /openapi.json behind HTTP Basic Auth, capped at MAX_DEVICES distinct
-// devices (tracked via a persistent cookie + Redis, TTL-refreshed so idle devices free up a slot)
+// devices (tracked via a persistent cookie + Redis; the slot's TTL slides forward on every
+// access and frees up after DEVICE_TTL_SECONDS of inactivity)
 export const apiDocsAuth = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   if (!checkBasicAuth(req, res)) return;
 

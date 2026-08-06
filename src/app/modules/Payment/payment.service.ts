@@ -625,8 +625,7 @@ const handleReduniqNotification = async (body: any) => {
   // payWithSavedToken suffixes checkoutSummaryId with `-<nanoid>` to satisfy
   // REDUNIQ's per-payment-unique order.ref requirement — strip it back off to
   // recover the real Mongo id. A plain initPayment ref (24-char hex) passes through.
-  const checkoutSummaryId =
-    rawRef.length > 24 ? rawRef.slice(0, 24) : rawRef;
+  const checkoutSummaryId = rawRef.length > 24 ? rawRef.slice(0, 24) : rawRef;
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary || summary.isConvertedToOrder) return;
