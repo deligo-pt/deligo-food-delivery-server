@@ -375,13 +375,12 @@ export const rebuildCheckoutSummary = async (
 
   const updatedItems = items.map((item: any, index: number) => {
     const itemOriginalGrandTotal = item.itemSummary.grandTotal;
+    const isBogoTargetItem =
+      isBogo && item.productId?.toString() === bogoTargetProductId;
     let lineOfferDiscount = 0;
 
     if (isBogo) {
-      lineOfferDiscount =
-        item.productId?.toString() === bogoTargetProductId
-          ? roundTo2(totalOfferDiscount)
-          : 0;
+      lineOfferDiscount = isBogoTargetItem ? roundTo2(totalOfferDiscount) : 0;
     } else if (index === items.length - 1) {
       lineOfferDiscount = roundTo2(totalOfferDiscount - distributedDiscountSum);
     } else {
@@ -394,12 +393,22 @@ export const rebuildCheckoutSummary = async (
     const newItemGrandTotal = roundTo2(
       itemOriginalGrandTotal - lineOfferDiscount,
     );
+
+    // BOGO's free unit is the base product only by default — addons/customizations
+    // stay full price unless the offer explicitly opts in via bogo.includeAddons.
+    const addonsExemptFromDiscount =
+      isBogoTargetItem && !offer.bogo?.includeAddons;
+
     const itemInternalDiscountRatio =
-      itemOriginalGrandTotal > 0
+      !addonsExemptFromDiscount && itemOriginalGrandTotal > 0
         ? lineOfferDiscount / itemOriginalGrandTotal
         : 0;
 
     const updatedAddons = item.addons.map((addon: any) => {
+      if (addonsExemptFromDiscount) {
+        return { ...addon, promoDiscountAmount: 0 };
+      }
+
       const addonPromoDisc = roundTo2(
         addon.lineTotal * itemInternalDiscountRatio,
       );
