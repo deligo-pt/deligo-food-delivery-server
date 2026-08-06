@@ -112,7 +112,8 @@ is rejected before any other field is checked.
     "getQty": 1,
     "buyProductId": "<productId>",     // trigger: buy this exact product...
     // "buyCategoryId": "<categoryId>", // ...OR buy anything from this category (use one, not both)
-    "getProductId": "<productId>"       // optional — reward item; defaults to buyProductId (same item) if omitted
+    "getProductId": "<productId>",      // optional — reward item; defaults to buyProductId (same item) if omitted
+    "includeAddons": false              // optional, default false — see below
   }
 }
 ```
@@ -120,6 +121,13 @@ is rejected before any other field is checked.
 **Ownership is enforced:** `buyProductId`, `buyCategoryId`'s products, and
 `getProductId` must all belong to you (or your parent vendor if you're a
 `SUB_VENDOR`) — otherwise `403 BOGO_BUY_PRODUCT_NOT_OWNED` / `BOGO_GET_PRODUCT_NOT_OWNED`.
+
+**Addons are NOT free by default.** The free unit only zeroes out the base
+product price — if the customer added a paid addon/customization to that item
+(e.g. extra sauce, upgraded size as an addon), they still pay full price for it.
+Set `bogo.includeAddons: true` if you want the free unit's addons to also be
+discounted proportionally (spread across product + addons by their share of the
+line's value, same as how PERCENT/FLAT discounts are distributed within a line).
 
 **The math customers see:** a free unit only appears once the cart holds a full
 `buyQty + getQty` tier of the trigger item(s) — e.g. `buyQty:2, getQty:1` needs
@@ -310,6 +318,11 @@ is only ever present when `freeQty >= 1`.
 For PERCENT/FLAT, `bogoSnapshot` is absent and `discountType` tells you which
 kind applied. (`FREE_DELIVERY` is currently disabled — see Part 1 — so it will
 never appear here.)
+
+Note on addons: for a BOGO item, `addons[].promoDiscountAmount` will normally be
+`0` — the free unit only discounts the base product, not anything the customer
+added to it (unless the vendor opted into `bogo.includeAddons`, see Part 1). Don't
+treat a `0` there as a bug when `itemSummary.totalPromoDiscount` is non-zero.
 
 If the offer isn't valid, you get a `400` with a ready-to-display message — see
 the error table below. Nothing is applied; the checkout stays as it was.

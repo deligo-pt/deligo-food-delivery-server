@@ -13,11 +13,6 @@ import router from './app/routes';
 import { parseLanguage } from './app/middlewares/parseLanguage';
 import { getSwaggerDocument } from './app/docs/swagger';
 import {
-  customCss,
-  customfavIcon,
-  customSiteTitle,
-} from './app/docs/swaggerTheme';
-import {
   apiDocsAuth,
   apiDocsBasicAuthOnly,
   listApiDocsDevices,
@@ -62,11 +57,7 @@ app.use(
   apiDocsAuth,
   swaggerUi.serve,
   (req: Request, res: Response, next: NextFunction) =>
-    swaggerUi.setup(getSwaggerDocument(), {
-      customCss,
-      customfavIcon,
-      customSiteTitle,
-    })(req, res, next),
+    swaggerUi.setup(getSwaggerDocument())(req, res, next),
 );
 
 app.use(rateLimiter('global'));

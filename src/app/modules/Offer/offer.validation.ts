@@ -61,6 +61,7 @@ const offerBody = z
         buyProductId: objectIdSchema.optional(), // Trigger product (X)
         buyCategoryId: objectIdSchema.optional(), // Trigger category (Y)
         getProductId: objectIdSchema.optional(), // Reward item (Z), defaults to buyProductId
+        includeAddons: z.boolean().optional().default(false), // Free unit's addons free too? Default: only the base product is free
       })
       .strict()
       .refine((b) => !!(b.buyProductId || b.buyCategoryId), {

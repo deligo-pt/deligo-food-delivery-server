@@ -10,6 +10,7 @@ const bogoSchema = new Schema(
     buyProductId: { type: Schema.Types.ObjectId, ref: 'Product' },
     buyCategoryId: { type: Schema.Types.ObjectId, ref: 'ProductCategory' },
     getProductId: { type: Schema.Types.ObjectId, ref: 'Product' },
+    includeAddons: { type: Boolean, default: false },
   },
   { _id: false },
 );
