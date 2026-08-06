@@ -287,6 +287,7 @@ export const calculateOfferDiscount = async (
   let totalOfferDiscount = 0;
   let finalDeliveryChargeNet = deliveryChargeBase;
   let bogoSnapshot = null;
+  let bogoTargetItemIndex = -1;
 
   switch (offer.offerType) {
     case 'PERCENT': {
@@ -312,11 +313,24 @@ export const calculateOfferDiscount = async (
       const triggerProductIds = await resolveBogoTriggerProductIds(bogo);
       const triggerQty = getBogoTriggerQty(checkoutData, triggerProductIds);
 
-      // Reward item defaults to the same product bought, unless a distinct reward item is configured
+      // Reward item defaults to the same product bought, unless a distinct reward item is configured.
+      // The same productId can appear as multiple separate lines (different variations) — pick the
+      // CHEAPEST matching line as the free one. This protects vendor margin by default (never gives
+      // away the pricier variant) and removes cart-order dependence (deterministic regardless of the
+      // order items were added). Matched by array index so only that one specific line is discounted.
       const getProductId = (bogo.getProductId || bogo.buyProductId)?.toString();
-      const targetItem = checkoutData.items.find(
-        (i: any) => i.productId?.toString() === getProductId,
-      );
+      let targetItemIndex = -1;
+      let targetItem: any = null;
+      checkoutData.items.forEach((candidate: any, idx: number) => {
+        if (candidate.productId?.toString() !== getProductId) return;
+        if (
+          !targetItem ||
+          candidate.productPricing.unitPrice < targetItem.productPricing.unitPrice
+        ) {
+          targetItem = candidate;
+          targetItemIndex = idx;
+        }
+      });
 
       const eligibleFreeQty = getBogoEligibleFreeQty(bogo, triggerQty);
 
@@ -328,6 +342,7 @@ export const calculateOfferDiscount = async (
         );
 
         totalOfferDiscount = freeQty * targetItem.productPricing.unitPrice;
+        bogoTargetItemIndex = targetItemIndex;
         // productName is stored as a plain string; targetItem.name is a { en, pt } localized object
         bogoSnapshot = {
           buyQty: bogo.buyQty,
@@ -346,6 +361,7 @@ export const calculateOfferDiscount = async (
     totalOfferDiscount: roundTo2(totalOfferDiscount),
     finalDeliveryChargeNet,
     bogoSnapshot,
+    bogoTargetItemIndex,
   };
 };
 
@@ -355,7 +371,7 @@ export const rebuildCheckoutSummary = async (
   discountData: any,
   lang: TLanguageCode = 'en',
 ): Promise<Partial<TCheckoutSummary>> => {
-  const { totalOfferDiscount, finalDeliveryChargeNet, bogoSnapshot } =
+  const { totalOfferDiscount, finalDeliveryChargeNet, bogoSnapshot, bogoTargetItemIndex } =
     discountData;
   const { items } = checkoutData;
 
@@ -369,14 +385,16 @@ export const rebuildCheckoutSummary = async (
   let distributedDiscountSum = 0;
 
   // BOGO belongs entirely to the reward item's line — never spread across
-  // unrelated cart items the way a cart-wide PERCENT/FLAT discount is.
+  // unrelated cart items the way a cart-wide PERCENT/FLAT discount is. Matched
+  // by array index, not productId: the same product can appear as multiple
+  // separate lines (different variations), and only the one specific line
+  // used to compute the discount may receive it — matching by productId alone
+  // would double-apply the discount to every line sharing that product.
   const isBogo = offer.offerType === 'BOGO' && !!bogoSnapshot;
-  const bogoTargetProductId = bogoSnapshot?.productId?.toString();
 
   const updatedItems = items.map((item: any, index: number) => {
     const itemOriginalGrandTotal = item.itemSummary.grandTotal;
-    const isBogoTargetItem =
-      isBogo && item.productId?.toString() === bogoTargetProductId;
+    const isBogoTargetItem = isBogo && index === bogoTargetItemIndex;
     let lineOfferDiscount = 0;
 
     if (isBogo) {
