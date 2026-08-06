@@ -11,6 +11,7 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoogleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { RedisService } from '../../config/redis';
+import { FULFILLMENT_TYPE } from '../Order/order.constant';
 
 // Checkout Service
 const checkout = async (
@@ -18,6 +19,8 @@ const checkout = async (
   payload: TCheckoutPayload,
 ) => {
   const customerId = currentUser._id.toString();
+  const fulfillmentType = payload.fulfillmentType || FULFILLMENT_TYPE.DELIVERY;
+  const isPickup = fulfillmentType === FULFILLMENT_TYPE.PICKUP;
   let selectedItems: any[] = [];
 
   // 1. Cart Fetching and Validation
@@ -60,34 +63,42 @@ const checkout = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_CLOSED');
   }
 
-  // 3. Address & Spatial Logistics
-  const activeAddress = currentUser?.deliveryAddresses?.find(
-    (i: any) => i.isActive === true,
-  );
+  // 3. Address & Spatial Logistics (delivery orders only — self-pickup has no
+  // customer address and no distance-based charge to compute)
+  let activeAddress: any = null;
+  let distanceKm = 0;
+  let durationMinutes = 0;
 
-  if (
-    !activeAddress ||
-    !activeAddress.latitude ||
-    !activeAddress.longitude ||
-    !activeAddress.city ||
-    !activeAddress.street
-  ) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'DELIVERY_ADDRESS_INCOMPLETE');
+  if (!isPickup) {
+    activeAddress = currentUser?.deliveryAddresses?.find(
+      (i: any) => i.isActive === true,
+    );
+
+    if (
+      !activeAddress ||
+      !activeAddress.latitude ||
+      !activeAddress.longitude ||
+      !activeAddress.city ||
+      !activeAddress.street
+    ) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'DELIVERY_ADDRESS_INCOMPLETE');
+    }
+
+    const vendorLocation = existingVendor.businessLocation;
+    if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_LOCATION_NOT_FOUND');
+    }
+
+    const distanceData = await calculateGoogleRoadDistance(
+      vendorLocation.longitude,
+      vendorLocation.latitude,
+      activeAddress.longitude,
+      activeAddress.latitude,
+    );
+
+    distanceKm = Number(distanceData.km) || 0;
+    durationMinutes = Number(distanceData.durationMinutes) || 0;
   }
-
-  const vendorLocation = existingVendor.businessLocation;
-  if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_LOCATION_NOT_FOUND');
-  }
-
-  const distanceData = await calculateGoogleRoadDistance(
-    vendorLocation.longitude,
-    vendorLocation.latitude,
-    activeAddress.longitude,
-    activeAddress.latitude,
-  );
-
-  const distanceKm = Number(distanceData.km) || 0;
 
   // 4. Configuration & Global Rates
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
@@ -102,7 +113,9 @@ const checkout = async (
     (serviceCharge * serviceChargeVatRate) / 100,
   );
 
-  const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
+  const BASE_FIXED_DELIVERY_CHARGE = isPickup
+    ? 0
+    : globalSettings?.baseDeliveryCharge || 0;
 
   const PER_KM_RATE = globalSettings?.deliveryChargePerKm || 0;
 
@@ -380,6 +393,7 @@ const checkout = async (
   const finalSummaryData = {
     customerId,
     vendorId,
+    fulfillmentType,
     customerEmail: currentUser?.email || '',
     contactNumber: currentUser?.contactNumber || '',
     items: orderItems,
@@ -405,7 +419,7 @@ const checkout = async (
       vatAmount: deliveryVat,
       totalDeliveryCharge,
       distance: roundTo2(distanceKm),
-      estimatedTime: Number(distanceData.durationMinutes) || 0,
+      estimatedTime: durationMinutes,
     },
     payoutSummary: {
       grandTotal: finalGrandTotal,
@@ -440,7 +454,7 @@ const checkout = async (
       isApplied: false,
       offerApplied: null,
     },
-    deliveryAddress: activeAddress,
+    ...(isPickup ? {} : { deliveryAddress: activeAddress }),
     paymentStatus: 'PENDING',
     isConvertedToOrder: false,
   };

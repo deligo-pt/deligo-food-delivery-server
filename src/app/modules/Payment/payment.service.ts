@@ -542,8 +542,6 @@ const payWithSavedToken = async (
 
     const { result = {}, transaction = {} } = response.data || {};
 
-    console.log({ response });
-
     if (!isRedUniqSuccess(result, transaction)) {
       summary.paymentStatus = 'FAILED';
       await summary.save();

@@ -7,6 +7,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import {
   BLOCKED_FOR_ORDER_CANCEL,
   DELIVERY_SEARCH_TIERS_METERS,
+  FULFILLMENT_TYPE,
   ORDER_STATUS,
   OrderSearchableFields,
   OrderStatus,
@@ -31,7 +32,11 @@ import { TLanguageCode } from '../../constant/GlobalInterface/language.interface
 import { BusinessCategoryName } from '../Category/category.interface';
 import customNanoId from '../../utils/customNanoId';
 import { CartServices } from '../Cart/cart.service';
-import { updateOrderStatusHistory } from './order.utils';
+import {
+  updateOrderStatusHistory,
+  generatePickupCode,
+  hashPickupCode,
+} from './order.utils';
 import { PaymentTokenServices } from '../Payment-Token/payment-token.service';
 
 // one-click flow (Payment module's payWithSavedToken, verified via doPaymentToken's
@@ -51,10 +56,25 @@ const finalizeCheckoutIntoOrder = async (
 
     const uniqueOrderId = customNanoId(10);
 
+    // Checkout doesn't capture fulfillmentType yet — defaults to DELIVERY so
+    // existing behavior is unchanged until the checkout flow is updated to pass it.
+    const fulfillmentType =
+      (summary as any).fulfillmentType || FULFILLMENT_TYPE.DELIVERY;
+    const isPickup = fulfillmentType === FULFILLMENT_TYPE.PICKUP;
+
+    const pickup = isPickup
+      ? (() => {
+          const { code, codeHash } = generatePickupCode();
+          return { code, codeHash, generatedAt: new Date() };
+        })()
+      : undefined;
+
     const orderData = {
       orderId: `ORD-${uniqueOrderId}`,
       customerId: summary.customerId,
       vendorId: summary.vendorId,
+      fulfillmentType,
+      ...(pickup && { pickup: { codeHash: pickup.codeHash, generatedAt: pickup.generatedAt } }),
       items: summary.items,
       totalItems: summary.totalItems,
       totalQuantity: summary.totalQuantity,
@@ -70,21 +90,33 @@ const finalizeCheckoutIntoOrder = async (
         serviceChargeVatAmount:
           (summary.orderCalculation as any).serviceChargeVatAmount ?? 0,
       },
-      delivery: {
-        charge: summary.delivery.charge,
-        vatRate: summary.delivery.vatRate,
-        vatAmount: summary.delivery.vatAmount,
-        totalDeliveryCharge: summary.delivery.totalDeliveryCharge,
-        distance: summary.delivery.distance,
-        estimatedTime: summary.delivery.estimatedTime,
-        notes: deliveryNotes || '',
-      },
+      delivery: isPickup
+        ? {
+            charge: 0,
+            vatRate: 0,
+            vatAmount: 0,
+            totalDeliveryCharge: 0,
+            distance: 0,
+            estimatedTime: 0,
+            notes: deliveryNotes || '',
+          }
+        : {
+            charge: summary.delivery.charge,
+            vatRate: summary.delivery.vatRate,
+            vatAmount: summary.delivery.vatAmount,
+            totalDeliveryCharge: summary.delivery.totalDeliveryCharge,
+            distance: summary.delivery.distance,
+            estimatedTime: summary.delivery.estimatedTime,
+            notes: deliveryNotes || '',
+          },
       payoutSummary: {
         grandTotal: summary.payoutSummary.grandTotal,
         deliGoCommission: summary.payoutSummary.deliGoCommission,
-        fleet: summary.payoutSummary.fleet,
+        fleet: isPickup ? { rate: 0, fee: 0 } : summary.payoutSummary.fleet,
         vendor: summary.payoutSummary.vendor,
-        rider: summary.payoutSummary.rider,
+        rider: isPickup
+          ? { riderNetEarnings: 0 }
+          : summary.payoutSummary.rider,
       },
       offer: {
         isApplied: summary.offer.isApplied,
@@ -94,7 +126,7 @@ const finalizeCheckoutIntoOrder = async (
       paymentStatus: 'PAID',
       transactionId: transactionId,
       isPaid: true,
-      deliveryAddress: summary.deliveryAddress,
+      ...(isPickup ? {} : { deliveryAddress: summary.deliveryAddress }),
       orderStatus: 'PENDING',
       statusHistory: [
         {
@@ -150,10 +182,18 @@ const finalizeCheckoutIntoOrder = async (
       orderedItems: orderedItemsPayload,
     });
 
+    // codeHash never leaves the server; the raw code is surfaced exactly once,
+    // on this creation response, so the customer can show/screenshot it.
+    const orderObj: any = order.toObject();
+    if (isPickup && pickup) {
+      delete orderObj.pickup?.codeHash;
+      orderObj.pickup = { ...orderObj.pickup, code: pickup.code };
+    }
+
     return {
       messageKey: 'ORDER_PLACED_SUCCESS',
       variables: undefined,
-      data: order,
+      data: orderObj,
     };
   } catch (err) {
     await session.abortTransaction();
@@ -271,6 +311,7 @@ const updateOrderStatusByVendor = async (
     'PREPARING',
     'READY_FOR_PICKUP',
     'CANCELED',
+    'NO_SHOW',
   ];
 
   if (!ALLOWED_VENDOR_ACTIONS.includes(action.type)) {
@@ -315,6 +356,7 @@ const updateOrderStatusByVendor = async (
       vendor?.businessDetails?.businessType?.name?.en ===
       BusinessCategoryName.RESTAURANT;
     const shouldCheckStock = !isRestaurant;
+    const isPickupOrder = order.fulfillmentType === FULFILLMENT_TYPE.PICKUP;
 
     if (!order.isPaid) {
       throw new AppError(
@@ -372,14 +414,19 @@ const updateOrderStatusByVendor = async (
       }
     }
 
-    if (
-      action.type === ORDER_STATUS.PREPARING &&
-      order.orderStatus !== ORDER_STATUS.ASSIGNED
-    ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'ORDER_MUST_BE_ASSIGNED_BEFORE_PREPARING',
-      );
+    if (action.type === ORDER_STATUS.PREPARING) {
+      // Pickup orders skip the delivery-partner assignment stage entirely.
+      const requiredPreviousStatus = isPickupOrder
+        ? ORDER_STATUS.ACCEPTED
+        : ORDER_STATUS.ASSIGNED;
+      if (order.orderStatus !== requiredPreviousStatus) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          isPickupOrder
+            ? 'ORDER_MUST_BE_ACCEPTED_BEFORE_PREPARING'
+            : 'ORDER_MUST_BE_ASSIGNED_BEFORE_PREPARING',
+        );
+      }
     }
 
     if (
@@ -390,6 +437,21 @@ const updateOrderStatusByVendor = async (
         httpStatus.BAD_REQUEST,
         'ORDER_MUST_BE_PREPARING_BEFORE_READY_FOR_PICKUP',
       );
+    }
+
+    if (action.type === 'NO_SHOW') {
+      if (!isPickupOrder) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'NO_SHOW_ONLY_FOR_PICKUP_ORDERS',
+        );
+      }
+      if (order.orderStatus !== ORDER_STATUS.READY_FOR_PICKUP) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'ORDER_MUST_BE_READY_FOR_PICKUP_BEFORE_NO_SHOW',
+        );
+      }
     }
 
     if (
@@ -436,7 +498,7 @@ const updateOrderStatusByVendor = async (
                 },
                 update: {
                   $inc: {
-                    'variations.options.$[elem].stockQuantity':
+                    'variations.$[].options.$[elem].stockQuantity':
                       -item.itemSummary.quantity,
                   },
                 },
@@ -502,12 +564,18 @@ const updateOrderStatusByVendor = async (
     // ACTION: READY_FOR_PICKUP
     // ---------------------------------------------------------
     if (action.type === ORDER_STATUS.READY_FOR_PICKUP) {
+      if (isPickupOrder && order.pickup) {
+        order.pickup.readyAt = new Date();
+      }
+
       if (customerId) {
         notificationsToEmit.push(async () => {
           NotificationService.sendToUser(
             customerId,
             'Order is ready for pickup',
-            `Your order is now ready for pickup by ${vendor?.businessDetails?.businessName || 'the store'}.`,
+            isPickupOrder
+              ? `Your order is ready! Show your pickup code at ${vendor?.businessDetails?.businessName || 'the store'} to collect it.`
+              : `Your order is now ready for pickup by ${vendor?.businessDetails?.businessName || 'the store'}.`,
             { orderId: order.orderId, status: ORDER_STATUS.READY_FOR_PICKUP },
             'default',
             'ORDER',
@@ -552,7 +620,7 @@ const updateOrderStatusByVendor = async (
                 },
                 update: {
                   $inc: {
-                    'variations.options.$[elem].stockQuantity':
+                    'variations.$[].options.$[elem].stockQuantity':
                       item.itemSummary.quantity,
                   },
                 },
@@ -586,6 +654,61 @@ const updateOrderStatusByVendor = async (
             notificationPayload.title,
             notificationPayload.body,
             notificationPayload.data,
+            'default',
+            'ORDER',
+          );
+        });
+      }
+    }
+
+    // ---------------------------------------------------------
+    // ACTION: NO_SHOW (self-pickup only — customer never collected the order)
+    // ---------------------------------------------------------
+    if (action.type === 'NO_SHOW') {
+      order.cancelReason = action.reason || 'Customer did not collect the order.';
+      order.refundStatus = REFUND_STATUS.PENDING;
+
+      if (shouldCheckStock) {
+        const stockOperations = order.items.map((item: any) => {
+          const targetProductId = item.productId?._id || item.productId;
+
+          if (item.variationSku) {
+            return {
+              updateOne: {
+                filter: {
+                  _id: new mongoose.Types.ObjectId(targetProductId),
+                  'variations.options.sku': item.variationSku,
+                },
+                update: {
+                  $inc: {
+                    'variations.$[].options.$[elem].stockQuantity':
+                      item.itemSummary.quantity,
+                  },
+                },
+                arrayFilters: [{ 'elem.sku': item.variationSku }],
+              },
+            };
+          }
+
+          return {
+            updateOne: {
+              filter: { _id: new mongoose.Types.ObjectId(targetProductId) },
+              update: {
+                $inc: { 'stock.quantity': item.itemSummary.quantity },
+              },
+            },
+          };
+        });
+        await Product.bulkWrite(stockOperations, { session });
+      }
+
+      if (customerId) {
+        notificationsToEmit.push(async () => {
+          NotificationService.sendToUser(
+            customerId,
+            'Order Canceled — Not Collected',
+            `Your order was not collected within the pickup window and has been canceled.`,
+            { orderId: order.orderId },
             'default',
             'ORDER',
           );
@@ -721,6 +844,8 @@ const cancelOrderByCustomer = async (
       ORDER_STATUS.CANCELED,
       ORDER_STATUS.REJECTED,
       ORDER_STATUS.DELIVERED,
+      ORDER_STATUS.PICKED_UP_BY_CUSTOMER,
+      ORDER_STATUS.NO_SHOW,
     ];
 
     if (
@@ -799,7 +924,7 @@ const cancelOrderByCustomer = async (
               },
               update: {
                 $inc: {
-                  'variations.options.$[elem].stockQuantity':
+                  'variations.$[].options.$[elem].stockQuantity':
                     item.itemSummary.quantity,
                 },
               },
@@ -946,6 +1071,10 @@ const broadcastOrderToPartners = async (
     throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
       entity: 'Order',
     });
+  }
+
+  if (order.fulfillmentType === FULFILLMENT_TYPE.PICKUP) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPLICABLE_TO_PICKUP_ORDER');
   }
 
   if (order.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
@@ -1777,6 +1906,77 @@ const reorderOrder = async (
   };
 };
 
+// vendor/sub-vendor verifies the customer's self-pickup code at the counter
+const verifyPickupCode = async (
+  currentUser: TCurrentUser,
+  orderId: string,
+  code: string,
+) => {
+  if (!currentUser || !['VENDOR', 'SUB_VENDOR'].includes(currentUser.role)) {
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'verify pickup codes',
+    });
+  }
+
+  const order = await Order.findOne({
+    orderId,
+    vendorId: currentUser._id,
+    isDeleted: false,
+  }).select('+pickup.codeHash');
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
+  }
+
+  if (order.fulfillmentType !== FULFILLMENT_TYPE.PICKUP) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPLICABLE_TO_PICKUP_ORDER');
+  }
+
+  if (order.orderStatus !== ORDER_STATUS.READY_FOR_PICKUP) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'ORDER_MUST_BE_READY_FOR_PICKUP_BEFORE_NO_SHOW',
+    );
+  }
+
+  if (!order.pickup || order.pickup.codeHash !== hashPickupCode(code)) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_PICKUP_CODE');
+  }
+
+  order.pickup.verifiedAt = new Date();
+  order.pickup.verifiedBy = currentUser._id as any;
+
+  updateOrderStatusHistory({
+    order,
+    newStatus: ORDER_STATUS.PICKED_UP_BY_CUSTOMER,
+    updatedBy: currentUser._id,
+    note: 'Pickup code verified at counter.',
+  });
+
+  await order.save();
+
+  try {
+    emitOrderStatusUpdate(getIO(), {
+      orderId: order.orderId,
+      orderStatus: ORDER_STATUS.PICKED_UP_BY_CUSTOMER,
+      order: order.toObject(),
+      customerUserId: null,
+      vendorUserId: currentUser.userId || null,
+      deliveryPartnerUserId: null,
+    });
+  } catch (socketErr) {
+    console.error('Socket emission failed:', socketErr);
+  }
+
+  return {
+    messageKey: 'PICKUP_VERIFIED_SUCCESS',
+    variables: undefined,
+    data: order,
+  };
+};
+
 export const OrderServices = {
   createOrderAfterRedUniqPayment,
   finalizeCheckoutIntoOrder,
@@ -1790,4 +1990,5 @@ export const OrderServices = {
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
   reorderOrder,
+  verifyPickupCode,
 };
