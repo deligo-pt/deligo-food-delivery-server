@@ -1,8 +1,20 @@
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { TOrder, TOrderStatusHistory } from './order.interface';
-import { OrderStatus } from './order.constant';
+import { OrderStatus, PICKUP_CODE_LENGTH } from './order.constant';
 import { HydratedDocument } from 'mongoose';
+
+export const generatePickupCode = (): { code: string; codeHash: string } => {
+  const code = crypto
+    .randomInt(0, 10 ** PICKUP_CODE_LENGTH)
+    .toString()
+    .padStart(PICKUP_CODE_LENGTH, '0');
+  return { code, codeHash: hashPickupCode(code) };
+};
+
+export const hashPickupCode = (code: string): string =>
+  crypto.createHash('sha256').update(code).digest('hex');
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const formatOrderResponse = (

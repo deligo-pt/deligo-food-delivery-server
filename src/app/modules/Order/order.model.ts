@@ -1,6 +1,11 @@
 import { model, Schema } from 'mongoose';
-import { TOrder, TInvoiceSync, TOrderStatusHistory } from './order.interface';
-import { ORDER_STATUS, REFUND_STATUS } from './order.constant';
+import {
+  TOrder,
+  TInvoiceSync,
+  TOrderStatusHistory,
+  TOrderPickup,
+} from './order.interface';
+import { FULFILLMENT_TYPE, ORDER_STATUS, REFUND_STATUS } from './order.constant';
 import { addressSchema } from '../../constant/GlobalModel/address.model';
 import { localizedSchema } from '../../constant/GlobalModel/language.model';
 import {
@@ -39,6 +44,17 @@ const statusHistorySchema = new Schema<TOrderStatusHistory>(
       type: String,
       default: null,
     },
+  },
+  { _id: false },
+);
+
+const pickupSchema = new Schema<TOrderPickup>(
+  {
+    codeHash: { type: String, required: true, select: false },
+    generatedAt: { type: Date, required: true },
+    verifiedAt: { type: Date, default: null },
+    verifiedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    readyAt: { type: Date, default: null },
   },
   { _id: false },
 );
@@ -116,6 +132,14 @@ const orderSchema = new Schema<TOrder>(
       ref: 'DeliveryPartner',
     },
     deliveryPartnerCancelReason: { type: String, default: null },
+
+    fulfillmentType: {
+      type: String,
+      enum: Object.values(FULFILLMENT_TYPE),
+      required: true,
+      default: FULFILLMENT_TYPE.DELIVERY,
+    },
+    pickup: { type: pickupSchema, default: undefined },
 
     items: { type: [orderItemSchema], required: true },
 
@@ -214,7 +238,22 @@ const orderSchema = new Schema<TOrder>(
     dispatchPartnerPool: { type: [String], default: [] },
     dispatchExpiresAt: { type: Date },
 
-    deliveryAddress: { type: addressSchema, required: true },
+    deliveryAddress: {
+      type: addressSchema,
+      // Without this, Mongoose auto-instantiates an empty subdocument for
+      // PICKUP orders (single-nested-subdoc default behavior) instead of
+      // leaving the path genuinely absent.
+      default: undefined,
+      required: [
+        function requiresDeliveryAddress() {
+          return (
+            (this as unknown as TOrder).fulfillmentType ===
+            FULFILLMENT_TYPE.DELIVERY
+          );
+        },
+        'deliveryAddress is required for DELIVERY orders',
+      ],
+    },
     pickupAddress: { type: addressSchema },
 
     preparationTime: { type: Number, default: 0 },
@@ -258,6 +297,7 @@ orderSchema.index(
   { partialFilterExpression: { orderStatus: 'DISPATCHING' } },
 );
 orderSchema.index({ deliveryPartnerId: 1, orderStatus: 1, createdAt: -1 });
+orderSchema.index({ fulfillmentType: 1, orderStatus: 1, 'pickup.readyAt': 1 });
 orderSchema.index({ 'items.productId': 1 });
 orderSchema.index({ createdAt: -1 });
 

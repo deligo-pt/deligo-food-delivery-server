@@ -35,6 +35,14 @@ router.patch(
   OrderControllers.updateOrderStatusByVendor,
 );
 
+// Vendor/sub-vendor verifies the customer's self-pickup code at the counter
+router.patch(
+  '/:orderId/verify-pickup',
+  auth('VENDOR', 'SUB_VENDOR'),
+  validateRequest(OrderValidation.verifyPickupCodeValidationSchema),
+  OrderControllers.verifyPickupCode,
+);
+
 // Assign delivery partner to order (vendor, sub vendor)
 router.patch(
   '/:orderId/broadcast-order',

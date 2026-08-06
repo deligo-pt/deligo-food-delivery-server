@@ -3,6 +3,7 @@ import { z } from 'zod';
 const checkoutValidationSchema = z.object({
   body: z
     .object({
+      fulfillmentType: z.enum(['DELIVERY', 'PICKUP']).optional().default('DELIVERY'),
       useCart: z.boolean().optional().default(false),
       items: z
         .array(
