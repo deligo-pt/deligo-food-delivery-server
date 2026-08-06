@@ -229,34 +229,37 @@ const disableSavedCard = async (
     );
   }
 
+  // disablePaymentToken (payToken.action: 502) is the correct method for revoking a
+  // plain saved-card token — confirmed against REDUNIQ's official integration guide.
+  // disableRecurringPayment (previously used here) is for a different feature
+  // entirely (scheduled/subscription payments via createRecurringPayment), which is
+  // why it was rejected — wrong resource type, not a real permission gap.
   const gatewayPayload = {
-    method: 'disableRecurringPayment',
+    method: 'disablePaymentToken',
     api: {
       username: config.redUniq.username,
       password: config.redUniq.password,
     },
-    recurring: {
+    payToken: {
       id: savedCard.tokenId,
-      action: 602,
+      action: 502,
     },
   };
 
   try {
     const response = await axios.post(config.redUniq.api_url, gatewayPayload);
-    const { result = {} } = response.data || {};
+    const { result = {}, payToken: payTokenResult = {} } = response.data || {};
 
-    const ALREADY_INACTIVE_CODES = new Set(['00100060']);
-    // '00100067' = merchant account not provisioned for this method (confirmed via
-    // sandbox testing) — fall back to local-only soft-delete per spec.
+    const isSuccess = result?.code === '00000000';
+    // payToken.status: 3 = already inactive — treat as success, not an error.
+    const isAlreadyInactive = payTokenResult?.status === '3';
+
     const NOT_PERMITTED_CODES = new Set(['00100067']);
-    const isSuccess =
-      result?.code === '00000000' || result?.code === '17000000000';
-    const isAlreadyInactive = ALREADY_INACTIVE_CODES.has(result?.code);
     const isNotPermitted = NOT_PERMITTED_CODES.has(result?.code);
 
     if (isNotPermitted) {
       console.error(
-        'REDUNIQ disableRecurringPayment not permitted for this merchant account — falling back to local soft-delete only:',
+        'REDUNIQ disablePaymentToken not permitted for this merchant account — falling back to local soft-delete only:',
         result,
       );
     } else if (!isSuccess && !isAlreadyInactive) {

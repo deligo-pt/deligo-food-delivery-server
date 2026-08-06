@@ -518,7 +518,10 @@ const payWithSavedToken = async (
       description: `One-click order payment via saved ${savedCard.cardBrand} card`,
     },
     order: {
-      ref: checkoutSummaryId,
+      // REDUNIQ requires a unique order.ref per payment attempt — reusing
+      // checkoutSummaryId across a retry would send a duplicate ref, which is a
+      // likely cause of the intermittent doPaymentToken 500s seen in testing.
+      ref: `${checkoutSummaryId}-${customNanoId(6)}`,
       amount: Math.round(summary.payoutSummary.grandTotal * 100),
       date: new Date().toISOString().slice(0, 19).replace('T', ' '),
     },
@@ -612,12 +615,18 @@ const payWithSavedToken = async (
 
 // webhook handler. Never trusts the POSTed status — re-verifies via
 const handleReduniqNotification = async (body: any) => {
-  const checkoutSummaryId: string | undefined =
+  const rawRef: string | undefined =
     body?.order?.ref || body?.ref || body?.transaction?.ref;
   const notificationToken: string | undefined =
     body?.token || body?.transaction?.token;
 
-  if (!checkoutSummaryId) return;
+  if (!rawRef) return;
+
+  // payWithSavedToken suffixes checkoutSummaryId with `-<nanoid>` to satisfy
+  // REDUNIQ's per-payment-unique order.ref requirement — strip it back off to
+  // recover the real Mongo id. A plain initPayment ref (24-char hex) passes through.
+  const checkoutSummaryId =
+    rawRef.length > 24 ? rawRef.slice(0, 24) : rawRef;
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary || summary.isConvertedToOrder) return;
