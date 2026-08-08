@@ -14,6 +14,7 @@ import {
   findAndValidateOffer,
   getBogoEligibleFreeQty,
   getBogoTriggerLabel,
+  getBogoTriggerQty,
   rebuildCheckoutSummary,
   resolveBogoTriggerProductIds,
 } from './offer.utils';
@@ -582,12 +583,11 @@ const getAvailableOffersForCheckout = async (
         const triggerProductIds = await resolveBogoTriggerProductIds(
           offer.bogo,
         );
-        const triggerQty = items.reduce((sum: number, item: any) => {
-          const cartProductId = item.productId?.toString();
-          return triggerProductIds.includes(cartProductId)
-            ? sum + item.itemSummary.quantity
-            : sum;
-        }, 0);
+        const triggerQty = getBogoTriggerQty(
+          items,
+          triggerProductIds,
+          offer.bogo.buyVariationSku,
+        );
         const eligibleFreeQty = getBogoEligibleFreeQty(offer.bogo, triggerQty);
         isProductMatched = eligibleFreeQty > 0;
         bogoMissingQty = Math.max(

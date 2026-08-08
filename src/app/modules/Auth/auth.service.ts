@@ -242,6 +242,7 @@ const onboardUser = async (
   }
 
   let registeredByValue: any;
+  let currentFleetManagerIdValue: any;
   if (
     ['VENDOR', 'SUB_VENDOR', 'DELIVERY_PARTNER'].includes(currentOnboardingRole)
   ) {
@@ -254,6 +255,13 @@ const onboardUser = async (
             ? 'Vendor'
             : 'Admin',
     };
+
+    if (
+      currentOnboardingRole === 'DELIVERY_PARTNER' &&
+      currentUser.role === 'FLEET_MANAGER'
+    ) {
+      currentFleetManagerIdValue = currentUser._id;
+    }
   } else {
     registeredByValue = currentUser._id;
   }
@@ -289,6 +297,9 @@ const onboardUser = async (
           email: formattedEmail,
           userId,
           registeredBy: registeredByValue,
+          ...(currentFleetManagerIdValue && {
+            currentFleetManagerId: currentFleetManagerIdValue,
+          }),
           status: 'PENDING',
           role: currentOnboardingRole,
         },
@@ -401,7 +412,10 @@ const verifyOtp = async (payload: {
   const enqueueOtpLoginHistory = (
     status: 'SUCCESS' | 'FAILED',
     failureReason?:
-      'INVALID_CREDENTIALS' | 'LIMIT_EXCEEDED' | 'INVALID_OTP' | 'UNKNOWN',
+      | 'INVALID_CREDENTIALS'
+      | 'LIMIT_EXCEEDED'
+      | 'INVALID_OTP'
+      | 'UNKNOWN',
   ) => {
     if (!userData?.email) {
       return;
@@ -587,8 +601,8 @@ const resendOtp = async (payload: {
   }
 
   let successMessageKey:
-    'RESEND_OTP_EMAIL_SUCCESS' | 'RESEND_OTP_MOBILE_SUCCESS' =
-    'RESEND_OTP_EMAIL_SUCCESS';
+    | 'RESEND_OTP_EMAIL_SUCCESS'
+    | 'RESEND_OTP_MOBILE_SUCCESS' = 'RESEND_OTP_EMAIL_SUCCESS';
 
   if (contactNumber) {
     const formattedContact = contactNumber.trim();
@@ -1593,7 +1607,7 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
     if (authUser?.role === 'DELIVERY_PARTNER') {
       const isFleetManager = currentUser.role === 'FLEET_MANAGER';
       const isOwner =
-        submittedProfile.registeredBy?.id?.toString() ===
+        submittedProfile.currentFleetManagerId?.toString() ===
         currentUser._id.toString();
 
       if (isFleetManager && !isOwner) {
@@ -1781,16 +1795,16 @@ const approvedOrRejectedUser = async (
     });
   }
 
-  if (
-    role === 'DELIVERY_PARTNER' &&
-    targetAuthStatus === 'APPROVED' &&
-    !submittedProfile.registeredBy?.id
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'DELIVERY_PARTNER_FLEET_ASSIGNMENT_REQUIRED',
-    );
-  }
+  // if (
+  //   role === 'DELIVERY_PARTNER' &&
+  //   targetAuthStatus === 'APPROVED' &&
+  //   !submittedProfile.registeredBy?.id
+  // ) {
+  //   throw new AppError(
+  //     httpStatus.BAD_REQUEST,
+  //     'DELIVERY_PARTNER_FLEET_ASSIGNMENT_REQUIRED',
+  //   );
+  // }
 
   const finalRemarks =
     payload.remarks?.trim() ||
@@ -1964,7 +1978,7 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
       );
 
       if (
-        targetProfile?.registeredBy?.id?.toString() !==
+        targetProfile?.currentFleetManagerId?.toString() !==
           currentUser._id.toString() &&
         currentUser.userId !== targetAuthUser.userId
       ) {

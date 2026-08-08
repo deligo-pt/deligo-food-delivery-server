@@ -14,8 +14,7 @@ const getAllWallets = async (
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const partners = await DeliveryPartner.find({
-      'registeredBy.id': new mongoose.Types.ObjectId(currentUser._id),
-      'registeredBy.model': 'FleetManager',
+      currentFleetManagerId: new mongoose.Types.ObjectId(currentUser._id),
     })
       .select('_id')
       .lean();
@@ -58,7 +57,7 @@ const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const isPartner = await DeliveryPartner.findOne({
       _id: wallet.userId,
-      'registeredBy.id': new mongoose.Types.ObjectId(currentUser._id),
+      currentFleetManagerId: new mongoose.Types.ObjectId(currentUser._id),
     });
 
     if (!isPartner) {

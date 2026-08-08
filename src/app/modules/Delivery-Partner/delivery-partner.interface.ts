@@ -14,6 +14,7 @@ export type TDeliveryPartner = {
     id: mongoose.Types.ObjectId;
     model: TRegisteredByModel;
   };
+  currentFleetManagerId?: mongoose.Types.ObjectId;
   role: 'DELIVERY_PARTNER';
   email: string;
   status: keyof typeof USER_STATUS;

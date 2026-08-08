@@ -28,7 +28,9 @@ export type TOffer = {
     getQty: number;
     buyProductId?: mongoose.Types.ObjectId; // Trigger: buy this exact product (X)
     buyCategoryId?: mongoose.Types.ObjectId; // Trigger: buy any product in this category (Y)
+    buyVariationSku?: string; // Optional: pin the trigger to this exact variation only (strict variation-level BOGO). Omitted = counts all variations of the product together.
     getProductId?: mongoose.Types.ObjectId; // Reward item (Z); defaults to buyProductId when omitted
+    getVariationSku?: string; // Optional: pin the reward to this exact variation only. Defaults to buyVariationSku when omitted; if neither is set, the cheapest matching variation is picked.
     includeAddons?: boolean; // If true, the free unit's addons are free too; default false (only the base product is free)
   };
 

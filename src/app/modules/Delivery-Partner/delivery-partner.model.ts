@@ -22,6 +22,11 @@ const deliveryPartnerSchema = new Schema<TDeliveryPartner>(
         enum: ['Admin', 'FleetManager'],
       },
     },
+    currentFleetManagerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'FleetManager',
+      required: false,
+    },
 
     role: {
       type: String,
@@ -238,6 +243,7 @@ deliveryPartnerSchema.index({
   currentSessionLocation: '2dsphere',
 });
 deliveryPartnerSchema.index({ 'registeredBy.id': 1 });
+deliveryPartnerSchema.index({ currentFleetManagerId: 1 });
 
 deliveryPartnerSchema.index({ 'rating.average': -1 });
 

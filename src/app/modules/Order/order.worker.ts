@@ -232,9 +232,9 @@ export const processOrderPostUpdate = async (job: Job) => {
       const totalPlatformGrossHolding =
         payoutSummary?.deliGoCommission?.totalPlatformGrossHolding || 0;
 
-      const isManagedByFleet = partner?.registeredBy?.model === 'FleetManager';
+      const isManagedByFleet = Boolean(partner?.currentFleetManagerId);
       const fleetManagerId = isManagedByFleet
-        ? partner?.registeredBy?.id
+        ? partner?.currentFleetManagerId
         : null;
 
       // --- Vendor Wallet Update (Vendor Earnings) ---
