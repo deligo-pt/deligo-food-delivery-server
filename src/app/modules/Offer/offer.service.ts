@@ -12,9 +12,14 @@ import {
   calculateOfferDiscount,
   calculateOfferRemoval,
   findAndValidateOffer,
+  getBogoEligibleFreeQty,
+  getBogoTriggerLabel,
+  getBogoTriggerQty,
   rebuildCheckoutSummary,
+  resolveBogoTriggerProductIds,
 } from './offer.utils';
 import { Order } from '../Order/order.model';
+import { Product } from '../Product/product.model';
 import { flattenObject } from '../../utils/flattenObject';
 import { TLanguageCode } from '../../constant/GlobalInterface/language.interface';
 import { TMessageKey } from '../../errors/messages';
@@ -39,31 +44,6 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
     payload.vendorId = null;
   }
 
-  // --------------------------------------------
-  //  Product Validation & Ownership Check
-  // --------------------------------------------
-  // if (payload.offerType === 'BOGO' && payload.bogo?.productId) {
-  //   const product = await Product.findById(payload.bogo.productId);
-
-  //   if (!product) {
-  //     throw new AppError(
-  //       httpStatus.NOT_FOUND,
-  //       'The specified product for BOGO was not found',
-  //     );
-  //   }
-
-  //   // If currentUser is a Vendor, ensure they own the product
-  //   if (
-  //     isVendor &&
-  //     product.vendorId.toString() !== currentUser._id.toString()
-  //   ) {
-  //     throw new AppError(
-  //       httpStatus.FORBIDDEN,
-  //       'You can only create BOGO offers for your own products',
-  //     );
-  //   }
-  // }
-
   if (!payload.isAutoApply && payload.code) {
     const existingCode = await Offer.findOne({
       code: payload.code.toUpperCase(),
@@ -79,8 +59,6 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   //  Offer type validation
   // --------------------------------------------
   switch (payload.offerType) {
-    case 'BOGO':
-      throw new AppError(httpStatus.BAD_REQUEST, 'BOGO_CREATE_DISABLED');
     case 'PERCENT':
     case 'FLAT':
       if (!payload.discountValue || payload.discountValue <= 0) {
@@ -92,21 +70,61 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
       }
       break;
 
-    // case 'BOGO':
-    //   if (
-    //     !payload.bogo?.buyQty ||
-    //     !payload.bogo?.getQty ||
-    //     !payload.bogo?.productId
-    //   ) {
-    //     throw new AppError(
-    //       httpStatus.BAD_REQUEST,
-    //       'BOGO offer requires buyQty, getQty and a valid productId',
-    //     );
-    //   }
-    //   break;
+    case 'BOGO': {
+      // BOGO is a vendor-only promotion type — admins cannot create BOGO offers
+      if (!isVendor) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'BOGO_CREATION_RESTRICTED_TO_VENDOR',
+        );
+      }
+
+      const bogo = payload.bogo;
+      if (
+        !bogo?.buyQty ||
+        !bogo?.getQty ||
+        (!bogo?.buyProductId && !bogo?.buyCategoryId)
+      ) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'BOGO_REQUIRES_BUY_TRIGGER_AND_QUANTITIES',
+        );
+      }
+
+      // Vendors may only target products they own
+      if (bogo.buyProductId) {
+        const buyProduct = await Product.findById(bogo.buyProductId);
+        if (
+          !buyProduct ||
+          buyProduct.vendorId.toString() !== currentUser._id.toString()
+        ) {
+          throw new AppError(
+            httpStatus.FORBIDDEN,
+            'BOGO_BUY_PRODUCT_NOT_OWNED',
+          );
+        }
+      }
+      if (bogo.getProductId) {
+        const getProduct = await Product.findById(bogo.getProductId);
+        if (
+          !getProduct ||
+          getProduct.vendorId.toString() !== currentUser._id.toString()
+        ) {
+          throw new AppError(
+            httpStatus.FORBIDDEN,
+            'BOGO_GET_PRODUCT_NOT_OWNED',
+          );
+        }
+      }
+      payload.discountValue = 0;
+      break;
+    }
 
     case 'FREE_DELIVERY':
-      break;
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'FREE_DELIVERY_CREATION_DISABLED',
+      );
 
     default:
       throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_OFFER_TYPE');
@@ -142,7 +160,8 @@ const createOffer = async (payload: TOffer, currentUser: TCurrentUser) => {
   });
 
   return {
-    messageKey: 'OFFER_CREATED_SUCCESS',
+    messageKey: 'COMMON_CREATED_SUCCESS',
+    variables: { entity: 'Offer' },
     data: offer,
   };
 };
@@ -164,7 +183,9 @@ const updateOffer = async (
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer || offer.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Offer',
+    });
   }
 
   // --------------------------------------------------
@@ -172,7 +193,9 @@ const updateOffer = async (
   // --------------------------------------------------
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_UPDATE_OFFER');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'update this offer',
+    });
   }
 
   // --------------------------------------------------
@@ -190,21 +213,34 @@ const updateOffer = async (
   // --------------------------------------------------
   const offerType = payload.offerType ?? offer.offerType;
 
-  // if (offerType === 'BOGO') {
-  //   const productId = payload.bogo?.productId || offer.bogo?.productId;
-  //   if (productId && payload.bogo?.productId) {
-  //     const product = await Product.findById(productId);
-  //     if (
-  //       !product ||
-  //       (isVendor && product.vendorId.toString() !== currentUser._id.toString())
-  //     ) {
-  //       throw new AppError(httpStatus.FORBIDDEN, 'Invalid product for BOGO');
-  //     }
-  //   }
-  // }
+  // BOGO is a vendor-only promotion type — admins cannot create or manage BOGO offers
+  if (offerType === 'BOGO' && !isVendor) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'BOGO_CREATION_RESTRICTED_TO_VENDOR',
+    );
+  }
 
-  if (offerType === 'BOGO') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'BOGO_UPDATE_DISABLED');
+  if (offerType === 'BOGO' && payload.bogo) {
+    const buyProductId = payload.bogo.buyProductId;
+    if (buyProductId) {
+      const buyProduct = await Product.findById(buyProductId);
+      if (
+        !buyProduct ||
+        buyProduct.vendorId.toString() !== currentUser._id.toString()
+      ) {
+        throw new AppError(httpStatus.FORBIDDEN, 'BOGO_BUY_PRODUCT_NOT_OWNED');
+      }
+    }
+    if (payload.bogo.getProductId) {
+      const getProduct = await Product.findById(payload.bogo.getProductId);
+      if (
+        !getProduct ||
+        getProduct.vendorId.toString() !== currentUser._id.toString()
+      ) {
+        throw new AppError(httpStatus.FORBIDDEN, 'BOGO_GET_PRODUCT_NOT_OWNED');
+      }
+    }
   }
 
   const currentAutoApply = payload.isAutoApply ?? offer.isAutoApply;
@@ -263,14 +299,32 @@ const updateOffer = async (
   }
 
   if (offerType === 'FREE_DELIVERY') {
-    payload.discountValue = 0;
-    payload.maxDiscountAmount = 0;
-    (payload as any).bogo = null;
+    throw new AppError(httpStatus.BAD_REQUEST, 'FREE_DELIVERY_UPDATE_DISABLED');
   }
 
-  // if (payload.bogo && offer.bogo) {
-  //   payload.bogo = { ...offer.bogo, ...payload.bogo };
-  // }
+  // Merge partial bogo updates onto the existing bogo config
+  if (payload.bogo && offer.bogo) {
+    const plainOffer = offer.toObject();
+
+    payload.bogo = {
+      ...plainOffer.bogo,
+      ...payload.bogo,
+    };
+  }
+
+  if (offerType === 'BOGO') {
+    const bogo = payload.bogo ?? offer.bogo;
+    if (
+      !bogo?.buyQty ||
+      !bogo?.getQty ||
+      (!bogo.buyProductId && !bogo.buyCategoryId)
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'BOGO_REQUIRES_BUY_TRIGGER_AND_QUANTITIES',
+      );
+    }
+  }
 
   // --------------------------------------------------
   // Usage limits sanity check
@@ -300,7 +354,8 @@ const updateOffer = async (
   );
 
   return {
-    messageKey: 'OFFER_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Offer' },
     data: updatedOffer,
   };
 };
@@ -315,7 +370,9 @@ const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
 
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Offer',
+    });
   }
 
   if (offer.isDeleted) {
@@ -325,10 +382,9 @@ const toggleOfferStatus = async (id: string, currentUser: TCurrentUser) => {
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
 
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_AUTHORIZED_TO_CHANGE_OFFER_STATUS',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'change the status of this offer',
+    });
   }
 
   if (!offer.isActive && offer.expiresAt < new Date()) {
@@ -352,13 +408,14 @@ const validateAndApplyOffer = async (
 ) => {
   let checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Session',
+    });
 
   if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'CHECKOUT_DOES_NOT_BELONG_TO_USER',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'This checkout session belongs to another profile.',
+    });
   }
   if (checkoutData.isConvertedToOrder) {
     throw new AppError(
@@ -376,6 +433,7 @@ const validateAndApplyOffer = async (
   if (checkoutData.offer?.isApplied && alreadyAppliedCode === inputCodeClean) {
     return {
       messageKey: 'OFFER_APPLIED_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: checkoutData,
     };
   }
@@ -396,6 +454,7 @@ const validateAndApplyOffer = async (
     offerIdentifier,
     checkoutData,
     currentUser,
+    lang,
   );
 
   if (!offer) {
@@ -413,11 +472,12 @@ const validateAndApplyOffer = async (
 
     return {
       messageKey: 'OFFER_REMOVED_OR_INVALID' as TMessageKey,
+      variables: undefined,
       data: updatedCheckout,
     };
   }
 
-  const discountData = calculateOfferDiscount(offer, checkoutData);
+  const discountData = await calculateOfferDiscount(offer, checkoutData, lang);
   const updatePayload = await rebuildCheckoutSummary(
     checkoutData,
     offer,
@@ -437,6 +497,7 @@ const validateAndApplyOffer = async (
 
   return {
     messageKey: 'OFFER_APPLIED_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: updatedCheckout,
   };
 };
@@ -445,15 +506,20 @@ const validateAndApplyOffer = async (
 const getAvailableOffersForCheckout = async (
   checkoutId: string,
   currentUser: TCurrentUser,
+  lang: TLanguageCode = 'en',
 ) => {
   const checkoutData = await CheckoutSummary.findById(checkoutId).lean();
   if (!checkoutData) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SESSION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Session',
+    });
   }
 
   // SECURITY CHECK: Ensure the customer can only access their own checkout session offers
   if (checkoutData.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this checkout session',
+    });
   }
 
   const { vendorId, orderCalculation, items } = checkoutData;
@@ -468,6 +534,8 @@ const getAvailableOffersForCheckout = async (
   const baseQuery = {
     isActive: true,
     isDeleted: false,
+    // FREE_DELIVERY offers are disabled — never listed as available, even if one already exists in the DB
+    offerType: { $ne: 'FREE_DELIVERY' },
     validFrom: { $lte: now },
     expiresAt: { $gte: now },
     $or: [{ vendorId: vendorId }, { vendorId: null }, { isGlobal: true }],
@@ -489,48 +557,77 @@ const getAvailableOffersForCheckout = async (
     return acc;
   }, {});
 
-  const availableOffers = allOffers.map((offer) => {
-    const minOrderAmount = offer.minOrderAmount || 0;
-    const usageCount = usageMap[offer._id.toString()] || 0;
+  const availableOffers = await Promise.all(
+    allOffers.map(async (offer) => {
+      const minOrderAmount = offer.minOrderAmount || 0;
+      const usageCount = usageMap[offer._id.toString()] || 0;
 
-    const hasApplicableProducts =
-      offer.applicableProducts && offer.applicableProducts.length > 0;
+      const hasApplicableProducts =
+        offer.applicableProducts && offer.applicableProducts.length > 0;
 
-    const isProductMatched = hasApplicableProducts
-      ? items.some((item: any) => {
-          const cartProductId = item.productId ? item.productId.toString() : '';
+      let isProductMatched = hasApplicableProducts
+        ? items.some((item: any) => {
+            const cartProductId = item.productId
+              ? item.productId.toString()
+              : '';
 
-          return offer?.applicableProducts?.some(
-            (pId: any) => pId.toString() === cartProductId,
-          );
-        })
-      : true;
+            return offer?.applicableProducts?.some(
+              (pId: any) => pId.toString() === cartProductId,
+            );
+          })
+        : true;
 
-    const isMinAmountMet = cartTotal >= minOrderAmount;
-    const isUsageLimitMet = usageCount < (offer.userUsageLimit || Infinity);
+      // BOGO: eligible only once a full (buyQty + getQty) tier is in the cart
+      let bogoMissingQty = 0;
+      if (offer.offerType === 'BOGO' && offer.bogo) {
+        const triggerProductIds = await resolveBogoTriggerProductIds(
+          offer.bogo,
+        );
+        const triggerQty = getBogoTriggerQty(
+          items,
+          triggerProductIds,
+          offer.bogo.buyVariationSku,
+        );
+        const eligibleFreeQty = getBogoEligibleFreeQty(offer.bogo, triggerQty);
+        isProductMatched = eligibleFreeQty > 0;
+        bogoMissingQty = Math.max(
+          0,
+          offer.bogo.buyQty + offer.bogo.getQty - triggerQty,
+        );
+      }
 
-    const isEligible = isMinAmountMet && isUsageLimitMet && isProductMatched;
+      const isMinAmountMet = cartTotal >= minOrderAmount;
+      const isUsageLimitMet = usageCount < (offer.userUsageLimit || Infinity);
 
-    let messageKey: TMessageKey = 'OFFER_IS_APPLICABLE';
-    let variables: Record<string, string | number | boolean> | undefined;
+      const isEligible = isMinAmountMet && isUsageLimitMet && isProductMatched;
 
-    if (!isProductMatched) {
-      messageKey = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
-    } else if (!isMinAmountMet) {
-      const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
-      messageKey = 'ADD_MORE_TO_UNLOCK_OFFER';
-      variables = { amount: diff };
-    } else if (!isUsageLimitMet) {
-      messageKey = 'OFFER_USAGE_LIMIT_EXCEEDED';
-    }
+      let messageKey: TMessageKey = 'OFFER_IS_APPLICABLE';
+      let variables: Record<string, string | number | boolean> | undefined;
 
-    return {
-      ...offer,
-      isEligible,
-      messageKey,
-      variables,
-    };
-  });
+      if (!isProductMatched) {
+        if (offer.offerType === 'BOGO' && offer.bogo) {
+          const productName = await getBogoTriggerLabel(offer.bogo, lang);
+          messageKey = 'BOGO_ADD_MORE_QTY_TO_UNLOCK';
+          variables = { qty: bogoMissingQty, productName };
+        } else {
+          messageKey = 'OFFER_NOT_VALID_FOR_CART_PRODUCTS';
+        }
+      } else if (!isMinAmountMet) {
+        const diff = Math.max(0, roundTo2(minOrderAmount - cartTotal));
+        messageKey = 'ADD_MORE_TO_UNLOCK_OFFER';
+        variables = { amount: diff };
+      } else if (!isUsageLimitMet) {
+        messageKey = 'OFFER_USAGE_LIMIT_EXCEEDED';
+      }
+
+      return {
+        ...offer,
+        isEligible,
+        messageKey,
+        variables,
+      };
+    }),
+  );
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
@@ -620,7 +717,9 @@ const getSingleOffer = async (id: string, currentUser: TCurrentUser) => {
     offer.vendorId?._id.toString() !== currentUser._id.toString() &&
     !offer.isGlobal
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_VIEW_OFFER');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this offer',
+    });
   }
 
   return {
@@ -643,7 +742,9 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Offer',
+    });
   }
 
   // --------------------------------------------------
@@ -658,7 +759,9 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const isVendor = ['VENDOR', 'SUB_VENDOR'].includes(currentUser.role);
   if (isVendor && offer.vendorId?.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_DELETE_OFFER');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'delete this offer',
+    });
   }
 
   // --------------------------------------------------
@@ -679,7 +782,8 @@ const softDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   await offer.save();
 
   return {
-    messageKey: 'OFFER_DELETED_SUCCESS',
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS',
+    variables: { entity: 'Offer' },
   };
 };
 
@@ -696,10 +800,9 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   if (!isAdmin) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_ADMIN_CAN_PERMANENTLY_DELETE_OFFER',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Only administrators can permanently delete an offer.',
+    });
   }
 
   // --------------------------------------------------
@@ -707,7 +810,9 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   // --------------------------------------------------
   const offer = await Offer.findById(id);
   if (!offer) {
-    throw new AppError(httpStatus.NOT_FOUND, 'OFFER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Offer',
+    });
   }
 
   // --------------------------------------------------
@@ -733,7 +838,8 @@ const permanentDeleteOffer = async (id: string, currentUser: TCurrentUser) => {
   await Offer.findByIdAndDelete(id);
 
   return {
-    messageKey: 'OFFER_PERMANENTLY_DELETED_SUCCESS',
+    messageKey: 'COMMON_PERMANENTLY_DELETED_SUCCESS',
+    variables: { entity: 'Offer' },
   };
 };
 export const OfferServices = {

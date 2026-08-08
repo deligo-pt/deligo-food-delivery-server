@@ -21,7 +21,9 @@ const resolveAuthUserId = async (currentUser: TCurrentUser) => {
   const authUser = await AuthUser.findOne({
     userId: currentUser.userId,
     role: currentUser.role,
-  }).select('_id');
+  })
+    .select('_id')
+    .lean();
 
   if (!authUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'USER_NOT_FOUND');
@@ -60,6 +62,7 @@ const getAllLoginHistory = async (
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: undefined,
     meta,
     data,
   };
@@ -81,6 +84,7 @@ const getSingleLoginHistory = async (id: string, currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
+    variables: undefined,
     data: loginHistory,
   };
 };

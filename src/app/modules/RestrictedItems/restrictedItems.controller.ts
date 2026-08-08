@@ -21,6 +21,7 @@ const createRestrictedItem = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -44,6 +45,7 @@ const updateRestrictedItem = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -54,6 +56,7 @@ const getAllRestrictedItems = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     meta: result?.meta,
     data: result?.data,
   });
@@ -67,6 +70,7 @@ const getSingleRestrictedItem = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -74,8 +78,7 @@ const getSingleRestrictedItem = catchAsync(async (req, res) => {
 const softDeleteRestrictedItem = catchAsync(async (req, res) => {
   const currentUser = req.user as TCurrentUser;
   const itemId = req.params.itemId;
-  const result =
-    await RestrictedItemService.softDeleteRestrictedItem(itemId);
+  const result = await RestrictedItemService.softDeleteRestrictedItem(itemId);
 
   createActivityLog({
     customUserId: currentUser?.userId,
@@ -88,6 +91,7 @@ const softDeleteRestrictedItem = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -109,6 +113,7 @@ const permanentDeleteRestrictedItem = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

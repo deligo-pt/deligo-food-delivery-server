@@ -45,14 +45,19 @@ const updateCustomer = async (
   const customerProfile = customer.profileId as any;
 
   if (!customerProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'CUSTOMER_PROFILE_SETUP_INCOMPLETE',
+    );
   }
 
   if (
     currentUser.role === 'CUSTOMER' &&
     currentUser.userId !== customer.userId
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UPDATE_PROFILE_FORBIDDEN');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'update this profile',
+    });
   }
 
   // -----------------------------
@@ -135,7 +140,8 @@ const updateCustomer = async (
   );
 
   return {
-    messageKey: 'CUSTOMER_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Profile' },
     data: updated,
   };
 };
@@ -183,7 +189,9 @@ const updateCustomerLiveLocation = async (
     isDeleted: false,
   });
   if (!customerExists) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CUSTOMER_PROFILE_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Customer Profile',
+    });
   }
 
   const currentLocationAddress = customerExists.deliveryAddresses?.find(
@@ -269,7 +277,8 @@ const updateCustomerLiveLocation = async (
 
   return {
     success: true,
-    messageKey: 'LIVE_LOCATION_UPDATED_SUCCESS',
+    messageKey: 'CUSTOMER_LOCATION_UPDATED_SUCCESS',
+    variables: undefined,
     data: {
       currentSessionLocation: updatedCustomer.currentSessionLocation,
       deliveryAddresses: updatedCustomer.deliveryAddresses,
@@ -411,6 +420,7 @@ const addDeliveryAddress = async (
   );
   return {
     messageKey: 'DELIVERY_ADDRESS_ADDED_SUCCESS',
+    variables: undefined,
     data: newDeliveryAddress,
   };
 };
@@ -443,7 +453,9 @@ const updateDeliveryAddress = async (
   );
 
   if (targetAddressIndex === -1) {
-    throw new AppError(httpStatus.NOT_FOUND, 'REQUESTED_ADDRESS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Address',
+    });
   }
 
   const targetAddress = currentAddresses[targetAddressIndex];
@@ -542,7 +554,8 @@ const updateDeliveryAddress = async (
   );
 
   return {
-    messageKey: 'DELIVERY_ADDRESS_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Delivery Address' },
     data: updatedCustomer?.deliveryAddresses?.find(
       (addr: any) => addr._id?.toString() === addressId,
     ),
@@ -568,7 +581,9 @@ const toggleDeliveryAddressStatus = async (
   );
 
   if (!targetAddressExists) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ACTIVATE_ADDRESS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Address',
+    });
   }
 
   let selectedActiveAddress: any = null;
@@ -604,6 +619,7 @@ const toggleDeliveryAddressStatus = async (
   return {
     success: true,
     messageKey: 'DELIVERY_ADDRESS_CHANGED_SUCCESS',
+    variables: undefined,
     data: selectedActiveAddress,
   };
 };
@@ -650,6 +666,7 @@ const deleteDeliveryAddress = async (
 
   return {
     messageKey: 'DELIVERY_ADDRESS_DELETED_SUCCESS',
+    variables: undefined,
     data: null,
   };
 };
@@ -714,10 +731,9 @@ const getSingleCustomerFromDB = async (
       query?.userId !== currentUser?.userId ||
       customerId !== currentUser?.userId
     ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'VIEW_CUSTOMER_DETAILS_FORBIDDEN',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+        action: "view this customer's details",
+      });
     }
   } else {
     query = Customer.findOne({
@@ -736,13 +752,23 @@ const getSingleCustomerFromDB = async (
   });
   const data = await query;
   if (!data) {
-    throw new AppError(httpStatus.NOT_FOUND, 'REQUESTED_CUSTOMER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Customer Profile',
+    });
   }
+
+  const authUser = await AuthUser.findOne({
+    userId: customerId,
+  }).select('isEmailVerified isContactNumberVerified');
 
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Customer' },
-    data,
+    data: {
+      ...toPlain(data),
+      isEmailVerified: authUser?.isEmailVerified ?? false,
+      isContactNumberVerified: authUser?.isContactNumberVerified ?? false,
+    },
   };
 };
 

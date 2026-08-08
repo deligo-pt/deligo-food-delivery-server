@@ -21,6 +21,24 @@ import { UpdateProductUtils } from './updateProduct.utils';
 import { Order } from '../Order/order.model';
 import { NotificationService } from '../Notification/notification.service';
 import { EmailHelper } from '../../utils/emailSender';
+import { getActiveBogoOffersMap } from '../Offer/offer.utils';
+
+// Flattens a BOGO offer map entry's localized title for the response, or null if none
+const attachBogoOffer = (
+  product: any,
+  bogoOffersMap: Map<string, any>,
+  lang: TLanguageCode,
+) => {
+  const offer = bogoOffersMap.get(product._id.toString());
+  if (!offer) return null;
+
+  return {
+    offerId: offer.offerId,
+    title: offer.title?.[lang] || offer.title?.en || '',
+    buyQty: offer.buyQty,
+    getQty: offer.getQty,
+  };
+};
 
 // Create Product Service
 const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
@@ -56,7 +74,8 @@ const createProduct = async (payload: TProduct, currentUser: TCurrentUser) => {
   const newProduct = await Product.create(payload);
 
   return {
-    messageKey: 'PRODUCT_CREATED_SUCCESS',
+    messageKey: 'COMMON_CREATED_SUCCESS',
+    variables: { entity: 'Product' },
     data: newProduct,
   };
 };
@@ -92,7 +111,8 @@ const updateProduct = async (
   await UpdateProductUtils.syncStockStatus(updatedProduct, existingProduct);
 
   return {
-    messageKey: 'PRODUCT_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Product' },
     data: updatedProduct,
   };
 };
@@ -119,7 +139,9 @@ const manageProductVariations = async (
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_NOT_APPROVED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Account not approved.',
+    });
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
@@ -266,7 +288,8 @@ const manageProductVariations = async (
 
   await existingProduct.save();
   return {
-    messageKey: 'PRODUCT_VARIATIONS_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Product Variations' },
     data: existingProduct,
   };
 };
@@ -436,6 +459,7 @@ const renameProductVariation = async (
   await existingProduct.save();
   return {
     messageKey: 'PRODUCT_VARIATIONS_RENAMED_SUCCESS',
+    variables: undefined,
     data: existingProduct,
   };
 };
@@ -465,7 +489,9 @@ const removeProductVariations = async (
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
 
   if (currentUser?.status !== 'APPROVED')
-    throw new AppError(httpStatus.FORBIDDEN, 'ACCOUNT_NOT_APPROVED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Account not approved.',
+    });
 
   const vendor = existingProduct.vendorId as any;
   const isRestaurant =
@@ -553,7 +579,8 @@ const removeProductVariations = async (
 
   await existingProduct.save();
   return {
-    messageKey: 'PRODUCT_VARIATIONS_REMOVED_SUCCESS',
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS',
+    variables: { entity: 'Product Variations' },
     data: existingProduct,
   };
 };
@@ -587,10 +614,7 @@ const updateInventoryAndPricing = async (
     if (
       currentUser._id.toString() !== (product.vendorId as any)._id.toString()
     ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'NOT_AUTHORIZED_TO_UPDATE_PRODUCT',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
     }
   }
 
@@ -647,7 +671,9 @@ const updateInventoryAndPricing = async (
     });
 
     if (!variationFound)
-      throw new AppError(httpStatus.NOT_FOUND, 'VARIATION_SKU_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Variation SKU',
+      });
 
     if (!isRestaurant && product.stock) {
       let totalStock = 0;
@@ -683,7 +709,8 @@ const updateInventoryAndPricing = async (
 
   await product.save();
   return {
-    messageKey: 'INVENTORY_AND_PRICING_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Inventory And Pricing' },
     data: product,
   };
 };
@@ -746,11 +773,7 @@ const deleteProductImages = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_APPROVED_TO_DELETE_PRODUCT_IMAGES',
-      { status: currentUser.status },
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
   }
 
   const product = await Product.findOne({ productId });
@@ -762,10 +785,7 @@ const deleteProductImages = async (
     (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') &&
     product.vendorId.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_OWN_PRODUCT_IMAGES_CAN_BE_DELETED',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
   }
 
   // -------------check if images to be deleted exist in product images-------------
@@ -794,6 +814,7 @@ const deleteProductImages = async (
 
   return {
     messageKey: 'PRODUCT_IMAGES_DELETED_SUCCESS',
+    variables: undefined,
     data: product,
   };
 };
@@ -843,11 +864,15 @@ const getAllProducts = async (
   const meta = await products.countTotal();
   const rawData = await products.modelQuery;
 
-  const localizedData = rawData.map((product: any) =>
-    localizeProductData(product, role, lang),
-  );
+  const bogoOffersMap = await getActiveBogoOffersMap(rawData);
+
+  const localizedData = rawData.map((product: any) => ({
+    ...localizeProductData(product, role, lang),
+    bogoOffer: attachBogoOffer(product, bogoOffersMap, lang),
+  }));
   return {
-    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Products' },
     meta,
     data: localizedData,
   };
@@ -884,11 +909,15 @@ const getAllProductsPublic = async (
   const meta = await products.countTotal();
   const rawData = await products.modelQuery;
 
-  const localizedData = rawData.map((product: any) =>
-    localizeProductData(product, 'CUSTOMER', lang),
-  );
+  const bogoOffersMap = await getActiveBogoOffersMap(rawData);
+
+  const localizedData = rawData.map((product: any) => ({
+    ...localizeProductData(product, 'CUSTOMER', lang),
+    bogoOffer: attachBogoOffer(product, bogoOffersMap, lang),
+  }));
   return {
-    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Products' },
     meta,
     data: localizedData,
   };
@@ -947,9 +976,15 @@ const getSingleProduct = async (
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
+  const bogoOffersMap = await getActiveBogoOffersMap([product]);
+
   return {
-    messageKey: 'PRODUCT_RETRIEVED_SUCCESS',
-    data: localizeProductData(product, role, lang),
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Product' },
+    data: {
+      ...localizeProductData(product, role, lang),
+      bogoOffer: attachBogoOffer(product, bogoOffersMap, lang),
+    },
   };
 };
 
@@ -983,9 +1018,15 @@ const getSingleProductPublic = async (
     throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
   }
 
+  const bogoOffersMap = await getActiveBogoOffersMap([product]);
+
   return {
-    messageKey: 'PRODUCT_RETRIEVED_SUCCESS',
-    data: localizeProductData(product, role, lang),
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Product' },
+    data: {
+      ...localizeProductData(product, role, lang),
+      bogoOffer: attachBogoOffer(product, bogoOffersMap, lang),
+    },
   };
 };
 
@@ -995,9 +1036,7 @@ const softDeleteProduct = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_APPROVED_TO_DELETE_PRODUCT', {
-      status: currentUser.status,
-    });
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
   }
 
   const product = await Product.findOne({ productId });
@@ -1007,10 +1046,7 @@ const softDeleteProduct = async (
 
   if (currentUser.role === 'VENDOR' || currentUser.role === 'SUB_VENDOR') {
     if (currentUser._id.toString() !== product.vendorId.toString()) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'NOT_AUTHORIZED_TO_DELETE_PRODUCT',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
     }
   }
 
@@ -1060,18 +1096,11 @@ const permanentDeleteProduct = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_APPROVED_TO_PERMANENTLY_DELETE_PRODUCT',
-      { status: currentUser.status },
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
   }
 
   if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_ADMINS_CAN_PERMANENTLY_DELETE_PRODUCTS',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
   }
 
   const product = await Product.findOne({ productId });
@@ -1080,10 +1109,7 @@ const permanentDeleteProduct = async (
   }
 
   if (product.isDeleted === false) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'PRODUCT_SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'DEACTIVATION_REQUIRED_FIRST');
   }
 
   const productName = product.name?.en || 'Product';
@@ -1154,7 +1180,8 @@ const getOutOfStockAlerts = async (
   );
 
   return {
-    messageKey: 'PRODUCTS_RETRIEVED_SUCCESS',
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Products' },
     data: localizedData,
     meta: {
       page: Number(page),
@@ -1244,6 +1271,7 @@ const notifyVendorStockAlert = async (productId: string) => {
 
   return {
     messageKey: 'VENDOR_STOCK_ALERT_SENT_SUCCESS',
+    variables: undefined,
     data: null,
   };
 };

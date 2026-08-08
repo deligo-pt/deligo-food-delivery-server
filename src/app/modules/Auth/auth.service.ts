@@ -165,6 +165,7 @@ const registerUser = async (payload: TRegisterUser) => {
 
   return {
     messageKey: 'REGISTRATION_SUCCESS' as const,
+    variables: undefined,
     data: {
       userId,
       email: formattedEmail,
@@ -241,6 +242,7 @@ const onboardUser = async (
   }
 
   let registeredByValue: any;
+  let currentFleetManagerIdValue: any;
   if (
     ['VENDOR', 'SUB_VENDOR', 'DELIVERY_PARTNER'].includes(currentOnboardingRole)
   ) {
@@ -253,6 +255,13 @@ const onboardUser = async (
             ? 'Vendor'
             : 'Admin',
     };
+
+    if (
+      currentOnboardingRole === 'DELIVERY_PARTNER' &&
+      currentUser.role === 'FLEET_MANAGER'
+    ) {
+      currentFleetManagerIdValue = currentUser._id;
+    }
   } else {
     registeredByValue = currentUser._id;
   }
@@ -288,6 +297,9 @@ const onboardUser = async (
           email: formattedEmail,
           userId,
           registeredBy: registeredByValue,
+          ...(currentFleetManagerIdValue && {
+            currentFleetManagerId: currentFleetManagerIdValue,
+          }),
           status: 'PENDING',
           role: currentOnboardingRole,
         },
@@ -910,6 +922,7 @@ const loginUser = async (
     accessToken,
     refreshToken,
     messageKey: 'LOGIN_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1098,6 +1111,7 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
       return {
         messageKey: 'OTP_SENT_MOBILE' as const,
+        variables: undefined,
       };
     }
   } catch (err) {
@@ -1143,6 +1157,7 @@ const updateFcmToken = async (
 
   return {
     messageKey: 'FCM_SYNC_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1187,14 +1202,10 @@ const logoutUser = async (currentUser: TCurrentUser, deviceId: string) => {
     logoutAt: new Date(),
   });
 
-  const userRole = currentUser?.role || 'User';
-
   return {
     success: true,
-    messageKey:
-      userRole === 'CUSTOMER'
-        ? ('CUSTOMER_LOGOUT_SUCCESS' as const)
-        : ('USER_LOGOUT_SUCCESS' as const),
+    messageKey: 'USER_LOGOUT_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1261,7 +1272,8 @@ const changePassword = async (
   await revokeAllUserSessions(currentUser.userId);
 
   return {
-    messageKey: 'PASSWORD_UPDATE_SUCCESS' as const,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as const,
+    variables: { entity: 'Password' },
   };
 };
 
@@ -1355,6 +1367,7 @@ const forgotPassword = async (payload: { email: string; role: TUserRole }) => {
 
   return {
     messageKey: 'PASSWORD_RESET_LINK_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1430,6 +1443,7 @@ const resetPassword = async (payload: {
   return {
     success: true,
     messageKey: 'PASSWORD_RESET_SUCCESS' as const,
+    variables: undefined,
   };
 };
 
@@ -1554,6 +1568,7 @@ const refreshToken = async (token: string) => {
 
   return {
     messageKey: 'REFRESH_TOKEN_SUCCESS' as const,
+    variables: undefined,
     data: { accessToken, refreshToken: newRefreshToken },
   };
 };
@@ -1581,7 +1596,9 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
   const submittedProfile = await TargetModel.findById(authUser.profileId);
 
   if (!submittedProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Profile Details',
+    });
   }
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -1590,14 +1607,13 @@ const submitForApproval = async (userId: string, currentUser: TCurrentUser) => {
     if (authUser?.role === 'DELIVERY_PARTNER') {
       const isFleetManager = currentUser.role === 'FLEET_MANAGER';
       const isOwner =
-        submittedProfile.registeredBy?.id?.toString() ===
+        submittedProfile.currentFleetManagerId?.toString() ===
         currentUser._id.toString();
 
       if (isFleetManager && !isOwner) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          'SUBMIT_APPROVAL_PERMISSION_DENIED_FLEET',
-        );
+        throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+          action: 'manage approvals for this delivery partner',
+        });
       }
 
       if (!isFleetManager && authUser.userId !== currentUser.userId) {
@@ -1742,7 +1758,9 @@ const approvedOrRejectedUser = async (
   });
 
   if (!authUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_USER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'User',
+    });
   }
 
   const role = authUser.role as TUserRole;
@@ -1772,19 +1790,21 @@ const approvedOrRejectedUser = async (
   const submittedProfile = await TargetModel.findById(authUser.profileId);
 
   if (!submittedProfile) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PROFILE_DETAILS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Profile Details',
+    });
   }
 
-  if (
-    role === 'DELIVERY_PARTNER' &&
-    targetAuthStatus === 'APPROVED' &&
-    !submittedProfile.registeredBy?.id
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'DELIVERY_PARTNER_FLEET_ASSIGNMENT_REQUIRED',
-    );
-  }
+  // if (
+  //   role === 'DELIVERY_PARTNER' &&
+  //   targetAuthStatus === 'APPROVED' &&
+  //   !submittedProfile.registeredBy?.id
+  // ) {
+  //   throw new AppError(
+  //     httpStatus.BAD_REQUEST,
+  //     'DELIVERY_PARTNER_FLEET_ASSIGNMENT_REQUIRED',
+  //   );
+  // }
 
   const finalRemarks =
     payload.remarks?.trim() ||
@@ -1958,7 +1978,7 @@ const softDeleteUser = async (userId: string, currentUser: TCurrentUser) => {
       );
 
       if (
-        targetProfile?.registeredBy?.id?.toString() !==
+        targetProfile?.currentFleetManagerId?.toString() !==
           currentUser._id.toString() &&
         currentUser.userId !== targetAuthUser.userId
       ) {
@@ -2049,7 +2069,10 @@ const permanentDeleteUser = async (
     session.endSession();
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'PERMANENT_DELETE_TRANSACTION_FAILED',
+      'COMMON_OPERATION_FAILED',
+      {
+        operation: 'process permanent deletion. Please try again',
+      },
     );
   }
 

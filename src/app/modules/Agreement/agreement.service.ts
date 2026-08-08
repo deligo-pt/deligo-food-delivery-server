@@ -98,6 +98,7 @@ const initiateAgreement = async (
   // 10. Return response
   return {
     messageKey: 'VERIFICATION_CODE_SENT',
+    variables: undefined,
     data: {
       agreementId: agreement._id,
       email: agreement.email,
@@ -125,19 +126,26 @@ const verifyAgreementOtp = async (
   const agreement = await Agreement.findOne({ email: normalizedEmail });
 
   if (!agreement) {
-    throw new AppError(httpStatus.NOT_FOUND, 'AGREEMENT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Commercial Agreement',
+    });
   }
 
   if (
     !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'ACTION_UNAUTHORIZED');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to manage this agreement.',
+    });
   }
 
   // 3. Check if already verified
   if (agreement.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_ALREADY_VERIFIED');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'AGREEMENT_EMAIL_ALREADY_VERIFIED',
+    );
   }
 
   // 4. Get OTP from Redis
@@ -146,7 +154,10 @@ const verifyAgreementOtp = async (
 
   // 5. Validate OTP
   if (!storedOtp || String(storedOtp) !== String(otp)) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_OR_EXPIRED_OTP');
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      'AGREEMENT_INVALID_OR_EXPIRED_CODE',
+    );
   }
 
   // 6. Remove OTP from Redis
@@ -189,6 +200,7 @@ const verifyAgreementOtp = async (
   // 10. Return response
   return {
     messageKey: 'VERIFY_AND_GENERATE_SUCCESS',
+    variables: undefined,
     data: {
       agreementId: agreement._id,
       email: agreement.email,
@@ -213,19 +225,26 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
   const agreement = await Agreement.findOne({ email: normalizedEmail });
 
   if (!agreement) {
-    throw new AppError(httpStatus.NOT_FOUND, 'AGREEMENT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Commercial Agreement',
+    });
   }
 
   if (
     !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'ACTION_UNAUTHORIZED');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to manage this agreement.',
+    });
   }
 
   // 3. Prevent resend if already verified
   if (agreement.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_ALREADY_VERIFIED');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'AGREEMENT_EMAIL_ALREADY_VERIFIED',
+    );
   }
 
   // 4. Generate new OTP
@@ -256,6 +275,7 @@ const resendAgreementOtp = async (email: string, currentUser: TCurrentUser) => {
   // 8. Return response
   return {
     messageKey: 'OTP_RESEND_SUCCESS',
+    variables: undefined,
     data: {
       agreementId: agreement._id,
       email: normalizedEmail,
@@ -276,14 +296,18 @@ const signAgreement = async (
   const agreement = await Agreement.findById(agreementId);
 
   if (!agreement) {
-    throw new AppError(httpStatus.NOT_FOUND, 'AGREEMENT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Commercial Agreement',
+    });
   }
 
   if (
     !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'ACTION_UNAUTHORIZED');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to manage this agreement.',
+    });
   }
 
   if (agreement.status !== AGREEMENT_STATUS.DRAFT) {
@@ -291,7 +315,10 @@ const signAgreement = async (
   }
 
   if (!agreement.isEmailVerified) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'EMAIL_VERIFICATION_REQUIRED');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'AGREEMENT_EMAIL_VERIFICATION_REQUIRED',
+    );
   }
 
   const localAgentSignaturePath = await saveSignatureImage(
@@ -365,6 +392,7 @@ const signAgreement = async (
 
   return {
     messageKey: 'SIGN_SUCCESS',
+    variables: undefined,
     data: {
       agreementId: agreement._id,
       signedPdfPath: agreement.signedPdfPath,
@@ -381,14 +409,18 @@ const getAgreementById = async (
   const agreement = await Agreement.findById(agreementId);
 
   if (!agreement) {
-    throw new AppError(httpStatus.NOT_FOUND, 'AGREEMENT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Commercial Agreement',
+    });
   }
 
   if (
     !isSuperAdmin &&
     agreement?.createdBy?.toString() !== currentUser._id.toString()
   ) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'ACTION_UNAUTHORIZED');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to manage this agreement.',
+    });
   }
 
   return {

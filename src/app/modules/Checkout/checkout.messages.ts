@@ -1,5 +1,5 @@
 export const checkoutMessages = {
-  CART_EMPTY: {
+  CHECKOUT_CART_EMPTY: {
     en: 'Your cart is empty. Please add items before proceeding to checkout.',
     pt: 'Seu carrinho está vazio. Por favor, adicione itens antes de prosseguir para o checkout.',
   },
@@ -14,10 +14,6 @@ export const checkoutMessages = {
   PRODUCTS_NOT_FOUND: {
     en: 'One or more items in your cart are no longer available.',
     pt: 'Um ou mais itens no seu carrinho não estão mais disponíveis.',
-  },
-  PRODUCT_NOT_FOUND: {
-    en: 'This item could not be found.',
-    pt: 'Este item não pôde ser encontrado.',
   },
   VENDOR_CLOSED: {
     en: 'This restaurant is currently closed and not accepting orders.',
@@ -35,34 +31,52 @@ export const checkoutMessages = {
     en: 'Could not calculate delivery route. Restaurant location is missing.',
     pt: 'Não foi possível calcular a rota de entrega. A localização do restaurante está ausente.',
   },
-  CHECKOUT_SUCCESS: {
-    en: 'Order placed successfully!',
-    pt: 'Pedido feito com sucesso!',
-  },
   ORDER_VIEW_APPROVAL_REQUIRED: {
     en: (vars: { status: string }) =>
       `Access denied. Your account status is currently ${vars.status.toLowerCase()}.`,
     pt: (vars: { status: string }) =>
       `Acesso negado. O status atual da sua conta é ${vars.status.toLowerCase()}.`,
   },
-  CHECKOUT_SUMMARY_NOT_FOUND: {
-    en: 'Checkout details could not be found.',
-    pt: 'Os detalhes do checkout não foram encontrados.',
-  },
-  UNAUTHORIZED_TO_VIEW: {
-    en: 'You do not have permission to view this checkout session.',
-    pt: 'Você não tem permissão para visualizar esta sessão de checkout.',
-  },
   CHECKOUT_SUMMARY_ALREADY_CONVERTED: {
     en: 'This checkout has already been processed into an order.',
     pt: 'Este checkout já foi processado em um pedido.',
   },
-  VARIATION_NOT_FOUND: {
-    en: 'This variation could not be found.',
-    pt: 'Esta variação não pôde ser encontrada.',
-  },
   VARIATION_SKU_REQUIRED: {
     en: 'A variation SKU is required for this item.',
     pt: 'Um SKU de variação é necessário para este item.',
+  },
+  PAYOUT_SPLIT_RECONCILIATION_MISMATCH: {
+    en: 'Unable to calculate this order. Please try again or contact support.',
+    pt: 'Não foi possível calcular este pedido. Por favor, tente novamente ou contacte o suporte.',
+  },
+
+  // ---------------------------------------------------------
+  // SELF-PICKUP TIME
+  // ---------------------------------------------------------
+  PICKUP_TIME_REQUIRED: {
+    en: 'Please choose a pickup time for your order.',
+    pt: 'Por favor, escolha um horário de retirada para o seu pedido.',
+  },
+  INVALID_PICKUP_TIME: {
+    en: 'The pickup time provided is not a valid date/time.',
+    pt: 'O horário de retirada fornecido não é uma data/hora válida.',
+  },
+  PICKUP_TIME_MUST_BE_TODAY: {
+    en: 'Pickup time must be later today — scheduling for another day is not supported yet.',
+    pt: 'O horário de retirada deve ser ainda hoje — agendar para outro dia ainda não é suportado.',
+  },
+  PICKUP_TIME_MUST_BE_IN_FUTURE: {
+    en: 'Pickup time must be later than the current time.',
+    pt: 'O horário de retirada deve ser posterior ao horário atual.',
+  },
+  VENDOR_CLOSED_ON_PICKUP_DAY: {
+    en: 'This restaurant is closed today and cannot accept a pickup time.',
+    pt: 'Este restaurante está fechado hoje e não pode aceitar um horário de retirada.',
+  },
+  PICKUP_TIME_OUTSIDE_STORE_HOURS: {
+    en: (vars: { openingHours: string; closingHours: string }) =>
+      `Pickup time must be between ${vars.openingHours} and ${vars.closingHours} (the restaurant's store hours).`,
+    pt: (vars: { openingHours: string; closingHours: string }) =>
+      `O horário de retirada deve ser entre ${vars.openingHours} e ${vars.closingHours} (horário de funcionamento do restaurante).`,
   },
 } as const;

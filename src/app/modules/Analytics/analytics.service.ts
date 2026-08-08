@@ -2159,7 +2159,7 @@ const getFleetManagerPerformanceAnalytics = async (
           $lookup: {
             from: 'deliverypartners',
             localField: '_id',
-            foreignField: 'registeredBy.id',
+            foreignField: 'currentFleetManagerId',
             as: 'riders',
           },
         },
@@ -2252,7 +2252,7 @@ const getFleetManagerPerformanceAnalytics = async (
           $lookup: {
             from: 'deliverypartners',
             localField: '_id',
-            foreignField: 'registeredBy.id',
+            foreignField: 'currentFleetManagerId',
             as: 'riders',
           },
         },
@@ -2402,12 +2402,14 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
     .lean();
 
   if (!fleetManager) {
-    throw new AppError(httpStatus.NOT_FOUND, 'FLEET_MANAGER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Fleet Manager Account',
+    });
   }
 
   // Get Fleet Drivers
   const drivers = await DeliveryPartner.find({
-    'registeredBy.id': fleetManager._id,
+    currentFleetManagerId: fleetManager._id,
     isDeleted: false,
   })
     .select('_id userId name rating')
@@ -2785,7 +2787,9 @@ const getSingleDeliveryPartnerPerformanceDetailsAnalytics = async (
     .lean();
 
   if (!partner) {
-    throw new AppError(httpStatus.NOT_FOUND, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   const formatName = (nameObj: any) => {

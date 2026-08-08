@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { OrderStatus, RefundStatus } from './order.constant';
+import { FulfillmentType, OrderStatus, RefundStatus } from './order.constant';
 import { TAppliedOfferSnapshot } from '../Checkout/checkout.interface';
 import {
   TOrderPaymentStatus,
@@ -26,6 +26,15 @@ export type TOrderStatusHistory = {
   note?: string;
 };
 
+export type TOrderPickup = {
+  codeHash: string; // sha256 of the raw code; raw code is never persisted
+  generatedAt: Date;
+  verifiedAt?: Date | null;
+  verifiedBy?: mongoose.Types.ObjectId | null;
+  readyAt?: Date | null;
+  pickupTime?: Date | null; // customer-requested pickup time, set at checkout
+};
+
 export type TOrder = {
   _id?: mongoose.Types.ObjectId;
   // Relationships
@@ -35,6 +44,9 @@ export type TOrder = {
   vendorId: mongoose.Types.ObjectId;
   deliveryPartnerId?: mongoose.Types.ObjectId;
   deliveryPartnerCancelReason?: string;
+
+  fulfillmentType: FulfillmentType;
+  pickup?: TOrderPickup;
 
   // Items Snapshot
   items: TOrderItemSnapshot[];
@@ -103,8 +115,8 @@ export type TOrder = {
   isPaid: boolean;
 
   // Address & Location
-  deliveryAddress: TAddress;
-  pickupAddress?: TAddress;
+  deliveryAddress?: TAddress; // required when fulfillmentType === 'DELIVERY'
+  pickupAddress?: TAddress; // vendor storefront snapshot; set on ACCEPTED for both flows
 
   // Metadata
   remarks?: string;

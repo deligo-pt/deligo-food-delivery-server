@@ -95,7 +95,8 @@ const getMyTransactions = async (
   });
 
   return {
-    messageKey: 'TRANSACTIONS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Transaction History' },
     data,
     meta,
   };
@@ -112,14 +113,17 @@ const getTransactionById = async (id: string) => {
   })) as TTransaction;
 
   if (!txn) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TRANSACTION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Transaction Record',
+    });
   }
 
   const order = txn.orderId as any;
   const customer = order?.customerId;
 
   return {
-    messageKey: 'TRANSACTIONS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Transaction History' },
     data: {
       _id: txn._id.toString(),
       transactionId: txn.transactionId,

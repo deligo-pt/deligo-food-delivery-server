@@ -83,7 +83,8 @@ const createTax = async (payload: TTax) => {
   const result = await Tax.create(payload);
 
   return {
-    messageKey: 'TAX_CREATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_CREATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Tax Configuration' },
     data: result,
   };
 };
@@ -92,10 +93,9 @@ const createTax = async (payload: TTax) => {
 const updateTax = async (taxId: string, payload: Partial<TTax>) => {
   const isExist = await Tax.findById(taxId);
   if (!isExist) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'TAX_RECORD_NOT_FOUND_WITH_EXCLAMATION',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Tax Record',
+    });
   }
 
   if (payload.taxCode || payload.taxRate !== undefined) {
@@ -145,7 +145,8 @@ const updateTax = async (taxId: string, payload: Partial<TTax>) => {
   );
 
   return {
-    messageKey: 'TAX_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Tax Configuration' },
     data: result,
   };
 };
@@ -161,7 +162,8 @@ const getAllTaxes = async (query: Record<string, unknown>) => {
   const meta = await taxes.countTotal();
   const data = await taxes.modelQuery;
   return {
-    messageKey: 'TAXES_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Taxes' },
     meta,
     data,
   };
@@ -171,10 +173,13 @@ const getAllTaxes = async (query: Record<string, unknown>) => {
 const getSingleTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Tax Record',
+    });
   }
   return {
-    messageKey: 'TAX_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Tax' },
     data: result,
   };
 };
@@ -183,7 +188,9 @@ const getSingleTax = async (taxId: string) => {
 const softDeleteTax = async (taxId: string) => {
   const result = await Tax.findById(taxId);
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TAX_RECORD_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Tax Record',
+    });
   }
   if (result.isActive) {
     throw new AppError(
@@ -196,7 +203,8 @@ const softDeleteTax = async (taxId: string) => {
   await result.save();
 
   return {
-    messageKey: 'TAX_SOFT_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Tax Configuration' },
     data: null,
   };
 };
@@ -211,16 +219,14 @@ const permanentDeleteTax = async (taxId: string) => {
   }
 
   if (!result.isDeleted) {
-    throw new AppError(
-      httpStatus.CONFLICT,
-      'TAX_NOT_SOFT_DELETED_SOFT_DELETE_FIRST',
-    );
+    throw new AppError(httpStatus.CONFLICT, 'DEACTIVATION_REQUIRED_FIRST');
   }
 
   await Tax.findByIdAndDelete(taxId);
 
   return {
-    messageKey: 'TAX_PERMANENTLY_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_PERMANENTLY_DELETED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Tax' },
     data: null,
   };
 };

@@ -50,7 +50,7 @@ const payoutSchema = new Schema<TPayout>(
     },
     status: {
       type: String,
-      enum: ['PENDING', 'PAID'],
+      enum: ['PENDING', 'PROCESSING', 'PAID'],
       default: 'PENDING',
     },
     paymentMethod: {
@@ -106,6 +106,16 @@ const payoutSchema = new Schema<TPayout>(
   {
     timestamps: true,
   },
+);
+
+// At most one PENDING payout per user at a time — closes the TOCTOU window
+// between the application-level "existing pending" check and payout
+// creation. PROCESSING is a transient intra-transaction state (either
+// commits to PAID or aborts back to PENDING), so it never persists outside
+// an active transaction and doesn't need to be covered here.
+payoutSchema.index(
+  { userId: 1, status: 1 },
+  { unique: true, partialFilterExpression: { status: 'PENDING' } },
 );
 
 export const Payout = model<TPayout>('Payout', payoutSchema);

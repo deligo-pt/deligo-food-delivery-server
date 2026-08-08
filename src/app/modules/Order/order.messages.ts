@@ -3,17 +3,9 @@ export const orderMessages = {
     en: 'Payment failed. Please check your details and try again.',
     pt: 'O pagamento falhou. Verifique seus dados e tente novamente.',
   },
-  ORDER_CREATED_SUCCESS: {
-    en: 'Order placed successfully!',
-    pt: 'Pedido feito com sucesso!',
-  },
   ORDER_REORDER_SUCCESS: {
     en: 'Order items added to cart successfully.',
     pt: 'Os itens do pedido foram adicionados ao carrinho com sucesso.',
-  },
-  NOT_AUTHORIZED_ACCEPT_REJECT_ORDERS: {
-    en: 'You do not have permission to accept or reject orders.',
-    pt: 'Você não tem permissão para aceitar ou rejeitar pedidos.',
   },
   NOT_APPROVED_ACCEPT_REJECT_ORDERS: {
     en: (vars: { status: string }) =>
@@ -26,10 +18,6 @@ export const orderMessages = {
       `You are not authorized to change this order status to ${vars.status.toUpperCase()}.`,
     pt: (vars: { status: string }) =>
       `Você não tem permissão para alterar o status deste pedido para ${vars.status.toUpperCase()}.`,
-  },
-  ORDER_NOT_FOUND: {
-    en: 'The requested order could not be found.',
-    pt: 'O pedido solicitado não pôde ser encontrado.',
   },
   ONLY_PAID_ORDER_CAN_ACCEPT_REJECT: {
     en: 'Only paid orders can be accepted or rejected.',
@@ -126,10 +114,6 @@ export const orderMessages = {
     pt: (vars: { count: number }) =>
       `Pedido enviado com sucesso para ${vars.count} parceiros de entrega disponíveis.`,
   },
-  PARTNER_NOT_APPROVED: {
-    en: 'Access denied. The selected delivery partner is not approved.',
-    pt: 'Acesso negado. O parceiro de entrega selecionado não está aprovado.',
-  },
   PARTNER_ALREADY_HAS_ACTIVE_ORDER: {
     en: 'You already have an ongoing active delivery order.',
     pt: 'Você já possui um pedido de entrega ativo em andamento.',
@@ -184,10 +168,6 @@ export const orderMessages = {
     en: 'No delivery partner is currently linked to this order.',
     pt: 'Nenhum parceiro de entrega está vinculado a este pedido no momento.',
   },
-  ORDER_STATUS_UPDATED_SUCCESS: {
-    en: 'Order status updated successfully.',
-    pt: 'Status do pedido atualizado com sucesso.',
-  },
   NOT_APPROVED_TO_VIEW_ORDERS: {
     en: (vars: { status: string }) =>
       `Access denied. Your account status (${vars.status.toLowerCase()}) restricts viewing orders.`,
@@ -198,47 +178,19 @@ export const orderMessages = {
     en: 'Unrecognized or invalid user role.',
     pt: 'Função de usuário inválida ou não reconhecida.',
   },
-  ORDERS_RETRIEVED_SUCCESS: {
-    en: 'Orders list loaded successfully.',
-    pt: 'Lista de pedidos carregada com sucesso.',
-  },
   NOT_APPROVED_TO_VIEW_ORDER: {
     en: (vars: { status: string }) =>
       `Access denied. Your account status (${vars.status.toLowerCase()}) restricts viewing this order.`,
     pt: (vars: { status: string }) =>
       `Acesso negado. O status da sua conta (${vars.status.toLowerCase()}) restringe a visualização deste pedido.`,
   },
-  INVALID_ROLE_OR_PERMISSION_DENIED: {
-    en: 'Access denied. Security check failed due to invalid role permissions.',
-    pt: 'Acesso negado. A verificação de segurança falhou devido a permissões de função inválidas.',
-  },
-  ORDER_RETRIEVED_SUCCESS: {
-    en: 'Order tracking details loaded successfully.',
-    pt: 'Detalhes de rastreamento do pedido carregados com sucesso.',
-  },
   NO_DISPATCH_ORDERS_FOUND_FOR_PARTNER: {
     en: 'No available delivery requests found matching your profile.',
     pt: 'Nenhuma solicitação de entrega disponível encontrada para o seu perfil.',
   },
-  DELIVERY_PARTNER_DISPATCH_ORDER_FETCHED_SUCCESS: {
-    en: 'Available delivery tasks loaded successfully.',
-    pt: 'Tarefas de entrega disponíveis carregadas com sucesso.',
-  },
-  ONLY_DELIVERY_PARTNERS_CAN_ACCESS_CURRENT_ORDER: {
-    en: 'Access denied. This view is restricted to active delivery riders only.',
-    pt: 'Acesso restrito. Esta visualização é restrita apenas a entregadores ativos.',
-  },
   NO_ORDER_FOUND_FOR_PARTNER: {
     en: 'No active delivery order is currently linked to your account.',
     pt: 'Nenhum pedido de entrega ativo está vinculado à sua conta no momento.',
-  },
-  DELIVERY_PARTNER_CURRENT_ORDER_FETCHED_SUCCESS: {
-    en: 'Active delivery details loaded successfully.',
-    pt: 'Detalhes da entrega ativa carregados com sucesso.',
-  },
-  NOT_AUTHORIZED_TO_CANCEL_ORDER: {
-    en: 'You do not have permission to cancel this order.',
-    pt: 'Você não tem permissão para cancelar este pedido.',
   },
   ONLY_PAID_ORDER_CAN_BE_CANCELED: {
     en: 'Only paid orders can be canceled.',
@@ -247,5 +199,33 @@ export const orderMessages = {
   ORDER_CANCELED_BY_CUSTOMER_SUCCESS: {
     en: 'Your order has been canceled successfully.',
     pt: 'O seu pedido foi cancelado com sucesso.',
+  },
+
+  // ---------------------------------------------------------
+  // SELF-PICKUP / TAKEAWAY FLOW
+  // ---------------------------------------------------------
+  ORDER_MUST_BE_ACCEPTED_BEFORE_PREPARING: {
+    en: 'Order must be accepted before it can be prepared.',
+    pt: 'O pedido deve ser aceito antes de poder ser preparado.',
+  },
+  NOT_APPLICABLE_TO_PICKUP_ORDER: {
+    en: 'This action does not apply to self-pickup orders.',
+    pt: 'Esta ação não se aplica a pedidos de retirada no local.',
+  },
+  NO_SHOW_ONLY_FOR_PICKUP_ORDERS: {
+    en: 'No-show can only be marked for self-pickup orders.',
+    pt: 'A ausência só pode ser marcada para pedidos de retirada no local.',
+  },
+  ORDER_MUST_BE_READY_FOR_PICKUP_BEFORE_NO_SHOW: {
+    en: 'Order must be ready for pickup before it can be marked as no-show or verified.',
+    pt: 'O pedido deve estar pronto para retirada antes de ser marcado como não retirado ou verificado.',
+  },
+  INVALID_PICKUP_CODE: {
+    en: 'Invalid pickup code. Please check and try again.',
+    pt: 'Código de retirada inválido. Verifique e tente novamente.',
+  },
+  PICKUP_VERIFIED_SUCCESS: {
+    en: 'Pickup code verified — order handed over to the customer.',
+    pt: 'Código de retirada verificado — pedido entregue ao cliente.',
   },
 } as const;

@@ -5,6 +5,7 @@ import sendResponse from '../../utils/sendResponse';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { TMessageKey } from '../../errors/messages';
 import { createActivityLog } from '../ActivityLog/activityLog.utils';
+import { formatOrderResponse } from '../Order/order.utils';
 
 // create redUniq payment intent controller
 const createRedUniqPayment = catchAsync(async (req, res) => {
@@ -28,6 +29,7 @@ const createRedUniqPayment = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -51,11 +53,14 @@ const payWithSavedToken = catchAsync(async (req, res) => {
     type: 'INFO',
   });
 
+  const formattedData = formatOrderResponse(result?.data, req.lang);
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -94,6 +99,7 @@ const handlePaymentFailure = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -114,6 +120,7 @@ const refundRedUniqPayment = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -139,6 +146,7 @@ const createIngredientRedUniqPayment = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

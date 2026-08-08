@@ -5,13 +5,14 @@ import { localizedSchema } from '../../constant/GlobalModel/language.model';
 
 const bogoSchema = new Schema(
   {
-    buyQty: { type: Number, required: true },
-    getQty: { type: Number, required: true },
-    productId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true,
-    },
+    buyQty: { type: Number, required: true, min: 1 },
+    getQty: { type: Number, required: true, min: 1 },
+    buyProductId: { type: Schema.Types.ObjectId, ref: 'Product' },
+    buyCategoryId: { type: Schema.Types.ObjectId, ref: 'ProductCategory' },
+    buyVariationSku: { type: String },
+    getProductId: { type: Schema.Types.ObjectId, ref: 'Product' },
+    getVariationSku: { type: String },
+    includeAddons: { type: Boolean, default: false },
   },
   { _id: false },
 );
@@ -85,6 +86,9 @@ const offerSchema = new Schema<TOffer>(
 offerSchema.index({ isGlobal: 1, isActive: 1 });
 offerSchema.index({ vendorId: 1, isActive: 1 });
 offerSchema.index({ code: 1, isActive: 1 });
-offerSchema.index({ validFrom: 1, expiresAt: 1 });
+// getApplicableOffers() filters isActive+isDeleted (equality) then
+// expiresAt >= now (range); validFrom <= now is checked in-memory since a
+// compound index can only range-scan on one field per the ESR rule.
+offerSchema.index({ isActive: 1, isDeleted: 1, expiresAt: 1 });
 
 export const Offer = model<TOffer>('Offer', offerSchema);

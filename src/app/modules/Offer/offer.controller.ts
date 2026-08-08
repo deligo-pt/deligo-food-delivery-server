@@ -4,6 +4,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import { OfferServices } from './offer.service';
 import { TCurrentUser } from '../../constant/GlobalInterface/user.interface';
 import { formatOfferResponse } from './offer.utils';
+import { formatCheckoutResponse } from '../Checkout/checkout.utils';
 import { TMessageKey } from '../../errors/messages';
 import { createActivityLog } from '../ActivityLog/activityLog.utils';
 
@@ -23,6 +24,7 @@ const createOffer = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.CREATED,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -48,6 +50,7 @@ const updateOffer = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -83,11 +86,16 @@ const validateAndApplyOffer = catchAsync(async (req, res) => {
     req.user as TCurrentUser,
     req.lang,
   );
+
+  // Flatten items[].name / addons[].name to the requested locale, same as the Checkout controller
+  const formattedData = formatCheckoutResponse(result?.data, req.lang);
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
-    data: result?.data,
+    variables: result?.variables,
+    data: formattedData,
   });
 });
 
@@ -98,6 +106,7 @@ const getAvailableOffersForCheckout = catchAsync(async (req, res) => {
   const result = await OfferServices.getAvailableOffersForCheckout(
     checkoutId as string,
     currentUser,
+    req.lang,
   );
 
   let formattedData;
@@ -178,6 +187,7 @@ const softDeleteOffer = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -186,10 +196,7 @@ const softDeleteOffer = catchAsync(async (req, res) => {
 const permanentDeleteOffer = catchAsync(async (req, res) => {
   const { offerId } = req.params;
   const currentUser = req.user as TCurrentUser;
-  const result = await OfferServices.permanentDeleteOffer(
-    offerId,
-    currentUser,
-  );
+  const result = await OfferServices.permanentDeleteOffer(offerId, currentUser);
 
   createActivityLog({
     customUserId: currentUser?.userId,
@@ -202,6 +209,7 @@ const permanentDeleteOffer = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: null,
   });
 });

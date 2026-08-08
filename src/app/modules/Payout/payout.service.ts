@@ -25,20 +25,23 @@ const initiateSettlement = async (
   currentUser: TCurrentUser,
 ) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
-
-  const { _id: senderId, role: senderRole } = currentUser;
-  const senderModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
-
-  const { user } = await findUserById({ userId: targetUserId });
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_USER_NOT_FOUND');
-  }
-  const userId = user?._id;
-  const targetUserModel = ROLE_COLLECTION_MAP[user?.role as TUserRole];
 
   try {
+    session.startTransaction();
+
+    const { _id: senderId, role: senderRole } = currentUser;
+    const senderModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
+
+    const { user } = await findUserById({ userId: targetUserId });
+
+    if (!user) {
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'User',
+      });
+    }
+    const userId = user?._id;
+    const targetUserModel = ROLE_COLLECTION_MAP[user?.role as TUserRole];
+
     if (senderRole === 'FLEET_MANAGER') {
       if (user?.role !== 'DELIVERY_PARTNER') {
         throw new AppError(
@@ -47,8 +50,8 @@ const initiateSettlement = async (
         );
       }
       const isHisRider =
-        user.registeredBy &&
-        user.registeredBy.id.toString() === senderId.toString();
+        user.currentFleetManagerId &&
+        user.currentFleetManagerId.toString() === senderId.toString();
 
       if (!isHisRider) {
         throw new AppError(
@@ -103,14 +106,26 @@ const initiateSettlement = async (
       userModel: targetUserModel,
     }).session(session);
 
-    if (!wallet || wallet.currentBalance <= 0) {
+    const availableAmount = roundTo2(
+      (wallet?.currentBalance ?? 0) - (wallet?.lockedBalance ?? 0),
+    );
+
+    if (!wallet || availableAmount <= 0) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'NO_UNPAID_EARNINGS_TO_SETTLE',
       );
     }
 
-    const snapshotAmount = roundTo2(wallet.currentBalance);
+    // Reserve the funds being settled so they no longer count as available
+    // balance until this payout is finalized or otherwise released.
+    await Wallet.updateOne(
+      { userId, userModel: targetUserModel },
+      { $inc: { lockedBalance: availableAmount } },
+      { session },
+    );
+
+    const snapshotAmount = availableAmount;
     const uniquePayoutId = customNanoId(8);
 
     const [payout] = await Payout.create(
@@ -160,10 +175,11 @@ const initiateSettlement = async (
 
     return {
       messageKey: 'SETTLEMENT_INITIATED_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: payout,
     };
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) await session.abortTransaction();
     throw error;
   } finally {
     session.endSession();
@@ -187,16 +203,26 @@ const finalizeSettlement = async (
   const processorModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
 
   try {
-    const payout = await Payout.findOne({ payoutId })
-      .populate('userId', 'userId bankDetails name nif')
-      .session(session);
+    // Atomic compare-and-swap: only one concurrent finalize call can move a
+    // given payout out of PENDING, closing the race with a second finalize
+    // for the same payoutId.
+    const claimedPayout = await Payout.findOneAndUpdate(
+      { payoutId, status: 'PENDING' },
+      { $set: { status: 'PROCESSING' } },
+      { session, new: true },
+    );
 
-    if (!payout || payout.status !== 'PENDING') {
+    if (!claimedPayout) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'INVALID_PAYOUT_SESSION_OR_ALREADY_PAID',
       );
     }
+
+    const payout = await claimedPayout.populate(
+      'userId',
+      'userId bankDetails name nif',
+    );
 
     const user = payout.userId as any;
 
@@ -213,7 +239,10 @@ const finalizeSettlement = async (
         currentBalance: { $gte: amountToDeduct },
       },
       {
-        $inc: { currentBalance: -amountToDeduct },
+        $inc: {
+          currentBalance: -amountToDeduct,
+          lockedBalance: -amountToDeduct,
+        },
         $set: { lastSettlementDate: new Date() },
       },
       { session, new: true },
@@ -306,6 +335,7 @@ const finalizeSettlement = async (
 
     return {
       messageKey: 'SETTLEMENT_COMPLETED_SUCCESS' as TMessageKey,
+      variables: undefined,
       data: result,
     };
   } catch (error) {
@@ -406,7 +436,8 @@ const getAllPayouts = async (
   });
 
   return {
-    messageKey: 'PAYOUTS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Payout History' },
     meta,
     data: result,
   };
@@ -424,7 +455,9 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
     .populate('senderId', 'name role profilePhoto');
 
   if (!payout) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PAYOUT_RECORD_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Payout Record',
+    });
   }
 
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
@@ -433,10 +466,9 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
       payout.senderId._id.toString() === currentUserId.toString();
 
     if (!isOwner && !isSender) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'NO_PERMISSION_TO_VIEW_PAYOUT_DETAIL',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'You do not have permission to view this payout detail.',
+      });
     }
   }
 
@@ -465,7 +497,8 @@ const getSinglePayout = async (payoutId: string, currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'PAYOUT_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Payout' },
     data: {
       ...payout.toObject(),
       payoutCategory,
@@ -495,11 +528,17 @@ const initiateAutomatedSettlement = async () => {
 
     const eligibleWallets = await Wallet.find({
       userId: { $nin: activePendingUserIds },
-      currentBalance: { $gte: minPayoutAmount },
       userModel: { $in: ['Vendor', 'FleetManager', 'DeliveryPartner'] },
+      $expr: {
+        $gte: [
+          { $subtract: ['$currentBalance', '$lockedBalance'] },
+          minPayoutAmount,
+        ],
+      },
     })
-      .populate('userId', 'registeredBy bankDetails userId name')
-      .session(session);
+      .populate('userId', 'currentFleetManagerId bankDetails userId name')
+      .session(session)
+      .lean();
 
     if (eligibleWallets.length === 0) {
       await session.commitTransaction();
@@ -512,9 +551,12 @@ const initiateAutomatedSettlement = async () => {
 
     for (const wallet of eligibleWallets) {
       const user = wallet.userId as any;
+      const availableAmount = roundTo2(
+        wallet.currentBalance - (wallet.lockedBalance ?? 0),
+      );
 
       if (wallet.userModel === 'DeliveryPartner') {
-        if (user?.registeredBy?.model === 'FleetManager') {
+        if (user?.currentFleetManagerId) {
           continue;
         }
       }
@@ -525,7 +567,7 @@ const initiateAutomatedSettlement = async () => {
         user?.bankDetails?.iban;
 
       if (!hasCompleteBankDetails) {
-        const formattedAmount = roundTo2(wallet.currentBalance);
+        const formattedAmount = availableAmount;
         const NotificationPayload = {
           title: 'Dados Bancários Incompletos',
           body: `Não conseguimos iniciar o seu pagamento de €${formattedAmount} porque os seus dados bancários estão incompletos. Por favor, atualize-os para receber os pagamentos.`,
@@ -545,6 +587,12 @@ const initiateAutomatedSettlement = async () => {
 
       const uniquePayoutId = customNanoId(8);
 
+      await Wallet.updateOne(
+        { _id: wallet._id },
+        { $inc: { lockedBalance: availableAmount } },
+        { session },
+      );
+
       await Payout.create(
         [
           {
@@ -553,7 +601,7 @@ const initiateAutomatedSettlement = async () => {
             userModel: wallet.userModel,
             senderId: superAdmin?._id,
             senderModel: 'Admin',
-            amount: roundTo2(wallet.currentBalance),
+            amount: availableAmount,
             status: 'PENDING',
             paymentMethod: 'BANK_TRANSFER',
             startDate: wallet.lastSettlementDate || wallet.createdAt,

@@ -13,6 +13,7 @@ const registerUser = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -90,6 +91,7 @@ const loginUser = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: {
       accessToken,
       refreshToken,
@@ -105,6 +107,7 @@ const loginCustomer = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -120,6 +123,7 @@ const updateFcmToken = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -136,6 +140,7 @@ const logoutUser = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -158,6 +163,7 @@ const changePassword = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -169,6 +175,7 @@ const forgotPassword = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -188,6 +195,7 @@ const resetPassword = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: null,
   });
 });
@@ -207,6 +215,7 @@ const refreshToken = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

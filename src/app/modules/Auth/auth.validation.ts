@@ -95,10 +95,7 @@ const loginValidationSchema = z.object({
 const loginCustomerValidationSchema = z.object({
   body: z
     .object({
-      email: z
-        .string()
-        .email('Email must be a valid email address')
-        .optional(),
+      email: z.string().email('Email must be a valid email address').optional(),
       contactNumber: z
         .string()
         .refine((val) => !val || portugalPhoneRegex.test(val), {
