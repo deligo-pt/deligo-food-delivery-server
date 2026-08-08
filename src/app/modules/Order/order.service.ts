@@ -56,8 +56,6 @@ const finalizeCheckoutIntoOrder = async (
 
     const uniqueOrderId = customNanoId(10);
 
-    // Checkout doesn't capture fulfillmentType yet — defaults to DELIVERY so
-    // existing behavior is unchanged until the checkout flow is updated to pass it.
     const fulfillmentType =
       (summary as any).fulfillmentType || FULFILLMENT_TYPE.DELIVERY;
     const isPickup = fulfillmentType === FULFILLMENT_TYPE.PICKUP;
@@ -74,7 +72,13 @@ const finalizeCheckoutIntoOrder = async (
       customerId: summary.customerId,
       vendorId: summary.vendorId,
       fulfillmentType,
-      ...(pickup && { pickup: { codeHash: pickup.codeHash, generatedAt: pickup.generatedAt } }),
+      ...(pickup && {
+        pickup: {
+          codeHash: pickup.codeHash,
+          generatedAt: pickup.generatedAt,
+          pickupTime: (summary as any).pickupTime || null,
+        },
+      }),
       items: summary.items,
       totalItems: summary.totalItems,
       totalQuantity: summary.totalQuantity,
@@ -114,9 +118,7 @@ const finalizeCheckoutIntoOrder = async (
         deliGoCommission: summary.payoutSummary.deliGoCommission,
         fleet: isPickup ? { rate: 0, fee: 0 } : summary.payoutSummary.fleet,
         vendor: summary.payoutSummary.vendor,
-        rider: isPickup
-          ? { riderNetEarnings: 0 }
-          : summary.payoutSummary.rider,
+        rider: isPickup ? { riderNetEarnings: 0 } : summary.payoutSummary.rider,
       },
       offer: {
         isApplied: summary.offer.isApplied,
@@ -665,7 +667,8 @@ const updateOrderStatusByVendor = async (
     // ACTION: NO_SHOW (self-pickup only — customer never collected the order)
     // ---------------------------------------------------------
     if (action.type === 'NO_SHOW') {
-      order.cancelReason = action.reason || 'Customer did not collect the order.';
+      order.cancelReason =
+        action.reason || 'Customer did not collect the order.';
       order.refundStatus = REFUND_STATUS.PENDING;
 
       if (shouldCheckStock) {
@@ -1074,7 +1077,10 @@ const broadcastOrderToPartners = async (
   }
 
   if (order.fulfillmentType === FULFILLMENT_TYPE.PICKUP) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPLICABLE_TO_PICKUP_ORDER');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'NOT_APPLICABLE_TO_PICKUP_ORDER',
+    );
   }
 
   if (order.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
@@ -1648,7 +1654,7 @@ const getAllOrders = async (
     customer:
       'name userId role contactNumber currentSessionLocation profilePhoto NIF',
     vendor:
-      'name userId role businessDetails.businessName businessDetails.businessType',
+      'name userId role businessDetails.businessName businessDetails.businessType businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
     businessType: 'name',
@@ -1738,7 +1744,7 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
     customer:
       'name userId role contactNumber currentSessionLocation profilePhoto NIF',
     vendor:
-      'name userId role businessDetails.businessName businessDetails.businessType',
+      'name userId role businessDetails.businessName businessDetails.businessType businessDetails.openingHours businessDetails.closingHours businessDetails.closingDays',
     deliveryPartner:
       'name userId role contactNumber currentSessionLocation profilePhoto',
     businessType: 'name',
@@ -1931,7 +1937,10 @@ const verifyPickupCode = async (
   }
 
   if (order.fulfillmentType !== FULFILLMENT_TYPE.PICKUP) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPLICABLE_TO_PICKUP_ORDER');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'NOT_APPLICABLE_TO_PICKUP_ORDER',
+    );
   }
 
   if (order.orderStatus !== ORDER_STATUS.READY_FOR_PICKUP) {
