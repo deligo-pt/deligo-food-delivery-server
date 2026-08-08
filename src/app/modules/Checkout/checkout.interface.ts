@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { OfferType } from '../Offer/offer.constant';
+import { FulfillmentType } from '../Order/order.constant';
 import {
   TAddress,
   TOrderItemSnapshot,
@@ -21,6 +22,7 @@ export type TAppliedOfferSnapshot = {
   bogoSnapshot?: {
     buyQty: number;
     getQty: number;
+    freeQty: number; // units actually granted free in this cart (capped by cart qty)
     productId: mongoose.Types.ObjectId;
     productName?: string;
   };
@@ -45,6 +47,8 @@ export type TCheckoutSummary = {
   vendorId: mongoose.Types.ObjectId;
   customerEmail?: string;
   contactNumber?: string;
+
+  fulfillmentType: FulfillmentType;
 
   items: TOrderItemSnapshot[];
   totalItems: number;
@@ -104,7 +108,7 @@ export type TCheckoutSummary = {
     offerApplied?: TAppliedOfferSnapshot;
   };
 
-  deliveryAddress: TAddress;
+  deliveryAddress?: TAddress; // required only when fulfillmentType === 'DELIVERY'
 
   paymentMethod?: TPaymentMethod;
   paymentStatus?: TOrderPaymentStatus;
@@ -118,6 +122,7 @@ export type TCheckoutSummary = {
 };
 
 export type TCheckoutPayload = {
+  fulfillmentType?: FulfillmentType;
   useCart?: boolean;
 
   items?: {

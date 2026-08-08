@@ -1,6 +1,11 @@
 import { model, Schema } from 'mongoose';
-import { TOrder, TInvoiceSync, TOrderStatusHistory } from './order.interface';
-import { ORDER_STATUS, REFUND_STATUS } from './order.constant';
+import {
+  TOrder,
+  TInvoiceSync,
+  TOrderStatusHistory,
+  TOrderPickup,
+} from './order.interface';
+import { FULFILLMENT_TYPE, ORDER_STATUS, REFUND_STATUS } from './order.constant';
 import { addressSchema } from '../../constant/GlobalModel/address.model';
 import { localizedSchema } from '../../constant/GlobalModel/language.model';
 import {
@@ -43,6 +48,17 @@ const statusHistorySchema = new Schema<TOrderStatusHistory>(
   { _id: false },
 );
 
+const pickupSchema = new Schema<TOrderPickup>(
+  {
+    codeHash: { type: String, required: true, select: false },
+    generatedAt: { type: Date, required: true },
+    verifiedAt: { type: Date, default: null },
+    verifiedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    readyAt: { type: Date, default: null },
+  },
+  { _id: false },
+);
+
 const orderItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, required: true, ref: 'Product' },
@@ -70,6 +86,7 @@ const orderItemSchema = new Schema(
       originalPrice: { type: Number, required: true },
       productDiscountAmount: { type: Number, default: 0 },
       discountType: { type: String, enum: ['PERCENTAGE', 'FLAT'] },
+      priceAfterProductDiscount: { type: Number, required: true },
       promoDiscountAmount: { type: Number, default: 0 },
       unitPrice: { type: Number, required: true },
       lineTotal: { type: Number, required: true },
@@ -115,6 +132,14 @@ const orderSchema = new Schema<TOrder>(
       ref: 'DeliveryPartner',
     },
     deliveryPartnerCancelReason: { type: String, default: null },
+
+    fulfillmentType: {
+      type: String,
+      enum: Object.values(FULFILLMENT_TYPE),
+      required: true,
+      default: FULFILLMENT_TYPE.DELIVERY,
+    },
+    pickup: { type: pickupSchema, default: undefined },
 
     items: { type: [orderItemSchema], required: true },
 
@@ -213,7 +238,22 @@ const orderSchema = new Schema<TOrder>(
     dispatchPartnerPool: { type: [String], default: [] },
     dispatchExpiresAt: { type: Date },
 
-    deliveryAddress: { type: addressSchema, required: true },
+    deliveryAddress: {
+      type: addressSchema,
+      // Without this, Mongoose auto-instantiates an empty subdocument for
+      // PICKUP orders (single-nested-subdoc default behavior) instead of
+      // leaving the path genuinely absent.
+      default: undefined,
+      required: [
+        function requiresDeliveryAddress() {
+          return (
+            (this as unknown as TOrder).fulfillmentType ===
+            FULFILLMENT_TYPE.DELIVERY
+          );
+        },
+        'deliveryAddress is required for DELIVERY orders',
+      ],
+    },
     pickupAddress: { type: addressSchema },
 
     preparationTime: { type: Number, default: 0 },
@@ -232,11 +272,18 @@ const orderSchema = new Schema<TOrder>(
 );
 
 // Indexes
-orderSchema.index({
-  orderStatus: 1,
-  deliveryPartnerId: 1,
-  dispatchPartnerPool: 1,
-});
+// dispatchPartnerPool/dispatchExpiresAt are only ever populated while
+// orderStatus === DISPATCHING (see broadcastOrderToPartners), so scope both
+// indexes to that status to keep them tiny instead of covering every
+// DELIVERED/CANCELED order forever.
+orderSchema.index(
+  {
+    orderStatus: 1,
+    deliveryPartnerId: 1,
+    dispatchPartnerPool: 1,
+  },
+  { partialFilterExpression: { orderStatus: 'DISPATCHING' } },
+);
 
 orderSchema.index({ customerId: 1, createdAt: -1 });
 
@@ -245,8 +292,12 @@ orderSchema.index({
   'items.productId': 1,
 });
 
-orderSchema.index({ orderStatus: 1, dispatchExpiresAt: 1 });
+orderSchema.index(
+  { orderStatus: 1, dispatchExpiresAt: 1 },
+  { partialFilterExpression: { orderStatus: 'DISPATCHING' } },
+);
 orderSchema.index({ deliveryPartnerId: 1, orderStatus: 1, createdAt: -1 });
+orderSchema.index({ fulfillmentType: 1, orderStatus: 1, 'pickup.readyAt': 1 });
 orderSchema.index({ 'items.productId': 1 });
 orderSchema.index({ createdAt: -1 });
 

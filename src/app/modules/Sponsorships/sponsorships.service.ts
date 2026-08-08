@@ -41,7 +41,8 @@ const createSponsorship = async (
   };
   const result = await Sponsorship.create(sponsorshipData);
   return {
-    messageKey: 'SPONSORSHIP_CREATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_CREATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Sponsorship Campaign' },
     data: result,
   };
 };
@@ -88,7 +89,8 @@ const updateSponsorship = async (
   });
 
   return {
-    messageKey: 'SPONSORSHIP_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Sponsorship Details' },
     data: result,
   };
 };
@@ -99,11 +101,7 @@ const getAllSponsorships = async (
   query: Record<string, unknown>,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_APPROVED_TO_VIEW_SPONSORSHIPS_WITH_STATUS',
-      { status: currentUser.status },
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED');
   }
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   if (!isAdmin) {
@@ -123,7 +121,8 @@ const getAllSponsorships = async (
   ]);
 
   return {
-    messageKey: 'SPONSORSHIPS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Sponsorships' },
     meta,
     data,
   };
@@ -145,7 +144,8 @@ const getAllSponsorshipsPublic = async (query: Record<string, unknown>) => {
   ]);
 
   return {
-    messageKey: 'SPONSORSHIPS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Sponsorships' },
     meta,
     data,
   };
@@ -154,11 +154,7 @@ const getAllSponsorshipsPublic = async (query: Record<string, unknown>) => {
 // get single sponsorship
 const getSingleSponsorship = async (currentUser: TCurrentUser, id: string) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_APPROVED_TO_VIEW_SPONSORSHIPS_WITH_STATUS',
-      { status: currentUser.status },
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED');
   }
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const sponsorship = await Sponsorship.findById(id);
@@ -174,7 +170,8 @@ const getSingleSponsorship = async (currentUser: TCurrentUser, id: string) => {
     }
   }
   return {
-    messageKey: 'SPONSORSHIP_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Sponsorship' },
     data: sponsorship,
   };
 };
@@ -185,11 +182,7 @@ const softDeletedSponsorship = async (
   id: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_APPROVED_TO_VIEW_SPONSORSHIPS_WITH_STATUS',
-      { status: currentUser.status },
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED');
   }
 
   const isExist = await Sponsorship.findById(id);
@@ -210,7 +203,8 @@ const softDeletedSponsorship = async (
   );
 
   return {
-    messageKey: 'SPONSORSHIP_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Sponsorship Campaign' },
     data: null,
   };
 };
@@ -221,22 +215,19 @@ const permanentDeleteSponsorship = async (
   id: string,
 ) => {
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_APPROVED_TO_VIEW_SPONSORSHIPS_WITH_STATUS',
-      { status: currentUser.status },
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED');
   }
   const isExist = await Sponsorship.findById(id);
   if (!isExist) {
     throw new AppError(httpStatus.NOT_FOUND, 'SPONSORSHIP_NOT_FOUND');
   }
   if (!isExist.isDeleted) {
-    throw new AppError(httpStatus.FORBIDDEN, 'PLEASE_SOFT_DELETE_FIRST');
+    throw new AppError(httpStatus.FORBIDDEN, 'DEACTIVATION_REQUIRED_FIRST');
   }
   await Sponsorship.findByIdAndDelete(id);
   return {
-    messageKey: 'SPONSORSHIP_DELETED_PERMANENTLY' as TMessageKey,
+    messageKey: 'COMMON_PERMANENTLY_DELETED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Sponsorship' },
     data: null,
   };
 };

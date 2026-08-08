@@ -186,7 +186,9 @@ const addToCart = async (
   });
 
   if (!existingProduct)
-    throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Item',
+    });
 
   if (existingProduct.meta?.status !== 'ACTIVE') {
     throw new AppError(httpStatus.BAD_REQUEST, 'PRODUCT_UNAVAILABLE');
@@ -487,7 +489,9 @@ const toggleCartItemStatus = async (
   }
 
   if (!cart || !cart.items || cart.items.length === 0) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Cart',
+    });
   }
 
   let isFinalStateActive = false;
@@ -520,11 +524,27 @@ const toggleCartItemStatus = async (
       });
     }
 
+    if (determineActiveState) {
+      const vendorItems = cart.items.filter(
+        (i: any) => i.vendorId.toString() === targetVendorIdStr,
+      );
+      const productIds = [
+        ...new Set(vendorItems.map((i: any) => i.productId.toString())),
+      ];
+      const products = await Product.find({
+        _id: { $in: productIds },
+        isDeleted: false,
+        isApproved: true,
+      }).lean();
+      const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+
+      for (const item of vendorItems) {
+        await refreshItemPricingAndTotals(item, productMap);
+      }
+    }
+
     for (const item of cart.items) {
       if (item.vendorId.toString() === targetVendorIdStr) {
-        if (determineActiveState) {
-          await refreshItemPricingAndTotals(item);
-        }
         item.isActive = determineActiveState;
       }
     }
@@ -561,8 +581,20 @@ const toggleCartItemStatus = async (
         }
       }
 
+      const toggleProductIds = [
+        ...new Set(itemsToToggle.map((i: any) => i.productId.toString())),
+      ];
+      const toggleProducts = await Product.find({
+        _id: { $in: toggleProductIds },
+        isDeleted: false,
+        isApproved: true,
+      }).lean();
+      const toggleProductMap = new Map(
+        toggleProducts.map((p) => [p._id.toString(), p]),
+      );
+
       for (const item of itemsToToggle) {
-        await refreshItemPricingAndTotals(item);
+        await refreshItemPricingAndTotals(item, toggleProductMap);
       }
     }
 
@@ -633,7 +665,10 @@ const updateAddonQuantity = async (
     }
   }
 
-  if (!cart) throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+  if (!cart)
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Cart',
+    });
 
   const itemIndex = cart.items.findIndex((i: any) => {
     const isSameProduct = i.productId.toString() === productId.toString();
@@ -659,7 +694,10 @@ const updateAddonQuantity = async (
     })
     .lean();
 
-  if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+  if (!product)
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Item',
+    });
 
   let selectedPrice = product.pricing.price;
   let selectedVariantLabel: any = null;
@@ -845,6 +883,7 @@ const updateAddonQuantity = async (
 
   return {
     messageKey: 'ADDON_QUANTITY_UPDATE_SUCCESS',
+    variables: undefined,
     data: formattedCart,
   };
 };
@@ -904,6 +943,7 @@ const deleteCartItem = async (
 
     return {
       messageKey: 'REMOVE_ITEMS_SUCCESS',
+      variables: undefined,
       data: {
         customerId,
         items: [],
@@ -940,6 +980,7 @@ const deleteCartItem = async (
 
   return {
     messageKey: 'REMOVE_ITEMS_SUCCESS',
+    variables: undefined,
     data: cart,
   };
 };
@@ -962,7 +1003,9 @@ const clearCart = async (currentUser: TCurrentUser) => {
   if (!cartExists) {
     const dbCart = await Cart.findOne({ customerId, isDeleted: false });
     if (!dbCart) {
-      throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Cart',
+      });
     }
   }
 
@@ -973,6 +1016,7 @@ const clearCart = async (currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'CLEAR_CART_SUCCESS',
+    variables: undefined,
     data: {
       customerId,
       items: [],
@@ -1005,8 +1049,10 @@ const getAllCart = async (
   let redisCarts: any[] = [];
 
   if (redisKeys && redisKeys.length > 0) {
-    for (const key of redisKeys) {
-      const cartData = await RedisService.get<any>(key);
+    const fetchedCarts = await Promise.all(
+      redisKeys.map((key) => RedisService.get<any>(key)),
+    );
+    for (const cartData of fetchedCarts) {
       if (cartData && cartData.items && cartData.items.length > 0) {
         if (cartData.cartCalculation) {
           delete cartData.cartCalculation.taxableAmount;
@@ -1273,18 +1319,28 @@ const viewCart = async (
   }
 
   if (!cart) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CART_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Cart',
+    });
   }
 
   if (cart.items && cart.items.length > 0) {
     let isCartDirty = false;
 
+    const cartProductIds = [
+      ...new Set(cart.items.map((item: any) => item.productId.toString())),
+    ];
+    const freshProducts = await Product.find({
+      _id: { $in: cartProductIds },
+      isDeleted: false,
+      isApproved: true,
+    }).lean();
+    const freshProductMap = new Map(
+      freshProducts.map((p) => [p._id.toString(), p]),
+    );
+
     for (const item of cart.items) {
-      const freshProduct = await Product.findOne({
-        _id: item.productId,
-        isDeleted: false,
-        isApproved: true,
-      }).lean();
+      const freshProduct = freshProductMap.get(item.productId.toString());
 
       if (!freshProduct) {
         if (item.isActive !== false) {

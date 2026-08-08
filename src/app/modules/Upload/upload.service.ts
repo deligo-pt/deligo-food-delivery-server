@@ -15,6 +15,7 @@ const processUploadedFilesWithMessage = async (files: TImageFile[]) => {
   const fileUrls = await processUploadedFiles(files);
   return {
     messageKey: 'FILES_UPLOADED_TO_CLOUDINARY_SUCCESS',
+    variables: undefined,
     data: fileUrls,
   };
 };

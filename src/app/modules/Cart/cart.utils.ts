@@ -57,12 +57,17 @@ export const formatCartResponse = (
   return transformedCart;
 };
 
-export const refreshItemPricingAndTotals = async (item: any) => {
-  const product = await Product.findOne({
-    _id: item.productId,
-    isDeleted: false,
-    isApproved: true,
-  }).lean();
+export const refreshItemPricingAndTotals = async (
+  item: any,
+  preloadedProducts?: Map<string, any>,
+) => {
+  const product = preloadedProducts
+    ? preloadedProducts.get(item.productId.toString())
+    : await Product.findOne({
+        _id: item.productId,
+        isDeleted: false,
+        isApproved: true,
+      }).lean();
   if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_UNAVAILABLE');
 
   const pNameEn = product.name?.en || '';

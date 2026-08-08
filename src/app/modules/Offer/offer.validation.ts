@@ -8,6 +8,26 @@ export const objectIdSchema = z
     message: 'Must be a valid ObjectId',
   });
 
+// BOGO Base Schema
+const bogoSchema = z
+  .object({
+    buyQty: z
+      .number()
+      .int('Buy quantity must be an integer')
+      .positive('Buy quantity must be greater than 0'),
+    getQty: z
+      .number()
+      .int('Get quantity must be an integer')
+      .positive('Get quantity must be greater than 0'),
+    buyProductId: objectIdSchema.optional(),
+    buyCategoryId: objectIdSchema.optional(),
+    getProductId: objectIdSchema.optional(),
+  })
+  .strict();
+
+// Update Schemas setup
+const updateBogoSchema = bogoSchema.partial();
+
 const offerBody = z
   .object({
     title: createLocalizedValidationSchema('offer title'),
@@ -38,9 +58,18 @@ const offerBody = z
           .number()
           .int('Get quantity must be an integer')
           .positive('Get quantity must be greater than 0'),
-        productId: objectIdSchema,
+        buyProductId: objectIdSchema.optional(), // Trigger product (X)
+        buyCategoryId: objectIdSchema.optional(), // Trigger category (Y)
+        buyVariationSku: z.string().trim().min(1).optional(), // Pin trigger to this exact variation only
+        getProductId: objectIdSchema.optional(), // Reward item (Z), defaults to buyProductId
+        getVariationSku: z.string().trim().min(1).optional(), // Pin reward to this exact variation only; defaults to buyVariationSku
+        includeAddons: z.boolean().optional().default(false), // Free unit's addons free too? Default: only the base product is free
       })
       .strict()
+      .refine((b) => !!(b.buyProductId || b.buyCategoryId), {
+        message: 'Either buyProductId or buyCategoryId is required',
+        path: ['buyProductId'],
+      })
       .optional(),
 
     validFrom: z.string().refine((val) => !isNaN(Date.parse(val)), {
@@ -91,6 +120,7 @@ const updateOfferBody = offerBody
       'offer description',
       true,
     ).optional(),
+    bogo: updateBogoSchema.optional(),
   })
   .partial();
 

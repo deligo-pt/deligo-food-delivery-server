@@ -25,6 +25,7 @@ const createGlobalSettings = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.CREATED,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -48,6 +49,7 @@ const updateGlobalSettings = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -61,6 +63,7 @@ const getGlobalSettingsForAdmin = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

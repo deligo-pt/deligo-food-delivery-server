@@ -1,8 +1,4 @@
 export const payoutMessages = {
-  TARGET_USER_NOT_FOUND: {
-    en: 'The requested user could not be found.',
-    pt: 'O usuário solicitado não pôde ser encontrado.',
-  },
   FLEET_MANAGER_ONLY_SETTLE_DELIVERY_PARTNERS: {
     en: 'Fleet Managers can only initiate settlements with Delivery Partners.',
     pt: 'Os gestores de frota apenas podem efetuar liquidações com parceiros de entrega.',
@@ -10,10 +6,6 @@ export const payoutMessages = {
   ONLY_OWN_DELIVERY_PARTNERS_SETTLEMENT: {
     en: 'You can only initiate settlements for delivery partners assigned to your fleet.',
     pt: 'Apenas pode iniciar a liquidação para os seus próprios parceiros de entrega.',
-  },
-  BANK_DETAILS_INCOMPLETE_TITLE: {
-    en: 'Bank Details Incomplete',
-    pt: 'Dados Bancários Incompletos',
   },
   BANK_DETAILS_INCOMPLETE_BODY: {
     en: 'Settlement could not be initiated because your bank details are missing. Please update them in your profile.',
@@ -64,30 +56,6 @@ export const payoutMessages = {
   SETTLEMENT_COMPLETED_SUCCESS: {
     en: 'Settlement completed successfully.',
     pt: 'Liquidação concluída com sucesso.',
-  },
-  PAYOUTS_FETCHED_SUCCESS: {
-    en: 'Payout history loaded successfully.',
-    pt: 'Histórico de pagamentos carregado com sucesso.',
-  },
-  PAYOUT_RECORD_NOT_FOUND: {
-    en: 'Payout record could not be found.',
-    pt: 'Registo de pagamento não encontrado.',
-  },
-  NO_PERMISSION_TO_VIEW_PAYOUT_DETAIL: {
-    en: 'Access denied. You do not have permission to view this payout detail.',
-    pt: 'Você não tem permissão para visualizar os detalhes deste pagamento.',
-  },
-  PAYOUT_FETCHED_SUCCESS: {
-    en: 'Payout details loaded successfully.',
-    pt: 'Detalhes do pagamento carregados com sucesso.',
-  },
-  GLOBAL_SETTINGS_NOT_FOUND: {
-    en: 'Global system configuration settings could not be found.',
-    pt: 'Configurações globais do sistema não puderam ser encontradas.',
-  },
-  INCOMPLETE_BANK_DETAILS_PT_TITLE: {
-    en: 'Bank Details Incomplete',
-    pt: 'Dados Bancários Incompletos',
   },
   INCOMPLETE_BANK_DETAILS_PT_BODY: {
     en: (vars: { amount: number }) =>

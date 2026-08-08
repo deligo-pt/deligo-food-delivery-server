@@ -11,10 +11,22 @@ export const ORDER_STATUS = {
   PICKED_UP: 'PICKED_UP',
   ON_THE_WAY: 'ON_THE_WAY',
   DELIVERED: 'DELIVERED',
+  PICKED_UP_BY_CUSTOMER: 'PICKED_UP_BY_CUSTOMER', // self-pickup terminal state
   CANCELED: 'CANCELED', // canceled (vendor/customer/admin)
+  NO_SHOW: 'NO_SHOW', // self-pickup only: never collected within the pickup window
 } as const;
 
 export type OrderStatus = keyof typeof ORDER_STATUS;
+
+export const FULFILLMENT_TYPE = {
+  DELIVERY: 'DELIVERY',
+  PICKUP: 'PICKUP',
+} as const;
+
+export type FulfillmentType = keyof typeof FULFILLMENT_TYPE;
+
+export const PICKUP_CODE_LENGTH = 6;
+export const PICKUP_AUTO_CANCEL_HOURS = 24;
 
 export const REFUND_STATUS = {
   NOT_APPLICABLE: 'NOT_APPLICABLE', // no refund was ever owed for this order
@@ -32,6 +44,7 @@ export const BLOCKED_FOR_ORDER_CANCEL = [
   ORDER_STATUS.PICKED_UP,
   ORDER_STATUS.ON_THE_WAY,
   ORDER_STATUS.DELIVERED,
+  ORDER_STATUS.PICKED_UP_BY_CUSTOMER,
 ] as const;
 
 export const DELIVERY_SEARCH_TIERS_METERS = [3000, 4000, 5000];

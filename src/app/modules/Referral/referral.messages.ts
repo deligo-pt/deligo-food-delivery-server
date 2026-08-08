@@ -45,14 +45,6 @@ export const referralMessages = {
   },
 
   // --- Success & Defaults ---
-  REFERRAL_STATS_RETRIEVED_SUCCESS: {
-    en: 'Referral statistics and history loaded successfully.',
-    pt: 'Estatísticas e histórico de recomendações carregados com sucesso.',
-  },
-  DEFAULT_REFERRAL_CODE: {
-    en: 'N/A',
-    pt: 'N/D',
-  },
   DEFAULT_REFERRAL_FRIEND_NAME: {
     en: 'DeliGo User',
     pt: 'Usuário DeliGo',

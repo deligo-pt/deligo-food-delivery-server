@@ -15,11 +15,7 @@ const getAndValidateProduct = async (
 ) => {
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   if (currentUser?.status !== 'APPROVED') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_AUTHORIZED_TO_UPDATE_ACCOUNT_STATUS',
-      { status: currentUser.status },
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
   }
   const product = await Product.findOne({
     productId,
@@ -69,7 +65,10 @@ const prepareUpdateData = async (
 
     if (taxId) {
       const tax = await Tax.findById(taxId);
-      if (!tax) throw new AppError(httpStatus.NOT_FOUND, 'TAX_NOT_FOUND');
+      if (!tax)
+        throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+          entity: 'Tax Configuration',
+        });
       modifiedData['pricing.taxId'] = taxId;
       modifiedData['pricing.taxRate'] = tax.taxRate;
     }

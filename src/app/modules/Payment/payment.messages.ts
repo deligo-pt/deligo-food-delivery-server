@@ -7,10 +7,6 @@ export const paymentMessages = {
     en: 'This payment has already been fully processed and completed.',
     pt: 'Este pagamento já foi totalmente processado e concluído.',
   },
-  REDUNIQ_API_URL_NOT_CONFIGURED: {
-    en: 'Payment gateway configuration missing.',
-    pt: 'Configuração do gateway de pagamento ausente.',
-  },
   PAYMENT_INITIATION_FAILED_BY_GATEWAY: {
     en: 'The payment gateway rejected the request. Please try again.',
     pt: 'O gateway de pagamento rejeitou a solicitação. Por favor, tente novamente.',
@@ -59,10 +55,6 @@ export const paymentMessages = {
     en: 'Payment refunded successfully.',
     pt: 'Pagamento reembolsado com sucesso.',
   },
-  NOT_AUTHORIZED_TO_VIEW: {
-    en: 'Access denied. You do not have permission to view this transaction data.',
-    pt: 'Acesso negado. Você não tem permissão para visualizar estes dados de transação.',
-  },
   PAYMENT_STATUS_RESET_SUCCESS: {
     en: 'Payment session state has been reset successfully.',
     pt: 'O estado da sessão de pagamento foi redefinido com sucesso.',
@@ -70,10 +62,6 @@ export const paymentMessages = {
   ORDER_DETAILS_EMPTY: {
     en: 'Order validation failed. Your cart cannot be empty.',
     pt: 'A validação do pedido falhou. Seu carrinho não pode estar vazio.',
-  },
-  INGREDIENT_NOT_FOUND: {
-    en: 'The requested ingredient could not be found.',
-    pt: 'O ingrediente solicitado não pôde ser localizado.',
   },
   STOCK_NOT_AVAILABLE: {
     en: (vars: { name: string; stock: number }) =>
@@ -95,10 +83,6 @@ export const paymentMessages = {
     en: 'Ingredient supply secure payment session initiated successfully.',
     pt: 'Sessão de pagamento seguro para suprimento de ingredientes inicializada com sucesso.',
   },
-  REDUNIQ_PAYMENT_INITIATION_FAILED: {
-    en: 'Failed to initiate payment with REDUNIQ. Please try again.',
-    pt: 'Falha ao iniciar o pagamento com a REDUNIQ. Por favor, tente novamente.',
-  },
   TRANSACTION_FAILED: {
     en: 'The transaction was declined or failed during processing.',
     pt: 'A transação foi recusada ou falhou durante o processamento.',
@@ -106,6 +90,10 @@ export const paymentMessages = {
   SAVED_TOKEN_PAYMENT_FAILED: {
     en: 'Payment with your saved card was declined. Please try again or use a different method.',
     pt: 'O pagamento com o seu cartão guardado foi recusado. Tente novamente ou use outro método.',
+  },
+  SAVED_TOKEN_PAYMENT_TEMPORARILY_UNAVAILABLE: {
+    en: 'Paying with a saved card is temporarily unavailable. Please pay with your card details directly instead.',
+    pt: 'O pagamento com cartão guardado está temporariamente indisponível. Por favor, pague com os dados do seu cartão diretamente.',
   },
   NOTIFICATION_RECEIVED: {
     en: 'Notification received.',

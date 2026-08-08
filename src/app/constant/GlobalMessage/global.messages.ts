@@ -255,4 +255,38 @@ export const globalCommonMessages = {
     en: 'N/A',
     pt: 'N/D',
   },
+
+  // --- SHARED CROSS-MODULE MESSAGES (deduplicated from module-level keys) ---
+  DEACTIVATION_REQUIRED_FIRST: {
+    en: 'Deactivation required first.',
+    pt: 'Desativação necessária primeiro.',
+  },
+  GEO_ACCURACY_EXCEEDED: {
+    en: 'Location accuracy must be within 100 meters to proceed.',
+    pt: 'A precisão da localização deve estar dentro de 100 metros para continuar.',
+  },
+  EMAIL_VERIFICATION_REQUIRED_FOR_UPDATE: {
+    en: 'Please verify your email address before updating your profile.',
+    pt: 'Por favor, verifique seu endereço de e-mail antes de atualizar seu perfil.',
+  },
+  PROFILE_UPDATE_LOCKED: {
+    en: 'Profile updates are locked for this account. Please contact support.',
+    pt: 'As atualizações de perfil estão bloqueadas para esta conta. Entre em contato com o suporte.',
+  },
+  VERIFICATION_DOCUMENT_UPLOADED_SUCCESS: {
+    en: 'Verification document uploaded successfully.',
+    pt: 'Documento de verificação enviado com sucesso.',
+  },
+  ACTIVE_CATEGORY_CANNOT_DELETE: {
+    en: 'An active category cannot be deleted. Please deactivate it first.',
+    pt: 'Uma categoria ativa não pode ser excluída. Por favor, desative-a primeiro.',
+  },
+  PAYMENT_GATEWAY_CONFIG_MISSING: {
+    en: 'Payment gateway configuration missing.',
+    pt: 'Configuração do gateway de pagamento ausente.',
+  },
+  ORDER_PLACED_SUCCESS: {
+    en: 'Order placed successfully!',
+    pt: 'Pedido realizado com sucesso!',
+  },
 } as const;

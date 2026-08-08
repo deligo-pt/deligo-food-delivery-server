@@ -28,6 +28,7 @@ type PopulateInput = {
   targetId?: string;
   orderId?: string;
   registeredByWithModel?: string;
+  currentFleetManagerWithDetails?: string;
   businessType?: string;
 };
 
@@ -96,6 +97,7 @@ export const getPopulateOptions = (
   );
 
   addOption('registeredByWithModel', 'registeredBy.id', isAdmin);
+  addOption('currentFleetManagerWithDetails', 'currentFleetManagerId', isAdmin);
 
   return options;
 };

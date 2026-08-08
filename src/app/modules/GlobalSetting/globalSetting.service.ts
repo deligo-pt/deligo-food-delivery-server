@@ -57,6 +57,7 @@ const createGlobalSettings = async (
 
   return {
     messageKey: 'SETTINGS_CREATED_SUCCESS',
+    variables: undefined,
     data: settings,
   };
 };
@@ -67,7 +68,9 @@ const updateGlobalSettings = async (
   currentUser: TCurrentUser,
 ) => {
   if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
-    throw new AppError(httpStatus.FORBIDDEN, 'ONLY_ADMIN_CAN_UPDATE');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Global configuration updates are restricted to administrators.',
+    });
   }
 
   if (currentUser.status !== 'APPROVED') {
@@ -119,7 +122,8 @@ const updateGlobalSettings = async (
 
   if (Object.keys(payload).length === 0) {
     return {
-      messageKey: 'SETTINGS_UPDATED_SUCCESS',
+      messageKey: 'COMMON_UPDATED_SUCCESS',
+      variables: { entity: 'Global Platform Settings' },
       data: existingSettings,
     };
   }
@@ -145,7 +149,8 @@ const updateGlobalSettings = async (
   );
 
   return {
-    messageKey: 'SETTINGS_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Global Platform Settings' },
     data: updatedSettings,
   };
 };
@@ -158,7 +163,9 @@ const getGlobalSettingsForAdmin = async (currentUser: TCurrentUser) => {
   }
 
   if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
-    throw new AppError(httpStatus.FORBIDDEN, 'ONLY_ADMIN_CAN_ACCESS');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Global settings view is restricted to administrators.',
+    });
   }
 
   // --------------------------------------------------
@@ -167,7 +174,9 @@ const getGlobalSettingsForAdmin = async (currentUser: TCurrentUser) => {
   const settings = await GlobalSettings.findOne().lean();
 
   if (!settings) {
-    throw new AppError(httpStatus.NOT_FOUND, 'SETTINGS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Global Configuration Settings',
+    });
   }
 
   return {
@@ -183,7 +192,9 @@ const getGlobalSettings = async (session?: ClientSession) => {
     .select('commission delivery order rewards ingredientsOrder')
     .session(session as ClientSession);
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'SETTINGS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Global Configuration Settings',
+    });
   }
   return {
     platformCommissionPercent: result?.commission?.platformPercent,

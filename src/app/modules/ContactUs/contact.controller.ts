@@ -18,6 +18,7 @@ const createContact = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.CREATED,
     messageKey: result?.messageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

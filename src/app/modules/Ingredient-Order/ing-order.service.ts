@@ -26,11 +26,15 @@ const confirmIngredientOrder = async (
   });
 
   if (!existingOrder) {
-    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Ingredient Order',
+    });
   }
 
   if (existingOrder.vendorId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_COMPLETE_ORDER');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to complete this order.',
+    });
   }
 
   if (existingOrder.paymentStatus === 'PAID') {
@@ -118,16 +122,16 @@ const confirmIngredientOrder = async (
 
     return {
       messageKey: 'INGREDIENT_ORDER_CONFIRMED_SUCCESS',
+      variables: undefined,
       data: existingOrder,
     };
   } catch (err: unknown) {
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'INGREDIENT_ORDER_CONFIRMATION_FAILED',
-    );
+    throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_OPERATION_FAILED', {
+      operation: 'confirm the order. Please try again',
+    });
   } finally {
     session.endSession();
   }
@@ -140,7 +144,9 @@ const getMyIngredientOrders = async (
 ) => {
   const vendorInfo = await Vendor.findById(currentUser._id);
   if (!vendorInfo) {
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   const ingredientOrderQuery = new QueryBuilder(
@@ -213,7 +219,9 @@ const getSingleIngredientOrder = async (orderId: string) => {
     .populate('orderDetails.ingredientId');
 
   if (!result) {
-    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Ingredient Order',
+    });
   }
   const order = result.toObject();
 
@@ -254,10 +262,9 @@ const updateIngredientOrderStatus = async (
 ) => {
   const adminId = currentUser._id;
   if (!adminId) {
-    throw new AppError(
-      httpStatus.UNAUTHORIZED,
-      'UNAUTHORIZED_UPDATE_ORDER_STATUS',
-    );
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to change this order status.',
+    });
   }
 
   const order = await IngredientOrder.findOne({ orderId }).setOptions({
@@ -265,7 +272,9 @@ const updateIngredientOrderStatus = async (
   });
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Ingredient',
+    });
   }
 
   if (order.paymentStatus !== 'PAID') {

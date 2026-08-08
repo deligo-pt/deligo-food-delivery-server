@@ -29,7 +29,8 @@ const createPermission = async (
 
   const result = await Permission.create(payload);
   return {
-    messageKey: 'PERMISSION_CREATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_CREATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Permission' },
     data: result,
   };
 };
@@ -41,10 +42,9 @@ const updatePermission = async (
 ) => {
   const permission = await Permission.findById(permissionId);
   if (!permission || permission.isDeleted) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'TARGET_SYSTEM_PERMISSION_NOT_FOUND',
-    );
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'System Permission',
+    });
   }
 
   if (
@@ -80,7 +80,8 @@ const updatePermission = async (
   });
 
   return {
-    messageKey: 'PERMISSION_UPDATED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_UPDATED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Permission' },
     data: result,
   };
 };
@@ -100,7 +101,8 @@ const getAllPermissions = async (query: Record<string, unknown>) => {
   const data = await permissionQuery.modelQuery;
 
   return {
-    messageKey: 'PERMISSIONS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Permissions', isPlural: true },
     meta,
     data,
   };
@@ -109,10 +111,13 @@ const getAllPermissions = async (query: Record<string, unknown>) => {
 const getSinglePermission = async (permissionId: string) => {
   const result = await Permission.findById(permissionId);
   if (!result || result.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PERMISSION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Permission',
+    });
   }
   return {
-    messageKey: 'PERMISSION_DETAILS_RETRIEVED_SUCCESS' as TMessageKey,
+    messageKey: 'DATA_LOAD_SUCCESS' as TMessageKey,
+    variables: { entity: 'Permission' },
     data: result,
   };
 };
@@ -121,7 +126,9 @@ const deletePermission = async (permissionId: string) => {
   const permission = await Permission.findById(permissionId);
 
   if (!permission || permission.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'PERMISSION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Permission',
+    });
   }
 
   if (permission.isSystemDefined) {
@@ -137,7 +144,8 @@ const deletePermission = async (permissionId: string) => {
     { new: true },
   );
   return {
-    messageKey: 'PERMISSION_SOFT_DELETED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Permission' },
     data: null,
   };
 };
@@ -173,7 +181,9 @@ const assignPermissionsToAdmin = async (
     isDeleted: false,
   });
   if (!targetAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_ADMIN_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Admin Account',
+    });
   }
 
   const actionCodes = await validateIdsAndGetActionCodes(payload.permissionIds);
@@ -190,6 +200,7 @@ const assignPermissionsToAdmin = async (
 
   return {
     messageKey: 'NEW_PERMISSIONS_ASSIGNED_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: result,
   };
 };
@@ -204,7 +215,9 @@ const revokePermissionsFromAdmin = async (
     isDeleted: false,
   });
   if (!targetAdmin) {
-    throw new AppError(httpStatus.NOT_FOUND, 'TARGET_ADMIN_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Admin Account',
+    });
   }
 
   const userCurrentPermissions = targetAdmin.permissions || [];
@@ -232,6 +245,7 @@ const revokePermissionsFromAdmin = async (
 
   return {
     messageKey: 'SPECIFIED_PERMISSIONS_REVOKED_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: result,
   };
 };

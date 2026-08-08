@@ -174,43 +174,41 @@ const sendToRole = (
             fcmToken: { $exists: true, $ne: '' },
           },
         },
-      });
+      })
+        .select('userId role loginDevices')
+        .lean();
 
-      for (const user of users) {
-        // const deviceTokens =
-        //   user.loginDevices
-        //     ?.filter(
-        //       (device: any) => device.isLoggedIn === true && device.fcmToken,
-        //     )
-        //     .map((device: any) => device.fcmToken) || [];
+      await Promise.allSettled(
+        users.map(async (user) => {
+          const deviceTokens =
+            user.loginDevices
+              ?.filter(
+                (device: any) =>
+                  device.fcmToken && device.fcmToken.trim() !== '',
+              )
+              .map((device: any) => device.fcmToken) || [];
 
-        const deviceTokens =
-          user.loginDevices
-            ?.filter(
-              (device: any) => device.fcmToken && device.fcmToken.trim() !== '',
-            )
-            .map((device: any) => device.fcmToken) || [];
+          const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
 
-        const uniqueTokens = [...new Set((deviceTokens as string[]) || [])];
+          if (uniqueTokens.length > 0) {
+            await sendPushSafely(uniqueTokens, {
+              title,
+              body: message,
+              data,
+              channelId: channelId || 'default',
+            });
+          }
 
-        if (uniqueTokens.length > 0) {
-          await sendPushSafely(uniqueTokens, {
+          await logNotification({
+            receiverId: user.userId,
+            receiverRole: user.role,
             title,
-            body: message,
+            message,
             data,
-            channelId: channelId || 'default',
+            type,
           });
-        }
-
-        await logNotification({
-          receiverId: user.userId,
-          receiverRole: user.role,
-          title,
-          message,
-          data,
-          type,
-        });
-      }
+        }),
+      );
     } catch (err) {
       console.error('sendToRole notification failed:', err);
     }
@@ -221,11 +219,15 @@ const sendToRole = (
 const markAsRead = async (id: string, currentUser: TCurrentUser) => {
   const notification = await Notification.findById(id);
   if (!notification) {
-    throw new AppError(httpStatus.NOT_FOUND, 'NOTIFICATION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Notification',
+    });
   }
 
   if (currentUser.userId !== notification.receiverId) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_ACTION');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to perform this action.',
+    });
   }
 
   notification.isRead = true;
@@ -233,6 +235,7 @@ const markAsRead = async (id: string, currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'MARKED_AS_READ_SUCCESS',
+    variables: undefined,
     data: null,
   };
 };
@@ -245,6 +248,7 @@ const markAllAsRead = async (currentUser: TCurrentUser) => {
   );
   return {
     messageKey: 'MARK_ALL_AS_READ_SUCCESS',
+    variables: undefined,
     data: null,
   };
 };
@@ -265,7 +269,7 @@ const getMyNotifications = async (
     .paginate()
     .fields();
   const meta = await notifications.countTotal();
-  const data = await notifications.modelQuery;
+  const data = await notifications.modelQuery.lean();
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Notifications', isPlural: true },
@@ -291,7 +295,7 @@ const getAllNotifications = async (
     .fields();
 
   const meta = await notifications.countTotal();
-  const data = await notifications.modelQuery;
+  const data = await notifications.modelQuery.lean();
   return {
     messageKey: 'DATA_LOAD_SUCCESS',
     variables: { entity: 'Notifications', isPlural: true },
@@ -337,7 +341,8 @@ const softDeleteSingleNotification = async (
   await notification.save();
 
   return {
-    messageKey: 'NOTIFICATION_DELETED_SUCCESS',
+    messageKey: 'COMMON_SOFT_DELETED_SUCCESS',
+    variables: { entity: 'Notification' },
   };
 };
 
@@ -412,10 +417,9 @@ const permanentDeleteSingleNotification = async (
   // Only SUPER_ADMIN allowed
   // --------------------------------------------------
   if (currentUser.role !== 'SUPER_ADMIN') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_SUPER_ADMIN_PERMANENT_DELETE',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Permanent deletion is restricted to Super Admins only.',
+    });
   }
 
   // --------------------------------------------------
@@ -436,7 +440,8 @@ const permanentDeleteSingleNotification = async (
   await Notification.deleteOne({ _id: id });
 
   return {
-    messageKey: 'NOTIFICATION_PERMANENT_DELETE_SUCCESS',
+    messageKey: 'COMMON_PERMANENTLY_DELETED_SUCCESS',
+    variables: { entity: 'Notification' },
   };
 };
 
@@ -446,10 +451,9 @@ const permanentDeleteMultipleNotifications = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_SUPER_ADMIN_PERMANENT_DELETE',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Permanent deletion is restricted to Super Admins only.',
+    });
   }
 
   if (!notificationIds.length) {
@@ -467,7 +471,10 @@ const permanentDeleteMultipleNotifications = async (
   if (result.deletedCount === 0) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'SELECTED_MUST_BE_SOFT_DELETED_FIRST',
+      'COMMON_MUST_SOFT_DELETE_FIRST',
+      {
+        entity: 'Notifications',
+      },
     );
   }
 
@@ -480,10 +487,9 @@ const permanentDeleteMultipleNotifications = async (
 // permanent delete all notifications - only for super admin
 const permanentDeleteAllNotifications = async (currentUser: TCurrentUser) => {
   if (currentUser.role !== 'SUPER_ADMIN') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_SUPER_ADMIN_PERMANENT_DELETE',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'Permanent deletion is restricted to Super Admins only.',
+    });
   }
 
   const result = await Notification.deleteMany({
@@ -536,7 +542,9 @@ const sendBroadcastNotification = async (
     }
 
     const userCursor = AuthUser.find(query)
+      .select('userId role email loginDevices profileId')
       .populate('profileId', 'name')
+      .lean()
       .cursor();
     setImmediate(async () => {
       try {
@@ -611,6 +619,7 @@ const sendBroadcastNotification = async (
   return {
     success: true,
     messageKey: 'BROADCAST_PROCESSING_STARTED',
+    variables: undefined,
   };
 };
 
