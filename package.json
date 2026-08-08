@@ -25,6 +25,7 @@
     "express-rate-limit": "^8.2.1",
     "firebase-admin": "^13.6.0",
     "fs-extra": "^11.3.5",
+    "google-auth-library": "^11.0.0",
     "handlebars": "^4.7.9",
     "http-status": "^1.7.4",
     "ioredis": "^5.10.1",

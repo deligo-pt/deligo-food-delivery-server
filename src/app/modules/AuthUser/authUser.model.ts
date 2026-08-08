@@ -73,6 +73,23 @@ const authUserSchema = new Schema<TAuthUser, IAuthUserModel, IAuthUserMethods>(
       default: false,
     },
 
+    // 4b. Linked Social Login Providers (Google/Facebook)
+    socialAccounts: {
+      type: [
+        {
+          provider: {
+            type: String,
+            enum: ['GOOGLE', 'FACEBOOK'],
+            required: true,
+          },
+          providerId: { type: String, required: true },
+          email: { type: String, lowercase: true, trim: true },
+          _id: false,
+        },
+      ],
+      default: [],
+    },
+
     // 5. Password Credentials & Security Audit Logs
     password: {
       type: String,
@@ -106,6 +123,16 @@ authUserSchema.index(
   {
     unique: true,
     partialFilterExpression: { contactNumber: { $type: 'string' } },
+  },
+);
+
+authUserSchema.index(
+  { 'socialAccounts.provider': 1, 'socialAccounts.providerId': 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      'socialAccounts.providerId': { $type: 'string' },
+    },
   },
 );
 
