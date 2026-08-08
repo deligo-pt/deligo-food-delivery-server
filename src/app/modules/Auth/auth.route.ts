@@ -54,6 +54,14 @@ router.post(
   AuthControllers.loginCustomer,
 );
 
+// Social Login (Google / Facebook) Customer Route
+router.post(
+  '/social-login',
+  validateRequest(AuthValidation.socialLoginValidationSchema),
+  rateLimiter('auth'),
+  AuthControllers.socialLoginCustomer,
+);
+
 // Update FCM Token Route
 router.post(
   '/update-fcm-token',

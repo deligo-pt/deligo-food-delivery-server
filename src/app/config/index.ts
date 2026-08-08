@@ -27,6 +27,18 @@ export default {
     bulkgate_send_api_url: process.env.BULKGATE_SEND_API_URL,
     bulkgate_api_key: process.env.BULKGATE_API_KEY,
     bulkgate_app_id: process.env.BULKGATE_APP_ID,
+    bulkgate_whatsapp_api_url: process.env.BULKGATE_WHATSAPP_API_URL,
+    bulkgate_whatsapp_sender_id: process.env.BULKGATE_WHATSAPP_SENDER_ID,
+  },
+  google: {
+    oauth_client_ids: (process.env.GOOGLE_OAUTH_CLIENT_IDS || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean),
+  },
+  facebook: {
+    app_id: process.env.FACEBOOK_APP_ID,
+    app_secret: process.env.FACEBOOK_APP_SECRET,
   },
   origins: process.env.ORIGINS,
   api_docs: {

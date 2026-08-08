@@ -181,6 +181,30 @@ export const authMessages = {
     en: 'A login code has been sent to your mobile number. Please verify to continue.',
     pt: 'Um código de login foi enviado para o seu celular. Verifique para continuar.',
   },
+  SOCIAL_LOGIN_SUCCESS: {
+    en: 'Logged in successfully.',
+    pt: 'Login realizado com sucesso.',
+  },
+  INVALID_SOCIAL_TOKEN: {
+    en: 'We could not verify your social login. Please try again.',
+    pt: 'Não foi possível verificar o seu login social. Por favor, tente novamente.',
+  },
+  SOCIAL_ACCOUNT_ALREADY_LINKED: {
+    en: 'This social account is already linked to another user.',
+    pt: 'Esta conta social já está vinculada a outro usuário.',
+  },
+  SOCIAL_EMAIL_REQUIRED: {
+    en: 'Your social account must have a verified email to sign up. Please allow email access and try again.',
+    pt: 'Sua conta social deve ter um e-mail verificado para se cadastrar. Por favor, permita o acesso ao e-mail e tente novamente.',
+  },
+  GOOGLE_CONFIGURATION_MISSING: {
+    en: 'Google login is not configured. Please contact support.',
+    pt: 'O login com o Google não está configurado. Entre em contato com o suporte.',
+  },
+  FACEBOOK_CONFIGURATION_MISSING: {
+    en: 'Facebook login is not configured. Please contact support.',
+    pt: 'O login com o Facebook não está configurado. Entre em contato com o suporte.',
+  },
   FCM_REQUIRED: {
     en: 'Notification setup incomplete. Missing device credentials.',
     pt: 'Configuração de notificação incompleta. Credenciais do dispositivo ausentes.',
