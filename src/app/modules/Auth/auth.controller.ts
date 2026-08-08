@@ -112,6 +112,34 @@ const loginCustomer = catchAsync(async (req, res) => {
   });
 });
 
+// Social Login (Google / Facebook) Customer Controller
+const socialLoginCustomer = catchAsync(async (req, res) => {
+  const result = await AuthServices.socialLoginCustomer({
+    ...req.body,
+    deviceDetails: {
+      ...req.body.deviceDetails,
+      ip: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+    },
+  });
+  const { refreshToken, accessToken } = result;
+
+  res.cookie('refreshToken', refreshToken, {
+    secure: config.NODE_ENV === 'production',
+    httpOnly: true,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    messageKey: result?.messageKey,
+    variables: result?.variables,
+    data: {
+      accessToken,
+      refreshToken,
+    },
+  });
+});
+
 // Update FCM Token Controller
 const updateFcmToken = catchAsync(async (req, res) => {
   const result = await AuthServices.updateFcmToken(
@@ -329,6 +357,7 @@ export const AuthControllers = {
   resendOtp,
   loginUser,
   loginCustomer,
+  socialLoginCustomer,
   updateFcmToken,
   logoutUser,
   changePassword,

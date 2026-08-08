@@ -27,6 +27,16 @@ export type TAuthUser = {
   isContactNumberVerified: boolean; // Global flag to track mobile number verification state
 
   requiresOtpVerification?: boolean;
+
+  // ------------------------------------------------------------------
+  // 4b. Linked Social Login Providers (Google/Facebook)
+  // ------------------------------------------------------------------
+  socialAccounts?: {
+    provider: 'GOOGLE' | 'FACEBOOK';
+    providerId: string; // Provider's unique subject/user id
+    email?: string;
+  }[];
+
   // ------------------------------------------------------------------
   // 5. Password Credentials & Security Audit Logs
   // ------------------------------------------------------------------

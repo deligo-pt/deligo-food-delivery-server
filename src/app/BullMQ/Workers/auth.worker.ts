@@ -1,6 +1,25 @@
 import { Job, Worker } from 'bullmq';
 import { LoginHistory } from '../../modules/LoginHistory/loginHistory.model';
+import { TDeviceType } from '../../modules/LoginHistory/loginHistory.interface';
 import { queueConnection } from '../../config/bullmq';
+
+// Clients send free-text deviceType (web/android/ios/...); LoginHistory only accepts this fixed enum.
+const normalizeDeviceType = (deviceType?: string): TDeviceType => {
+  switch ((deviceType || '').trim().toLowerCase()) {
+    case 'android':
+    case 'ios':
+    case 'mobile':
+      return 'MOBILE';
+    case 'tablet':
+    case 'ipad':
+      return 'TABLET';
+    case 'web':
+    case 'desktop':
+      return 'DESKTOP';
+    default:
+      return 'UNKNOWN';
+  }
+};
 
 export const authWorker = new Worker(
   'auth-queue',
@@ -8,7 +27,10 @@ export const authWorker = new Worker(
     switch (job.name) {
       case 'CREATE_LOGIN_LOG':
         try {
-          await LoginHistory.create(job.data);
+          await LoginHistory.create({
+            ...job.data,
+            deviceType: normalizeDeviceType(job.data.deviceType),
+          });
         } catch (error) {
           console.error(`[Auth Worker] Failed to save login history:`, error);
           throw error;

@@ -5,7 +5,7 @@ import {
 } from '../../constant/GlobalConstant/user.constant';
 
 const portugalPhoneRegex = /^(?:\+351|351)?9[1236]\d{7}$/;
-// Register
+// Register User
 const registerValidationSchema = z.object({
   body: z
     .object({
@@ -33,6 +33,8 @@ const registerValidationSchema = z.object({
     })
     .strict(),
 });
+
+// Register Onboarding
 const registerOnboardingValidationSchema = z.object({
   body: z
     .object({
@@ -60,7 +62,8 @@ const registerOnboardingValidationSchema = z.object({
     })
     .strict(),
 });
-// Login
+
+// Login User
 const loginValidationSchema = z.object({
   body: z
     .object({
@@ -104,12 +107,41 @@ const loginCustomerValidationSchema = z.object({
         })
         .optional(),
       referralCode: z.string().optional(),
+      otpChannel: z.enum(['SMS', 'WHATSAPP']).optional(),
     })
     .strict()
     .refine((data) => data.email || data.contactNumber, {
       message: 'Either Email or Contact Number is required',
       path: ['email'],
     }),
+});
+
+// Social Login (Google / Facebook)
+const socialLoginValidationSchema = z.object({
+  body: z
+    .object({
+      provider: z.enum(['GOOGLE', 'FACEBOOK'], {
+        required_error: 'Provider is required',
+      }),
+      token: z.string({
+        required_error: 'Token is required',
+      }),
+      referralCode: z.string().optional(),
+      deviceDetails: z.object({
+        deviceId: z.string({
+          required_error: 'Device ID is required',
+        }),
+        deviceType: z.string({
+          required_error: 'Device Type is required',
+        }),
+        deviceName: z.string().optional(),
+        fcmToken: z.string().optional(),
+        userAgent: z.string().optional(),
+        isLoggedIn: z.boolean().optional(),
+      }),
+      forceLogin: z.boolean().optional(),
+    })
+    .strict(),
 });
 
 //
@@ -249,6 +281,7 @@ const resendOtpValidationSchema = z.object({
       }),
       email: z.string().optional(),
       contactNumber: z.string().optional(),
+      otpChannel: z.enum(['SMS', 'WHATSAPP']).optional(),
     })
     .strict()
     .refine((data) => data.email || data.contactNumber, {
@@ -262,6 +295,7 @@ export const AuthValidation = {
   registerOnboardingValidationSchema,
   loginValidationSchema,
   loginCustomerValidationSchema,
+  socialLoginValidationSchema,
   logoutValidationSchema,
   changePasswordValidationSchema,
   forgotPasswordValidationSchema,

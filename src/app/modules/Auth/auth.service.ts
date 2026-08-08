@@ -18,13 +18,23 @@ import {
 } from '../../constant/GlobalConstant/user.constant';
 import { EmailHelper } from '../../utils/emailSender';
 import { createToken, verifyToken } from '../../utils/verifyJWT';
-import { TLoginCustomer, TLoginUser, TRegisterUser } from './auth.interface';
+import {
+  TLoginCustomer,
+  TLoginUser,
+  TRegisterUser,
+  TSocialLoginCustomer,
+} from './auth.interface';
 import { findUserById } from '../../utils/findUserByEmailOrId';
 import { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../../config';
 import { Customer } from '../Customer/customer.model';
 import { sendMobileOtp } from '../../utils/sendMobileOtp';
+import { sendWhatsappOtp } from '../../utils/sendWhatsappOtp';
+import {
+  verifyFacebookAccessToken,
+  verifyGoogleIdToken,
+} from '../../utils/verifySocialToken';
 import { NotificationService } from '../Notification/notification.service';
 import mongoose from 'mongoose';
 import { RedisService } from '../../config/redis';
@@ -591,8 +601,9 @@ const resendOtp = async (payload: {
   role: TUserRole;
   email?: string;
   contactNumber?: string;
+  otpChannel?: 'SMS' | 'WHATSAPP';
 }) => {
-  const { role, email, contactNumber } = payload;
+  const { role, email, contactNumber, otpChannel } = payload;
   if (!email?.trim() && !contactNumber?.trim()) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -624,6 +635,10 @@ const resendOtp = async (payload: {
 
     if (isTestNumber) {
       otpCode = config.customer.test_customer_contact_otp as string;
+    } else if (otpChannel === 'WHATSAPP') {
+      const res = await sendWhatsappOtp(formattedContact);
+      console.log('BulkGate Resend WhatsApp Sent:', res);
+      otpCode = res.otp;
     } else {
       const res = await sendMobileOtp(formattedContact);
       console.log('BulkGate Resend SMS Sent:', res);
@@ -928,7 +943,7 @@ const loginUser = async (
 
 // login customer
 const loginCustomer = async (payload: TLoginCustomer) => {
-  const { email, contactNumber, referralCode } = payload;
+  const { email, contactNumber, referralCode, otpChannel } = payload;
 
   if (!email && !contactNumber) {
     throw new AppError(httpStatus.BAD_REQUEST, 'LOGIN_CREDENTIAL_REQUIRED');
@@ -1100,6 +1115,10 @@ const loginCustomer = async (payload: TLoginCustomer) => {
 
       if (isTestNumber) {
         otpCode = config.customer.test_customer_contact_otp as string;
+      } else if (otpChannel === 'WHATSAPP') {
+        const res = await sendWhatsappOtp(formattedContact);
+        console.log('BulkGate WhatsApp Sent:', res);
+        otpCode = res.otp;
       } else {
         const res = await sendMobileOtp(formattedContact);
         console.log('BulkGate SMS Sent:', res);
@@ -1122,6 +1141,272 @@ const loginCustomer = async (payload: TLoginCustomer) => {
     console.error('Login Customer Transaction Error:', err);
     throw err;
   }
+};
+
+// Social Login (Google / Facebook) Customer
+const socialLoginCustomer = async (
+  payload: TSocialLoginCustomer & {
+    deviceDetails: TLoginDevice;
+    forceLogin?: boolean;
+  },
+) => {
+  const { provider, token, referralCode, deviceDetails, forceLogin } =
+    payload;
+
+  const enqueueSocialLoginFailure = (
+    emailForLog: string | undefined,
+    failureReason:
+      | 'INVALID_SOCIAL_TOKEN'
+      | 'SOCIAL_EMAIL_REQUIRED'
+      | 'SOCIAL_ACCOUNT_ALREADY_LINKED'
+      | 'ACCOUNT_LOCKED'
+      | 'LIMIT_EXCEEDED',
+    userId?: mongoose.Types.ObjectId,
+  ) => {
+    authQueue.add('CREATE_LOGIN_LOG', {
+      userId,
+      email: emailForLog || 'unknown',
+      userRole: USER_ROLE.CUSTOMER,
+      ipAddress: deviceDetails?.ip || 'Unknown',
+      deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+      browser: deviceDetails?.deviceName || 'Unknown',
+      os: 'Unknown',
+      userAgent: deviceDetails?.userAgent || 'Unknown',
+      status: 'FAILED',
+      failureReason,
+      sessionId: deviceDetails?.deviceId,
+      loginAt: new Date(),
+    });
+  };
+
+  let profile;
+  try {
+    profile =
+      provider === 'GOOGLE'
+        ? await verifyGoogleIdToken(token)
+        : await verifyFacebookAccessToken(token);
+  } catch (err) {
+    enqueueSocialLoginFailure(undefined, 'INVALID_SOCIAL_TOKEN');
+    throw err;
+  }
+
+  const { providerId, email, name, picture } = profile;
+
+  const session = await mongoose.startSession();
+
+  let authUser: any = null;
+
+  try {
+    session.startTransaction();
+
+    authUser = await AuthUser.findOne({
+      role: USER_ROLE.CUSTOMER,
+      isDeleted: false,
+      'socialAccounts.provider': provider,
+      'socialAccounts.providerId': providerId,
+    }).session(session);
+
+    if (!authUser && email) {
+      authUser = await AuthUser.findOne({
+        role: USER_ROLE.CUSTOMER,
+        isDeleted: false,
+        email,
+      }).session(session);
+
+      if (authUser) {
+        authUser.socialAccounts = authUser.socialAccounts || [];
+        authUser.socialAccounts.push({ provider, providerId, email });
+        authUser.isEmailVerified = true;
+        await authUser.save({ session });
+      }
+    }
+
+    if (!authUser) {
+      if (!email) {
+        enqueueSocialLoginFailure(undefined, 'SOCIAL_EMAIL_REQUIRED');
+        throw new AppError(httpStatus.BAD_REQUEST, 'SOCIAL_EMAIL_REQUIRED');
+      }
+
+      const userId = generateUserId('CUSTOMER');
+      const [firstName, ...restName] = (name || '').trim().split(/\s+/);
+
+      const newCustomers = await Customer.create(
+        [
+          {
+            userId,
+            email,
+            profilePhoto: picture,
+            name: {
+              firstName: firstName || '',
+              lastName: restName.join(' ') || '',
+            },
+          },
+        ],
+        { session },
+      );
+      const newCustomer = newCustomers[0];
+
+      const createdAuthUsers = await AuthUser.create(
+        [
+          {
+            userId,
+            profileId: newCustomer._id,
+            profileModel: 'Customer',
+            email,
+            role: USER_ROLE.CUSTOMER,
+            isEmailVerified: true,
+            socialAccounts: [{ provider, providerId, email }],
+          },
+        ],
+        { session },
+      );
+      authUser = createdAuthUsers[0];
+
+      if (referralCode) {
+        const res = await ReferralServices.createReferralEntry(
+          newCustomer,
+          referralCode,
+          session,
+        );
+        if (res?.referrerId) {
+          await Customer.findByIdAndUpdate(
+            newCustomer._id,
+            { referredBy: res.referrerId },
+            { session },
+          );
+        }
+      }
+    }
+
+    await session.commitTransaction();
+  } catch (err: any) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.error('Social Login Customer Transaction Error:', err);
+    if (err?.code === 11000) {
+      enqueueSocialLoginFailure(email, 'SOCIAL_ACCOUNT_ALREADY_LINKED');
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'SOCIAL_ACCOUNT_ALREADY_LINKED',
+      );
+    }
+    throw err;
+  } finally {
+    session.endSession();
+  }
+
+  if (authUser.status === USER_STATUS.BLOCKED) {
+    enqueueSocialLoginFailure(authUser.email, 'ACCOUNT_LOCKED', authUser._id);
+    throw new AppError(httpStatus.FORBIDDEN, 'USER_BLOCKED');
+  }
+
+  const deviceLimit = ROLE_DEVICE_LIMITS[authUser.role] || 3;
+  const loginDevices = authUser.loginDevices || [];
+  const currentDeviceId = deviceDetails?.deviceId || 'unknown';
+
+  const existingDeviceIndex = loginDevices.findIndex(
+    (d: TLoginDevice) => d.deviceId === currentDeviceId,
+  );
+  const isExisting =
+    existingDeviceIndex !== undefined && existingDeviceIndex > -1;
+
+  if (!isExisting && loginDevices.length >= deviceLimit && !forceLogin) {
+    enqueueSocialLoginFailure(authUser.email, 'LIMIT_EXCEEDED', authUser._id);
+    throw new AppError(httpStatus.FORBIDDEN, 'LIMIT_EXCEEDED');
+  }
+
+  const newDevice: TLoginDevice = {
+    deviceId: deviceDetails?.deviceId || 'unknown',
+    deviceType: deviceDetails?.deviceType || 'unknown',
+    deviceName: deviceDetails?.deviceName || '',
+    fcmToken: deviceDetails?.fcmToken || '',
+    userAgent: deviceDetails?.userAgent || '',
+    ip: deviceDetails?.ip || '',
+    isVerified: true,
+    isLoggedIn: true,
+    lastLogin: new Date(),
+  };
+
+  const updateQuery: any = {
+    $set: { requiresOtpVerification: false, isEmailVerified: true },
+  };
+  const options: any = { new: true };
+
+  if (isExisting) {
+    updateQuery.$set['loginDevices.$[elem]'] = newDevice;
+    options.arrayFilters = [{ 'elem.deviceId': newDevice.deviceId }];
+  } else if (loginDevices.length >= deviceLimit) {
+    updateQuery.$push = {
+      loginDevices: { $each: [newDevice], $slice: -deviceLimit },
+    };
+  } else {
+    updateQuery.$push = { loginDevices: newDevice };
+  }
+
+  await AuthUser.findOneAndUpdate({ _id: authUser._id }, updateQuery, options);
+
+  const populatedAuthUser = await AuthUser.findById(authUser._id).populate(
+    'profileId',
+    'name',
+  );
+  const profileDetails = populatedAuthUser?.profileId as any;
+
+  const jwtPayload = {
+    userId: authUser.userId,
+    name: {
+      firstName: profileDetails?.name?.firstName || '',
+      lastName: profileDetails?.name?.lastName || '',
+    },
+    email: authUser.email || '',
+    contactNumber: authUser.contactNumber || '',
+    role: authUser.role,
+    status: authUser.status,
+    deviceId: newDevice.deviceId,
+  };
+
+  const accessToken = createToken(
+    jwtPayload,
+    config.jwt.jwt_access_secret as string,
+    config.jwt.jwt_access_expires_in as string,
+  );
+
+  const refreshFamily = generateFamilyId();
+  const refreshJti = generateJti();
+  const refreshToken = createToken(
+    { ...jwtPayload, jti: refreshJti },
+    config.jwt.jwt_refresh_secret as string,
+    config.jwt.jwt_refresh_expires_in as string,
+  );
+
+  await storeRefreshSession(
+    authUser.userId,
+    newDevice.deviceId,
+    refreshJti,
+    refreshFamily,
+    expiresInToSeconds(config.jwt.jwt_refresh_expires_in as string),
+  );
+
+  authQueue.add('CREATE_LOGIN_LOG', {
+    userId: authUser._id,
+    email: authUser.email,
+    userRole: authUser.role,
+    ipAddress: deviceDetails?.ip || 'Unknown',
+    deviceType: deviceDetails?.deviceType || 'UNKNOWN',
+    browser: deviceDetails?.deviceName || 'Unknown',
+    os: 'Unknown',
+    userAgent: deviceDetails?.userAgent || 'Unknown',
+    status: 'SUCCESS',
+    sessionId: newDevice.deviceId,
+    loginAt: new Date(),
+  });
+
+  return {
+    messageKey: 'SOCIAL_LOGIN_SUCCESS' as const,
+    variables: undefined,
+    accessToken,
+    refreshToken,
+  };
 };
 
 //update FCM Token
@@ -2090,6 +2375,7 @@ export const AuthServices = {
   resendOtp,
   loginUser,
   loginCustomer,
+  socialLoginCustomer,
   updateFcmToken,
   logoutUser,
   changePassword,
