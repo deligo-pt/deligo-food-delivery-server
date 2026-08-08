@@ -49,4 +49,34 @@ export const checkoutMessages = {
     en: 'Unable to calculate this order. Please try again or contact support.',
     pt: 'Não foi possível calcular este pedido. Por favor, tente novamente ou contacte o suporte.',
   },
+
+  // ---------------------------------------------------------
+  // SELF-PICKUP TIME
+  // ---------------------------------------------------------
+  PICKUP_TIME_REQUIRED: {
+    en: 'Please choose a pickup time for your order.',
+    pt: 'Por favor, escolha um horário de retirada para o seu pedido.',
+  },
+  INVALID_PICKUP_TIME: {
+    en: 'The pickup time provided is not a valid date/time.',
+    pt: 'O horário de retirada fornecido não é uma data/hora válida.',
+  },
+  PICKUP_TIME_MUST_BE_TODAY: {
+    en: 'Pickup time must be later today — scheduling for another day is not supported yet.',
+    pt: 'O horário de retirada deve ser ainda hoje — agendar para outro dia ainda não é suportado.',
+  },
+  PICKUP_TIME_MUST_BE_IN_FUTURE: {
+    en: 'Pickup time must be later than the current time.',
+    pt: 'O horário de retirada deve ser posterior ao horário atual.',
+  },
+  VENDOR_CLOSED_ON_PICKUP_DAY: {
+    en: 'This restaurant is closed today and cannot accept a pickup time.',
+    pt: 'Este restaurante está fechado hoje e não pode aceitar um horário de retirada.',
+  },
+  PICKUP_TIME_OUTSIDE_STORE_HOURS: {
+    en: (vars: { openingHours: string; closingHours: string }) =>
+      `Pickup time must be between ${vars.openingHours} and ${vars.closingHours} (the restaurant's store hours).`,
+    pt: (vars: { openingHours: string; closingHours: string }) =>
+      `O horário de retirada deve ser entre ${vars.openingHours} e ${vars.closingHours} (horário de funcionamento do restaurante).`,
+  },
 } as const;

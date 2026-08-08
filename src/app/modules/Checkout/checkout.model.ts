@@ -24,6 +24,7 @@ const CheckoutSummarySchema = new Schema<TCheckoutSummary>(
       required: true,
       default: FULFILLMENT_TYPE.DELIVERY,
     },
+    pickupTime: { type: Date },
 
     items: [
       {

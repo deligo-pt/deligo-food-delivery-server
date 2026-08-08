@@ -55,6 +55,7 @@ const pickupSchema = new Schema<TOrderPickup>(
     verifiedAt: { type: Date, default: null },
     verifiedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     readyAt: { type: Date, default: null },
+    pickupTime: { type: Date, default: null },
   },
   { _id: false },
 );
