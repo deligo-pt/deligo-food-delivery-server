@@ -157,7 +157,7 @@ const getAllSosAlerts = async (
     filterConditions = {};
   } else if (currentUser.role === 'FLEET_MANAGER') {
     const partners = await DeliveryPartner.find({
-      'registeredBy.id': currentUser._id.toString(),
+      currentFleetManagerId: currentUser._id.toString(),
     })
       .select('_id')
       .lean();
@@ -213,7 +213,7 @@ const getSingleSosAlert = async (id: string, currentUser: TCurrentUser) => {
 
     if (
       !partner ||
-      partner?.registeredBy?.id.toString() !== currentUser._id.toString()
+      partner?.currentFleetManagerId?.toString() !== currentUser._id.toString()
     ) {
       throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {});
     }

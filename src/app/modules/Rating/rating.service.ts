@@ -163,7 +163,7 @@ const getAllRatings = async (
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const myDeliveryPartners = await DeliveryPartner.find({
-      'registeredBy.id': currentUser._id,
+      currentFleetManagerId: currentUser._id,
     })
       .select('_id')
       .lean();
@@ -254,7 +254,7 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
   ) {
     const partner = await DeliveryPartner.findOne({
       _id: rating.targetId,
-      'registeredBy.id': currentUser._id,
+      currentFleetManagerId: currentUser._id,
     });
     if (partner) isFleetManagerOfPartner = true;
   }

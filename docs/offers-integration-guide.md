@@ -112,7 +112,9 @@ is rejected before any other field is checked.
     "getQty": 1,
     "buyProductId": "<productId>",     // trigger: buy this exact product...
     // "buyCategoryId": "<categoryId>", // ...OR buy anything from this category (use one, not both)
+    "buyVariationSku": "VAR-PEP-MED-1FV", // optional — pin the trigger to this exact variation only
     "getProductId": "<productId>",      // optional — reward item; defaults to buyProductId (same item) if omitted
+    "getVariationSku": "VAR-PEP-MED-1FV", // optional — pin the reward to this exact variation; defaults to buyVariationSku
     "includeAddons": false              // optional, default false — see below
   }
 }
@@ -121,6 +123,24 @@ is rejected before any other field is checked.
 **Ownership is enforced:** `buyProductId`, `buyCategoryId`'s products, and
 `getProductId` must all belong to you (or your parent vendor if you're a
 `SUB_VENDOR`) — otherwise `403 BOGO_BUY_PRODUCT_NOT_OWNED` / `BOGO_GET_PRODUCT_NOT_OWNED`.
+
+**Variation-level vs product-level BOGO.** When a product has multiple
+variations (e.g. Small/Medium/Large), you choose how strict the offer is:
+
+- **Product-level (default)** — leave `buyVariationSku`/`getVariationSku` unset.
+  Every variation of `buyProductId` counts together toward the trigger (buy 3
+  Medium + 2 Small = 5 total), and the free unit is always given from the
+  **cheapest** matching variation in the cart — protects your margin and is
+  deterministic regardless of cart order.
+- **Variation-level (strict)** — set `buyVariationSku` to pin the trigger to
+  that exact variation only. Other variations of the same product don't count
+  at all: with `buyVariationSku` set to Medium's SKU, a cart with Medium×3 +
+  Small×2 only counts the 3 Mediums toward the trigger, and the free unit is
+  also Medium (via `getVariationSku` defaulting to `buyVariationSku`) — never
+  Small, even though it's cheaper.
+
+Set `getVariationSku` explicitly if you want the reward on a *different*
+variation than the trigger (e.g. buy 2 Large, get 1 Small free).
 
 **Addons are NOT free by default.** The free unit only zeroes out the base
 product price — if the customer added a paid addon/customization to that item

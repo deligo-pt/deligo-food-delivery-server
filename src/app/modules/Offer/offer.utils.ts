@@ -33,16 +33,19 @@ export const resolveBogoTriggerProductIds = async (bogo: {
   return [];
 };
 
-// Sums cart quantity for items that satisfy the BOGO "buy" trigger
-const getBogoTriggerQty = (
-  checkoutData: any,
+// Sums cart quantity for items that satisfy the BOGO "buy" trigger. When
+// buyVariationSku is set, only that exact variation counts (strict variation-level
+// BOGO) — otherwise every variation of the matched product(s) counts together.
+export const getBogoTriggerQty = (
+  items: any[],
   triggerProductIds: string[],
+  buyVariationSku?: string,
 ): number =>
-  checkoutData.items.reduce((sum: number, item: any) => {
+  items.reduce((sum: number, item: any) => {
     const cartProductId = item.productId?.toString();
-    return triggerProductIds.includes(cartProductId)
-      ? sum + item.itemSummary.quantity
-      : sum;
+    if (!triggerProductIds.includes(cartProductId)) return sum;
+    if (buyVariationSku && item.variationSku !== buyVariationSku) return sum;
+    return sum + item.itemSummary.quantity;
   }, 0);
 
 // Free units earned for a given trigger quantity. Needs a full (buyQty + getQty)
@@ -244,7 +247,11 @@ export const findAndValidateOffer = async (
   // BOGO: cart must hold a full (buyQty + getQty) tier before any unit is free
   if (offer.offerType === 'BOGO' && offer.bogo) {
     const triggerProductIds = await resolveBogoTriggerProductIds(offer.bogo);
-    const triggerQty = getBogoTriggerQty(checkoutData, triggerProductIds);
+    const triggerQty = getBogoTriggerQty(
+      checkoutData.items,
+      triggerProductIds,
+      offer.bogo.buyVariationSku,
+    );
     const eligibleFreeQty = getBogoEligibleFreeQty(offer.bogo, triggerQty);
 
     if (eligibleFreeQty <= 0) {
@@ -311,18 +318,25 @@ export const calculateOfferDiscount = async (
     case 'BOGO': {
       const bogo = offer.bogo!;
       const triggerProductIds = await resolveBogoTriggerProductIds(bogo);
-      const triggerQty = getBogoTriggerQty(checkoutData, triggerProductIds);
+      const triggerQty = getBogoTriggerQty(
+        checkoutData.items,
+        triggerProductIds,
+        bogo.buyVariationSku,
+      );
 
       // Reward item defaults to the same product bought, unless a distinct reward item is configured.
-      // The same productId can appear as multiple separate lines (different variations) — pick the
-      // CHEAPEST matching line as the free one. This protects vendor margin by default (never gives
-      // away the pricier variant) and removes cart-order dependence (deterministic regardless of the
-      // order items were added). Matched by array index so only that one specific line is discounted.
+      // getVariationSku (or buyVariationSku as its fallback) pins the reward to one EXACT variation —
+      // strict variation-level BOGO. Without either set (product-level BOGO), the same productId can
+      // appear as multiple separate lines (different variations); pick the CHEAPEST matching line as
+      // the free one, protecting vendor margin by default and removing cart-order dependence. Matched
+      // by array index so only that one specific line is ever discounted.
       const getProductId = (bogo.getProductId || bogo.buyProductId)?.toString();
+      const getVariationSku = bogo.getVariationSku || bogo.buyVariationSku;
       let targetItemIndex = -1;
       let targetItem: any = null;
       checkoutData.items.forEach((candidate: any, idx: number) => {
         if (candidate.productId?.toString() !== getProductId) return;
+        if (getVariationSku && candidate.variationSku !== getVariationSku) return;
         if (
           !targetItem ||
           candidate.productPricing.unitPrice < targetItem.productPricing.unitPrice

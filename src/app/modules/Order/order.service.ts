@@ -1611,7 +1611,7 @@ const getAllOrders = async (
 
     case 'FLEET_MANAGER': {
       const managedPartners = await DeliveryPartner.find({
-        'registeredBy.id': userObjectId,
+        currentFleetManagerId: userObjectId,
       })
         .select('_id')
         .lean();
@@ -1701,7 +1701,7 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
 
     case 'FLEET_MANAGER': {
       const managedPartners = await DeliveryPartner.find({
-        'registeredBy.id': userObjectId,
+        currentFleetManagerId: userObjectId,
       })
         .select('_id')
         .lean();

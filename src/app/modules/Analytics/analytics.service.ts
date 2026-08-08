@@ -2159,7 +2159,7 @@ const getFleetManagerPerformanceAnalytics = async (
           $lookup: {
             from: 'deliverypartners',
             localField: '_id',
-            foreignField: 'registeredBy.id',
+            foreignField: 'currentFleetManagerId',
             as: 'riders',
           },
         },
@@ -2252,7 +2252,7 @@ const getFleetManagerPerformanceAnalytics = async (
           $lookup: {
             from: 'deliverypartners',
             localField: '_id',
-            foreignField: 'registeredBy.id',
+            foreignField: 'currentFleetManagerId',
             as: 'riders',
           },
         },
@@ -2409,7 +2409,7 @@ const getSingleFleetPerformanceDetailsAnalytics = async (
 
   // Get Fleet Drivers
   const drivers = await DeliveryPartner.find({
-    'registeredBy.id': fleetManager._id,
+    currentFleetManagerId: fleetManager._id,
     isDeleted: false,
   })
     .select('_id userId name rating')
