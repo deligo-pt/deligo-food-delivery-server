@@ -312,7 +312,7 @@ const getSingleFleetManagerFromDB = async (
   }
 
   const baseQuery = DeliveryPartner.find({
-    'registeredBy.id': existingFleetManager._id,
+    currentFleetManagerId: existingFleetManager._id,
     isDeleted: false,
   }).select('name profilePhoto email userId -_id');
 

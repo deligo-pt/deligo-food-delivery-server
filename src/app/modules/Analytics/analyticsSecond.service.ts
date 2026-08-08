@@ -416,7 +416,7 @@ const getFleetDashboardAnalytics = async (currentUser: TCurrentUser) => {
   const startOfDay = getLocalStartOfPeriod('today');
 
   const [partnerMetrics] = await DeliveryPartner.aggregate([
-    { $match: { 'registeredBy.id': managerId, isDeleted: false } },
+    { $match: { currentFleetManagerId: managerId, isDeleted: false } },
     {
       $facet: {
         totalCount: [{ $count: 'count' }],
@@ -545,7 +545,7 @@ const getPartnerPerformanceAnalytics = async (
   startDate.setDate(startDate.getDate() - days);
 
   const myPartners = await DeliveryPartner.find({
-    'registeredBy.id': managerId,
+    currentFleetManagerId: managerId,
     isDeleted: false,
   })
     .select('_id')
@@ -679,7 +679,7 @@ const getPartnerPerformanceAnalytics = async (
     'userId',
   ];
   const partnerQuery = new QueryBuilder(
-    DeliveryPartner.find({ 'registeredBy.id': managerId, isDeleted: false }),
+    DeliveryPartner.find({ currentFleetManagerId: managerId, isDeleted: false }),
     query,
   )
     .search(searchableFields)
@@ -916,8 +916,7 @@ const getFleetManagerEarningAnalytics = async (currentUser: TCurrentUser) => {
       .lean(),
 
     DeliveryPartner.find({
-      'registeredBy.id': fleetObjectId,
-      'registeredBy.model': 'FleetManager',
+      currentFleetManagerId: fleetObjectId,
       isDeleted: false,
     })
       .select('_id')

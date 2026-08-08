@@ -50,8 +50,8 @@ const initiateSettlement = async (
         );
       }
       const isHisRider =
-        user.registeredBy &&
-        user.registeredBy.id.toString() === senderId.toString();
+        user.currentFleetManagerId &&
+        user.currentFleetManagerId.toString() === senderId.toString();
 
       if (!isHisRider) {
         throw new AppError(
@@ -536,7 +536,7 @@ const initiateAutomatedSettlement = async () => {
         ],
       },
     })
-      .populate('userId', 'registeredBy bankDetails userId name')
+      .populate('userId', 'currentFleetManagerId bankDetails userId name')
       .session(session)
       .lean();
 
@@ -556,7 +556,7 @@ const initiateAutomatedSettlement = async () => {
       );
 
       if (wallet.userModel === 'DeliveryPartner') {
-        if (user?.registeredBy?.model === 'FleetManager') {
+        if (user?.currentFleetManagerId) {
           continue;
         }
       }

@@ -60,7 +60,9 @@ const offerBody = z
           .positive('Get quantity must be greater than 0'),
         buyProductId: objectIdSchema.optional(), // Trigger product (X)
         buyCategoryId: objectIdSchema.optional(), // Trigger category (Y)
+        buyVariationSku: z.string().trim().min(1).optional(), // Pin trigger to this exact variation only
         getProductId: objectIdSchema.optional(), // Reward item (Z), defaults to buyProductId
+        getVariationSku: z.string().trim().min(1).optional(), // Pin reward to this exact variation only; defaults to buyVariationSku
         includeAddons: z.boolean().optional().default(false), // Free unit's addons free too? Default: only the base product is free
       })
       .strict()

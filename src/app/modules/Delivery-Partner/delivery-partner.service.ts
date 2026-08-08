@@ -27,7 +27,7 @@ const updateDeliveryPartner = async (
   // ---------------------------------------------------------
   const existingDeliveryPartner = await AuthUser.findOne({
     userId: deliveryPartnerId,
-  }).populate('profileId', 'isUpdateLocked registeredBy');
+  }).populate('profileId', 'isUpdateLocked currentFleetManagerId');
 
   if (!existingDeliveryPartner) {
     throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
@@ -77,7 +77,8 @@ const updateDeliveryPartner = async (
   // Admin/SuperAdmin updating a partner they registered
   if (
     currentUser.role === 'FLEET_MANAGER' &&
-    partnerProfile.registeredBy?.id.toString() !== currentUser?._id.toString()
+    partnerProfile.currentFleetManagerId?.toString() !==
+      currentUser?._id.toString()
   ) {
     throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
       reason: 'You do not have permission to modify this account.',
@@ -258,7 +259,7 @@ const deliverPartnerDocImageUpload = async (
   if (currentUser?.role === 'FLEET_MANAGER') {
     if (
       currentUser?._id.toString() !==
-      existingDeliveryPartner?.registeredBy?.id.toString()
+      existingDeliveryPartner?.currentFleetManagerId?.toString()
     ) {
       throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_ACCESS_DENIED', {
         reason: 'You do not have permission to upload documents.',
@@ -298,7 +299,7 @@ const getAllDeliveryPartnersFromDB = async (
   currentUser: TCurrentUser,
 ) => {
   if (currentUser?.role === 'FLEET_MANAGER') {
-    query['registeredBy.id'] = currentUser?._id.toString();
+    query['currentFleetManagerId'] = currentUser?._id.toString();
   }
 
   const deliveryPartners = new QueryBuilder(DeliveryPartner.find(), query)
@@ -310,6 +311,7 @@ const getAllDeliveryPartnersFromDB = async (
 
   const populateOptions = getPopulateOptions(currentUser.role, {
     registeredByWithModel: 'name userId role',
+    currentFleetManagerWithDetails: 'name userId role',
     approvedBy: 'name userId role',
     rejectedBy: 'name userId role',
     blockedBy: 'name userId role',
@@ -365,7 +367,7 @@ const getSingleDeliveryPartnerFromDB = async (
 
   if (
     currentUser?.role === 'FLEET_MANAGER' &&
-    existingDeliveryPartner?.registeredBy?.id.toString() !==
+    existingDeliveryPartner?.currentFleetManagerId?.toString() !==
       currentUser?._id.toString()
   ) {
     throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
@@ -396,7 +398,7 @@ const assignDeliveryPartnerToFleetManager = async (
     userId: deliveryPartnerId,
     role: 'DELIVERY_PARTNER',
     isDeleted: false,
-  }).select('status registeredBy isDeleted');
+  }).select('status currentFleetManagerId isDeleted registeredBy');
 
   if (!deliveryPartnerProfile) {
     throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
@@ -404,15 +406,30 @@ const assignDeliveryPartnerToFleetManager = async (
     });
   }
 
-  if (deliveryPartnerProfile.status === 'APPROVED') {
+  if (
+    deliveryPartnerProfile.currentFleetManagerId &&
+    deliveryPartnerProfile.currentFleetManagerId.toString() !==
+      fleetManagerId.toString()
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'DELIVERY_PARTNER_ALREADY_APPROVED',
+      'DELIVERY_PARTNER_ALREADY_ASSIGNED_TO_FLEET_MANAGER',
+    );
+  }
+
+  if (
+    deliveryPartnerProfile.currentFleetManagerId &&
+    deliveryPartnerProfile.currentFleetManagerId.toString() ===
+      fleetManagerId.toString()
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'DELIVERY_PARTNER_ALREADY_ASSIGNED_TO_THIS_FLEET_MANAGER',
     );
   }
 
   const fleetManagerProfile = await FleetManager.findOne({
-    _id: fleetManagerId,
+    _id: fleetManagerId.toString(),
     role: 'FLEET_MANAGER',
     isDeleted: false,
   }).select('_id status');
@@ -433,17 +450,16 @@ const assignDeliveryPartnerToFleetManager = async (
     });
   }
 
-  if (deliveryPartnerProfile.registeredBy?.model === 'FleetManager') {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'DELIVERY_PARTNER_ALREADY_ASSIGNED_TO_FLEET_MANAGER',
-    );
-  }
+  // if (!deliveryPartnerProfile?.registeredBy?.model) {
+  //   deliveryPartnerProfile.registeredBy = {
+  //     id: new mongoose.Types.ObjectId(fleetManagerProfile._id),
+  //     model: 'FleetManager',
+  //   };
+  // }
 
-  deliveryPartnerProfile.registeredBy = {
-    id: new mongoose.Types.ObjectId(fleetManagerProfile._id),
-    model: 'FleetManager',
-  };
+  deliveryPartnerProfile.currentFleetManagerId = new mongoose.Types.ObjectId(
+    fleetManagerProfile._id,
+  );
 
   await deliveryPartnerProfile.save();
 

@@ -42,4 +42,8 @@ export const deliveryPartnerMessages = {
     en: 'This delivery partner is already assigned under a fleet manager.',
     pt: 'Este parceiro de entrega já está atribuído a um gestor de frota.',
   },
+  DELIVERY_PARTNER_ALREADY_ASSIGNED_TO_THIS_FLEET_MANAGER: {
+    en: 'This delivery partner is already assigned under this fleet manager.',
+    pt: 'Este parceiro de entrega já está atribuído a este gestor de frota.',
+  },
 } as const;
