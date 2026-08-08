@@ -100,6 +100,79 @@ const checkout = async (
     durationMinutes = Number(distanceData.durationMinutes) || 0;
   }
 
+  // 3b. Self-pickup time (pickup orders only) — must be later today, in the
+  // future, and inside the vendor's store hours. The whole platform operates
+  // on a single timezone (Europe/Lisbon), same as vendorStoreOpenCloseCron.
+  let pickupTime: Date | undefined;
+
+  if (isPickup) {
+    if (!payload.pickupTime) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'PICKUP_TIME_REQUIRED');
+    }
+
+    pickupTime = new Date(payload.pickupTime);
+    if (Number.isNaN(pickupTime.getTime())) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'INVALID_PICKUP_TIME');
+    }
+
+    const STORE_TIMEZONE = 'Europe/Lisbon';
+    const now = new Date();
+
+    const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: STORE_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    if (dateFormatter.format(pickupTime) !== dateFormatter.format(now)) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'PICKUP_TIME_MUST_BE_TODAY');
+    }
+
+    if (pickupTime.getTime() <= now.getTime()) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'PICKUP_TIME_MUST_BE_IN_FUTURE',
+      );
+    }
+
+    const dayFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: STORE_TIMEZONE,
+      weekday: 'long',
+    });
+    const pickupDay = dayFormatter.format(pickupTime);
+
+    const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: STORE_TIMEZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+    const pickupTimeOfDay = timeFormatter.format(pickupTime); // "HH:mm"
+
+    const { openingHours, closingHours, closingDays } =
+      existingVendor.businessDetails || {};
+
+    if (closingDays?.includes(pickupDay)) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_CLOSED_ON_PICKUP_DAY');
+    }
+
+    if (openingHours && closingHours) {
+      // Same overnight-wraparound handling as vendorStoreOpenCloseCron.ts
+      const withinHours =
+        closingHours < openingHours
+          ? pickupTimeOfDay >= openingHours || pickupTimeOfDay <= closingHours
+          : pickupTimeOfDay >= openingHours && pickupTimeOfDay <= closingHours;
+
+      if (!withinHours) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'PICKUP_TIME_OUTSIDE_STORE_HOURS',
+          { openingHours, closingHours },
+        );
+      }
+    }
+  }
+
   // 4. Configuration & Global Rates
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
 
@@ -394,6 +467,7 @@ const checkout = async (
     customerId,
     vendorId,
     fulfillmentType,
+    ...(isPickup ? { pickupTime } : {}),
     customerEmail: currentUser?.email || '',
     contactNumber: currentUser?.contactNumber || '',
     items: orderItems,
