@@ -49,6 +49,7 @@ export type TCheckoutSummary = {
   contactNumber?: string;
 
   fulfillmentType: FulfillmentType;
+  pickupTime?: Date; // requested self-pickup time (PICKUP only), validated against vendor store hours
 
   items: TOrderItemSnapshot[];
   totalItems: number;
@@ -123,6 +124,7 @@ export type TCheckoutSummary = {
 
 export type TCheckoutPayload = {
   fulfillmentType?: FulfillmentType;
+  pickupTime?: string;
   useCart?: boolean;
 
   items?: {

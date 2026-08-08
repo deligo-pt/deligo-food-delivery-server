@@ -32,6 +32,7 @@ export type TOrderPickup = {
   verifiedAt?: Date | null;
   verifiedBy?: mongoose.Types.ObjectId | null;
   readyAt?: Date | null;
+  pickupTime?: Date | null; // customer-requested pickup time, set at checkout
 };
 
 export type TOrder = {
