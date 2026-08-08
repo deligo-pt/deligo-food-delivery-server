@@ -36,6 +36,7 @@ const addOrderPoints = async (
       if (!externalSession) await session.commitTransaction();
       return {
         messageKey: 'POINTS_ALREADY_GRANTED_FOR_ORDER' as TMessageKey,
+        variables: undefined,
         pointsEarned: 0,
       };
     }
@@ -44,14 +45,15 @@ const addOrderPoints = async (
     const existsOrder = await Order.findById(orderId).session(session);
 
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
     // 3. Security: Ensure the points are being added for the correct customer
     if (existsOrder.customerId?.toString() !== userObjectId.toString()) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'UNAUTHORIZED_ORDER_NOT_BELONG_TO_USER',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'This order belongs to another profile.',
+      });
     }
 
     // 4. Status Check: Only grant points if the order is actually DELIVERED
@@ -70,7 +72,10 @@ const addOrderPoints = async (
     if (!settings) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'GLOBAL_SETTINGS_NOT_RETRIEVED',
+        'NOT_FOUND_MESSAGE',
+        {
+          entity: 'Global System Configuration Settings',
+        },
       );
     }
 
@@ -103,24 +108,32 @@ const addOrderPoints = async (
 
     return {
       messageKey: 'ORDER_POINTS_ADDED_SUCCESS' as TMessageKey,
+      variables: undefined,
       pointsEarned: pointsToAdd,
     };
   } catch (error: any) {
-    if (!externalSession) await session.abortTransaction();
-    try {
-      await PointsLog.create({
-        userId: { id: userObjectId, model: 'Customer', role: role },
-        points: 0,
-        transactionType: 'FAILED_LOG',
-        referenceId: orderId as any,
-        onModel: 'Order',
-        description: `FAILED: ${error.message}`,
-      });
-    } catch (logError) {
-      void logError;
+    if (!externalSession) {
+      await session.abortTransaction();
+      try {
+        await PointsLog.create({
+          userId: { id: userObjectId, model: 'Customer', role: role },
+          points: 0,
+          transactionType: 'FAILED_LOG',
+          referenceId: orderId as any,
+          onModel: 'Order',
+          description: `FAILED: ${error.message}`,
+        });
+      } catch (logError) {
+        void logError;
+      }
+
+      return { success: false, error: error.message };
     }
 
-    return { success: false, error: error.message };
+    // Under an external (caller-owned) session, this failure must propagate
+    // so the caller's outer transaction aborts instead of silently
+    // committing wallet/earning writes without the points side-effect.
+    throw error;
   } finally {
     if (!externalSession) session.endSession();
   }
@@ -153,6 +166,7 @@ const addDeliveryPartnerPoints = async (
       if (!externalSession) await session.commitTransaction();
       return {
         messageKey: 'POINTS_ALREADY_GRANTED_FOR_ORDER' as TMessageKey,
+        variables: undefined,
         pointsEarned: 0,
       };
     }
@@ -161,17 +175,18 @@ const addDeliveryPartnerPoints = async (
     const existsOrder = await Order.findById(orderId).session(session);
 
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     // 3. Security: Ensure the delivery partner is the authorized delivery partner for this order
     if (
       existsOrder.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
     ) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'UNAUTHORIZED_NOT_ASSIGNED_DELIVERY_PARTNER',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'You are not the assigned delivery partner for this order.',
+      });
     }
 
     // 4. State Validation: Points should only be granted for delivered orders
@@ -232,30 +247,42 @@ const addDeliveryPartnerPoints = async (
 
     return {
       messageKey: 'DELIVERY_POINTS_ADDED_SUCCESS' as TMessageKey,
+      variables: undefined,
       pointsEarned: points,
     };
   } catch (error: any) {
-    if (!externalSession) await session.abortTransaction();
-    // --- Database Logging: Save failure info to PointsLog as FAILED_LOG ---
-    try {
-      await PointsLog.create({
-        userId: { id: deliveryPartnerId, model: 'DeliveryPartner', role: role },
-        points: 0,
-        transactionType: 'FAILED_LOG',
-        referenceId: orderId as any,
-        onModel: 'Order',
-        description: `FAILED: ${error.message}`,
-      });
-    } catch (logError) {
-      void logError;
+    if (!externalSession) {
+      await session.abortTransaction();
+      // --- Database Logging: Save failure info to PointsLog as FAILED_LOG ---
+      try {
+        await PointsLog.create({
+          userId: {
+            id: deliveryPartnerId,
+            model: 'DeliveryPartner',
+            role: role,
+          },
+          points: 0,
+          transactionType: 'FAILED_LOG',
+          referenceId: orderId as any,
+          onModel: 'Order',
+          description: `FAILED: ${error.message}`,
+        });
+      } catch (logError) {
+        void logError;
+      }
+
+      // Return failure object instead of throwing, to keep the main flow alive
+      return {
+        success: false,
+        error: error.message,
+        pointsEarned: 0,
+      };
     }
 
-    // Return failure object instead of throwing, to keep the main flow alive
-    return {
-      success: false,
-      error: error.message,
-      pointsEarned: 0,
-    };
+    // Under an external (caller-owned) session, this failure must propagate
+    // so the caller's outer transaction aborts instead of silently
+    // committing wallet/earning writes without the points side-effect.
+    throw error;
   } finally {
     if (!externalSession) session.endSession();
   }
@@ -338,7 +365,8 @@ const getMyPoints = async (currentUser: TCurrentUser) => {
   }).lean();
 
   return {
-    messageKey: 'POINTS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Points Balance' },
     data: {
       currentPoints: points?.currentPoints || 0,
       totalEarned: points?.totalEarned || 0,
@@ -355,14 +383,17 @@ const getAllPoints = async (query: Record<string, unknown>) => {
   );
 
   if (!points) {
-    throw new AppError(httpStatus.NOT_FOUND, 'POINTS_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Points Details',
+    });
   }
 
   const meta = await points.countTotal();
   const data = await points.modelQuery;
 
   return {
-    messageKey: 'POINTS_FETCHED_SUCCESS' as TMessageKey,
+    messageKey: 'COMMON_RETRIEVED_SUCCESS' as TMessageKey,
+    variables: { entity: 'Points Balance' },
     data,
     meta,
   };

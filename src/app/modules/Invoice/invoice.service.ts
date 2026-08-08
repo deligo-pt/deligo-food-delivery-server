@@ -60,7 +60,9 @@ const generateCustomInvoicePdfBuffer = async (orderId: string) => {
   });
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
   }
 
   const customer = order.customerId as any;

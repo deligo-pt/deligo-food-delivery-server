@@ -11,6 +11,7 @@ import { GlobalSettingsService } from '../GlobalSetting/globalSetting.service';
 import { roundTo2 } from '../../utils/mathProvider';
 import { calculateGoogleRoadDistance } from '../../utils/calculateGoggleRoadDistance';
 import { RedisService } from '../../config/redis';
+import { FULFILLMENT_TYPE } from '../Order/order.constant';
 
 // Checkout Service
 const checkout = async (
@@ -18,6 +19,8 @@ const checkout = async (
   payload: TCheckoutPayload,
 ) => {
   const customerId = currentUser._id.toString();
+  const fulfillmentType = payload.fulfillmentType || FULFILLMENT_TYPE.DELIVERY;
+  const isPickup = fulfillmentType === FULFILLMENT_TYPE.PICKUP;
   let selectedItems: any[] = [];
 
   // 1. Cart Fetching and Validation
@@ -30,7 +33,7 @@ const checkout = async (
     }
 
     if (!cart || !cart.items || cart.items.length === 0) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'CART_EMPTY');
+      throw new AppError(httpStatus.BAD_REQUEST, 'CHECKOUT_CART_EMPTY');
     }
 
     selectedItems = cart.items.filter((i: any) => i.isActive === true);
@@ -60,34 +63,42 @@ const checkout = async (
     throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_CLOSED');
   }
 
-  // 3. Address & Spatial Logistics
-  const activeAddress = currentUser?.deliveryAddresses?.find(
-    (i: any) => i.isActive === true,
-  );
+  // 3. Address & Spatial Logistics (delivery orders only — self-pickup has no
+  // customer address and no distance-based charge to compute)
+  let activeAddress: any = null;
+  let distanceKm = 0;
+  let durationMinutes = 0;
 
-  if (
-    !activeAddress ||
-    !activeAddress.latitude ||
-    !activeAddress.longitude ||
-    !activeAddress.city ||
-    !activeAddress.street
-  ) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'DELIVERY_ADDRESS_INCOMPLETE');
+  if (!isPickup) {
+    activeAddress = currentUser?.deliveryAddresses?.find(
+      (i: any) => i.isActive === true,
+    );
+
+    if (
+      !activeAddress ||
+      !activeAddress.latitude ||
+      !activeAddress.longitude ||
+      !activeAddress.city ||
+      !activeAddress.street
+    ) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'DELIVERY_ADDRESS_INCOMPLETE');
+    }
+
+    const vendorLocation = existingVendor.businessLocation;
+    if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_LOCATION_NOT_FOUND');
+    }
+
+    const distanceData = await calculateGoogleRoadDistance(
+      vendorLocation.longitude,
+      vendorLocation.latitude,
+      activeAddress.longitude,
+      activeAddress.latitude,
+    );
+
+    distanceKm = Number(distanceData.km) || 0;
+    durationMinutes = Number(distanceData.durationMinutes) || 0;
   }
-
-  const vendorLocation = existingVendor.businessLocation;
-  if (!vendorLocation?.longitude || !vendorLocation?.latitude) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'VENDOR_LOCATION_NOT_FOUND');
-  }
-
-  const distanceData = await calculateGoogleRoadDistance(
-    vendorLocation.longitude,
-    vendorLocation.latitude,
-    activeAddress.longitude,
-    activeAddress.latitude,
-  );
-
-  const distanceKm = Number(distanceData.km) || 0;
 
   // 4. Configuration & Global Rates
   const globalSettings = await GlobalSettingsService.getGlobalSettings();
@@ -102,7 +113,9 @@ const checkout = async (
     (serviceCharge * serviceChargeVatRate) / 100,
   );
 
-  const BASE_FIXED_DELIVERY_CHARGE = globalSettings?.baseDeliveryCharge || 0;
+  const BASE_FIXED_DELIVERY_CHARGE = isPickup
+    ? 0
+    : globalSettings?.baseDeliveryCharge || 0;
 
   const PER_KM_RATE = globalSettings?.deliveryChargePerKm || 0;
 
@@ -123,7 +136,10 @@ const checkout = async (
     const product = products.find(
       (p) => p._id.toString() === item.productId.toString(),
     );
-    if (!product) throw new AppError(httpStatus.NOT_FOUND, 'PRODUCT_NOT_FOUND');
+    if (!product)
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Item',
+      });
 
     let basePrice = product.pricing?.price || 0;
     let finalItemNameObj = { en: '', pt: '' };
@@ -146,7 +162,9 @@ const checkout = async (
         .find((opt: any) => opt.sku === item.variationSku);
 
       if (!selectedOption) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'VARIATION_NOT_FOUND');
+        throw new AppError(httpStatus.BAD_REQUEST, 'NOT_FOUND_MESSAGE', {
+          entity: 'Variation',
+        });
       }
 
       basePrice = selectedOption.price;
@@ -355,9 +373,27 @@ const checkout = async (
   );
   const totalDeduction = roundTo2(totalCommAmt + totalCommVat);
 
+  // Zero-sum guard: the four-way split must reconcile back to the grand
+  // total exactly (within rounding tolerance) before it's ever persisted or
+  // used to credit wallets downstream.
+  const reconciliationDelta = roundTo2(
+    finalGrandTotal -
+      (vendorNetPayout +
+        riderNetEarnings +
+        fleetFee +
+        totalPlatformGrossHolding),
+  );
+  if (Math.abs(reconciliationDelta) > 0.01) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'PAYOUT_SPLIT_RECONCILIATION_MISMATCH',
+    );
+  }
+
   const finalSummaryData = {
     customerId,
     vendorId,
+    fulfillmentType,
     customerEmail: currentUser?.email || '',
     contactNumber: currentUser?.contactNumber || '',
     items: orderItems,
@@ -383,7 +419,7 @@ const checkout = async (
       vatAmount: deliveryVat,
       totalDeliveryCharge,
       distance: roundTo2(distanceKm),
-      estimatedTime: Number(distanceData.durationMinutes) || 0,
+      estimatedTime: durationMinutes,
     },
     payoutSummary: {
       grandTotal: finalGrandTotal,
@@ -418,7 +454,7 @@ const checkout = async (
       isApplied: false,
       offerApplied: null,
     },
-    deliveryAddress: activeAddress,
+    ...(isPickup ? {} : { deliveryAddress: activeAddress }),
     paymentStatus: 'PENDING',
     isConvertedToOrder: false,
   };
@@ -433,7 +469,8 @@ const checkout = async (
   const summary = await CheckoutSummary.create(finalSummaryData);
 
   return {
-    messageKey: 'CHECKOUT_SUCCESS',
+    messageKey: 'ORDER_PLACED_SUCCESS',
+    variables: undefined,
     data: summary,
   };
 };
@@ -452,11 +489,15 @@ const getCheckoutSummary = async (
   const summary = await CheckoutSummary.findById(checkoutSummaryId).lean();
 
   if (!summary) {
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
   }
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'UNAUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this checkout session',
+    });
   }
 
   if (summary.isConvertedToOrder) {

@@ -8,10 +8,6 @@ export const productMessages = {
     en: 'Price is required when no variations are specified.',
     pt: 'O preço é obrigatório quando não há variações.',
   },
-  CATEGORY_NOT_FOUND: {
-    en: 'The requested product category could not be found.',
-    pt: 'A categoria de produto solicitada não pôde ser encontrada.',
-  },
   CATEGORY_NOT_UNDER_BUSINESS_TYPE: {
     en: 'This product category does not belong to your business type.',
     pt: 'A categoria de produto não pertence ao seu tipo de negócio.',
@@ -23,10 +19,6 @@ export const productMessages = {
   INVALID_ADDON_GROUPS: {
     en: 'One or more selected addon groups are invalid.',
     pt: 'Um ou mais grupos de adicionais são inválidos.',
-  },
-  TAX_NOT_FOUND: {
-    en: 'Tax configuration could not be found.',
-    pt: 'Imposto não encontrado.',
   },
   VARIATION_NAMES_REQUIRED_BOTH_LANGUAGES: {
     en: 'Variation names are required in both English and Portuguese.',
@@ -116,10 +108,6 @@ export const productMessages = {
     pt: (vars: { available: number }) =>
       `Estoque insuficiente. Disponível: ${vars.available}.`,
   },
-  VARIATION_SKU_NOT_FOUND: {
-    en: 'Variation SKU could not be found.',
-    pt: 'SKU da variação não encontrado.',
-  },
   INSUFFICIENT_STOCK: {
     en: 'Insufficient stock available to accept this order.',
     pt: 'Estoque insuficiente para aceitar este pedido.',
@@ -148,29 +136,9 @@ export const productMessages = {
   },
 
   // --- Unique Lifecycle Success Messages ---
-  PRODUCT_CREATED_SUCCESS: {
-    en: 'Product created successfully.',
-    pt: 'Produto criado com sucesso.',
-  },
-  PRODUCT_UPDATED_SUCCESS: {
-    en: 'Product updated successfully.',
-    pt: 'Produto atualizado com sucesso.',
-  },
-  PRODUCT_VARIATIONS_UPDATED_SUCCESS: {
-    en: 'Product variations updated successfully.',
-    pt: 'Variações do produto atualizadas com sucesso.',
-  },
   PRODUCT_VARIATIONS_RENAMED_SUCCESS: {
     en: 'Product variations renamed successfully.',
     pt: 'Variações do produto renomeadas com sucesso.',
-  },
-  PRODUCT_VARIATIONS_REMOVED_SUCCESS: {
-    en: 'Product variations removed successfully.',
-    pt: 'Variações do produto removidas com sucesso.',
-  },
-  INVENTORY_AND_PRICING_UPDATED_SUCCESS: {
-    en: 'Inventory and pricing updated successfully.',
-    pt: 'Inventário e preços atualizados com sucesso.',
   },
   PRODUCT_APPROVAL_UPDATED_SUCCESS: {
     en: (vars: { status: string }) =>
@@ -200,63 +168,15 @@ export const productMessages = {
   },
 
   // --- Global Mappings Block (To be replaced by globalCommonMessages) ---
-  NOT_AUTHORIZED_TO_UPDATE_ACCOUNT_STATUS: {
-    en: 'Access denied.',
-    pt: 'Acesso negado.',
-  },
   PRODUCT_NOT_FOUND: {
     en: 'Product not found.',
     pt: 'Produto não encontrado.',
   },
-  ACCOUNT_NOT_APPROVED: {
-    en: 'Access denied. Account not approved.',
-    pt: 'Acesso negado. Conta não aprovada.',
-  },
-  NOT_AUTHORIZED_TO_UPDATE_PRODUCT: {
-    en: 'Access denied.',
-    pt: 'Acesso negado.',
-  },
-  NOT_APPROVED_TO_DELETE_PRODUCT_IMAGES: {
-    en: 'Access denied.',
-    pt: 'Acesso negado.',
-  },
-  ONLY_OWN_PRODUCT_IMAGES_CAN_BE_DELETED: {
-    en: 'Access denied.',
-    pt: 'Acesso negado.',
-  },
   NOT_APPROVED_TO_VIEW_PRODUCTS: { en: 'Access denied.', pt: 'Acesso negado.' },
-  PRODUCTS_RETRIEVED_SUCCESS: {
-    en: 'Products loaded successfully.',
-    pt: 'Produtos carregados com sucesso.',
-  },
   UNAUTHORIZED_ROLE_ACCESS: { en: 'Access denied.', pt: 'Acesso negado.' },
-  PRODUCT_RETRIEVED_SUCCESS: {
-    en: 'Product loaded successfully.',
-    pt: 'Produto carregado com sucesso.',
-  },
-  NOT_APPROVED_TO_DELETE_PRODUCT: {
-    en: 'Access denied.',
-    pt: 'Acesso negado.',
-  },
-  NOT_AUTHORIZED_TO_DELETE_PRODUCT: {
-    en: 'Access denied.',
-    pt: 'Acesso negado.',
-  },
   PRODUCT_ALREADY_DELETED: {
     en: 'Product already deleted.',
     pt: 'Produto já excluído.',
-  },
-  NOT_APPROVED_TO_PERMANENTLY_DELETE_PRODUCT: {
-    en: 'Access denied.',
-    pt: 'Acesso negado.',
-  },
-  ONLY_ADMINS_CAN_PERMANENTLY_DELETE_PRODUCTS: {
-    en: 'Access denied.',
-    pt: 'Acesso negado.',
-  },
-  PRODUCT_SOFT_DELETE_REQUIRED_BEFORE_PERMANENT_DELETE: {
-    en: 'Deactivation required first.',
-    pt: 'Desativação necessária primeiro.',
   },
   VENDOR_STOCK_ALERT_SENT_SUCCESS: {
     en: 'Vendor has been notified about the stock alert successfully.',

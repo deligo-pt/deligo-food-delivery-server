@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import app from './app';
 import config from './app/config';
 import { seed } from './app/utils/seeding';
+import { backfillDeliveryPartnerFleetAssignment } from './app/utils/backfillDeliveryPartnerFleetAssignment';
 import http from 'http';
 import { initializeSocket } from './app/lib/Socket';
 import { initAllCronJobs } from './app/cron';
@@ -38,6 +39,9 @@ async function bootstrap() {
     // Seed database
 
     await seed();
+
+    // Backfill currentFleetManagerId from legacy registeredBy assignments
+    await backfillDeliveryPartnerFleetAssignment();
 
     // Initialize Socket.IO
     initializeSocket(server);

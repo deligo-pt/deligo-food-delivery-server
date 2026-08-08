@@ -1,16 +1,38 @@
 import { z } from 'zod';
+import { PICKUP_CODE_LENGTH } from './order.constant';
 
-// update order status by vendor validation (accepted, rejected, preparing, ready for pickup, canceled)
+// update order status by vendor validation (accepted, rejected, preparing, ready for pickup, canceled, no-show)
 const updateOrderStatusByVendorValidationSchema = z.object({
   body: z
     .object({
       type: z.enum(
-        ['ACCEPTED', 'REJECTED', 'PREPARING', 'READY_FOR_PICKUP', 'CANCELED'],
+        [
+          'ACCEPTED',
+          'REJECTED',
+          'PREPARING',
+          'READY_FOR_PICKUP',
+          'CANCELED',
+          'NO_SHOW',
+        ],
         {
           required_error: 'Action type is required',
         },
       ),
       reason: z.string().optional(),
+    })
+    .strict(),
+});
+
+// vendor verifies the customer's self-pickup code at the counter
+const verifyPickupCodeValidationSchema = z.object({
+  body: z
+    .object({
+      code: z
+        .string({ required_error: 'Pickup code is required' })
+        .length(
+          PICKUP_CODE_LENGTH,
+          `Pickup code must be ${PICKUP_CODE_LENGTH} digits`,
+        ),
     })
     .strict(),
 });
@@ -69,4 +91,5 @@ export const OrderValidation = {
   updateOrderStatusByDeliveryPartnerValidationSchema,
   partnerAcceptDispatchOrder,
   cancelOrderByCustomerValidationSchema,
+  verifyPickupCodeValidationSchema,
 };

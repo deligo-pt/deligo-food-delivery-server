@@ -7,6 +7,7 @@ import { QueryBuilder } from '../../builder/QueryBuilder';
 import {
   BLOCKED_FOR_ORDER_CANCEL,
   DELIVERY_SEARCH_TIERS_METERS,
+  FULFILLMENT_TYPE,
   ORDER_STATUS,
   OrderSearchableFields,
   OrderStatus,
@@ -31,7 +32,11 @@ import { TLanguageCode } from '../../constant/GlobalInterface/language.interface
 import { BusinessCategoryName } from '../Category/category.interface';
 import customNanoId from '../../utils/customNanoId';
 import { CartServices } from '../Cart/cart.service';
-import { updateOrderStatusHistory } from './order.utils';
+import {
+  updateOrderStatusHistory,
+  generatePickupCode,
+  hashPickupCode,
+} from './order.utils';
 import { PaymentTokenServices } from '../Payment-Token/payment-token.service';
 
 // one-click flow (Payment module's payWithSavedToken, verified via doPaymentToken's
@@ -51,10 +56,25 @@ const finalizeCheckoutIntoOrder = async (
 
     const uniqueOrderId = customNanoId(10);
 
+    // Checkout doesn't capture fulfillmentType yet — defaults to DELIVERY so
+    // existing behavior is unchanged until the checkout flow is updated to pass it.
+    const fulfillmentType =
+      (summary as any).fulfillmentType || FULFILLMENT_TYPE.DELIVERY;
+    const isPickup = fulfillmentType === FULFILLMENT_TYPE.PICKUP;
+
+    const pickup = isPickup
+      ? (() => {
+          const { code, codeHash } = generatePickupCode();
+          return { code, codeHash, generatedAt: new Date() };
+        })()
+      : undefined;
+
     const orderData = {
       orderId: `ORD-${uniqueOrderId}`,
       customerId: summary.customerId,
       vendorId: summary.vendorId,
+      fulfillmentType,
+      ...(pickup && { pickup: { codeHash: pickup.codeHash, generatedAt: pickup.generatedAt } }),
       items: summary.items,
       totalItems: summary.totalItems,
       totalQuantity: summary.totalQuantity,
@@ -70,21 +90,33 @@ const finalizeCheckoutIntoOrder = async (
         serviceChargeVatAmount:
           (summary.orderCalculation as any).serviceChargeVatAmount ?? 0,
       },
-      delivery: {
-        charge: summary.delivery.charge,
-        vatRate: summary.delivery.vatRate,
-        vatAmount: summary.delivery.vatAmount,
-        totalDeliveryCharge: summary.delivery.totalDeliveryCharge,
-        distance: summary.delivery.distance,
-        estimatedTime: summary.delivery.estimatedTime,
-        notes: deliveryNotes || '',
-      },
+      delivery: isPickup
+        ? {
+            charge: 0,
+            vatRate: 0,
+            vatAmount: 0,
+            totalDeliveryCharge: 0,
+            distance: 0,
+            estimatedTime: 0,
+            notes: deliveryNotes || '',
+          }
+        : {
+            charge: summary.delivery.charge,
+            vatRate: summary.delivery.vatRate,
+            vatAmount: summary.delivery.vatAmount,
+            totalDeliveryCharge: summary.delivery.totalDeliveryCharge,
+            distance: summary.delivery.distance,
+            estimatedTime: summary.delivery.estimatedTime,
+            notes: deliveryNotes || '',
+          },
       payoutSummary: {
         grandTotal: summary.payoutSummary.grandTotal,
         deliGoCommission: summary.payoutSummary.deliGoCommission,
-        fleet: summary.payoutSummary.fleet,
+        fleet: isPickup ? { rate: 0, fee: 0 } : summary.payoutSummary.fleet,
         vendor: summary.payoutSummary.vendor,
-        rider: summary.payoutSummary.rider,
+        rider: isPickup
+          ? { riderNetEarnings: 0 }
+          : summary.payoutSummary.rider,
       },
       offer: {
         isApplied: summary.offer.isApplied,
@@ -94,7 +126,7 @@ const finalizeCheckoutIntoOrder = async (
       paymentStatus: 'PAID',
       transactionId: transactionId,
       isPaid: true,
-      deliveryAddress: summary.deliveryAddress,
+      ...(isPickup ? {} : { deliveryAddress: summary.deliveryAddress }),
       orderStatus: 'PENDING',
       statusHistory: [
         {
@@ -150,9 +182,18 @@ const finalizeCheckoutIntoOrder = async (
       orderedItems: orderedItemsPayload,
     });
 
+    // codeHash never leaves the server; the raw code is surfaced exactly once,
+    // on this creation response, so the customer can show/screenshot it.
+    const orderObj: any = order.toObject();
+    if (isPickup && pickup) {
+      delete orderObj.pickup?.codeHash;
+      orderObj.pickup = { ...orderObj.pickup, code: pickup.code };
+    }
+
     return {
-      messageKey: 'ORDER_CREATED_SUCCESS',
-      data: order,
+      messageKey: 'ORDER_PLACED_SUCCESS',
+      variables: undefined,
+      data: orderObj,
     };
   } catch (err) {
     await session.abortTransaction();
@@ -176,10 +217,14 @@ const createOrderAfterRedUniqPayment = async (
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this checkout session',
+    });
   }
 
   if (summary.isConvertedToOrder) {
@@ -191,7 +236,9 @@ const createOrderAfterRedUniqPayment = async (
 
   const existingVendor = await Vendor.findById(summary.vendorId).lean();
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   const verifyPayload = {
@@ -245,10 +292,9 @@ const updateOrderStatusByVendor = async (
 ) => {
   // 1. Authorization & Role Check
   if (!currentUser || currentUser.role !== 'VENDOR') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NOT_AUTHORIZED_ACCEPT_REJECT_ORDERS',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'accept or reject orders',
+    });
   }
 
   if (currentUser.status !== 'APPROVED') {
@@ -265,6 +311,7 @@ const updateOrderStatusByVendor = async (
     'PREPARING',
     'READY_FOR_PICKUP',
     'CANCELED',
+    'NO_SHOW',
   ];
 
   if (!ALLOWED_VENDOR_ACTIONS.includes(action.type)) {
@@ -299,7 +346,9 @@ const updateOrderStatusByVendor = async (
     });
 
     if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     const vendor = order.vendorId as any;
@@ -307,6 +356,7 @@ const updateOrderStatusByVendor = async (
       vendor?.businessDetails?.businessType?.name?.en ===
       BusinessCategoryName.RESTAURANT;
     const shouldCheckStock = !isRestaurant;
+    const isPickupOrder = order.fulfillmentType === FULFILLMENT_TYPE.PICKUP;
 
     if (!order.isPaid) {
       throw new AppError(
@@ -364,14 +414,19 @@ const updateOrderStatusByVendor = async (
       }
     }
 
-    if (
-      action.type === ORDER_STATUS.PREPARING &&
-      order.orderStatus !== ORDER_STATUS.ASSIGNED
-    ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'ORDER_MUST_BE_ASSIGNED_BEFORE_PREPARING',
-      );
+    if (action.type === ORDER_STATUS.PREPARING) {
+      // Pickup orders skip the delivery-partner assignment stage entirely.
+      const requiredPreviousStatus = isPickupOrder
+        ? ORDER_STATUS.ACCEPTED
+        : ORDER_STATUS.ASSIGNED;
+      if (order.orderStatus !== requiredPreviousStatus) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          isPickupOrder
+            ? 'ORDER_MUST_BE_ACCEPTED_BEFORE_PREPARING'
+            : 'ORDER_MUST_BE_ASSIGNED_BEFORE_PREPARING',
+        );
+      }
     }
 
     if (
@@ -382,6 +437,21 @@ const updateOrderStatusByVendor = async (
         httpStatus.BAD_REQUEST,
         'ORDER_MUST_BE_PREPARING_BEFORE_READY_FOR_PICKUP',
       );
+    }
+
+    if (action.type === 'NO_SHOW') {
+      if (!isPickupOrder) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'NO_SHOW_ONLY_FOR_PICKUP_ORDERS',
+        );
+      }
+      if (order.orderStatus !== ORDER_STATUS.READY_FOR_PICKUP) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          'ORDER_MUST_BE_READY_FOR_PICKUP_BEFORE_NO_SHOW',
+        );
+      }
     }
 
     if (
@@ -428,7 +498,7 @@ const updateOrderStatusByVendor = async (
                 },
                 update: {
                   $inc: {
-                    'variations.options.$[elem].stockQuantity':
+                    'variations.$[].options.$[elem].stockQuantity':
                       -item.itemSummary.quantity,
                   },
                 },
@@ -494,12 +564,18 @@ const updateOrderStatusByVendor = async (
     // ACTION: READY_FOR_PICKUP
     // ---------------------------------------------------------
     if (action.type === ORDER_STATUS.READY_FOR_PICKUP) {
+      if (isPickupOrder && order.pickup) {
+        order.pickup.readyAt = new Date();
+      }
+
       if (customerId) {
         notificationsToEmit.push(async () => {
           NotificationService.sendToUser(
             customerId,
             'Order is ready for pickup',
-            `Your order is now ready for pickup by ${vendor?.businessDetails?.businessName || 'the store'}.`,
+            isPickupOrder
+              ? `Your order is ready! Show your pickup code at ${vendor?.businessDetails?.businessName || 'the store'} to collect it.`
+              : `Your order is now ready for pickup by ${vendor?.businessDetails?.businessName || 'the store'}.`,
             { orderId: order.orderId, status: ORDER_STATUS.READY_FOR_PICKUP },
             'default',
             'ORDER',
@@ -544,7 +620,7 @@ const updateOrderStatusByVendor = async (
                 },
                 update: {
                   $inc: {
-                    'variations.options.$[elem].stockQuantity':
+                    'variations.$[].options.$[elem].stockQuantity':
                       item.itemSummary.quantity,
                   },
                 },
@@ -578,6 +654,61 @@ const updateOrderStatusByVendor = async (
             notificationPayload.title,
             notificationPayload.body,
             notificationPayload.data,
+            'default',
+            'ORDER',
+          );
+        });
+      }
+    }
+
+    // ---------------------------------------------------------
+    // ACTION: NO_SHOW (self-pickup only — customer never collected the order)
+    // ---------------------------------------------------------
+    if (action.type === 'NO_SHOW') {
+      order.cancelReason = action.reason || 'Customer did not collect the order.';
+      order.refundStatus = REFUND_STATUS.PENDING;
+
+      if (shouldCheckStock) {
+        const stockOperations = order.items.map((item: any) => {
+          const targetProductId = item.productId?._id || item.productId;
+
+          if (item.variationSku) {
+            return {
+              updateOne: {
+                filter: {
+                  _id: new mongoose.Types.ObjectId(targetProductId),
+                  'variations.options.sku': item.variationSku,
+                },
+                update: {
+                  $inc: {
+                    'variations.$[].options.$[elem].stockQuantity':
+                      item.itemSummary.quantity,
+                  },
+                },
+                arrayFilters: [{ 'elem.sku': item.variationSku }],
+              },
+            };
+          }
+
+          return {
+            updateOne: {
+              filter: { _id: new mongoose.Types.ObjectId(targetProductId) },
+              update: {
+                $inc: { 'stock.quantity': item.itemSummary.quantity },
+              },
+            },
+          };
+        });
+        await Product.bulkWrite(stockOperations, { session });
+      }
+
+      if (customerId) {
+        notificationsToEmit.push(async () => {
+          NotificationService.sendToUser(
+            customerId,
+            'Order Canceled — Not Collected',
+            `Your order was not collected within the pickup window and has been canceled.`,
+            { orderId: order.orderId },
             'default',
             'ORDER',
           );
@@ -663,7 +794,9 @@ const cancelOrderByCustomer = async (
   reason: string,
 ) => {
   if (!currentUser || currentUser.role !== 'CUSTOMER') {
-    throw new AppError(httpStatus.FORBIDDEN, 'NOT_AUTHORIZED_TO_CANCEL_ORDER');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'cancel this order',
+    });
   }
 
   if (!reason) {
@@ -693,7 +826,9 @@ const cancelOrderByCustomer = async (
     });
 
     if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     if (!order.isPaid) {
@@ -709,9 +844,13 @@ const cancelOrderByCustomer = async (
       ORDER_STATUS.CANCELED,
       ORDER_STATUS.REJECTED,
       ORDER_STATUS.DELIVERED,
+      ORDER_STATUS.PICKED_UP_BY_CUSTOMER,
+      ORDER_STATUS.NO_SHOW,
     ];
 
-    if (NON_CANCELABLE_STATUSES.some((status) => order.orderStatus === status)) {
+    if (
+      NON_CANCELABLE_STATUSES.some((status) => order.orderStatus === status)
+    ) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         'ORDER_CANNOT_BE_CANCELED_OR_REJECTED_AT_STAGE',
@@ -785,7 +924,7 @@ const cancelOrderByCustomer = async (
               },
               update: {
                 $inc: {
-                  'variations.options.$[elem].stockQuantity':
+                  'variations.$[].options.$[elem].stockQuantity':
                     item.itemSummary.quantity,
                 },
               },
@@ -886,6 +1025,7 @@ const cancelOrderByCustomer = async (
 
     return {
       messageKey: 'ORDER_CANCELED_BY_CUSTOMER_SUCCESS',
+      variables: undefined,
       data: order,
     };
   } catch (error) {
@@ -928,7 +1068,13 @@ const broadcastOrderToPartners = async (
   );
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
+  }
+
+  if (order.fulfillmentType === FULFILLMENT_TYPE.PICKUP) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPLICABLE_TO_PICKUP_ORDER');
   }
 
   if (order.dispatchPartnerPool && order.dispatchPartnerPool.length > 0) {
@@ -1082,7 +1228,9 @@ const partnerAcceptsDispatchedOrder = async (
     currentUser.status !== 'APPROVED' ||
     currentUser.role !== 'DELIVERY_PARTNER'
   ) {
-    throw new AppError(httpStatus.FORBIDDEN, 'PARTNER_NOT_APPROVED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'The selected delivery partner is not approved.',
+    });
   }
 
   if (
@@ -1110,7 +1258,10 @@ const partnerAcceptsDispatchedOrder = async (
       const order = await Order.findOne({ orderId })
         .populate('vendorId')
         .session(session);
-      if (!order) throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      if (!order)
+        throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+          entity: 'Order',
+        });
 
       vendorUserId = (order.vendorId as any)?.userId;
 
@@ -1291,7 +1442,9 @@ const updateOrderStatusByDeliveryPartner = async (
 ) => {
   const { orderStatus, deliveryProofImage, reason } = payload;
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
-    throw new AppError(httpStatus.FORBIDDEN, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   const validTransitions: Record<string, string> = {
@@ -1361,7 +1514,9 @@ const updateOrderStatusByDeliveryPartner = async (
     }).select('orderStatus');
 
     if (!orderCheck) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     if (orderCheck?.orderStatus === payload.orderStatus) {
@@ -1408,7 +1563,8 @@ const updateOrderStatusByDeliveryPartner = async (
   });
 
   return {
-    messageKey: 'ORDER_STATUS_UPDATED_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Order Status' },
     data: updatedOrder,
   };
 };
@@ -1455,7 +1611,7 @@ const getAllOrders = async (
 
     case 'FLEET_MANAGER': {
       const managedPartners = await DeliveryPartner.find({
-        'registeredBy.id': userObjectId,
+        currentFleetManagerId: userObjectId,
       })
         .select('_id')
         .lean();
@@ -1508,7 +1664,8 @@ const getAllOrders = async (
   const data = await builder.modelQuery.lean();
 
   return {
-    messageKey: 'ORDERS_RETRIEVED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Orders', isPlural: true },
     meta,
     data,
   };
@@ -1544,7 +1701,7 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
 
     case 'FLEET_MANAGER': {
       const managedPartners = await DeliveryPartner.find({
-        'registeredBy.id': userObjectId,
+        currentFleetManagerId: userObjectId,
       })
         .select('_id')
         .lean();
@@ -1563,10 +1720,9 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
       break;
 
     default:
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        'INVALID_ROLE_OR_PERMISSION_DENIED',
-      );
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'Security check failed due to invalid role permissions.',
+      });
   }
 
   // ------------------------------------------------------
@@ -1596,11 +1752,14 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
   const order = await query.lean();
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
   }
 
   return {
-    messageKey: 'ORDER_RETRIEVED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Order Tracking' },
     data: order,
   };
 };
@@ -1609,11 +1768,15 @@ const getSingleOrder = async (orderId: string, currentUser: TCurrentUser) => {
 const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
   // Enforce role barrier safety
   if (!currentUser || currentUser.role !== 'DELIVERY_PARTNER') {
-    throw new AppError(httpStatus.FORBIDDEN, 'DELIVERY_PARTNER_NOT_FOUND');
+    throw new AppError(httpStatus.FORBIDDEN, 'NOT_FOUND_MESSAGE', {
+      entity: 'Delivery Partner Account',
+    });
   }
 
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(httpStatus.FORBIDDEN, 'PARTNER_NOT_APPROVED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'The selected delivery partner is not approved.',
+    });
   }
 
   const currentPartnerPoolId = currentUser._id.toString();
@@ -1639,7 +1802,8 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'DELIVERY_PARTNER_DISPATCH_ORDER_FETCHED_SUCCESS',
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Available Delivery Tasks' },
     data: orders,
   };
 };
@@ -1648,14 +1812,15 @@ const getDeliveryPartnersDispatchOrder = async (currentUser: TCurrentUser) => {
 const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
   // Enforce absolute role barrier safety
   if (currentUser.role !== 'DELIVERY_PARTNER') {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'ONLY_DELIVERY_PARTNERS_CAN_ACCESS_CURRENT_ORDER',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'This view is restricted to active delivery riders only.',
+    });
   }
 
   if (currentUser.status !== 'APPROVED') {
-    throw new AppError(httpStatus.FORBIDDEN, 'PARTNER_NOT_APPROVED');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'The selected delivery partner is not approved.',
+    });
   }
 
   const currentOrderId = currentUser.operationalData?.currentOrderId;
@@ -1685,7 +1850,8 @@ const getDeliveryPartnerCurrentOrder = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'DELIVERY_PARTNER_CURRENT_ORDER_FETCHED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Active Delivery' },
     data: order,
   };
 };
@@ -1706,7 +1872,9 @@ const reorderOrder = async (
   }).lean();
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
   }
 
   let cartResult: any = null;
@@ -1733,7 +1901,79 @@ const reorderOrder = async (
 
   return {
     messageKey: 'ORDER_REORDER_SUCCESS',
+    variables: undefined,
     data: cartResult?.data || null,
+  };
+};
+
+// vendor/sub-vendor verifies the customer's self-pickup code at the counter
+const verifyPickupCode = async (
+  currentUser: TCurrentUser,
+  orderId: string,
+  code: string,
+) => {
+  if (!currentUser || !['VENDOR', 'SUB_VENDOR'].includes(currentUser.role)) {
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'verify pickup codes',
+    });
+  }
+
+  const order = await Order.findOne({
+    orderId,
+    vendorId: currentUser._id,
+    isDeleted: false,
+  }).select('+pickup.codeHash');
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
+  }
+
+  if (order.fulfillmentType !== FULFILLMENT_TYPE.PICKUP) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'NOT_APPLICABLE_TO_PICKUP_ORDER');
+  }
+
+  if (order.orderStatus !== ORDER_STATUS.READY_FOR_PICKUP) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'ORDER_MUST_BE_READY_FOR_PICKUP_BEFORE_NO_SHOW',
+    );
+  }
+
+  if (!order.pickup || order.pickup.codeHash !== hashPickupCode(code)) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'INVALID_PICKUP_CODE');
+  }
+
+  order.pickup.verifiedAt = new Date();
+  order.pickup.verifiedBy = currentUser._id as any;
+
+  updateOrderStatusHistory({
+    order,
+    newStatus: ORDER_STATUS.PICKED_UP_BY_CUSTOMER,
+    updatedBy: currentUser._id,
+    note: 'Pickup code verified at counter.',
+  });
+
+  await order.save();
+
+  try {
+    emitOrderStatusUpdate(getIO(), {
+      orderId: order.orderId,
+      orderStatus: ORDER_STATUS.PICKED_UP_BY_CUSTOMER,
+      order: order.toObject(),
+      customerUserId: null,
+      vendorUserId: currentUser.userId || null,
+      deliveryPartnerUserId: null,
+    });
+  } catch (socketErr) {
+    console.error('Socket emission failed:', socketErr);
+  }
+
+  return {
+    messageKey: 'PICKUP_VERIFIED_SUCCESS',
+    variables: undefined,
+    data: order,
   };
 };
 
@@ -1750,4 +1990,5 @@ export const OrderServices = {
   getDeliveryPartnersDispatchOrder,
   getDeliveryPartnerCurrentOrder,
   reorderOrder,
+  verifyPickupCode,
 };

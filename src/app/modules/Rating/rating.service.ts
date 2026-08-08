@@ -40,7 +40,9 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
 
     const existsOrder = await Order.findById(payload.orderId).session(session);
     if (!existsOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Order',
+      });
     }
 
     const reviewerModel = ROLE_COLLECTION_MAP[currentUser.role as TUserRole];
@@ -97,7 +99,9 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
       }
 
       if (!targetId || !targetModel) {
-        throw new AppError(httpStatus.NOT_FOUND, 'TARGET_FOR_RATING_NOT_FOUND');
+        throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+          entity: 'Item Or Profile',
+        });
       }
 
       payload.targetId = new mongoose.Types.ObjectId(targetId);
@@ -142,6 +146,7 @@ const createRating = async (payload: TRating, currentUser: TCurrentUser) => {
     await session.commitTransaction();
     return {
       messageKey: 'RATING_CREATED_SUCCESS',
+      variables: undefined,
       data: result,
     };
   } catch (err) {
@@ -158,15 +163,19 @@ const getAllRatings = async (
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const myDeliveryPartners = await DeliveryPartner.find({
-      'registeredBy.id': currentUser._id,
-    }).select('_id');
+      currentFleetManagerId: currentUser._id,
+    })
+      .select('_id')
+      .lean();
     const partnerIds = myDeliveryPartners.map((dp) => dp._id);
     query.targetId = { $in: [...partnerIds, currentUser._id] };
   } else if (currentUser.role === 'VENDOR') {
     const myProducts = await Product.find({
       vendorId: currentUser._id,
       isDeleted: false,
-    }).select('_id');
+    })
+      .select('_id')
+      .lean();
 
     const productIds = myProducts.map((product) => product._id);
 
@@ -197,11 +206,12 @@ const getAllRatings = async (
     ratingQuery.modelQuery = ratingQuery.modelQuery.populate(option);
   });
 
-  const data = await ratingQuery.modelQuery;
+  const data = await ratingQuery.modelQuery.lean();
   const meta = await ratingQuery.countTotal();
 
   return {
-    messageKey: 'RATINGS_FETCHED_SUCCESS',
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Reviews' },
     meta,
     data,
   };
@@ -216,7 +226,9 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
     .populate('orderId', 'orderId');
 
   if (!rating) {
-    throw new AppError(httpStatus.NOT_FOUND, 'RATING_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Review',
+    });
   }
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
@@ -242,7 +254,7 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
   ) {
     const partner = await DeliveryPartner.findOne({
       _id: rating.targetId,
-      'registeredBy.id': currentUser._id,
+      currentFleetManagerId: currentUser._id,
     });
     if (partner) isFleetManagerOfPartner = true;
   }
@@ -254,14 +266,14 @@ const getSingleRating = async (ratingId: string, currentUser: TCurrentUser) => {
     !isProductOwner &&
     !isFleetManagerOfPartner
   ) {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      'NO_PERMISSION_TO_VIEW_RATING_DETAIL',
-    );
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to view this review.',
+    });
   }
 
   return {
-    messageKey: 'RATING_FETCHED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Review' },
     data: rating,
   };
 };
@@ -270,7 +282,9 @@ const getRatingSummary = async (currentUser: TCurrentUser) => {
   const myProducts = await Product.find({
     vendorId: currentUser._id,
     isDeleted: false,
-  }).select('_id');
+  })
+    .select('_id')
+    .lean();
 
   const productIds = myProducts.map((p) => p._id);
 
@@ -515,7 +529,8 @@ const getRatingSummary = async (currentUser: TCurrentUser) => {
   ]);
 
   return {
-    messageKey: 'RATING_FETCHED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Review' },
     data: {
       summary: stats[0].overallStats[0] || {
         totalRatings: 0,

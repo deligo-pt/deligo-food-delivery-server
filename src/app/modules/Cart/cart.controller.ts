@@ -54,6 +54,7 @@ const updateAddonQuantity = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: node_env === 'development' ? result?.data : null,
   });
 });
@@ -71,6 +72,7 @@ const deleteCartItem = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: node_env === 'development' ? result?.data : null,
   });
 });
@@ -82,6 +84,7 @@ const clearCart = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: node_env === 'development' ? result?.data : null,
   });
 });

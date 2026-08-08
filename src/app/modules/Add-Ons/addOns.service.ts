@@ -73,7 +73,8 @@ const createAddonGroup = async (
   );
 
   return {
-    messageKey: 'ADDON_GROUP_CREATE_SUCCESS',
+    messageKey: 'COMMON_CREATED_SUCCESS',
+    variables: { entity: 'Addon Group' },
     data: result,
   };
 };
@@ -171,7 +172,8 @@ const updateAddonGroup = async (
   }
 
   return {
-    messageKey: 'ADDON_GROUP_UPDATE_SUCCESS',
+    messageKey: 'COMMON_UPDATED_SUCCESS',
+    variables: { entity: 'Addon Group Details' },
     data: result,
   };
 };
@@ -222,7 +224,7 @@ const addOptionToAddonGroup = async (
   });
 
   if (isDuplicate) {
-    throw new AppError(httpStatus.CONFLICT, 'OPTION_ALREADY_EXISTS');
+    throw new AppError(httpStatus.CONFLICT, 'ADDON_OPTION_ALREADY_EXISTS');
   }
 
   if (!newOption.sku) {
@@ -246,6 +248,7 @@ const addOptionToAddonGroup = async (
 
   return {
     messageKey: 'ADD_OPTION_SUCCESS',
+    variables: undefined,
     data: result,
   };
 };
@@ -268,7 +271,9 @@ const toggleOptionStatus = async (
   });
 
   if (!group) {
-    throw new AppError(httpStatus.NOT_FOUND, 'GROUP_OR_OPTION_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Addon Group Or Option',
+    });
   }
 
   const currentOption = group.options.find((opt: any) => opt.sku === optionSku);
@@ -334,6 +339,7 @@ const deleteOptionFromAddonGroup = async (
 
   return {
     messageKey: 'DELETE_OPTION_SUCCESS',
+    variables: undefined,
     data: result,
   };
 };
@@ -420,6 +426,7 @@ const softDeleteAddonGroup = async (id: string, currentUser: TCurrentUser) => {
 
   return {
     messageKey: 'DELETE_SUCCESS',
+    variables: undefined,
   };
 };
 export const AddOnsServices = {

@@ -1,5 +1,5 @@
 export const checkoutMessages = {
-  CART_EMPTY: {
+  CHECKOUT_CART_EMPTY: {
     en: 'Your cart is empty. Please add items before proceeding to checkout.',
     pt: 'Seu carrinho está vazio. Por favor, adicione itens antes de prosseguir para o checkout.',
   },
@@ -14,10 +14,6 @@ export const checkoutMessages = {
   PRODUCTS_NOT_FOUND: {
     en: 'One or more items in your cart are no longer available.',
     pt: 'Um ou mais itens no seu carrinho não estão mais disponíveis.',
-  },
-  PRODUCT_NOT_FOUND: {
-    en: 'This item could not be found.',
-    pt: 'Este item não pôde ser encontrado.',
   },
   VENDOR_CLOSED: {
     en: 'This restaurant is currently closed and not accepting orders.',
@@ -35,34 +31,22 @@ export const checkoutMessages = {
     en: 'Could not calculate delivery route. Restaurant location is missing.',
     pt: 'Não foi possível calcular a rota de entrega. A localização do restaurante está ausente.',
   },
-  CHECKOUT_SUCCESS: {
-    en: 'Order placed successfully!',
-    pt: 'Pedido feito com sucesso!',
-  },
   ORDER_VIEW_APPROVAL_REQUIRED: {
     en: (vars: { status: string }) =>
       `Access denied. Your account status is currently ${vars.status.toLowerCase()}.`,
     pt: (vars: { status: string }) =>
       `Acesso negado. O status atual da sua conta é ${vars.status.toLowerCase()}.`,
   },
-  CHECKOUT_SUMMARY_NOT_FOUND: {
-    en: 'Checkout details could not be found.',
-    pt: 'Os detalhes do checkout não foram encontrados.',
-  },
-  UNAUTHORIZED_TO_VIEW: {
-    en: 'You do not have permission to view this checkout session.',
-    pt: 'Você não tem permissão para visualizar esta sessão de checkout.',
-  },
   CHECKOUT_SUMMARY_ALREADY_CONVERTED: {
     en: 'This checkout has already been processed into an order.',
     pt: 'Este checkout já foi processado em um pedido.',
   },
-  VARIATION_NOT_FOUND: {
-    en: 'This variation could not be found.',
-    pt: 'Esta variação não pôde ser encontrada.',
-  },
   VARIATION_SKU_REQUIRED: {
     en: 'A variation SKU is required for this item.',
     pt: 'Um SKU de variação é necessário para este item.',
+  },
+  PAYOUT_SPLIT_RECONCILIATION_MISMATCH: {
+    en: 'Unable to calculate this order. Please try again or contact support.',
+    pt: 'Não foi possível calcular este pedido. Por favor, tente novamente ou contacte o suporte.',
   },
 } as const;

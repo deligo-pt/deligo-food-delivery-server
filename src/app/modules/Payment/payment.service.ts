@@ -23,6 +23,8 @@ import { TLanguageCode } from '../../constant/GlobalInterface/language.interface
 import { OrderServices } from '../Order/order.service';
 import { PaymentToken } from '../Payment-Token/payment-token.model';
 import { PaymentTokenServices } from '../Payment-Token/payment-token.service';
+import { Transaction } from '../Transaction/transaction.model';
+import customNanoId from '../../utils/customNanoId';
 
 export const solutionIds = {
   CARD: '113',
@@ -43,10 +45,58 @@ export const REDUNIQ_SUCCESS_CODES = new Set([
 export const isRedUniqSuccess = (result: any, transaction: any) =>
   transaction?.status === '1' || REDUNIQ_SUCCESS_CODES.has(result?.code);
 
-// MB WAY confirmed to accept payToken at session-init (sandbox tested); Apple/Google
-// Pay/PayPal are excluded — device-generated one-time cryptograms have no reusable token.
+// Persists the order refund state change together with its ledger entry as
+// a single atomic write, so a mid-write failure can never leave the order
+// flipped to REFUNDED with no corresponding Transaction audit row (or vice
+// versa).
+const persistRefundRecord = async (
+  order: any,
+  refundTransactionId: string | null,
+  remarks: string,
+) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    order.paymentStatus = 'REFUNDED';
+    order.isPaid = false;
+    order.refundStatus = REFUND_STATUS.REFUNDED;
+    await order.save({ session });
+
+    await Transaction.create(
+      [
+        {
+          transactionId: `TXN-RF-${customNanoId(8)}`,
+          orderId: order._id,
+          userId: order.customerId,
+          userModel: 'Customer',
+          baseAmount: order.payoutSummary.grandTotal,
+          taxAmount: 0,
+          totalAmount: order.payoutSummary.grandTotal,
+          type: 'REFUND',
+          status: 'SUCCESS',
+          paymentMethod: order.paymentMethod,
+          remarks: refundTransactionId
+            ? `${remarks} (gateway ref: ${refundTransactionId})`
+            : remarks,
+        },
+      ],
+      { session },
+    );
+
+    await session.commitTransaction();
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+};
+
+// REDUNIQ confirmed there is no tokenization support for MB WAY (or any non-card
+// method) — createPaymentToken/payToken only models card data. CARD only.
 export const isTokenizablePaymentMethod = (method: TPaymentMethod) =>
-  method === 'CARD' || method === 'MB_WAY';
+  method === 'CARD';
 
 const getReduniqNotificationUrl = () =>
   config.backend_base_url
@@ -114,7 +164,9 @@ const createRedUniqPayment = async (
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
 
   if (summary.isConvertedToOrder) {
     throw new AppError(
@@ -134,7 +186,7 @@ const createRedUniqPayment = async (
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ_API_URL_NOT_CONFIGURED',
+      'PAYMENT_GATEWAY_CONFIG_MISSING',
     );
   }
 
@@ -207,6 +259,7 @@ const createRedUniqPayment = async (
 
     return {
       messageKey: 'REDUNIQ_PAYMENT_SESSION_CREATED' as TMessageKey,
+      variables: undefined,
       data: {
         redirectUrl,
         paymentToken: token,
@@ -244,7 +297,9 @@ const refundRedUniqPayment = async (orderId: string) => {
   }).populate('customerId', 'name email');
 
   if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, 'ORDER_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Order',
+    });
   }
 
   if (!order.isPaid || order.paymentStatus !== 'PAID') {
@@ -259,7 +314,10 @@ const refundRedUniqPayment = async (orderId: string) => {
   }
 
   if (order.refundStatus === REFUND_STATUS.NOT_APPLICABLE) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'REFUND_NOT_APPLICABLE_FOR_ORDER');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'REFUND_NOT_APPLICABLE_FOR_ORDER',
+    );
   }
 
   if (!order.transactionId) {
@@ -269,7 +327,7 @@ const refundRedUniqPayment = async (orderId: string) => {
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ_API_URL_NOT_CONFIGURED',
+      'PAYMENT_GATEWAY_CONFIG_MISSING',
     );
   }
 
@@ -321,18 +379,20 @@ const refundRedUniqPayment = async (orderId: string) => {
           );
         }
 
-        order.paymentStatus = 'REFUNDED';
-        order.isPaid = false;
-        order.refundStatus = REFUND_STATUS.REFUNDED;
-        await order.save();
-
         const voidRefundTransactionId = (voidTxn as any)?.id || null;
+        await persistRefundRecord(
+          order,
+          voidRefundTransactionId,
+          `Void refund for Order ${order.orderId}`,
+        );
+
         sendRefundSuccessEmail(order, voidRefundTransactionId).catch((err) =>
           console.error('Refund email sending failed:', err),
         );
 
         return {
           messageKey: 'REDUNIQ_PAYMENT_REFUNDED' as TMessageKey,
+          variables: undefined,
           data: {
             refundTransactionId: voidRefundTransactionId,
             refundedBy: 'void',
@@ -347,18 +407,20 @@ const refundRedUniqPayment = async (orderId: string) => {
       });
     }
 
-    order.paymentStatus = 'REFUNDED';
-    order.isPaid = false;
-    order.refundStatus = REFUND_STATUS.REFUNDED;
-    await order.save();
-
     const refundTransactionId = (transaction as any)?.id || null;
+    await persistRefundRecord(
+      order,
+      refundTransactionId,
+      `Full refund for Order ${order.orderId}`,
+    );
+
     sendRefundSuccessEmail(order, refundTransactionId).catch((err) =>
       console.error('Refund email sending failed:', err),
     );
 
     return {
       messageKey: 'REDUNIQ_PAYMENT_REFUNDED' as TMessageKey,
+      variables: undefined,
       data: {
         refundTransactionId,
       },
@@ -395,10 +457,14 @@ const payWithSavedToken = async (
 ) => {
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, 'UNAUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.FORBIDDEN, 'COMMON_UNAUTHORIZED_ACTION', {
+      action: 'view this checkout session',
+    });
   }
 
   if (summary.isConvertedToOrder) {
@@ -428,13 +494,15 @@ const payWithSavedToken = async (
 
   const existingVendor = await Vendor.findById(summary.vendorId).lean();
   if (!existingVendor) {
-    throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Vendor Profile',
+    });
   }
 
   if (!config.redUniq.api_url) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      'REDUNIQ_API_URL_NOT_CONFIGURED',
+      'PAYMENT_GATEWAY_CONFIG_MISSING',
     );
   }
 
@@ -450,7 +518,10 @@ const payWithSavedToken = async (
       description: `One-click order payment via saved ${savedCard.cardBrand} card`,
     },
     order: {
-      ref: checkoutSummaryId,
+      // REDUNIQ requires a unique order.ref per payment attempt — reusing
+      // checkoutSummaryId across a retry would send a duplicate ref, which is a
+      // likely cause of the intermittent doPaymentToken 500s seen in testing.
+      ref: `${checkoutSummaryId}-${customNanoId(6)}`,
       amount: Math.round(summary.payoutSummary.grandTotal * 100),
       date: new Date().toISOString().slice(0, 19).replace('T', ' '),
     },
@@ -506,14 +577,34 @@ const payWithSavedToken = async (
     }
 
     if (axios.isAxiosError(error) && error.response) {
+      console.error(
+        'REDUNIQ doPaymentToken HTTP error:',
+        error.response.status,
+        error.response.data,
+      );
+
       if (error.response.status === 502) {
         throw new AppError(
           error.response.status,
           'PAYMENT_GATEWAY_TEMP_UNAVAILABLE_502',
         );
       }
+
+      // Confirmed via direct sandbox testing: doPaymentToken crashes with an empty
+      // 500 body for this merchant account specifically — an account provisioning
+      // gap on REDUNIQ's side, not a per-request issue. Surface a clearer, honest
+      // message instead of the generic "network error" wording.
+      if (error.response.status === 500) {
+        throw new AppError(
+          httpStatus.SERVICE_UNAVAILABLE,
+          'SAVED_TOKEN_PAYMENT_TEMPORARILY_UNAVAILABLE',
+        );
+      }
+
       throw new AppError(error.response.status, 'GATEWAY_ERROR');
     }
+
+    console.error('REDUNIQ doPaymentToken failed (no HTTP response):', error);
 
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
@@ -524,31 +615,40 @@ const payWithSavedToken = async (
 
 // webhook handler. Never trusts the POSTed status — re-verifies via
 const handleReduniqNotification = async (body: any) => {
-  const checkoutSummaryId: string | undefined =
+  const rawRef: string | undefined =
     body?.order?.ref || body?.ref || body?.transaction?.ref;
   const notificationToken: string | undefined =
     body?.token || body?.transaction?.token;
 
-  if (!checkoutSummaryId) return;
+  if (!rawRef) return;
+
+  // payWithSavedToken suffixes checkoutSummaryId with `-<nanoid>` to satisfy
+  // REDUNIQ's per-payment-unique order.ref requirement — strip it back off to
+  // recover the real Mongo id. A plain initPayment ref (24-char hex) passes through.
+  const checkoutSummaryId = rawRef.length > 24 ? rawRef.slice(0, 24) : rawRef;
 
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
   if (!summary || summary.isConvertedToOrder) return;
 
-  let paymentData = body;
-
-  if (notificationToken && config.redUniq.api_url) {
-    const verifyPayload = {
-      method: 'getResult',
-      api: {
-        username: config.redUniq.username,
-        password: config.redUniq.password,
-      },
-      token: notificationToken,
-    };
-
-    const verifyRes = await axios.post(config.redUniq.api_url, verifyPayload);
-    paymentData = verifyRes.data;
+  if (!notificationToken || !config.redUniq.api_url) {
+    console.error(
+      'Webhook missing verification token — rejecting',
+      checkoutSummaryId,
+    );
+    return;
   }
+
+  const verifyPayload = {
+    method: 'getResult',
+    api: {
+      username: config.redUniq.username,
+      password: config.redUniq.password,
+    },
+    token: notificationToken,
+  };
+
+  const verifyRes = await axios.post(config.redUniq.api_url, verifyPayload);
+  const paymentData = verifyRes.data;
 
   const transaction = paymentData?.transaction || {};
 
@@ -558,7 +658,7 @@ const handleReduniqNotification = async (body: any) => {
     return;
   }
 
-  if (summary.paymentMethod === 'CARD' || summary.paymentMethod === 'MB_WAY') {
+  if (summary.paymentMethod === 'CARD') {
     await PaymentTokenServices.persistCardTokenFromGatewayResponse(
       summary.customerId.toString(),
       checkoutSummaryId,
@@ -594,10 +694,14 @@ const handlePaymentFailure = async (
   const summary = await CheckoutSummary.findById(checkoutSummaryId);
 
   if (!summary)
-    throw new AppError(httpStatus.NOT_FOUND, 'CHECKOUT_SUMMARY_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Checkout Details',
+    });
 
   if (summary.customerId.toString() !== currentUser._id.toString()) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'NOT_AUTHORIZED_TO_VIEW');
+    throw new AppError(httpStatus.UNAUTHORIZED, 'COMMON_ACCESS_DENIED', {
+      reason: 'You do not have permission to view this transaction data.',
+    });
   }
 
   if (!summary.isConvertedToOrder) {
@@ -607,6 +711,7 @@ const handlePaymentFailure = async (
 
   return {
     messageKey: 'PAYMENT_STATUS_RESET_SUCCESS' as TMessageKey,
+    variables: undefined,
     data: null,
   };
 };
@@ -629,7 +734,9 @@ const createIngredientRedUniqPayment = async (
 
     const vendorInfo = await Vendor.findById(currentUser._id).session(session);
     if (!vendorInfo) {
-      throw new AppError(httpStatus.NOT_FOUND, 'VENDOR_NOT_FOUND');
+      throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+        entity: 'Vendor Profile',
+      });
     }
 
     const pendingOrders = await IngredientOrder.find({
@@ -671,8 +778,8 @@ const createIngredientRedUniqPayment = async (
         .session(session);
 
       if (!ingredient) {
-        throw new AppError(httpStatus.NOT_FOUND, 'INGREDIENT_NOT_FOUND', {
-          ingredientId: String(item.ingredientId),
+        throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+          entity: 'Ingredient',
         });
       }
 
@@ -827,10 +934,9 @@ const createIngredientRedUniqPayment = async (
       !result?.code ||
       (result.code !== '00000000' && result.code !== '17000000000')
     ) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'REDUNIQ_PAYMENT_INITIATION_FAILED',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_OPERATION_FAILED', {
+        operation: 'initiate payment with REDUNIQ. Please try again',
+      });
     }
 
     if (!token) {
@@ -848,16 +954,16 @@ const createIngredientRedUniqPayment = async (
 
       return {
         messageKey: 'INGREDIENT_REDUNIQ_PAYMENT_SESSION_CREATED' as TMessageKey,
+        variables: undefined,
         data: {
           redirectUrl: redirectUrl,
           paymentToken: token,
         },
       };
     } else {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'REDUNIQ_PAYMENT_INITIATION_FAILED',
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, 'COMMON_OPERATION_FAILED', {
+        operation: 'initiate payment with REDUNIQ. Please try again',
+      });
     }
   } catch (error: unknown) {
     if (session.inTransaction()) {

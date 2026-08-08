@@ -123,7 +123,9 @@ function auth(...args: any[]) {
 
     // 9. Role-Based Access Control
     if (requiredRoles.length && !requiredRoles.includes(role)) {
-      throw new AppError(httpStatus.FORBIDDEN, 'ROLE_ACCESS_DENIED');
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'You do not have permission to view this section.',
+      });
     }
 
     // 5. Fetch user and model information from the database
@@ -138,7 +140,9 @@ function auth(...args: any[]) {
       requiredRoles.length > 0 &&
       !requiredRoles.includes(role)
     ) {
-      throw new AppError(httpStatus.FORBIDDEN, 'ROLE_PERMISSION_DENIED');
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'Your account role lacks the required permissions.',
+      });
     }
 
     if (role === 'ADMIN' && requiredPermissions.length > 0) {

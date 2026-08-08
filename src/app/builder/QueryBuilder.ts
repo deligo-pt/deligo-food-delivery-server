@@ -72,6 +72,13 @@ export class QueryBuilder<T> {
     return this;
   }
 
+  // Opt-in: call last in the chain for read-only list endpoints to skip
+  // Mongoose document hydration; omit it if the caller needs virtuals/methods.
+  lean() {
+    this.modelQuery = this.modelQuery.lean() as unknown as Query<T[], T>;
+    return this;
+  }
+
   async countTotal() {
     const totalQueries = { ...this.modelQuery.getFilter() };
 

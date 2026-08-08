@@ -14,9 +14,10 @@ const getAllWallets = async (
 ) => {
   if (currentUser.role === 'FLEET_MANAGER') {
     const partners = await DeliveryPartner.find({
-      'registeredBy.id': new mongoose.Types.ObjectId(currentUser._id),
-      'registeredBy.model': 'FleetManager',
-    }).select('_id');
+      currentFleetManagerId: new mongoose.Types.ObjectId(currentUser._id),
+    })
+      .select('_id')
+      .lean();
     const partnerIds = partners.map((p) => p._id);
     query.userId = { $in: partnerIds };
     query.userModel = 'DeliveryPartner';
@@ -33,7 +34,8 @@ const getAllWallets = async (
   const data = await wallets.modelQuery;
   const meta = await wallets.countTotal();
   return {
-    messageKey: 'WALLETS_RETRIEVED_SUCCESS',
+    messageKey: 'COMMON_RETRIEVED_SUCCESS',
+    variables: { entity: 'Wallets' },
     meta,
     data,
   };
@@ -47,22 +49,27 @@ const getSingleWallet = async (walletId: string, currentUser: TCurrentUser) => {
   );
 
   if (!wallet) {
-    throw new AppError(httpStatus.NOT_FOUND, 'WALLET_NOT_FOUND');
+    throw new AppError(httpStatus.NOT_FOUND, 'NOT_FOUND_MESSAGE', {
+      entity: 'Wallet Details',
+    });
   }
 
   if (currentUser.role === 'FLEET_MANAGER') {
     const isPartner = await DeliveryPartner.findOne({
       _id: wallet.userId,
-      'registeredBy.id': new mongoose.Types.ObjectId(currentUser._id),
+      currentFleetManagerId: new mongoose.Types.ObjectId(currentUser._id),
     });
 
     if (!isPartner) {
-      throw new AppError(httpStatus.FORBIDDEN, 'NO_PERMISSION_TO_VIEW_WALLET');
+      throw new AppError(httpStatus.FORBIDDEN, 'COMMON_ACCESS_DENIED', {
+        reason: 'You do not have permission to view this wallet.',
+      });
     }
   }
 
   return {
-    messageKey: 'WALLET_RETRIEVED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Wallet' },
     data: wallet,
   };
 };
@@ -88,7 +95,8 @@ const getMyWallet = async (currentUser: TCurrentUser) => {
   }
 
   return {
-    messageKey: 'WALLET_RETRIEVED_SUCCESS',
+    messageKey: 'DATA_LOAD_SUCCESS',
+    variables: { entity: 'Wallet' },
     data: wallet,
   };
 };

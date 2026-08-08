@@ -24,6 +24,7 @@ const createIngredient = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.CREATED,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -48,6 +49,7 @@ const updateIngredient = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.CREATED,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -94,6 +96,7 @@ const softDeleteIngredient = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });
@@ -115,6 +118,7 @@ const permanentDeleteIngredient = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     messageKey: result?.messageKey as TMessageKey,
+    variables: result?.variables,
     data: result?.data,
   });
 });

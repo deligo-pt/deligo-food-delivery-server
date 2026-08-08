@@ -23,16 +23,8 @@ export const paymentTokenMessages = {
     en: 'This saved card has already been removed.',
     pt: 'Este cartão guardado já foi removido.',
   },
-  SAVED_CARD_DISABLED_SUCCESS: {
-    en: 'Saved card removed successfully.',
-    pt: 'Cartão guardado removido com sucesso.',
-  },
   SAVED_CARD_DISABLE_FAILED_BY_GATEWAY: {
     en: 'The payment gateway failed to disable this saved card. Please try again later.',
     pt: 'O gateway de pagamento não conseguiu desativar este cartão guardado. Tente novamente mais tarde.',
-  },
-  REDUNIQ_API_URL_NOT_CONFIGURED_TOKEN: {
-    en: 'Payment gateway configuration missing.',
-    pt: 'Configuração do gateway de pagamento ausente.',
   },
 } as const;
